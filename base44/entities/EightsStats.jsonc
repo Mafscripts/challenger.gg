@@ -1,0 +1,89 @@
+{
+  "name": "EightsStats",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "rating": {
+      "type": "number",
+      "default": 1000,
+      "title": "8s Rating (MMR)"
+    },
+    "wins": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Wins"
+    },
+    "losses": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Losses"
+    },
+    "win_rate": {
+      "type": "number",
+      "default": 0,
+      "title": "Win Rate Percentage"
+    },
+    "kills": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Kills"
+    },
+    "deaths": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Deaths"
+    },
+    "kd_ratio": {
+      "type": "number",
+      "default": 0,
+      "title": "K/D Ratio"
+    },
+    "matches_played": {
+      "type": "number",
+      "default": 0,
+      "title": "Matches Played"
+    },
+    "favorite_mode": {
+      "type": "string",
+      "enum": [
+        "snd",
+        "hp",
+        "overload"
+      ],
+      "title": "Favorite Game Mode"
+    },
+    "region": {
+      "type": "string",
+      "enum": [
+        "na",
+        "eu",
+        "apac",
+        "sa",
+        "oce"
+      ],
+      "default": "na",
+      "title": "Region"
+    },
+    "season": {
+      "type": "number",
+      "default": 1,
+      "title": "Current Season"
+    },
+    "last_played_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Played Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "username"
+  ]
+}

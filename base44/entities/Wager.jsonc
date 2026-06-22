@@ -1,0 +1,228 @@
+{
+  "name": "Wager",
+  "type": "object",
+  "properties": {
+    "host_id": {
+      "type": "string",
+      "title": "Host User ID"
+    },
+    "host_name": {
+      "type": "string",
+      "title": "Host Name"
+    },
+    "challenger_id": {
+      "type": "string",
+      "title": "Challenger User ID"
+    },
+    "challenger_name": {
+      "type": "string",
+      "title": "Challenger Name"
+    },
+    "match_type": {
+      "type": "string",
+      "enum": [
+        "8s",
+        "ranked",
+        "xp",
+        "wagers"
+      ],
+      "default": "wagers",
+      "title": "Match Type"
+    },
+    "game_mode": {
+      "type": "string",
+      "enum": [
+        "snd",
+        "overload",
+        "hp"
+      ],
+      "title": "Game Mode"
+    },
+    "game_mode_display": {
+      "type": "string",
+      "title": "Game Mode Display Name"
+    },
+    "team_size": {
+      "type": "string",
+      "enum": [
+        "1v1",
+        "2v2",
+        "3v3",
+        "4v4"
+      ],
+      "title": "Team Size"
+    },
+    "best_of": {
+      "type": "number",
+      "default": 1,
+      "title": "Series Format (Best Of)"
+    },
+    "entry_fee": {
+      "type": "number",
+      "title": "Entry Fee Per Team"
+    },
+    "total_prize_pool": {
+      "type": "number",
+      "title": "Total Prize Pool"
+    },
+    "platform_fee_percent": {
+      "type": "number",
+      "default": 10,
+      "title": "Platform Fee Percentage"
+    },
+    "platform_fee_amount": {
+      "type": "number",
+      "title": "Platform Fee Amount"
+    },
+    "winner_payout": {
+      "type": "number",
+      "title": "Winner Payout Amount"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "accepted",
+        "escrow_paid",
+        "map_veto",
+        "ready",
+        "in_progress",
+        "awaiting_team_alpha_report",
+        "awaiting_team_bravo_report",
+        "score_conflict",
+        "completed",
+        "cancelled",
+        "disputed"
+      ],
+      "default": "open",
+      "title": "Status"
+    },
+    "map_pool_id": {
+      "type": "string",
+      "title": "Map Pool ID"
+    },
+    "host_banned_map_id": {
+      "type": "string",
+      "title": "Host Banned Map ID"
+    },
+    "host_banned_map_name": {
+      "type": "string",
+      "title": "Host Banned Map Name"
+    },
+    "challenger_banned_map_id": {
+      "type": "string",
+      "title": "Challenger Banned Map ID"
+    },
+    "challenger_banned_map_name": {
+      "type": "string",
+      "title": "Challenger Banned Map Name"
+    },
+    "final_map_id": {
+      "type": "string",
+      "title": "Final Map ID"
+    },
+    "final_map_name": {
+      "type": "string",
+      "title": "Final Map Name"
+    },
+    "team_alpha_score_reported": {
+      "type": "number",
+      "title": "Team Alpha Reported Score"
+    },
+    "team_alpha_reported_by": {
+      "type": "string",
+      "title": "Team Alpha Reported By User ID"
+    },
+    "team_alpha_reported_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Team Alpha Reported Date"
+    },
+    "team_bravo_score_reported": {
+      "type": "number",
+      "title": "Team Bravo Reported Score"
+    },
+    "team_bravo_reported_by": {
+      "type": "string",
+      "title": "Team Bravo Reported By User ID"
+    },
+    "team_bravo_reported_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Team Bravo Reported Date"
+    },
+    "reported_score_alpha": {
+      "type": "number",
+      "title": "Submitted Team Alpha Score"
+    },
+    "reported_score_bravo": {
+      "type": "number",
+      "title": "Submitted Team Bravo Score"
+    },
+    "reported_score_by": {
+      "type": "string",
+      "title": "Score Submitted By User ID"
+    },
+    "reported_score_team": {
+      "type": "string",
+      "enum": [
+        "host",
+        "challenger"
+      ],
+      "title": "Score Submitted By Team"
+    },
+    "reported_score_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Score Submitted Date"
+    },
+    "winner_id": {
+      "type": "string",
+      "title": "Winner User ID"
+    },
+    "winner_name": {
+      "type": "string",
+      "title": "Winner Name"
+    },
+    "winner_score": {
+      "type": "number",
+      "title": "Winner Score"
+    },
+    "loser_score": {
+      "type": "number",
+      "title": "Loser Score"
+    },
+    "match_start_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Match Start Deadline"
+    },
+    "match_started_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Match Started Date"
+    },
+    "match_completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Match Completed Date"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    },
+    "accepted_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Accepted Date"
+    }
+  },
+  "required": [
+    "host_id",
+    "host_name",
+    "game_mode",
+    "team_size",
+    "match_type"
+  ]
+}

@@ -1,0 +1,184 @@
+{
+  "name": "PlayerProfile",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "display_name": {
+      "type": "string",
+      "title": "Display Name"
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "handle": {
+      "type": "string",
+      "title": "Public Handle"
+    },
+    "avatar_url": {
+      "type": "string",
+      "title": "Avatar URL"
+    },
+    "bio": {
+      "type": "string",
+      "title": "Bio"
+    },
+    "country": {
+      "type": "string",
+      "title": "Country"
+    },
+    "region": {
+      "type": "string",
+      "enum": [
+        "na",
+        "eu",
+        "asia",
+        "oce",
+        "sa"
+      ],
+      "title": "Region"
+    },
+    "rank": {
+      "type": "string",
+      "enum": [
+        "bronze",
+        "silver",
+        "gold",
+        "platinum",
+        "diamond",
+        "master",
+        "grandmaster"
+      ],
+      "default": "bronze",
+      "title": "Rank"
+    },
+    "rank_division": {
+      "type": "string",
+      "enum": [
+        "I",
+        "II",
+        "III",
+        "IV",
+        "V"
+      ],
+      "default": "V",
+      "title": "Rank Division"
+    },
+    "elo": {
+      "type": "number",
+      "default": 0,
+      "title": "ELO Rating"
+    },
+    "peak_elo": {
+      "type": "number",
+      "default": 0,
+      "title": "Peak ELO"
+    },
+    "xp": {
+      "type": "number",
+      "default": 0,
+      "title": "XP Points"
+    },
+    "level": {
+      "type": "number",
+      "default": 1,
+      "title": "Player Level"
+    },
+    "prestige": {
+      "type": "number",
+      "default": 0,
+      "title": "Prestige Level"
+    },
+    "credits": {
+      "type": "number",
+      "default": 0,
+      "title": "Credits Balance"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Premium Member"
+    },
+    "premium_expires": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Premium Expiration Date"
+    },
+    "total_matches": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Matches Played"
+    },
+    "total_wins": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Wins"
+    },
+    "total_losses": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Losses"
+    },
+    "highest_rank": {
+      "type": "string",
+      "title": "Highest Calculated Rank"
+    },
+    "showcase_item_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Showcase Inventory Item IDs"
+    },
+    "current_win_streak": {
+      "type": "number",
+      "default": 0,
+      "title": "Current Win Streak"
+    },
+    "best_win_streak": {
+      "type": "number",
+      "default": 0,
+      "title": "Best Win Streak"
+    },
+    "favorite_game_mode": {
+      "type": "string",
+      "title": "Favorite Game Mode"
+    },
+    "total_playtime_hours": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Playtime (Hours)"
+    },
+    "account_created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Account Created Date"
+    },
+    "last_active_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Active Date"
+    },
+    "is_banned": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Banned"
+    },
+    "ban_reason": {
+      "type": "string",
+      "title": "Ban Reason"
+    },
+    "ban_expires": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Ban Expiration Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "display_name"
+  ]
+}

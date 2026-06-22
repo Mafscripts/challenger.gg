@@ -1,0 +1,76 @@
+{
+  "name": "WalletTransaction",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "wallet_id": {
+      "type": "string",
+      "title": "Wallet ID"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "deposit",
+        "withdrawal",
+        "wager_escrow",
+        "wager_payout",
+        "wager_loss",
+        "wager_refund",
+        "tournament_prize",
+        "premium_subscription",
+        "admin_adjustment"
+      ],
+      "title": "Transaction Type"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "balance_before": {
+      "type": "number",
+      "title": "Balance Before"
+    },
+    "balance_after": {
+      "type": "number",
+      "title": "Balance After"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "reference_id": {
+      "type": "string",
+      "title": "Reference ID (Wager/Tournament ID)"
+    },
+    "reference_type": {
+      "type": "string",
+      "title": "Reference Type"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "default": "pending",
+      "title": "Status"
+    },
+    "metadata": {
+      "type": "object",
+      "title": "Metadata"
+    }
+  },
+  "required": [
+    "user_id",
+    "wallet_id",
+    "type",
+    "amount",
+    "balance_before",
+    "balance_after"
+  ]
+}

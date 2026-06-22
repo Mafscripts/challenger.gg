@@ -1,0 +1,75 @@
+{
+  "name": "TournamentParticipant",
+  "type": "object",
+  "properties": {
+    "tournament_id": {
+      "type": "string",
+      "title": "Tournament ID"
+    },
+    "team_id": {
+      "type": "string",
+      "title": "Team ID (or user_id for 1v1)"
+    },
+    "team_name": {
+      "type": "string",
+      "title": "Team Name"
+    },
+    "captain_id": {
+      "type": "string",
+      "title": "Team Captain User ID"
+    },
+    "captain_name": {
+      "type": "string",
+      "title": "Team Captain Name"
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Team Members"
+    },
+    "seed": {
+      "type": "number",
+      "title": "Tournament Seed"
+    },
+    "eliminated": {
+      "type": "boolean",
+      "default": false,
+      "title": "Eliminated From Tournament"
+    },
+    "eliminated_round": {
+      "type": "number",
+      "title": "Eliminated In Round"
+    },
+    "final_rank": {
+      "type": "number",
+      "title": "Final Ranking"
+    },
+    "prize_won": {
+      "type": "number",
+      "default": 0,
+      "title": "Prize Won"
+    },
+    "registered_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Registered Date"
+    }
+  },
+  "required": [
+    "tournament_id",
+    "team_id",
+    "team_name",
+    "captain_id",
+    "captain_name"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "name": "Inventory",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "item_id": {
+      "type": "string",
+      "title": "Item ID"
+    },
+    "item_name": {
+      "type": "string",
+      "title": "Item Name"
+    },
+    "item_image": {
+      "type": "string",
+      "title": "Item Image"
+    },
+    "item_rarity": {
+      "type": "string",
+      "title": "Item Rarity"
+    },
+    "item_category": {
+      "type": "string",
+      "title": "Item Category"
+    },
+    "purchase_method": {
+      "type": "string",
+      "enum": [
+        "credits",
+        "cash"
+      ],
+      "default": "credits",
+      "title": "Purchase Method"
+    },
+    "price_paid": {
+      "type": "number",
+      "title": "Price Paid"
+    },
+    "equipped": {
+      "type": "boolean",
+      "default": false,
+      "title": "Equipped"
+    }
+  },
+  "required": [
+    "user_id",
+    "item_id",
+    "item_name"
+  ]
+}

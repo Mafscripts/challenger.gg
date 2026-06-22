@@ -1,0 +1,51 @@
+{
+  "name": "WagerParticipant",
+  "type": "object",
+  "properties": {
+    "wager_id": {
+      "type": "string",
+      "title": "Wager ID"
+    },
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "user_name": {
+      "type": "string",
+      "title": "User Name"
+    },
+    "team": {
+      "type": "string",
+      "enum": [
+        "host",
+        "challenger"
+      ],
+      "title": "Team"
+    },
+    "is_captain": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Team Captain"
+    },
+    "entry_fee_paid": {
+      "type": "boolean",
+      "default": false,
+      "title": "Entry Fee Paid"
+    },
+    "escrow_transaction_id": {
+      "type": "string",
+      "title": "Escrow Transaction ID"
+    },
+    "joined_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Joined Date"
+    }
+  },
+  "required": [
+    "wager_id",
+    "user_id",
+    "user_name",
+    "team"
+  ]
+}

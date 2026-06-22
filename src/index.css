@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 3%;
+    --foreground: 0 0% 100%;
+    --card: 220 15% 7%;
+    --card-foreground: 0 0% 100%;
+    --popover: 220 15% 7%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 185 100% 50%;
+    --primary-foreground: 220 20% 3%;
+    --secondary: 220 12% 12%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 12% 12%;
+    --muted-foreground: 216 12% 60%;
+    --accent: 25 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 10% 15%;
+    --input: 220 10% 15%;
+    --ring: 185 100% 50%;
+    --chart-1: 185 100% 50%;
+    --chart-2: 152 100% 50%;
+    --chart-3: 25 100% 50%;
+    --chart-4: 270 60% 60%;
+    --chart-5: 340 75% 55%;
+    --radius: 0.5rem;
+    --font-heading: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --sidebar-background: 220 15% 5%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 185 100% 50%;
+    --sidebar-primary-foreground: 220 20% 3%;
+    --sidebar-accent: 220 12% 10%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 220 10% 15%;
+    --sidebar-ring: 185 100% 50%;
+
+    --cyan: 185 100% 50%;
+    --orange: 25 100% 50%;
+    --green: 152 100% 50%;
+    --obsidian: 220 20% 3%;
+    --carbon: 220 15% 7%;
+    --vapor: 216 12% 60%;
+  }
+
+  .dark {
+    --background: 220 20% 3%;
+    --foreground: 0 0% 100%;
+    --card: 220 15% 7%;
+    --card-foreground: 0 0% 100%;
+    --popover: 220 15% 7%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 185 100% 50%;
+    --primary-foreground: 220 20% 3%;
+    --secondary: 220 12% 12%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 12% 12%;
+    --muted-foreground: 216 12% 60%;
+    --accent: 25 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 10% 15%;
+    --input: 220 10% 15%;
+    --ring: 185 100% 50%;
+    --chart-1: 185 100% 50%;
+    --chart-2: 152 100% 50%;
+    --chart-3: 25 100% 50%;
+    --chart-4: 270 60% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar-background: 220 15% 5%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 185 100% 50%;
+    --sidebar-primary-foreground: 220 20% 3%;
+    --sidebar-accent: 220 12% 10%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 220 10% 15%;
+    --sidebar-ring: 185 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+}
+
+@layer utilities {
+  .glow-cyan {
+    box-shadow: 0 0 20px hsl(185 100% 50% / 0.3), 0 0 60px hsl(185 100% 50% / 0.1);
+  }
+  .glow-orange {
+    box-shadow: 0 0 20px hsl(25 100% 50% / 0.3), 0 0 60px hsl(25 100% 50% / 0.1);
+  }
+  .glow-green {
+    box-shadow: 0 0 20px hsl(152 100% 50% / 0.3), 0 0 60px hsl(152 100% 50% / 0.1);
+  }
+  .glow-mythic {
+    box-shadow: 0 0 30px hsl(270 80% 60% / 0.5), 0 0 80px hsl(270 80% 60% / 0.2);
+  }
+  .glow-legendary {
+    box-shadow: 0 0 30px hsl(45 100% 50% / 0.5), 0 0 80px hsl(45 100% 50% / 0.2);
+  }
+  .text-glow-cyan {
+    text-shadow: 0 0 20px hsl(185 100% 50% / 0.5);
+  }
+  .text-glow-orange {
+    text-shadow: 0 0 20px hsl(25 100% 50% / 0.5);
+  }
+  .animate-mythic-float {
+    animation: mythic-float 3s ease-in-out infinite;
+  }
+  .animate-mythic-glow {
+    animation: mythic-glow-pulse 2.5s ease-in-out infinite;
+  }
+  .mythic-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, hsl(280 100% 70% / 0.15) 45%, hsl(320 100% 70% / 0.15) 55%, transparent 70%);
+    background-size: 200% 100%;
+    animation: mythic-shimmer 3s linear infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .animate-locked-float {
+    animation: locked-float 2.5s ease-in-out infinite;
+  }
+  .animate-locked-pulse {
+    animation: locked-pulse 4s ease-in-out infinite;
+  }
+  .animate-exclusive-glow {
+    animation: exclusive-glow 4s ease-in-out infinite;
+  }
+  .exclusive-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, hsl(185 100% 50% / 0.15) 45%, hsl(185 100% 50% / 0.15) 55%, transparent 70%);
+    background-size: 200% 100%;
+    animation: exclusive-shimmer 3s linear infinite;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .glass {
+    background: hsl(220 15% 7% / 0.6);
+    backdrop-filter: blur(40px);
+    border: 1px solid hsl(0 0% 100% / 0.06);
+  }
+  .glass-nav {
+    background: hsl(220 20% 3% / 0.8);
+    backdrop-filter: blur(40px);
+    border-bottom: 1px solid hsl(0 0% 100% / 0.06);
+  }
+}
+
+@keyframes mythic-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes mythic-glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px hsl(270 80% 60% / 0.4), 0 0 60px hsl(270 80% 60% / 0.15); }
+  50% { box-shadow: 0 0 35px hsl(270 80% 60% / 0.65), 0 0 90px hsl(270 80% 60% / 0.3); }
+}
+@keyframes mythic-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes locked-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes locked-pulse {
+  0%, 100% { box-shadow: 0 0 15px hsl(25 100% 50% / 0.3), 0 0 40px hsl(25 100% 50% / 0.1); }
+  50% { box-shadow: 0 0 25px hsl(25 100% 50% / 0.5), 0 0 70px hsl(25 100% 50% / 0.2); }
+}
+@keyframes exclusive-glow {
+  0%, 100% { box-shadow: 0 0 20px hsl(185 100% 50% / 0.4), 0 0 60px hsl(185 100% 50% / 0.15); }
+  50% { box-shadow: 0 0 35px hsl(185 100% 50% / 0.65), 0 0 90px hsl(185 100% 50% / 0.3); }
+}
+@keyframes exclusive-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: hsl(220 20% 3%); }
+::-webkit-scrollbar-thumb { background: hsl(220 10% 20%); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(185 100% 50% / 0.5); }
+
+/* Selection */
+::selection { background: hsl(185 100% 50% / 0.3); color: white; }

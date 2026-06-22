@@ -1,0 +1,71 @@
+{
+  "name": "PremiumMembership",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "plan_type": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "monthly",
+        "yearly"
+      ],
+      "title": "Plan Type"
+    },
+    "price_paid": {
+      "type": "number",
+      "title": "Price Paid"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "credits",
+        "base44_payments"
+      ],
+      "title": "Payment Method"
+    },
+    "transaction_id": {
+      "type": "string",
+      "title": "Transaction ID"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Start Date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "End Date"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "title": "Is Active"
+    },
+    "auto_renew": {
+      "type": "boolean",
+      "default": false,
+      "title": "Auto Renew"
+    },
+    "cancelled_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Cancelled Date"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "plan_type",
+    "start_date",
+    "end_date"
+  ]
+}

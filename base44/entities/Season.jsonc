@@ -1,0 +1,72 @@
+{
+  "name": "Season",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Season Name"
+    },
+    "season_number": {
+      "type": "number",
+      "title": "Season Number"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Start Date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "End Date"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Active"
+    },
+    "rank_resets": {
+      "type": "boolean",
+      "default": true,
+      "title": "Rank Resets At Start"
+    },
+    "rewards": {
+      "type": "object",
+      "properties": {
+        "bronze": {
+          "type": "object"
+        },
+        "silver": {
+          "type": "object"
+        },
+        "gold": {
+          "type": "object"
+        },
+        "platinum": {
+          "type": "object"
+        },
+        "diamond": {
+          "type": "object"
+        },
+        "master": {
+          "type": "object"
+        },
+        "grandmaster": {
+          "type": "object"
+        }
+      },
+      "title": "Rank Rewards"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "name",
+    "season_number",
+    "start_date",
+    "end_date"
+  ]
+}

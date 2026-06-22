@@ -1,0 +1,52 @@
+{
+  "name": "MapPool",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Map Pool Name"
+    },
+    "game_mode": {
+      "type": "string",
+      "enum": [
+        "snd",
+        "overload",
+        "hp"
+      ],
+      "title": "Game Mode"
+    },
+    "maps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "map_id": {
+            "type": "string"
+          },
+          "map_name": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Maps In Pool"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "title": "Is Active"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "name",
+    "game_mode",
+    "maps"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "name": "TeamMember",
+  "type": "object",
+  "properties": {
+    "team_id": {
+      "type": "string",
+      "title": "Team ID"
+    },
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "user_name": {
+      "type": "string",
+      "title": "User Name"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "captain",
+        "member",
+        "substitute"
+      ],
+      "default": "member",
+      "title": "Role"
+    },
+    "joined_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Joined Date"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "title": "Is Active Member"
+    }
+  },
+  "required": [
+    "team_id",
+    "user_id",
+    "user_name"
+  ]
+}

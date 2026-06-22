@@ -1,0 +1,71 @@
+{
+  "name": "WagerMatch",
+  "type": "object",
+  "properties": {
+    "wager_id": {
+      "type": "string",
+      "title": "Wager ID"
+    },
+    "match_number": {
+      "type": "number",
+      "default": 1,
+      "title": "Match Number (Best Of Series)"
+    },
+    "map_id": {
+      "type": "string",
+      "title": "Map ID"
+    },
+    "map_name": {
+      "type": "string",
+      "title": "Map Name"
+    },
+    "team_a_score": {
+      "type": "number",
+      "default": 0,
+      "title": "Team A Score"
+    },
+    "team_b_score": {
+      "type": "number",
+      "default": 0,
+      "title": "Team B Score"
+    },
+    "winner_team": {
+      "type": "string",
+      "enum": [
+        "host",
+        "challenger"
+      ],
+      "title": "Winner Team"
+    },
+    "match_duration_seconds": {
+      "type": "number",
+      "title": "Match Duration (Seconds)"
+    },
+    "proof_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Proof URLs (Screenshots)"
+    },
+    "reported_by": {
+      "type": "string",
+      "title": "Reported By User ID"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "title": "Score Verified"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "wager_id",
+    "map_id",
+    "map_name"
+  ]
+}

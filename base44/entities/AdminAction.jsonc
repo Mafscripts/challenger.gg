@@ -1,0 +1,77 @@
+{
+  "name": "AdminAction",
+  "type": "object",
+  "properties": {
+    "admin_id": {
+      "type": "string",
+      "title": "Admin ID"
+    },
+    "admin_name": {
+      "type": "string",
+      "title": "Admin Name"
+    },
+    "admin_role": {
+      "type": "string",
+      "enum": [
+        "ceo",
+        "super_admin",
+        "admin",
+        "moderator"
+      ],
+      "title": "Admin Role"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "ban",
+        "unban",
+        "warning",
+        "payout_adjust",
+        "dispute_resolve",
+        "tournament_create",
+        "tournament_edit",
+        "tournament_force_winner",
+        "tournament_reset_match",
+        "role_change",
+        "user_edit",
+        "marketplace_create",
+        "wallet_adjust",
+        "withdrawal_process",
+        "moderation",
+        "system"
+      ],
+      "title": "Action Type"
+    },
+    "target_user_id": {
+      "type": "string",
+      "title": "Target User ID"
+    },
+    "target_username": {
+      "type": "string",
+      "title": "Target Username"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "details": {
+      "type": "object",
+      "title": "Details"
+    },
+    "ip_address": {
+      "type": "string",
+      "title": "IP Address"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "admin_id",
+    "admin_name",
+    "action_type",
+    "description"
+  ]
+}

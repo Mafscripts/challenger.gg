@@ -1,0 +1,60 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "challenge",
+        "tournament",
+        "trade",
+        "system",
+        "match",
+        "wager",
+        "premium",
+        "marketplace"
+      ],
+      "title": "Notification Type"
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "message": {
+      "type": "string",
+      "title": "Message"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Read"
+    },
+    "action_url": {
+      "type": "string",
+      "title": "Action URL"
+    },
+    "related_entity_id": {
+      "type": "string",
+      "title": "Related Entity ID"
+    },
+    "related_entity_type": {
+      "type": "string",
+      "title": "Related Entity Type (Wager, Tournament, etc)"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "type",
+    "title",
+    "message"
+  ]
+}

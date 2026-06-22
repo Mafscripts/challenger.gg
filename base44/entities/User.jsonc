@@ -1,0 +1,208 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "The role of the user in the app",
+      "enum": [
+        "ceo",
+        "super_admin",
+        "admin",
+        "moderator",
+        "user"
+      ],
+      "default": "user"
+    },
+    "admin_role": {
+      "type": "string",
+      "enum": [
+        "ceo",
+        "super_admin",
+        "admin",
+        "moderator"
+      ],
+      "title": "Admin Role"
+    },
+    "is_admin": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Admin"
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "handle": {
+      "type": "string",
+      "title": "Public Handle"
+    },
+    "email_verified": {
+      "type": "boolean",
+      "default": false,
+      "title": "Email Verified"
+    },
+    "discord_webhook_url": {
+      "type": "string",
+      "title": "Discord Webhook URL"
+    },
+    "discord_alerts_enabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "Discord Alerts Enabled"
+    },
+    "display_name": {
+      "type": "string",
+      "title": "Display Name"
+    },
+    "credits": {
+      "type": "number",
+      "default": 0,
+      "title": "Credits"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false,
+      "title": "Premium Member"
+    },
+    "premium_expires": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Premium Expiration Date"
+    },
+    "wallet_balance": {
+      "type": "number",
+      "default": 0,
+      "title": "Wallet Balance"
+    },
+    "lifetime_earnings": {
+      "type": "number",
+      "default": 0,
+      "title": "Lifetime Earnings"
+    },
+    "trophies": {
+      "type": "number",
+      "default": 0,
+      "title": "Trophies"
+    },
+    "twitch_username": {
+      "type": "string",
+      "title": "Twitch Username"
+    },
+    "activision_id": {
+      "type": "string",
+      "title": "Activision ID"
+    },
+    "playstation_id": {
+      "type": "string",
+      "title": "PlayStation ID"
+    },
+    "xbox_id": {
+      "type": "string",
+      "title": "Xbox ID"
+    },
+    "rank": {
+      "type": "string",
+      "enum": [
+        "novice",
+        "amateur",
+        "pro",
+        "champion",
+        "bronze",
+        "silver",
+        "gold",
+        "platinum",
+        "diamond",
+        "master"
+      ],
+      "default": "novice",
+      "title": "Rank"
+    },
+    "division": {
+      "type": "string",
+      "default": "I",
+      "title": "Division"
+    },
+    "xp_level": {
+      "type": "number",
+      "default": 1,
+      "title": "XP Level"
+    },
+    "wager_wins": {
+      "type": "number",
+      "default": 0,
+      "title": "Wager Wins"
+    },
+    "wager_losses": {
+      "type": "number",
+      "default": 0,
+      "title": "Wager Losses"
+    },
+    "current_win_streak": {
+      "type": "number",
+      "default": 0,
+      "title": "Current Win Streak"
+    },
+    "total_wager_earnings": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Wager Earnings"
+    },
+    "biggest_wager_win": {
+      "type": "number",
+      "default": 0,
+      "title": "Biggest Wager Win"
+    },
+    "tournament_wins": {
+      "type": "number",
+      "default": 0,
+      "title": "Tournament Wins"
+    },
+    "region": {
+      "type": "string",
+      "title": "Region"
+    },
+    "account_created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Account Created Date"
+    },
+    "is_banned": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Banned"
+    },
+    "ban_reason": {
+      "type": "string",
+      "title": "Ban Reason"
+    },
+    "badges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "ceo",
+              "super_admin",
+              "admin",
+              "moderator",
+              "premium",
+              "tournament_winner",
+              "top_player",
+              "veteran"
+            ]
+          }
+        }
+      },
+      "title": "User Badges"
+    }
+  },
+  "required": [
+    "role"
+  ]
+}

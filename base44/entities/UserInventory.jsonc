@@ -1,0 +1,111 @@
+{
+  "name": "UserInventory",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "item_id": {
+      "type": "string",
+      "title": "Marketplace Item ID"
+    },
+    "item_name": {
+      "type": "string",
+      "title": "Item Name"
+    },
+    "item_image": {
+      "type": "string",
+      "title": "Item Image URL"
+    },
+    "item_rarity": {
+      "type": "string",
+      "enum": [
+        "common",
+        "rare",
+        "epic",
+        "legendary",
+        "mythic",
+        "exclusive"
+      ],
+      "title": "Rarity"
+    },
+    "item_category": {
+      "type": "string",
+      "enum": [
+        "cosmetic",
+        "badge",
+        "frame",
+        "calling_card",
+        "trophy",
+        "ranked_reward",
+        "weapon_skin",
+        "knife",
+        "gloves",
+        "agent",
+        "sticker",
+        "patch",
+        "music_kit"
+      ],
+      "title": "Category"
+    },
+    "purchase_method": {
+      "type": "string",
+      "enum": [
+        "credits",
+        "cash",
+        "rank_reward",
+        "trade",
+        "admin_grant"
+      ],
+      "title": "Purchase Method"
+    },
+    "price_paid": {
+      "type": "number",
+      "title": "Price Paid"
+    },
+    "is_equipped": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Equipped"
+    },
+    "is_tradable": {
+      "type": "boolean",
+      "default": true,
+      "title": "Is Tradable"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Favorite"
+    },
+    "is_rank_reward": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Ranked Reward"
+    },
+    "showcase_enabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "Show In Showcase"
+    },
+    "equipped_slot": {
+      "type": "string",
+      "title": "Equipped Slot"
+    },
+    "unlock_key": {
+      "type": "string",
+      "title": "Unlock Key"
+    },
+    "acquired_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Acquired Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "item_id",
+    "item_name"
+  ]
+}

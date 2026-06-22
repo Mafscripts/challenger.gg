@@ -1,0 +1,147 @@
+{
+  "name": "RankedMatch",
+  "type": "object",
+  "properties": {
+    "host_id": {
+      "type": "string",
+      "title": "Host User ID"
+    },
+    "host_name": {
+      "type": "string",
+      "title": "Host Name"
+    },
+    "challenger_id": {
+      "type": "string",
+      "title": "Challenger User ID"
+    },
+    "challenger_name": {
+      "type": "string",
+      "title": "Challenger Name"
+    },
+    "game_mode": {
+      "type": "string",
+      "enum": [
+        "snd",
+        "overload",
+        "hp"
+      ],
+      "title": "Game Mode"
+    },
+    "game_mode_display": {
+      "type": "string",
+      "title": "Game Mode Display"
+    },
+    "team_size": {
+      "type": "string",
+      "enum": [
+        "1v1",
+        "2v2",
+        "3v3",
+        "4v4"
+      ],
+      "title": "Team Size"
+    },
+    "best_of": {
+      "type": "number",
+      "default": 1,
+      "title": "Series Format"
+    },
+    "maps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Maps"
+    },
+    "final_map_id": {
+      "type": "string",
+      "title": "Final Map ID"
+    },
+    "final_map_name": {
+      "type": "string",
+      "title": "Final Map Name"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "accepted",
+        "in_progress",
+        "awaiting_host_report",
+        "awaiting_challenger_report",
+        "score_conflict",
+        "ready",
+        "completed",
+        "cancelled"
+      ],
+      "default": "open",
+      "title": "Status"
+    },
+    "reported_score_alpha": {
+      "type": "number",
+      "title": "Team Alpha Reported Score"
+    },
+    "reported_score_bravo": {
+      "type": "number",
+      "title": "Team Bravo Reported Score"
+    },
+    "reported_score_by": {
+      "type": "string",
+      "title": "Score Reported By"
+    },
+    "winner_id": {
+      "type": "string",
+      "title": "Winner User ID"
+    },
+    "winner_name": {
+      "type": "string",
+      "title": "Winner Name"
+    },
+    "winner_score": {
+      "type": "number",
+      "title": "Winner Score"
+    },
+    "loser_score": {
+      "type": "number",
+      "title": "Loser Score"
+    },
+    "proof_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Proof URLs"
+    },
+    "match_start_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Match Start Deadline"
+    },
+    "match_started_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Started Date"
+    },
+    "match_completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Completed Date"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    },
+    "cancelled_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Cancelled Date"
+    }
+  },
+  "required": [
+    "host_id",
+    "host_name",
+    "game_mode",
+    "team_size"
+  ]
+}

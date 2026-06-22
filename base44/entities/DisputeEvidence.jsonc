@@ -1,0 +1,47 @@
+{
+  "name": "DisputeEvidence",
+  "type": "object",
+  "properties": {
+    "dispute_id": {
+      "type": "string",
+      "title": "Dispute ID"
+    },
+    "submitted_by": {
+      "type": "string",
+      "title": "Submitted By User ID"
+    },
+    "submitted_by_name": {
+      "type": "string",
+      "title": "Submitted By Name"
+    },
+    "evidence_type": {
+      "type": "string",
+      "enum": [
+        "screenshot",
+        "video",
+        "log_file",
+        "other"
+      ],
+      "title": "Evidence Type"
+    },
+    "file_url": {
+      "type": "string",
+      "title": "Evidence File URL"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "dispute_id",
+    "submitted_by",
+    "evidence_type",
+    "file_url"
+  ]
+}

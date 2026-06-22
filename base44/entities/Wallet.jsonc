@@ -1,0 +1,53 @@
+{
+  "name": "Wallet",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "available_balance": {
+      "type": "number",
+      "default": 0,
+      "title": "Available Balance"
+    },
+    "pending_balance": {
+      "type": "number",
+      "default": 0,
+      "title": "Pending Balance (In Escrow)"
+    },
+    "escrow_balance": {
+      "type": "number",
+      "default": 0,
+      "title": "Escrow Balance"
+    },
+    "withdrawable_balance": {
+      "type": "number",
+      "default": 0,
+      "title": "Withdrawable Balance"
+    },
+    "total_deposits": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Deposits"
+    },
+    "total_withdrawals": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Withdrawals"
+    },
+    "total_earnings": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Earnings (Wager Wins)"
+    },
+    "total_wagered": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Wagered"
+    }
+  },
+  "required": [
+    "user_id"
+  ]
+}

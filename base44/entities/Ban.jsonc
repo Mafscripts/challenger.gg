@@ -1,0 +1,87 @@
+{
+  "name": "Ban",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "banned_by": {
+      "type": "string",
+      "title": "Banned By ID"
+    },
+    "banned_by_name": {
+      "type": "string",
+      "title": "Banned By Name"
+    },
+    "banned_by_role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "moderator"
+      ],
+      "title": "Banned By Role"
+    },
+    "reason": {
+      "type": "string",
+      "title": "Ban Reason"
+    },
+    "ban_type": {
+      "type": "string",
+      "enum": [
+        "temporary",
+        "permanent"
+      ],
+      "title": "Ban Type"
+    },
+    "duration_days": {
+      "type": "number",
+      "title": "Duration (Days)"
+    },
+    "expires_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires Date"
+    },
+    "scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Ban Scope"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "overturned",
+        "expired"
+      ],
+      "default": "active",
+      "title": "Status"
+    },
+    "appeal_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "none",
+      "title": "Appeal Status"
+    }
+  },
+  "required": [
+    "user_id",
+    "username",
+    "banned_by",
+    "banned_by_name",
+    "reason",
+    "ban_type"
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "name": "Leaderboard",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Leaderboard Name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "elo",
+        "wager_earnings",
+        "tournament_wins",
+        "win_rate",
+        "total_matches",
+        "xp"
+      ],
+      "title": "Leaderboard Type"
+    },
+    "region": {
+      "type": "string",
+      "enum": [
+        "global",
+        "na",
+        "eu",
+        "asia",
+        "oce",
+        "sa"
+      ],
+      "title": "Region"
+    },
+    "game_mode": {
+      "type": "string",
+      "enum": [
+        "all",
+        "snd",
+        "overload",
+        "hp"
+      ],
+      "title": "Game Mode"
+    },
+    "time_period": {
+      "type": "string",
+      "enum": [
+        "all_time",
+        "season",
+        "monthly",
+        "weekly"
+      ],
+      "title": "Time Period"
+    },
+    "season": {
+      "type": "string",
+      "title": "Season (e.g., '2026-1')"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "number"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "team_id": {
+            "type": "string"
+          },
+          "team_name": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Leaderboard Entries"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Updated"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "entries"
+  ]
+}

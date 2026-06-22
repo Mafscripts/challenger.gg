@@ -1,0 +1,111 @@
+{
+  "name": "TournamentMatch",
+  "type": "object",
+  "properties": {
+    "tournament_id": {
+      "type": "string",
+      "title": "Tournament ID"
+    },
+    "round": {
+      "type": "number",
+      "title": "Round Number"
+    },
+    "bracket": {
+      "type": "string",
+      "enum": [
+        "winner",
+        "loser",
+        "grand_final"
+      ],
+      "default": "winner",
+      "title": "Bracket"
+    },
+    "match_number": {
+      "type": "number",
+      "title": "Match Number In Round"
+    },
+    "team_a_id": {
+      "type": "string",
+      "title": "Team A ID"
+    },
+    "team_a_name": {
+      "type": "string",
+      "title": "Team A Name"
+    },
+    "team_a_score": {
+      "type": "number",
+      "default": 0,
+      "title": "Team A Score"
+    },
+    "team_b_id": {
+      "type": "string",
+      "title": "Team B ID"
+    },
+    "team_b_name": {
+      "type": "string",
+      "title": "Team B Name"
+    },
+    "team_b_score": {
+      "type": "number",
+      "default": 0,
+      "title": "Team B Score"
+    },
+    "winner_id": {
+      "type": "string",
+      "title": "Winner Team ID"
+    },
+    "winner_name": {
+      "type": "string",
+      "title": "Winner Name"
+    },
+    "next_match_id": {
+      "type": "string",
+      "title": "Next Match ID (For Bracket Progression)"
+    },
+    "loser_match_id": {
+      "type": "string",
+      "title": "Loser Bracket Match ID (For Double Elimination)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "ready",
+        "in_progress",
+        "awaiting_report",
+        "disputed",
+        "completed",
+        "reset"
+      ],
+      "default": "pending",
+      "title": "Status"
+    },
+    "proof_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Proof URLs"
+    },
+    "requested_admin": {
+      "type": "boolean",
+      "default": false,
+      "title": "Admin Requested"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "title": "Match Completed"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Completed Date"
+    }
+  },
+  "required": [
+    "tournament_id",
+    "round",
+    "match_number"
+  ]
+}

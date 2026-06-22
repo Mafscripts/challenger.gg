@@ -1,0 +1,72 @@
+{
+  "name": "Team",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Team Name"
+    },
+    "tag": {
+      "type": "string",
+      "title": "Team Tag (Abbreviation)"
+    },
+    "logo_url": {
+      "type": "string",
+      "title": "Team Logo URL"
+    },
+    "captain_id": {
+      "type": "string",
+      "title": "Team Captain User ID"
+    },
+    "captain_name": {
+      "type": "string",
+      "title": "Team Captain Name"
+    },
+    "region": {
+      "type": "string",
+      "enum": [
+        "na",
+        "eu",
+        "asia",
+        "oce",
+        "sa"
+      ],
+      "title": "Region"
+    },
+    "total_wins": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Wins"
+    },
+    "total_losses": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Losses"
+    },
+    "total_earnings": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Earnings"
+    },
+    "ranking": {
+      "type": "number",
+      "title": "Team Ranking"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "title": "Is Active"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "name",
+    "tag",
+    "captain_id",
+    "captain_name"
+  ]
+}

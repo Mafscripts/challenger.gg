@@ -1,0 +1,51 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "sender_id": {
+      "type": "string",
+      "title": "Sender User ID"
+    },
+    "sender_name": {
+      "type": "string",
+      "title": "Sender Name"
+    },
+    "recipient_id": {
+      "type": "string",
+      "title": "Recipient User ID"
+    },
+    "recipient_name": {
+      "type": "string",
+      "title": "Recipient Name"
+    },
+    "conversation_id": {
+      "type": "string",
+      "title": "Conversation ID"
+    },
+    "content": {
+      "type": "string",
+      "title": "Message Content"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Read"
+    },
+    "read_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Read Date"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "sender_id",
+    "sender_name",
+    "recipient_id",
+    "content"
+  ]
+}

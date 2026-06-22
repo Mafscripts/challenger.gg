@@ -1,0 +1,116 @@
+{
+  "name": "Dispute",
+  "type": "object",
+  "properties": {
+    "wager_id": {
+      "type": "string",
+      "title": "Wager ID"
+    },
+    "wager_details": {
+      "type": "object",
+      "title": "Wager Details Snapshot"
+    },
+    "reported_by": {
+      "type": "string",
+      "title": "Reported By User ID"
+    },
+    "reported_by_name": {
+      "type": "string",
+      "title": "Reported By Name"
+    },
+    "reported_against": {
+      "type": "string",
+      "title": "Reported Against User ID"
+    },
+    "reported_against_name": {
+      "type": "string",
+      "title": "Reported Against Name"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "cheating",
+        "no_show",
+        "score_dispute",
+        "connection_issue",
+        "other"
+      ],
+      "title": "Dispute Reason"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "evidence_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence URLs"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "under_review",
+        "resolved"
+      ],
+      "default": "pending",
+      "title": "Status"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "title": "Priority"
+    },
+    "assigned_moderator": {
+      "type": "string",
+      "title": "Assigned Moderator ID"
+    },
+    "assigned_moderator_name": {
+      "type": "string",
+      "title": "Assigned Moderator Name"
+    },
+    "decision": {
+      "type": "string",
+      "title": "Moderator Decision"
+    },
+    "winner_id": {
+      "type": "string",
+      "title": "Dispute Winner ID"
+    },
+    "payout_adjustment": {
+      "type": "number",
+      "title": "Payout Adjustment Amount"
+    },
+    "resolved_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Resolved Date"
+    },
+    "chat_messages": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "title": "Moderator Chat Messages"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "wager_id",
+    "reported_by",
+    "reported_by_name",
+    "reason"
+  ]
+}

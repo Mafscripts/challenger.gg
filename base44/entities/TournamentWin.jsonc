@@ -1,0 +1,36 @@
+{
+  "name": "TournamentWin",
+  "type": "object",
+  "properties": {
+    "player_name": {
+      "type": "string",
+      "title": "Player Name"
+    },
+    "tournament_name": {
+      "type": "string",
+      "title": "Tournament Name"
+    },
+    "tournament_tier": {
+      "type": "string",
+      "enum": [
+        "major",
+        "standard"
+      ],
+      "default": "standard",
+      "title": "Tournament Tier"
+    },
+    "prize": {
+      "type": "string",
+      "title": "Prize"
+    },
+    "wins_count": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Tournament Wins"
+    }
+  },
+  "required": [
+    "player_name",
+    "tournament_name"
+  ]
+}

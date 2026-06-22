@@ -1,0 +1,62 @@
+{
+  "name": "Purchase",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "item_id": {
+      "type": "string",
+      "title": "Marketplace Item ID"
+    },
+    "item_name": {
+      "type": "string",
+      "title": "Item Name"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1,
+      "title": "Quantity"
+    },
+    "price_paid": {
+      "type": "number",
+      "title": "Price Paid"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "credits",
+        "cash",
+        "base44_payments"
+      ],
+      "title": "Payment Method"
+    },
+    "transaction_id": {
+      "type": "string",
+      "title": "Transaction ID (Base44 Payments)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "refunded"
+      ],
+      "default": "completed",
+      "title": "Status"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "item_id",
+    "item_name",
+    "price_paid",
+    "payment_method"
+  ]
+}

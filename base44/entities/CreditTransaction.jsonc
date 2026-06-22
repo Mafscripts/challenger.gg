@@ -1,0 +1,58 @@
+{
+  "name": "CreditTransaction",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "purchase",
+        "spend",
+        "refund",
+        "bonus",
+        "trade",
+        "tournament_prize"
+      ],
+      "title": "Transaction Type"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount (Positive for gain, negative for spend)"
+    },
+    "balance_before": {
+      "type": "number",
+      "title": "Credits Balance Before"
+    },
+    "balance_after": {
+      "type": "number",
+      "title": "Credits Balance After"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "reference_id": {
+      "type": "string",
+      "title": "Reference ID (Purchase ID, Trade ID, etc)"
+    },
+    "reference_type": {
+      "type": "string",
+      "title": "Reference Type"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "type",
+    "amount",
+    "balance_before",
+    "balance_after"
+  ]
+}

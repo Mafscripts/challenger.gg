@@ -1,0 +1,529 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  password_hash        String?
+  username             String?   @unique
+  handle               String?   @unique
+  display_name         String?
+  full_name            String?
+  role                 String    @default("user")
+  admin_role           String?
+  is_admin             Boolean   @default(false)
+  email_verified       Boolean   @default(false)
+  credits              Float     @default(0)
+  wallet_balance       Float     @default(0)
+  lifetime_earnings    Float     @default(0)
+  trophies             Int       @default(0)
+  rank                 String?   @default("novice")
+  division             String?   @default("I")
+  xp_level             Int       @default(1)
+  wager_wins           Int       @default(0)
+  wager_losses         Int       @default(0)
+  current_win_streak   Int       @default(0)
+  total_wager_earnings Float     @default(0)
+  biggest_wager_win    Float     @default(0)
+  tournament_wins      Int       @default(0)
+  region               String?
+  is_premium           Boolean   @default(false)
+  premium_expires      DateTime?
+  is_banned            Boolean   @default(false)
+  ban_reason           String?
+  account_created_date DateTime  @default(now())
+  created_date         DateTime  @default(now())
+  updated_date         DateTime  @updatedAt
+  metadata             Json      @default("{}")
+}
+
+model Role {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  label        String
+  color        String
+  power        Int
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+}
+
+model RankTier {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  name         String
+  tier         String
+  division     String?
+  min_elo      Int
+  max_elo      Int?
+  color        String
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model UserSettings {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model PlayerProfile {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model AdminAction {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model AdminAlert {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model SystemLog {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model SupportTicket {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Ticket {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model BanRecord {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Ban {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Wallet {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model WalletTransaction {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model WithdrawalRequest {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model DepositRequest {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model CreditPurchase {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model CreditTransaction {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model RankedStats {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model RankedMatch {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model RankedReward {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Season {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Wager {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model WagerParticipant {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model WagerDispute {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Dispute {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model WagerMatch {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Tournament {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TournamentParticipant {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TournamentMatch {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TournamentBracket {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TournamentWin {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model MarketplaceItem {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Purchase {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Inventory {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model UserInventory {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TradeOffer {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model PremiumMembership {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model KnifeUnlock {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Message {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model ChatMessage {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Conversation {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model FriendRequest {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Friendship {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model BlockedUser {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Team {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TeamMember {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TeamInvite {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TeamMatch {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model RankedLeaderboard {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model XPLeaderboard {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model WagerLeaderboard {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model TournamentLeaderboard {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Leaderboard {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model EightsLobby {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model EightsLobbyParticipant {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model EightsStats {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model XPStats {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model MatchHistory {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Achievement {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Achievements {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Statistic {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model Statistics {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model ActivityFeed {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model MapPool {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
+model MapVeto {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}

@@ -1,0 +1,200 @@
+{
+  "name": "Tournament",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Tournament Name"
+    },
+    "title": {
+      "type": "string",
+      "title": "Tournament Title"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "game_mode": {
+      "type": "string",
+      "enum": [
+        "snd",
+        "overload",
+        "hp"
+      ],
+      "title": "Game Mode"
+    },
+    "game": {
+      "type": "string",
+      "title": "Game"
+    },
+    "region": {
+      "type": "string",
+      "enum": [
+        "global",
+        "na",
+        "eu",
+        "apac",
+        "sa",
+        "oce"
+      ],
+      "default": "global",
+      "title": "Region"
+    },
+    "team_size": {
+      "type": "string",
+      "enum": [
+        "1v1",
+        "2v2",
+        "3v3",
+        "4v4"
+      ],
+      "title": "Team Size"
+    },
+    "entry_fee": {
+      "type": "number",
+      "default": 0,
+      "title": "Entry Fee Per Team"
+    },
+    "prize_pool": {
+      "type": "number",
+      "title": "Total Prize Pool"
+    },
+    "prize_distribution": {
+      "type": "object",
+      "properties": {
+        "first": {
+          "type": "number"
+        },
+        "second": {
+          "type": "number"
+        },
+        "third": {
+          "type": "number"
+        }
+      },
+      "title": "Prize Distribution"
+    },
+    "max_teams": {
+      "type": "number",
+      "title": "Max Teams"
+    },
+    "registered_teams": {
+      "type": "number",
+      "default": 0,
+      "title": "Registered Teams Count"
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "single_elimination",
+        "double_elimination"
+      ],
+      "title": "Tournament Format"
+    },
+    "bracket_type": {
+      "type": "string",
+      "enum": [
+        "single_elimination",
+        "double_elimination"
+      ],
+      "title": "Bracket Type"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "open",
+        "live",
+        "registration",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "draft",
+      "title": "Status"
+    },
+    "rules": {
+      "type": "string",
+      "title": "Rules"
+    },
+    "maps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Maps"
+    },
+    "game_modes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Game Modes"
+    },
+    "registration_start": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Registration Start"
+    },
+    "registration_end": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Registration End"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Tournament Start Date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Tournament End Date"
+    },
+    "created_by": {
+      "type": "string",
+      "title": "Created By User ID"
+    },
+    "created_by_name": {
+      "type": "string",
+      "title": "Created By Name"
+    },
+    "winner_id": {
+      "type": "string",
+      "title": "Winner Team/User ID"
+    },
+    "winner_name": {
+      "type": "string",
+      "title": "Winner Name"
+    },
+    "runner_up_id": {
+      "type": "string",
+      "title": "Runner Up ID"
+    },
+    "runner_up_name": {
+      "type": "string",
+      "title": "Runner Up Name"
+    },
+    "bracket_data": {
+      "type": "object",
+      "title": "Tournament Bracket Data"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    },
+    "is_premium_only": {
+      "type": "boolean",
+      "default": false,
+      "title": "Premium Only Tournament"
+    }
+  },
+  "required": [
+    "name",
+    "game_mode",
+    "team_size",
+    "prize_pool",
+    "max_teams"
+  ]
+}

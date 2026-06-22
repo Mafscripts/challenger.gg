@@ -1,0 +1,41 @@
+{
+  "name": "RankedReward",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "reward_key": {
+      "type": "string",
+      "title": "Reward Key"
+    },
+    "reward_name": {
+      "type": "string",
+      "title": "Reward Name"
+    },
+    "required_elo": {
+      "type": "number",
+      "title": "Required ELO"
+    },
+    "inventory_id": {
+      "type": "string",
+      "title": "Inventory ID"
+    },
+    "unlocked_elo": {
+      "type": "number",
+      "title": "ELO At Unlock"
+    },
+    "unlocked_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Unlocked Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "reward_key",
+    "reward_name",
+    "required_elo"
+  ]
+}

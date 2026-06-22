@@ -1,0 +1,70 @@
+{
+  "name": "RankedStats",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "elo": {
+      "type": "number",
+      "default": 0,
+      "title": "ELO Rating"
+    },
+    "wins": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Wins"
+    },
+    "losses": {
+      "type": "number",
+      "default": 0,
+      "title": "Total Losses"
+    },
+    "win_streak": {
+      "type": "number",
+      "default": 0,
+      "title": "Current Win Streak"
+    },
+    "peak_elo": {
+      "type": "number",
+      "default": 0,
+      "title": "Peak ELO"
+    },
+    "matches_played": {
+      "type": "number",
+      "default": 0,
+      "title": "Matches Played"
+    },
+    "region": {
+      "type": "string",
+      "enum": [
+        "na",
+        "eu",
+        "apac",
+        "sa",
+        "oce"
+      ],
+      "default": "na",
+      "title": "Region"
+    },
+    "season": {
+      "type": "number",
+      "default": 1,
+      "title": "Current Season"
+    },
+    "last_played_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Played Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "username"
+  ]
+}

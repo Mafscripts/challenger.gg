@@ -1,0 +1,420 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  AlertCircle,
+  Check,
+  Clock,
+  Flag,
+  HelpCircle,
+  RefreshCw,
+  Shield,
+  Swords,
+  Trophy,
+} from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { toast } from "@/components/ui/use-toast";
+import MapVetoVertical from "@/components/match/MapVetoVertical";
+import RankBadge from "@/components/ui/RankBadge";
+import { getRankForElo } from "@/lib/ranks";
+
+const playerName = (user, fallback = "Unnamed player") => (
+  user?.display_name || user?.full_name || user?.username || user?.email || fallback
+);
+
+const formatStatus = (status) => String(status || "open").replace(/_/g, " ");
+
+function scoreWinner(match, scoreA, scoreB) {
+  if (scoreA === scoreB) return null;
+  return scoreA > scoreB ? match.host_id : match.challenger_id;
+}
+
+function PlayerPanel({ label, color, player, waiting }) {
+  const rank = getRankForElo(player?.elo || 0);
+  const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
+
+  if (waiting || !player) {
+    return (
+      <div className={`glass rounded-xl border ${color === "cyan" ? "border-cyan/20" : "border-orange/20"} p-6`}>
+        <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${color === "cyan" ? "text-cyan" : "text-orange"}`}>{label}</p>
+        <div className="py-12 text-center">
+          <Swords className="w-8 h-8 text-vapor/40 mx-auto mb-3" />
+          <p className="text-sm text-vapor">Waiting for opponent</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`glass rounded-xl border p-6 ${colorClass}`}>
+      <p className="text-xs font-bold uppercase tracking-wider mb-4">{label}</p>
+      <div className="flex items-center gap-4 mb-5">
+        <RankBadge rank={rank.tier} division={rank.division} />
+        <div className="min-w-0">
+          <h2 className="text-xl font-black truncate">{player.name}</h2>
+          <p className="text-xs text-vapor">{rank.name} - {(player.elo || 0).toLocaleString()} ELO</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg bg-background/30 border border-white/5 p-3">
+          <p className="text-[10px] text-vapor uppercase">Wins</p>
+          <p className="text-lg font-black">{player.wins || 0}</p>
+        </div>
+        <div className="rounded-lg bg-background/30 border border-white/5 p-3">
+          <p className="text-[10px] text-vapor uppercase">Losses</p>
+          <p className="text-lg font-black">{player.losses || 0}</p>
+        </div>
+        <div className="rounded-lg bg-background/30 border border-white/5 p-3">
+          <p className="text-[10px] text-vapor uppercase">Streak</p>
+          <p className="text-lg font-black">{player.win_streak || 0}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function RankedMatchRoom() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [match, setMatch] = useState(null);
+  const [user, setUser] = useState(null);
+  const [hostPlayer, setHostPlayer] = useState(null);
+  const [challengerPlayer, setChallengerPlayer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [supporting, setSupporting] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(null);
+  const [scoreA, setScoreA] = useState(0);
+  const [scoreB, setScoreB] = useState(0);
+
+  useEffect(() => {
+    loadRoom();
+  }, [id]);
+
+  useEffect(() => {
+    const interval = setInterval(calculateTimeRemaining, 1000);
+    calculateTimeRemaining();
+    return () => clearInterval(interval);
+  }, [match?.match_start_deadline]);
+
+  const isParticipant = useMemo(() => (
+    user?.id && (user.id === match?.host_id || user.id === match?.challenger_id)
+  ), [user?.id, match?.host_id, match?.challenger_id]);
+
+  const canSubmitScore = isParticipant && match?.challenger_id && !["completed", "cancelled", "score_conflict"].includes(match?.status);
+
+  const loadPlayer = async (userId, fallbackName) => {
+    if (!userId) return null;
+
+    const [userRows, statsRows] = await Promise.all([
+      base44.entities.User.get(userId).then((row) => row).catch(() => null),
+      base44.entities.RankedStats.filter({ user_id: userId }).catch(() => []),
+    ]);
+    const stats = statsRows?.[0] || {};
+
+    return {
+      id: userId,
+      name: playerName(userRows, fallbackName),
+      elo: stats.elo || 0,
+      wins: stats.wins || 0,
+      losses: stats.losses || 0,
+      win_streak: stats.win_streak || 0,
+      peak_elo: stats.peak_elo || 0,
+      matches_played: stats.matches_played || 0,
+    };
+  };
+
+  const loadRoom = async () => {
+    try {
+      setLoading(true);
+      const [currentUser, matchData] = await Promise.all([
+        base44.auth.me().catch(() => null),
+        base44.entities.RankedMatch.get(id),
+      ]);
+
+      setUser(currentUser);
+      setMatch(matchData);
+      setScoreA(matchData.reported_score_alpha || 0);
+      setScoreB(matchData.reported_score_bravo || 0);
+
+      const [host, challenger] = await Promise.all([
+        loadPlayer(matchData.host_id, matchData.host_name),
+        loadPlayer(matchData.challenger_id, matchData.challenger_name),
+      ]);
+
+      setHostPlayer(host);
+      setChallengerPlayer(challenger);
+    } catch (error) {
+      console.error("Failed to load ranked match:", error);
+      toast({ title: "Error loading match", description: error.message || "Match not found", variant: "destructive" });
+      setMatch(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateTimeRemaining = () => {
+    if (!match?.match_start_deadline) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    const diff = new Date(match.match_start_deadline) - new Date();
+    if (diff <= 0) {
+      setTimeRemaining("EXPIRED");
+      return;
+    }
+
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    setTimeRemaining(`${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`);
+  };
+
+  const handleReportScore = async () => {
+    if (!canSubmitScore) return;
+    if (scoreA === scoreB) {
+      toast({ title: "Invalid score", description: "Scores cannot be tied.", variant: "destructive" });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await base44.functions.invoke("completeRankedMatch", {
+        ranked_match_id: match.id,
+        team_alpha_score: scoreA,
+        team_bravo_score: scoreB,
+        proof_urls: [],
+      });
+
+      if (!response.data?.success) {
+        toast({ title: "Score rejected", description: response.data?.error || "Could not submit score.", variant: "destructive" });
+        return;
+      }
+
+      if (response.data.status === "score_conflict") {
+        toast({ title: "Score conflict", description: "A support ticket was opened for staff review.", variant: "destructive" });
+        await loadRoom();
+        return;
+      }
+
+      if (response.data.winner_id) {
+        toast({
+          title: "Ranked match completed",
+          description: `${response.data.winner_name} won. ELO updated.`,
+        });
+        navigate("/ranked");
+        return;
+      }
+
+      toast({ title: "Score submitted", description: response.data.message || "Waiting for opponent confirmation." });
+      await loadRoom();
+    } catch (error) {
+      console.error("Failed to report ranked score:", error);
+      toast({ title: "Error", description: error.message || "Failed to report score.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSupportTicket = async (reason) => {
+    setSupporting(true);
+    try {
+      const response = await base44.functions.invoke("createTicket", {
+        subject: `Ranked match support ${match.id}`,
+        description: `${reason}\n\nMatch: ${match.id}\nStatus: ${match.status}\nParticipants: ${match.host_name || "Host unavailable"} vs ${match.challenger_name || "Opponent pending"}`,
+        category: "ranked",
+        priority: "high",
+      });
+
+      if (response.data?.success) {
+        toast({ title: "Support ticket opened", description: "Staff will review the ranked match." });
+      } else {
+        toast({ title: "Ticket failed", description: response.data?.error || "Could not open ticket.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Ticket failed", description: error.message || "Could not open ticket.", variant: "destructive" });
+    } finally {
+      setSupporting(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      const response = await base44.functions.invoke("cancelRankedMatch", {
+        ranked_match_id: match.id,
+        reason: "Cancelled from ranked match room",
+      });
+
+      if (response.data?.success) {
+        toast({ title: "Ranked match cancelled" });
+        navigate("/ranked");
+      } else {
+        toast({ title: "Cancel failed", description: response.data?.error || "Could not cancel match.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Cancel failed", description: error.message || "Could not cancel match.", variant: "destructive" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-vapor">Loading ranked match...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!match) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Match Not Found</h2>
+          <Link to="/ranked" className="text-cyan hover:underline">Back to Ranked</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const predictedWinnerId = scoreWinner(match, scoreA, scoreB);
+  const predictedWinnerName = predictedWinnerId === match.host_id ? match.host_name : match.challenger_name;
+
+  return (
+    <div className="min-h-screen bg-obsidian py-6">
+      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
+        <div className="glass rounded-xl border border-cyan/20 p-6 mb-6">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+            <div className="w-full lg:w-auto">
+              <div className="flex items-center gap-3 mb-2">
+                <span className={`w-3 h-3 rounded-full ${match.status === "completed" ? "bg-green" : "bg-cyan animate-pulse"}`} />
+                <span className="text-xs font-mono font-semibold text-cyan uppercase tracking-wider">
+                  Ranked Match - {formatStatus(match.status)}
+                </span>
+              </div>
+              <p className="text-sm text-vapor font-mono">
+                {match.team_size} {match.game_mode_display || match.game_mode} - {match.final_map_name || "Map pending"}
+              </p>
+              <p className="text-[10px] text-vapor font-mono mt-1">Match ID: #{match.id?.slice(-8)}</p>
+            </div>
+
+            <div className="flex-1 flex items-center justify-center gap-4 md:gap-6 lg:gap-8">
+              <div className="text-center">
+                <p className="text-lg md:text-xl lg:text-2xl font-black text-cyan mb-1">TEAM ALPHA</p>
+                <p className="text-xs text-vapor">{match.host_name}</p>
+              </div>
+              <div className="flex items-center gap-2 md:gap-3 lg:gap-4">
+                <input
+                  type="number"
+                  value={scoreA}
+                  disabled={!canSubmitScore}
+                  min="0"
+                  onChange={(event) => setScoreA(Number(event.target.value))}
+                  className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-cyan focus:outline-none focus:border-cyan/30 disabled:opacity-60"
+                />
+                <span className="text-2xl md:text-3xl lg:text-4xl text-vapor font-bold">-</span>
+                <input
+                  type="number"
+                  value={scoreB}
+                  disabled={!canSubmitScore}
+                  min="0"
+                  onChange={(event) => setScoreB(Number(event.target.value))}
+                  className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-orange focus:outline-none focus:border-orange/30 disabled:opacity-60"
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-lg md:text-xl lg:text-2xl font-black text-orange mb-1">TEAM BRAVO</p>
+                <p className="text-xs text-vapor">{match.challenger_name || "Opponent pending"}</p>
+              </div>
+            </div>
+
+            {timeRemaining && (
+              <div className={`px-3 md:px-4 py-2 md:py-3 rounded-lg font-mono font-bold text-sm flex flex-col items-center ${
+                timeRemaining === "EXPIRED" ? "bg-red-500/20 text-red-400" : "bg-cyan/10 text-cyan"
+              }`}>
+                <Clock className="w-3 h-3 md:w-4 md:h-4 mb-1" />
+                <span>{timeRemaining}</span>
+                <span className="text-[8px] md:text-[9px] uppercase">Deadline</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {match.status === "completed" && (
+          <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex items-center gap-3">
+            <Trophy className="w-5 h-5 text-green" />
+            <div>
+              <p className="font-bold text-green">Winner: {match.winner_name}</p>
+              <p className="text-xs text-vapor">Final score {match.winner_score}-{match.loser_score}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid lg:grid-cols-12 gap-6 mb-6">
+          <div className="lg:col-span-4">
+            <PlayerPanel label="Team Alpha" color="cyan" player={hostPlayer} />
+          </div>
+          <div className="lg:col-span-4">
+            <MapVetoVertical wager={match} />
+          </div>
+          <div className="lg:col-span-4">
+            <PlayerPanel label="Team Bravo" color="orange" player={challengerPlayer} waiting={!match.challenger_id} />
+          </div>
+        </div>
+
+        <div className="glass rounded-xl border border-white/5 p-4 mb-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleReportScore}
+              disabled={!canSubmitScore || submitting}
+              className="flex-1 min-w-[200px] py-3 bg-green/10 text-green font-bold text-sm rounded-lg border border-green/20 hover:bg-green/20 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Check className="w-4 h-4" /> {submitting ? "Submitting..." : "Submit Score"}
+            </button>
+            <button
+              onClick={() => handleSupportTicket("I need support for this ranked match.")}
+              disabled={supporting}
+              className="px-6 py-3 bg-cyan/10 text-cyan font-bold text-sm rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+            >
+              <HelpCircle className="w-4 h-4" /> Support Ticket
+            </button>
+            <button
+              onClick={() => handleSupportTicket("Opponent no-show report.")}
+              disabled={supporting || !isParticipant}
+              className="px-6 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/5 hover:bg-secondary transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+            >
+              <Flag className="w-4 h-4" /> Report No Show
+            </button>
+            <button
+              onClick={loadRoom}
+              className="px-4 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/5 hover:bg-secondary transition-all"
+              title="Refresh"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            {isParticipant && match.status !== "completed" && (
+              <button
+                onClick={handleCancel}
+                className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider"
+              >
+                Cancel Match
+              </button>
+            )}
+          </div>
+          {predictedWinnerName && canSubmitScore && (
+            <p className="text-xs text-vapor mt-3 flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5 text-cyan" />
+              Current score would report {predictedWinnerName} as winner.
+            </p>
+          )}
+          {match.reported_score_by && !["completed", "score_conflict"].includes(match.status) && (
+            <p className="text-xs text-yellow-400 mt-3">
+              A score has already been submitted. The opponent must submit the same score to complete the match.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

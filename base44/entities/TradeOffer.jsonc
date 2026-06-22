@@ -1,0 +1,113 @@
+{
+  "name": "TradeOffer",
+  "type": "object",
+  "properties": {
+    "sender_id": {
+      "type": "string",
+      "title": "Sender User ID"
+    },
+    "sender_name": {
+      "type": "string",
+      "title": "Sender Name"
+    },
+    "recipient_id": {
+      "type": "string",
+      "title": "Recipient User ID"
+    },
+    "recipient_name": {
+      "type": "string",
+      "title": "Recipient Name"
+    },
+    "sender_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "inventory_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "item_rarity": {
+            "type": "string"
+          },
+          "estimated_value": {
+            "type": "number"
+          }
+        }
+      },
+      "title": "Sender's Items"
+    },
+    "recipient_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "inventory_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "item_name": {
+            "type": "string"
+          },
+          "item_rarity": {
+            "type": "string"
+          },
+          "estimated_value": {
+            "type": "number"
+          }
+        }
+      },
+      "title": "Recipient's Items"
+    },
+    "sender_credits_offered": {
+      "type": "number",
+      "default": 0,
+      "title": "Sender Credits Offered"
+    },
+    "recipient_credits_offered": {
+      "type": "number",
+      "default": 0,
+      "title": "Recipient Credits Offered"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "declined",
+        "cancelled",
+        "expired"
+      ],
+      "default": "pending",
+      "title": "Status"
+    },
+    "expires_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Offer Expiration Date"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    },
+    "response_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Response Date"
+    }
+  },
+  "required": [
+    "sender_id",
+    "sender_name",
+    "recipient_id",
+    "sender_items"
+  ]
+}

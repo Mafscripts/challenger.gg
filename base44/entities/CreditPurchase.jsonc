@@ -1,0 +1,36 @@
+{
+  "name": "CreditPurchase",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "checkout_id": {
+      "type": "string",
+      "title": "Checkout ID"
+    },
+    "credits": {
+      "type": "number",
+      "title": "Credits"
+    },
+    "price": {
+      "type": "string",
+      "title": "Price"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed"
+      ],
+      "default": "pending",
+      "title": "Status"
+    }
+  },
+  "required": [
+    "user_id",
+    "checkout_id",
+    "credits"
+  ]
+}

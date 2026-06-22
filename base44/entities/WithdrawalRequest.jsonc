@@ -1,0 +1,71 @@
+{
+  "name": "WithdrawalRequest",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "wallet_id": {
+      "type": "string",
+      "title": "Wallet ID"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "paypal",
+        "bank_transfer"
+      ],
+      "title": "Payment Method"
+    },
+    "payment_details": {
+      "type": "object",
+      "title": "Payment Details"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "approved",
+        "rejected",
+        "completed",
+        "cancelled"
+      ],
+      "default": "pending",
+      "title": "Status"
+    },
+    "requested_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Requested Date"
+    },
+    "processed_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Processed Date"
+    },
+    "processed_by": {
+      "type": "string",
+      "title": "Processed By (Admin ID)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Admin Notes"
+    },
+    "rejection_reason": {
+      "type": "string",
+      "title": "Rejection Reason"
+    }
+  },
+  "required": [
+    "user_id",
+    "wallet_id",
+    "amount",
+    "payment_method"
+  ]
+}

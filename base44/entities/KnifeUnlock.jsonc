@@ -1,0 +1,35 @@
+{
+  "name": "KnifeUnlock",
+  "type": "object",
+  "properties": {
+    "player_name": {
+      "type": "string",
+      "title": "Player Name"
+    },
+    "knife_name": {
+      "type": "string",
+      "title": "Knife Name"
+    },
+    "rarity": {
+      "type": "string",
+      "enum": [
+        "rare",
+        "epic",
+        "legendary",
+        "mythic",
+        "exclusive"
+      ],
+      "default": "exclusive",
+      "title": "Rarity"
+    },
+    "wins_required": {
+      "type": "number",
+      "default": 0,
+      "title": "Wins Required"
+    }
+  },
+  "required": [
+    "player_name",
+    "knife_name"
+  ]
+}

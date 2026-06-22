@@ -1,0 +1,106 @@
+{
+  "name": "MarketplaceItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Item Name"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "image_url": {
+      "type": "string",
+      "title": "Item Image URL"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "cosmetic",
+        "badge",
+        "frame",
+        "calling_card",
+        "trophy",
+        "knife",
+        "ranked_reward",
+        "weapon_skin",
+        "gloves",
+        "agent",
+        "sticker",
+        "patch",
+        "music_kit"
+      ],
+      "title": "Category"
+    },
+    "rarity": {
+      "type": "string",
+      "enum": [
+        "common",
+        "rare",
+        "epic",
+        "legendary",
+        "mythic",
+        "exclusive"
+      ],
+      "title": "Rarity"
+    },
+    "price_credits": {
+      "type": "number",
+      "title": "Price In Credits"
+    },
+    "price_cash": {
+      "type": "number",
+      "title": "Price In Cash (USD)"
+    },
+    "is_limited": {
+      "type": "boolean",
+      "default": false,
+      "title": "Limited Edition Item"
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false,
+      "title": "Featured Item"
+    },
+    "show_in_marketplace": {
+      "type": "boolean",
+      "default": true,
+      "title": "Show In Marketplace Grid"
+    },
+    "is_premium_only": {
+      "type": "boolean",
+      "default": false,
+      "title": "Premium Only"
+    },
+    "stock_quantity": {
+      "type": "number",
+      "title": "Available Stock"
+    },
+    "is_available": {
+      "type": "boolean",
+      "default": true,
+      "title": "Available In Marketplace"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "title": "Active In Marketplace"
+    },
+    "is_tradeable": {
+      "type": "boolean",
+      "default": true,
+      "title": "Tradeable"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "rarity"
+  ]
+}

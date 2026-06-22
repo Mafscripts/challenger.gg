@@ -1,0 +1,42 @@
+{
+  "name": "EightsLobbyParticipant",
+  "type": "object",
+  "properties": {
+    "lobby_id": {
+      "type": "string",
+      "title": "Lobby ID"
+    },
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "user_name": {
+      "type": "string",
+      "title": "User Name"
+    },
+    "team": {
+      "type": "string",
+      "enum": [
+        "alpha",
+        "bravo"
+      ],
+      "title": "Team"
+    },
+    "is_host": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Host"
+    },
+    "joined_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Joined Date"
+    }
+  },
+  "required": [
+    "lobby_id",
+    "user_id",
+    "user_name",
+    "team"
+  ]
+}

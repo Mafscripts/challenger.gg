@@ -1,0 +1,290 @@
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Zap, Plus, Search, Shield, DollarSign, Users,
+  Clock, CheckCircle2, AlertTriangle, Star, TrendingUp
+} from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { toast } from "@/components/ui/use-toast";
+import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import MapVetoModal from "@/components/match/MapVetoModal";
+
+export default function Wagers() {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState("active");
+  const [amountFilter, setAmountFilter] = useState("All");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isVetoModalOpen, setIsVetoModalOpen] = useState(false);
+  const [selectedWager, setSelectedWager] = useState(null);
+  const [wagers, setWagers] = useState([]);
+  const [historyWagers, setHistoryWagers] = useState([]);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [currentUser, wagerList] = await Promise.all([
+        base44.auth.me().catch(() => null),
+        base44.entities.Wager.filter({ status: "open" })
+      ]);
+      if (currentUser) {
+        const wallets = await base44.entities.Wallet.filter({ user_id: currentUser.id });
+        const [hosted, challenged] = await Promise.all([
+          base44.entities.Wager.filter({ host_id: currentUser.id }, "-created_date", 50),
+          base44.entities.Wager.filter({ challenger_id: currentUser.id }, "-created_date", 50)
+        ]);
+        const combinedHistory = [...hosted, ...challenged]
+          .filter((w, index, list) => list.findIndex(item => item.id === w.id) === index)
+          .filter(w => ["completed", "cancelled", "disputed", "score_conflict"].includes(w.status))
+          .sort((a, b) => new Date(b.match_completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.accepted_date || a.created_date || 0));
+        const wallet = wallets[0];
+        setUser({
+          ...currentUser,
+          wallet_balance: wallet?.available_balance ?? currentUser.wallet_balance ?? 0,
+          wallet
+        });
+        setHistoryWagers(combinedHistory);
+      } else {
+        setUser(null);
+        setHistoryWagers([]);
+      }
+      setWagers(wagerList.filter(w => (w.match_type || ((w.entry_fee ?? w.amount ?? 0) > 0 ? "wagers" : "ranked")) === "wagers"));
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to load wagers:", error);
+      setLoading(false);
+    }
+  };
+
+  const handleAccept = async (wager) => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to accept wagers",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const entryFee = wager.entry_fee ?? wager.amount ?? 0;
+    if ((user.wallet_balance || 0) < entryFee) {
+      toast({
+        title: "Insufficient balance",
+        description: `You need $${entryFee} to accept this wager`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSelectedWager(wager);
+    setIsVetoModalOpen(true);
+  };
+
+  const handleVetoComplete = async ({ challenger_banned_map, challenger_banned_map_name, final_map, final_map_name }) => {
+    try {
+      const response = await base44.functions.invoke('acceptWager', {
+        wager_id: selectedWager.id,
+        challenger_banned_map,
+        challenger_banned_map_name,
+        final_map,
+        final_map_name,
+      });
+
+      if (response.data.success) {
+        toast({
+          title: "Wager accepted!",
+          description: `Map: ${response.data.final_map_name || final_map_name}`,
+        });
+        navigate(`/wagers-match/${selectedWager.id}`);
+      } else {
+        toast({
+          title: "Failed to accept",
+          description: response.data.error || "Unknown error",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Failed to accept wager:", error);
+      toast({
+        title: "Error",
+        description: "Failed to accept wager",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVetoModalOpen(false);
+      setSelectedWager(null);
+      loadData();
+    }
+  };
+
+  const filteredWagers = wagers.filter(w => {
+    const entryFee = w.entry_fee ?? w.amount ?? 0;
+    if (amountFilter === "$5-$10" && (entryFee < 5 || entryFee > 10)) return false;
+    if (amountFilter === "$25-$50" && (entryFee < 25 || entryFee > 50)) return false;
+    if (amountFilter === "$100+" && entryFee < 100) return false;
+    return true;
+  });
+
+  const hasActivePremium = user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires) > new Date());
+
+  return (
+    <div className="min-h-screen py-8">
+      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight">Wagers</h1>
+            <p className="text-vapor text-sm mt-1">Put your skills on the line</p>
+          </div>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-green text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-green/25 transition-all uppercase tracking-wider"
+          >
+            <Plus className="w-3.5 h-3.5" /> Create Wager
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: "Active Wagers", value: wagers.length.toString(), icon: Zap, color: "text-orange" },
+            { label: "Your Balance", value: user ? `$${(user.wallet_balance || 0).toFixed(2)}` : "$0", icon: DollarSign, color: "text-green" },
+            { label: "Premium", value: hasActivePremium ? "Yes" : "No", icon: Star, color: hasActivePremium ? "text-yellow-400" : "text-vapor" },
+            { label: "Fee Rate", value: hasActivePremium ? "5%" : "10%", icon: TrendingUp, color: "text-cyan" },
+          ].map((s, i) => (
+            <div 
+              key={i} 
+              className="glass rounded-lg px-4 py-3 border border-white/5"
+            >
+              <s.icon className={`w-4 h-4 ${s.color} mb-2`} />
+              <p className={`text-xl font-bold font-mono ${s.color}`}>{s.value}</p>
+              <p className="text-[10px] text-vapor uppercase tracking-wider">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-4 mb-6 border-b border-white/5 pb-4">
+          {["active", "history"].map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
+                tab === t ? "bg-cyan/10 text-cyan" : "text-vapor hover:text-foreground"
+              }`}
+            >{t === "active" ? "Active Wagers" : "My History"}</button>
+          ))}
+          <div className="ml-auto flex gap-2">
+            {["All", "$5-$10", "$25-$50", "$100+"].map(a => (
+              <button
+                key={a}
+                onClick={() => setAmountFilter(a)}
+                className={`px-3 py-1.5 rounded text-xs font-semibold transition-all ${
+                  amountFilter === a ? "bg-green/10 text-green border border-green/20" : "bg-secondary text-vapor"
+                }`}
+              >{a}</button>
+            ))}
+          </div>
+        </div>
+
+        {tab === "active" ? (
+          <div className="glass rounded-xl border border-white/5 overflow-hidden">
+            <div className="hidden md:grid grid-cols-6 gap-4 px-5 py-3 border-b border-white/5 text-xs text-vapor uppercase tracking-wider font-semibold">
+              <span>Host</span>
+              <span>Mode</span>
+              <span>Amount</span>
+              <span>Format</span>
+              <span>Status</span>
+              <span></span>
+            </div>
+            <div className="divide-y divide-white/5">
+              {loading ? (
+                <div className="px-5 py-8 text-center text-vapor">Loading wagers...</div>
+              ) : filteredWagers.length === 0 ? (
+                <div className="px-5 py-8 text-center text-vapor">No active wagers</div>
+              ) : (
+                filteredWagers.map((w) => (
+                  <motion.div
+                    key={w.id}
+                    whileHover={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+                    className="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 px-5 py-4 items-center"
+                  >
+                    <Link to={`/profile/${w.host_name || w.host_id || ""}`} className="font-semibold text-sm hover:text-cyan transition-colors">{w.host_name || "Host unavailable"}</Link>
+                    <span className="text-sm text-vapor">{w.team_size} {w.game_mode_display}</span>
+                    <span className="text-sm font-mono font-bold text-green">${w.entry_fee ?? w.amount ?? 0}</span>
+                    <span className="text-sm font-mono font-bold text-cyan">BO{w.best_of || 1}</span>
+                    <span className={`text-xs font-semibold text-green`}>{w.status}</span>
+                    <div>
+                      {w.status === "open" && (
+                        <button 
+                          onClick={() => handleAccept(w)}
+                          className="px-4 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20 transition-all"
+                        >
+                          Accept
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="glass rounded-xl border border-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5">
+              {historyWagers.length === 0 ? (
+                <div className="px-5 py-8 text-center text-vapor">
+                  Match history will appear here
+                </div>
+              ) : (
+                historyWagers.map((w) => {
+                  const entryFee = w.entry_fee ?? w.amount ?? 0;
+                  const result = w.winner_id === user?.id ? "Won" : w.status === "completed" ? "Lost" : w.status;
+                  return (
+                    <div key={w.id} className="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 px-5 py-4 items-center">
+                      <span className="font-semibold text-sm">{w.host_name || "Host unavailable"} vs {w.challenger_name || "Opponent pending"}</span>
+                      <span className="text-sm text-vapor">{w.team_size} {w.game_mode_display}</span>
+                      <span className="text-sm font-mono font-bold text-green">${entryFee}</span>
+                      <span className="text-sm font-mono font-bold text-cyan">{w.winner_score || 0}-{w.loser_score || 0}</span>
+                      <span className={`text-xs font-semibold ${result === "Won" ? "text-green" : result === "Lost" ? "text-red-400" : "text-orange"}`}>{result}</span>
+                      <Link to={`/wagers-match/${w.id}`} className="text-xs text-cyan hover:underline">View</Link>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Create Lobby Modal */}
+        <CreateLobbyModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          user={user}
+          mode="wager"
+          onCreate={() => {
+            loadData();
+            setIsCreateModalOpen(false);
+          }}
+        />
+
+        {/* Map Veto Modal */}
+        <MapVetoModal
+          isOpen={isVetoModalOpen}
+          onClose={() => {
+            setIsVetoModalOpen(false);
+            setSelectedWager(null);
+          }}
+          wager={selectedWager}
+          user={user}
+          onComplete={handleVetoComplete}
+        />
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,68 @@
+{
+  "name": "EightsLobby",
+  "type": "object",
+  "properties": {
+    "host_id": {
+      "type": "string",
+      "title": "Host User ID"
+    },
+    "host_name": {
+      "type": "string",
+      "title": "Host Name"
+    },
+    "game_mode": {
+      "type": "string",
+      "enum": [
+        "snd",
+        "overload",
+        "hp"
+      ],
+      "title": "Game Mode"
+    },
+    "game_mode_display": {
+      "type": "string",
+      "title": "Game Mode Display"
+    },
+    "team_size": {
+      "type": "string",
+      "enum": [
+        "1v1",
+        "2v2",
+        "3v3",
+        "4v4"
+      ],
+      "title": "Team Size"
+    },
+    "max_players": {
+      "type": "number",
+      "title": "Max Players"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "full",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "open",
+      "title": "Status"
+    },
+    "chat_conversation_id": {
+      "type": "string",
+      "title": "Chat Conversation ID"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "host_id",
+    "host_name",
+    "game_mode",
+    "team_size"
+  ]
+}

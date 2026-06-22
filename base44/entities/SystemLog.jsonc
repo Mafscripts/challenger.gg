@@ -1,0 +1,56 @@
+{
+  "name": "SystemLog",
+  "type": "object",
+  "properties": {
+    "log_type": {
+      "type": "string",
+      "enum": [
+        "wallet",
+        "wager",
+        "tournament",
+        "marketplace",
+        "premium",
+        "admin",
+        "error"
+      ],
+      "title": "Log Type"
+    },
+    "action": {
+      "type": "string",
+      "title": "Action Performed"
+    },
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "user_name": {
+      "type": "string",
+      "title": "User Name"
+    },
+    "entity_type": {
+      "type": "string",
+      "title": "Entity Type (Wallet, Wager, etc)"
+    },
+    "entity_id": {
+      "type": "string",
+      "title": "Entity ID"
+    },
+    "details": {
+      "type": "object",
+      "title": "Additional Details"
+    },
+    "ip_address": {
+      "type": "string",
+      "title": "IP Address"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "log_type",
+    "action"
+  ]
+}

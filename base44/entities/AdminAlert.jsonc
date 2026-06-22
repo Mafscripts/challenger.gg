@@ -1,0 +1,61 @@
+{
+  "name": "AdminAlert",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "title": "Ticket ID"
+    },
+    "match_type": {
+      "type": "string",
+      "enum": [
+        "wager",
+        "tournament",
+        "ranked"
+      ],
+      "title": "Match Type"
+    },
+    "match_id": {
+      "type": "string",
+      "title": "Match ID"
+    },
+    "requested_by": {
+      "type": "string",
+      "title": "Requested By User ID"
+    },
+    "requested_by_name": {
+      "type": "string",
+      "title": "Requested By Name"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "high",
+        "critical"
+      ],
+      "default": "high",
+      "title": "Priority"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "acknowledged",
+        "resolved"
+      ],
+      "default": "open",
+      "title": "Status"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "ticket_id",
+    "match_type",
+    "match_id",
+    "requested_by"
+  ]
+}

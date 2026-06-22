@@ -1,0 +1,80 @@
+{
+  "name": "XPStats",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "level": {
+      "type": "number",
+      "default": 1,
+      "title": "XP Level"
+    },
+    "current_xp": {
+      "type": "number",
+      "default": 0,
+      "title": "Current XP"
+    },
+    "total_xp": {
+      "type": "number",
+      "default": 0,
+      "title": "Total XP Earned"
+    },
+    "xp_to_next_level": {
+      "type": "number",
+      "default": 1000,
+      "title": "XP to Next Level"
+    },
+    "prestige": {
+      "type": "number",
+      "default": 0,
+      "title": "Prestige Level"
+    },
+    "weekly_xp": {
+      "type": "number",
+      "default": 0,
+      "title": "Weekly XP"
+    },
+    "daily_missions_completed": {
+      "type": "number",
+      "default": 0,
+      "title": "Daily Missions Completed"
+    },
+    "win_streak": {
+      "type": "number",
+      "default": 0,
+      "title": "Current Win Streak"
+    },
+    "region": {
+      "type": "string",
+      "enum": [
+        "na",
+        "eu",
+        "apac",
+        "sa",
+        "oce"
+      ],
+      "default": "na",
+      "title": "Region"
+    },
+    "season": {
+      "type": "number",
+      "default": 1,
+      "title": "Current Season"
+    },
+    "last_played_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Played Date"
+    }
+  },
+  "required": [
+    "user_id",
+    "username"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "name": "MapVeto",
+  "type": "object",
+  "properties": {
+    "wager_id": {
+      "type": "string",
+      "title": "Wager ID"
+    },
+    "map_id": {
+      "type": "string",
+      "title": "Map ID"
+    },
+    "map_name": {
+      "type": "string",
+      "title": "Map Name"
+    },
+    "vetoed_by": {
+      "type": "string",
+      "title": "Vetoed By User ID"
+    },
+    "vetoed_by_team": {
+      "type": "string",
+      "enum": [
+        "host",
+        "challenger"
+      ],
+      "title": "Vetoed By Team"
+    },
+    "veto_order": {
+      "type": "number",
+      "title": "Veto Order (1st, 2nd, etc)"
+    },
+    "is_final_map": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Final Selected Map"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "wager_id",
+    "map_id",
+    "map_name",
+    "vetoed_by",
+    "vetoed_by_team"
+  ]
+}

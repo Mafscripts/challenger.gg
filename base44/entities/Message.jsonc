@@ -1,0 +1,50 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "sender_id": {
+      "type": "string",
+      "title": "Sender ID"
+    },
+    "sender_name": {
+      "type": "string",
+      "title": "Sender Name"
+    },
+    "recipient_id": {
+      "type": "string",
+      "title": "Recipient ID"
+    },
+    "recipient_name": {
+      "type": "string",
+      "title": "Recipient Name"
+    },
+    "subject": {
+      "type": "string",
+      "title": "Subject"
+    },
+    "content": {
+      "type": "string",
+      "title": "Content"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "title": "Is Read"
+    },
+    "conversation_id": {
+      "type": "string",
+      "title": "Conversation ID"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    }
+  },
+  "required": [
+    "sender_id",
+    "sender_name",
+    "recipient_id",
+    "content"
+  ]
+}
