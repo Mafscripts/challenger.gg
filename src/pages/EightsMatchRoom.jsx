@@ -14,6 +14,7 @@ import RecentForm from "@/components/match/RecentForm";
 import TrophyCase from "@/components/match/TrophyCase";
 import MatchChat from "@/components/match/MatchChat";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
+import { isStaffNotificationUser, playStaffNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 
 export default function EightsMatchRoom() {
   const { id } = useParams();
@@ -140,6 +141,7 @@ export default function EightsMatchRoom() {
   };
 
   const handleSupportTicket = async (reason) => {
+    if (isStaffNotificationUser(user)) unlockNotificationSound();
     setSupporting(true);
     try {
       const response = await base44.functions.invoke("requestAdminAlert", {
@@ -151,6 +153,7 @@ export default function EightsMatchRoom() {
       });
 
       if (response.data?.success) {
+        if (isStaffNotificationUser(user)) playStaffNotificationSound();
         toast({ title: "Admin requested", description: "Staff were notified for this 8s match." });
         await loadWager();
       } else {

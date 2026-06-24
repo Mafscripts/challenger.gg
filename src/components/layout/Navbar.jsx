@@ -11,6 +11,7 @@ import {
 import ForgeModal from "@/components/navbar/ForgeModal";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { isStaffNotificationUser, playStaffNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 
 const navGroups = [
   {
@@ -70,34 +71,6 @@ const mobileNavSections = [
 ];
 
 const adminRoles = new Set(["ceo", "super_admin", "admin"]);
-const staffNotificationSoundRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
-const playStaffNotificationSound = () => {
-  if (typeof window === "undefined") return;
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
-
-  try {
-    const context = new AudioContext();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const now = context.currentTime;
-
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(880, now);
-    oscillator.frequency.setValueAtTime(1175, now + 0.11);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
-
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(now);
-    oscillator.stop(now + 0.3);
-    oscillator.onended = () => context.close().catch(() => {});
-  } catch {
-    // Browser audio policies can block playback until the user interacts with the page.
-  }
-};
 const activeMatchStatuses = new Set([
   "in_progress",
   "awaiting_team_alpha_report",
@@ -192,6 +165,17 @@ export default function Navbar() {
   }, [location.pathname]);
 
   useEffect(() => {
+    if (!isAuthenticated || !isStaffNotificationUser(user || authUser)) return undefined;
+    const unlock = () => unlockNotificationSound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [isAuthenticated, user, authUser]);
+
+  useEffect(() => {
     if (!isAuthenticated) {
       clearUserState();
       return;
@@ -253,7 +237,7 @@ export default function Navbar() {
       const unreadCount = (data || []).filter(n => !n.is_read).length;
       if (
         notificationSoundReady.current
-        && staffNotificationSoundRoles.has(user.role)
+        && isStaffNotificationUser(user)
         && unreadCount > previousUnreadNotifCount.current
       ) {
         playStaffNotificationSound();
