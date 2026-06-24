@@ -1,13 +1,23 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle, Crown, LogOut, Plus, Search, Trash2, Trophy, TrendingUp, UserMinus, UserPlus, Users, X, XCircle } from "lucide-react";
+import { Camera, CheckCircle, Crown, Image as ImageIcon, LogOut, Plus, Search, Trash2, Trophy, TrendingUp, UserMinus, UserPlus, Users, X, XCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
 const teamInitials = (team) => team?.tag || String(team?.name || "--").slice(0, 2).toUpperCase();
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString()}`;
 const teamTypeLabel = (team) => ({ "8s": "8s", wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "8s"] || "8s");
+const teamBannerMaxBytes = 1.5 * 1024 * 1024;
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  if (!file) return resolve("");
+  if (!file.type.startsWith("image/")) return reject(new Error("Choose an image file."));
+  if (file.size > teamBannerMaxBytes) return reject(new Error("Image must be 1.5MB or smaller."));
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ""));
+  reader.onerror = () => reject(new Error("Could not read image file."));
+  reader.readAsDataURL(file);
+});
 
 export default function Teams() {
   const [view, setView] = useState("my_teams");
@@ -22,7 +32,8 @@ export default function Teams() {
   const [creating, setCreating] = useState(false);
   const [busyAction, setBusyAction] = useState("");
   const [inviteIdentifier, setInviteIdentifier] = useState("");
-  const [teamForm, setTeamForm] = useState({ name: "", tag: "", region: "na", team_type: "8s", roster_size: 4 });
+  const [teamForm, setTeamForm] = useState({ name: "", tag: "", region: "na", team_type: "8s", roster_size: 4, banner_url: "" });
+  const [teamBannerDraft, setTeamBannerDraft] = useState("");
 
   useEffect(() => {
     loadTeams();
@@ -90,6 +101,7 @@ export default function Teams() {
         region: teamForm.region,
         team_type: teamForm.team_type,
         roster_size: Number(teamForm.roster_size || 4),
+        banner_url: teamForm.banner_url.trim(),
       });
       if (!response.data?.success) {
         toast({ title: "Team creation failed", description: response.data?.error || "Could not create team.", variant: "destructive" });
@@ -98,7 +110,7 @@ export default function Teams() {
       const team = response.data.team;
 
       toast({ title: "Team created", description: `${team.name} is ready.` });
-      setTeamForm({ name: "", tag: "", region: "na", team_type: "8s", roster_size: 4 });
+      setTeamForm({ name: "", tag: "", region: "na", team_type: "8s", roster_size: 4, banner_url: "" });
       setCreateOpen(false);
       await loadTeams();
       setSelectedTeamId(team.id);
@@ -124,6 +136,10 @@ export default function Teams() {
   const wins = selectedTeam?.total_wins || 0;
   const losses = selectedTeam?.total_losses || 0;
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+
+  useEffect(() => {
+    setTeamBannerDraft(selectedTeam?.banner_url || "");
+  }, [selectedTeam?.id, selectedTeam?.banner_url]);
 
   const runTeamAction = async (payload, successTitle) => {
     setBusyAction(payload.action);
@@ -162,6 +178,40 @@ export default function Teams() {
       invite_id: invite.id,
       decision,
     }, decision === "accept" ? "Invite accepted" : "Invite declined");
+  };
+
+  const handleCreateBannerFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const imageUrl = await fileToDataUrl(file);
+      setTeamForm((current) => ({ ...current, banner_url: imageUrl }));
+    } catch (error) {
+      toast({ title: "Image failed", description: error.message || "Could not read image.", variant: "destructive" });
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const handleTeamBannerFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setTeamBannerDraft(await fileToDataUrl(file));
+    } catch (error) {
+      toast({ title: "Image failed", description: error.message || "Could not read image.", variant: "destructive" });
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const handleUpdateTeamBanner = async () => {
+    if (!selectedTeam || !isSelectedCaptain) return;
+    await runTeamAction({
+      action: "update_assets",
+      team_id: selectedTeam.id,
+      banner_url: teamBannerDraft.trim(),
+    }, "Team banner saved");
   };
 
   return (
@@ -275,6 +325,14 @@ export default function Teams() {
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="glass rounded-xl border border-cyan/10 p-8 relative overflow-hidden">
+                {selectedTeam.banner_url && (
+                  <img
+                    src={selectedTeam.banner_url}
+                    alt={`${selectedTeam.name} banner`}
+                    className="absolute inset-0 h-full w-full object-cover opacity-20"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-obsidian via-obsidian/85 to-obsidian/40" />
                 <div className="relative flex items-center gap-6 mb-6">
                   <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan/30 to-orange/30 flex items-center justify-center text-2xl font-black">
                     {teamInitials(selectedTeam)}
@@ -338,6 +396,35 @@ export default function Teams() {
               {selectedTeam && selectedMembership && (
                 <div className="glass rounded-xl border border-white/5 p-5">
                   <h3 className="font-bold text-sm mb-4">Team Management</h3>
+                  {isSelectedCaptain && (
+                    <div className="mb-5 rounded-lg border border-white/5 bg-secondary/30 p-3">
+                      <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-cyan">
+                        <ImageIcon className="h-3.5 w-3.5" /> Team Banner
+                      </h4>
+                      <div className="space-y-3">
+                        <input
+                          value={teamBannerDraft}
+                          onChange={(event) => setTeamBannerDraft(event.target.value)}
+                          placeholder="https://i.imgur.com/team-banner.png"
+                          className="w-full px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                        />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleTeamBannerFile}
+                          className="w-full px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleUpdateTeamBanner}
+                          disabled={Boolean(busyAction)}
+                          className="inline-flex items-center gap-2 rounded-lg bg-cyan/10 px-3 py-2 text-xs font-black uppercase tracking-wider text-cyan disabled:opacity-50"
+                        >
+                          <Camera className="h-3.5 w-3.5" /> Save Banner
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {isSelectedCaptain && (
                     <form onSubmit={handleInvite} className="space-y-3 mb-4">
                       <label className="block">
@@ -428,6 +515,24 @@ export default function Teams() {
                   maxLength={6}
                   className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none font-mono uppercase"
                   placeholder="TAG"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Team Banner URL</span>
+                <input
+                  value={teamForm.banner_url}
+                  onChange={(event) => setTeamForm((current) => ({ ...current, banner_url: event.target.value }))}
+                  className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                  placeholder="https://i.imgur.com/team-banner.png"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Upload Team Banner</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCreateBannerFile}
+                  className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                 />
               </label>
               <label className="block">

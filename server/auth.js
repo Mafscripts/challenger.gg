@@ -9,6 +9,14 @@ const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const DISPLAY_NAME_MAX_LENGTH = 60;
 const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
 
+export const safeUserMetadata = (metadata = {}) => {
+  const clean = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? { ...metadata } : {};
+  if (typeof clean.avatar_url === "string" && clean.avatar_url.startsWith("data:image/")) {
+    delete clean.avatar_url;
+  }
+  return clean;
+};
+
 export const cleanUsername = (value, fallback = "user") => {
   const cleaned = String(value || fallback)
     .split("@")[0]
@@ -140,7 +148,8 @@ export const ensureUserRecords = async (user, payload = {}) => {
   const shouldBeCeo = user.role === "ceo" || !ceoExists || usersCount <= 1;
   const role = shouldBeCeo ? "ceo" : (user.role || "user");
   const adminRole = shouldBeCeo ? "ceo" : user.admin_role;
-  const existingBadges = Array.isArray(user.metadata?.badges) ? user.metadata.badges : [];
+  const metadata = safeUserMetadata(user.metadata);
+  const existingBadges = Array.isArray(metadata.badges) ? metadata.badges : [];
   const preservedBadges = existingBadges.filter((badge) => !roleBadgeTypes.has(badge?.type));
   const roleBadges = role !== "user" ? [{ name: role === "ceo" ? "CEO" : role.replace("_", " "), type: role }] : [];
 
@@ -156,7 +165,7 @@ export const ensureUserRecords = async (user, payload = {}) => {
       is_admin: role !== "user",
       email_verified: true,
       metadata: {
-        ...(user.metadata || {}),
+        ...metadata,
         badges: [...roleBadges, ...preservedBadges],
       },
     },

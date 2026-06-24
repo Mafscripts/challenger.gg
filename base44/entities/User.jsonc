@@ -55,6 +55,10 @@
       "type": "string",
       "title": "Display Name"
     },
+    "display_name_color": {
+      "type": "string",
+      "title": "Verified Display Name Color"
+    },
     "credits": {
       "type": "number",
       "default": 0,

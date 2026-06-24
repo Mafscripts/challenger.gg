@@ -53,7 +53,7 @@ function PlayerPanel({ label, color, player, waiting }) {
         <RankBadge rank={rank.tier} division={rank.division} />
         <div className="min-w-0">
           <h2 className="text-xl font-black truncate">{player.name}</h2>
-          <UserBadges user={player} size="xs" className="mt-1" />
+          <UserBadges user={player} size="xs" iconOnly className="mt-1" />
           <p className="text-xs text-vapor">{rank.name} - {(player.elo || 0).toLocaleString()} ELO</p>
         </div>
       </div>

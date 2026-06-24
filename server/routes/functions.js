@@ -1775,6 +1775,7 @@ async function manageTeam(req) {
       region: req.body.region || req.user.region || "na",
       team_type: teamType,
       roster_size: rosterSize,
+      banner_url: req.body.banner_url || "",
       roster_locked: false,
       total_wins: 0,
       total_losses: 0,
@@ -1789,6 +1790,18 @@ async function manageTeam(req) {
 
   const team = await getEntity("Team", req.body.team_id || "").catch(() => null);
   if (!team) return { success: false, error: "Team not found" };
+
+  if (action === "update_assets") {
+    if (team.captain_id !== req.user.id) return { success: false, error: "Only the team captain can update team visuals" };
+    const updated = await updateEntity("Team", team.id, {
+      banner_url: String(req.body.banner_url || "").trim(),
+      logo_url: String(req.body.logo_url || team.logo_url || "").trim(),
+      updated_by: req.user.id,
+      updated_by_name: nameFor(req.user),
+      updated_date: nowIso(),
+    });
+    return { success: true, team: updated };
+  }
 
   if (action === "invite") {
     if (team.captain_id !== req.user.id) return { success: false, error: "Only the team captain can invite players" };

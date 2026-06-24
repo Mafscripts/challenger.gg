@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Award, Calendar, Crown, Flame, Package, Shield, Swords, Trophy, Users } from "lucide-react";
+import { Award, Calendar, Camera, Crown, Flame, Package, Save, Shield, Swords, Trophy, Users } from "lucide-react";
 import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
@@ -13,6 +13,20 @@ import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString()}`;
+const profileImageMaxBytes = 1.5 * 1024 * 1024;
+const verifiedNameColors = [
+  { label: "Default", value: "" },
+  { label: "Red", value: "#f87171" },
+  { label: "Blue", value: "#60a5fa" },
+  { label: "Yellow", value: "#facc15" },
+  { label: "Green", value: "#22c55e" },
+  { label: "Purple", value: "#a78bfa" },
+  { label: "Cyan", value: "#22d3ee" },
+  { label: "Orange", value: "#fb923c" },
+  { label: "Lime", value: "#84cc16" },
+  { label: "Teal", value: "#2dd4bf" },
+  { label: "White", value: "#f8fafc" },
+];
 const inventoryCategoryLabels = {
   weapon_skin: "Weapon Skins",
   knife: "Knife Skins",
@@ -40,10 +54,29 @@ const inventoryBorderClass = (item) => {
   return "border-white/5 hover:border-white/10";
 };
 
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  if (!file) return resolve("");
+  if (!file.type.startsWith("image/")) return reject(new Error("Choose an image file."));
+  if (file.size > profileImageMaxBytes) return reject(new Error("Image must be 1.5MB or smaller."));
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ""));
+  reader.onerror = () => reject(new Error("Could not read image file."));
+  reader.readAsDataURL(file);
+});
+
+const profileTrophyCount = (user, inventory = []) => (
+  Number(user?.trophies || 0)
+  + (inventory || []).filter((item) => {
+    const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
+    return text.includes("trophy");
+  }).length
+);
+
 export default function Profile() {
   const { username } = useParams();
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [rankedStats, setRankedStats] = useState(null);
@@ -51,6 +84,10 @@ export default function Profile() {
   const [inventory, setInventory] = useState([]);
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [avatarDraft, setAvatarDraft] = useState("");
+  const [nameColorDraft, setNameColorDraft] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileResult, setProfileResult] = useState(null);
 
   useEffect(() => {
     loadProfile();
@@ -61,6 +98,7 @@ export default function Profile() {
     try {
       let userRow = null;
       const authUser = await base44.auth.me().catch(() => null);
+      setCurrentUser(authUser);
       if (username) {
         const byUsername = await base44.entities.User.filter({ username }, "-created_date", 1).catch(() => []);
         userRow = byUsername[0] || await base44.entities.User.get(username).catch(() => null);
@@ -101,7 +139,10 @@ export default function Profile() {
         base44.entities.RankedMatch.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
       ]);
 
-      setProfile(profileRows[0] || null);
+      const loadedProfile = profileRows[0] || null;
+      setProfile(loadedProfile);
+      setAvatarDraft(loadedProfile?.avatar_url || userRow?.avatar_url || "");
+      setNameColorDraft(userRow?.display_name_color || "");
       setRankedStats(rankedRows[0] || null);
       setXpStats(xpRows[0] || null);
       setInventory(inventoryRows || []);
@@ -133,6 +174,57 @@ export default function Profile() {
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
   const badges = useMemo(() => user?.badges || [], [user]);
+  const isOwnProfile = Boolean(currentUser?.id && user?.id && currentUser.id === user.id);
+  const isVerifiedPlayer = Boolean(user?.verified_player || user?.is_verified_player || badges.some((badge) => badge.type === "verified_player"));
+  const activeNameColor = isOwnProfile ? nameColorDraft : (user?.display_name_color || "");
+  const selectedNameColor = verifiedNameColors.some((color) => color.value === activeNameColor)
+    ? activeNameColor
+    : "";
+  const trophyCount = profileTrophyCount(user, inventory);
+  const primaryTeams = teams.map((membership) => membership.team).filter(Boolean).slice(0, 4);
+
+  const handleAvatarFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setProfileResult(null);
+    try {
+      setAvatarDraft(await fileToDataUrl(file));
+    } catch (error) {
+      setProfileResult({ success: false, message: error.message || "Could not load image." });
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const handleSaveProfileVisuals = async () => {
+    if (!isOwnProfile || !user?.id) return;
+    setProfileSaving(true);
+    setProfileResult(null);
+    try {
+      let nextProfile = profile;
+      const profilePatch = {
+        user_id: user.id,
+        display_name: user.display_name || user.full_name || user.username || user.email,
+        username: user.username,
+        handle: user.handle || user.username,
+        avatar_url: avatarDraft.trim(),
+      };
+      if (profile?.id) nextProfile = await base44.entities.PlayerProfile.update(profile.id, profilePatch);
+      else nextProfile = await base44.entities.PlayerProfile.create(profilePatch);
+
+      const nextNameColor = verifiedNameColors.some((color) => color.value === nameColorDraft) ? nameColorDraft : "";
+      const nextUser = await base44.auth.updateMe({
+        display_name_color: isVerifiedPlayer ? nextNameColor : "",
+      });
+      setProfile(nextProfile);
+      setUser((current) => ({ ...current, ...nextUser }));
+      setProfileResult({ success: true, message: "Profile visuals saved." });
+    } catch (error) {
+      setProfileResult({ success: false, message: error.message || "Could not save profile visuals." });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -163,11 +255,11 @@ export default function Profile() {
         <div className="glass rounded-xl border border-white/5 p-8 mb-6 relative overflow-hidden">
           <div className="relative flex flex-col md:flex-row items-start gap-6">
             <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-cyan/30 to-orange/30 border-2 border-white/10 flex items-center justify-center text-3xl font-black overflow-hidden">
-              {profile?.avatar_url ? <img src={profile.avatar_url} alt={name} className="w-full h-full object-cover" /> : name.charAt(0)}
+              {avatarDraft || profile?.avatar_url ? <img src={avatarDraft || profile.avatar_url} alt={name} className="w-full h-full object-cover" /> : name.charAt(0)}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-1 flex-wrap">
-                <h1 className="text-2xl font-black">{name}</h1>
+                <h1 className="text-2xl font-black" style={selectedNameColor ? { color: selectedNameColor } : undefined}>{name}</h1>
                 <RoleBadge role={user.role || "user"} />
                 <UserBadges user={user} />
                 {user.is_premium && (
@@ -179,6 +271,12 @@ export default function Profile() {
               <p className="text-vapor text-sm mb-3">
                 {user.handle || profile?.handle || user.username || user.email} - {profile?.country || user.region || "Region N/A"} - Joined {formatDate(profile?.account_created_date || user.account_created_date || user.created_date)}
               </p>
+              <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <ProfileSignal label="Record" value={`${wins}-${losses}`} />
+                <ProfileSignal label="Win Rate" value={`${winRate}%`} />
+                <ProfileSignal label="Trophies" value={trophyCount} />
+                <ProfileSignal label="Teams" value={teams.length} />
+              </div>
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                   <RankBadge rank={rank.tier} division={rank.division} size="sm" />
@@ -191,8 +289,70 @@ export default function Profile() {
                   </Link>
                 )}
               </div>
+              {primaryTeams.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {primaryTeams.map((team) => (
+                    <Link key={team.id} to="/teams" className="rounded-md border border-cyan/15 bg-cyan/5 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/10">
+                      {team.tag || team.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+          {isOwnProfile && (
+            <div className="relative mt-6 rounded-xl border border-white/5 bg-secondary/25 p-4">
+              <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="space-y-1">
+                    <span className="text-[10px] text-vapor uppercase">Profile picture URL</span>
+                    <input
+                      value={avatarDraft}
+                      onChange={(event) => setAvatarDraft(event.target.value)}
+                      placeholder="https://i.imgur.com/example.png"
+                      className="w-full px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-[10px] text-vapor uppercase">Upload profile picture</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarFile}
+                      className="w-full px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                    />
+                  </label>
+                  {isVerifiedPlayer && (
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Verified name color</span>
+                      <select
+                        value={nameColorDraft}
+                        onChange={(event) => setNameColorDraft(event.target.value)}
+                        className="w-full px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      >
+                        {verifiedNameColors.map((color) => (
+                          <option key={color.label} value={color.value}>{color.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
+                <button
+                  onClick={handleSaveProfileVisuals}
+                  disabled={profileSaving}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-4 py-2 text-xs font-black uppercase tracking-wider text-background disabled:opacity-50"
+                >
+                  {profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />}
+                  Save
+                </button>
+              </div>
+              {profileResult && (
+                <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${profileResult.success ? "border-green/20 bg-green/10 text-green" : "border-red-500/20 bg-red-500/10 text-red-400"}`}>
+                  {profileResult.message}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
@@ -320,6 +480,15 @@ function StatCard({ icon: Icon, label, value, color }) {
       <p className={`text-2xl font-black font-mono ${color}`}>{value}</p>
       <p className="text-[10px] text-vapor uppercase tracking-wider">{label}</p>
     </motion.div>
+  );
+}
+
+function ProfileSignal({ label, value }) {
+  return (
+    <div className="rounded-lg border border-white/5 bg-background/30 px-3 py-2">
+      <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{label}</p>
+      <p className="mt-1 font-mono text-sm font-black text-white">{value}</p>
+    </div>
   );
 }
 

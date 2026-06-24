@@ -14,6 +14,10 @@
       "type": "string",
       "title": "Team Logo URL"
     },
+    "banner_url": {
+      "type": "string",
+      "title": "Team Banner URL"
+    },
     "captain_id": {
       "type": "string",
       "title": "Team Captain User ID"

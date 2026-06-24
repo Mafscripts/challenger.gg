@@ -4,6 +4,7 @@ import {
   createUserWithPassword,
   ensureUserRecords,
   publicUser,
+  safeUserMetadata,
   signUser,
   updateUserIdentity,
   verifyPassword,
@@ -20,7 +21,7 @@ const requestIp = (req) => {
 
 const recordIp = async (user, req, field) => {
   const ip = requestIp(req);
-  const metadata = user.metadata || {};
+  const metadata = safeUserMetadata(user.metadata);
   const ipHistory = Array.isArray(metadata.ip_history) ? metadata.ip_history : [];
   const nextHistory = [
     ...ipHistory,
@@ -90,12 +91,12 @@ router.get("/me", requireAuth, async (req, res) => {
 router.patch("/me", requireAuth, async (req, res, next) => {
   try {
     const current = await prisma.user.findUnique({ where: { id: req.user.id } });
-    const { username, display_name, ...rest } = req.body || {};
+    const { username, display_name, avatar_url: _avatarUrl, ...rest } = req.body || {};
     let user = current;
     if (Object.keys(rest).length > 0) {
       user = await prisma.user.update({
         where: { id: req.user.id },
-        data: dataForEntity("User", rest, current?.metadata),
+        data: dataForEntity("User", rest, safeUserMetadata(current?.metadata)),
       });
     }
     const identityPayload = {};
@@ -125,7 +126,7 @@ router.post("/verify-otp", async (req, res, next) => {
     if (!user) return res.status(404).json({ error: "User not found" });
     const verified = user.email_verified === true ? user : await prisma.user.update({
       where: { id: user.id },
-      data: dataForEntity("User", { email_verified: true, email_verification_code: null }, user.metadata),
+      data: dataForEntity("User", { email_verified: true, email_verification_code: null }, safeUserMetadata(user.metadata)),
     });
     const withIp = await recordIp(verified, req, "last_login_ip");
     const bootstrap = await ensureUserRecords(withIp);
@@ -142,7 +143,7 @@ router.post("/resend-otp", async (req, res, next) => {
     if (!user) return res.status(404).json({ error: "User not found" });
     if (user.email_verified !== true) await prisma.user.update({
       where: { id: user.id },
-      data: dataForEntity("User", { email_verified: true, email_verification_code: null }, user.metadata),
+      data: dataForEntity("User", { email_verified: true, email_verification_code: null }, safeUserMetadata(user.metadata)),
     });
     res.json({
       success: true,

@@ -33,13 +33,14 @@ export function userSpecialBadges(user) {
   }));
 }
 
-export default function UserBadges({ user, badges, size = "sm", showForceStream = true, className = "" }) {
+export default function UserBadges({ user, badges, size = "sm", showForceStream = true, iconOnly = false, className = "" }) {
   const rows = badges || userSpecialBadges(user);
   const forcedStream = showForceStream && Boolean(user?.force_stream_required || user?.stream_override_required);
   if (rows.length === 0 && !forcedStream) return null;
 
   const sizeClass = size === "xs" ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]";
   const iconClass = size === "xs" ? "h-3 w-3" : "h-3.5 w-3.5";
+  const iconOnlyClass = size === "xs" ? "h-5 w-5 text-[10px]" : "h-6 w-6 text-xs";
 
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
@@ -47,9 +48,21 @@ export default function UserBadges({ user, badges, size = "sm", showForceStream 
         const config = specialBadgeConfig[badge.type];
         if (!config) return null;
         const Icon = config.icon;
+        if (iconOnly) {
+          return (
+            <span
+              key={badge.type}
+              title={badge.name || config.label}
+              className={`inline-flex shrink-0 items-center justify-center rounded-full border font-black uppercase ${iconOnlyClass} ${config.className}`}
+            >
+              {badge.type === "verified_player" ? "V" : <Icon className={iconClass} />}
+            </span>
+          );
+        }
         return (
           <span
             key={badge.type}
+            title={badge.name || config.label}
             className={`inline-flex items-center gap-1 rounded-md border font-black uppercase tracking-wider ${sizeClass} ${config.className}`}
           >
             <Icon className={iconClass} />
@@ -58,8 +71,11 @@ export default function UserBadges({ user, badges, size = "sm", showForceStream 
         );
       })}
       {forcedStream && (
-        <span className={`inline-flex items-center rounded-md border border-orange/25 bg-orange/10 font-black uppercase tracking-wider text-orange ${sizeClass}`}>
-          Stream Required
+        <span
+          title="Admin requires this player to stream"
+          className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} inline-flex items-center border border-orange/25 bg-orange/10 font-black uppercase tracking-wider text-orange`}
+        >
+          {iconOnly ? "!" : "Stream Required"}
         </span>
       )}
     </div>

@@ -69,7 +69,7 @@ function SimpleRoster({ title, players, tone = "cyan" }) {
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">{playerName(player)}</p>
-              <UserBadges user={player} size="xs" className="mt-1" />
+              <UserBadges user={player} size="xs" iconOnly className="mt-1" />
               <p className={`text-[10px] uppercase tracking-wider ${player.payment_status === "pending" ? "text-orange" : "text-vapor"}`}>
                 {player.payment_status === "pending" ? "Payment pending" : "Ready"}
               </p>

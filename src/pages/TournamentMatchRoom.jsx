@@ -298,7 +298,7 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
                     ) : (
                       <span className="truncate text-sm font-bold text-white">{player.user_name}</span>
                     )}
-                    <UserBadges user={player} size="xs" className="min-w-0" />
+                    <UserBadges user={player} size="xs" iconOnly className="min-w-0" />
                   </div>
                   <div className="flex justify-start">
                     {player.role === "captain" ? (
