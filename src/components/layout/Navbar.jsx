@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -70,6 +70,34 @@ const mobileNavSections = [
 ];
 
 const adminRoles = new Set(["ceo", "super_admin", "admin"]);
+const staffNotificationSoundRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const playStaffNotificationSound = () => {
+  if (typeof window === "undefined") return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+
+  try {
+    const context = new AudioContext();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const now = context.currentTime;
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, now);
+    oscillator.frequency.setValueAtTime(1175, now + 0.11);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.3);
+    oscillator.onended = () => context.close().catch(() => {});
+  } catch {
+    // Browser audio policies can block playback until the user interacts with the page.
+  }
+};
 const activeMatchStatuses = new Set([
   "in_progress",
   "awaiting_team_alpha_report",
@@ -125,6 +153,8 @@ export default function Navbar() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [matchesOpen, setMatchesOpen] = useState(false);
   const [activeMatches, setActiveMatches] = useState([]);
+  const notificationSoundReady = useRef(false);
+  const previousUnreadNotifCount = useRef(0);
   const location = useLocation();
   const { isAuthenticated, user: authUser } = useAuth();
   const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
@@ -220,8 +250,18 @@ export default function Navbar() {
       const user = await base44.auth.me();
       if (!user) return;
       const data = await base44.entities.Notification.filter({ user_id: user.id }, '-created_date', 5);
+      const unreadCount = (data || []).filter(n => !n.is_read).length;
+      if (
+        notificationSoundReady.current
+        && staffNotificationSoundRoles.has(user.role)
+        && unreadCount > previousUnreadNotifCount.current
+      ) {
+        playStaffNotificationSound();
+      }
+      notificationSoundReady.current = true;
+      previousUnreadNotifCount.current = unreadCount;
       setNotifications(data || []);
-      setUnreadNotifCount((data || []).filter(n => !n.is_read).length);
+      setUnreadNotifCount(unreadCount);
     } catch (error) {
       console.error('Failed to load notifications:', error);
     }

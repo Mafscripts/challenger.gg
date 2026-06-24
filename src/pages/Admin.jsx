@@ -75,11 +75,13 @@ const defaultMarketplaceForm = {
 };
 const defaultTournamentForm = {
   name: "",
-  game_mode: "snd",
+  game_mode: "snd_hp_snd",
   team_size: "2v2",
   entry_fee: "0",
   entry_type: "free",
   prize_pool: "0",
+  first_place_prize: "0",
+  second_place_prize: "0",
   max_teams: "8",
   status: "open",
   registration_end: "",
@@ -155,6 +157,21 @@ const tournamentRewardSummary = (tournament, marketplace = [], idsKey = "reward_
   const snapshots = Array.isArray(tournament?.[itemsKey]) ? tournament[itemsKey] : [];
   const rewards = tournamentItemIds(tournament, idsKey, itemsKey).map((id) => byId[id] || snapshots.find((item) => item?.id === id || item?.item_id === id)).filter(Boolean);
   return rewards.map((item) => item.name).slice(0, 3).join(", ") + (rewards.length > 3 ? ` +${rewards.length - 3}` : "") || "None";
+};
+const tournamentPlacementPrizeValue = (tournament, placement) => {
+  const distribution = tournament?.prize_distribution || {};
+  const amountKey = placement === 2 ? "second_amount" : "first_amount";
+  const legacyKey = placement === 2 ? "second" : "first";
+  const amount = Number(distribution[amountKey]);
+  if (Number.isFinite(amount)) return String(amount);
+  const legacy = Number(distribution[legacyKey]);
+  return Number.isFinite(legacy) && legacy > 100 ? String(legacy) : "";
+};
+const tournamentPrizeSummary = (tournament) => {
+  const first = Number(tournamentPlacementPrizeValue(tournament, 1) || 0);
+  const second = Number(tournamentPlacementPrizeValue(tournament, 2) || 0);
+  if (first > 0 || second > 0) return `#1 ${formatMoney(first)} | #2 ${formatMoney(second)}`;
+  return formatMoney(tournament?.prize_pool);
 };
 const compactListText = (rows, formatter, empty = "None") => (
   (rows || []).slice(0, 3).map(formatter).filter(Boolean).join(" | ") || empty
@@ -712,6 +729,8 @@ export default function Admin() {
     }));
     const rewardItems = itemSnapshot(rewardItemIds);
     const eliminationRewardItems = itemSnapshot(eliminationRewardItemIds);
+    const firstPlacePrize = Number(tournamentForm.first_place_prize || 0);
+    const secondPlacePrize = Number(tournamentForm.second_place_prize || 0);
     return {
       name: tournamentForm.name.trim(),
       game_mode: tournamentForm.game_mode,
@@ -719,6 +738,10 @@ export default function Admin() {
       entry_fee: Number(tournamentForm.entry_fee || 0),
       entry_type: entryType,
       prize_pool: Number(tournamentForm.prize_pool || 0),
+      prize_distribution: {
+        first_amount: Number.isFinite(firstPlacePrize) ? firstPlacePrize : 0,
+        second_amount: Number.isFinite(secondPlacePrize) ? secondPlacePrize : 0,
+      },
       max_teams: Number(tournamentForm.max_teams || 0),
       status: tournamentForm.status,
       format: "single_elimination",
@@ -783,6 +806,8 @@ export default function Admin() {
       entry_fee: String(tournament.entry_fee ?? 0),
       entry_type: tournament.entry_type || (tournament.is_premium_only ? "premium" : (Number(tournament.entry_fee || 0) > 0 ? "credits" : "free")),
       prize_pool: String(tournament.prize_pool ?? 0),
+      first_place_prize: tournamentPlacementPrizeValue(tournament, 1),
+      second_place_prize: tournamentPlacementPrizeValue(tournament, 2),
       max_teams: String(tournament.max_teams ?? 8),
       status: tournament.status || "open",
       registration_end: tournament.registration_end ? new Date(tournament.registration_end).toISOString().slice(0, 16) : "",
@@ -1551,6 +1576,7 @@ export default function Admin() {
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode: event.target.value }))}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       >
+                        <option value="snd_hp_snd">SND / HP / SND BO3</option>
                         <option value="snd">Search & Destroy</option>
                         <option value="overload">Overload</option>
                         <option value="hp">Hardpoint</option>
@@ -1607,6 +1633,28 @@ export default function Admin() {
                         min="0"
                         value={tournamentForm.prize_pool}
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, prize_pool: event.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">#1 prize</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={tournamentForm.first_place_prize}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, first_place_prize: event.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">#2 prize</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={tournamentForm.second_place_prize}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, second_place_prize: event.target.value }))}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       />
                     </label>
@@ -1673,7 +1721,7 @@ export default function Admin() {
                     ["Name", tournament.name],
                     ["Status", <StatusPill status={tournament.status} />],
                     ["Teams", `${tournament.registered_teams || 0}/${tournament.max_teams}`],
-                    ["Prize", formatMoney(tournament.prize_pool)],
+                    ["Prize", tournamentPrizeSummary(tournament)],
                     ["Entry", `${(tournament.entry_type || (tournament.is_premium_only ? "premium" : "free")).replace(/_/g, " ")}${Number(tournament.entry_fee || 0) > 0 ? ` - ${tournament.entry_fee} credits` : ""}`],
                     ["Rewards", (
                       <div className="space-y-1">

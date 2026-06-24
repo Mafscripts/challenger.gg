@@ -19,6 +19,7 @@ const statusLabels = {
 };
 
 const modeLabels = {
+  snd_hp_snd: "SND / HP / SND",
   snd: "Search & Destroy",
   overload: "Overload",
   hp: "Hardpoint",
@@ -190,7 +191,6 @@ export default function Tournaments() {
   const selectedMatches = matchesByTournament[selectedTournamentId] || [];
   const selectedParticipants = participantsByTournament[selectedTournamentId] || [];
   const isStaff = staffRoles.has(user?.role);
-  const canViewSelectedBracket = Boolean(selectedTournament && (isStaff || joinedTournamentIds.has(selectedTournament.id)));
   const currentUserParticipantKeys = new Set(selectedParticipants
     .filter((participant) => (
       participant.captain_id === user?.id
@@ -371,11 +371,7 @@ export default function Tournaments() {
               <div>
                 <h2 className="text-lg font-bold">Bracket Matches</h2>
                 <p className="text-xs text-vapor">
-                  {isStaff
-                    ? `${selectedParticipants.length} participant${selectedParticipants.length === 1 ? "" : "s"} registered.`
-                    : canViewSelectedBracket
-                      ? "Only your assigned tournament match is shown."
-                    : "Bracket is visible to registered teams only."}
+                  {`${selectedParticipants.length} participant${selectedParticipants.length === 1 ? "" : "s"} registered. Bracket is public.`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -448,36 +444,74 @@ export default function Tournaments() {
             <div className="divide-y divide-white/5 max-h-[640px] overflow-y-auto">
               {!selectedTournamentId ? (
                 <p className="px-5 py-8 text-center text-sm text-vapor">No tournament selected.</p>
-              ) : !canViewSelectedBracket ? (
-                <div className="px-5 py-8 text-center">
-                  <Trophy className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
-                  <p className="text-sm font-semibold">Private bracket</p>
-                  <p className="text-xs text-vapor mt-1">Join this tournament to view bracket matches.</p>
-                </div>
               ) : selectedMatches.length === 0 ? (
                 <div className="px-5 py-8 text-center">
                   <Users className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
-                  <p className="text-sm text-vapor">{isStaff ? "No bracket matches generated yet." : "No assigned match is ready yet."}</p>
+                  <p className="text-sm text-vapor">No bracket matches generated yet.</p>
                 </div>
-              ) : selectedMatches.map((match) => (
-                <Link
-                  key={match.id}
-                  to={`/tournament-match/${match.id}`}
-                  className="block px-5 py-4 hover:bg-white/[0.02] transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <p className="text-sm font-bold">
-                      {match.bracket === "grand_final" ? "Grand Final" : `${match.bracket === "loser" ? "Loser" : "Winner"} Round ${match.round}`}
-                    </p>
-                    <span className="text-[10px] text-vapor uppercase">{match.status}</span>
-                  </div>
-                  <div className="text-xs text-vapor flex items-center justify-between gap-3">
-                    <span className="truncate">{match.team_a_name || "Open slot"}</span>
-                    <span className="text-cyan font-mono">{match.team_a_score || 0}-{match.team_b_score || 0}</span>
-                    <span className="truncate text-right">{match.team_b_name || "Open slot"}</span>
-                  </div>
-                </Link>
-              ))}
+              ) : selectedMatches.map((match) => {
+                const isComplete = match.completed || match.status === "completed";
+                const teamAScore = Number(match.team_a_score || 0);
+                const teamBScore = Number(match.team_b_score || 0);
+                const teamAWon = isComplete && (
+                  String(match.winner_id || "") === String(match.team_a_id || "")
+                  || (!match.winner_id && teamAScore > teamBScore)
+                );
+                const teamBWon = isComplete && (
+                  String(match.winner_id || "") === String(match.team_b_id || "")
+                  || (!match.winner_id && teamBScore > teamAScore)
+                );
+                const teamRowClass = (won) => {
+                  if (won) return "border-green/25 bg-green/10 text-white";
+                  if (isComplete) return "border-red-400/15 bg-red-500/5 text-vapor";
+                  return "border-white/5 bg-background/25 text-vapor";
+                };
+                const resultBadge = (won) => {
+                  if (!isComplete) return "TBD";
+                  return won ? "WIN" : "LOSS";
+                };
+                const badgeClass = (won) => {
+                  if (!isComplete) return "border-white/5 bg-secondary text-vapor";
+                  return won ? "border-green/20 bg-green/10 text-green" : "border-red-400/20 bg-red-500/10 text-red-300";
+                };
+
+                return (
+                  <Link
+                    key={match.id}
+                    to={`/tournament-match/${match.id}`}
+                    className="block px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold">
+                          {match.bracket === "grand_final" ? "Grand Final" : `${match.bracket === "loser" ? "Loser" : "Winner"} Round ${match.round}`}
+                        </p>
+                        <p className="mt-1 text-[10px] text-vapor uppercase">
+                          Match {match.match_number || "-"} {match.is_forfeit ? "- Match forfeited" : ""}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="rounded border border-cyan/20 bg-cyan/10 px-2 py-1 text-xs font-mono font-black text-cyan">
+                          {isComplete ? `${teamAScore}-${teamBScore}` : "TBD"}
+                        </span>
+                        <span className="text-[10px] text-vapor uppercase">{match.status}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div className={`grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded border px-3 py-2.5 ${teamRowClass(teamAWon)}`}>
+                        <span className="min-w-0 truncate font-semibold">#{match.team_a_seed || "-"} {match.team_a_name || "Open slot"}</span>
+                        <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase ${badgeClass(teamAWon)}`}>{resultBadge(teamAWon)}</span>
+                        <span className="min-w-8 text-right font-mono text-sm font-black">{isComplete ? teamAScore : "-"}</span>
+                      </div>
+                      <div className={`grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded border px-3 py-2.5 ${teamRowClass(teamBWon)}`}>
+                        <span className="min-w-0 truncate font-semibold">#{match.team_b_seed || "-"} {match.team_b_name || "Open slot"}</span>
+                        <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase ${badgeClass(teamBWon)}`}>{resultBadge(teamBWon)}</span>
+                        <span className="min-w-8 text-right font-mono text-sm font-black">{isComplete ? teamBScore : "-"}</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -29,7 +29,7 @@ const bracketLabels = {
 const statusLabel = (value) => String(value || "pending").replace(/_/g, " ");
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const adminCorrectionRoles = new Set(["ceo", "super_admin", "admin"]);
-const defaultSndMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
+const defaultMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const seedLabel = (seed) => seed ? `#${seed}` : "#-";
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const playerName = (player) => player?.user_name || player?.username || player?.display_name || player?.full_name || player?.email || "Unknown player";
@@ -321,16 +321,16 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
 
 function MapSeries({ match }) {
   const maps = Array.isArray(match.maps) ? match.maps : [];
-  const pool = Array.isArray(match.map_pool) && match.map_pool.length ? match.map_pool : defaultSndMapPool;
+  const pool = Array.isArray(match.map_pool) && match.map_pool.length ? match.map_pool : defaultMapPool;
 
   return (
     <div className="glass rounded-xl border border-cyan/20 p-5 mb-6">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
-            <MapIcon className="h-4 w-4 text-cyan" /> SND Map Series
+            <MapIcon className="h-4 w-4 text-cyan" /> BO3 Map Series
           </h2>
-          <p className="text-xs text-vapor mt-1">Best of {match.best_of || 3}</p>
+          <p className="text-xs text-vapor mt-1">{match.game_mode || `Best of ${match.best_of || 3}`}</p>
         </div>
         <div className="text-xs text-vapor">
           First host: <span className="font-bold text-green">{match.first_host_team_name || "TBD"}</span>
@@ -344,7 +344,7 @@ function MapSeries({ match }) {
             Maps are being generated.
           </div>
         ) : maps.map((map) => (
-          <div key={`${map.game}-${map.map}`} className="rounded-lg border border-white/5 bg-secondary/40 p-4">
+          <div key={`${map.game}-${map.game_mode || map.mode}-${map.map}`} className="rounded-lg border border-white/5 bg-secondary/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-cyan">Map {map.game}</p>
             <h3 className="mt-1 text-lg font-black">{map.map}</h3>
             <p className="mt-2 text-xs text-vapor">{map.mode || "Search and Destroy"}</p>
@@ -420,8 +420,17 @@ function BracketPreview({ matches, currentId, tournament }) {
                   String(roundMatch.winner_id || "") === String(roundMatch.team_b_id || "")
                   || (!roundMatch.winner_id && teamBScore > teamAScore)
                 );
-                const teamRowClass = (won) => won ? "border-green/20 bg-green/10 text-white" : "border-white/5 bg-background/25 text-vapor";
+                const teamRowClass = (won) => {
+                  if (won) return "border-green/20 bg-green/10 text-white";
+                  if (isComplete) return "border-red-400/15 bg-red-500/5 text-vapor";
+                  return "border-white/5 bg-background/25 text-vapor";
+                };
                 const scoreClass = (won) => won ? "bg-green/15 text-green" : "bg-background/50 text-vapor";
+                const resultLabel = (won) => {
+                  if (!isComplete) return null;
+                  return won ? "Win" : "Loss";
+                };
+                const resultClass = (won) => won ? "text-green" : "text-red-300";
                 return (
                   <Link
                     key={roundMatch.id}
@@ -430,12 +439,14 @@ function BracketPreview({ matches, currentId, tournament }) {
                   >
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase text-vapor">Match {roundMatch.match_number}</span>
-                      <span className="text-[10px] uppercase text-vapor">{statusLabel(roundMatch.status)}</span>
+                      <span className="text-[10px] uppercase text-vapor">
+                        {statusLabel(roundMatch.status)}{roundMatch.is_forfeit ? " - forfeited" : ""}
+                      </span>
                     </div>
                     <div className={`mt-2 flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs ${teamRowClass(teamAWon)}`}>
                       <span className="truncate">{seedLabel(roundMatch.team_a_seed)} {roundMatch.team_a_name || "TBD"}</span>
                       <div className="flex shrink-0 items-center gap-1.5">
-                        {teamAWon && <span className="text-[9px] font-black uppercase text-green">Win</span>}
+                        {resultLabel(teamAWon) && <span className={`text-[9px] font-black uppercase ${resultClass(teamAWon)}`}>{resultLabel(teamAWon)}</span>}
                         <span className={`min-w-6 rounded px-1.5 py-0.5 text-center font-mono font-black ${scoreClass(teamAWon)}`}>
                           {isComplete ? teamAScore : "-"}
                         </span>
@@ -444,7 +455,7 @@ function BracketPreview({ matches, currentId, tournament }) {
                     <div className={`mt-1 flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs ${teamRowClass(teamBWon)}`}>
                       <span className="truncate">{seedLabel(roundMatch.team_b_seed)} {roundMatch.team_b_name || "TBD"}</span>
                       <div className="flex shrink-0 items-center gap-1.5">
-                        {teamBWon && <span className="text-[9px] font-black uppercase text-green">Win</span>}
+                        {resultLabel(teamBWon) && <span className={`text-[9px] font-black uppercase ${resultClass(teamBWon)}`}>{resultLabel(teamBWon)}</span>}
                         <span className={`min-w-6 rounded px-1.5 py-0.5 text-center font-mono font-black ${scoreClass(teamBWon)}`}>
                           {isComplete ? teamBScore : "-"}
                         </span>
@@ -495,14 +506,17 @@ export default function TournamentMatchRoom() {
     return [...teamAPlayers, ...teamBPlayers].some((player) => String(player.user_id || "") === String(user.id));
   }, [teamAPlayers, teamBPlayers, user?.id]);
   const canStaffSubmitResult = isStaff && !isMatchParticipant;
+  const canUseMatchControls = isMatchParticipant || isStaff;
+  const canChat = isMatchParticipant || isStaff;
   const canSubmit = useMemo(() => (
     Boolean(
       match?.team_a_id
       && match?.team_b_id
       && !isComplete
+      && (isMatchParticipant || canStaffSubmitResult)
       && (!["disputed", "score_conflict"].includes(match?.status) || canStaffSubmitResult)
     )
-  ), [match?.team_a_id, match?.team_b_id, match?.status, canStaffSubmitResult, isComplete]);
+  ), [match?.team_a_id, match?.team_b_id, match?.status, isMatchParticipant, canStaffSubmitResult, isComplete]);
 
   useEffect(() => {
     if (!match?.id || !user?.id || !staffRoles.has(user.role)) return;
@@ -806,6 +820,16 @@ export default function TournamentMatchRoom() {
           </div>
         )}
 
+        {match.is_forfeit && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-orange/25 bg-orange/10 px-5 py-4">
+            <Flag className="h-5 w-5 shrink-0 text-orange" />
+            <div>
+              <p className="text-sm font-black uppercase tracking-wider text-orange">{match.match_result_badge || "Match forfeited"}</p>
+              <p className="text-xs text-vapor">{match.match_result_note || `${match.forfeited_by_name || "Losing team"} forfeited the match.`}</p>
+            </div>
+          </div>
+        )}
+
         {canSubmit && !isComplete && (
           <div className="mb-3 flex items-center gap-3 rounded-lg border border-cyan/20 bg-cyan/5 px-4 py-3 text-xs text-vapor">
             <Flag className="h-4 w-4 shrink-0 text-cyan" />
@@ -852,6 +876,7 @@ export default function TournamentMatchRoom() {
 
         <MapSeries match={match} />
 
+        {canUseMatchControls && (
         <div className="glass rounded-xl border border-white/5 p-4 mb-6">
           {canAdminCorrect && (
             <div className="mb-3 border-b border-white/5 pb-3">
@@ -912,14 +937,14 @@ export default function TournamentMatchRoom() {
             </button>
             <button
               onClick={handleRequestAdmin}
-              disabled={requestingAdmin}
+              disabled={!isMatchParticipant || requestingAdmin}
               className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
             >
               <Gavel className="w-4 h-4" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
             </button>
             <button
               onClick={handleCreateDispute}
-              disabled={disputing}
+              disabled={!isMatchParticipant || disputing}
               className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50"
             >
               {disputing ? "Submitting..." : "Submit Dispute"}
@@ -951,10 +976,13 @@ export default function TournamentMatchRoom() {
             </p>
           )}
         </div>
+        )}
 
-        <div className="mb-6">
-          <MatchChat conversationId={match.id} matchType="tournament" accent="orange" live />
-        </div>
+        {canChat && (
+          <div className="mb-6">
+            <MatchChat conversationId={match.id} matchType="tournament" accent="orange" live />
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-6">
           <div className="glass rounded-xl border border-white/5 p-5">
@@ -985,7 +1013,7 @@ export default function TournamentMatchRoom() {
               </div>
               <div className="flex justify-between gap-3">
                 <span className="text-vapor">Best of</span>
-                <span>BO{match.best_of || 3} SND</span>
+                <span>BO{match.best_of || 3} {match.game_mode || "Series"}</span>
               </div>
               <div className="flex justify-between gap-3">
                 <span className="text-vapor">First host</span>

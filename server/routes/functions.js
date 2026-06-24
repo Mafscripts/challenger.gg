@@ -26,7 +26,13 @@ const tournamentStatusesOpenForRegistration = ["open", "registration"];
 const tournamentStatusesStarted = ["live", "in_progress"];
 const openTicketStatuses = ["open", "waiting_for_admin", "admin_joined", "waiting_for_user", "escalated"];
 const tournamentSndMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
-const tournamentMatchMode = "Search and Destroy";
+const tournamentHpMapPool = ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"];
+const tournamentSndHpSndSeries = [
+  { game_mode: "snd", mode: "Search and Destroy", pool: tournamentSndMapPool },
+  { game_mode: "hp", mode: "Hardpoint", pool: tournamentHpMapPool },
+  { game_mode: "snd", mode: "Search and Destroy", pool: tournamentSndMapPool },
+];
+const tournamentSndSeries = Array.from({ length: 3 }, () => ({ game_mode: "snd", mode: "Search and Destroy", pool: tournamentSndMapPool }));
 const tournamentBestOf = 3;
 
 function assertStaff(req, minimumRole = "moderator") {
@@ -215,7 +221,11 @@ async function grantTournamentMarketplaceUnlocks(users = [], context = {}) {
   if (validUsers.length === 0) return [];
 
   const items = (await listEntities("MarketplaceItem", { unlock_type: "tournament" }, "-created_date", 500).catch(() => []))
-    .filter((item) => item.is_active !== false && item.is_available !== false);
+    .filter((item) => (
+      item.is_active !== false
+      && item.is_available !== false
+      && item.category !== "trophy"
+    ));
   if (items.length === 0) return [];
 
   const granted = [];
@@ -375,6 +385,110 @@ async function createWalletTransaction(userId, wallet, payload) {
     created_date: nowIso(),
     ...payload,
   }).catch(() => null);
+}
+
+function tournamentPlacementPrize(tournament, placement = 1) {
+  const prizePool = roundedMoney(tournament?.prize_pool);
+  const distribution = tournament?.prize_distribution || {};
+  const amountKey = placement === 2 ? "second_amount" : "first_amount";
+  const legacyKey = placement === 2 ? "second" : "first";
+  const amount = Number(distribution[amountKey]);
+  if (Number.isFinite(amount) && amount > 0) return roundedMoney(amount);
+
+  const legacy = Number(distribution[legacyKey]);
+  if (Number.isFinite(legacy) && legacy > 100) return roundedMoney(legacy);
+  if (Number.isFinite(legacy) && legacy > 0) {
+    return roundedMoney(prizePool * (legacy / 100));
+  }
+  return placement === 1 ? prizePool : 0;
+}
+
+function splitPrizeCents(totalPrize, winnerCount) {
+  const count = Math.max(1, Number(winnerCount || 0));
+  const totalCents = Math.round(roundedMoney(totalPrize) * 100);
+  const baseCents = Math.floor(totalCents / count);
+  const remainder = totalCents - (baseCents * count);
+
+  return Array.from({ length: count }, (_value, index) => (
+    (baseCents + (index < remainder ? 1 : 0)) / 100
+  ));
+}
+
+async function awardTournamentPrize(tournament, participantId, winnerUserIds = [], placement = 1) {
+  const totalPrize = tournamentPlacementPrize(tournament, placement);
+  const userIds = [...new Set((winnerUserIds || []).filter(Boolean))];
+  if (totalPrize <= 0 || userIds.length === 0) {
+    return { total_prize: 0, paid_user_ids: [], payouts: [] };
+  }
+
+  const prizeShares = splitPrizeCents(totalPrize, userIds.length);
+  const payouts = [];
+
+  for (let index = 0; index < userIds.length; index += 1) {
+    const userId = userIds[index];
+    const amount = roundedMoney(prizeShares[index]);
+    if (amount <= 0) continue;
+
+    const existingTransactions = await listEntities("WalletTransaction", { user_id: userId }, "-created_date", 500).catch(() => []);
+    const alreadyPaid = existingTransactions.some((transaction) => (
+      transaction.type === "tournament_prize"
+      && transaction.reference_type === "Tournament"
+      && String(transaction.reference_id || "") === String(tournament.id)
+      && (Number(transaction.placement || 1) === placement)
+    ));
+    if (alreadyPaid) continue;
+
+    const wallet = await walletFor(userId);
+    const balanceBefore = roundedMoney(wallet.available_balance);
+    const balanceAfter = roundedMoney(balanceBefore + amount);
+    const updatedWallet = await updateEntity("Wallet", wallet.id, {
+      available_balance: balanceAfter,
+      withdrawable_balance: roundedMoney(money(wallet.withdrawable_balance) + amount),
+      total_earnings: roundedMoney(money(wallet.total_earnings) + amount),
+    });
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        wallet_balance: roundedMoney(updatedWallet.available_balance),
+        lifetime_earnings: { increment: amount },
+      },
+    }).catch(() => null);
+
+    const transaction = await createWalletTransaction(userId, updatedWallet, {
+      type: "tournament_prize",
+      amount,
+      balance_before: balanceBefore,
+      balance_after: balanceAfter,
+      description: `Tournament prize - ${tournament.name || tournament.id}`,
+      reference_type: "Tournament",
+      reference_id: tournament.id,
+      participant_id: participantId,
+      placement,
+    });
+    payouts.push({ user_id: userId, amount, wallet_id: updatedWallet.id, transaction_id: transaction?.id });
+  }
+
+  const winnerParticipant = await tournamentParticipantForEntry(tournament.id, participantId).catch(() => null);
+  if (winnerParticipant) {
+    await updateEntity("TournamentParticipant", winnerParticipant.id, {
+      prize_won: totalPrize,
+      final_rank: placement,
+      prize_paid_date: nowIso(),
+    }).catch(() => null);
+  }
+
+  if (payouts.length > 0) {
+    await notifyUsers(payouts.map((payout) => payout.user_id), {
+      title: "Tournament prize paid",
+      message: `$${totalPrize.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for place #${placement} in ${tournament.name || "the tournament"} was split across the roster.`,
+      type: "tournament",
+      action_url: "/wallet",
+      related_entity_id: tournament.id,
+      related_entity_type: "Tournament",
+    });
+  }
+
+  return { total_prize: totalPrize, paid_user_ids: payouts.map((payout) => payout.user_id), payouts };
 }
 
 async function escrowWagerStake({ userId, wagerId, entryFee, team }) {
@@ -876,24 +990,43 @@ function stableHash(value) {
   ), 0);
 }
 
-function generatedMapPoolForMatch(match, pool = tournamentSndMapPool) {
-  const round = Math.max(1, Number(match?.round || 1));
-  const matchNumber = Math.max(1, Number(match?.match_number || 1));
-  const tournamentOffset = stableHash(match?.tournament_id) % pool.length;
-  const roundOffset = (round - 1) * tournamentBestOf;
-  const matchOffset = matchNumber - 1;
-  const start = (tournamentOffset + roundOffset + matchOffset) % pool.length;
-
-  return Array.from({ length: tournamentBestOf }, (_, index) => pool[(start + index) % pool.length]);
+function tournamentMapSeriesFor(gameMode) {
+  return String(gameMode || "").toLowerCase() === "snd_hp_snd"
+    ? { key: "snd_hp_snd", label: "SND / HP / SND", games: tournamentSndHpSndSeries }
+    : { key: "snd", label: "Search and Destroy", games: tournamentSndSeries };
 }
 
-function mapGenerationKey(match) {
+function tournamentMapSeriesForMatch(match, tournament = null) {
+  return tournamentMapSeriesFor(tournament?.game_mode || match?.tournament_game_mode || match?.series_key || match?.game_mode);
+}
+
+function generatedMapForSeriesGame(match, game, index, series) {
+  const pool = game.pool || tournamentSndMapPool;
+  const round = Math.max(1, Number(match?.round || 1));
+  const matchNumber = Math.max(1, Number(match?.match_number || 1));
+  const sameModeOffset = series.games
+    .slice(0, index)
+    .filter((entry) => entry.game_mode === game.game_mode)
+    .length;
+  const tournamentOffset = stableHash(`${match?.tournament_id}:${game.game_mode}`) % pool.length;
+  const roundOffset = (round - 1) * series.games.length;
+  const matchOffset = matchNumber - 1;
+  const mapIndex = (tournamentOffset + roundOffset + matchOffset + sameModeOffset) % pool.length;
+
+  return pool[mapIndex];
+}
+
+function generatedMapPoolForMatch(match, series = tournamentMapSeriesForMatch(match)) {
+  return series.games.map((game, index) => generatedMapForSeriesGame(match, game, index, series));
+}
+
+function mapGenerationKey(match, series = tournamentMapSeriesForMatch(match)) {
   return [
-    "snd-bo3",
+    `bo3-${series.key}`,
     match?.tournament_id || "tournament",
     `round-${match?.round || 1}`,
     `match-${match?.match_number || 1}`,
-    tournamentSndMapPool.join("-").toLowerCase(),
+    series.games.map((game) => `${game.game_mode}:${game.pool.join("-")}`).join("|").toLowerCase(),
   ].join(":");
 }
 
@@ -931,15 +1064,16 @@ function secondHostForMatch(match, participantA, participantB, firstHost) {
   };
 }
 
-function generatedTournamentMaps(match, participantA, participantB) {
-  const selectedMaps = generatedMapPoolForMatch(match);
+function generatedTournamentMaps(match, participantA, participantB, series = tournamentMapSeriesForMatch(match)) {
+  const selectedMaps = generatedMapPoolForMatch(match, series);
   const firstHost = firstHostForMatch(match, participantA, participantB);
   const secondHost = secondHostForMatch(match, participantA, participantB, firstHost);
-  const hosts = [firstHost, secondHost, firstHost];
+  const hosts = [firstHost, secondHost, null];
 
   return selectedMaps.map((map, index) => ({
     game: index + 1,
-    mode: tournamentMatchMode,
+    game_mode: series.games[index]?.game_mode || "snd",
+    mode: series.games[index]?.mode || "Search and Destroy",
     map,
     host_team_id: hosts[index]?.id || null,
     host_team_name: hosts[index]?.name || "TBD",
@@ -957,23 +1091,30 @@ function participantMapById(participants = []) {
   return Object.fromEntries(pairs);
 }
 
-function tournamentMatchSetupPatch(match, participants = []) {
+function tournamentMatchSetupPatch(match, participants = [], tournament = null) {
   const byId = participantMapById(participants);
   const participantA = byId[match.team_a_participant_id] || byId[match.team_a_id] || null;
   const participantB = byId[match.team_b_participant_id] || byId[match.team_b_id] || null;
   const teamASeed = match.team_a_seed || participantA?.seed || (match.team_a_id ? 1 : null);
   const teamBSeed = match.team_b_seed || participantB?.seed || (match.team_b_id ? 2 : null);
   const seededMatch = { ...match, team_a_seed: teamASeed, team_b_seed: teamBSeed };
+  const series = tournamentMapSeriesForMatch(seededMatch, tournament);
   const firstHost = firstHostForMatch(seededMatch, participantA, participantB);
-  const generationKey = mapGenerationKey(seededMatch);
+  const generationKey = mapGenerationKey(seededMatch, series);
   const maps = Array.isArray(match.maps) && match.maps.length === tournamentBestOf && match.map_generation_key === generationKey
     ? match.maps
-    : generatedTournamentMaps(seededMatch, participantA, participantB);
+    : generatedTournamentMaps(seededMatch, participantA, participantB, series);
 
   return {
     best_of: tournamentBestOf,
-    game_mode: tournamentMatchMode,
-    map_pool: tournamentSndMapPool,
+    game_mode: series.label,
+    tournament_game_mode: series.key,
+    map_sequence: series.games.map((game, index) => ({
+      game: index + 1,
+      game_mode: game.game_mode,
+      mode: game.mode,
+    })),
+    map_pool: [...new Set(series.games.flatMap((game) => game.pool))],
     maps,
     team_a_seed: teamASeed,
     team_b_seed: teamBSeed,
@@ -1018,13 +1159,19 @@ async function notifyTournamentMatchAssigned(match) {
   });
 }
 
-async function completeTournament(tournamentId, winnerId, winnerName) {
+async function completeTournament(tournamentId, winnerId, winnerName, runnerUpId = null, runnerUpName = null) {
   const tournament = await getEntity("Tournament", tournamentId);
+  if (tournament.status === "completed" || tournament.winner_id) {
+    return tournament;
+  }
   const winnerUserIds = await tournamentParticipantUserIds(tournamentId, winnerId);
+  const runnerUpUserIds = runnerUpId ? await tournamentParticipantUserIds(tournamentId, runnerUpId) : [];
   const updated = await updateEntity("Tournament", tournamentId, {
     status: "completed",
     winner_id: winnerId,
     winner_name: winnerName,
+    runner_up_id: runnerUpId,
+    runner_up_name: runnerUpName,
     completed_date: nowIso(),
   });
 
@@ -1042,6 +1189,9 @@ async function completeTournament(tournamentId, winnerId, winnerName) {
     where: { id: userId },
     data: { tournament_wins: { increment: 1 } },
   }).catch(() => null)));
+  const firstPrize = await awardTournamentPrize(tournament, winnerId, winnerUserIds, 1);
+  const secondPrize = await awardTournamentPrize(tournament, runnerUpId, runnerUpUserIds, 2);
+  const prize = { first: firstPrize, second: secondPrize };
 
   const rewardTournament = { ...tournament, ...updated };
   const selectedRewardItems = await marketplaceItemsByIds(tournamentRewardItemIds(rewardTournament));
@@ -1070,14 +1220,16 @@ async function completeTournament(tournamentId, winnerId, winnerName) {
     related_entity_type: "Tournament",
   });
 
-  return { ...updated, reward_items: tournament_reward_items, elimination_reward_items, unlocked_items };
+  return { ...updated, prize, reward_items: tournament_reward_items, elimination_reward_items, unlocked_items };
 }
 
 async function advanceTournamentWinner(match) {
   if (!match?.winner_id) return {};
 
   if (!match.next_match_round || !match.next_match_number) {
-    const tournament = await completeTournament(match.tournament_id, match.winner_id, match.winner_name);
+    const runnerUpId = tournamentMatchLoserId(match, match.winner_id);
+    const runnerUpName = String(runnerUpId || "") === String(match.team_a_id || "") ? match.team_a_name : match.team_b_name;
+    const tournament = await completeTournament(match.tournament_id, match.winner_id, match.winner_name, runnerUpId, runnerUpName);
     return { tournament_completed: true, tournament };
   }
 
@@ -1101,7 +1253,8 @@ async function advanceTournamentWinner(match) {
     patch.status = "ready";
     patch.assigned_date = nowIso();
     const participants = await tournamentParticipants(match.tournament_id);
-    Object.assign(patch, tournamentMatchSetupPatch(candidate, participants));
+    const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
+    Object.assign(patch, tournamentMatchSetupPatch(candidate, participants, tournament));
   }
   const updatedNext = await updateEntity("TournamentMatch", nextMatch.id, patch);
   if (patch.status === "ready") await notifyTournamentMatchAssigned(updatedNext);
@@ -1140,6 +1293,43 @@ function tournamentScoreResetPatch() {
     confirmed_by_name: null,
     dispute_id: null,
     score_conflict_date: null,
+    is_forfeit: false,
+    forfeit_reason: null,
+    forfeited_by_id: null,
+    forfeited_by_name: null,
+    forfeit_winner_id: null,
+    forfeit_winner_name: null,
+    forfeit_date: null,
+    match_result_badge: null,
+    match_result_note: null,
+  };
+}
+
+function tournamentRequiredWins(match) {
+  const bestOf = Math.max(1, Number(match?.best_of || tournamentBestOf));
+  return Math.floor(bestOf / 2) + 1;
+}
+
+function tournamentForfeitScore(match, teamAWins) {
+  const winsNeeded = tournamentRequiredWins(match);
+  return {
+    teamAScore: teamAWins ? winsNeeded : 0,
+    teamBScore: teamAWins ? 0 : winsNeeded,
+  };
+}
+
+function tournamentForfeitPatch({ winnerId, winnerName, loserId, loserName, reason, date }) {
+  const cleanReason = reason || "Admin granted win";
+  return {
+    is_forfeit: true,
+    forfeit_reason: cleanReason,
+    forfeited_by_id: loserId || null,
+    forfeited_by_name: loserName || null,
+    forfeit_winner_id: winnerId || null,
+    forfeit_winner_name: winnerName || null,
+    forfeit_date: date || nowIso(),
+    match_result_badge: "Match forfeited",
+    match_result_note: `${loserName || "Losing team"} forfeited to ${winnerName || "Winning team"}.`,
   };
 }
 
@@ -1285,8 +1475,11 @@ async function undoTournamentAdvancement(match, replacement = null) {
         map_generation_key: null,
       });
       if (hasBothTeams(candidate)) {
-        const participants = await tournamentParticipants(match.tournament_id);
-        Object.assign(patch, tournamentMatchSetupPatch(candidate, participants));
+        const [participants, activeTournament] = await Promise.all([
+          tournamentParticipants(match.tournament_id),
+          getEntity("Tournament", match.tournament_id).catch(() => null),
+        ]);
+        Object.assign(patch, tournamentMatchSetupPatch(candidate, participants, activeTournament));
       }
       const updatedLegacyNext = await updateEntity("TournamentMatch", downstreamMatch.id, patch);
       if (patch.status === "ready") await notifyTournamentMatchAssigned(updatedLegacyNext);
@@ -1300,6 +1493,8 @@ async function undoTournamentAdvancement(match, replacement = null) {
       status: "in_progress",
       winner_id: null,
       winner_name: null,
+      runner_up_id: null,
+      runner_up_name: null,
       completed_date: null,
       corrected_date: nowIso(),
     });
@@ -1324,16 +1519,21 @@ async function advanceLegacyTournamentRound(tournamentId, completedRound) {
   }));
 
   if (winners.length === 1) {
-    const tournament = await completeTournament(tournamentId, winners[0].id, winners[0].name);
+    const finalMatch = roundMatches[0];
+    const runnerUpId = tournamentMatchLoserId(finalMatch, winners[0].id);
+    const runnerUpName = String(runnerUpId || "") === String(finalMatch?.team_a_id || "") ? finalMatch?.team_a_name : finalMatch?.team_b_name;
+    const tournament = await completeTournament(tournamentId, winners[0].id, winners[0].name, runnerUpId, runnerUpName);
     return { tournament_completed: true, tournament };
   }
 
+  const tournament = await getEntity("Tournament", tournamentId).catch(() => null);
   const created = [];
   for (let index = 0; index < winners.length; index += 2) {
     const a = winners[index];
     const b = winners[index + 1];
     created.push(await createEntity("TournamentMatch", {
       tournament_id: tournamentId,
+      tournament_game_mode: tournament?.game_mode || "snd",
       bracket: "winner",
       round: Number(completedRound) + 1,
       match_number: (index / 2) + 1,
@@ -2514,12 +2714,13 @@ async function resolveTicket(req) {
           },
         });
       } else if (matchType === "tournament") {
-        actionResult = await completeTournamentMatch({
+        actionResult = await adminCorrectTournamentMatch({
           ...req,
           body: {
+            ...req.body,
             tournament_match_id: match.id,
-            team_a_score: action === "approve_team_a" ? 1 : 0,
-            team_b_score: action === "approve_team_b" ? 1 : 0,
+            action: action === "approve_team_a" ? "grant_team_a" : "grant_team_b",
+            reason: req.body.resolution || req.body.notes || "Admin granted win",
           },
         });
       } else {
@@ -2585,13 +2786,14 @@ async function adminResolveMatchRoom(req) {
 
   const entityName = matchEntityFor(matchType);
   const match = await getEntity(entityName, req.body.match_id);
-  if (matchType === "tournament" && (match.completed || match.status === "completed")) {
+  if (matchType === "tournament") {
     return adminCorrectTournamentMatch({
       ...req,
       body: {
         ...req.body,
         tournament_match_id: match.id,
         action: action === "approve_team_a" ? "grant_team_a" : "grant_team_b",
+        reason: req.body.reason || "Admin granted win",
       },
     });
   }
@@ -2762,8 +2964,7 @@ async function adminCorrectTournamentMatch(req) {
   const winnerName = teamAWins ? match.team_a_name : match.team_b_name;
   const loserId = teamAWins ? match.team_b_id : match.team_a_id;
   const loserName = teamAWins ? match.team_b_name : match.team_a_name;
-  const teamAScore = teamAWins ? 1 : 0;
-  const teamBScore = teamAWins ? 0 : 1;
+  const { teamAScore, teamBScore } = tournamentForfeitScore(match, teamAWins);
   const completedDate = nowIso();
   const sameWinner = String(match.winner_id || "") === String(winnerId)
     && (match.completed || match.status === "completed");
@@ -2795,6 +2996,14 @@ async function adminCorrectTournamentMatch(req) {
     confirmed_score_date: completedDate,
     confirmed_by: req.user.id,
     confirmed_by_name: nameFor(req.user),
+    ...tournamentForfeitPatch({
+      winnerId,
+      winnerName,
+      loserId,
+      loserName,
+      reason,
+      date: completedDate,
+    }),
     admin_corrected_by: req.user.id,
     admin_corrected_by_name: nameFor(req.user),
     admin_correction_action: action,
@@ -2824,7 +3033,7 @@ async function adminCorrectTournamentMatch(req) {
     ? await advanceTournamentWinner(updated)
     : await advanceLegacyTournamentRound(updated.tournament_id, updated.round);
 
-  const message = `Admin ${nameFor(req.user)} corrected the tournament result: ${winnerName || "Winning team"} wins, ${loserName || "other team"} receives the loss.`;
+  const message = `Admin ${nameFor(req.user)} marked the tournament match forfeited: ${winnerName || "Winning team"} wins ${teamAScore}-${teamBScore}.`;
   await createMatchRoomSystemMessage("tournament", updated, message, req.user);
 
   const ticket = await openMatchAdminTicket(match.id, req.body.ticket_id || match.admin_request_ticket_id);
@@ -2841,8 +3050,8 @@ async function adminCorrectTournamentMatch(req) {
   }
 
   await notifyTournamentParticipants(match.tournament_id, {
-    title: "Tournament result corrected",
-    message: `${winnerName || "A team"} was granted the win by an admin.`,
+    title: "Tournament match forfeited",
+    message: `${winnerName || "A team"} was granted the win ${teamAScore}-${teamBScore}.`,
     type: "match",
     action_url: `/tournament-match/${match.id}`,
     related_entity_id: match.id,
@@ -2865,6 +3074,8 @@ async function adminCorrectTournamentMatch(req) {
       winner_name: winnerName,
       loser_id: loserId,
       loser_name: loserName,
+      score: `${teamAScore}-${teamBScore}`,
+      is_forfeit: true,
       previous,
       undo,
       reward_undo: rewardUndo,
@@ -3805,6 +4016,7 @@ async function generateTournamentBracket(req) {
       const winner = hasBye ? (a || b) : null;
       const matchPayload = {
         tournament_id: tournamentId,
+        tournament_game_mode: tournament.game_mode || "snd",
         bracket: "winner",
         round,
         match_number: matchNumber,
@@ -3823,7 +4035,7 @@ async function generateTournamentBracket(req) {
       };
       matches.push(await createEntity("TournamentMatch", {
         ...matchPayload,
-        ...(hasA && hasB ? tournamentMatchSetupPatch(matchPayload, participants) : {}),
+        ...(hasA && hasB ? tournamentMatchSetupPatch(matchPayload, participants, tournament) : {}),
       }));
     }
   }
@@ -3871,17 +4083,15 @@ async function ensureTournamentMatchSetup(req) {
   const matchId = req.body.tournament_match_id || req.body.match_id;
   if (!matchId) return { success: false, error: "Tournament match id is required" };
   const match = await getEntity("TournamentMatch", matchId);
-  const participantIds = await matchParticipantIds("tournament", match);
-  const participantIdSet = new Set(participantIds.map(String));
-  if (!hasRole(req.user, "moderator") && !participantIdSet.has(String(req.user.id))) {
-    return { success: false, error: "Only match participants can set up this match" };
-  }
   if (!match.team_a_id || !match.team_b_id) {
     return { success: false, error: "Both teams must be assigned before maps can be generated" };
   }
 
-  const participants = await tournamentParticipants(match.tournament_id);
-  const patch = tournamentMatchSetupPatch(match, participants);
+  const [participants, tournament] = await Promise.all([
+    tournamentParticipants(match.tournament_id),
+    getEntity("Tournament", match.tournament_id).catch(() => null),
+  ]);
+  const patch = tournamentMatchSetupPatch(match, participants, tournament);
   const updated = await updateEntity("TournamentMatch", match.id, patch);
   return { success: true, match: updated };
 }

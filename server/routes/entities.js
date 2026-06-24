@@ -52,16 +52,12 @@ const participantMatchesTournamentMatch = (participant, match) => {
   return participantIds.some((id) => matchIds.includes(id));
 };
 
-const canViewTournamentBracket = async (req, tournamentId) => {
-  if (hasRole(req.user, "moderator")) return true;
-  if (!tournamentId) return false;
-  const participants = await listEntities("TournamentParticipant", { tournament_id: tournamentId }, "seed", 500).catch(() => []);
-  return participants.some((participant) => participantIncludesUser(participant, req.user.id));
-};
+const canViewTournamentMatch = async (_req, match) => Boolean(match?.tournament_id);
 
-const canViewTournamentMatch = async (req, match) => {
+const canViewTournamentChat = async (req, conversationId) => {
   if (hasRole(req.user, "moderator")) return true;
-  if (!match?.tournament_id) return false;
+  const match = await getEntity("TournamentMatch", conversationId).catch(() => null);
+  if (!match?.tournament_id) return true;
   const participants = await listEntities("TournamentParticipant", { tournament_id: match.tournament_id }, "seed", 500).catch(() => []);
   return participants.some((participant) => (
     participantIncludesUser(participant, req.user.id)
@@ -77,16 +73,15 @@ const canViewWager = async (req, wager) => {
   return participants.some((participant) => String(participant.user_id || "") === String(req.user.id));
 };
 
-const visibleTournamentParticipants = async (req, rows, filter) => {
-  if (hasRole(req.user, "moderator")) return rows;
-  return rows.filter((participant) => participantIncludesUser(participant, req.user.id));
-};
+const visibleTournamentParticipants = async (_req, rows) => rows;
 
-const visibleTournamentMatches = async (req, rows, filter) => {
-  if (hasRole(req.user, "moderator")) return rows;
-  const visible = await Promise.all(rows.map(async (match) => (
-    await canViewTournamentMatch(req, match) ? match : null
-  )));
+const visibleTournamentMatches = async (_req, rows) => rows;
+
+const visibleChatMessages = async (req, rows) => {
+  const visible = await Promise.all(rows.map(async (message) => {
+    if (message.match_type !== "tournament") return message;
+    return await canViewTournamentChat(req, message.conversation_id) ? message : null;
+  }));
   return visible.filter(Boolean);
 };
 
@@ -117,6 +112,9 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
     if (req.params.entity === "Wager") {
       return res.json(await visibleWagers(req, rows));
     }
+    if (req.params.entity === "ChatMessage") {
+      return res.json(await visibleChatMessages(req, rows));
+    }
     res.json(rows);
   } catch (error) {
     next(error);
@@ -127,10 +125,13 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
     const row = await getEntity(req.params.entity, req.params.id);
     if (req.params.entity === "TournamentMatch" && !await canViewTournamentMatch(req, row)) {
-      return res.status(403).json({ error: "Only tournament participants can view this bracket match" });
+      return res.status(403).json({ error: "Tournament match is not available" });
     }
     if (req.params.entity === "Wager" && !await canViewWager(req, row)) {
       return res.status(403).json({ error: "Only wager participants can view this match" });
+    }
+    if (req.params.entity === "ChatMessage" && row.match_type === "tournament" && !await canViewTournamentChat(req, row.conversation_id)) {
+      return res.status(403).json({ error: "Only tournament match participants can view this chat" });
     }
     res.json(row);
   } catch (error) {

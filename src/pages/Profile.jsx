@@ -213,7 +213,7 @@ export default function Profile() {
               <StatCard icon={Swords} label="Record" value={`${wins}-${losses}`} color="text-cyan" />
               <StatCard icon={Trophy} label="Win Rate" value={`${winRate}%`} color="text-green" />
               <StatCard icon={Flame} label="Streak" value={rankedStats?.win_streak || user.current_win_streak || 0} color="text-orange" />
-              <StatCard icon={Award} label="Earnings" value={formatMoney(user.total_wager_earnings || profile?.total_earnings)} color="text-purple-400" />
+              <StatCard icon={Award} label="Earnings" value={formatMoney(user.lifetime_earnings || user.total_wager_earnings || profile?.total_earnings)} color="text-purple-400" />
             </div>
             <div className="glass rounded-xl border border-white/5 p-5">
               <h3 className="font-bold text-sm mb-3">Bio</h3>
