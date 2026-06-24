@@ -18,7 +18,6 @@ import MatchChat from "@/components/match/MatchChat";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import { getRankForElo } from "@/lib/ranks";
-import { isStaffNotificationUser, playStaffNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 
 const playerName = (user, fallback = "Unnamed player") => (
   user?.display_name || user?.full_name || user?.username || user?.email || fallback
@@ -226,7 +225,6 @@ export default function RankedMatchRoom() {
   };
 
   const handleSupportTicket = async (reason) => {
-    if (isStaffNotificationUser(user)) unlockNotificationSound();
     setSupporting(true);
     try {
       const response = await base44.functions.invoke("requestAdminAlert", {
@@ -238,7 +236,6 @@ export default function RankedMatchRoom() {
       });
 
       if (response.data?.success) {
-        if (isStaffNotificationUser(user)) playStaffNotificationSound();
         toast({ title: "Admin requested", description: "Staff were notified for this ranked match." });
         await loadRoom();
       } else {

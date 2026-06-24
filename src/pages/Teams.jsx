@@ -329,11 +329,11 @@ export default function Teams() {
                   <img
                     src={selectedTeam.banner_url}
                     alt={`${selectedTeam.name} banner`}
-                    className="absolute inset-0 h-full w-full object-cover opacity-20"
+                    className="absolute inset-0 z-0 h-full w-full object-cover opacity-20"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-r from-obsidian via-obsidian/85 to-obsidian/40" />
-                <div className="relative flex items-center gap-6 mb-6">
+                <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-r from-obsidian via-obsidian/85 to-obsidian/40" />
+                <div className="relative z-10 flex items-center gap-6 mb-6">
                   <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan/30 to-orange/30 flex items-center justify-center text-2xl font-black">
                     {teamInitials(selectedTeam)}
                   </div>
@@ -345,14 +345,14 @@ export default function Teams() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="relative z-10 space-y-3">
                   {selectedMembers.length === 0 ? (
                     <div className="text-sm text-vapor">No active members recorded.</div>
                   ) : selectedMembers.map((member) => (
-                    <div key={member.id} className="flex items-center gap-4 p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-xs font-bold font-mono">{member.user_name?.charAt(0) || "?"}</div>
+                    <div key={member.id} className="flex items-center gap-4 rounded-lg border border-white/10 bg-secondary/70 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+                      <div className="w-10 h-10 rounded-lg bg-background/80 flex items-center justify-center text-xs font-bold font-mono text-cyan">{member.user_name?.charAt(0) || "?"}</div>
                       <div className="flex-1">
-                        <Link to={`/profile/${member.user_name || member.user_id || ""}`} className="font-semibold text-sm hover:text-cyan transition-colors">{member.user_name || "Unnamed member"}</Link>
+                        <Link to={`/profile/${member.user_name || member.user_id || ""}`} className="font-semibold text-sm text-white hover:text-cyan transition-colors">{member.user_name || "Unnamed member"}</Link>
                         <p className="text-xs text-vapor capitalize">{member.role || "member"}</p>
                       </div>
                       {member.role === "captain" && <Crown className="w-4 h-4 text-orange" />}

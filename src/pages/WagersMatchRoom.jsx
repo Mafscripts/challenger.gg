@@ -9,7 +9,6 @@ import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import UserBadges from "@/components/ui/UserBadges";
-import { isStaffNotificationUser, playStaffNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 
 const formatStatus = (value) => String(value || "open").replace(/_/g, " ");
 const formatDate = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Pending";
@@ -280,7 +279,6 @@ export default function WagersMatchRoom() {
   };
 
   const handleRequestAdmin = async (reason) => {
-    if (isStaffNotificationUser(user)) unlockNotificationSound();
     setRequestingAdmin(true);
     try {
       const response = await base44.functions.invoke("requestAdminAlert", {
@@ -292,7 +290,6 @@ export default function WagersMatchRoom() {
       });
 
       if (response.data?.success) {
-        if (isStaffNotificationUser(user)) playStaffNotificationSound();
         toast({ title: "Admin requested", description: "A staff alert and support ticket were created." });
         await loadWager();
       } else {

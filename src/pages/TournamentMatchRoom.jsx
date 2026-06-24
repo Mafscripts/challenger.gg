@@ -20,7 +20,6 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
 import UserBadges from "@/components/ui/UserBadges";
-import { isStaffNotificationUser, playStaffNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 
 const bracketLabels = {
   winner: "Winner Bracket",
@@ -639,7 +638,6 @@ export default function TournamentMatchRoom() {
   };
 
   const handleRequestAdmin = async () => {
-    if (isStaffNotificationUser(user)) unlockNotificationSound();
     setRequestingAdmin(true);
     try {
       const response = await base44.functions.invoke("requestAdminAlert", {
@@ -651,7 +649,6 @@ export default function TournamentMatchRoom() {
       });
 
       if (response.data?.success) {
-        if (isStaffNotificationUser(user)) playStaffNotificationSound();
         toast({ title: "Admin requested", description: "A staff alert and ticket were created." });
         await loadRoom();
       } else {

@@ -127,7 +127,9 @@ export default function Navbar() {
   const [matchesOpen, setMatchesOpen] = useState(false);
   const [activeMatches, setActiveMatches] = useState([]);
   const notificationSoundReady = useRef(false);
-  const previousUnreadNotifCount = useRef(0);
+  const messageSoundReady = useRef(false);
+  const seenNotificationIds = useRef(new Set());
+  const seenMessageIds = useRef(new Set());
   const location = useLocation();
   const { isAuthenticated, user: authUser } = useAuth();
   const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
@@ -151,6 +153,10 @@ export default function Navbar() {
     setUnreadMessagesCount(0);
     setWalletBalance(0);
     setActiveMatches([]);
+    notificationSoundReady.current = false;
+    messageSoundReady.current = false;
+    seenNotificationIds.current = new Set();
+    seenMessageIds.current = new Set();
   };
 
   useEffect(() => {
@@ -211,6 +217,22 @@ export default function Navbar() {
     return () => clearInterval(interval);
   }, [isAuthenticated, authUser]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    const notificationInterval = setInterval(() => {
+      loadNotifications();
+    }, 5000);
+    return () => clearInterval(notificationInterval);
+  }, [isAuthenticated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    const messageInterval = setInterval(() => {
+      loadMessages();
+    }, 5000);
+    return () => clearInterval(messageInterval);
+  }, [isAuthenticated, authUser?.id]);
+
   const loadUser = async () => {
     try {
       const userData = await base44.auth.me();
@@ -233,18 +255,24 @@ export default function Navbar() {
     try {
       const user = await base44.auth.me();
       if (!user) return;
-      const data = await base44.entities.Notification.filter({ user_id: user.id }, '-created_date', 5);
-      const unreadCount = (data || []).filter(n => !n.is_read).length;
-      if (
+      const data = await base44.entities.Notification.filter({ user_id: user.id }, '-created_date', 10);
+      const rows = data || [];
+      const unreadCount = rows.filter(n => !n.is_read).length;
+      const incomingAdminRequest = rows.some((notification) => (
         notificationSoundReady.current
-        && isStaffNotificationUser(user)
-        && unreadCount > previousUnreadNotifCount.current
-      ) {
+        && !seenNotificationIds.current.has(notification.id)
+        && !notification.is_read
+        && notification.notification_sound === "admin_request"
+        && notification.requested_by_user_id !== user.id
+      ));
+      if (isStaffNotificationUser(user) && incomingAdminRequest) {
         playStaffNotificationSound();
       }
+      rows.forEach((notification) => {
+        if (notification.id) seenNotificationIds.current.add(notification.id);
+      });
       notificationSoundReady.current = true;
-      previousUnreadNotifCount.current = unreadCount;
-      setNotifications(data || []);
+      setNotifications(rows);
       setUnreadNotifCount(unreadCount);
     } catch (error) {
       console.error('Failed to load notifications:', error);
@@ -256,8 +284,22 @@ export default function Navbar() {
       const user = await base44.auth.me();
       if (!user) return;
       const data = await base44.entities.Message.filter({ recipient_id: user.id }, '-created_date', 5);
-      setMessages(data || []);
-      setUnreadMessagesCount((data || []).filter(m => !m.is_read).length);
+      const rows = data || [];
+      const incomingMessage = rows.some((message) => (
+        messageSoundReady.current
+        && !seenMessageIds.current.has(message.id)
+        && !message.is_read
+        && message.sender_id !== user.id
+      ));
+      if (isStaffNotificationUser(user) && incomingMessage) {
+        playStaffNotificationSound();
+      }
+      rows.forEach((message) => {
+        if (message.id) seenMessageIds.current.add(message.id);
+      });
+      messageSoundReady.current = true;
+      setMessages(rows);
+      setUnreadMessagesCount(rows.filter(m => !m.is_read).length);
     } catch (error) {
       console.error('Failed to load messages:', error);
     }

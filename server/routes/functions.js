@@ -89,7 +89,15 @@ async function usersWithStaffRole() {
   return users.filter((user) => staffRoles.includes(user.role));
 }
 
-async function notifyUser(userId, { title, message, type = "system", action_url, related_entity_id, related_entity_type }) {
+async function notifyUser(userId, {
+  title,
+  message,
+  type = "system",
+  action_url,
+  related_entity_id,
+  related_entity_type,
+  ...metadata
+}) {
   if (!userId) return null;
   return createEntity("Notification", {
     user_id: userId,
@@ -100,6 +108,7 @@ async function notifyUser(userId, { title, message, type = "system", action_url,
     action_url,
     related_entity_id,
     related_entity_type,
+    ...metadata,
     created_date: nowIso(),
   }).catch(() => null);
 }
@@ -2599,6 +2608,9 @@ async function requestAdminAlert(req) {
     action_url: context.actionUrl,
     related_entity_id: ticket.id,
     related_entity_type: "Ticket",
+    notification_sound: "admin_request",
+    requested_by_user_id: req.user.id,
+    requested_by_name: nameFor(req.user),
   });
   await notifyTicketUsers(ticket, {
     title: existingTicket ? "Admin request updated" : "Admin request created",
