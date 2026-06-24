@@ -221,6 +221,11 @@
       "type": "boolean",
       "default": false,
       "title": "Force Stream Required"
+    },
+    "monitor_cam_required": {
+      "type": "boolean",
+      "default": false,
+      "title": "Monitor Cam Required"
     }
   },
   "required": [

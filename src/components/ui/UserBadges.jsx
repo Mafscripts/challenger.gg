@@ -35,10 +35,19 @@ export function userSpecialBadges(user) {
   }));
 }
 
-export default function UserBadges({ user, badges, size = "sm", showForceStream = true, iconOnly = false, className = "" }) {
+export default function UserBadges({
+  user,
+  badges,
+  size = "sm",
+  showForceStream = true,
+  showMonitorCam = false,
+  iconOnly = false,
+  className = "",
+}) {
   const rows = badges || userSpecialBadges(user);
   const forcedStream = showForceStream && Boolean(user?.force_stream_required || user?.stream_override_required);
-  if (rows.length === 0 && !forcedStream) return null;
+  const monitorCamRequired = showMonitorCam && Boolean(user?.monitor_cam_required || user?.required_monitor_cam || user?.moni_cam_required || user?.monitor_cam_override_required);
+  if (rows.length === 0 && !forcedStream && !monitorCamRequired) return null;
 
   const sizeClass = size === "xs" ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]";
   const iconClass = size === "xs" ? "h-3.5 w-3.5" : "h-4 w-4";
@@ -90,6 +99,14 @@ export default function UserBadges({ user, badges, size = "sm", showForceStream 
         >
           {iconOnly ? <AlertTriangle className={iconClass} /> : "Stream Required"}
           {tooltip("Stream Required", "Admin requires this player to stream", AlertTriangle, "text-orange")}
+        </span>
+      )}
+      {monitorCamRequired && (
+        <span
+          className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} group relative inline-flex cursor-default select-none items-center border border-red-400/35 bg-red-500/10 font-black uppercase tracking-wider text-red-400 shadow-[0_0_14px_rgba(248,113,113,0.2)]`}
+        >
+          {iconOnly ? "!" : "Monitor Cam Required"}
+          {tooltip("Monitor Cam", "This player must use monitor cam in match rooms.", AlertTriangle, "text-red-400")}
         </span>
       )}
     </div>

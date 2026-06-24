@@ -144,6 +144,7 @@ function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
     verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
     streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
     force_stream_required: userRow?.force_stream_required || userRow?.stream_override_required || false,
+    monitor_cam_required: userRow?.monitor_cam_required || userRow?.required_monitor_cam || userRow?.moni_cam_required || false,
     wins: Math.max(profileWins, wagerWins),
     losses: Math.max(profileLosses, wagerLosses),
     trophies: trophyCountsFor(userRow, inventoryRows),
@@ -298,7 +299,7 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
                     ) : (
                       <span className="truncate text-sm font-bold text-white">{player.user_name}</span>
                     )}
-                    <UserBadges user={player} size="xs" iconOnly className="min-w-0" />
+                    <UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />
                   </div>
                   <div className="flex justify-start">
                     {player.role === "captain" ? (

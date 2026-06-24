@@ -567,7 +567,12 @@ export default function Admin() {
     }
   };
 
-  const handleSetUserBadges = async (targetUser, preset, forceStream = Boolean(targetUser.force_stream_required || targetUser.stream_override_required)) => {
+  const handleSetUserBadges = async (
+    targetUser,
+    preset,
+    forceStream = Boolean(targetUser.force_stream_required || targetUser.stream_override_required),
+    monitorCamRequired = Boolean(targetUser.monitor_cam_required || targetUser.required_monitor_cam || targetUser.moni_cam_required),
+  ) => {
     if (!canManageWallets(currentUser?.role || "user")) {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage badges.", variant: "destructive" });
       return;
@@ -580,6 +585,7 @@ export default function Admin() {
         user_id: targetUser.id,
         badge_types: option.types,
         force_stream_required: forceStream,
+        monitor_cam_required: monitorCamRequired,
       });
       if (response.data?.success) {
         toast({ title: "Badges updated", description: `${userName(targetUser)} badges saved.` });
@@ -1275,7 +1281,12 @@ export default function Admin() {
                               <div className="flex flex-col gap-1.5">
                                 <select
                                   value={userBadgePreset(user)}
-                                  onChange={(event) => handleSetUserBadges(user, event.target.value)}
+                                  onChange={(event) => handleSetUserBadges(
+                                    user,
+                                    event.target.value,
+                                    Boolean(user.force_stream_required || user.stream_override_required),
+                                    Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required),
+                                  )}
                                   disabled={busyId === `${user.id}:badges`}
                                   className="w-full px-2 py-1.5 bg-secondary rounded text-xs border border-white/5 focus:border-cyan/30 focus:outline-none disabled:opacity-50"
                                 >
@@ -1287,11 +1298,31 @@ export default function Admin() {
                                   <input
                                     type="checkbox"
                                     checked={Boolean(user.force_stream_required || user.stream_override_required)}
-                                    onChange={(event) => handleSetUserBadges(user, userBadgePreset(user), event.target.checked)}
+                                    onChange={(event) => handleSetUserBadges(
+                                      user,
+                                      userBadgePreset(user),
+                                      event.target.checked,
+                                      Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required),
+                                    )}
                                     disabled={busyId === `${user.id}:badges`}
                                     className="accent-orange"
                                   />
                                   Force stream
+                                </label>
+                                <label className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-vapor">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required)}
+                                    onChange={(event) => handleSetUserBadges(
+                                      user,
+                                      userBadgePreset(user),
+                                      Boolean(user.force_stream_required || user.stream_override_required),
+                                      event.target.checked,
+                                    )}
+                                    disabled={busyId === `${user.id}:badges`}
+                                    className="accent-red-500"
+                                  />
+                                  Monitor cam
                                 </label>
                               </div>
                             )}

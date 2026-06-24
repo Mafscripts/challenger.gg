@@ -28,7 +28,7 @@ function PlayerRow({ player, teamColor }) {
               </span>
             )}
           </div>
-          <UserBadges user={player} size="xs" iconOnly className="mt-1" />
+          <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
         </div>
       </div>
       

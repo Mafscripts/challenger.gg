@@ -53,7 +53,7 @@ function PlayerPanel({ label, color, player, waiting }) {
         <RankBadge rank={rank.tier} division={rank.division} />
         <div className="min-w-0">
           <h2 className="text-xl font-black truncate">{player.name}</h2>
-          <UserBadges user={player} size="xs" iconOnly className="mt-1" />
+          <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
           <p className="text-xs text-vapor">{rank.name} - {(player.elo || 0).toLocaleString()} ELO</p>
         </div>
       </div>
@@ -128,6 +128,7 @@ export default function RankedMatchRoom() {
       verified_player: userRows?.verified_player || userRows?.is_verified_player || false,
       streamer_badge: userRows?.streamer_badge || userRows?.is_streamer || false,
       force_stream_required: userRows?.force_stream_required || userRows?.stream_override_required || false,
+      monitor_cam_required: userRows?.monitor_cam_required || userRows?.required_monitor_cam || userRows?.moni_cam_required || false,
     };
   };
 

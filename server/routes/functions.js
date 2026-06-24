@@ -4684,6 +4684,14 @@ function normalizedSpecialBadges(types = []) {
   return selected.map((type) => ({ type, name: specialUserBadgeLabels[type] }));
 }
 
+function booleanFromBody(body = {}, keys = []) {
+  const key = keys.find((candidate) => Object.prototype.hasOwnProperty.call(body, candidate));
+  if (!key) return false;
+  const value = body[key];
+  if (typeof value === "string") return ["true", "1", "yes", "on"].includes(value.toLowerCase());
+  return Boolean(value);
+}
+
 async function updateUserBadges(req) {
   assertStaff(req, "admin");
   const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
@@ -4703,7 +4711,8 @@ async function updateUserBadges(req) {
   const specialBadges = normalizedSpecialBadges(requestedTypes);
   const verified = specialBadges.some((badge) => badge.type === "verified_player");
   const streamer = specialBadges.some((badge) => badge.type === "streamer");
-  const forceStream = Boolean(req.body.force_stream_required || req.body.stream_override_required);
+  const forceStream = booleanFromBody(req.body, ["force_stream_required", "stream_override_required"]);
+  const monitorCamRequired = booleanFromBody(req.body, ["monitor_cam_required", "required_monitor_cam", "moni_cam_required"]);
   const user = await prisma.user.update({
     where: { id: target.id },
     data: {
@@ -4713,6 +4722,7 @@ async function updateUserBadges(req) {
         verified_player: verified,
         streamer_badge: streamer,
         force_stream_required: forceStream,
+        monitor_cam_required: monitorCamRequired,
         stream_exempt_default: verified && !forceStream,
         badge_updated_by: req.user.id,
         badge_updated_by_name: nameFor(req.user),
@@ -4732,6 +4742,7 @@ async function updateUserBadges(req) {
     details: {
       badge_types: specialBadges.map((badge) => badge.type),
       force_stream_required: forceStream,
+      monitor_cam_required: monitorCamRequired,
     },
     created_date: nowIso(),
   }).catch(() => null);

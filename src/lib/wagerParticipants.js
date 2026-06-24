@@ -22,6 +22,7 @@ export async function loadWagerParticipants(base44, wager) {
       verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
       streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
       force_stream_required: userRow?.force_stream_required || userRow?.stream_override_required || false,
+      monitor_cam_required: userRow?.monitor_cam_required || userRow?.required_monitor_cam || userRow?.moni_cam_required || false,
       gold_count: userRow?.gold_count || 0,
       silver_count: userRow?.silver_count || 0,
       bronze_count: userRow?.bronze_count || 0,
