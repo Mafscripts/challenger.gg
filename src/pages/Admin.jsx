@@ -1191,7 +1191,6 @@ export default function Admin() {
                             <button onClick={() => handleModerateUser(user, "temporary_ban", "30d")} className="text-xs text-red-400 hover:underline">30d Ban</button>
                             <button onClick={() => handleModerateUser(user, "ban", "permanent")} className="text-xs text-red-400 hover:underline">Permanent Ban</button>
                             <button onClick={() => handleModerateUser(user, "email_ban")} className="text-xs text-red-400 hover:underline">Email Ban</button>
-                            <button onClick={() => handleModerateUser(user, "ip_ban")} className="text-xs text-red-400 hover:underline">IP Ban</button>
                             {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="text-xs text-green hover:underline">Unban</button>}
                           </div>
                         </td>

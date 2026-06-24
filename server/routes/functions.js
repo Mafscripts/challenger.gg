@@ -3871,6 +3871,11 @@ async function ensureTournamentMatchSetup(req) {
   const matchId = req.body.tournament_match_id || req.body.match_id;
   if (!matchId) return { success: false, error: "Tournament match id is required" };
   const match = await getEntity("TournamentMatch", matchId);
+  const participantIds = await matchParticipantIds("tournament", match);
+  const participantIdSet = new Set(participantIds.map(String));
+  if (!hasRole(req.user, "moderator") && !participantIdSet.has(String(req.user.id))) {
+    return { success: false, error: "Only match participants can set up this match" };
+  }
   if (!match.team_a_id || !match.team_b_id) {
     return { success: false, error: "Both teams must be assigned before maps can be generated" };
   }
@@ -4401,6 +4406,9 @@ async function moderateUser(req) {
   }
 
   const action = req.body.action || "warning";
+  if (action === "ip_ban") {
+    return { success: false, error: "IP bans are currently disabled" };
+  }
   const reason = req.body.reason || "Moderation action";
   const expiresDate = action === "temporary_ban" || action === "suspension" ? banExpiration(req.body.duration || "24h") : null;
   const metadata = {
@@ -4417,10 +4425,10 @@ async function moderateUser(req) {
       },
     ],
     suspended_until: action === "suspension" ? expiresDate : (action === "remove_ban" ? null : (target.metadata || {}).suspended_until),
-    ban_expires: ["temporary_ban", "email_ban", "ip_ban"].includes(action) ? expiresDate : (action === "remove_ban" ? null : (target.metadata || {}).ban_expires),
+    ban_expires: ["temporary_ban", "email_ban"].includes(action) ? expiresDate : (action === "remove_ban" ? null : (target.metadata || {}).ban_expires),
   };
 
-  if (["ban", "temporary_ban", "email_ban", "ip_ban"].includes(action)) {
+  if (["ban", "temporary_ban", "email_ban"].includes(action)) {
     await createEntity("Ban", {
       user_id: target.id,
       username: nameFor(target),
@@ -4450,7 +4458,7 @@ async function moderateUser(req) {
       }).catch(() => null)));
   }
 
-  const shouldBan = ["ban", "temporary_ban", "email_ban", "ip_ban"].includes(action);
+  const shouldBan = ["ban", "temporary_ban", "email_ban"].includes(action);
   const shouldRemoveBan = action === "remove_ban";
   const user = await prisma.user.update({
     where: { id: target.id },

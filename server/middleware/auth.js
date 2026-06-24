@@ -3,11 +3,6 @@ import { publicUser, verifyToken } from "../auth.js";
 import { hasRole } from "../roles.js";
 import { listEntities } from "../entity.js";
 
-const requestIp = (req) => {
-  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
-  return forwarded || req.ip || req.socket?.remoteAddress || "unknown";
-};
-
 export const requireAuth = async (req, res, next) => {
   try {
     const header = req.headers.authorization || "";
@@ -19,12 +14,11 @@ export const requireAuth = async (req, res, next) => {
     if (!user) return res.status(401).json({ error: "Authentication required" });
 
     const activeBans = await listEntities("Ban", { status: "active" }, "-created_date", 500).catch(() => []);
-    const ip = requestIp(req);
     const blockingBan = activeBans.find((ban) => {
       const expires = ban.expires_date ? new Date(ban.expires_date) : null;
       if (expires && expires <= new Date()) return false;
       const scope = ban.scope || [];
-      return (scope.includes("ip") && ban.ip && ban.ip === ip) || (scope.includes("email") && ban.email && ban.email === user.email);
+      return scope.includes("email") && ban.email && ban.email === user.email;
     });
     if (blockingBan) return res.status(401).json({ error: "Authentication required" });
 

@@ -5,6 +5,8 @@ import { ArrowRight, Calendar, Crown, Loader2, Trophy, Users } from "lucide-reac
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
+const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
+
 const statusLabels = {
   draft: "Draft",
   open: "Open",
@@ -149,6 +151,7 @@ export default function Tournaments() {
         row.id === tournament.id ? { ...row, registered_teams: registered } : row
       )));
       toast({ title: "Tournament joined", description: `You are registered for ${tournament.name}.` });
+      await loadMatches(tournament.id);
     } catch (error) {
       toast({ title: "Join failed", description: error.message || "Could not join tournament.", variant: "destructive" });
     } finally {
@@ -186,6 +189,8 @@ export default function Tournaments() {
   const selectedTournament = tournaments.find((tournament) => tournament.id === selectedTournamentId);
   const selectedMatches = matchesByTournament[selectedTournamentId] || [];
   const selectedParticipants = participantsByTournament[selectedTournamentId] || [];
+  const isStaff = staffRoles.has(user?.role);
+  const canViewSelectedBracket = Boolean(selectedTournament && (isStaff || joinedTournamentIds.has(selectedTournament.id)));
   const currentUserParticipantKeys = new Set(selectedParticipants
     .filter((participant) => (
       participant.captain_id === user?.id
@@ -366,7 +371,11 @@ export default function Tournaments() {
               <div>
                 <h2 className="text-lg font-bold">Bracket Matches</h2>
                 <p className="text-xs text-vapor">
-                  {selectedParticipants.length} participant{selectedParticipants.length === 1 ? "" : "s"} registered.
+                  {isStaff
+                    ? `${selectedParticipants.length} participant${selectedParticipants.length === 1 ? "" : "s"} registered.`
+                    : canViewSelectedBracket
+                      ? "Only your assigned tournament match is shown."
+                    : "Bracket is visible to registered teams only."}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -424,7 +433,7 @@ export default function Tournaments() {
                 )}
               </div>
             </div>
-            {selectedParticipants.length > 0 && (
+            {isStaff && selectedParticipants.length > 0 && (
               <div className="px-5 py-3 border-b border-white/5 bg-secondary/20">
                 <p className="text-[10px] text-vapor uppercase tracking-wider mb-2">Participants</p>
                 <div className="flex flex-wrap gap-2">
@@ -439,10 +448,16 @@ export default function Tournaments() {
             <div className="divide-y divide-white/5 max-h-[640px] overflow-y-auto">
               {!selectedTournamentId ? (
                 <p className="px-5 py-8 text-center text-sm text-vapor">No tournament selected.</p>
+              ) : !canViewSelectedBracket ? (
+                <div className="px-5 py-8 text-center">
+                  <Trophy className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
+                  <p className="text-sm font-semibold">Private bracket</p>
+                  <p className="text-xs text-vapor mt-1">Join this tournament to view bracket matches.</p>
+                </div>
               ) : selectedMatches.length === 0 ? (
                 <div className="px-5 py-8 text-center">
                   <Users className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
-                  <p className="text-sm text-vapor">No bracket matches generated yet.</p>
+                  <p className="text-sm text-vapor">{isStaff ? "No bracket matches generated yet." : "No assigned match is ready yet."}</p>
                 </div>
               ) : selectedMatches.map((match) => (
                 <Link
