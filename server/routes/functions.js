@@ -1364,6 +1364,14 @@ async function matchParticipantIds(matchType, match) {
     ]);
     return [...new Set([...teamAUserIds, ...teamBUserIds].filter(Boolean))];
   }
+  if (matchType === "wager") {
+    const participants = await listEntities("WagerParticipant", { wager_id: match.id }, "-joined_date", 100).catch(() => []);
+    return [...new Set([
+      match.host_id,
+      match.challenger_id,
+      ...participants.map((participant) => participant.user_id),
+    ].filter(Boolean))];
+  }
   return [...new Set([match.host_id, match.challenger_id].filter(Boolean))];
 }
 
@@ -2968,6 +2976,38 @@ async function sendMessage(req) {
   return { success: true, message };
 }
 
+async function sendMatchRoomMessage(req) {
+  const matchType = normalizeMatchType(req.body.match_type);
+  const matchId = req.body.match_id || req.body.conversation_id;
+  const content = String(req.body.content || req.body.message || "").trim();
+
+  if (!matchId) return { success: false, error: "Match id is required" };
+  if (!content) return { success: false, error: "Message is required" };
+  if (content.length > 500) return { success: false, error: "Message is too long" };
+
+  const match = await getEntity(matchEntityFor(matchType), matchId);
+  const participantIds = await matchParticipantIds(matchType, match);
+  const participantIdSet = new Set(participantIds.map(String));
+  if (!hasRole(req.user, "moderator") && !participantIdSet.has(String(req.user.id))) {
+    return { success: false, error: "Only match participants can chat in this room" };
+  }
+
+  const message = await createEntity("ChatMessage", {
+    conversation_id: match.id,
+    sender_id: req.user.id,
+    sender_name: nameFor(req.user),
+    sender_role: req.user.role || "user",
+    recipient_id: match.id,
+    recipient_name: "Match room",
+    content,
+    is_read: false,
+    match_type: matchType,
+    created_date: nowIso(),
+  });
+
+  return { success: true, message };
+}
+
 async function createWager(req) {
   const entryFee = money(req.body.entry_fee ?? req.body.amount);
   const matchType = req.body.match_type === "8s" ? "8s" : req.body.match_type === "xp" ? "xp" : "wagers";
@@ -4468,6 +4508,7 @@ const handlers = {
   createNotification,
   sendNotification: createNotification,
   sendMessage,
+  sendMatchRoomMessage,
   manageTeam,
   createWager,
   acceptWager,

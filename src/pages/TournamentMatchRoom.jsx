@@ -953,7 +953,7 @@ export default function TournamentMatchRoom() {
         </div>
 
         <div className="mb-6">
-          <MatchChat conversationId={match.id} accent="orange" live />
+          <MatchChat conversationId={match.id} matchType="tournament" accent="orange" live />
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">

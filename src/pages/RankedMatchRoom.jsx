@@ -470,7 +470,7 @@ export default function RankedMatchRoom() {
         </div>
 
         <div className="mb-6">
-          <MatchChat conversationId={match.id} accent="cyan" />
+          <MatchChat conversationId={match.id} matchType="ranked" accent="cyan" />
         </div>
       </div>
     </div>

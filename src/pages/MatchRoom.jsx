@@ -390,7 +390,7 @@ export default function MatchRoom() {
 
           <div className="space-y-5">
             <SimpleRoster title="Team Bravo Roster" players={teamBPlayers} tone="orange" />
-            <MatchChat conversationId={wager.id} accent="cyan" />
+            <MatchChat conversationId={wager.id} matchType="wager" accent="cyan" />
           </div>
         </main>
 

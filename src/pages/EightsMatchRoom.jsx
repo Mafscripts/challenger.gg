@@ -306,7 +306,7 @@ export default function EightsMatchRoom() {
 
           {/* Far Right: Chat */}
           <div className="lg:col-span-3">
-            <MatchChat conversationId={wager.id} accent="orange" />
+            <MatchChat conversationId={wager.id} matchType="wager" accent="orange" />
           </div>
         </div>
 

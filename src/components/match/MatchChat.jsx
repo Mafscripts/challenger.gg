@@ -27,7 +27,6 @@ const accents = {
 };
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "";
-const playerName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const displaySenderName = (message) => {
   const name = message.sender_name || "Unknown sender";
@@ -44,7 +43,7 @@ const isAdminMessage = (message) => (
   || (message.system && String(message.content || "").includes("has joined the match room"))
 );
 
-export default function MatchChat({ conversationId, accent = "cyan", live = false, pollIntervalMs = 2000 }) {
+export default function MatchChat({ conversationId, matchType = "wager", accent = "cyan", live = false, pollIntervalMs = 2000 }) {
   const [messages, setMessages] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [messageText, setMessageText] = useState("");
@@ -97,17 +96,17 @@ export default function MatchChat({ conversationId, accent = "cyan", live = fals
 
     setSending(true);
     try {
-      const created = await base44.entities.ChatMessage.create({
+      const response = await base44.functions.invoke("sendMatchRoomMessage", {
+        match_type: matchType,
+        match_id: conversationId,
         conversation_id: conversationId,
-        sender_id: currentUser.id,
-        sender_name: playerName(currentUser),
-        sender_role: currentUser.role || "user",
-        recipient_id: conversationId,
-        recipient_name: "Match room",
         content,
-        is_read: false,
-        created_date: new Date().toISOString(),
       });
+      if (!response.data?.success) {
+        toast({ title: "Message failed", description: response.data?.error || "Could not send chat message.", variant: "destructive" });
+        return;
+      }
+      const created = response.data.message;
       setMessages((current) => [...current, created]);
       setMessageText("");
     } catch (error) {
