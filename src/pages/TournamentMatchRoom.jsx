@@ -232,7 +232,7 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
     : "border-orange/35 bg-orange/10 text-orange focus:border-cyan focus:ring-cyan/25";
 
   return (
-    <div className={`glass rounded-xl border p-6 ${colorClass}`}>
+    <div className={`glass rounded-xl border p-5 ${colorClass}`}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-wider">{label}</p>
         <span className="rounded bg-background/40 px-2 py-1 text-[10px] font-black uppercase tracking-wider">
@@ -330,7 +330,7 @@ function MapSeries({ match }) {
   const pool = Array.isArray(match.map_pool) && match.map_pool.length ? match.map_pool : defaultMapPool;
 
   return (
-    <div className="glass rounded-xl border border-cyan/20 p-5 mb-6">
+    <div className="glass rounded-xl border border-cyan/20 p-5">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
@@ -808,13 +808,19 @@ export default function TournamentMatchRoom() {
                 Round {match.round} - Match {match.match_number} - ID #{match.id?.slice(-8)}
               </p>
             </div>
-            <Link to="/tournaments" className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-vapor text-xs font-bold rounded-lg hover:bg-white/10 transition-all">
-              Back to Bracket
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href="#tournament-bracket"
+                className="inline-flex items-center gap-2 rounded-lg border border-orange/25 bg-orange/10 px-4 py-2 text-xs font-black uppercase tracking-wider text-orange transition-all hover:bg-orange/20"
+              >
+                <Trophy className="h-4 w-4" /> Bracket
+              </a>
+              <Link to="/tournaments" className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-xs font-bold text-vapor transition-all hover:bg-white/10">
+                Tournaments
+              </Link>
+            </div>
           </div>
         </div>
-
-        <BracketPreview matches={bracketMatches} currentId={match.id} tournament={tournament} />
 
         {isComplete && (
           <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex items-center gap-3">
@@ -855,7 +861,7 @@ export default function TournamentMatchRoom() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid lg:grid-cols-2 gap-5 mb-5">
           <TeamCard
             label="Team A"
             color="cyan"
@@ -880,10 +886,12 @@ export default function TournamentMatchRoom() {
           />
         </div>
 
-        <MapSeries match={match} />
+        <div className={`grid gap-5 ${canChat ? "xl:grid-cols-[minmax(0,1.35fr)_420px]" : ""}`}>
+          <div className="min-w-0 space-y-5">
+            <MapSeries match={match} />
 
         {canUseMatchControls && (
-        <div className="glass rounded-xl border border-white/5 p-4 mb-6">
+        <div className="glass rounded-xl border border-white/5 p-4">
           {canAdminCorrect && (
             <div className="mb-3 border-b border-white/5 pb-3">
               <div className="mb-2 flex items-center justify-between gap-3">
@@ -984,13 +992,7 @@ export default function TournamentMatchRoom() {
         </div>
         )}
 
-        {canChat && (
-          <div className="mb-6">
-            <MatchChat conversationId={match.id} matchType="tournament" accent="orange" live />
-          </div>
-        )}
-
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-5">
           <div className="glass rounded-xl border border-white/5 p-5">
             <h2 className="font-bold text-sm mb-3 flex items-center gap-2">
               <Swords className="w-4 h-4 text-cyan" />
@@ -1035,6 +1037,25 @@ export default function TournamentMatchRoom() {
               </div>
             </div>
           </div>
+        </div>
+          </div>
+          {canChat && (
+            <aside className="min-w-0">
+              <MatchChat
+                conversationId={match.id}
+                matchType="tournament"
+                accent="orange"
+                live
+                compact
+                sticky={false}
+                heightClass="h-[420px] xl:h-[500px]"
+              />
+            </aside>
+          )}
+        </div>
+
+        <div id="tournament-bracket" className="mt-5 scroll-mt-6">
+          <BracketPreview matches={bracketMatches} currentId={match.id} tournament={tournament} />
         </div>
       </div>
     </div>

@@ -43,7 +43,16 @@ const isAdminMessage = (message) => (
   || (message.system && String(message.content || "").includes("has joined the match room"))
 );
 
-export default function MatchChat({ conversationId, matchType = "wager", accent = "cyan", live = false, pollIntervalMs = 2000 }) {
+export default function MatchChat({
+  conversationId,
+  matchType = "wager",
+  accent = "cyan",
+  live = false,
+  pollIntervalMs = 2000,
+  heightClass = "h-[600px]",
+  sticky = true,
+  compact = false,
+}) {
   const [messages, setMessages] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [messageText, setMessageText] = useState("");
@@ -117,14 +126,14 @@ export default function MatchChat({ conversationId, matchType = "wager", accent 
   };
 
   return (
-    <div className={`glass rounded-xl border ${tone.border} overflow-hidden flex flex-col h-[600px] sticky top-6`}>
-      <div className="px-4 py-3 bg-secondary/50 border-b border-white/5 flex items-center justify-between">
+    <div className={`glass rounded-xl border ${tone.border} overflow-hidden flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
+      <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} bg-secondary/50 border-b border-white/5 flex items-center justify-between`}>
         <h3 className="font-bold text-sm flex items-center gap-2">
           <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> Match Chat
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className={`flex-1 overflow-y-auto ${compact ? "p-3 space-y-2" : "p-4 space-y-3"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
@@ -133,18 +142,18 @@ export default function MatchChat({ conversationId, matchType = "wager", accent 
             <p className="text-sm text-vapor">No chat messages yet.</p>
           </div>
         ) : messages.map((message) => (
-          <div key={message.id} className="rounded-lg bg-secondary/40 border border-white/5 p-3">
+          <div key={message.id} className={`rounded-lg bg-secondary/40 border border-white/5 ${compact ? "p-2.5" : "p-3"}`}>
             <div className="flex items-center justify-between gap-3 mb-1">
               <span className={`text-xs font-semibold ${isAdminMessage(message) ? "text-pink-300 drop-shadow-[0_0_8px_rgba(244,114,182,0.45)]" : tone.text}`}>
                 {displaySenderName(message)}
               </span>
               <span className="text-[10px] text-vapor">{formatDate(message.created_date)}</span>
             </div>
-            <p className="text-sm text-foreground/80 whitespace-pre-wrap">{message.content}</p>
+            <p className={`${compact ? "text-xs" : "text-sm"} text-foreground/80 whitespace-pre-wrap`}>{message.content}</p>
           </div>
         ))}
       </div>
-      <form onSubmit={handleSend} className="p-3 border-t border-white/5 bg-secondary/30 flex items-center gap-2">
+      <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} border-t border-white/5 bg-secondary/30 flex items-center gap-2`}>
         <input
           value={messageText}
           onChange={(event) => setMessageText(event.target.value)}
