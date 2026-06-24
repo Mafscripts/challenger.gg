@@ -3741,9 +3741,7 @@ async function forgeMoneyToCredits(req) {
 }
 
 async function generateTournamentBracket(req) {
-  if (!hasRole(req.user, "admin") && req.body.system !== true) {
-    return { success: false, error: "Admin access required" };
-  }
+  assertStaff(req, "admin");
   const tournamentId = req.body.tournament_id;
   const tournament = await getEntity("Tournament", tournamentId);
   const participants = await listEntities("TournamentParticipant", { tournament_id: tournamentId }, "seed", 256);
@@ -3872,6 +3870,10 @@ async function startTournament(req) {
 }
 
 async function syncTournamentLifecycle(req) {
+  if (!hasRole(req.user, "admin")) {
+    return { success: true, synced: [] };
+  }
+
   const tournaments = await listEntities("Tournament", {}, "-start_date", 500);
   const now = Date.now();
   const synced = [];
@@ -3884,7 +3886,7 @@ async function syncTournamentLifecycle(req) {
       tournamentStatusesOpenForRegistration.includes(tournament.status) &&
       tournament.registration_locked !== true
     ) {
-      const generated = await generateTournamentBracket({ ...req, body: { tournament_id: tournament.id, start_immediately: true, system: true } });
+      const generated = await generateTournamentBracket({ ...req, body: { tournament_id: tournament.id, start_immediately: true } });
       if (generated.success) synced.push({ tournament_id: tournament.id, action: "bracket_generated" });
     }
   }

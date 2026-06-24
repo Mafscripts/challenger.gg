@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Calendar, Crown, Loader2, Play, Trophy, Users } from "lucide-react";
+import { ArrowRight, Calendar, Crown, Loader2, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-
-const staffRoles = ["ceo", "super_admin", "admin", "moderator"];
 
 const statusLabels = {
   draft: "Draft",
@@ -43,7 +41,6 @@ export default function Tournaments() {
   const [participantsByTournament, setParticipantsByTournament] = useState({});
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [generatingId, setGeneratingId] = useState(null);
   const [joiningId, setJoiningId] = useState(null);
   const [joinedTournamentIds, setJoinedTournamentIds] = useState(new Set());
   const [userTeams, setUserTeams] = useState([]);
@@ -53,8 +50,6 @@ export default function Tournaments() {
   useEffect(() => {
     loadTournaments();
   }, []);
-
-  const isStaff = staffRoles.includes(user?.role);
 
   const loadTournaments = async () => {
     try {
@@ -179,27 +174,6 @@ export default function Tournaments() {
     setSelectedTournamentId(tournamentId);
     if (!matchesByTournament[tournamentId]) {
       loadMatches(tournamentId);
-    }
-  };
-
-  const handleGenerateBracket = async (tournamentId) => {
-    setGeneratingId(tournamentId);
-    try {
-      const response = await base44.functions.invoke("generateTournamentBracket", { tournament_id: tournamentId });
-      if (response.data?.success) {
-        toast({
-          title: "Bracket generated",
-          description: `${response.data.match_count} tournament matches created.`,
-        });
-        await loadTournaments();
-        await loadMatches(tournamentId);
-      } else {
-        toast({ title: "Bracket failed", description: response.data?.error || "Could not generate bracket.", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Bracket failed", description: error.message || "Could not generate bracket.", variant: "destructive" });
-    } finally {
-      setGeneratingId(null);
     }
   };
 
@@ -447,16 +421,6 @@ export default function Tournaments() {
                       Join
                     </button>
                   </div>
-                )}
-                {isStaff && selectedTournamentId && selectedMatches.length === 0 && (
-                  <button
-                    onClick={() => handleGenerateBracket(selectedTournamentId)}
-                    disabled={generatingId === selectedTournamentId}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-cyan text-background text-xs font-bold rounded-lg disabled:opacity-50"
-                  >
-                    {generatingId === selectedTournamentId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-                    Generate
-                  </button>
                 )}
               </div>
             </div>
