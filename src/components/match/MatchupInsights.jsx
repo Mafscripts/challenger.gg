@@ -1,5 +1,5 @@
 import React from "react";
-import { Trophy, DollarSign, TrendingUp, Flame, Target, Users, Sword, Calendar, BookOpen, Star } from "lucide-react";
+import { Trophy, DollarSign, TrendingUp, Flame, Target, BookOpen } from "lucide-react";
 
 function InsightCard({ label, value, subtext, icon: Icon, color, highlight }) {
   return (

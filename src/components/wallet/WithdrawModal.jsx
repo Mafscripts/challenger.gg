@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, DollarSign, Shield, AlertCircle, CheckCircle, CreditCard, Building } from "lucide-react";
+import { X, DollarSign, Shield, CheckCircle, Building } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 

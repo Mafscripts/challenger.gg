@@ -2,13 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Zap, Plus, Search, Shield, DollarSign, Users,
-  Clock, CheckCircle2, AlertTriangle, Star, TrendingUp
+  Zap, Plus, DollarSign,
+  Star, TrendingUp
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import MapVetoModal from "@/components/match/MapVetoModal";
+
+const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 
 export default function Wagers() {
   const navigate = useNavigate();
@@ -20,6 +22,9 @@ export default function Wagers() {
   const [wagers, setWagers] = useState([]);
   const [historyWagers, setHistoryWagers] = useState([]);
   const [user, setUser] = useState(null);
+  const [userTeams, setUserTeams] = useState([]);
+  const [acceptTeamByWager, setAcceptTeamByWager] = useState({});
+  const [acceptPaymentByWager, setAcceptPaymentByWager] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,10 +39,21 @@ export default function Wagers() {
       ]);
       if (currentUser) {
         const wallets = await base44.entities.Wallet.filter({ user_id: currentUser.id });
-        const [hosted, challenged] = await Promise.all([
+        const [hosted, challenged, memberships] = await Promise.all([
           base44.entities.Wager.filter({ host_id: currentUser.id }, "-created_date", 50),
-          base44.entities.Wager.filter({ challenger_id: currentUser.id }, "-created_date", 50)
+          base44.entities.Wager.filter({ challenger_id: currentUser.id }, "-created_date", 50),
+          base44.entities.TeamMember.filter({ user_id: currentUser.id }, "-joined_date", 50).catch(() => [])
         ]);
+        const teams = await Promise.all((memberships || [])
+          .filter((membership) => membership.is_active !== false)
+          .map(async (membership) => {
+            const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
+            const members = team ? await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 50).catch(() => []) : [];
+            return team && team.is_active !== false
+              ? { ...team, membership, members: (members || []).filter((member) => member.is_active !== false) }
+              : null;
+          }));
+        setUserTeams(teams.filter(Boolean));
         const combinedHistory = [...hosted, ...challenged]
           .filter((w, index, list) => list.findIndex(item => item.id === w.id) === index)
           .filter(w => ["completed", "cancelled", "disputed", "score_conflict"].includes(w.status))
@@ -45,12 +61,13 @@ export default function Wagers() {
         const wallet = wallets[0];
         setUser({
           ...currentUser,
-          wallet_balance: wallet?.available_balance ?? currentUser.wallet_balance ?? 0,
+          wallet_balance: Number(wallet?.available_balance ?? 0),
           wallet
         });
         setHistoryWagers(combinedHistory);
       } else {
         setUser(null);
+        setUserTeams([]);
         setHistoryWagers([]);
       }
       setWagers(wagerList.filter(w => (w.match_type || ((w.entry_fee ?? w.amount ?? 0) > 0 ? "wagers" : "ranked")) === "wagers"));
@@ -72,10 +89,32 @@ export default function Wagers() {
     }
 
     const entryFee = wager.entry_fee ?? wager.amount ?? 0;
-    if ((user.wallet_balance || 0) < entryFee) {
+    const required = rosterSize(wager.team_size);
+    const isTeamWager = required > 1;
+    const selectedTeamId = acceptTeamByWager[wager.id];
+    const paymentMode = acceptPaymentByWager[wager.id] || "own";
+    const selectedTeam = compatibleTeamsFor(wager).find((team) => team.id === selectedTeamId);
+    if (isTeamWager && !selectedTeamId) {
+      toast({
+        title: "Team required",
+        description: `Select a wager team with ${required} active players.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    if (isTeamWager && (!selectedTeam || selectedTeam.members.length < required)) {
+      toast({
+        title: "Roster incomplete",
+        description: `That team needs ${required} active players before it can join this wager.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    const neededBalance = isTeamWager && paymentMode === "full_team" ? entryFee * required : entryFee;
+    if ((user.wallet_balance || 0) < neededBalance) {
       toast({
         title: "Insufficient balance",
-        description: `You need $${entryFee} to accept this wager`,
+        description: `You need $${neededBalance} to accept this wager`,
         variant: "destructive"
       });
       return;
@@ -89,6 +128,8 @@ export default function Wagers() {
     try {
       const response = await base44.functions.invoke('acceptWager', {
         wager_id: selectedWager.id,
+        team_id: acceptTeamByWager[selectedWager.id] || undefined,
+        payment_mode: acceptPaymentByWager[selectedWager.id] || "own",
         challenger_banned_map,
         challenger_banned_map_name,
         final_map,
@@ -112,7 +153,7 @@ export default function Wagers() {
       console.error("Failed to accept wager:", error);
       toast({
         title: "Error",
-        description: "Failed to accept wager",
+        description: error.message || "Failed to accept wager",
         variant: "destructive"
       });
     } finally {
@@ -131,6 +172,12 @@ export default function Wagers() {
   });
 
   const hasActivePremium = user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires) > new Date());
+  const compatibleTeamsFor = (_wager) => (
+    userTeams.filter((team) => (
+      (team.team_type === "wager" || team.team_type === "general")
+      && team.captain_id === user?.id
+    ))
+  );
 
   return (
     <div className="min-h-screen py-8">
@@ -221,12 +268,41 @@ export default function Wagers() {
                     <span className={`text-xs font-semibold text-green`}>{w.status}</span>
                     <div>
                       {w.status === "open" && (
-                        <button 
-                          onClick={() => handleAccept(w)}
-                          className="px-4 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20 transition-all"
-                        >
-                          Accept
-                        </button>
+                        <div className="flex flex-col gap-2">
+                          {rosterSize(w.team_size) > 1 && (
+                            <>
+                              <select
+                                value={acceptTeamByWager[w.id] || ""}
+                                onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [w.id]: event.target.value }))}
+                                className="px-2 py-1.5 bg-secondary text-vapor text-xs rounded border border-white/5 focus:border-cyan/30 focus:outline-none"
+                              >
+                                <option value="">Select team</option>
+                                {compatibleTeamsFor(w).map((team) => (
+                                  <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(w.team_size)})</option>
+                                ))}
+                              </select>
+                              {acceptTeamByWager[w.id] && compatibleTeamsFor(w).find((team) => team.id === acceptTeamByWager[w.id])?.members.length < rosterSize(w.team_size) && (
+                                <span className="text-[10px] text-orange">
+                                  Needs {rosterSize(w.team_size)} active players
+                                </span>
+                              )}
+                              <select
+                                value={acceptPaymentByWager[w.id] || "own"}
+                                onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [w.id]: event.target.value }))}
+                                className="px-2 py-1.5 bg-secondary text-vapor text-xs rounded border border-white/5 focus:border-cyan/30 focus:outline-none"
+                              >
+                                <option value="own">Pay my own entry only</option>
+                                <option value="full_team">Pay full team entry</option>
+                              </select>
+                            </>
+                          )}
+                          <button 
+                            onClick={() => handleAccept(w)}
+                            className="px-4 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20 transition-all"
+                          >
+                            Accept
+                          </button>
+                        </div>
                       )}
                     </div>
                   </motion.div>

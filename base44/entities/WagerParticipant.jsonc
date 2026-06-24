@@ -14,6 +14,14 @@
       "type": "string",
       "title": "User Name"
     },
+    "team_id": {
+      "type": "string",
+      "title": "Team ID"
+    },
+    "team_name": {
+      "type": "string",
+      "title": "Team Name"
+    },
     "team": {
       "type": "string",
       "enum": [
@@ -28,9 +36,22 @@
       "title": "Is Team Captain"
     },
     "entry_fee_paid": {
-      "type": "boolean",
-      "default": false,
-      "title": "Entry Fee Paid"
+      "type": "number",
+      "default": 0,
+      "title": "Entry Fee Paid Amount"
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "paid"
+      ],
+      "default": "pending",
+      "title": "Payment Status"
+    },
+    "paid_by": {
+      "type": "string",
+      "title": "Paid By User ID"
     },
     "escrow_transaction_id": {
       "type": "string",

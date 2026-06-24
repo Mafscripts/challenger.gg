@@ -42,6 +42,11 @@ const groupedRanks = RANK_THRESHOLDS.reduce((tiers, rank) => {
 }, []);
 
 const playerName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
+const rankRangeLabel = (tier) => (
+  tier.tier === "champion"
+    ? `${tier.min.toLocaleString()}+ ELO`
+    : `${tier.min.toLocaleString()}-${tier.max.toLocaleString()} ELO`
+);
 
 export default function Ranked() {
   const navigate = useNavigate();
@@ -222,7 +227,7 @@ export default function Ranked() {
                       <p className="text-xs text-vapor">Divisions: {tier.divisions.join(", ")}</p>
                     </div>
                     <span className="text-sm font-mono text-vapor">
-                      {tier.min.toLocaleString()}-{tier.max.toLocaleString()} ELO
+                      {rankRangeLabel(tier)}
                     </span>
                   </div>
                 ))}

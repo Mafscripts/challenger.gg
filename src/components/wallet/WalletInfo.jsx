@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 
 export default function WalletInfo({ user, wagerAmount }) {
-  const [walletBalance, setWalletBalance] = useState(user?.wallet_balance || 0);
+  const [walletBalance, setWalletBalance] = useState(0);
 
   useEffect(() => {
     const loadWallet = async () => {
@@ -15,13 +15,13 @@ export default function WalletInfo({ user, wagerAmount }) {
       }
       try {
         const wallets = await base44.entities.Wallet.filter({ user_id: user.id });
-        setWalletBalance(wallets[0]?.available_balance ?? user.wallet_balance ?? 0);
+        setWalletBalance(Number(wallets[0]?.available_balance ?? 0));
       } catch (error) {
-        setWalletBalance(user.wallet_balance || 0);
+        setWalletBalance(0);
       }
     };
     loadWallet();
-  }, [user?.id, user?.wallet_balance]);
+  }, [user?.id]);
 
   const safeWagerAmount = wagerAmount || 0;
   const canAfford = walletBalance >= safeWagerAmount;

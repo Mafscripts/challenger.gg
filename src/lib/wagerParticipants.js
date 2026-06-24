@@ -25,6 +25,8 @@ export async function loadWagerParticipants(base44, wager) {
       champion_count: userRow?.champion_count || 0,
       team: participant.team,
       entry_fee_paid: participant.entry_fee_paid,
+      payment_status: participant.payment_status,
+      paid_by: participant.paid_by,
     };
   }));
 

@@ -13,18 +13,44 @@ import { dataForEntity } from "../entity.js";
 
 const router = Router();
 
-router.post("/register", async (req, res, next) => {
+const requestIp = (req) => {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return forwarded || req.ip || req.socket?.remoteAddress || "unknown";
+};
+
+const recordIp = async (user, req, field) => {
+  const ip = requestIp(req);
+  const metadata = user.metadata || {};
+  const ipHistory = Array.isArray(metadata.ip_history) ? metadata.ip_history : [];
+  const nextHistory = [
+    ...ipHistory,
+    { ip, event: field, date: new Date().toISOString() },
+  ].slice(-50);
+  return prisma.user.update({
+    where: { id: user.id },
+    data: dataForEntity("User", {
+      [field]: ip,
+      ip_history: nextHistory,
+    }, metadata),
+  });
+};
+
+export const registerHandler = async (req, res, next) => {
   try {
-    const user = await createUserWithPassword(req.body || {});
+    let user = await createUserWithPassword(req.body || {});
+    user = await recordIp(user, req, "registration_ip");
     const bootstrap = await ensureUserRecords(user);
     res.json({
-      access_token: signUser(user),
+      access_token: signUser(bootstrap.user),
       user: bootstrap.user,
+      email_verification_required: false,
     });
   } catch (error) {
     next(error);
   }
-});
+};
+
+router.post("/register", registerHandler);
 
 router.post("/login", async (req, res, next) => {
   try {
@@ -36,9 +62,20 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const bootstrap = await ensureUserRecords(user);
+    const withIp = await recordIp(user, req, "last_login_ip");
+    const loginUser = withIp.email_verified === true
+      ? withIp
+      : await prisma.user.update({
+        where: { id: withIp.id },
+        data: dataForEntity("User", {
+          email_verified: true,
+          email_verification_code: null,
+          email_verification_sent_at: null,
+        }, withIp.metadata),
+      });
+    const bootstrap = await ensureUserRecords(loginUser);
     res.json({
-      access_token: signUser(user),
+      access_token: signUser(loginUser),
       user: bootstrap.user,
     });
   } catch (error) {
@@ -86,14 +123,35 @@ router.post("/verify-otp", async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({ where: { email: String(req.body?.email || "").toLowerCase() } });
     if (!user) return res.status(404).json({ error: "User not found" });
-    res.json({ access_token: signUser(user), user: publicUser(user) });
+    const verified = user.email_verified === true ? user : await prisma.user.update({
+      where: { id: user.id },
+      data: dataForEntity("User", { email_verified: true, email_verification_code: null }, user.metadata),
+    });
+    const withIp = await recordIp(verified, req, "last_login_ip");
+    const bootstrap = await ensureUserRecords(withIp);
+    res.json({ access_token: signUser(withIp), user: bootstrap.user, verification_disabled: true });
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/resend-otp", (_req, res) => {
-  res.json({ success: true });
+router.post("/resend-otp", async (req, res, next) => {
+  try {
+    const email = String(req.body?.email || "").toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.email_verified !== true) await prisma.user.update({
+      where: { id: user.id },
+      data: dataForEntity("User", { email_verified: true, email_verification_code: null }, user.metadata),
+    });
+    res.json({
+      success: true,
+      email_sent: false,
+      verification_disabled: true,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.post("/reset-password", (_req, res) => {

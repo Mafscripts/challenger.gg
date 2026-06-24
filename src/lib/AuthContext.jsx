@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { base44, invalidateApiCache } from "@/api/base44Client";
-import { bootstrapCurrentUser } from "@/lib/userBootstrap";
+import { bootstrapCurrentUser, clearBootstrapSession } from "@/lib/userBootstrap";
 
 const AuthContext = createContext();
 
@@ -39,6 +39,8 @@ export const AuthProvider = ({ children }) => {
 
       const currentUser = await bootstrapCurrentUser({ force });
       if (!currentUser?.id) {
+        base44.auth.logout();
+        clearBootstrapSession();
         markUnauthenticated();
         return null;
       }
@@ -48,6 +50,10 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       if (![401, 403, 404].includes(error.status)) {
         console.error("User auth check failed:", error);
+      }
+      if ([401, 403, 404].includes(error.status)) {
+        base44.auth.logout();
+        clearBootstrapSession();
       }
       markUnauthenticated();
       return null;
@@ -61,6 +67,7 @@ export const AuthProvider = ({ children }) => {
   }, [checkUserAuth]);
 
   const logout = useCallback((shouldRedirect = true) => {
+    clearBootstrapSession(user?.id);
     base44.auth.logout();
     invalidateApiCache();
     markUnauthenticated();
@@ -68,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     if (shouldRedirect && typeof window !== "undefined") {
       window.location.href = "/login";
     }
-  }, [markUnauthenticated]);
+  }, [markUnauthenticated, user?.id]);
 
   const navigateToLogin = useCallback(() => {
     base44.auth.redirectToLogin(typeof window !== "undefined" ? window.location.href : undefined);

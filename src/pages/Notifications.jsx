@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Bell, Check, CheckCheck, Trash2, AlertCircle, Info, Trophy, Star } from "lucide-react";
+import { Bell, CheckCheck, Trash2, AlertCircle, Info, Trophy, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -195,6 +195,15 @@ export default function Notifications() {
                     <p className="text-[10px] text-vapor/50 mt-2 font-mono">
                       {new Date(notification.created_date).toLocaleString()}
                     </p>
+                    {notification.action_url && (
+                      <Link
+                        to={notification.action_url}
+                        onClick={(event) => event.stopPropagation()}
+                        className="inline-flex mt-3 text-xs text-cyan hover:underline font-semibold"
+                      >
+                        Open
+                      </Link>
+                    )}
                   </div>
                 </div>
               </motion.div>

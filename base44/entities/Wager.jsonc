@@ -10,6 +10,14 @@
       "type": "string",
       "title": "Host Name"
     },
+    "host_team_id": {
+      "type": "string",
+      "title": "Host Team ID"
+    },
+    "host_team_name": {
+      "type": "string",
+      "title": "Host Team Name"
+    },
     "challenger_id": {
       "type": "string",
       "title": "Challenger User ID"
@@ -17,6 +25,14 @@
     "challenger_name": {
       "type": "string",
       "title": "Challenger Name"
+    },
+    "challenger_team_id": {
+      "type": "string",
+      "title": "Challenger Team ID"
+    },
+    "challenger_team_name": {
+      "type": "string",
+      "title": "Challenger Team Name"
     },
     "match_type": {
       "type": "string",
@@ -59,7 +75,36 @@
     },
     "entry_fee": {
       "type": "number",
+      "title": "Entry Fee Per Player"
+    },
+    "team_entry_fee": {
+      "type": "number",
       "title": "Entry Fee Per Team"
+    },
+    "host_payment_mode": {
+      "type": "string",
+      "enum": [
+        "own",
+        "full_team"
+      ],
+      "title": "Host Payment Mode"
+    },
+    "challenger_payment_mode": {
+      "type": "string",
+      "enum": [
+        "own",
+        "full_team"
+      ],
+      "title": "Challenger Payment Mode"
+    },
+    "required_players_per_team": {
+      "type": "number",
+      "title": "Required Players Per Team"
+    },
+    "roster_locked": {
+      "type": "boolean",
+      "default": false,
+      "title": "Roster Locked"
     },
     "total_prize_pool": {
       "type": "number",

@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Crown, Check, ArrowRight, Zap, Star, Shield } from "lucide-react";
+import { Crown, Check, ArrowRight } from "lucide-react";
 
 const perks = [
   "2x XP Boost on all matches",

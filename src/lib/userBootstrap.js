@@ -2,6 +2,17 @@ import { base44 } from "@/api/base44Client";
 
 let bootstrapPromise = null;
 
+export function clearBootstrapSession(userId) {
+  if (typeof window === "undefined") return;
+  if (userId) {
+    window.sessionStorage.removeItem(`bootstrap:${userId}`);
+    return;
+  }
+  Object.keys(window.sessionStorage)
+    .filter((key) => key.startsWith("bootstrap:"))
+    .forEach((key) => window.sessionStorage.removeItem(key));
+}
+
 const cleanUsername = (value, fallback = "player") => {
   const cleaned = String(value || fallback)
     .split("@")[0]

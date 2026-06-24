@@ -115,7 +115,7 @@ export default function Dashboard() {
   const rankedWinRate = totalRanked > 0 ? Math.round(((rankedStats?.wins || 0) / totalRanked) * 100) : 0;
 
   const quickStats = useMemo(() => ([
-    { icon: Wallet, label: "Wallet", value: formatMoney(wallet?.available_balance ?? user?.wallet_balance), color: "text-green" },
+    { icon: Wallet, label: "Wallet", value: formatMoney(wallet?.available_balance ?? 0), color: "text-green" },
     { icon: Trophy, label: "Tournament Wins", value: user?.tournament_wins || 0, color: "text-orange" },
     { icon: Swords, label: "Ranked Win Rate", value: `${rankedWinRate}%`, color: "text-cyan" },
     { icon: Flame, label: "Win Streak", value: rankedStats?.win_streak || user?.current_win_streak || 0, color: "text-red-400" },

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Award, Calendar, Crown, Flame, Shield, Swords, Trophy, Users } from "lucide-react";
+import { Award, Calendar, Crown, Flame, Package, Shield, Swords, Trophy, Users } from "lucide-react";
 import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
@@ -12,6 +12,32 @@ import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString()}`;
+const inventoryCategoryLabels = {
+  weapon_skin: "Weapon Skins",
+  knife: "Knife Skins",
+  gloves: "Gloves",
+  agent: "Avatars",
+  sticker: "Stickers",
+  patch: "Badges",
+  music_kit: "Music Kits",
+  cosmetic: "Cosmetics",
+};
+
+const premiumInventoryEffectClass = (item) => {
+  const rarity = String(item?.item_rarity || "").toLowerCase();
+  if (rarity === "exclusive") return "animate-exclusive-glow exclusive-shimmer border-cyan/30 glow-cyan";
+  if (["epic", "legendary", "mythic"].includes(rarity)) return "animate-mythic-glow mythic-shimmer";
+  return "";
+};
+
+const inventoryBorderClass = (item) => {
+  const rarity = String(item?.item_rarity || "").toLowerCase();
+  if (rarity === "exclusive") return "border-cyan/30";
+  if (rarity === "mythic") return "border-fuchsia-400/30";
+  if (rarity === "legendary") return "border-yellow-400/20";
+  if (rarity === "epic") return "border-purple-400/20";
+  return "border-white/5 hover:border-white/10";
+};
 
 export default function Profile() {
   const { username } = useParams();
@@ -97,8 +123,12 @@ export default function Profile() {
 
   const name = displayName(user, profile);
   const rank = getRankForElo(rankedStats?.elo || profile?.elo || 0);
-  const wins = rankedStats?.wins ?? user?.wager_wins ?? profile?.total_wins ?? 0;
-  const losses = rankedStats?.losses ?? user?.wager_losses ?? profile?.total_losses ?? 0;
+  const rankedWins = Number(rankedStats?.wins ?? 0);
+  const rankedLosses = Number(rankedStats?.losses ?? 0);
+  const wagerWins = Number(user?.wager_wins ?? 0);
+  const wagerLosses = Number(user?.wager_losses ?? 0);
+  const wins = Math.max(Number(profile?.total_wins ?? 0), rankedWins + wagerWins, rankedWins, wagerWins);
+  const losses = Math.max(Number(profile?.total_losses ?? 0), rankedLosses + wagerLosses, rankedLosses, wagerLosses);
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
   const badges = useMemo(() => user?.badges || [], [user]);
@@ -215,16 +245,7 @@ export default function Profile() {
         )}
 
         {tab === "inventory" && (
-          <List title="Inventory" empty="No inventory items found." rows={inventory} render={(item) => (
-            <div className="px-5 py-4 flex items-center gap-3">
-              {item.item_image && <img src={item.item_image} alt={item.item_name} className="w-10 h-10 rounded object-cover" />}
-              <div className="flex-1">
-                <p className="font-semibold text-sm">{item.item_name}</p>
-                <p className="text-xs text-vapor">{item.item_category}</p>
-              </div>
-              <RarityBadge rarity={item.item_rarity || "common"} />
-            </div>
-          )} />
+          <InventoryShowcase items={inventory} />
         )}
 
         {tab === "teams" && (
@@ -238,6 +259,49 @@ export default function Profile() {
           )} />
         )}
       </div>
+    </div>
+  );
+}
+
+function InventoryShowcase({ items }) {
+  return (
+    <div className="glass rounded-xl border border-white/5 overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+        <h3 className="font-bold text-sm">Inventory</h3>
+        <span className="text-xs text-vapor">{items.length} rows</span>
+      </div>
+      {items.length === 0 ? (
+        <div className="px-5 py-8 text-center text-sm text-vapor">No inventory items found.</div>
+      ) : (
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5 p-5">
+          {items.map((item) => (
+            <motion.div
+              key={item.id}
+              whileHover={{ y: -4 }}
+              className={`relative glass rounded-xl border overflow-hidden transition-all group ${premiumInventoryEffectClass(item)} ${inventoryBorderClass(item)}`}
+            >
+              <div className="aspect-square relative overflow-hidden bg-secondary">
+                {item.item_image ? (
+                  <img src={item.item_image} alt={item.item_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="w-12 h-12 text-vapor/30" />
+                  </div>
+                )}
+                <div className="absolute top-2 left-2">
+                  <RarityBadge rarity={item.item_rarity || "common"} />
+                </div>
+              </div>
+              <div className="p-3">
+                <h4 className="font-semibold text-sm mb-1 truncate">{item.item_name}</h4>
+                <p className="text-[10px] text-vapor capitalize">
+                  {inventoryCategoryLabels[item.item_category] || item.item_category || "Cosmetic"}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

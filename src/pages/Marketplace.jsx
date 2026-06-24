@@ -102,11 +102,17 @@ export default function Marketplace() {
     try {
       setLoading(true);
       const user = await base44.auth.me().catch(() => null);
+      if (user) {
+        await base44.functions.invoke("syncMarketplaceUnlocks", {}).catch((error) => {
+          console.warn("Marketplace unlock sync failed:", error);
+        });
+      }
+      const syncedUser = user ? await base44.auth.me({ force: true }).catch(() => user) : null;
       const [rows, inventory] = await Promise.all([
         base44.entities.MarketplaceItem.filter({}, "-created_date", 200),
-        user ? base44.entities.UserInventory.filter({ user_id: user.id }, "-acquired_date", 500).catch(() => []) : Promise.resolve([]),
+        syncedUser ? base44.entities.UserInventory.filter({ user_id: syncedUser.id }, "-acquired_date", 500).catch(() => []) : Promise.resolve([]),
       ]);
-      setCurrentUser(user);
+      setCurrentUser(syncedUser);
       setOwnedItemIds(new Set((inventory || []).map((entry) => entry.item_id).filter(Boolean)));
       setItems(dedupeById((rows || []).map(toMarketItem).filter((item) => item.active)));
     } catch (error) {

@@ -37,6 +37,31 @@
       },
       "title": "Team Members"
     },
+    "roster_locked": {
+      "type": "boolean",
+      "default": false,
+      "title": "Roster Locked"
+    },
+    "payment_mode": {
+      "type": "string",
+      "enum": [
+        "own",
+        "full_team"
+      ],
+      "title": "Payment Mode"
+    },
+    "entry_fee_paid": {
+      "type": "number",
+      "default": 0,
+      "title": "Entry Fee Paid"
+    },
+    "paid_member_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Paid Member IDs"
+    },
     "seed": {
       "type": "number",
       "title": "Tournament Seed"

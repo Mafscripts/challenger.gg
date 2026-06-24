@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
-  AlertTriangle, Shield, Clock, Check,
-  AlertCircle, Trophy, TrendingUp, Star, Users, Flame
+  AlertTriangle, Clock, Check,
+  AlertCircle
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -29,6 +28,7 @@ export default function EightsMatchRoom() {
   const [scoreB, setScoreB] = useState(0);
   const [supporting, setSupporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [disputing, setDisputing] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -142,22 +142,55 @@ export default function EightsMatchRoom() {
   const handleSupportTicket = async (reason) => {
     setSupporting(true);
     try {
-      const response = await base44.functions.invoke("createTicket", {
+      const response = await base44.functions.invoke("requestAdminAlert", {
+        match_type: wager.match_type || "8s",
+        match_id: wager.id,
         subject: `8s match support ${wager.id}`,
         description: `${reason}\n\nMatch: ${wager.id}\nPlayers: ${wager.host_name || "Host unavailable"} vs ${wager.challenger_name || "Opponent pending"}`,
-        category: "support",
         priority: "high",
       });
 
       if (response.data?.success) {
-        toast({ title: "Support ticket opened", description: "Staff will review your 8s match." });
+        toast({ title: "Admin requested", description: "Staff were notified for this 8s match." });
+        await loadWager();
       } else {
-        toast({ title: "Ticket failed", description: response.data?.error || "Could not open ticket.", variant: "destructive" });
+        toast({ title: "Request failed", description: response.data?.error || "Could not request admin.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Ticket failed", description: error.message || "Could not open ticket.", variant: "destructive" });
+      toast({ title: "Request failed", description: error.message || "Could not request admin.", variant: "destructive" });
     } finally {
       setSupporting(false);
+    }
+  };
+
+  const handleCreateDispute = async () => {
+    const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
+    if (evidenceText === null) return;
+    const evidenceUrls = evidenceText.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
+    setDisputing(true);
+    try {
+      const response = await base44.functions.invoke("createDispute", {
+        match_type: "wager",
+        match_id: wager.id,
+        wager_id: wager.id,
+        reason: "score_dispute",
+        description: `Dispute submitted from 8s match room ${wager.id}. ${wager.host_name || "Host"} vs ${wager.challenger_name || "Opponent"}`,
+        reported_against: user?.id === wager.host_id ? wager.challenger_id : wager.host_id,
+        reported_against_name: user?.id === wager.host_id ? wager.challenger_name : wager.host_name,
+        evidence_urls: evidenceUrls,
+        escalated: Boolean(user?.is_premium),
+      });
+
+      if (response.data?.success) {
+        toast({ title: response.data.escalated ? "Dispute escalated" : "Dispute submitted", description: "A review case was created for staff." });
+        await loadWager();
+      } else {
+        toast({ title: "Dispute failed", description: response.data?.error || "Could not create dispute.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Dispute failed", description: error.message || "Could not create dispute.", variant: "destructive" });
+    } finally {
+      setDisputing(false);
     }
   };
 
@@ -292,12 +325,27 @@ export default function EightsMatchRoom() {
               disabled={supporting}
               className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider flex items-center gap-2"
             >
-              <AlertTriangle className="w-4 h-4" /> {supporting ? "Submitting..." : "Support Ticket"}
+              <AlertTriangle className="w-4 h-4" /> {supporting ? "Requesting..." : "Request Admin"}
+            </button>
+            <button onClick={handleCreateDispute} disabled={disputing} className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50">
+              {disputing ? "Submitting..." : "Submit Dispute"}
             </button>
             <button onClick={() => handleSupportTicket("Opponent no-show report.")} disabled={supporting} className="px-6 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/5 hover:bg-secondary transition-all uppercase tracking-wider disabled:opacity-50">
               Report No Show
             </button>
           </div>
+          {(wager.admin_request_status || wager.requested_admin) && (
+            <p className="text-xs text-vapor mt-3">
+              Admin request: {{
+                waiting_for_admin: "Waiting for admin",
+                admin_joined: "Admin joined",
+                waiting_for_user: "Waiting for user",
+                escalated: "Escalated",
+                resolved: "Resolved",
+                closed: "Closed",
+              }[wager.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
+            </p>
+          )}
         </div>
 
         {/* Bottom Section */}

@@ -12,9 +12,12 @@ import {
   Landmark,
   LayoutDashboard,
   Loader2,
+  MessageSquare,
   Plus,
+  RefreshCw,
   ScrollText,
   Search,
+  Send,
   Shield,
   ShoppingBag,
   Save,
@@ -22,6 +25,7 @@ import {
   Trash2,
   Ticket,
   Trophy,
+  UserCheck,
   Users,
   Wallet,
   X,
@@ -29,10 +33,11 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import RoleBadge from "@/components/ui/RoleBadge";
-import { canAccessAdminPanel, canManageRoles, canManageWallets } from "@/lib/roles";
+import { canAccessAdminPanel, canManageRoles, canManageWallets, getRoleConfig } from "@/lib/roles";
 
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
+const tournamentRewardCategories = new Set(["knife", "weapon_skin", "trophy"]);
 const marketplaceRarities = ["common", "rare", "epic", "legendary", "mythic", "exclusive"];
 const marketplaceUnlockTypes = [
   { value: "marketplace", label: "Direct marketplace purchase" },
@@ -73,11 +78,21 @@ const defaultTournamentForm = {
   game_mode: "snd",
   team_size: "2v2",
   entry_fee: "0",
+  entry_type: "free",
   prize_pool: "0",
   max_teams: "8",
   status: "open",
+  registration_end: "",
   start_date: "",
   is_premium_only: false,
+  reward_item_ids: [],
+  elimination_reward_item_ids: [],
+};
+const defaultWalletAdjustmentForm = {
+  user_id: "",
+  type: "credits",
+  amount: "",
+  reason: "",
 };
 
 const tabs = [
@@ -110,17 +125,55 @@ const initialData = {
   marketplace: [],
   inventory: [],
   adminActions: [],
+  bans: [],
   systemLogs: [],
+  messages: [],
 };
 
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 const statusText = (value) => String(value || "unknown").replace(/_/g, " ");
 const userName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unknown";
+const rolePowerFor = (role) => getRoleConfig(role || "user").power;
+const canAddWalletAdjustment = (role) => ["ceo", "super_admin"].includes(role || "user");
+const canAdjustUserWallet = (actorRole, targetRole) => canAddWalletAdjustment(actorRole) && (actorRole === "ceo" || targetRole !== "ceo");
+const ipHistoryText = (user) => (user?.ip_history || []).slice(-3).map((entry) => entry.ip).join(", ") || user?.last_login_ip || user?.registration_ip || "N/A";
 const marketplacePlacementText = (item) => [
   item.is_featured === true ? "Featured" : null,
   item.show_in_marketplace !== false ? "Grid" : null,
 ].filter(Boolean).join(", ") || "Hidden";
+const marketplaceCategoryText = (value) => String(value || "cosmetic").replace(/_/g, " ");
+const tournamentItemIds = (tournament, idsKey, itemsKey) => {
+  const selectedIds = Array.isArray(tournament?.[idsKey]) ? tournament[idsKey] : [];
+  const snapshotIds = Array.isArray(tournament?.[itemsKey]) ? tournament[itemsKey].map((item) => item?.id || item?.item_id) : [];
+  return [...new Set([...selectedIds, ...snapshotIds].filter(Boolean))];
+};
+const tournamentRewardIds = (tournament) => tournamentItemIds(tournament, "reward_item_ids", "reward_items");
+const tournamentEliminationRewardIds = (tournament) => tournamentItemIds(tournament, "elimination_reward_item_ids", "elimination_reward_items");
+const tournamentRewardSummary = (tournament, marketplace = [], idsKey = "reward_item_ids", itemsKey = "reward_items") => {
+  const byId = Object.fromEntries(marketplace.map((item) => [item.id, item]));
+  const snapshots = Array.isArray(tournament?.[itemsKey]) ? tournament[itemsKey] : [];
+  const rewards = tournamentItemIds(tournament, idsKey, itemsKey).map((id) => byId[id] || snapshots.find((item) => item?.id === id || item?.item_id === id)).filter(Boolean);
+  return rewards.map((item) => item.name).slice(0, 3).join(", ") + (rewards.length > 3 ? ` +${rewards.length - 3}` : "") || "None";
+};
+const compactListText = (rows, formatter, empty = "None") => (
+  (rows || []).slice(0, 3).map(formatter).filter(Boolean).join(" | ") || empty
+);
+const ticketProofUrls = (ticket) => [
+  ...(ticket.submitted_proof || []),
+  ...(ticket.proof_urls || []),
+  ...(ticket.evidence_urls || []),
+  ...(ticket.additional_proof || []),
+].filter(Boolean);
+const reportText = (report) => (
+  report && Object.keys(report).length
+    ? Object.entries(report)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .slice(0, 6)
+      .map(([key, value]) => `${key.replace(/_/g, " ")}: ${value}`)
+      .join(" | ")
+    : "No result report"
+);
 
 function StatCard({ icon: Icon, label, value, color = "text-cyan" }) {
   return (
@@ -158,6 +211,53 @@ function StatusPill({ status }) {
   );
 }
 
+function TournamentRewardPicker({ title, description, selectedIds = [], items = [], onToggle }) {
+  return (
+    <div className="rounded-xl border border-white/5 bg-secondary/40 p-4">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <span className="text-[10px] text-vapor uppercase font-bold">{title}</span>
+        <span className="text-[10px] text-cyan font-mono font-bold">{selectedIds.length} selected</span>
+      </div>
+      <p className="text-xs text-vapor mb-3">{description}</p>
+      {items.length > 0 ? (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-2">
+          {items.map((item) => {
+            const selected = selectedIds.includes(item.id);
+            return (
+              <label
+                key={item.id}
+                className={`flex items-center gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-all ${
+                  selected ? "border-cyan/40 bg-cyan/10" : "border-white/5 bg-background/40 hover:border-white/10"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={() => onToggle(item.id)}
+                  className="accent-cyan"
+                />
+                {item.image_url ? (
+                  <img src={item.image_url} alt="" className="h-9 w-9 rounded object-cover bg-background" />
+                ) : (
+                  <div className="h-9 w-9 rounded bg-background flex items-center justify-center">
+                    <Trophy className="h-4 w-4 text-cyan" />
+                  </div>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-bold">{item.name}</span>
+                  <span className="block truncate text-[10px] text-vapor capitalize">{marketplaceCategoryText(item.category)} - {item.rarity || "common"}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-xs text-vapor">Create active knife, gun skin, or trophy items in Marketplace first.</p>
+      )}
+    </div>
+  );
+}
+
 export default function Admin() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [loading, setLoading] = useState(true);
@@ -168,6 +268,12 @@ export default function Admin() {
   const [marketplaceForm, setMarketplaceForm] = useState(defaultMarketplaceForm);
   const [editingMarketplaceId, setEditingMarketplaceId] = useState(null);
   const [tournamentForm, setTournamentForm] = useState(defaultTournamentForm);
+  const [editingTournamentId, setEditingTournamentId] = useState(null);
+  const [ticketReplyDrafts, setTicketReplyDrafts] = useState({});
+  const [ticketNoteDrafts, setTicketNoteDrafts] = useState({});
+  const [ticketResolutionDrafts, setTicketResolutionDrafts] = useState({});
+  const [walletAdjustmentOpen, setWalletAdjustmentOpen] = useState(false);
+  const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
 
   useEffect(() => {
     loadAdminData();
@@ -193,6 +299,8 @@ export default function Admin() {
         return;
       }
 
+      await base44.functions.invoke("syncTournamentLifecycle", {}).catch(() => null);
+
       const [
         users,
         tickets,
@@ -206,7 +314,9 @@ export default function Admin() {
         marketplace,
         inventory,
         adminActions,
+        bans,
         systemLogs,
+        messages,
       ] = await Promise.all([
         safeList("User"),
         safeList("Ticket"),
@@ -220,7 +330,9 @@ export default function Admin() {
         safeList("MarketplaceItem"),
         safeList("UserInventory"),
         safeList("AdminAction"),
+        safeList("Ban"),
         safeList("SystemLog"),
+        safeList("Message"),
       ]);
 
       setData({
@@ -236,7 +348,9 @@ export default function Admin() {
         marketplace,
         inventory,
         adminActions,
+        bans,
         systemLogs,
+        messages,
       });
     } catch (error) {
       console.error("Failed to load admin data:", error);
@@ -252,6 +366,34 @@ export default function Admin() {
       return haystack.includes(searchQuery.toLowerCase());
     })
   ), [data.users, searchQuery]);
+
+  const walletByUserId = useMemo(() => (
+    Object.fromEntries(data.wallets.map((wallet) => [wallet.user_id, wallet]))
+  ), [data.wallets]);
+
+  const walletAdjustmentUsers = useMemo(() => (
+    data.users.filter((user) => canAdjustUserWallet(currentUser?.role || "user", user.role || "user"))
+  ), [data.users, currentUser?.role]);
+
+  const tournamentRewardItems = useMemo(() => (
+    data.marketplace
+      .filter((item) => tournamentRewardCategories.has(item.category) && item.is_active !== false && item.is_available !== false)
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
+  ), [data.marketplace]);
+
+  const sharedIpCount = (targetUser) => {
+    const ips = new Set([
+      targetUser.registration_ip,
+      targetUser.last_login_ip,
+      ...((targetUser.ip_history || []).map((entry) => entry.ip)),
+    ].filter(Boolean));
+    if (ips.size === 0) return 0;
+    return data.users.filter((user) => user.id !== targetUser.id && [
+      user.registration_ip,
+      user.last_login_ip,
+      ...((user.ip_history || []).map((entry) => entry.ip)),
+    ].some((ip) => ips.has(ip))).length;
+  };
 
   const auditRows = useMemo(() => ([
     ...data.adminActions.map((row) => ({
@@ -276,7 +418,7 @@ export default function Admin() {
 
   const stats = useMemo(() => ({
     totalUsers: data.users.length,
-    openTickets: data.tickets.filter((ticket) => ticket.status === "open").length,
+    openTickets: data.tickets.filter((ticket) => !["resolved", "closed"].includes(ticket.status)).length,
     pendingDisputes: data.disputes.filter((dispute) => ["pending", "under_review"].includes(dispute.status)).length,
     activeWagers: data.wagers.filter((wager) => ["open", "in_progress", "ready", "score_conflict"].includes(wager.status)).length,
     activeRanked: data.rankedMatches.filter((match) => ["open", "in_progress", "score_conflict"].includes(match.status)).length,
@@ -285,30 +427,66 @@ export default function Admin() {
     walletTotal: data.wallets.reduce((sum, wallet) => sum + Number(wallet.available_balance || 0), 0),
   }), [data]);
 
-  const handleResolveTicket = async (ticketId) => {
-    setBusyId(ticketId);
+  const messagesForTicket = (ticket) => {
+    const rows = [
+      ...(ticket.messages || []),
+      ...data.messages.filter((message) => message.ticket_id === ticket.id || message.conversation_id === ticket.id),
+    ];
+    const seen = new Set();
+    return rows
+      .filter((message) => {
+        const key = message.id || `${message.created_date}:${message.sender_id}:${message.content}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
+  };
+
+  const invokeTicketAction = async (ticket, action, payload = {}, label = "Ticket updated") => {
+    setBusyId(`ticket:${ticket.id}:${action}`);
     try {
-      await base44.entities.Ticket.update(ticketId, {
-        status: "resolved",
-        resolution: "Resolved by staff",
-        resolved_date: new Date().toISOString(),
+      const response = await base44.functions.invoke(action, {
+        ticket_id: ticket.id,
+        ...payload,
       });
-      await base44.entities.AdminAction.create({
-        admin_id: currentUser.id,
-        admin_name: userName(currentUser),
-        admin_role: currentUser.role,
-        action_type: "moderation",
-        description: `Resolved ticket ${ticketId}`,
-        details: { ticket_id: ticketId },
-      });
-      toast({ title: "Ticket resolved" });
+      if (!response.data?.success) {
+        toast({ title: "Ticket action failed", description: response.data?.error || "Could not update ticket", variant: "destructive" });
+        return false;
+      }
+      toast({ title: label });
       loadAdminData();
+      return true;
     } catch (error) {
-      toast({ title: "Resolve failed", description: error.message || "Could not resolve ticket", variant: "destructive" });
+      toast({ title: "Ticket action failed", description: error.message || "Could not update ticket", variant: "destructive" });
+      return false;
     } finally {
       setBusyId(null);
     }
   };
+
+  const handleJoinTicket = (ticket) => invokeTicketAction(ticket, "joinTicket", {}, "Ticket joined");
+
+  const handleReplyTicket = async (ticket, internal = false) => {
+    const source = internal ? ticketNoteDrafts : ticketReplyDrafts;
+    const message = (source[ticket.id] || "").trim();
+    if (!message) {
+      toast({ title: internal ? "Note required" : "Reply required", description: "Add text before sending.", variant: "destructive" });
+      return;
+    }
+    const sent = await invokeTicketAction(ticket, "replyTicket", { message, internal }, internal ? "Internal note saved" : "Reply sent");
+    if (sent) {
+      if (internal) setTicketNoteDrafts((prev) => ({ ...prev, [ticket.id]: "" }));
+      else setTicketReplyDrafts((prev) => ({ ...prev, [ticket.id]: "" }));
+    }
+  };
+
+  const handleResolveTicket = (ticket, action) => invokeTicketAction(ticket, "resolveTicket", {
+    action,
+    resolution: ticketResolutionDrafts[ticket.id] || "Resolved by staff",
+  }, action ? "Ticket resolved and match updated" : "Ticket resolved");
+
+  const handleReopenTicket = (ticket) => invokeTicketAction(ticket, "reopenTicket", {}, "Ticket reopened");
 
   const handleSetRole = async (targetUser, role) => {
     if (!canManageRoles(currentUser?.role || "user")) {
@@ -318,28 +496,136 @@ export default function Admin() {
 
     setBusyId(`${targetUser.id}:${role}`);
     try {
-      const staffRole = role !== "user" ? role : null;
-      const existingBadges = (targetUser.badges || []).filter((badge) => !["ceo", "super_admin", "admin", "moderator"].includes(badge.type));
-      await base44.entities.User.update(targetUser.id, {
+      const response = await base44.functions.invoke("updateUserRole", {
+        user_id: targetUser.id,
         role,
-        admin_role: staffRole,
-        is_admin: Boolean(staffRole),
-        badges: staffRole ? [...existingBadges, { name: role.replace("_", " "), type: role }] : existingBadges,
       });
-      await base44.entities.AdminAction.create({
-        admin_id: currentUser.id,
-        admin_name: userName(currentUser),
-        admin_role: currentUser.role,
-        action_type: "role_change",
-        target_user_id: targetUser.id,
-        target_username: userName(targetUser),
-        description: `Changed ${userName(targetUser)} role to ${role}`,
-        details: { role },
-      });
-      toast({ title: "Role updated", description: `${userName(targetUser)} is now ${role}.` });
-      loadAdminData();
+      if (response.data?.success) {
+        toast({ title: "Role updated", description: `${userName(targetUser)} is now ${role}.` });
+        loadAdminData();
+      } else {
+        toast({ title: "Role update failed", description: response.data?.error || "Could not update role.", variant: "destructive" });
+      }
     } catch (error) {
       toast({ title: "Role update failed", description: error.message || "Could not update role.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleModerateUser = async (targetUser, action, duration) => {
+    if (!canAccessAdminPanel(currentUser?.role || "user")) {
+      toast({ title: "Not allowed", description: "Moderator or higher is required.", variant: "destructive" });
+      return;
+    }
+    const reason = typeof window !== "undefined" ? window.prompt(`Reason for ${action.replace(/_/g, " ")}:`, "") : "";
+    if (reason === null) return;
+
+    setBusyId(`${targetUser.id}:${action}`);
+    try {
+      const response = await base44.functions.invoke("moderateUser", {
+        user_id: targetUser.id,
+        action,
+        duration,
+        reason: reason || action.replace(/_/g, " "),
+      });
+      if (response.data?.success) {
+        toast({ title: "Moderation action saved", description: `${action.replace(/_/g, " ")} applied to ${userName(targetUser)}.` });
+        loadAdminData();
+      } else {
+        toast({ title: "Moderation failed", description: response.data?.error || "Could not apply moderation action.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Moderation failed", description: error.message || "Could not apply moderation action.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const openWalletAdjustment = (targetUser, type) => {
+    if (!canAddWalletAdjustment(currentUser?.role || "user")) {
+      toast({ title: "Not allowed", description: "CEO or Super Admin is required.", variant: "destructive" });
+      return;
+    }
+    if (!canAdjustUserWallet(currentUser?.role || "user", targetUser?.role || "user")) {
+      toast({ title: "Not allowed", description: "Super Admin cannot adjust CEO accounts.", variant: "destructive" });
+      return;
+    }
+    setWalletAdjustmentForm({
+      user_id: targetUser.id,
+      type,
+      amount: "",
+      reason: "",
+    });
+    setWalletAdjustmentOpen(true);
+  };
+
+  const resetWalletAdjustment = () => {
+    setWalletAdjustmentForm(defaultWalletAdjustmentForm);
+    setWalletAdjustmentOpen(false);
+  };
+
+  const handleSubmitWalletAdjustment = async (event) => {
+    event.preventDefault();
+
+    if (!canAddWalletAdjustment(currentUser?.role || "user")) {
+      toast({ title: "Not allowed", description: "CEO or Super Admin is required.", variant: "destructive" });
+      return;
+    }
+
+    const targetUser = data.users.find((user) => user.id === walletAdjustmentForm.user_id);
+    if (!targetUser) {
+      toast({ title: "User required", description: "Select a user before adding funds.", variant: "destructive" });
+      return;
+    }
+    if (!canAdjustUserWallet(currentUser?.role || "user", targetUser.role || "user")) {
+      toast({ title: "Not allowed", description: "Super Admin cannot adjust CEO accounts.", variant: "destructive" });
+      return;
+    }
+
+    const amount = Number(walletAdjustmentForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast({ title: "Invalid amount", description: "Amount must be positive.", variant: "destructive" });
+      return;
+    }
+    if (!walletAdjustmentForm.reason.trim()) {
+      toast({ title: "Reason required", description: "Add a reason for the adjustment.", variant: "destructive" });
+      return;
+    }
+
+    setBusyId("wallet-adjustment");
+    try {
+      const response = await base44.functions.invoke("adminAdjustWallet", {
+        user_id: targetUser.id,
+        type: walletAdjustmentForm.type,
+        amount,
+        reason: walletAdjustmentForm.reason.trim(),
+      });
+
+      if (response.data?.success) {
+        const updatedUser = response.data.user;
+        const updatedWallet = response.data.wallet;
+        const action = response.data.action;
+        setData((prev) => ({
+          ...prev,
+          users: updatedUser ? prev.users.map((user) => (user.id === updatedUser.id ? { ...user, ...updatedUser } : user)) : prev.users,
+          wallets: updatedWallet
+            ? prev.wallets.some((wallet) => wallet.id === updatedWallet.id)
+              ? prev.wallets.map((wallet) => (wallet.id === updatedWallet.id ? updatedWallet : wallet))
+              : [updatedWallet, ...prev.wallets]
+            : prev.wallets,
+          adminActions: action ? [action, ...prev.adminActions.filter((row) => row.id !== action.id)] : prev.adminActions,
+        }));
+        toast({
+          title: `${walletAdjustmentForm.type === "money" ? "Money" : "Credits"} added`,
+          description: `${walletAdjustmentForm.type === "money" ? formatMoney(amount) : `${amount.toLocaleString()} credits`} added to ${userName(targetUser)}.`,
+        });
+        resetWalletAdjustment();
+      } else {
+        toast({ title: "Adjustment failed", description: response.data?.error || "Could not add funds.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Adjustment failed", description: error.message || "Could not add funds.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -389,23 +675,63 @@ export default function Admin() {
     }
   };
 
-  const tournamentPayload = () => ({
-    name: tournamentForm.name.trim(),
-    game_mode: tournamentForm.game_mode,
-    team_size: tournamentForm.team_size,
-    entry_fee: Number(tournamentForm.entry_fee || 0),
-    prize_pool: Number(tournamentForm.prize_pool || 0),
-    max_teams: Number(tournamentForm.max_teams || 0),
-    registered_teams: 0,
-    status: tournamentForm.status,
-    format: "single_elimination",
-    bracket_type: "single_elimination",
-    start_date: tournamentForm.start_date ? new Date(tournamentForm.start_date).toISOString() : undefined,
-    created_by: currentUser?.id,
-    created_by_name: userName(currentUser),
-    created_date: new Date().toISOString(),
-    is_premium_only: tournamentForm.is_premium_only,
-  });
+  const handleModerateDispute = async (dispute, action) => {
+    const notes = typeof window !== "undefined" ? window.prompt(`Notes for ${action.replace(/_/g, " ")}:`, "") : "";
+    if (notes === null) return;
+    setBusyId(`dispute:${dispute.id}:${action}`);
+    try {
+      const response = await base44.functions.invoke("moderateDispute", {
+        dispute_id: dispute.id,
+        action,
+        notes,
+      });
+      if (response.data?.success) {
+        toast({ title: "Dispute resolved", description: action.replace(/_/g, " ") });
+        loadAdminData();
+      } else {
+        toast({ title: "Dispute action failed", description: response.data?.error || "Could not resolve dispute.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Dispute action failed", description: error.message || "Could not resolve dispute.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const tournamentPayload = () => {
+    const entryType = tournamentForm.entry_type || (tournamentForm.is_premium_only ? "premium" : "free");
+    const rewardItemIds = [...new Set((tournamentForm.reward_item_ids || []).filter(Boolean))];
+    const eliminationRewardItemIds = [...new Set((tournamentForm.elimination_reward_item_ids || []).filter(Boolean))];
+    const marketplaceById = Object.fromEntries(data.marketplace.map((item) => [item.id, item]));
+    const itemSnapshot = (ids) => ids.map((id) => marketplaceById[id]).filter(Boolean).map((item) => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      rarity: item.rarity,
+      image_url: item.image_url,
+    }));
+    const rewardItems = itemSnapshot(rewardItemIds);
+    const eliminationRewardItems = itemSnapshot(eliminationRewardItemIds);
+    return {
+      name: tournamentForm.name.trim(),
+      game_mode: tournamentForm.game_mode,
+      team_size: tournamentForm.team_size,
+      entry_fee: Number(tournamentForm.entry_fee || 0),
+      entry_type: entryType,
+      prize_pool: Number(tournamentForm.prize_pool || 0),
+      max_teams: Number(tournamentForm.max_teams || 0),
+      status: tournamentForm.status,
+      format: "single_elimination",
+      bracket_type: "single_elimination",
+      registration_end: tournamentForm.registration_end ? new Date(tournamentForm.registration_end).toISOString() : undefined,
+      start_date: tournamentForm.start_date ? new Date(tournamentForm.start_date).toISOString() : undefined,
+      is_premium_only: entryType === "premium" || entryType === "credits_premium",
+      reward_item_ids: rewardItemIds,
+      reward_items: rewardItems,
+      elimination_reward_item_ids: eliminationRewardItemIds,
+      elimination_reward_items: eliminationRewardItems,
+    };
+  };
 
   const handleSubmitTournament = async (event) => {
     event.preventDefault();
@@ -423,20 +749,89 @@ export default function Admin() {
     setBusyId("tournament:create");
     try {
       const payload = tournamentPayload();
-      const tournament = await base44.entities.Tournament.create(payload);
-      await base44.entities.AdminAction.create({
-        admin_id: currentUser.id,
-        admin_name: userName(currentUser),
-        admin_role: currentUser.role,
-        action_type: "tournament_create",
-        description: `Created tournament ${payload.name}`,
-        details: { tournament_id: tournament?.id, ...payload },
-      }).catch((error) => console.warn("Failed to write tournament audit action:", error));
-      toast({ title: "Tournament created", description: `${payload.name} is saved.` });
+      const response = editingTournamentId
+        ? await base44.functions.invoke("updateTournament", { tournament_id: editingTournamentId, patch: payload })
+        : { data: { success: true, tournament: await base44.entities.Tournament.create({
+          ...payload,
+          registered_teams: 0,
+          created_by: currentUser?.id,
+          created_by_name: userName(currentUser),
+          created_date: new Date().toISOString(),
+        }) } };
+      if (!response.data?.success) {
+        toast({ title: "Save failed", description: response.data?.error || "Could not save tournament.", variant: "destructive" });
+        return;
+      }
+      toast({ title: editingTournamentId ? "Tournament updated" : "Tournament created", description: `${payload.name} is saved.` });
       setTournamentForm(defaultTournamentForm);
+      setEditingTournamentId(null);
       loadAdminData();
     } catch (error) {
       toast({ title: "Create failed", description: error.message || "Could not create tournament.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleEditTournament = (tournament) => {
+    setEditingTournamentId(tournament.id);
+    setTournamentForm({
+      ...defaultTournamentForm,
+      name: tournament.name || "",
+      game_mode: tournament.game_mode || "snd",
+      team_size: tournament.team_size || "2v2",
+      entry_fee: String(tournament.entry_fee ?? 0),
+      entry_type: tournament.entry_type || (tournament.is_premium_only ? "premium" : (Number(tournament.entry_fee || 0) > 0 ? "credits" : "free")),
+      prize_pool: String(tournament.prize_pool ?? 0),
+      max_teams: String(tournament.max_teams ?? 8),
+      status: tournament.status || "open",
+      registration_end: tournament.registration_end ? new Date(tournament.registration_end).toISOString().slice(0, 16) : "",
+      start_date: tournament.start_date ? new Date(tournament.start_date).toISOString().slice(0, 16) : "",
+      is_premium_only: Boolean(tournament.is_premium_only),
+      reward_item_ids: tournamentRewardIds(tournament),
+      elimination_reward_item_ids: tournamentEliminationRewardIds(tournament),
+    });
+  };
+
+  const resetTournamentForm = () => {
+    setEditingTournamentId(null);
+    setTournamentForm(defaultTournamentForm);
+  };
+
+  const toggleTournamentReward = (field, itemId) => {
+    setTournamentForm((prev) => {
+      const rewardIds = new Set(prev[field] || []);
+      if (rewardIds.has(itemId)) rewardIds.delete(itemId);
+      else rewardIds.add(itemId);
+      return { ...prev, [field]: [...rewardIds] };
+    });
+  };
+
+  const handleTournamentAction = async (tournament, action, payload = {}) => {
+    const labels = {
+      startTournament: "started",
+      cancelTournament: "cancelled",
+      closeTournamentRegistration: "registration closed",
+      extendTournamentRegistration: "registration extended",
+      deleteTournament: "deleted",
+    };
+    if (action === "deleteTournament" && typeof window !== "undefined" && !window.confirm(`Delete ${tournament.name}?`)) return;
+
+    setBusyId(`${action}:${tournament.id}`);
+    try {
+      const response = await base44.functions.invoke(action, {
+        tournament_id: tournament.id,
+        ...payload,
+      });
+      if (response.data?.success) {
+        toast({ title: `Tournament ${labels[action] || "updated"}`, description: tournament.name });
+        if (editingTournamentId === tournament.id && action === "deleteTournament") resetTournamentForm();
+        loadAdminData();
+      } else {
+        toast({ title: "Tournament action failed", description: response.data?.error || "Could not update tournament.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Tournament action failed", description: error.message || "Could not update tournament.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -682,6 +1077,74 @@ export default function Admin() {
                   />
                 </div>
               </div>
+              {walletAdjustmentOpen && canAddWalletAdjustment(currentUser?.role || "user") && (
+                <form onSubmit={handleSubmitWalletAdjustment} className="mb-4 rounded-lg border border-white/5 bg-secondary/30 p-4">
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">User</span>
+                      <select
+                        value={walletAdjustmentForm.user_id}
+                        onChange={(event) => setWalletAdjustmentForm((prev) => ({ ...prev, user_id: event.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      >
+                        <option value="">Select user</option>
+                        {walletAdjustmentUsers.map((user) => (
+                          <option key={user.id} value={user.id}>{userName(user)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Type</span>
+                      <select
+                        value={walletAdjustmentForm.type}
+                        onChange={(event) => setWalletAdjustmentForm((prev) => ({ ...prev, type: event.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      >
+                        <option value="credits">Credits</option>
+                        <option value="money">Money</option>
+                      </select>
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Amount</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step={walletAdjustmentForm.type === "money" ? "0.01" : "1"}
+                        value={walletAdjustmentForm.amount}
+                        onChange={(event) => setWalletAdjustmentForm((prev) => ({ ...prev, amount: event.target.value }))}
+                        placeholder="Amount"
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Reason</span>
+                      <input
+                        value={walletAdjustmentForm.reason}
+                        onChange={(event) => setWalletAdjustmentForm((prev) => ({ ...prev, reason: event.target.value }))}
+                        placeholder="Reason"
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={resetWalletAdjustment}
+                      className="px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded hover:bg-white/10"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={busyId === "wallet-adjustment"}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-cyan/10 text-cyan text-xs font-bold rounded border border-cyan/20 hover:bg-cyan/20 disabled:opacity-50"
+                    >
+                      {busyId === "wallet-adjustment" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                      Add
+                    </button>
+                  </div>
+                </form>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -690,8 +1153,9 @@ export default function Admin() {
                       <th className="text-left py-3 px-4">Role</th>
                       <th className="text-left py-3 px-4">Status</th>
                       <th className="text-left py-3 px-4">Wallet</th>
+                      <th className="text-left py-3 px-4">IP History</th>
                       <th className="text-left py-3 px-4">Joined</th>
-                      <th className="text-right py-3 px-4">Profile</th>
+                      <th className="text-right py-3 px-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -703,10 +1167,33 @@ export default function Admin() {
                         </td>
                         <td className="py-3 px-4"><RoleBadge role={user.role || "user"} /></td>
                         <td className="py-3 px-4"><StatusPill status={user.is_banned ? "banned" : "active"} /></td>
-                        <td className="py-3 px-4 text-sm font-mono">{formatMoney(user.wallet_balance)}</td>
+                        <td className="py-3 px-4 text-sm font-mono">{formatMoney(walletByUserId[user.id]?.available_balance ?? 0)}</td>
+                        <td className="py-3 px-4 text-xs text-vapor max-w-[180px] truncate" title={ipHistoryText(user)}>
+                          {ipHistoryText(user)}
+                          {sharedIpCount(user) > 0 && <span className="ml-2 text-orange">Shared: {sharedIpCount(user)}</span>}
+                        </td>
                         <td className="py-3 px-4 text-sm text-vapor">{formatDate(user.account_created_date)}</td>
-                        <td className="py-3 px-4 text-right">
-                          <Link to={`/profile/${user.username || user.id}`} className="text-xs text-cyan hover:underline">View</Link>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Link to={`/profile/${user.username || user.id}`} className="text-xs text-cyan hover:underline">View</Link>
+                            {canAdjustUserWallet(currentUser?.role || "user", user.role || "user") && (
+                              <>
+                                <button onClick={() => openWalletAdjustment(user, "credits")} className="text-xs text-green hover:underline">Add Credits</button>
+                                <button onClick={() => openWalletAdjustment(user, "money")} className="text-xs text-cyan hover:underline">Add Money</button>
+                              </>
+                            )}
+                            <button onClick={() => handleModerateUser(user, "warning")} className="text-xs text-yellow-400 hover:underline">Warn</button>
+                            <button onClick={() => handleModerateUser(user, "suspension", "24h")} className="text-xs text-orange hover:underline">Suspend 24h</button>
+                            <button onClick={() => handleModerateUser(user, "temporary_ban", "24h")} className="text-xs text-orange hover:underline">24h Ban</button>
+                            <button onClick={() => handleModerateUser(user, "temporary_ban", "3d")} className="text-xs text-red-400 hover:underline">3d Ban</button>
+                            <button onClick={() => handleModerateUser(user, "temporary_ban", "7d")} className="text-xs text-red-400 hover:underline">7d Ban</button>
+                            <button onClick={() => handleModerateUser(user, "temporary_ban", "14d")} className="text-xs text-red-400 hover:underline">14d Ban</button>
+                            <button onClick={() => handleModerateUser(user, "temporary_ban", "30d")} className="text-xs text-red-400 hover:underline">30d Ban</button>
+                            <button onClick={() => handleModerateUser(user, "ban", "permanent")} className="text-xs text-red-400 hover:underline">Permanent Ban</button>
+                            <button onClick={() => handleModerateUser(user, "email_ban")} className="text-xs text-red-400 hover:underline">Email Ban</button>
+                            <button onClick={() => handleModerateUser(user, "ip_ban")} className="text-xs text-red-400 hover:underline">IP Ban</button>
+                            {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="text-xs text-green hover:underline">Unban</button>}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -732,7 +1219,13 @@ export default function Admin() {
                         <button
                           key={role}
                           onClick={() => handleSetRole(user, role)}
-                          disabled={!canManageRoles(currentUser?.role || "user") || busyId === `${user.id}:${role}` || user.role === role}
+                          disabled={
+                            !canManageRoles(currentUser?.role || "user") ||
+                            (rolePowerFor(currentUser?.role) <= rolePowerFor(user.role) && currentUser?.role !== "ceo") ||
+                            (rolePowerFor(currentUser?.role) <= rolePowerFor(role) && currentUser?.role !== "ceo") ||
+                            busyId === `${user.id}:${role}` ||
+                            user.role === role
+                          }
                           className="px-3 py-1.5 bg-secondary text-vapor text-[10px] font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-40"
                         >
                           {busyId === `${user.id}:${role}` ? <Loader2 className="w-3 h-3 animate-spin" /> : role.replace("_", " ")}
@@ -750,32 +1243,242 @@ export default function Admin() {
               title="Support Tickets"
               rows={data.tickets}
               empty="No support tickets."
-              render={(ticket) => (
-                <div className="px-5 py-4 flex flex-col lg:flex-row lg:items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2"><StatusPill status={ticket.status} /><StatusPill status={ticket.priority} /></div>
-                    <p className="font-semibold text-sm">{ticket.subject}</p>
-                    <p className="text-xs text-vapor">From: {ticket.username} - {ticket.category}</p>
-                    <p className="text-sm text-foreground/80 mt-2">{ticket.description}</p>
+              render={(ticket) => {
+                const messages = messagesForTicket(ticket);
+                const notes = ticket.internal_notes || [];
+                const proofUrls = ticketProofUrls(ticket);
+                const isResolved = ["resolved", "closed"].includes(ticket.status);
+                return (
+                  <div className="px-5 py-4 space-y-4">
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <StatusPill status={ticket.status} />
+                          <StatusPill status={ticket.priority} />
+                          {ticket.requested_admin && <StatusPill status="admin request" />}
+                        </div>
+                        <p className="font-semibold text-sm">{ticket.subject}</p>
+                        <p className="text-xs text-vapor">From: {ticket.username} - {ticket.category}</p>
+                        <p className="text-sm text-foreground/80 mt-2 whitespace-pre-line">{ticket.description}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                        {!isResolved && (
+                          <button
+                            onClick={() => handleJoinTicket(ticket)}
+                            disabled={busyId === `ticket:${ticket.id}:joinTicket`}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan/10 text-cyan text-xs font-bold rounded hover:bg-cyan/20 disabled:opacity-50"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" /> {busyId === `ticket:${ticket.id}:joinTicket` ? "Joining..." : "Join Ticket"}
+                          </button>
+                        )}
+                        {isResolved && (
+                          <button
+                            onClick={() => handleReopenTicket(ticket)}
+                            disabled={busyId === `ticket:${ticket.id}:reopenTicket`}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded hover:bg-white/10 disabled:opacity-50"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" /> {busyId === `ticket:${ticket.id}:reopenTicket` ? "Reopening..." : "Reopen"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <RowGrid compact columns={[
+                      ["Assigned", ticket.assigned_admin_name || "Unassigned"],
+                      ["Match", ticket.action_url ? <Link to={ticket.action_url} className="text-cyan hover:underline">Open room</Link> : "N/A"],
+                      ["Match ID", ticket.match_id ? `#${String(ticket.match_id).slice(-8)}` : "N/A"],
+                      ["Teams", ticket.team_a_name || ticket.team_b_name ? `${ticket.team_a_name || "Team A"} vs ${ticket.team_b_name || "Team B"}` : "N/A"],
+                      ["Wager/Tournament", ticket.tournament_name || (ticket.wager_amount !== undefined ? formatMoney(ticket.wager_amount) : "N/A")],
+                    ]} />
+
+                    {(ticket.match_id || proofUrls.length > 0 || ticket.chat_logs?.length > 0 || ticket.result_report) && (
+                      <div className="grid lg:grid-cols-4 gap-3 text-xs text-vapor">
+                        <div className="rounded-lg bg-secondary/40 border border-white/5 p-3 lg:col-span-2">
+                          <p className="uppercase text-[10px] mb-1">Proof</p>
+                          {proofUrls.length > 0 ? (
+                            <div className="space-y-1">
+                              {proofUrls.slice(0, 4).map((url) => (
+                                <a key={url} href={url} target="_blank" rel="noreferrer" className="block text-cyan truncate hover:underline">{url}</a>
+                              ))}
+                            </div>
+                          ) : (
+                            <p>No proof attached</p>
+                          )}
+                        </div>
+                        <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
+                          <p className="uppercase text-[10px] mb-1">Result Report</p>
+                          <p>{reportText(ticket.result_report)}</p>
+                        </div>
+                        <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
+                          <p className="uppercase text-[10px] mb-1">Chat Logs</p>
+                          <p>{compactListText(ticket.chat_logs, (row) => `${row.sender_name || "Unknown"}: ${row.content || row.message || ""}`)}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid lg:grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-background/30 border border-white/5 p-3">
+                        <p className="text-xs font-bold mb-3 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-cyan" /> Conversation</p>
+                        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                          {messages.filter((message) => !message.internal).length === 0 ? (
+                            <p className="text-xs text-vapor">No messages yet.</p>
+                          ) : (
+                            messages.filter((message) => !message.internal).map((message) => (
+                              <div key={message.id || `${message.created_date}:${message.content}`} className="rounded-lg bg-secondary/50 border border-white/5 p-2">
+                                <p className="text-[10px] text-vapor">{message.sender_name || "Unknown"} - {formatDate(message.created_date)}</p>
+                                <p className="text-sm whitespace-pre-line">{message.content}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {!isResolved && (
+                          <div className="mt-3 flex flex-col gap-2">
+                            <textarea
+                              value={ticketReplyDrafts[ticket.id] || ""}
+                              onChange={(event) => setTicketReplyDrafts((prev) => ({ ...prev, [ticket.id]: event.target.value }))}
+                              placeholder="Reply to user/team"
+                              className="w-full min-h-[72px] px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                            />
+                            <button
+                              onClick={() => handleReplyTicket(ticket)}
+                              disabled={busyId === `ticket:${ticket.id}:replyTicket`}
+                              className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-cyan text-background text-xs font-bold rounded hover:shadow-lg hover:shadow-cyan/20 disabled:opacity-50"
+                            >
+                              <Send className="w-3.5 h-3.5" /> {busyId === `ticket:${ticket.id}:replyTicket` ? "Sending..." : "Send Reply"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-lg bg-background/30 border border-white/5 p-3">
+                        <p className="text-xs font-bold mb-3">Internal Staff Notes</p>
+                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                          {notes.length === 0 ? (
+                            <p className="text-xs text-vapor">No staff notes.</p>
+                          ) : (
+                            notes.map((note) => (
+                              <div key={note.id || `${note.created_date}:${note.content}`} className="rounded-lg bg-secondary/50 border border-white/5 p-2">
+                                <p className="text-[10px] text-vapor">{note.sender_name || "Staff"} - {formatDate(note.created_date)}</p>
+                                <p className="text-sm whitespace-pre-line">{note.content}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {!isResolved && (
+                          <div className="mt-3 flex flex-col gap-2">
+                            <textarea
+                              value={ticketNoteDrafts[ticket.id] || ""}
+                              onChange={(event) => setTicketNoteDrafts((prev) => ({ ...prev, [ticket.id]: event.target.value }))}
+                              placeholder="Internal note"
+                              className="w-full min-h-[72px] px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                            />
+                            <button
+                              onClick={() => handleReplyTicket(ticket, true)}
+                              disabled={busyId === `ticket:${ticket.id}:replyTicket`}
+                              className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-secondary text-vapor text-xs font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-50"
+                            >
+                              <Save className="w-3.5 h-3.5" /> Save Internal Note
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {!isResolved && (
+                      <div className="rounded-lg bg-secondary/30 border border-white/5 p-3">
+                        <textarea
+                          value={ticketResolutionDrafts[ticket.id] || ""}
+                          onChange={(event) => setTicketResolutionDrafts((prev) => ({ ...prev, [ticket.id]: event.target.value }))}
+                          placeholder="Resolution message"
+                          className="w-full min-h-[64px] px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none mb-3"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          {ticket.match_id && [
+                            ["approve_team_a", `Choose ${ticket.team_a_name || "Team A"}`],
+                            ["approve_team_b", `Choose ${ticket.team_b_name || "Team B"}`],
+                            ["force_replay", "Force Replay"],
+                          ].map(([action, label]) => (
+                            <button
+                              key={action}
+                              onClick={() => handleResolveTicket(ticket, action)}
+                              disabled={busyId === `ticket:${ticket.id}:resolveTicket`}
+                              className="px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-50"
+                            >
+                              {label}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => handleResolveTicket(ticket)}
+                            disabled={busyId === `ticket:${ticket.id}:resolveTicket`}
+                            className="px-3 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20 disabled:opacity-50"
+                          >
+                            {busyId === `ticket:${ticket.id}:resolveTicket` ? "Resolving..." : "Resolve"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {ticket.status !== "resolved" && (
-                    <button onClick={() => handleResolveTicket(ticket.id)} disabled={busyId === ticket.id} className="px-3 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20 disabled:opacity-50">
-                      {busyId === ticket.id ? "Resolving..." : "Resolve"}
-                    </button>
-                  )}
-                </div>
-              )}
+                );
+              }}
             />
           )}
 
           {activeTab === "disputes" && (
             <ListSection title="Disputes" rows={data.disputes} empty="No disputes." render={(dispute) => (
-              <RowGrid columns={[
-                ["Reason", dispute.reason || dispute.description],
-                ["Status", <StatusPill status={dispute.status} />],
-                ["Reporter", dispute.reported_by_name || dispute.reported_by],
-                ["Wager", dispute.wager_id ? `#${dispute.wager_id.slice(-8)}` : "N/A"],
-              ]} />
+              <div className="px-5 py-4">
+                <RowGrid compact columns={[
+                  ["Reason", dispute.reason || dispute.description],
+                  ["Status", <StatusPill status={dispute.status} />],
+                  ["Priority", <StatusPill status={dispute.priority} />],
+                  ["Reporter", dispute.reported_by_name || dispute.reported_by],
+                  ["Match", dispute.match_id || dispute.wager_id ? `#${String(dispute.match_id || dispute.wager_id).slice(-8)}` : "N/A"],
+                ]} />
+                <div className="mt-3 grid lg:grid-cols-4 gap-3 text-xs text-vapor">
+                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
+                    <p className="uppercase text-[10px] mb-1">Team A</p>
+                    <p>{dispute.wager_details?.host_name || dispute.wager_details?.team_a_name || "Team A"}</p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
+                    <p className="uppercase text-[10px] mb-1">Team B</p>
+                    <p>{dispute.wager_details?.challenger_name || dispute.wager_details?.team_b_name || "Team B"}</p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3 lg:col-span-2">
+                    <p className="uppercase text-[10px] mb-1">Evidence</p>
+                    <p>{(dispute.submitted_evidence || [...(dispute.evidence_urls || []), ...(dispute.screenshots || []), ...(dispute.videos || [])]).join(", ") || "No evidence attached"}</p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3 lg:col-span-2">
+                    <p className="uppercase text-[10px] mb-1">Chat Logs</p>
+                    <p>{compactListText(dispute.chat_logs, (row) => `${row.sender_name || "Unknown"}: ${row.content || ""}`)}</p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
+                    <p className="uppercase text-[10px] mb-1">Match Logs</p>
+                    <p>{compactListText(dispute.match_logs, (row) => `${row.status || "status"} ${row.winner_name ? `winner ${row.winner_name}` : ""}`)}</p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
+                    <p className="uppercase text-[10px] mb-1">Match History</p>
+                    <p>{compactListText(dispute.match_history, (row) => row.summary || row.result || row.status || row.id)}</p>
+                  </div>
+                </div>
+                {dispute.status !== "resolved" && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                      ["approve_team_a", "Approve Team A"],
+                      ["approve_team_b", "Approve Team B"],
+                      ["force_replay", "Force Replay"],
+                      ["reject_dispute", "Reject"],
+                    ].map(([action, label]) => (
+                      <button
+                        key={action}
+                        onClick={() => handleModerateDispute(dispute, action)}
+                        disabled={busyId === `dispute:${dispute.id}:${action}`}
+                        className="px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-50"
+                      >
+                        {busyId === `dispute:${dispute.id}:${action}` ? "Working..." : label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )} />
           )}
 
@@ -809,17 +1512,28 @@ export default function Admin() {
                 <form onSubmit={handleSubmitTournament} className="p-5 border-b border-white/5">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
-                      <h2 className="text-lg font-bold">Create Tournament</h2>
+                      <h2 className="text-lg font-bold">{editingTournamentId ? "Edit Tournament" : "Create Tournament"}</h2>
                       <p className="text-xs text-vapor">Admins, Super Admins, and CEO can add tournaments.</p>
                     </div>
-                    <button
-                      type="submit"
-                      disabled={busyId === "tournament:create"}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-cyan text-background text-xs font-bold rounded-lg hover:shadow-lg hover:shadow-cyan/20 disabled:opacity-50"
-                    >
-                      {busyId === "tournament:create" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                      Create
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {editingTournamentId && (
+                        <button
+                          type="button"
+                          onClick={resetTournamentForm}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-vapor text-xs font-bold rounded-lg hover:bg-white/10"
+                        >
+                          <X className="w-4 h-4" /> Cancel
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={busyId === "tournament:create"}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-cyan text-background text-xs font-bold rounded-lg hover:shadow-lg hover:shadow-cyan/20 disabled:opacity-50"
+                      >
+                        {busyId === "tournament:create" ? <Loader2 className="w-4 h-4 animate-spin" /> : editingTournamentId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                        {editingTournamentId ? "Save" : "Create"}
+                      </button>
+                    </div>
                   </div>
                   <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
                     <label className="space-y-1">
@@ -874,6 +1588,20 @@ export default function Admin() {
                       />
                     </label>
                     <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Entry type</span>
+                      <select
+                        value={tournamentForm.entry_type}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, entry_type: event.target.value, is_premium_only: ["premium", "credits_premium"].includes(event.target.value) }))}
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      >
+                        <option value="free">Free</option>
+                        <option value="invitational">Invitational</option>
+                        <option value="credits">Credits</option>
+                        <option value="premium">Premium Only</option>
+                        <option value="credits_premium">Credits + Premium</option>
+                      </select>
+                    </label>
+                    <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">Prize pool</span>
                       <input
                         type="number"
@@ -902,6 +1630,31 @@ export default function Admin() {
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       />
                     </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Registration ends</span>
+                      <input
+                        type="datetime-local"
+                        value={tournamentForm.registration_end}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, registration_end: event.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    <TournamentRewardPicker
+                      title="Champion reward items"
+                      description="Optional knife, gun skin, or trophy rewards granted to the winning roster."
+                      selectedIds={tournamentForm.reward_item_ids || []}
+                      items={tournamentRewardItems}
+                      onToggle={(itemId) => toggleTournamentReward("reward_item_ids", itemId)}
+                    />
+                    <TournamentRewardPicker
+                      title="Elimination unlock items"
+                      description="Optional invitational rewards granted to registered rosters when they lose and are eliminated."
+                      selectedIds={tournamentForm.elimination_reward_item_ids || []}
+                      items={tournamentRewardItems}
+                      onToggle={(itemId) => toggleTournamentReward("elimination_reward_item_ids", itemId)}
+                    />
                   </div>
                   <label className="inline-flex items-center gap-2 mt-4 text-xs text-vapor">
                     <input
@@ -922,10 +1675,27 @@ export default function Admin() {
                     ["Status", <StatusPill status={tournament.status} />],
                     ["Teams", `${tournament.registered_teams || 0}/${tournament.max_teams}`],
                     ["Prize", formatMoney(tournament.prize_pool)],
+                    ["Entry", `${(tournament.entry_type || (tournament.is_premium_only ? "premium" : "free")).replace(/_/g, " ")}${Number(tournament.entry_fee || 0) > 0 ? ` - ${tournament.entry_fee} credits` : ""}`],
+                    ["Rewards", (
+                      <div className="space-y-1">
+                        <p><span className="text-vapor">Winner:</span> {tournamentRewardSummary(tournament, data.marketplace)}</p>
+                        <p><span className="text-vapor">Eliminated:</span> {tournamentRewardSummary(tournament, data.marketplace, "elimination_reward_item_ids", "elimination_reward_items")}</p>
+                      </div>
+                    )],
                     ["Bracket", hasMatches ? "Generated" : (
                       <button onClick={() => handleGenerateBracket(tournament)} disabled={busyId === `bracket:${tournament.id}`} className="text-cyan hover:underline disabled:opacity-50">
                         {busyId === `bracket:${tournament.id}` ? "Generating..." : "Generate"}
                       </button>
+                    )],
+                    ["Actions", (
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => handleEditTournament(tournament)} className="text-xs text-cyan hover:underline">Edit</button>
+                        <button onClick={() => handleTournamentAction(tournament, "closeTournamentRegistration")} disabled={busyId === `closeTournamentRegistration:${tournament.id}`} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Close Reg</button>
+                        <button onClick={() => handleTournamentAction(tournament, "extendTournamentRegistration", { hours: 24 })} disabled={busyId === `extendTournamentRegistration:${tournament.id}`} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">+24h</button>
+                        <button onClick={() => handleTournamentAction(tournament, "startTournament")} disabled={busyId === `startTournament:${tournament.id}`} className="text-xs text-green hover:underline disabled:opacity-50">Start</button>
+                        <button onClick={() => handleTournamentAction(tournament, "cancelTournament")} disabled={busyId === `cancelTournament:${tournament.id}`} className="text-xs text-orange hover:underline disabled:opacity-50">Cancel</button>
+                        <button onClick={() => handleTournamentAction(tournament, "deleteTournament")} disabled={busyId === `deleteTournament:${tournament.id}`} className="text-xs text-red-400 hover:underline disabled:opacity-50">Delete</button>
+                      </div>
                     )],
                   ]} />
                 );

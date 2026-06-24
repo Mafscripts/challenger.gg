@@ -1,19 +1,28 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Crown, Plus, Search, Trophy, TrendingUp, Users } from "lucide-react";
+import { CheckCircle, Crown, LogOut, Plus, Search, Trash2, Trophy, TrendingUp, UserMinus, UserPlus, Users, X, XCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { toast } from "@/components/ui/use-toast";
 
 const teamInitials = (team) => team?.tag || String(team?.name || "--").slice(0, 2).toUpperCase();
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString()}`;
+const teamTypeLabel = (team) => ({ "8s": "8s", wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "8s"] || "8s");
 
 export default function Teams() {
-  const [view, setView] = useState("rankings");
+  const [view, setView] = useState("my_teams");
+  const [currentUser, setCurrentUser] = useState(null);
   const [teams, setTeams] = useState([]);
   const [membersByTeam, setMembersByTeam] = useState({});
+  const [pendingInvites, setPendingInvites] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [busyAction, setBusyAction] = useState("");
+  const [inviteIdentifier, setInviteIdentifier] = useState("");
+  const [teamForm, setTeamForm] = useState({ name: "", tag: "", region: "na", team_type: "8s", roster_size: 4 });
 
   useEffect(() => {
     loadTeams();
@@ -21,18 +30,83 @@ export default function Teams() {
 
   const loadTeams = async () => {
     try {
-      const teamRows = await base44.entities.Team.filter({}, "ranking", 100).catch(() => []);
-      const activeTeams = (teamRows || []).filter((team) => team.is_active !== false);
-      setTeams(activeTeams);
-      setSelectedTeamId(activeTeams?.[0]?.id || null);
+      const userData = await base44.auth.me().catch(() => null);
+      setCurrentUser(userData);
+      if (!userData?.id) {
+        setPendingInvites([]);
+        setTeams([]);
+        setMembersByTeam({});
+        setSelectedTeamId(null);
+        return;
+      }
 
-      const memberPairs = await Promise.all(activeTeams.map(async (team) => {
+      const [teamRows, invites, memberships] = await Promise.all([
+        base44.entities.Team.filter({}, "ranking", 100).catch(() => []),
+        base44.entities.TeamInvite.filter({ invited_user_id: userData.id, status: "pending" }, "-created_date", 50).catch(() => []),
+        base44.entities.TeamMember.filter({ user_id: userData.id }, "-joined_date", 100).catch(() => []),
+      ]);
+      setPendingInvites(invites || []);
+
+      const activeMembershipTeamIds = new Set((memberships || [])
+        .filter((membership) => membership.is_active !== false)
+        .map((membership) => String(membership.team_id)));
+      const myTeams = (teamRows || []).filter((team) => (
+        team.is_active !== false
+        && (String(team.captain_id || "") === String(userData.id) || activeMembershipTeamIds.has(String(team.id)))
+      ));
+      setTeams(myTeams);
+      setSelectedTeamId((current) => (myTeams.some((team) => team.id === current) ? current : myTeams?.[0]?.id || null));
+
+      const memberPairs = await Promise.all(myTeams.map(async (team) => {
         const members = await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 20).catch(() => []);
         return [team.id, (members || []).filter((member) => member.is_active !== false)];
       }));
       setMembersByTeam(Object.fromEntries(memberPairs));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateTeam = async (event) => {
+    event.preventDefault();
+    if (!currentUser?.id) {
+      toast({ title: "Login required", description: "Please log in to create a team.", variant: "destructive" });
+      return;
+    }
+
+    const name = teamForm.name.trim();
+    const tag = teamForm.tag.trim().toUpperCase();
+    if (!name || !tag) {
+      toast({ title: "Missing team info", description: "Team name and tag are required.", variant: "destructive" });
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const response = await base44.functions.invoke("manageTeam", {
+        action: "create",
+        name,
+        tag: tag.slice(0, 6),
+        region: teamForm.region,
+        team_type: teamForm.team_type,
+        roster_size: Number(teamForm.roster_size || 4),
+      });
+      if (!response.data?.success) {
+        toast({ title: "Team creation failed", description: response.data?.error || "Could not create team.", variant: "destructive" });
+        return;
+      }
+      const team = response.data.team;
+
+      toast({ title: "Team created", description: `${team.name} is ready.` });
+      setTeamForm({ name: "", tag: "", region: "na", team_type: "8s", roster_size: 4 });
+      setCreateOpen(false);
+      await loadTeams();
+      setSelectedTeamId(team.id);
+      setView("details");
+    } catch (error) {
+      toast({ title: "Team creation failed", description: error.message || "Could not create team.", variant: "destructive" });
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -45,26 +119,70 @@ export default function Teams() {
 
   const selectedTeam = teams.find((team) => team.id === selectedTeamId) || filteredTeams[0] || teams[0];
   const selectedMembers = selectedTeam ? (membersByTeam[selectedTeam.id] || []) : [];
+  const selectedMembership = selectedMembers.find((member) => member.user_id === currentUser?.id);
+  const isSelectedCaptain = selectedTeam?.captain_id === currentUser?.id;
   const wins = selectedTeam?.total_wins || 0;
   const losses = selectedTeam?.total_losses || 0;
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+
+  const runTeamAction = async (payload, successTitle) => {
+    setBusyAction(payload.action);
+    try {
+      const response = await base44.functions.invoke("manageTeam", payload);
+      if (!response.data?.success) {
+        toast({ title: "Team action failed", description: response.data?.error || "Could not update team.", variant: "destructive" });
+        return false;
+      }
+      toast({ title: successTitle });
+      await loadTeams();
+      return true;
+    } catch (error) {
+      toast({ title: "Team action failed", description: error.message || "Could not update team.", variant: "destructive" });
+      return false;
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleInvite = async (event) => {
+    event.preventDefault();
+    if (!selectedTeam || !inviteIdentifier.trim()) return;
+    const ok = await runTeamAction({
+      action: "invite",
+      team_id: selectedTeam.id,
+      identifier: inviteIdentifier.trim(),
+    }, "Invite sent");
+    if (ok) setInviteIdentifier("");
+  };
+
+  const handleInviteResponse = async (invite, decision) => {
+    await runTeamAction({
+      action: "respond_invite",
+      team_id: invite.team_id,
+      invite_id: invite.id,
+      decision,
+    }, decision === "accept" ? "Invite accepted" : "Invite declined");
+  };
 
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-black tracking-tight">Teams</h1>
-            <p className="text-vapor text-sm mt-1">Live team rankings and rosters.</p>
+            <h1 className="text-3xl font-black tracking-tight">My Teams</h1>
+            <p className="text-vapor text-sm mt-1">Manage the teams you captain or belong to.</p>
           </div>
-          <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider">
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider"
+          >
             <Plus className="w-3.5 h-3.5" /> Create Team
           </button>
         </div>
 
         <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
           <div className="flex gap-2">
-            {["rankings", "details"].map((item) => (
+            {["my_teams", "details"].map((item) => (
               <button
                 key={item}
                 onClick={() => setView(item)}
@@ -72,7 +190,7 @@ export default function Teams() {
                   view === item ? "bg-cyan/10 text-cyan" : "text-vapor hover:text-foreground"
                 }`}
               >
-                {item === "rankings" ? "Team Rankings" : "Team Details"}
+                {item === "my_teams" ? "My Teams" : "Team Details"}
               </button>
             ))}
           </div>
@@ -81,7 +199,7 @@ export default function Teams() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search teams..."
+              placeholder="Search my teams..."
               className="w-full md:w-72 pl-10 pr-4 py-2.5 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
             />
           </div>
@@ -89,12 +207,36 @@ export default function Teams() {
 
         {loading ? (
           <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">Loading teams...</div>
-        ) : teams.length === 0 ? (
-          <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">No teams have been created yet.</div>
-        ) : view === "rankings" ? (
+        ) : (
+          <>
+          {pendingInvites.length > 0 && (
+            <div className="glass rounded-xl border border-cyan/10 p-4 mb-6">
+              <p className="text-xs text-vapor uppercase tracking-wider mb-3">Pending Invites</p>
+              <div className="space-y-2">
+                {pendingInvites.map((invite) => (
+                  <div key={invite.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg bg-white/[0.02] border border-white/5 p-3">
+                    <div>
+                      <p className="font-semibold text-sm">{invite.team_name}</p>
+                      <p className="text-xs text-vapor">{teamTypeLabel(invite)} team invite from {invite.invited_by_name || "Captain"}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleInviteResponse(invite, "accept")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-green/10 text-green text-xs font-bold">
+                        <CheckCircle className="w-3.5 h-3.5" /> Accept
+                      </button>
+                      <button onClick={() => handleInviteResponse(invite, "decline")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-500/10 text-red-400 text-xs font-bold">
+                        <XCircle className="w-3.5 h-3.5" /> Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {teams.length === 0 ? (
+          <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">You are not on any teams yet. Create a team or accept an invite to see it here.</div>
+          ) : view === "my_teams" ? (
           <div className="glass rounded-xl border border-white/5 overflow-hidden">
-            <div className="hidden md:grid grid-cols-7 gap-4 px-5 py-3 border-b border-white/5 text-xs text-vapor uppercase tracking-wider font-semibold">
-              <span>Rank</span>
+            <div className="hidden md:grid grid-cols-6 gap-4 px-5 py-3 border-b border-white/5 text-xs text-vapor uppercase tracking-wider font-semibold">
               <span className="col-span-2">Team</span>
               <span>Members</span>
               <span>Region</span>
@@ -102,26 +244,25 @@ export default function Teams() {
               <span>Earnings</span>
             </div>
             <div className="divide-y divide-white/5">
-              {filteredTeams.map((team, index) => {
+              {filteredTeams.map((team) => {
                 const members = membersByTeam[team.id] || [];
                 return (
                   <motion.div
                     key={team.id}
                     whileHover={{ backgroundColor: "rgba(255,255,255,0.02)" }}
-                    className="grid grid-cols-3 md:grid-cols-7 gap-2 md:gap-4 px-5 py-4 items-center cursor-pointer"
+                    className="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 px-5 py-4 items-center cursor-pointer"
                     onClick={() => {
                       setSelectedTeamId(team.id);
                       setView("details");
                     }}
                   >
-                    <span className={`text-sm font-bold font-mono ${index < 3 ? "text-orange" : "text-vapor"}`}>#{team.ranking || index + 1}</span>
                     <div className="col-span-2 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan/30 to-orange/30 flex items-center justify-center font-bold font-mono text-sm">
                         {teamInitials(team)}
                       </div>
                       <span className="font-semibold text-sm">{team.name}</span>
                     </div>
-                    <span className="text-sm text-vapor hidden md:block">{members.length}</span>
+                    <span className="text-sm text-vapor hidden md:block">{teamTypeLabel(team)} / {members.length}/{team.roster_size || "-"}</span>
                     <span className="text-xs text-vapor hidden md:block uppercase">{team.region || "N/A"}</span>
                     <span className="text-sm font-mono hidden md:block">{team.total_wins || 0}-{team.total_losses || 0}</span>
                     <span className="text-sm font-mono text-green hidden md:block">{formatMoney(team.total_earnings)}</span>
@@ -130,7 +271,7 @@ export default function Teams() {
               })}
             </div>
           </div>
-        ) : (
+          ) : (
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="glass rounded-xl border border-cyan/10 p-8 relative overflow-hidden">
@@ -141,7 +282,7 @@ export default function Teams() {
                   <div>
                     <h2 className="text-2xl font-black">{selectedTeam.name}</h2>
                     <p className="text-vapor text-sm">
-                      Rank #{selectedTeam.ranking || "N/A"} - {wins} wins - Captain {selectedTeam.captain_name}
+                      {teamTypeLabel(selectedTeam)} - {selectedMembers.length}/{selectedTeam.roster_size || "-"} roster - Captain {selectedTeam.captain_name}
                     </p>
                   </div>
                 </div>
@@ -157,6 +298,16 @@ export default function Teams() {
                         <p className="text-xs text-vapor capitalize">{member.role || "member"}</p>
                       </div>
                       {member.role === "captain" && <Crown className="w-4 h-4 text-orange" />}
+                      {isSelectedCaptain && member.role !== "captain" && (
+                        <button
+                          onClick={() => runTeamAction({ action: "kick", team_id: selectedTeam.id, member_id: member.id }, "Player kicked")}
+                          disabled={Boolean(busyAction)}
+                          className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                          title="Kick player"
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -169,6 +320,8 @@ export default function Teams() {
                 <div className="space-y-3">
                   {[
                     { label: "Members", value: selectedMembers.length },
+                    { label: "Type", value: teamTypeLabel(selectedTeam) },
+                    { label: "Roster Size", value: selectedTeam.roster_size || "-" },
                     { label: "Team Wins", value: wins },
                     { label: "Team Losses", value: losses },
                     { label: "Win Rate", value: `${winRate}%` },
@@ -182,6 +335,46 @@ export default function Teams() {
                 </div>
               </div>
 
+              {selectedTeam && selectedMembership && (
+                <div className="glass rounded-xl border border-white/5 p-5">
+                  <h3 className="font-bold text-sm mb-4">Team Management</h3>
+                  {isSelectedCaptain && (
+                    <form onSubmit={handleInvite} className="space-y-3 mb-4">
+                      <label className="block">
+                        <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Invite Player</span>
+                        <input
+                          value={inviteIdentifier}
+                          onChange={(event) => setInviteIdentifier(event.target.value)}
+                          className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                          placeholder="Username, email, or user ID"
+                        />
+                      </label>
+                      <button disabled={Boolean(busyAction) || !inviteIdentifier.trim()} className="inline-flex items-center gap-2 px-4 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg disabled:opacity-50">
+                        <UserPlus className="w-3.5 h-3.5" /> Invite
+                      </button>
+                    </form>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => runTeamAction({ action: "leave", team_id: selectedTeam.id }, "Left team")}
+                      disabled={Boolean(busyAction)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-vapor text-xs font-bold rounded-lg hover:bg-white/10 disabled:opacity-50"
+                    >
+                      <LogOut className="w-3.5 h-3.5" /> Leave Team
+                    </button>
+                    {isSelectedCaptain && (
+                      <button
+                        onClick={() => runTeamAction({ action: "disband", team_id: selectedTeam.id }, "Team disbanded")}
+                        disabled={Boolean(busyAction)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 text-xs font-bold rounded-lg hover:bg-red-500/20 disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Disband
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="glass rounded-xl border border-white/5 p-5">
                 <h3 className="font-bold text-sm mb-4">Signals</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -193,8 +386,104 @@ export default function Teams() {
               </div>
             </div>
           </div>
+          )}
+          </>
         )}
       </div>
+
+      {createOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setCreateOpen(false)}>
+          <motion.form
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onSubmit={handleCreateTeam}
+            onClick={(event) => event.stopPropagation()}
+            className="glass rounded-2xl border border-white/10 w-full max-w-lg overflow-hidden"
+          >
+            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black">Create Team</h2>
+                <p className="text-xs text-vapor mt-0.5">Start a roster with yourself as captain.</p>
+              </div>
+              <button type="button" onClick={() => setCreateOpen(false)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-vapor" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <label className="block">
+                <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Team Name</span>
+                <input
+                  value={teamForm.name}
+                  onChange={(event) => setTeamForm((current) => ({ ...current, name: event.target.value }))}
+                  maxLength={40}
+                  className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                  placeholder="Team name"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Team Tag</span>
+                <input
+                  value={teamForm.tag}
+                  onChange={(event) => setTeamForm((current) => ({ ...current, tag: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6) }))}
+                  maxLength={6}
+                  className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none font-mono uppercase"
+                  placeholder="TAG"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Region</span>
+                <select
+                  value={teamForm.region}
+                  onChange={(event) => setTeamForm((current) => ({ ...current, region: event.target.value }))}
+                  className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                >
+                  <option value="na">NA</option>
+                  <option value="eu">EU</option>
+                  <option value="asia">Asia</option>
+                  <option value="oce">OCE</option>
+                  <option value="sa">SA</option>
+                </select>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Team Type</span>
+                  <select
+                    value={teamForm.team_type}
+                    onChange={(event) => setTeamForm((current) => ({ ...current, team_type: event.target.value }))}
+                    className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                  >
+                    <option value="8s">8s</option>
+                    <option value="wager">Wager</option>
+                    <option value="tournament">Tournament</option>
+                    <option value="general">General</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Roster Size</span>
+                  <select
+                    value={teamForm.roster_size}
+                    onChange={(event) => setTeamForm((current) => ({ ...current, roster_size: Number(event.target.value) }))}
+                    className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                  >
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                    <option value={4}>4</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-white/5 flex justify-end gap-3">
+              <button type="button" onClick={() => setCreateOpen(false)} className="px-5 py-2.5 bg-secondary text-vapor font-bold text-xs rounded-lg hover:bg-white/10 transition-all uppercase tracking-wider">
+                Cancel
+              </button>
+              <button type="submit" disabled={creating} className="px-5 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider disabled:opacity-50">
+                {creating ? "Creating..." : "Create Team"}
+              </button>
+            </div>
+          </motion.form>
+        </div>
+      )}
     </div>
   );
 }

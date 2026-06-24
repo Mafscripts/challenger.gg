@@ -15,7 +15,7 @@ export default function ForgeModal({ open, onClose }) {
     if (open) {
       base44.auth.me().then(async (currentUser) => {
         const wallets = await base44.entities.Wallet.filter({ user_id: currentUser.id });
-        setUser({ ...currentUser, wallet_balance: wallets[0]?.available_balance ?? currentUser.wallet_balance ?? 0 });
+        setUser({ ...currentUser, wallet_balance: Number(wallets[0]?.available_balance ?? 0) });
       }).catch(() => {});
     } else {
       setSuccess(false);

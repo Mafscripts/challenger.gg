@@ -32,6 +32,10 @@
       "type": "string",
       "title": "Team A Name"
     },
+    "team_a_seed": {
+      "type": "number",
+      "title": "Team A Seed"
+    },
     "team_a_score": {
       "type": "number",
       "default": 0,
@@ -44,6 +48,10 @@
     "team_b_name": {
       "type": "string",
       "title": "Team B Name"
+    },
+    "team_b_seed": {
+      "type": "number",
+      "title": "Team B Seed"
     },
     "team_b_score": {
       "type": "number",
@@ -65,6 +73,41 @@
     "loser_match_id": {
       "type": "string",
       "title": "Loser Bracket Match ID (For Double Elimination)"
+    },
+    "best_of": {
+      "type": "number",
+      "default": 3,
+      "title": "Best Of"
+    },
+    "game_mode": {
+      "type": "string",
+      "title": "Game Mode"
+    },
+    "map_pool": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Map Pool"
+    },
+    "maps": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "title": "Generated Match Maps"
+    },
+    "first_host_team_id": {
+      "type": "string",
+      "title": "First Host Team ID"
+    },
+    "first_host_team_name": {
+      "type": "string",
+      "title": "First Host Team Name"
+    },
+    "first_host_seed": {
+      "type": "number",
+      "title": "First Host Seed"
     },
     "status": {
       "type": "string",

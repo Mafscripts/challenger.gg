@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, UserPlus, Mail, Lock, Loader2 } from "lucide-react";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
-import { toast } from "@/components/ui/use-toast";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -23,8 +21,6 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,16 +41,20 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const result = await base44.auth.register({
+      const normalizedEmail = email.trim().toLowerCase();
+      let result = await base44.auth.register({
         username: normalizedUsername,
         display_name: cleanDisplayName,
-        email,
+        email: normalizedEmail,
         password,
       });
+      if (!result?.access_token) {
+        result = await base44.auth.loginViaEmailPassword(normalizedEmail, password);
+      }
       if (result?.access_token) {
         base44.auth.setToken(result.access_token);
         const currentUser = await bootstrapCurrentUser({
-          email,
+          email: normalizedEmail,
           user: result?.user,
           username: normalizedUsername,
           display_name: cleanDisplayName,
@@ -67,7 +67,7 @@ export default function Register() {
         navigate("/dashboard", { replace: true });
         return;
       }
-      setShowOtp(true);
+      setError("Account created, but login did not start. Please log in.");
     } catch (err) {
       setError(err.message || "Registration failed");
     } finally {
@@ -75,105 +75,12 @@ export default function Register() {
     }
   };
 
-  const handleVerify = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
-      }
-      const currentUser = await bootstrapCurrentUser({
-        email,
-        user: result?.user,
-        username: username.trim().toLowerCase(),
-        display_name: displayName.trim(),
-      }).catch(() => result?.user || null);
-      if (currentUser?.id) {
-        completeAuth(currentUser);
-      } else {
-        await checkUserAuth();
-      }
-      navigate("/dashboard", { replace: true });
-    } catch (err) {
-      setError(err.message || "Invalid verification code");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setError("");
-    try {
-      await base44.auth.resendOtp(email);
-      toast({
-        title: "Code sent",
-        description: "Check your email for the new code.",
-      });
-    } catch (err) {
-      setError(err.message || "Failed to resend code");
-    }
-  };
-
-  if (showOtp) {
-    return (
-      <AuthLayout
-        icon={Mail}
-        title="Verify your email"
-        subtitle={`We sent a code to ${email}`}
-      >
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-            {error}
-          </div>
-        )}
-        <div className="flex justify-center mb-6">
-          <InputOTP
-            maxLength={6}
-            value={otpCode}
-            onChange={setOtpCode}
-            autoFocus
-            autoComplete="one-time-code"
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-        <Button
-          className="w-full h-12 font-medium"
-          onClick={handleVerify}
-          disabled={loading || otpCode.length < 6}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
-            </>
-          ) : (
-            "Verify"
-          )}
-        </Button>
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          Didn't receive the code?{" "}
-          <button onClick={handleResend} className="text-primary font-medium hover:underline">
-            Resend
-          </button>
-        </p>
-      </AuthLayout>
-    );
-  }
-
   return (
     <AuthLayout
       icon={UserPlus}
       title="Create your account"
       subtitle="Sign up to get started"
+      compact
       footer={
         <>
           Already have an account?{" "}
@@ -184,14 +91,14 @@ export default function Register() {
       }
     >
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+        <div className="mb-3 p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="username">Username</Label>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="username" className="text-xs font-bold uppercase tracking-wide text-vapor">Username</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -199,10 +106,10 @@ export default function Register() {
               type="text"
               autoComplete="username"
               autoFocus
-              placeholder="player_one"
+              placeholder="Enter username"
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
-              className="pl-10 h-12"
+              className="pl-10 h-11 bg-[#252C36] border-[#2A313B] transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
               minLength={3}
               maxLength={20}
               pattern="[a-z0-9_]{3,20}"
@@ -210,72 +117,76 @@ export default function Register() {
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="displayName">Display name</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide text-vapor">Display name</Label>
           <div className="relative">
             <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="displayName"
               type="text"
               autoComplete="name"
-              placeholder="Player One"
+              placeholder="Enter display name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="pl-10 h-12"
+              className="pl-10 h-11 bg-[#252C36] border-[#2A313B] transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
               maxLength={60}
               required
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-vapor">Email</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="email"
               type="email"
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder="Enter email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12"
+              className="pl-10 h-11 bg-[#252C36] border-[#2A313B] transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
               required
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide text-vapor">Password</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="password"
               type="password"
               autoComplete="new-password"
-              placeholder="********"
+              placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-12"
+              className="pl-10 h-11 bg-[#252C36] border-[#2A313B] transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
               required
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="confirm" className="text-xs font-bold uppercase tracking-wide text-vapor">Confirm Password</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="confirm"
               type="password"
               autoComplete="new-password"
-              placeholder="********"
+              placeholder="Confirm password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-10 h-12"
+              className="pl-10 h-11 bg-[#252C36] border-[#2A313B] transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
               required
             />
           </div>
         </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
+        <Button
+          type="submit"
+          className="w-full h-11 font-black uppercase tracking-wide bg-gradient-to-r from-cyan to-[#0EA5C7] text-[#111418] shadow-[0_10px_28px_rgba(20,216,255,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(20,216,255,0.22)] hover:from-[#38E0FF] hover:to-cyan"
+          disabled={loading}
+        >
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

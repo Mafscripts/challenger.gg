@@ -1,6 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
-import { Trophy, TrendingUp, Flame, DollarSign, Star, Users, Shield, Clock, Settings, Radio } from "lucide-react";
+import { Trophy, TrendingUp, Flame, DollarSign, Star, Users, Shield } from "lucide-react";
 
 export default function StatsBar({ teamAPlayers, teamBPlayers, wager }) {
   if (!teamAPlayers || teamAPlayers.length === 0) return null;

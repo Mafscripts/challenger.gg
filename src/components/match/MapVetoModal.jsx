@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Shield, Target, Zap } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 
 const mapsByMode = {
   snd: [

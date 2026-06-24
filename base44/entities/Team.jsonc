@@ -33,6 +33,27 @@
       ],
       "title": "Region"
     },
+    "team_type": {
+      "type": "string",
+      "enum": [
+        "8s",
+        "wager",
+        "tournament",
+        "general"
+      ],
+      "default": "8s",
+      "title": "Team Type"
+    },
+    "roster_size": {
+      "type": "number",
+      "default": 4,
+      "title": "Roster Size"
+    },
+    "roster_locked": {
+      "type": "boolean",
+      "default": false,
+      "title": "Roster Locked"
+    },
     "total_wins": {
       "type": "number",
       "default": 0,

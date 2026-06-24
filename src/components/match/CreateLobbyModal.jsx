@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -16,6 +16,10 @@ const teamSizes = [
   { id: "3v3", name: "3v3", players: 6 },
   { id: "4v4", name: "4v4", players: 8 },
 ];
+
+const wagerAmounts = [5, 10, 25, 50, 100];
+const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
+const teamTypeForMode = (mode) => mode === "8s" ? "8s" : "wager";
 
 const mapsByMode = {
   snd: [
@@ -50,10 +54,52 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const [customAmount, setCustomAmount] = useState("");
   const [bestOf, setBestOf] = useState(1);
   const [hostBannedMap, setHostBannedMap] = useState(null);
+  const [userTeams, setUserTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [paymentMode, setPaymentMode] = useState("own");
   const [step, setStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
 
   const isWager = mode === "wager";
+  const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
+  const enteredAmount = Number(customAmount || selectedAmount || 0);
+  const requiredPlayers = rosterSize(selectedTeamSize);
+  const requiresTeam = requiredPlayers > 1 && (isWager || mode === "8s");
+  const expectedTeamType = teamTypeForMode(mode);
+  const compatibleTeams = useMemo(() => (
+    userTeams.filter((team) => {
+      const teamType = team.team_type || "8s";
+      return (teamType === expectedTeamType || teamType === "general")
+        && team.captain_id === user?.id;
+    })
+  ), [expectedTeamType, requiredPlayers, user?.id, userTeams]);
+  const selectedTeam = compatibleTeams.find((team) => team.id === selectedTeamId);
+  const selectedTeamIsEligible = !requiresTeam || Boolean(selectedTeam && selectedTeam.members.length >= requiredPlayers);
+  const paymentTotal = isWager && requiresTeam && paymentMode === "full_team"
+    ? enteredAmount * requiredPlayers
+    : enteredAmount;
+
+  useEffect(() => {
+    if (!isOpen || !user?.id) return;
+    let active = true;
+    const loadTeams = async () => {
+      const memberships = await base44.entities.TeamMember.filter({ user_id: user.id }, "-joined_date", 50).catch(() => []);
+      const teams = await Promise.all((memberships || [])
+        .filter((membership) => membership.is_active !== false)
+        .map(async (membership) => {
+          const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
+          const members = team ? await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 50).catch(() => []) : [];
+          return team && team.is_active !== false
+            ? { ...team, membership, members: (members || []).filter((member) => member.is_active !== false) }
+            : null;
+        }));
+      if (active) setUserTeams(teams.filter(Boolean));
+    };
+    loadTeams();
+    return () => {
+      active = false;
+    };
+  }, [isOpen, user?.id]);
 
   const handleCreate = async () => {
     if (selectedGameMode && selectedTeamSize && user) {
@@ -73,9 +119,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
-            amount: parseFloat(customAmount) || 0,
+            amount: enteredAmount,
             max_players: teamSizeObj.players,
             best_of: bestOf,
+            team_id: selectedTeamId || undefined,
+            payment_mode: paymentMode,
             host_banned_map: hostBannedMap,
             host_banned_map_name: mapPool.find(m => m.id === hostBannedMap)?.name || "",
             final_map: autoSelectedMap?.id,
@@ -95,7 +143,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           
           toast({
             title: "Wager created!",
-            description: `Created ${selectedTeamSize} ${gameModeObj.name} for $${customAmount}`,
+            description: `Created ${selectedTeamSize} ${gameModeObj.name} for $${enteredAmount}`,
           });
         } else if (mode === "ranked") {
           const mapPool = mapsByMode[selectedGameMode] || [];
@@ -152,6 +200,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             amount: 0,
             max_players: teamSizeObj.players,
             best_of: 1,
+            team_id: selectedTeamId || undefined,
             host_banned_map: null,
             host_banned_map_name: "",
             final_map: randomMap?.id,
@@ -175,19 +224,21 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           });
         }
         
-        onCreate({ gameMode: selectedGameMode, teamSize: selectedTeamSize, amount: isWager ? parseFloat(customAmount) : 0 });
+        onCreate({ gameMode: selectedGameMode, teamSize: selectedTeamSize, amount: isWager ? enteredAmount : 0 });
         setStep(1);
         setSelectedGameMode(null);
         setSelectedTeamSize(null);
         setSelectedAmount(0);
         setCustomAmount("");
+        setSelectedTeamId("");
+        setPaymentMode("own");
         setIsCreating(false);
         onClose();
       } catch (error) {
         console.error("Failed to create lobby:", error);
         toast({
           title: "Error",
-          description: "Failed to create lobby. Please try again.",
+          description: error.message || "Failed to create lobby. Please try again.",
           variant: "destructive"
         });
         setIsCreating(false);
@@ -200,6 +251,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     setSelectedGameMode(null);
     setSelectedTeamSize(null);
     setSelectedAmount(0);
+    setCustomAmount("");
+    setSelectedTeamId("");
+    setPaymentMode("own");
     onClose();
   };
 
@@ -325,6 +379,35 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     );
                   })}
                 </div>
+                {requiresTeam && (
+                  <div className="mt-5 rounded-xl border border-white/5 bg-secondary/40 p-4">
+                    <label className="text-xs text-vapor mb-2 block uppercase tracking-wider">
+                      Select {expectedTeamType === "8s" ? "8s" : "wager"} team
+                    </label>
+                    <select
+                      value={selectedTeamId}
+                      onChange={(event) => setSelectedTeamId(event.target.value)}
+                      className="w-full px-4 py-3 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                    >
+                      <option value="">Select team</option>
+                      {compatibleTeams.map((team) => (
+                        <option key={team.id} value={team.id}>
+                          {team.name} ({team.members.length}/{requiredPlayers})
+                        </option>
+                      ))}
+                    </select>
+                    {compatibleTeams.length === 0 && (
+                      <p className="text-xs text-red-400 mt-2">
+                        Create a {expectedTeamType === "8s" ? "8s" : "wager"} team first.
+                      </p>
+                    )}
+                    {selectedTeam && selectedTeam.members.length < requiredPlayers && (
+                      <p className="text-xs text-orange mt-2">
+                        {selectedTeam.name} has {selectedTeam.members.length}/{requiredPlayers} active players. Invite teammates from Teams before creating this lobby.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="mt-6 flex justify-between">
                   <button
                     onClick={() => setStep(1)}
@@ -334,7 +417,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   </button>
                   <button
                     onClick={() => setStep(3)}
-                    disabled={!selectedTeamSize}
+                    disabled={!selectedTeamSize || (requiresTeam && !selectedTeamIsEligible)}
                     className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
                     Next <ChevronRight className="w-4 h-4" />
@@ -397,21 +480,74 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   Enter Wager Amount
                 </h3>
                 <div className="mb-4">
-                  <label className="text-xs text-vapor mb-2 block">Your Wallet: ${user?.wallet_balance || 0}</label>
+                  <label className="text-xs text-vapor mb-2 block">Your Wallet: ${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</label>
+                  <div className="grid grid-cols-5 gap-2 mb-3">
+                    {wagerAmounts.map((amount) => {
+                      const isSelected = selectedAmount === amount && Number(customAmount) === amount;
+                      return (
+                        <button
+                          key={amount}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAmount(amount);
+                            setCustomAmount(String(amount));
+                          }}
+                          className={`py-2 rounded-lg text-xs font-bold border transition-all ${
+                            isSelected
+                              ? "bg-green/10 text-green border-green/30 ring-2 ring-green/10"
+                              : "bg-secondary text-vapor border-white/5 hover:border-green/20 hover:text-green"
+                          }`}
+                        >
+                          ${amount}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <div className="relative">
                     <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-vapor" />
                     <input
                       type="number"
                       value={customAmount}
-                      onChange={(e) => setCustomAmount(e.target.value)}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        setSelectedAmount(0);
+                      }}
                       placeholder="0.00"
                       className="w-full pl-12 pr-4 py-3 bg-secondary border border-white/10 rounded-lg text-foreground font-mono font-bold focus:outline-none focus:border-green/50"
                       min="0"
                       step="0.01"
                     />
                   </div>
-                  {parseFloat(customAmount) > (user?.wallet_balance || 0) && (
+                  {enteredAmount > walletBalance && (
                     <p className="text-red-400 text-xs mt-2">Insufficient wallet balance</p>
+                  )}
+                  {requiresTeam && (
+                    <div className="mt-4 rounded-xl border border-white/5 bg-secondary/40 p-4">
+                      <p className="text-xs text-vapor mb-3 uppercase tracking-wider">Team payment</p>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        {[
+                          { value: "own", label: "Pay my own entry only", cost: enteredAmount },
+                          { value: "full_team", label: "Pay full team entry", cost: enteredAmount * requiredPlayers },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setPaymentMode(option.value)}
+                            className={`rounded-lg border px-3 py-2 text-left text-xs transition-all ${
+                              paymentMode === option.value
+                                ? "border-green/30 bg-green/10 text-green"
+                                : "border-white/5 bg-background/40 text-vapor hover:text-foreground"
+                            }`}
+                          >
+                            <span className="block font-bold">{option.label}</span>
+                            <span className="font-mono">${option.cost.toFixed(2)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {paymentTotal > walletBalance && (
+                    <p className="text-red-400 text-xs mt-2">Insufficient wallet balance for selected payment option</p>
                   )}
                 </div>
                 <div className="mt-6 flex justify-between">
@@ -423,7 +559,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   </button>
                   <button
                     onClick={() => setStep(5)}
-                    disabled={!customAmount || parseFloat(customAmount) <= 0 || parseFloat(customAmount) > (user?.wallet_balance || 0)}
+                    disabled={!enteredAmount || enteredAmount <= 0 || paymentTotal > walletBalance}
                     className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
                     Next <ChevronRight className="w-4 h-4" />
@@ -499,6 +635,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     </div>
                   </div>
                   <p className="text-xs text-green font-bold">FREE TO PLAY</p>
+                  {requiresTeam && (
+                    <p className="text-xs text-vapor mt-2">
+                      Team: {selectedTeam?.name || "Selected roster"}
+                    </p>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <button

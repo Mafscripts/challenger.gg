@@ -1,6 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const staffRoles = ['ceo', 'super_admin', 'admin', 'moderator'];
+const tournamentSndMapPool = ['Hacienda', 'Gridlock', 'Raid', 'Scar', 'Den', 'Sake', 'Colossus'];
+const tournamentMatchMode = 'Search and Destroy';
+const tournamentBestOf = 3;
 
 const nextPowerOfTwo = (value) => {
   let size = 1;
@@ -11,9 +14,78 @@ const nextPowerOfTwo = (value) => {
 const teamPayload = (participant, slot) => ({
   [`team_${slot}_id`]: participant?.team_id || '',
   [`team_${slot}_name`]: participant?.team_name || '',
+  [`team_${slot}_participant_id`]: participant?.id || '',
+  [`team_${slot}_seed`]: participant?.seed || '',
 });
 
 const hasTeam = (participant) => Boolean(participant?.team_id);
+
+const shuffleMaps = () => {
+  const maps = [...tournamentSndMapPool];
+  for (let index = maps.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [maps[index], maps[swapIndex]] = [maps[swapIndex], maps[index]];
+  }
+  return maps;
+};
+
+const firstHostForMatch = (match, participantA, participantB) => {
+  const seedA = Number(match.team_a_seed || participantA?.seed || 999999);
+  const seedB = Number(match.team_b_seed || participantB?.seed || 999999);
+  if (seedA <= seedB) {
+    return {
+      id: match.team_a_id,
+      name: match.team_a_name || participantA?.team_name || 'Team A',
+      seed: Number.isFinite(seedA) ? seedA : null,
+    };
+  }
+  return {
+    id: match.team_b_id,
+    name: match.team_b_name || participantB?.team_name || 'Team B',
+    seed: Number.isFinite(seedB) ? seedB : null,
+  };
+};
+
+const secondHostForMatch = (match, participantA, participantB, firstHost) => {
+  const seedA = Number(match.team_a_seed || participantA?.seed || 999999);
+  const seedB = Number(match.team_b_seed || participantB?.seed || 999999);
+  if (firstHost?.id === match.team_a_id) {
+    return {
+      id: match.team_b_id,
+      name: match.team_b_name || participantB?.team_name || 'Team B',
+      seed: Number.isFinite(seedB) ? seedB : null,
+    };
+  }
+  return {
+    id: match.team_a_id,
+    name: match.team_a_name || participantA?.team_name || 'Team A',
+    seed: Number.isFinite(seedA) ? seedA : null,
+  };
+};
+
+const setupPayload = (match, participantA, participantB) => {
+  const firstHost = firstHostForMatch(match, participantA, participantB);
+  const secondHost = secondHostForMatch(match, participantA, participantB, firstHost);
+  const hosts = [firstHost, secondHost, firstHost];
+  return {
+    best_of: tournamentBestOf,
+    game_mode: tournamentMatchMode,
+    map_pool: tournamentSndMapPool,
+    maps: shuffleMaps().slice(0, tournamentBestOf).map((map, index) => ({
+      game: index + 1,
+      mode: tournamentMatchMode,
+      map,
+      host_team_id: hosts[index]?.id || '',
+      host_team_name: hosts[index]?.name || 'TBD',
+      host_seed: hosts[index]?.seed || '',
+    })),
+    first_host_team_id: firstHost?.id || '',
+    first_host_team_name: firstHost?.name || '',
+    first_host_seed: firstHost?.seed || '',
+    map_generated_by: 'system',
+    map_generated_date: new Date().toISOString(),
+  };
+};
 
 async function createMatch(base44, payload) {
   return base44.asServiceRole.entities.TournamentMatch.create({
@@ -37,6 +109,16 @@ async function placeTeam(base44, matchId, participant, slot) {
   const otherSlot = slot === 'a' ? 'b' : 'a';
   const otherTeam = target[`team_${otherSlot}_id`];
   update.status = otherTeam ? 'ready' : target.status || 'pending';
+  if (otherTeam) {
+    const participants = await base44.asServiceRole.entities.TournamentParticipant.filter({ tournament_id: target.tournament_id }, 'seed', 256);
+    const byId = Object.fromEntries((participants || []).flatMap((row) => [
+      [row.id, row],
+      [row.team_id, row],
+    ].filter(([id]) => Boolean(id))));
+    const candidate = { ...target, ...update };
+    update.assigned_date = new Date().toISOString();
+    Object.assign(update, setupPayload(candidate, byId[candidate.team_a_participant_id] || byId[candidate.team_a_id], byId[candidate.team_b_participant_id] || byId[candidate.team_b_id]));
+  }
 
   await base44.asServiceRole.entities.TournamentMatch.update(matchId, update);
   return { ...target, ...update };
@@ -74,7 +156,7 @@ async function generateSingleElimination(base44, tournament, participants, size)
       const solo = round === 1 && (hasTeam(teamA) !== hasTeam(teamB));
       const both = round === 1 && hasTeam(teamA) && hasTeam(teamB);
 
-      roundMatches.push(await createMatch(base44, {
+      const matchPayload = {
         tournament_id: tournament.id,
         round,
         bracket: 'winner',
@@ -86,6 +168,11 @@ async function generateSingleElimination(base44, tournament, participants, size)
         winner_id: solo ? (teamA || teamB).team_id : '',
         winner_name: solo ? (teamA || teamB).team_name : '',
         completed_date: solo ? new Date().toISOString() : '',
+      };
+
+      roundMatches.push(await createMatch(base44, {
+        ...matchPayload,
+        ...(both ? setupPayload(matchPayload, teamA, teamB) : {}),
       }));
     }
 

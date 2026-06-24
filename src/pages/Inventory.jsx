@@ -16,6 +16,22 @@ const categoryLabels = {
   cosmetic: "Cosmetics",
 };
 
+const premiumEffectClass = (item) => {
+  const rarity = String(item?.rarity || "").toLowerCase();
+  if (rarity === "exclusive") return "animate-exclusive-glow exclusive-shimmer border-cyan/30 glow-cyan";
+  if (["epic", "legendary", "mythic"].includes(rarity)) return "animate-mythic-glow mythic-shimmer";
+  return "";
+};
+
+const rarityBorderClass = (item) => {
+  const rarity = String(item?.rarity || "").toLowerCase();
+  if (rarity === "exclusive") return "border-cyan/30";
+  if (rarity === "mythic") return "border-fuchsia-400/30";
+  if (rarity === "legendary") return "border-yellow-400/20";
+  if (rarity === "epic") return "border-purple-400/20";
+  return item?.equipped ? "border-cyan/20" : "border-white/5 hover:border-white/10";
+};
+
 export default function Inventory() {
   const [filter, setFilter] = useState("All");
   const [showEquipped, setShowEquipped] = useState(false);
@@ -102,13 +118,11 @@ export default function Inventory() {
             <motion.div
               key={item.id}
               whileHover={{ y: -4 }}
-              className={`glass rounded-xl border overflow-hidden transition-all cursor-pointer ${
-                item.equipped ? "border-cyan/20" : "border-white/5 hover:border-white/10"
-              }`}
+              className={`relative glass rounded-xl border overflow-hidden transition-all cursor-pointer group ${premiumEffectClass(item)} ${rarityBorderClass(item)}`}
             >
               <div className="aspect-square relative overflow-hidden bg-secondary">
                 {item.img ? (
-                  <img src={item.img} alt={item.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  <img src={item.img} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Package className="w-12 h-12 text-vapor/30" />

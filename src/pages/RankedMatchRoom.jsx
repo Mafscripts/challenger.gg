@@ -14,6 +14,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
+import MatchChat from "@/components/match/MatchChat";
 import RankBadge from "@/components/ui/RankBadge";
 import { getRankForElo } from "@/lib/ranks";
 
@@ -82,6 +83,7 @@ export default function RankedMatchRoom() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [supporting, setSupporting] = useState(false);
+  const [disputing, setDisputing] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -218,22 +220,55 @@ export default function RankedMatchRoom() {
   const handleSupportTicket = async (reason) => {
     setSupporting(true);
     try {
-      const response = await base44.functions.invoke("createTicket", {
+      const response = await base44.functions.invoke("requestAdminAlert", {
+        match_type: "ranked",
+        match_id: match.id,
         subject: `Ranked match support ${match.id}`,
         description: `${reason}\n\nMatch: ${match.id}\nStatus: ${match.status}\nParticipants: ${match.host_name || "Host unavailable"} vs ${match.challenger_name || "Opponent pending"}`,
-        category: "ranked",
         priority: "high",
       });
 
       if (response.data?.success) {
-        toast({ title: "Support ticket opened", description: "Staff will review the ranked match." });
+        toast({ title: "Admin requested", description: "Staff were notified for this ranked match." });
+        await loadRoom();
       } else {
-        toast({ title: "Ticket failed", description: response.data?.error || "Could not open ticket.", variant: "destructive" });
+        toast({ title: "Request failed", description: response.data?.error || "Could not request admin.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Ticket failed", description: error.message || "Could not open ticket.", variant: "destructive" });
+      toast({ title: "Request failed", description: error.message || "Could not request admin.", variant: "destructive" });
     } finally {
       setSupporting(false);
+    }
+  };
+
+  const handleCreateDispute = async () => {
+    const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
+    if (evidenceText === null) return;
+    const evidenceUrls = evidenceText.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
+    setDisputing(true);
+    try {
+      const response = await base44.functions.invoke("createDispute", {
+        match_type: "ranked",
+        match_id: match.id,
+        ranked_match_id: match.id,
+        reason: "score_dispute",
+        description: `Dispute submitted from ranked match room ${match.id}. ${match.host_name || "Host"} vs ${match.challenger_name || "Opponent"}`,
+        reported_against: user?.id === match.host_id ? match.challenger_id : match.host_id,
+        reported_against_name: user?.id === match.host_id ? match.challenger_name : match.host_name,
+        evidence_urls: evidenceUrls,
+        escalated: Boolean(user?.is_premium),
+      });
+
+      if (response.data?.success) {
+        toast({ title: response.data.escalated ? "Dispute escalated" : "Dispute submitted", description: "A review case was created for staff." });
+        await loadRoom();
+      } else {
+        toast({ title: "Dispute failed", description: response.data?.error || "Could not create dispute.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Dispute failed", description: error.message || "Could not create dispute.", variant: "destructive" });
+    } finally {
+      setDisputing(false);
     }
   };
 
@@ -377,7 +412,14 @@ export default function RankedMatchRoom() {
               disabled={supporting}
               className="px-6 py-3 bg-cyan/10 text-cyan font-bold text-sm rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
             >
-              <HelpCircle className="w-4 h-4" /> Support Ticket
+              <HelpCircle className="w-4 h-4" /> {supporting ? "Requesting..." : "Request Admin"}
+            </button>
+            <button
+              onClick={handleCreateDispute}
+              disabled={disputing || !isParticipant}
+              className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50"
+            >
+              {disputing ? "Submitting..." : "Submit Dispute"}
             </button>
             <button
               onClick={() => handleSupportTicket("Opponent no-show report.")}
@@ -402,6 +444,18 @@ export default function RankedMatchRoom() {
               </button>
             )}
           </div>
+          {(match.admin_request_status || match.requested_admin) && (
+            <p className="text-xs text-vapor mt-3">
+              Admin request: {{
+                waiting_for_admin: "Waiting for admin",
+                admin_joined: "Admin joined",
+                waiting_for_user: "Waiting for user",
+                escalated: "Escalated",
+                resolved: "Resolved",
+                closed: "Closed",
+              }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
+            </p>
+          )}
           {predictedWinnerName && canSubmitScore && (
             <p className="text-xs text-vapor mt-3 flex items-center gap-2">
               <Shield className="w-3.5 h-3.5 text-cyan" />
@@ -413,6 +467,10 @@ export default function RankedMatchRoom() {
               A score has already been submitted. The opponent must submit the same score to complete the match.
             </p>
           )}
+        </div>
+
+        <div className="mb-6">
+          <MatchChat conversationId={match.id} accent="cyan" />
         </div>
       </div>
     </div>

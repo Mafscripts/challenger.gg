@@ -44,6 +44,10 @@ const invalidateApiCache = () => {
   meCache = { value: null, expiresAt: 0, promise: null };
 };
 
+const invalidateMeCache = () => {
+  meCache = { value: null, expiresAt: 0, promise: null };
+};
+
 const toQuery = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -201,6 +205,11 @@ const entityClient = (entity) => ({
     return value;
   },
 
+  filterFresh(filter = {}, order, limit) {
+    requireToken();
+    return apiFetch(`/entities/${entity}${toQuery({ filter, order, limit })}`, { dedupe: false });
+  },
+
   get(id) {
     requireToken();
     return apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`);
@@ -210,6 +219,7 @@ const entityClient = (entity) => ({
     requireToken();
     const value = await apiFetch(`/entities/${entity}`, { method: "POST", body: payload, dedupe: false });
     entityCache.clear();
+    if (entity === "Wallet" || entity === "WalletTransaction") invalidateMeCache();
     return value;
   },
 
@@ -217,6 +227,7 @@ const entityClient = (entity) => ({
     requireToken();
     const value = await apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`, { method: "PATCH", body: payload, dedupe: false });
     entityCache.clear();
+    if (entity === "Wallet" || entity === "WalletTransaction") invalidateMeCache();
     if (entity === "User" && meCache.value?.id === id) {
       meCache = { value, expiresAt: now() + ME_CACHE_MS, promise: null };
     }
@@ -227,6 +238,7 @@ const entityClient = (entity) => ({
     requireToken();
     const value = await apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`, { method: "DELETE", dedupe: false });
     entityCache.clear();
+    if (entity === "Wallet" || entity === "WalletTransaction") invalidateMeCache();
     return value;
   },
 });
@@ -243,6 +255,7 @@ export const base44 = {
       requireToken();
       const data = await apiFetch(`/functions/${name}`, { method: "POST", body: payload, dedupe: false });
       entityCache.clear();
+      invalidateMeCache();
       if (["completeRegistration", "createWallet"].includes(name)) {
         meCache = { value: data.user || data, expiresAt: now() + ME_CACHE_MS, promise: null };
       }

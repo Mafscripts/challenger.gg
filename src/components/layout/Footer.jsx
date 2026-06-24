@@ -25,9 +25,9 @@ const footerLinks = {
   Support: [
     { label: "Rules", path: "/rules" },
     { label: "FAQ", path: "/#faq" },
-    { label: "Contact", path: "/rules" },
-    { label: "Privacy Policy", path: "/rules" },
-    { label: "Terms of Service", path: "/rules" },
+    { label: "Contact", path: "/support" },
+    { label: "Privacy Policy", path: "/terms#privacy" },
+    { label: "Terms of Service", path: "/terms" },
   ],
 };
 
@@ -50,13 +50,13 @@ export default function Footer() {
               The premier competitive Call of Duty platform. Play. Compete. Win.
             </p>
             <div className="flex items-center gap-3">
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
+              <a href="https://x.com/ChallengerGG" target="_blank" rel="noopener noreferrer" aria-label="Challenger.gg on X" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
                 <Twitter className="w-4 h-4" />
               </a>
-              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
+              <a href="https://www.youtube.com/@ChallengerGG" target="_blank" rel="noopener noreferrer" aria-label="Challenger.gg on YouTube" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
                 <Youtube className="w-4 h-4" />
               </a>
-              <a href="https://discord.gg" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
+              <a href="https://discord.gg/challengergg" target="_blank" rel="noopener noreferrer" aria-label="Challenger.gg Discord" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
                 <MessageCircle className="w-4 h-4" />
               </a>
             </div>

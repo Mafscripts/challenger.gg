@@ -35,6 +35,8 @@ import Premium from '@/pages/Premium';
 import CDL from '@/pages/CDL';
 import News from '@/pages/News';
 import Rules from '@/pages/Rules';
+import Support from '@/pages/Support';
+import Terms from '@/pages/Terms';
 import Settings from '@/pages/Settings';
 import ThankYou from '@/pages/ThankYou';
 import Admin from '@/pages/Admin';
@@ -78,6 +80,7 @@ const AuthenticatedApp = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/logout" element={<Logout />} />
+        <Route path="/terms" element={<Terms />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/8s" element={<Eights />} />
@@ -103,6 +106,7 @@ const AuthenticatedApp = () => {
           <Route path="/cdl" element={<CDL />} />
           <Route path="/news" element={<News />} />
           <Route path="/rules" element={<Rules />} />
+          <Route path="/support" element={<Support />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/thank-you" element={<ThankYou />} />
           <Route path="/admin" element={<Admin />} />

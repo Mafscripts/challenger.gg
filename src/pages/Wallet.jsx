@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Wallet as WalletIcon, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownLeft,
-  History, Shield, AlertCircle, CheckCircle, CreditCard, Banknote, InfoIcon
+  Shield, CheckCircle, CreditCard, InfoIcon
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -59,10 +59,10 @@ export default function Wallet() {
   }
 
   const walletData = user?.wallet;
-  const walletBalance = walletData?.available_balance || user?.wallet_balance || 0;
+  const walletBalance = Number(walletData?.available_balance ?? 0);
   const credits = user?.credits || 0;
   const pendingWagers = walletData?.pending_balance || 0;
-  const withdrawable = walletData?.withdrawable_balance || walletBalance;
+  const withdrawable = Number(walletData?.withdrawable_balance ?? walletBalance);
   const totalEarnings = walletData?.total_earnings || user?.lifetime_earnings || 0;
 
   return (

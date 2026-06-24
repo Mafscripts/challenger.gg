@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, Check, Star, Zap, Shield, ShoppingBag, Trophy, Users, Sparkles, ArrowRight } from "lucide-react";
+import { Crown, Check, Zap, Shield, ShoppingBag, Trophy, Users, Sparkles, ArrowRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -14,9 +14,9 @@ const benefits = [
 ];
 
 const cosmetics = [
-  { name: "January: Obsidian Blade", rarity: "Legendary" },
-  { name: "February: Frost Crown Avatar", rarity: "Epic" },
-  { name: "March: Void Emblem Set", rarity: "Mythic" },
+  { name: "June: Solar Circuit Camo", rarity: "Legendary" },
+  { name: "July: Neon Rival Calling Card", rarity: "Epic" },
+  { name: "August: Apex Champion Emblem", rarity: "Mythic" },
 ];
 
 export default function Premium() {

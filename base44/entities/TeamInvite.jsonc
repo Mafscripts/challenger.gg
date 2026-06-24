@@ -1,0 +1,68 @@
+{
+  "name": "TeamInvite",
+  "type": "object",
+  "properties": {
+    "team_id": {
+      "type": "string",
+      "title": "Team ID"
+    },
+    "team_name": {
+      "type": "string",
+      "title": "Team Name"
+    },
+    "team_type": {
+      "type": "string",
+      "enum": [
+        "8s",
+        "wager",
+        "tournament",
+        "general"
+      ],
+      "title": "Team Type"
+    },
+    "invited_user_id": {
+      "type": "string",
+      "title": "Invited User ID"
+    },
+    "invited_user_name": {
+      "type": "string",
+      "title": "Invited User Name"
+    },
+    "invited_by": {
+      "type": "string",
+      "title": "Invited By User ID"
+    },
+    "invited_by_name": {
+      "type": "string",
+      "title": "Invited By Name"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "declined",
+        "cancelled"
+      ],
+      "default": "pending",
+      "title": "Invite Status"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created Date"
+    },
+    "responded_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Responded Date"
+    }
+  },
+  "required": [
+    "team_id",
+    "team_name",
+    "invited_user_id",
+    "invited_user_name",
+    "invited_by"
+  ]
+}

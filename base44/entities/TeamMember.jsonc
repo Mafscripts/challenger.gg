@@ -24,6 +24,16 @@
       "default": "member",
       "title": "Role"
     },
+    "team_type": {
+      "type": "string",
+      "enum": [
+        "8s",
+        "wager",
+        "tournament",
+        "general"
+      ],
+      "title": "Team Type"
+    },
     "joined_date": {
       "type": "string",
       "format": "date-time",

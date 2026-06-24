@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, ChevronDown, BookOpen, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor } from "lucide-react";
 
@@ -141,9 +142,9 @@ export default function Rules() {
           <AlertTriangle className="w-8 h-8 text-orange mx-auto mb-4" />
           <h3 className="font-bold text-lg mb-2">Need to Report a Violation?</h3>
           <p className="text-vapor text-sm mb-4">If you witness rule violations, please report them through the match room dispute system or contact our support team.</p>
-          <a href="mailto:support@challenger.gg" className="inline-flex items-center gap-2 px-6 py-2.5 bg-cyan/10 text-cyan border border-cyan/20 rounded-lg text-sm font-bold hover:bg-cyan/20 transition-all">
+          <Link to="/support" className="inline-flex items-center gap-2 px-6 py-2.5 bg-cyan/10 text-cyan border border-cyan/20 rounded-lg text-sm font-bold hover:bg-cyan/20 transition-all">
             Contact Support
-          </a>
+          </Link>
         </div>
       </div>
     </div>
