@@ -16,6 +16,7 @@ import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchChat from "@/components/match/MatchChat";
 import RankBadge from "@/components/ui/RankBadge";
+import UserBadges from "@/components/ui/UserBadges";
 import { getRankForElo } from "@/lib/ranks";
 
 const playerName = (user, fallback = "Unnamed player") => (
@@ -52,6 +53,7 @@ function PlayerPanel({ label, color, player, waiting }) {
         <RankBadge rank={rank.tier} division={rank.division} />
         <div className="min-w-0">
           <h2 className="text-xl font-black truncate">{player.name}</h2>
+          <UserBadges user={player} size="xs" className="mt-1" />
           <p className="text-xs text-vapor">{rank.name} - {(player.elo || 0).toLocaleString()} ELO</p>
         </div>
       </div>
@@ -122,6 +124,10 @@ export default function RankedMatchRoom() {
       win_streak: stats.win_streak || 0,
       peak_elo: stats.peak_elo || 0,
       matches_played: stats.matches_played || 0,
+      badges: userRows?.badges || [],
+      verified_player: userRows?.verified_player || userRows?.is_verified_player || false,
+      streamer_badge: userRows?.streamer_badge || userRows?.is_streamer || false,
+      force_stream_required: userRows?.force_stream_required || userRows?.stream_override_required || false,
     };
   };
 

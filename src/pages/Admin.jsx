@@ -33,11 +33,22 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import RoleBadge from "@/components/ui/RoleBadge";
+import UserBadges from "@/components/ui/UserBadges";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, getRoleConfig } from "@/lib/roles";
 
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
 const tournamentRewardCategories = new Set(["knife", "weapon_skin", "trophy"]);
+const defaultTournamentSndMaps = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
+const defaultTournamentHpMaps = ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"];
+const defaultTournamentSndMapsText = defaultTournamentSndMaps.join("\n");
+const defaultTournamentHpMapsText = defaultTournamentHpMaps.join("\n");
+const userBadgeOptions = [
+  { value: "none", label: "No special badge", types: [] },
+  { value: "verified_player", label: "Verified player", types: ["verified_player"] },
+  { value: "streamer", label: "Streamer", types: ["streamer"] },
+  { value: "verified_streamer", label: "Verified + streamer", types: ["verified_player", "streamer"] },
+];
 const marketplaceRarities = ["common", "rare", "epic", "legendary", "mythic", "exclusive"];
 const marketplaceUnlockTypes = [
   { value: "marketplace", label: "Direct marketplace purchase" },
@@ -82,6 +93,8 @@ const defaultTournamentForm = {
   prize_pool: "0",
   first_place_prize: "0",
   second_place_prize: "0",
+  snd_maps: defaultTournamentSndMapsText,
+  hp_maps: defaultTournamentHpMapsText,
   max_teams: "8",
   status: "open",
   registration_end: "",
@@ -172,6 +185,30 @@ const tournamentPrizeSummary = (tournament) => {
   const second = Number(tournamentPlacementPrizeValue(tournament, 2) || 0);
   if (first > 0 || second > 0) return `#1 ${formatMoney(first)} | #2 ${formatMoney(second)}`;
   return formatMoney(tournament?.prize_pool);
+};
+const parseMapList = (value, fallback = []) => {
+  const rows = String(value || "")
+    .split(/[\n,]+/)
+    .map((row) => row.trim())
+    .filter(Boolean);
+  return [...new Set(rows.length > 0 ? rows : fallback)];
+};
+const mapListText = (value, fallback = []) => (
+  Array.isArray(value) && value.length > 0 ? value.join("\n") : fallback.join("\n")
+);
+const userBadgeTypes = (user) => {
+  const badges = Array.isArray(user?.badges) ? user.badges : [];
+  const types = new Set(badges.map((badge) => badge?.type).filter(Boolean));
+  if (user?.verified_player || user?.is_verified_player) types.add("verified_player");
+  if (user?.streamer_badge || user?.is_streamer) types.add("streamer");
+  return [...types].filter((type) => ["verified_player", "streamer"].includes(type));
+};
+const userBadgePreset = (user) => {
+  const types = userBadgeTypes(user);
+  if (types.includes("verified_player") && types.includes("streamer")) return "verified_streamer";
+  if (types.includes("verified_player")) return "verified_player";
+  if (types.includes("streamer")) return "streamer";
+  return "none";
 };
 const compactListText = (rows, formatter, empty = "None") => (
   (rows || []).slice(0, 3).map(formatter).filter(Boolean).join(" | ") || empty
@@ -530,6 +567,36 @@ export default function Admin() {
     }
   };
 
+  const handleSetUserBadges = async (targetUser, preset, forceStream = Boolean(targetUser.force_stream_required || targetUser.stream_override_required)) => {
+    if (!canManageWallets(currentUser?.role || "user")) {
+      toast({ title: "Not allowed", description: "Admin or higher is required to manage badges.", variant: "destructive" });
+      return;
+    }
+
+    const option = userBadgeOptions.find((row) => row.value === preset) || userBadgeOptions[0];
+    setBusyId(`${targetUser.id}:badges`);
+    try {
+      const response = await base44.functions.invoke("updateUserBadges", {
+        user_id: targetUser.id,
+        badge_types: option.types,
+        force_stream_required: forceStream,
+      });
+      if (response.data?.success) {
+        toast({ title: "Badges updated", description: `${userName(targetUser)} badges saved.` });
+        setData((prev) => ({
+          ...prev,
+          users: prev.users.map((user) => (user.id === targetUser.id ? { ...user, ...response.data.user } : user)),
+        }));
+      } else {
+        toast({ title: "Badge update failed", description: response.data?.error || "Could not update badges.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Badge update failed", description: error.message || "Could not update badges.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleModerateUser = async (targetUser, action, duration) => {
     if (!canAccessAdminPanel(currentUser?.role || "user")) {
       toast({ title: "Not allowed", description: "Moderator or higher is required.", variant: "destructive" });
@@ -731,6 +798,8 @@ export default function Admin() {
     const eliminationRewardItems = itemSnapshot(eliminationRewardItemIds);
     const firstPlacePrize = Number(tournamentForm.first_place_prize || 0);
     const secondPlacePrize = Number(tournamentForm.second_place_prize || 0);
+    const sndMaps = parseMapList(tournamentForm.snd_maps, defaultTournamentSndMaps);
+    const hpMaps = parseMapList(tournamentForm.hp_maps, defaultTournamentHpMaps);
     return {
       name: tournamentForm.name.trim(),
       game_mode: tournamentForm.game_mode,
@@ -742,6 +811,11 @@ export default function Admin() {
         first_amount: Number.isFinite(firstPlacePrize) ? firstPlacePrize : 0,
         second_amount: Number.isFinite(secondPlacePrize) ? secondPlacePrize : 0,
       },
+      map_pools: {
+        snd: sndMaps,
+        hp: hpMaps,
+      },
+      maps: sndMaps,
       max_teams: Number(tournamentForm.max_teams || 0),
       status: tournamentForm.status,
       format: "single_elimination",
@@ -808,6 +882,8 @@ export default function Admin() {
       prize_pool: String(tournament.prize_pool ?? 0),
       first_place_prize: tournamentPlacementPrizeValue(tournament, 1),
       second_place_prize: tournamentPlacementPrizeValue(tournament, 2),
+      snd_maps: mapListText(tournament.map_pools?.snd || tournament.snd_map_pool || tournament.snd_maps || tournament.maps, defaultTournamentSndMaps),
+      hp_maps: mapListText(tournament.map_pools?.hp || tournament.hp_map_pool || tournament.hp_maps, defaultTournamentHpMaps),
       max_teams: String(tournament.max_teams ?? 8),
       status: tournament.status || "open",
       registration_end: tournament.registration_end ? new Date(tournament.registration_end).toISOString().slice(0, 16) : "",
@@ -1176,6 +1252,7 @@ export default function Admin() {
                     <tr className="border-b border-white/5 text-xs text-vapor uppercase">
                       <th className="text-left py-3 px-4">User</th>
                       <th className="text-left py-3 px-4">Role</th>
+                      <th className="text-left py-3 px-4">Badges</th>
                       <th className="text-left py-3 px-4">Status</th>
                       <th className="text-left py-3 px-4">Wallet</th>
                       <th className="text-left py-3 px-4">IP History</th>
@@ -1191,6 +1268,35 @@ export default function Admin() {
                           <p className="text-xs text-vapor">{user.email}</p>
                         </td>
                         <td className="py-3 px-4"><RoleBadge role={user.role || "user"} /></td>
+                        <td className="py-3 px-4 min-w-[220px]">
+                          <div className="space-y-2">
+                            <UserBadges user={user} size="xs" />
+                            {canManageWallets(currentUser?.role || "user") && (
+                              <div className="flex flex-col gap-1.5">
+                                <select
+                                  value={userBadgePreset(user)}
+                                  onChange={(event) => handleSetUserBadges(user, event.target.value)}
+                                  disabled={busyId === `${user.id}:badges`}
+                                  className="w-full px-2 py-1.5 bg-secondary rounded text-xs border border-white/5 focus:border-cyan/30 focus:outline-none disabled:opacity-50"
+                                >
+                                  {userBadgeOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                  ))}
+                                </select>
+                                <label className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-vapor">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(user.force_stream_required || user.stream_override_required)}
+                                    onChange={(event) => handleSetUserBadges(user, userBadgePreset(user), event.target.checked)}
+                                    disabled={busyId === `${user.id}:badges`}
+                                    className="accent-orange"
+                                  />
+                                  Force stream
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-3 px-4"><StatusPill status={user.is_banned ? "banned" : "active"} /></td>
                         <td className="py-3 px-4 text-sm font-mono">{formatMoney(walletByUserId[user.id]?.available_balance ?? 0)}</td>
                         <td className="py-3 px-4 text-xs text-vapor max-w-[180px] truncate" title={ipHistoryText(user)}>
@@ -1684,6 +1790,26 @@ export default function Admin() {
                         value={tournamentForm.registration_end}
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, registration_end: event.target.value }))}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">SND maps</span>
+                      <textarea
+                        value={tournamentForm.snd_maps}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, snd_maps: event.target.value }))}
+                        rows={5}
+                        className="w-full resize-y px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">HP maps</span>
+                      <textarea
+                        value={tournamentForm.hp_maps}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, hp_maps: event.target.value }))}
+                        rows={5}
+                        className="w-full resize-y px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       />
                     </label>
                   </div>

@@ -19,6 +19,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
+import UserBadges from "@/components/ui/UserBadges";
 
 const bracketLabels = {
   winner: "Winner Bracket",
@@ -139,6 +140,10 @@ function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
     user_name: playerName(userRow || profileRow || player),
     username: userRow?.username || profileRow?.username || player?.username,
     handle: userRow?.handle || profileRow?.handle || player?.handle,
+    badges: userRow?.badges || [],
+    verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
+    streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
+    force_stream_required: userRow?.force_stream_required || userRow?.stream_override_required || false,
     wins: Math.max(profileWins, wagerWins),
     losses: Math.max(profileLosses, wagerLosses),
     trophies: trophyCountsFor(userRow, inventoryRows),
@@ -293,6 +298,7 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
                     ) : (
                       <span className="truncate text-sm font-bold text-white">{player.user_name}</span>
                     )}
+                    <UserBadges user={player} size="xs" className="min-w-0" />
                   </div>
                   <div className="flex justify-start">
                     {player.role === "captain" ? (

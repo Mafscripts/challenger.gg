@@ -27,13 +27,20 @@ const tournamentStatusesStarted = ["live", "in_progress"];
 const openTicketStatuses = ["open", "waiting_for_admin", "admin_joined", "waiting_for_user", "escalated"];
 const tournamentSndMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const tournamentHpMapPool = ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"];
-const tournamentSndHpSndSeries = [
-  { game_mode: "snd", mode: "Search and Destroy", pool: tournamentSndMapPool },
-  { game_mode: "hp", mode: "Hardpoint", pool: tournamentHpMapPool },
-  { game_mode: "snd", mode: "Search and Destroy", pool: tournamentSndMapPool },
+const tournamentSndHpSndModes = [
+  { game_mode: "snd", mode: "Search and Destroy" },
+  { game_mode: "hp", mode: "Hardpoint" },
+  { game_mode: "snd", mode: "Search and Destroy" },
 ];
-const tournamentSndSeries = Array.from({ length: 3 }, () => ({ game_mode: "snd", mode: "Search and Destroy", pool: tournamentSndMapPool }));
+const tournamentSndModes = Array.from({ length: 3 }, () => ({ game_mode: "snd", mode: "Search and Destroy" }));
+const tournamentHpModes = Array.from({ length: 3 }, () => ({ game_mode: "hp", mode: "Hardpoint" }));
 const tournamentBestOf = 3;
+const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const specialUserBadgeTypes = new Set(["verified_player", "streamer"]);
+const specialUserBadgeLabels = {
+  verified_player: "Verified Player",
+  streamer: "Streamer",
+};
 
 function assertStaff(req, minimumRole = "moderator") {
   if (!hasRole(req.user, minimumRole)) {
@@ -990,14 +997,51 @@ function stableHash(value) {
   ), 0);
 }
 
-function tournamentMapSeriesFor(gameMode) {
-  return String(gameMode || "").toLowerCase() === "snd_hp_snd"
-    ? { key: "snd_hp_snd", label: "SND / HP / SND", games: tournamentSndHpSndSeries }
-    : { key: "snd", label: "Search and Destroy", games: tournamentSndSeries };
+function normalizeMapPool(value, fallback) {
+  const rows = Array.isArray(value)
+    ? value
+    : String(value || "").split(/[\n,]+/);
+  const cleaned = rows.map((row) => String(row || "").trim()).filter(Boolean);
+  return [...new Set(cleaned.length > 0 ? cleaned : fallback)];
+}
+
+function tournamentMapPoolsFor(tournament = {}) {
+  const pools = tournament?.map_pools || {};
+  return {
+    snd: normalizeMapPool(pools.snd || tournament?.snd_map_pool || tournament?.snd_maps || tournament?.maps, tournamentSndMapPool),
+    hp: normalizeMapPool(pools.hp || tournament?.hp_map_pool || tournament?.hp_maps, tournamentHpMapPool),
+  };
+}
+
+function tournamentMapSeriesFor(gameMode, mapPools = {}) {
+  const key = String(gameMode || "").toLowerCase();
+  const pools = {
+    snd: normalizeMapPool(mapPools.snd, tournamentSndMapPool),
+    hp: normalizeMapPool(mapPools.hp, tournamentHpMapPool),
+  };
+  const modes = key === "snd_hp_snd"
+    ? tournamentSndHpSndModes
+    : key === "hp"
+      ? tournamentHpModes
+      : tournamentSndModes;
+  const label = key === "snd_hp_snd" ? "SND / HP / SND" : key === "hp" ? "Hardpoint" : "Search and Destroy";
+
+  return {
+    key: key === "snd_hp_snd" || key === "hp" ? key : "snd",
+    label,
+    games: modes.map((game) => ({
+      ...game,
+      pool: game.game_mode === "hp" ? pools.hp : pools.snd,
+    })),
+  };
 }
 
 function tournamentMapSeriesForMatch(match, tournament = null) {
-  return tournamentMapSeriesFor(tournament?.game_mode || match?.tournament_game_mode || match?.series_key || match?.game_mode);
+  const source = tournament || match || {};
+  return tournamentMapSeriesFor(
+    tournament?.game_mode || match?.tournament_game_mode || match?.series_key || match?.game_mode,
+    tournamentMapPoolsFor(source)
+  );
 }
 
 function generatedMapForSeriesGame(match, game, index, series) {
@@ -2153,13 +2197,35 @@ async function registerTournament(req) {
 
 async function updateTournament(req) {
   assertStaff(req, "admin");
+  const patch = req.body.patch || {};
   const tournament = await updateEntity("Tournament", req.body.tournament_id, {
-    ...req.body.patch,
+    ...patch,
     updated_by: req.user.id,
     updated_by_name: nameFor(req.user),
     updated_date: nowIso(),
   });
-  return { success: true, tournament };
+  const shouldRefreshMaps = Object.prototype.hasOwnProperty.call(patch, "map_pools")
+    || Object.prototype.hasOwnProperty.call(patch, "maps")
+    || Object.prototype.hasOwnProperty.call(patch, "game_mode");
+  const refreshedMatches = [];
+
+  if (shouldRefreshMaps) {
+    const [participants, matches] = await Promise.all([
+      tournamentParticipants(tournament.id).catch(() => []),
+      listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500).catch(() => []),
+    ]);
+    for (const match of matches) {
+      if (!hasBothTeams(match) || tournamentMatchHasScoreActivity(match)) continue;
+      const updatedMatch = await updateEntity("TournamentMatch", match.id, tournamentMatchSetupPatch({
+        ...match,
+        maps: [],
+        map_generation_key: null,
+      }, participants, tournament)).catch(() => null);
+      if (updatedMatch) refreshedMatches.push(updatedMatch);
+    }
+  }
+
+  return { success: true, tournament, refreshed_matches: refreshedMatches };
 }
 
 async function deleteTournament(req) {
@@ -4569,6 +4635,11 @@ async function updateUserRole(req) {
   if (!canModifyUserRole(req.user.role, nextRole)) {
     return { success: false, error: "Role hierarchy prevents assigning this role" };
   }
+  const currentBadges = Array.isArray(target.metadata?.badges) ? target.metadata.badges : [];
+  const specialBadges = currentBadges.filter((badge) => specialUserBadgeTypes.has(badge?.type));
+  const roleBadges = nextRole !== "user"
+    ? [{ name: nextRole === "ceo" ? "CEO" : nextRole.replace("_", " "), type: nextRole }]
+    : [];
   const user = await prisma.user.update({
     where: { id: target.id },
     data: {
@@ -4577,7 +4648,7 @@ async function updateUserRole(req) {
       is_admin: nextRole !== "user",
       metadata: {
         ...(target.metadata || {}),
-        badges: nextRole !== "user" ? [{ name: nextRole === "ceo" ? "CEO" : nextRole.replace("_", " "), type: nextRole }] : [],
+        badges: [...roleBadges, ...specialBadges],
       },
     },
   });
@@ -4593,6 +4664,77 @@ async function updateUserRole(req) {
     created_date: nowIso(),
   }).catch(() => null);
   return { success: true, user };
+}
+
+function normalizedSpecialBadges(types = []) {
+  const selected = [...new Set((types || []).filter((type) => specialUserBadgeTypes.has(type)))];
+  return selected.map((type) => ({ type, name: specialUserBadgeLabels[type] }));
+}
+
+async function updateUserBadges(req) {
+  assertStaff(req, "admin");
+  const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
+  if (!target) return { success: false, error: "User not found" };
+  if (!canModerateUser(req.user.role, target.role)) {
+    return { success: false, error: "Role hierarchy prevents updating this account" };
+  }
+
+  const requestedTypes = Array.isArray(req.body.badge_types)
+    ? req.body.badge_types
+    : String(req.body.badge_type || "")
+      .split(",")
+      .map((type) => type.trim())
+      .filter(Boolean);
+  const currentBadges = Array.isArray(target.metadata?.badges) ? target.metadata.badges : [];
+  const roleBadges = currentBadges.filter((badge) => roleBadgeTypes.has(badge?.type));
+  const specialBadges = normalizedSpecialBadges(requestedTypes);
+  const verified = specialBadges.some((badge) => badge.type === "verified_player");
+  const streamer = specialBadges.some((badge) => badge.type === "streamer");
+  const forceStream = Boolean(req.body.force_stream_required || req.body.stream_override_required);
+  const user = await prisma.user.update({
+    where: { id: target.id },
+    data: {
+      metadata: {
+        ...(target.metadata || {}),
+        badges: [...roleBadges, ...specialBadges],
+        verified_player: verified,
+        streamer_badge: streamer,
+        force_stream_required: forceStream,
+        stream_exempt_default: verified && !forceStream,
+        badge_updated_by: req.user.id,
+        badge_updated_by_name: nameFor(req.user),
+        badge_updated_date: nowIso(),
+      },
+    },
+  });
+
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "user_badges_update",
+    target_user_id: target.id,
+    target_username: nameFor(target),
+    description: `Updated badges for ${nameFor(target)}`,
+    details: {
+      badge_types: specialBadges.map((badge) => badge.type),
+      force_stream_required: forceStream,
+    },
+    created_date: nowIso(),
+  }).catch(() => null);
+
+  await notifyUser(target.id, {
+    title: "Profile badges updated",
+    message: specialBadges.length > 0
+      ? `Your profile badges were updated: ${specialBadges.map((badge) => badge.name).join(", ")}.`
+      : "Your special profile badges were updated.",
+    type: "system",
+    action_url: `/profile/${target.username || target.id}`,
+    related_entity_id: target.id,
+    related_entity_type: "User",
+  });
+
+  return { success: true, user: publicUser(user) };
 }
 
 function banExpiration(duration) {
@@ -4762,6 +4904,7 @@ const handlers = {
   escalateDispute,
   moderateDispute,
   updateUserRole,
+  updateUserBadges,
   moderateUser,
   changeDisplayName,
   adminAction: async (req) => ({ success: true, action: await createEntity("AdminAction", { ...req.body, admin_id: req.user.id, admin_name: nameFor(req.user), created_date: new Date().toISOString() }) }),

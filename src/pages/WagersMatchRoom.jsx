@@ -8,6 +8,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
+import UserBadges from "@/components/ui/UserBadges";
 
 const formatStatus = (value) => String(value || "open").replace(/_/g, " ");
 const formatDate = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Pending";
@@ -68,6 +69,7 @@ function SimpleRoster({ title, players, tone = "cyan" }) {
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold">{playerName(player)}</p>
+              <UserBadges user={player} size="xs" className="mt-1" />
               <p className={`text-[10px] uppercase tracking-wider ${player.payment_status === "pending" ? "text-orange" : "text-vapor"}`}>
                 {player.payment_status === "pending" ? "Payment pending" : "Ready"}
               </p>

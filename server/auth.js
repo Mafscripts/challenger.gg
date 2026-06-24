@@ -7,6 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const JWT_EXPIRES_IN = "7d";
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const DISPLAY_NAME_MAX_LENGTH = 60;
+const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
 
 export const cleanUsername = (value, fallback = "user") => {
   const cleaned = String(value || fallback)
@@ -139,6 +140,9 @@ export const ensureUserRecords = async (user, payload = {}) => {
   const shouldBeCeo = user.role === "ceo" || !ceoExists || usersCount <= 1;
   const role = shouldBeCeo ? "ceo" : (user.role || "user");
   const adminRole = shouldBeCeo ? "ceo" : user.admin_role;
+  const existingBadges = Array.isArray(user.metadata?.badges) ? user.metadata.badges : [];
+  const preservedBadges = existingBadges.filter((badge) => !roleBadgeTypes.has(badge?.type));
+  const roleBadges = role !== "user" ? [{ name: role === "ceo" ? "CEO" : role.replace("_", " "), type: role }] : [];
 
   const updated = await prisma.user.update({
     where: { id: user.id },
@@ -153,7 +157,7 @@ export const ensureUserRecords = async (user, payload = {}) => {
       email_verified: true,
       metadata: {
         ...(user.metadata || {}),
-        badges: role !== "user" ? [{ name: role === "ceo" ? "CEO" : role.replace("_", " "), type: role }] : [],
+        badges: [...roleBadges, ...preservedBadges],
       },
     },
   });

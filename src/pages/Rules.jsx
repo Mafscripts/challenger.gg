@@ -26,6 +26,8 @@ const sections = [
       "Disconnections within the first 30 seconds may trigger a restart at moderator discretion.",
       "Intentional disconnections forfeit the match.",
       "Screen recording is strongly recommended for all competitive matches.",
+      "Verified players do not have to stream by default. They must stream only when an opponent requests it with clips or evidence and an admin validates that request.",
+      "Admins may override a verified player and force them to stream when match integrity requires it.",
     ],
   },
   {
@@ -71,6 +73,7 @@ const sections = [
       "AI-powered detection monitors all matches in real-time.",
       "Confirmed cheating results in permanent ban and forfeiture of all funds.",
       "Reporting suspected cheaters is encouraged and reviewed within 48 hours.",
+      "Streamer badges are blue and verified player badges are green. Badges identify account status but do not replace dispute evidence.",
     ],
   },
 ];

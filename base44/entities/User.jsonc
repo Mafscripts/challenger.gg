@@ -192,6 +192,8 @@
               "admin",
               "moderator",
               "premium",
+              "verified_player",
+              "streamer",
               "tournament_winner",
               "top_player",
               "veteran"
@@ -200,6 +202,21 @@
         }
       },
       "title": "User Badges"
+    },
+    "verified_player": {
+      "type": "boolean",
+      "default": false,
+      "title": "Verified Player"
+    },
+    "streamer_badge": {
+      "type": "boolean",
+      "default": false,
+      "title": "Streamer Badge"
+    },
+    "force_stream_required": {
+      "type": "boolean",
+      "default": false,
+      "title": "Force Stream Required"
     }
   },
   "required": [

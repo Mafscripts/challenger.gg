@@ -1,5 +1,6 @@
 import React from "react";
 import { Star, Trophy, Medal, Award, Crown, Target } from "lucide-react";
+import UserBadges from "@/components/ui/UserBadges";
 
 function PlayerRow({ player, teamColor }) {
   const wins = player.wager_wins || 0;
@@ -27,6 +28,7 @@ function PlayerRow({ player, teamColor }) {
               </span>
             )}
           </div>
+          <UserBadges user={player} size="xs" className="mt-1" />
         </div>
       </div>
       

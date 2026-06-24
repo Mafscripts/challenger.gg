@@ -17,6 +17,7 @@
     "game_mode": {
       "type": "string",
       "enum": [
+        "snd_hp_snd",
         "snd",
         "overload",
         "hp"
@@ -123,6 +124,24 @@
         "type": "string"
       },
       "title": "Maps"
+    },
+    "map_pools": {
+      "type": "object",
+      "properties": {
+        "snd": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hp": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "Tournament Map Pools"
     },
     "game_modes": {
       "type": "array",

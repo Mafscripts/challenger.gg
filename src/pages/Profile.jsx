@@ -5,6 +5,7 @@ import { Award, Calendar, Crown, Flame, Package, Shield, Swords, Trophy, Users }
 import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
+import UserBadges from "@/components/ui/UserBadges";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
@@ -168,6 +169,7 @@ export default function Profile() {
               <div className="flex items-center gap-3 mb-1 flex-wrap">
                 <h1 className="text-2xl font-black">{name}</h1>
                 <RoleBadge role={user.role || "user"} />
+                <UserBadges user={user} />
                 {user.is_premium && (
                   <span className="px-2 py-0.5 rounded bg-orange/10 text-orange text-[10px] font-mono font-bold flex items-center gap-1">
                     <Crown className="w-3 h-3" /> PREMIUM
@@ -237,9 +239,14 @@ export default function Profile() {
         {tab === "badges" && (
           <List title="Badges" empty="No badges earned yet." rows={badges} render={(badge) => (
             <div className="px-5 py-4 flex items-center gap-3">
-              <Award className="w-4 h-4 text-yellow-400" />
-              <span className="font-semibold text-sm">{badge.name}</span>
-              <span className="text-xs text-vapor">{badge.type}</span>
+              <UserBadges badges={[badge]} showForceStream={false} />
+              {!["verified_player", "streamer"].includes(badge.type) && (
+                <>
+                  <Award className="w-4 h-4 text-yellow-400" />
+                  <span className="font-semibold text-sm">{badge.name}</span>
+                  <span className="text-xs text-vapor">{badge.type}</span>
+                </>
+              )}
             </div>
           )} />
         )}
