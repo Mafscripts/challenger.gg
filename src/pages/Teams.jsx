@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Camera, CheckCircle, Crown, Image as ImageIcon, LogOut, Plus, Search, Trash2, Trophy, TrendingUp, UserMinus, UserPlus, Users, X, XCircle } from "lucide-react";
+import { Camera, CheckCircle, Crown, Image as ImageIcon, LogOut, Plus, Save, Search, Trash2, Trophy, TrendingUp, UserMinus, UserPlus, Users, X, XCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -34,6 +34,7 @@ export default function Teams() {
   const [inviteIdentifier, setInviteIdentifier] = useState("");
   const [teamForm, setTeamForm] = useState({ name: "", tag: "", region: "na", team_type: "8s", roster_size: 4, banner_url: "" });
   const [teamBannerDraft, setTeamBannerDraft] = useState("");
+  const [teamNameDraft, setTeamNameDraft] = useState("");
 
   useEffect(() => {
     loadTeams();
@@ -141,6 +142,10 @@ export default function Teams() {
     setTeamBannerDraft(selectedTeam?.banner_url || "");
   }, [selectedTeam?.id, selectedTeam?.banner_url]);
 
+  useEffect(() => {
+    setTeamNameDraft(selectedTeam?.name || "");
+  }, [selectedTeam?.id, selectedTeam?.name]);
+
   const runTeamAction = async (payload, successTitle) => {
     setBusyAction(payload.action);
     try {
@@ -212,6 +217,22 @@ export default function Teams() {
       team_id: selectedTeam.id,
       banner_url: teamBannerDraft.trim(),
     }, "Team banner saved");
+  };
+
+  const handleUpdateTeamName = async (event) => {
+    event.preventDefault();
+    if (!selectedTeam || !isSelectedCaptain) return;
+    const name = teamNameDraft.trim();
+    if (!name) {
+      toast({ title: "Team name required", description: "Enter a team name before saving.", variant: "destructive" });
+      return;
+    }
+    if (name === selectedTeam.name) return;
+    await runTeamAction({
+      action: "update_profile",
+      team_id: selectedTeam.id,
+      name,
+    }, "Team name saved");
   };
 
   return (
@@ -396,6 +417,27 @@ export default function Teams() {
               {selectedTeam && selectedMembership && (
                 <div className="glass rounded-xl border border-white/5 p-5">
                   <h3 className="font-bold text-sm mb-4">Team Management</h3>
+                  {isSelectedCaptain && (
+                    <form onSubmit={handleUpdateTeamName} className="mb-5 space-y-3">
+                      <label className="block">
+                        <span className="text-xs text-vapor mb-2 block uppercase tracking-wider">Team Name</span>
+                        <input
+                          value={teamNameDraft}
+                          onChange={(event) => setTeamNameDraft(event.target.value)}
+                          maxLength={40}
+                          className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                          placeholder="Team name"
+                        />
+                      </label>
+                      <button
+                        type="submit"
+                        disabled={Boolean(busyAction) || !teamNameDraft.trim() || teamNameDraft.trim() === selectedTeam.name}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg disabled:opacity-50"
+                      >
+                        <Save className="w-3.5 h-3.5" /> Save Name
+                      </button>
+                    </form>
+                  )}
                   {isSelectedCaptain && (
                     <div className="mb-5 rounded-lg border border-white/5 bg-secondary/30 p-3">
                       <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-cyan">

@@ -1867,6 +1867,22 @@ async function createOrReactivateTeamMember(team, user, role = "member") {
   return createEntity("TeamMember", payload);
 }
 
+async function syncTeamNameReferences(teamId, teamName) {
+  const [invites, participants, teamAMatches, teamBMatches] = await Promise.all([
+    listEntities("TeamInvite", { team_id: teamId }, "-created_date", 500).catch(() => []),
+    listEntities("TournamentParticipant", { team_id: teamId }, "-registered_date", 500).catch(() => []),
+    listEntities("TournamentMatch", { team_a_id: teamId }, "round", 500).catch(() => []),
+    listEntities("TournamentMatch", { team_b_id: teamId }, "round", 500).catch(() => []),
+  ]);
+
+  await Promise.all([
+    ...invites.map((invite) => updateEntity("TeamInvite", invite.id, { team_name: teamName }).catch(() => null)),
+    ...participants.map((participant) => updateEntity("TournamentParticipant", participant.id, { team_name: teamName }).catch(() => null)),
+    ...teamAMatches.map((match) => updateEntity("TournamentMatch", match.id, { team_a_name: teamName }).catch(() => null)),
+    ...teamBMatches.map((match) => updateEntity("TournamentMatch", match.id, { team_b_name: teamName }).catch(() => null)),
+  ]);
+}
+
 async function manageTeam(req) {
   const action = String(req.body.action || "").toLowerCase();
 
@@ -1916,6 +1932,21 @@ async function manageTeam(req) {
       updated_by_name: nameFor(req.user),
       updated_date: nowIso(),
     });
+    return { success: true, team: updated };
+  }
+
+  if (action === "update_profile" || action === "rename") {
+    if (team.captain_id !== req.user.id) return { success: false, error: "Only the team captain can update the team name" };
+    const name = String(req.body.name || "").trim().slice(0, 40);
+    if (!name) return { success: false, error: "Team name is required" };
+
+    const updated = await updateEntity("Team", team.id, {
+      name,
+      updated_by: req.user.id,
+      updated_by_name: nameFor(req.user),
+      updated_date: nowIso(),
+    });
+    if (name !== team.name) await syncTeamNameReferences(team.id, name);
     return { success: true, team: updated };
   }
 
@@ -2333,6 +2364,113 @@ async function registerTournament(req) {
   });
 
   return { success: true, participant };
+}
+
+function tournamentRegistrationIsLocked(tournament) {
+  const registrationEnded = tournament?.registration_end && new Date(tournament.registration_end) <= new Date();
+  return Boolean(
+    tournament?.registration_locked
+    || tournament?.bracket_generated
+    || registrationEnded
+    || !tournamentStatusesOpenForRegistration.includes(tournament?.status)
+  );
+}
+
+async function refundTournamentEntry(tournament, participant) {
+  const feeType = participant.entry_type || (tournament.is_premium_only ? "premium" : (Number(tournament.entry_fee || 0) > 0 ? "credits" : "free"));
+  const requiresCredits = feeType === "credits" || feeType === "credits_premium";
+  const totalPaid = roundedMoney(participant.entry_fee_paid);
+  if (!requiresCredits || totalPaid <= 0) return [];
+
+  if (participant.payment_mode === "full_team") {
+    const refundUserId = participant.captain_id;
+    if (!refundUserId) return [];
+    await prisma.user.update({
+      where: { id: refundUserId },
+      data: { credits: { increment: totalPaid } },
+    });
+    return [{ user_id: refundUserId, amount: totalPaid }];
+  }
+
+  const paidIds = Array.isArray(participant.paid_member_ids) && participant.paid_member_ids.length > 0
+    ? participant.paid_member_ids
+    : participantUserIds(participant);
+  const uniquePaidIds = [...new Set(paidIds.filter(Boolean))];
+  if (uniquePaidIds.length === 0) return [];
+
+  const entryFee = roundedMoney(tournament.entry_fee);
+  let remaining = totalPaid;
+  const refunds = [];
+  for (const userId of uniquePaidIds) {
+    const amount = roundedMoney(Math.min(entryFee > 0 ? entryFee : totalPaid / uniquePaidIds.length, remaining));
+    if (amount <= 0) continue;
+    await prisma.user.update({
+      where: { id: userId },
+      data: { credits: { increment: amount } },
+    });
+    refunds.push({ user_id: userId, amount });
+    remaining = roundedMoney(remaining - amount);
+  }
+  return refunds;
+}
+
+async function reseedTournamentParticipants(tournamentId) {
+  const remaining = await tournamentParticipants(tournamentId);
+  const ordered = [...remaining].sort((a, b) => (
+    Number(a.seed || 0) - Number(b.seed || 0)
+    || new Date(a.registered_date || a.created_date || 0) - new Date(b.registered_date || b.created_date || 0)
+  ));
+  return Promise.all(ordered.map((participant, index) => (
+    Number(participant.seed || 0) === index + 1
+      ? participant
+      : updateEntity("TournamentParticipant", participant.id, { seed: index + 1 }).catch(() => participant)
+  )));
+}
+
+async function leaveTournament(req) {
+  const tournament = await getEntity("Tournament", req.body.tournament_id);
+  if (tournamentRegistrationIsLocked(tournament)) {
+    return { success: false, error: "Registration is already locked" };
+  }
+
+  const existingMatches = await listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 1).catch(() => []);
+  if (existingMatches.length > 0) {
+    return { success: false, error: "Bracket has already been generated" };
+  }
+
+  const participants = await tournamentParticipants(tournament.id);
+  const requestedParticipantId = String(req.body.participant_id || "");
+  const requestedTeamId = String(req.body.team_id || "");
+  const participant = participants.find((row) => (
+    (requestedParticipantId && String(row.id || "") === requestedParticipantId)
+    || (requestedTeamId && String(row.team_id || "") === requestedTeamId)
+    || String(row.captain_id || "") === String(req.user.id)
+  ));
+
+  if (!participant) return { success: false, error: "Your team is not registered for this tournament" };
+  if (String(participant.captain_id || "") !== String(req.user.id)) {
+    return { success: false, error: "Only the team captain can leave the tournament" };
+  }
+
+  const refunds = await refundTournamentEntry(tournament, participant);
+  await deleteEntity("TournamentParticipant", participant.id);
+  const registeredTeams = Math.max(0, Number(tournament.registered_teams || participants.length) - 1);
+  const updatedTournament = await updateEntity("Tournament", tournament.id, {
+    registered_teams: registeredTeams,
+    updated_date: nowIso(),
+  });
+  await reseedTournamentParticipants(tournament.id);
+
+  await notifyUsers(participantUserIds(participant), {
+    title: "Tournament registration removed",
+    message: `${participant.team_name || "Your team"} left ${tournament.name}.`,
+    type: "tournament",
+    action_url: "/tournaments",
+    related_entity_id: tournament.id,
+    related_entity_type: "Tournament",
+  });
+
+  return { success: true, tournament: updatedTournament, participant, refunds };
 }
 
 async function updateTournament(req) {
@@ -5058,6 +5196,7 @@ const handlers = {
   adminAdjustWallet,
   forgeMoneyToCredits,
   registerTournament,
+  leaveTournament,
   updateTournament,
   deleteTournament,
   cancelTournament,

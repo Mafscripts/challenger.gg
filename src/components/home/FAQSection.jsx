@@ -7,7 +7,7 @@ const faqs = [
   { q: "How do wagers work?", a: "Create or join wagers by selecting your match type, stake amount, and game mode. Both parties deposit funds into escrow. After the match, the winner reports the result and funds are released. Disputes are handled by our moderation team with video evidence review." },
   { q: "What is the map veto system?", a: "Before each match, maps are randomly selected from the active map pool for the chosen game mode. Each team gets one veto to ban a map they don't want to play. The final map is automatically selected from the remaining pool. This ensures fair and competitive map selection." },
   { q: "How does the marketplace work?", a: "Browse and purchase cosmetic items including knife skins, weapon skins, calling cards, badges, and more. Items range from Common to Exclusive rarity. Premium members receive reduced marketplace fees and access to exclusive drops. You can also trade items directly with other players." },
-  { q: "Is there a mobile app?", a: "Challenger.gg is fully responsive and works seamlessly on mobile browsers. Dedicated iOS and Android apps are in development and will launch later in 2026 with push notifications, match alerts, and quick-queue functionality." },
+  { q: "Is there a mobile app?", a: "Topfragg.gg is fully responsive and works seamlessly on mobile browsers. Dedicated iOS and Android apps are in development and will launch later in 2026 with push notifications, match alerts, and quick-queue functionality." },
   { q: "How do I join a team?", a: "Navigate to the Teams section to browse existing teams or create your own. Team captains can invite players, and you can apply to join teams that are recruiting. Teams have their own profiles, statistics, and rankings." },
 ];
 

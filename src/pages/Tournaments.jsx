@@ -1,7 +1,21 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Calendar, Crown, Loader2, Trophy, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Award,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  DollarSign,
+  Loader2,
+  LogOut,
+  Medal,
+  Star,
+  Swords,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -31,6 +45,77 @@ const formatDate = (value) => {
 };
 
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+const formatCredits = (value) => `${Number(value || 0).toLocaleString()} Credits`;
+const padCountdownUnit = (value) => String(value).padStart(2, "0");
+const timeUntil = (value, now = Date.now()) => {
+  if (!value) return "TBD";
+  const diff = new Date(value).getTime() - now;
+  if (diff <= 0) return "Live now";
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (days > 0) return `${days}d ${padCountdownUnit(hours)}h ${padCountdownUnit(minutes)}m ${padCountdownUnit(seconds)}s`;
+  if (hours > 0) return `${hours}h ${padCountdownUnit(minutes)}m ${padCountdownUnit(seconds)}s`;
+  return `${minutes}m ${padCountdownUnit(seconds)}s`;
+};
+const statusTone = (status) => {
+  if (status === "completed") return "text-green border-green/20 bg-green/10";
+  if (["live", "in_progress"].includes(status)) return "text-orange border-orange/20 bg-orange/10";
+  if (["open", "registration"].includes(status)) return "text-cyan border-cyan/20 bg-cyan/10";
+  if (status === "cancelled") return "text-red-300 border-red-500/20 bg-red-500/10";
+  return "text-vapor border-white/5 bg-secondary";
+};
+const compactModeLabel = (tournament) => `${tournament?.team_size || "1v1"} - ${modeLabels[tournament?.game_mode] || tournament?.game_mode || "Mode TBD"}`;
+const tournamentImageUrl = (tournament) => tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || "";
+const tournamentEntryInfo = (tournament) => {
+  const entryType = tournament?.entry_type || (tournament?.is_premium_only ? "premium" : (Number(tournament?.entry_fee || 0) > 0 ? "credits" : "free"));
+  const fee = Number(tournament?.entry_fee || 0);
+
+  if (entryType === "credits_premium") {
+    return {
+      pill: fee > 0 ? `${formatCredits(fee)} + Premium` : "Credits + Premium",
+      value: fee > 0 ? formatCredits(fee) : "Premium",
+      color: "text-orange",
+      tone: "border-orange/25 bg-orange/10 text-orange",
+    };
+  }
+
+  if (entryType === "premium") {
+    return {
+      pill: "Premium Only",
+      value: fee > 0 ? `${formatCredits(fee)} + Premium` : "Premium",
+      color: "text-purple-300",
+      tone: "border-purple-400/25 bg-purple-400/10 text-purple-300",
+    };
+  }
+
+  if (entryType === "credits") {
+    return {
+      pill: `${formatCredits(fee)} Entry`,
+      value: formatCredits(fee),
+      color: "text-orange",
+      tone: "border-orange/25 bg-orange/10 text-orange",
+    };
+  }
+
+  if (entryType === "invitational") {
+    return {
+      pill: "Invitational",
+      value: "Invite Only",
+      color: "text-yellow-300",
+      tone: "border-yellow-400/25 bg-yellow-400/10 text-yellow-300",
+    };
+  }
+
+  return {
+    pill: "Free Entry",
+    value: "Free",
+    color: "text-green",
+    tone: "border-green/25 bg-green/10 text-green",
+  };
+};
 const isFreeTournament = (tournament) => {
   const entryType = tournament?.entry_type || (tournament?.is_premium_only ? "premium" : (Number(tournament?.entry_fee || 0) > 0 ? "credits" : "free"));
   return ["free", "invitational"].includes(entryType) || Number(tournament?.entry_fee || 0) <= 0;
@@ -45,6 +130,9 @@ export default function Tournaments() {
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState(null);
+  const [leavingId, setLeavingId] = useState(null);
+  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const [joinedTournamentIds, setJoinedTournamentIds] = useState(new Set());
   const [userTeams, setUserTeams] = useState([]);
   const [selectedTeamByTournament, setSelectedTeamByTournament] = useState({});
@@ -73,6 +161,11 @@ export default function Tournaments() {
   useEffect(() => {
     selectedTournamentIdRef.current = selectedTournamentId;
   }, [selectedTournamentId]);
+
+  useEffect(() => {
+    const countdownInterval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(countdownInterval);
+  }, []);
 
   const loadTournaments = async ({ silent = false } = {}) => {
     if (refreshInFlightRef.current && silent) return;
@@ -149,6 +242,13 @@ export default function Tournaments() {
       && (!maxTeams || registered < maxTeams);
   };
 
+  const canLeaveTournament = (tournament) => (
+    tournament
+    && ["open", "registration"].includes(tournament.status)
+    && tournament.registration_locked !== true
+    && tournament.bracket_generated !== true
+  );
+
   const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
   const compatibleTeamsFor = (_tournament) => (
     userTeams.filter((team) => (
@@ -200,6 +300,49 @@ export default function Tournaments() {
     }
   };
 
+  const handleLeaveTournament = async (tournament) => {
+    if (!user?.id || !tournament || leavingId) return;
+
+    const participant = selectedParticipants.find((row) => row.captain_id === user.id);
+    if (!participant) {
+      toast({ title: "Captain required", description: "Only the team captain can leave a tournament.", variant: "destructive" });
+      return;
+    }
+
+    setLeavingId(tournament.id);
+    try {
+      const response = await base44.functions.invoke("leaveTournament", {
+        tournament_id: tournament.id,
+        participant_id: participant.id,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Leave failed", description: response.data?.error || "Could not leave tournament.", variant: "destructive" });
+        return;
+      }
+
+      setJoinedTournamentIds((current) => {
+        const next = new Set(current);
+        next.delete(tournament.id);
+        return next;
+      });
+      setParticipantsByTournament((current) => ({
+        ...current,
+        [tournament.id]: (current[tournament.id] || []).filter((row) => row.id !== participant.id),
+      }));
+      setTournaments((current) => current.map((row) => (
+        row.id === tournament.id
+          ? { ...row, registered_teams: response.data.tournament?.registered_teams ?? Math.max(0, Number(row.registered_teams || 0) - 1) }
+          : row
+      )));
+      toast({ title: "Tournament left", description: `${participant.team_name || "Your team"} left ${tournament.name}.` });
+      await loadMatches(tournament.id);
+    } catch (error) {
+      toast({ title: "Leave failed", description: error.message || "Could not leave tournament.", variant: "destructive" });
+    } finally {
+      setLeavingId(null);
+    }
+  };
+
   const loadMatches = async (tournamentId) => {
     if (!tournamentId) return;
     try {
@@ -217,6 +360,8 @@ export default function Tournaments() {
   const handleSelectTournament = (tournamentId) => {
     selectedTournamentIdRef.current = tournamentId;
     setSelectedTournamentId(tournamentId);
+    const featuredIndex = carouselTournaments.findIndex((tournament) => tournament.id === tournamentId);
+    if (featuredIndex >= 0) setActiveFeaturedIndex(featuredIndex);
     if (!matchesByTournament[tournamentId]) {
       loadMatches(tournamentId);
     }
@@ -225,19 +370,46 @@ export default function Tournaments() {
   const filteredTournaments = useMemo(() => (
     tournaments.filter((tournament) => filter === "All" || statusLabels[tournament.status] === filter || tournament.status === filter)
   ), [tournaments, filter]);
+  const carouselTournaments = useMemo(() => {
+    const activeRows = tournaments
+      .filter((tournament) => !["completed", "cancelled"].includes(tournament.status))
+      .sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
+    return activeRows.length > 0 ? activeRows : tournaments;
+  }, [tournaments]);
+
+  useEffect(() => {
+    if (activeFeaturedIndex >= carouselTournaments.length) setActiveFeaturedIndex(0);
+  }, [activeFeaturedIndex, carouselTournaments.length]);
+
+  useEffect(() => {
+    if (!selectedTournamentId || carouselTournaments.length === 0) return;
+    const selectedIndex = carouselTournaments.findIndex((tournament) => tournament.id === selectedTournamentId);
+    if (selectedIndex >= 0 && selectedIndex !== activeFeaturedIndex) setActiveFeaturedIndex(selectedIndex);
+  }, [activeFeaturedIndex, carouselTournaments, selectedTournamentId]);
 
   const liveTournaments = tournaments.filter((tournament) => ["live", "in_progress"].includes(tournament.status));
   const featuredTournaments = tournaments.filter((tournament) => tournament.is_premium_only || tournament.prize_pool >= 1000).slice(0, 2);
   const selectedTournament = tournaments.find((tournament) => tournament.id === selectedTournamentId);
   const selectedMatches = matchesByTournament[selectedTournamentId] || [];
   const selectedParticipants = participantsByTournament[selectedTournamentId] || [];
+  const featuredTournament = carouselTournaments[activeFeaturedIndex]
+    || selectedTournament
+    || featuredTournaments[0]
+    || tournaments[0];
   const isStaff = staffRoles.has(user?.role);
+  const participantIncludesCurrentUser = (participant) => (
+    participant.captain_id === user?.id
+    || participant.user_id === user?.id
+    || (participant.members || []).some((member) => member.user_id === user?.id)
+  );
+  const selectedUserParticipant = selectedParticipants.find(participantIncludesCurrentUser);
+  const canLeaveSelectedTournament = (
+    selectedTournament
+    && canLeaveTournament(selectedTournament)
+    && selectedUserParticipant?.captain_id === user?.id
+  );
   const currentUserParticipantKeys = new Set(selectedParticipants
-    .filter((participant) => (
-      participant.captain_id === user?.id
-      || participant.user_id === user?.id
-      || (participant.members || []).some((member) => member.user_id === user?.id)
-    ))
+    .filter(participantIncludesCurrentUser)
     .flatMap((participant) => [participant.id, participant.team_id, participant.user_id, participant.captain_id].filter(Boolean)));
   const currentUserTeamKeys = new Set(userTeams
     .filter((team) => team.membership?.is_active !== false)
@@ -252,6 +424,22 @@ export default function Tournaments() {
     || currentUserTeamKeys.has(String(match.team_a_name || "").toLowerCase())
     || currentUserTeamKeys.has(String(match.team_b_name || "").toLowerCase())
   ));
+  const totalPrizePool = tournaments.reduce((sum, tournament) => sum + Number(tournament.prize_pool || 0), 0);
+  const totalTeams = tournaments.reduce((sum, tournament) => sum + Number(tournament.registered_teams || 0), 0);
+  const totalPlayers = tournaments.reduce((sum, tournament) => (
+    sum + (Number(tournament.registered_teams || 0) * rosterSize(tournament.team_size))
+  ), 0);
+  const recentChampions = tournaments
+    .filter((tournament) => tournament.winner_name || tournament.status === "completed")
+    .sort((a, b) => new Date(b.completed_date || b.updated_date || b.start_date || 0) - new Date(a.completed_date || a.updated_date || a.start_date || 0))
+    .slice(0, 4);
+  const browseFeaturedTournament = (index) => {
+    if (carouselTournaments.length === 0) return;
+    const nextIndex = (index + carouselTournaments.length) % carouselTournaments.length;
+    const nextTournament = carouselTournaments[nextIndex];
+    setActiveFeaturedIndex(nextIndex);
+    if (nextTournament?.id) handleSelectTournament(nextTournament.id);
+  };
 
   if (loading) {
     return (
@@ -273,6 +461,27 @@ export default function Tournaments() {
             <p className="text-vapor text-sm mt-1">Live brackets and database-backed events</p>
           </div>
         </div>
+
+        <div className="flex items-center gap-2 mb-5 overflow-x-auto">
+          {["All", "Open", "Registration", "In Progress", "Completed"].map((item) => (
+            <button
+              key={item}
+              onClick={() => setFilter(item)}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                filter === item ? "bg-cyan text-background" : "bg-secondary text-vapor hover:text-foreground"
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+
+        <SeasonOverview
+          totalPrizePool={totalPrizePool}
+          tournamentCount={tournaments.length}
+          totalTeams={totalTeams}
+          totalPlayers={totalPlayers}
+        />
 
         {liveTournaments.map((tournament) => {
           const matches = matchesByTournament[tournament.id] || [];
@@ -308,101 +517,53 @@ export default function Tournaments() {
           );
         })}
 
-        {featuredTournaments.length > 0 && (
-          <div className="grid md:grid-cols-2 gap-5 mb-10">
-            {featuredTournaments.map((tournament) => (
-              <motion.button
-                key={tournament.id}
-                type="button"
-                onClick={() => handleSelectTournament(tournament.id)}
-                whileHover={{ y: -4 }}
-                className="glass rounded-xl p-8 border border-orange/20 relative overflow-hidden group cursor-pointer text-left"
-              >
-                <div className="absolute top-0 right-0 w-40 h-40 bg-orange/5 rounded-full blur-[60px]" />
-                <div className="relative">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Crown className="w-4 h-4 text-orange" />
-                    <span className="text-orange text-xs font-mono font-bold uppercase tracking-wider">
-                      {tournament.is_premium_only ? "Premium Event" : "Featured Event"}
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-black mb-2">{tournament.name}</h3>
-                  <p className="text-vapor text-sm mb-6">
-                    {tournament.team_size} {modeLabels[tournament.game_mode] || tournament.game_mode} - {tournament.registered_teams || 0}/{tournament.max_teams} Teams
-                  </p>
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-1.5">
-                      <Trophy className="w-4 h-4 text-green" />
-                      <span className="text-green font-mono font-bold text-lg">{formatMoney(tournament.prize_pool)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-vapor text-sm">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>{formatDate(tournament.start_date)}</span>
-                    </div>
-                  </div>
-                  <span className="mt-4 inline-block text-xs font-semibold text-cyan">
-                    {statusLabels[tournament.status] || tournament.status}
-                  </span>
-                </div>
-              </motion.button>
-            ))}
+        {featuredTournament && (
+          <div className="mb-6">
+            <FeaturedTournamentPanel
+              tournament={featuredTournament}
+              onSelect={handleSelectTournament}
+              tournaments={carouselTournaments}
+              activeIndex={activeFeaturedIndex}
+              onBrowse={browseFeaturedTournament}
+              canJoin={canJoinTournament(featuredTournament)}
+              joined={joinedTournamentIds.has(featuredTournament.id)}
+              joining={joiningId === featuredTournament.id}
+              compatibleTeams={compatibleTeamsFor(featuredTournament)}
+              selectedTeamId={selectedTeamByTournament[featuredTournament.id] || ""}
+              selectedTeam={selectedTeamFor(featuredTournament)}
+              paymentMode={paymentModeByTournament[featuredTournament.id] || "own"}
+              isTeamReady={isTournamentTeamReady(selectedTeamFor(featuredTournament), featuredTournament)}
+              isFree={isFreeTournament(featuredTournament)}
+              rosterSize={rosterSize(featuredTournament.team_size)}
+              onTeamChange={(teamId) => setSelectedTeamByTournament((current) => ({ ...current, [featuredTournament.id]: teamId }))}
+              onPaymentChange={(mode) => setPaymentModeByTournament((current) => ({ ...current, [featuredTournament.id]: mode }))}
+              onJoin={() => handleJoinTournament(featuredTournament)}
+              now={now}
+            />
           </div>
         )}
 
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto">
-          {["All", "Open", "Registration", "In Progress", "Completed"].map((item) => (
-            <button
-              key={item}
-              onClick={() => setFilter(item)}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                filter === item ? "bg-cyan text-background" : "bg-secondary text-vapor hover:text-foreground"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-
         <div className="grid lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 glass rounded-xl border border-white/5 overflow-hidden">
-            <div className="hidden md:grid grid-cols-6 gap-4 px-5 py-3 border-b border-white/5 text-xs text-vapor uppercase tracking-wider font-semibold">
-              <span className="col-span-2">Tournament</span>
-              <span>Prize</span>
-              <span>Teams</span>
-              <span>Start</span>
-              <span>Status</span>
+          <div className="lg:col-span-7">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-black uppercase tracking-wider">Tournaments</h2>
+              <span className="text-xs text-vapor">{filteredTournaments.length} showing</span>
             </div>
-            <div className="divide-y divide-white/5">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {filteredTournaments.length === 0 ? (
-                <div className="px-5 py-10 text-center">
+                <div className="glass rounded-xl border border-white/5 px-5 py-10 text-center md:col-span-2 xl:col-span-3">
                   <Trophy className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
                   <p className="text-sm text-vapor">No tournaments found.</p>
                 </div>
               ) : filteredTournaments.map((tournament) => (
-                <button
-                  type="button"
+                <TournamentCard
                   key={tournament.id}
-                  onClick={() => handleSelectTournament(tournament.id)}
-                  className={`w-full grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 px-5 py-4 items-center text-left transition-all ${
-                    selectedTournamentId === tournament.id ? "bg-cyan/5" : "hover:bg-white/[0.02]"
-                  }`}
-                >
-                  <div className="col-span-2">
-                    <p className="font-semibold text-sm">{tournament.name}</p>
-                    <p className="text-xs text-vapor">{tournament.team_size} {modeLabels[tournament.game_mode] || tournament.game_mode}</p>
-                  </div>
-                  <span className="text-sm font-mono font-bold text-green">{formatMoney(tournament.prize_pool)}</span>
-                  <span className="text-sm text-vapor hidden md:block">{tournament.registered_teams || 0}/{tournament.max_teams}</span>
-                  <span className="text-sm text-vapor hidden md:block">{formatDate(tournament.start_date)}</span>
-                  <span className={`text-xs font-semibold ${
-                    tournament.status === "completed" ? "text-green" :
-                    ["live", "in_progress"].includes(tournament.status) ? "text-red-400" :
-                    tournament.status === "open" ? "text-cyan" :
-                    "text-orange"
-                  }`}>
-                    {statusLabels[tournament.status] || tournament.status}
-                  </span>
-                </button>
+                  tournament={tournament}
+                  selected={selectedTournamentId === tournament.id}
+                  joined={joinedTournamentIds.has(tournament.id)}
+                  onSelect={handleSelectTournament}
+                  now={now}
+                />
               ))}
             </div>
           </div>
@@ -410,7 +571,7 @@ export default function Tournaments() {
           <div className="lg:col-span-5 glass rounded-xl border border-white/5 overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold">Bracket Matches</h2>
+                <h2 className="text-lg font-bold">Live Bracket Preview</h2>
                 <p className="text-xs text-vapor">
                   {`${selectedParticipants.length} participant${selectedParticipants.length === 1 ? "" : "s"} registered. Bracket is public.`}
                 </p>
@@ -420,6 +581,17 @@ export default function Tournaments() {
                   <span className="px-3 py-2 bg-green/10 text-green text-xs font-bold rounded-lg border border-green/20 uppercase tracking-wider">
                     Joined
                   </span>
+                )}
+                {canLeaveSelectedTournament && (
+                  <button
+                    type="button"
+                    onClick={() => handleLeaveTournament(selectedTournament)}
+                    disabled={leavingId === selectedTournament.id}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-red-500/10 text-red-300 text-xs font-bold rounded-lg border border-red-500/20 hover:bg-red-500/20 disabled:opacity-50 uppercase tracking-wider"
+                  >
+                    {leavingId === selectedTournament.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                    Leave
+                  </button>
                 )}
                 {selectedUserMatch && (
                   <Link
@@ -556,7 +728,348 @@ export default function Tournaments() {
             </div>
           </div>
         </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-12">
+          <RecentChampionsPanel champions={recentChampions} />
+          {isStaff && <CreateTournamentPanel />}
+        </div>
       </div>
     </div>
+  );
+}
+
+function SeasonOverview({ totalPrizePool, tournamentCount, totalTeams, totalPlayers }) {
+  const stats = [
+    { label: "Total Prize Pool", value: formatMoney(totalPrizePool), icon: DollarSign, color: "text-green" },
+    { label: "Tournaments", value: tournamentCount, icon: Trophy, color: "text-purple-300" },
+    { label: "Teams", value: totalTeams, icon: Users, color: "text-cyan" },
+    { label: "Players", value: totalPlayers, icon: Award, color: "text-yellow-400" },
+  ];
+
+  return (
+    <section className="glass mb-6 overflow-hidden rounded-xl border border-cyan/20">
+      <div className="relative grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,rgba(20,216,255,0.08),transparent_35%,rgba(255,130,0,0.08))]" />
+        <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-cyan">Current Season</p>
+            <h2 className="text-3xl font-black tracking-tight">Season 1</h2>
+            <p className="mt-1 text-sm text-vapor">Compete. Climb. Conquer.</p>
+          </div>
+          <Link to="/leaderboards" className="inline-flex w-fit items-center gap-2 rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/20">
+            View Leaderboard <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <div className="relative grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map(({ label, value, icon: Icon, color }) => (
+            <div key={label} className="min-w-[150px] rounded-lg border border-white/5 bg-background/35 px-4 py-3">
+              <div className="mb-2 flex items-center gap-2">
+                <Icon className={`h-4 w-4 ${color}`} />
+                <span className="text-[10px] font-black uppercase tracking-wider text-vapor">{label}</span>
+              </div>
+              <p className={`font-mono text-xl font-black ${color}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeaturedTournamentPanel({
+  tournament,
+  onSelect,
+  tournaments = [],
+  activeIndex = 0,
+  onBrowse,
+  canJoin,
+  joined,
+  joining,
+  compatibleTeams,
+  selectedTeamId,
+  selectedTeam,
+  paymentMode,
+  isTeamReady,
+  isFree,
+  rosterSize: requiredRosterSize,
+  onTeamChange,
+  onPaymentChange,
+  onJoin,
+  now,
+}) {
+  const imageUrl = tournamentImageUrl(tournament);
+  const hasMultiple = tournaments.length > 1;
+  const countdown = timeUntil(tournament.start_date, now);
+  const entryInfo = tournamentEntryInfo(tournament);
+  return (
+    <section className="relative min-h-[520px] overflow-hidden rounded-3xl border border-cyan/20 bg-[#020408] shadow-[0_24px_90px_rgba(0,0,0,0.45)]">
+      {imageUrl ? (
+        <div
+          className="tournament-hero-art"
+          style={{ "--tournament-hero-image": `url(${JSON.stringify(imageUrl)})` }}
+        >
+          <img src={imageUrl} alt="" />
+        </div>
+      ) : (
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(20,216,255,0.14),transparent_42%,rgba(255,130,0,0.12))]" />
+      )}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,#020408_0%,rgba(2,4,8,0.98)_32%,rgba(2,4,8,0.64)_55%,rgba(2,4,8,0.18)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,4,8,0.04),rgba(2,4,8,0.22)_72%,rgba(2,4,8,0.74))]" />
+
+      <div className="relative flex min-h-[520px] flex-col justify-between p-5 sm:p-8">
+        <div className="max-w-3xl">
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-lg border border-yellow-400/25 bg-yellow-400/10 px-4 py-2 text-xs font-black uppercase tracking-wider text-yellow-300">
+              <Star className="h-4 w-4 fill-current" />
+              Featured Tournament
+            </span>
+            <span className={`rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
+              {statusLabels[tournament.status] || tournament.status}
+            </span>
+            <span className={`rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-wider ${entryInfo.tone}`}>
+              {entryInfo.pill}
+            </span>
+            {joined && (
+              <span className="rounded-lg border border-green/20 bg-green/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-green">
+                Joined
+              </span>
+            )}
+          </div>
+
+          <h2 className="max-w-2xl text-5xl font-black uppercase leading-none tracking-tight sm:text-6xl lg:text-7xl">
+            {tournament.name || "Tournament"}
+          </h2>
+          <p className="mt-5 text-lg font-semibold text-vapor">Only the best. Nothing less.</p>
+
+          <div className="mt-8 grid max-w-4xl gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <FeatureStat icon={Trophy} label="Prize Pool" value={formatMoney(tournament.prize_pool)} color="text-green" />
+            <FeatureStat icon={Users} label="Teams" value={`${tournament.registered_teams || 0} / ${tournament.max_teams || 0}`} color="text-cyan" />
+            <FeatureStat icon={Swords} label="Format" value={tournament.team_size || "TBD"} color="text-vapor" />
+            <FeatureStat icon={DollarSign} label="Entry" value={entryInfo.value} color={entryInfo.color} />
+          </div>
+
+          <div className="mt-8 grid max-w-3xl gap-4 rounded-xl border border-white/10 bg-background/50 p-4 backdrop-blur-md md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Starts In</p>
+              <p className="mt-1 font-mono text-3xl font-black text-white">{countdown}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[minmax(170px,1fr)_auto] sm:items-center">
+              {canJoin ? (
+                <>
+                  <select
+                    value={selectedTeamId}
+                    onChange={(event) => onTeamChange(event.target.value)}
+                    className="min-w-0 px-3 py-3 bg-secondary text-vapor text-xs rounded-lg border border-white/10 focus:border-cyan/30 focus:outline-none"
+                  >
+                    <option value="">Select team</option>
+                    {compatibleTeams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name} ({team.members.length}/{requiredRosterSize})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={onJoin}
+                    disabled={joining || !selectedTeamId || !isTeamReady}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-black uppercase tracking-wider text-background disabled:opacity-50"
+                  >
+                    {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+                    Join Now <ArrowRight className="h-4 w-4" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSelect(tournament.id)}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan/20 bg-cyan/10 px-6 py-3 text-sm font-black uppercase tracking-wider text-cyan hover:bg-cyan/20"
+                >
+                  View Bracket <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {!isFree && canJoin && (
+              <select
+                value={paymentMode}
+                onChange={(event) => onPaymentChange(event.target.value)}
+                className="px-3 py-2 bg-secondary text-vapor text-xs rounded-lg border border-white/10 focus:border-cyan/30 focus:outline-none md:col-span-2"
+              >
+                <option value="own">Pay my own entry only</option>
+                <option value="full_team">Pay full team entry</option>
+              </select>
+            )}
+            {selectedTeam && !isTeamReady && (
+              <p className="text-[10px] text-orange md:col-span-2">
+                Team needs exactly {requiredRosterSize} active players.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-green">
+            <span className="h-3 w-3 rounded-full bg-green shadow-[0_0_14px_rgba(0,255,128,0.45)]" />
+            {statusLabels[tournament.status] || tournament.status}
+          </div>
+
+          {hasMultiple && (
+            <div className="flex items-center gap-3 self-end rounded-xl border border-white/10 bg-background/60 p-2 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => onBrowse(activeIndex - 1)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-vapor transition-colors hover:text-white"
+                aria-label="Previous tournament"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <div className="flex items-center gap-2 px-1">
+                {tournaments.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onBrowse(index)}
+                    className={`h-2.5 rounded-full transition-all ${index === activeIndex ? "w-6 bg-cyan" : "w-2.5 bg-white/30 hover:bg-white/60"}`}
+                    aria-label={`Show ${item.name}`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => onBrowse(activeIndex + 1)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-vapor transition-colors hover:text-white"
+                aria-label="Next tournament"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeatureStat({ icon: Icon, label, value, color }) {
+  return (
+    <div className="rounded-lg border border-white/5 bg-background/25 p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${color}`} />
+        <span className="text-[9px] font-black uppercase tracking-wider text-vapor">{label}</span>
+      </div>
+      <p className={`font-mono text-sm font-black ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function TournamentCard({ tournament, selected, joined, onSelect, now }) {
+  const imageUrl = tournamentImageUrl(tournament);
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ y: -3 }}
+      onClick={() => onSelect(tournament.id)}
+      className={`overflow-hidden rounded-xl border text-left transition-colors ${
+        selected ? "border-cyan/25 bg-cyan/5" : "glass border-white/5 hover:border-cyan/20"
+      }`}
+    >
+      <div className="relative h-28 bg-background">
+        {imageUrl ? (
+          <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(20,216,255,0.10),transparent_55%,rgba(255,130,0,0.08))]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/35 to-transparent" />
+        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3">
+          <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase ${statusTone(tournament.status)}`}>
+            {statusLabels[tournament.status] || tournament.status}
+          </span>
+          {joined && <span className="text-[10px] font-black uppercase tracking-wider text-green">Joined</span>}
+        </div>
+      </div>
+      <div className="p-4">
+        <h3 className="truncate text-base font-black">{tournament.name}</h3>
+        <p className="mt-1 truncate text-xs text-vapor">{compactModeLabel(tournament)}</p>
+        <div className="mt-5 grid grid-cols-3 gap-2 text-[10px]">
+          <div>
+            <p className="font-mono text-sm font-black text-green">{formatMoney(tournament.prize_pool)}</p>
+            <p className="mt-1 uppercase tracking-wider text-vapor">Prize Pool</p>
+          </div>
+          <div>
+            <p className="font-mono text-sm font-black text-white">{tournament.registered_teams || 0} / {tournament.max_teams || 0}</p>
+            <p className="mt-1 uppercase tracking-wider text-vapor">Teams</p>
+          </div>
+          <div>
+            <p className="font-mono text-sm font-black text-cyan">{tournament.team_size || "-"}</p>
+            <p className="mt-1 uppercase tracking-wider text-vapor">Format</p>
+          </div>
+        </div>
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-1 text-xs text-vapor">
+            <Clock className="h-3.5 w-3.5" /> {timeUntil(tournament.start_date, now)}
+          </span>
+          <span className="rounded border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan">
+            View
+          </span>
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
+function RecentChampionsPanel({ champions }) {
+  return (
+    <section className="glass rounded-xl border border-white/5 p-5 lg:col-span-8">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-black uppercase tracking-wider">Recent Champions</h2>
+        <span className="text-[10px] font-black uppercase tracking-wider text-cyan">View All Champions</span>
+      </div>
+      {champions.length === 0 ? (
+        <div className="rounded-lg border border-white/5 bg-background/25 px-5 py-8 text-center">
+          <Medal className="mx-auto mb-3 h-10 w-10 text-vapor/30" />
+          <p className="text-sm text-vapor">No champions crowned yet.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {champions.map((tournament) => (
+            <div key={tournament.id} className="rounded-lg border border-white/5 bg-background/25 p-4">
+              <div className="mb-3 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-yellow-400/20 bg-yellow-400/10">
+                  <Trophy className="h-7 w-7 text-yellow-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black">{tournament.winner_name || "Champion TBD"}</p>
+                  <p className="truncate text-xs text-vapor">{tournament.name}</p>
+                </div>
+              </div>
+              <p className="font-mono text-xs font-black text-green">
+                Won {formatMoney(tournament.prize_won || tournament.prize_pool || 0)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CreateTournamentPanel() {
+  return (
+    <section className="glass relative overflow-hidden rounded-xl border border-white/5 p-5 lg:col-span-4">
+      <div className="pointer-events-none absolute right-4 top-4 opacity-10">
+        <Trophy className="h-24 w-24" />
+      </div>
+      <div className="relative">
+        <h2 className="text-sm font-black uppercase tracking-wider">Create Tournament</h2>
+        <p className="mt-2 max-w-sm text-sm text-vapor">
+          Organize your own tournament and bring the competition to Topfragg.gg.
+        </p>
+        <Link
+          to="/admin"
+          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-2 text-xs font-black uppercase tracking-wider text-background"
+        >
+          Create Tournament <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    </section>
   );
 }

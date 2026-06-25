@@ -41,7 +41,7 @@ const sections = [
     icon: ShoppingBag,
     title: "Marketplace, Credits, and Digital Items",
     body: [
-      "Credits, cosmetics, inventory items, premium benefits, and digital rewards are limited licenses for use on Challenger.gg and are not cash equivalents.",
+      "Credits, cosmetics, inventory items, premium benefits, and digital rewards are limited licenses for use on Topfragg.gg and are not cash equivalents.",
       "Marketplace listings, trades, purchases, and item availability may be limited, removed, corrected, or reversed for fraud, bugs, policy violations, or system errors.",
       "Premium benefits and monthly drops may change by month and may require an active membership at the time rewards are granted.",
       "You may not sell, transfer, or trade accounts outside approved platform tools.",
@@ -65,7 +65,7 @@ const sections = [
     body: [
       "Staff decisions on match disputes, wager disputes, tournament rulings, support tickets, and enforcement actions are final unless reopened by staff.",
       "The platform may be updated, interrupted, limited, or unavailable while features, data, payments, security, or infrastructure are maintained.",
-      "Challenger.gg is not affiliated with Activision or Call of Duty. Game publisher rules and platform network rules still apply.",
+      "Topfragg.gg is not affiliated with Activision or Call of Duty. Game publisher rules and platform network rules still apply.",
       "We may update these terms when features, laws, or platform operations change. Continued use means you accept the updated terms.",
     ],
   },
@@ -93,14 +93,14 @@ export default function Terms() {
           </div>
           <h1 className="text-4xl font-black tracking-tight mb-4">Terms of Service</h1>
           <p className="text-vapor max-w-2xl mx-auto">
-            These terms govern use of Challenger.gg, including accounts, matches, wagers, teams, tournaments, marketplace activity, support, and premium features.
+            These terms govern use of Topfragg.gg, including accounts, matches, wagers, teams, tournaments, marketplace activity, support, and premium features.
           </p>
           <p className="text-xs text-vapor/60 mt-4 font-mono">Effective June 23, 2026</p>
         </div>
 
         <div className="glass rounded-xl border border-white/5 p-6 mb-6">
           <p className="text-sm text-vapor leading-relaxed">
-            By creating an account, joining a match, entering a wager or tournament, purchasing credits, trading items, using chat, or contacting support, you agree to these terms and the platform Rules. If you do not agree, do not use Challenger.gg.
+            By creating an account, joining a match, entering a wager or tournament, purchasing credits, trading items, using chat, or contacting support, you agree to these terms and the platform Rules. If you do not agree, do not use Topfragg.gg.
           </p>
         </div>
 

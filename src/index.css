@@ -165,6 +165,106 @@
     backdrop-filter: blur(40px);
     border-bottom: 1px solid hsl(0 0% 100% / 0.06);
   }
+  .dashboard-container {
+    width: min(100% - 2rem, 1480px);
+    margin-inline: auto;
+  }
+  .dashboard-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+  .dashboard-main {
+    min-width: 0;
+  }
+  .dashboard-rail {
+    display: grid;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+  .dashboard-top-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .dashboard-mode-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .dashboard-panel-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  @media (min-width: 760px) {
+    .dashboard-top-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .dashboard-mode-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .dashboard-panel-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1080px) {
+    .dashboard-shell {
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 1.25rem;
+    }
+    .dashboard-rail {
+      padding-top: 3.5rem;
+    }
+    .dashboard-mode-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1440px) {
+    .dashboard-container {
+      width: min(100% - 4rem, 1480px);
+    }
+    .dashboard-shell {
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 1.5rem;
+    }
+  }
+  .tournament-hero-art {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: min(76%, 1040px);
+    height: 100%;
+    overflow: hidden;
+    background: #020408;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 7%, #000 24%, #000 100%);
+    mask-image: linear-gradient(to right, transparent 0%, transparent 7%, #000 24%, #000 100%);
+  }
+  .tournament-hero-art::before {
+    content: "";
+    position: absolute;
+    inset: -8%;
+    background: var(--tournament-hero-image) center / cover no-repeat;
+    opacity: 0.4;
+    filter: blur(28px);
+    transform: scale(1.05);
+  }
+  .tournament-hero-art img {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: right center;
+  }
+  @media (max-width: 1023px) {
+    .tournament-hero-art {
+      width: 100%;
+      opacity: 0.45;
+      -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
+      mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
+    }
+  }
 }
 
 @keyframes mythic-float {

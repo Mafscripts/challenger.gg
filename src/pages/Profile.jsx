@@ -1,18 +1,47 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Award, Calendar, Camera, Crown, Flame, Package, Save, Shield, Swords, Trophy, Users } from "lucide-react";
+import {
+  Award,
+  BadgeCheck,
+  BarChart3,
+  Calendar,
+  Camera,
+  ChevronRight,
+  Crown,
+  DollarSign,
+  ExternalLink,
+  Flame,
+  Gamepad2,
+  Globe2,
+  Medal,
+  Package,
+  Pencil,
+  Save,
+  Shield,
+  Star,
+  Swords,
+  Target,
+  Trophy,
+  Users,
+  Zap,
+} from "lucide-react";
 import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import { base44 } from "@/api/base44Client";
-import { getRankForElo } from "@/lib/ranks";
+import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
-const formatMoney = (value) => `$${Number(value || 0).toLocaleString()}`;
+const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const statNumber = (value) => {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+};
+const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const profileImageMaxBytes = 1.5 * 1024 * 1024;
 const verifiedNameColors = [
   { label: "Default", value: "" },
@@ -36,6 +65,60 @@ const inventoryCategoryLabels = {
   patch: "Badges",
   music_kit: "Music Kits",
   cosmetic: "Cosmetics",
+};
+const rankJourney = [
+  { tier: "bronze", label: "Bronze", range: "0 - 599" },
+  { tier: "silver", label: "Silver", range: "600 - 1199" },
+  { tier: "gold", label: "Gold", range: "1200 - 1799" },
+  { tier: "platinum", label: "Platinum", range: "1800 - 2399" },
+  { tier: "diamond", label: "Diamond", range: "2400 - 2999" },
+  { tier: "master", label: "Master", range: "3000 - 3599" },
+  { tier: "pro", label: "Pro", range: "3600 - 4199" },
+  { tier: "champion", label: "Champion", range: "4200+" },
+];
+const socialFields = [
+  { key: "discord", label: "Discord" },
+  { key: "twitter", label: "Twitter" },
+  { key: "x", label: "X" },
+  { key: "twitch", label: "Twitch" },
+  { key: "youtube", label: "YouTube" },
+  { key: "website", label: "Website" },
+];
+
+const clampPercent = (value) => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+const normalizeHandle = (value) => String(value || "").replace(/^@/, "").trim();
+const socialUrlFor = (label, value) => {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (label === "Twitter" || label === "X") return `https://x.com/${normalizeHandle(text)}`;
+  if (label === "Twitch") return `https://twitch.tv/${normalizeHandle(text)}`;
+  if (label === "YouTube") return `https://youtube.com/${normalizeHandle(text)}`;
+  return "";
+};
+const socialLinksFor = (profile, user) => socialFields
+  .map((field) => {
+    const value = profile?.[field.key] || user?.[field.key] || user?.[`${field.key}_url`];
+    return value ? { ...field, value, url: socialUrlFor(field.label, value) } : null;
+  })
+  .filter(Boolean);
+const matchRouteFor = (match) => (
+  (match.entry_fee !== undefined || match.amount !== undefined)
+    ? `/wagers-match/${match.id}`
+    : `/ranked-match/${match.id}`
+);
+const matchScoreText = (match) => {
+  const alpha = match.team_alpha_score ?? match.team_a_score ?? match.reported_score_alpha;
+  const bravo = match.team_bravo_score ?? match.team_b_score ?? match.reported_score_bravo;
+  if (alpha === undefined || alpha === null || bravo === undefined || bravo === null) return "TBD";
+  return `${alpha} - ${bravo}`;
+};
+const matchResultFor = (match, userId) => {
+  if (!match?.winner_id || !userId) return ["Pending", "text-vapor", "border-white/5 bg-background/25"];
+  const won = String(match.winner_id) === String(userId);
+  return won
+    ? ["Win", "text-green", "border-green/25 bg-green/10"]
+    : ["Loss", "text-red-300", "border-red-400/20 bg-red-500/10"];
 };
 
 const premiumInventoryEffectClass = (item) => {
@@ -72,6 +155,51 @@ const profileTrophyCount = (user, inventory = []) => (
   }).length
 );
 
+const emptyProfileTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0, topfragg: 0, hosted: 0 });
+
+function countProfileInventoryTrophies(items = []) {
+  const counts = emptyProfileTrophyCounts();
+  (items || []).forEach((item) => {
+    const text = cleanKey([item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method].filter(Boolean).join(" "));
+    if (item.item_category !== "trophy" && !text.includes("trophy")) return;
+
+    if (text.includes("topfrag") || text.includes("topfragg")) counts.topfragg += 1;
+    else if (text.includes("hosted") || text.includes("host trophy")) counts.hosted += 1;
+    else if (text.includes("premium")) counts.premium += 1;
+    else if (text.includes("gold")) counts.gold += 1;
+    else if (text.includes("silver")) counts.silver += 1;
+    else if (text.includes("bronze")) counts.bronze += 1;
+    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") counts.premium += 1;
+    else if (item.item_rarity === "legendary" || item.item_rarity === "epic") counts.gold += 1;
+    else if (item.item_rarity === "rare") counts.silver += 1;
+    else counts.bronze += 1;
+  });
+  return counts;
+}
+
+function trophyOverviewFor(user, profile, inventory = [], matches = []) {
+  const inventoryCounts = countProfileInventoryTrophies(inventory);
+  const hostedBase = statNumber(user?.hosted_count ?? user?.hosted_trophies ?? profile?.hosted_count ?? profile?.hosted_trophies);
+  const hostedMatches = matches.filter((match) => String(match.host_id || "") === String(user?.id || "")).length;
+  const counts = {
+    gold: statNumber(user?.gold_count ?? profile?.gold_count) + inventoryCounts.gold,
+    silver: statNumber(user?.silver_count ?? profile?.silver_count) + inventoryCounts.silver,
+    bronze: statNumber(user?.bronze_count ?? profile?.bronze_count) + inventoryCounts.bronze,
+    premium: statNumber(user?.premium_count ?? user?.premium_trophies ?? profile?.premium_count ?? profile?.premium_trophies) + inventoryCounts.premium,
+    topfragg: statNumber(user?.topfragg_count ?? user?.topfrag_count ?? user?.topfragg_trophies ?? profile?.topfragg_count ?? profile?.topfrag_count ?? profile?.topfragg_trophies) + inventoryCounts.topfragg,
+    hosted: hostedBase + inventoryCounts.hosted + (hostedBase || inventoryCounts.hosted ? 0 : hostedMatches),
+  };
+
+  return [
+    { key: "gold", label: "Golds", value: counts.gold, icon: Trophy, tone: "text-yellow-400", tint: "bg-yellow-400/10" },
+    { key: "silver", label: "Silvers", value: counts.silver, icon: Medal, tone: "text-gray-300", tint: "bg-gray-300/10" },
+    { key: "bronze", label: "Bronzes", value: counts.bronze, icon: Award, tone: "text-orange", tint: "bg-orange/10" },
+    { key: "premium", label: "Premium", value: counts.premium, icon: Crown, tone: "text-purple-300", tint: "bg-purple-400/10" },
+    { key: "topfragg", label: "Topfragg", value: counts.topfragg, icon: Target, tone: "text-cyan", tint: "bg-cyan/10" },
+    { key: "hosted", label: "Hosted", value: counts.hosted, icon: Users, tone: "text-green", tint: "bg-green/10" },
+  ];
+}
+
 export default function Profile() {
   const { username } = useParams();
   const [tab, setTab] = useState("overview");
@@ -81,11 +209,13 @@ export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [rankedStats, setRankedStats] = useState(null);
   const [xpStats, setXpStats] = useState(null);
+  const [wallet, setWallet] = useState(null);
   const [inventory, setInventory] = useState([]);
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [avatarDraft, setAvatarDraft] = useState("");
   const [nameColorDraft, setNameColorDraft] = useState("");
+  const [editingProfile, setEditingProfile] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileResult, setProfileResult] = useState(null);
 
@@ -95,6 +225,8 @@ export default function Profile() {
 
   const loadProfile = async () => {
     setLoading(true);
+    setEditingProfile(false);
+    setWallet(null);
     try {
       let userRow = null;
       const authUser = await base44.auth.me().catch(() => null);
@@ -121,6 +253,7 @@ export default function Profile() {
         profileRows,
         rankedRows,
         xpRows,
+        walletRows,
         inventoryRows,
         teamMemberRows,
         hostedWagers,
@@ -131,6 +264,7 @@ export default function Profile() {
         base44.entities.PlayerProfile.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
         base44.entities.RankedStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
         base44.entities.XPStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
+        base44.entities.Wallet.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
         base44.entities.UserInventory.filter({ user_id: userRow.id }, "-acquired_date", 20).catch(() => []),
         base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
         base44.entities.Wager.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
@@ -145,6 +279,7 @@ export default function Profile() {
       setNameColorDraft(userRow?.display_name_color || "");
       setRankedStats(rankedRows[0] || null);
       setXpStats(xpRows[0] || null);
+      setWallet(walletRows[0] || null);
       setInventory(inventoryRows || []);
 
       const loadedTeams = await Promise.all((teamMemberRows || []).map(async (membership) => {
@@ -182,6 +317,33 @@ export default function Profile() {
     : "";
   const trophyCount = profileTrophyCount(user, inventory);
   const primaryTeams = teams.map((membership) => membership.team).filter(Boolean).slice(0, 4);
+  const elo = Number(rankedStats?.elo || profile?.elo || 0);
+  const nextRank = getNextRankForElo(elo);
+  const rankProgress = getRankProgress(elo);
+  const xpLevel = Number(xpStats?.level || user?.xp_level || profile?.level || 1);
+  const currentXp = Number(xpStats?.current_xp ?? user?.current_xp ?? profile?.current_xp ?? 0);
+  const xpToNextLevel = Number(xpStats?.xp_to_next_level || profile?.xp_to_next_level || 1000);
+  const xpProgress = clampPercent(Math.round((currentXp / Math.max(1, xpToNextLevel)) * 100));
+  const currentStreak = Number(rankedStats?.win_streak || user?.current_win_streak || 0);
+  const earnedMoney = Math.max(
+    statNumber(wallet?.total_earnings),
+    statNumber(user?.lifetime_earnings),
+    statNumber(profile?.total_earnings),
+    statNumber(user?.total_wager_earnings),
+  );
+  const mainTeam = teams[0]?.team || null;
+  const inventoryPreview = inventory.slice(0, 5);
+  const socialLinks = socialLinksFor(profile, user);
+  const joinedDate = formatDate(profile?.account_created_date || user?.account_created_date || user?.created_date);
+  const region = profile?.country || user?.region || "Region N/A";
+  const rankJourneyIndex = Math.max(0, rankJourney.findIndex((step) => step.tier === rank.tier));
+  const achievementCards = [
+    { label: "Win Streak", value: currentStreak, icon: Flame, tone: "text-orange" },
+    { label: "Trophy Case", value: trophyCount, icon: Trophy, tone: "text-green" },
+    { label: "Verified", value: isVerifiedPlayer ? "Yes" : "No", icon: BadgeCheck, tone: "text-green" },
+    { label: "Ranked", value: rank.name || `${rank.tier} ${rank.division || ""}`.trim(), icon: Medal, tone: "text-cyan" },
+  ];
+  const trophyOverviewCards = trophyOverviewFor(user, profile, inventory, matches);
 
   const handleAvatarFile = async (event) => {
     const file = event.target.files?.[0];
@@ -251,84 +413,169 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen py-8">
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="glass rounded-xl border border-white/5 p-8 mb-6 relative overflow-hidden">
-          <div className="relative flex flex-col md:flex-row items-start gap-6">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-cyan/30 to-orange/30 border-2 border-white/10 flex items-center justify-center text-3xl font-black overflow-hidden">
-              {avatarDraft || profile?.avatar_url ? <img src={avatarDraft || profile.avatar_url} alt={name} className="w-full h-full object-cover" /> : name.charAt(0)}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1 flex-wrap">
-                <h1 className="text-2xl font-black" style={selectedNameColor ? { color: selectedNameColor } : undefined}>{name}</h1>
-                <RoleBadge role={user.role || "user"} />
-                <UserBadges user={user} />
-                {user.is_premium && (
-                  <span className="px-2 py-0.5 rounded bg-orange/10 text-orange text-[10px] font-mono font-bold flex items-center gap-1">
-                    <Crown className="w-3 h-3" /> PREMIUM
-                  </span>
-                )}
-              </div>
-              <p className="text-vapor text-sm mb-3">
-                {user.handle || profile?.handle || user.username || user.email} - {profile?.country || user.region || "Region N/A"} - Joined {formatDate(profile?.account_created_date || user.account_created_date || user.created_date)}
-              </p>
-              <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <ProfileSignal label="Record" value={`${wins}-${losses}`} />
-                <ProfileSignal label="Win Rate" value={`${winRate}%`} />
-                <ProfileSignal label="Trophies" value={trophyCount} />
-                <ProfileSignal label="Teams" value={teams.length} />
-              </div>
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <RankBadge rank={rank.tier} division={rank.division} size="sm" />
-                  <span className="text-sm font-mono text-cyan font-bold">{Number(rankedStats?.elo || profile?.elo || 0).toLocaleString()} ELO</span>
+      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass relative mb-6 overflow-hidden rounded-xl border border-white/5"
+        >
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-0 opacity-80"
+            animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+            transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+            style={{
+              backgroundImage:
+                "linear-gradient(115deg, rgba(16,22,31,.94) 0%, rgba(31,37,46,.88) 46%, rgba(25,49,57,.72) 72%, rgba(16,22,31,.94) 100%), radial-gradient(circle at 82% 8%, rgba(20,216,255,.16), transparent 34%)",
+              backgroundSize: "180% 180%",
+            }}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan/35 to-transparent" />
+          <div className="relative grid gap-6 p-5 sm:p-7 xl:grid-cols-[1fr_430px]">
+            <div className="flex min-w-0 flex-col justify-between gap-6">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+                <div className="relative mx-auto shrink-0 lg:mx-0">
+                  <div className="absolute -inset-2 rounded-full bg-cyan/20 blur-md" />
+                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-2 border-cyan/40 bg-secondary text-4xl font-black shadow-[0_0_28px_rgba(20,216,255,0.18)] sm:h-36 sm:w-36">
+                    {avatarDraft || profile?.avatar_url ? (
+                      <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-cyan">{name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <span className="absolute bottom-3 right-2 h-5 w-5 rounded-full border-2 border-background bg-green shadow-[0_0_14px_rgba(0,255,128,0.45)]" />
                 </div>
-                <span className="text-sm text-vapor">Level {xpStats?.level || user.xp_level || profile?.level || 1}</span>
-                {teams[0]?.team && (
-                  <Link to="/teams" className="text-sm text-cyan hover:underline flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5" /> {teams[0].team.name}
-                  </Link>
-                )}
+
+                <div className="min-w-0 flex-1 text-center lg:text-left">
+                  <div className="mb-2 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                    <h1 className="truncate text-3xl font-black tracking-normal sm:text-4xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
+                      {name}
+                    </h1>
+                    <RoleBadge role={user.role || "user"} />
+                    <UserBadges user={user} />
+                    {user.is_premium && (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-orange/25 bg-orange/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-orange">
+                        <Crown className="h-3 w-3" /> Premium
+                      </span>
+                    )}
+                  </div>
+                  <p className="mb-4 text-sm text-vapor">
+                    @{user.handle || profile?.handle || user.username || "player"} <span className="px-2 text-white/20">/</span> {region} <span className="px-2 text-white/20">/</span> Joined {joinedDate}
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                    {primaryTeams.map((team) => (
+                      <Link key={team.id} to="/teams" className="rounded-md border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/20">
+                        {team.tag || team.name}
+                      </Link>
+                    ))}
+                    {socialLinks.map((social) => (
+                      social.url ? (
+                        <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border border-white/5 bg-secondary/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor transition-colors hover:border-cyan/30 hover:text-cyan">
+                          {social.label} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span key={social.key} className="inline-flex items-center gap-1 rounded-md border border-white/5 bg-secondary/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor">
+                          {social.label}: {social.value}
+                        </span>
+                      )
+                    ))}
+                  </div>
+                </div>
               </div>
-              {primaryTeams.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {primaryTeams.map((team) => (
-                    <Link key={team.id} to="/teams" className="rounded-md border border-cyan/15 bg-cyan/5 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/10">
-                      {team.tag || team.name}
-                    </Link>
-                  ))}
+
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-5">
+                <HeroSignal label="Record" value={`${wins} - ${losses}`} detail="Wins - Losses" icon={Swords} tone="text-cyan" />
+                <HeroSignal label="Win Rate" value={`${winRate}%`} detail="This season" icon={Target} tone="text-green" />
+                <HeroSignal label="Teams" value={teams.length} detail="Total teams" icon={Users} tone="text-cyan" />
+                <HeroSignal label="Streak" value={currentStreak} detail="Wins in a row" icon={Flame} tone="text-orange" />
+                <HeroSignal label="Earnings" value={formatMoney(earnedMoney)} detail="Total earned" icon={DollarSign} tone="text-green" />
+              </div>
+            </div>
+
+            <div className="grid content-start gap-4">
+              {isOwnProfile && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileResult(null);
+                      setEditingProfile((current) => !current);
+                    }}
+                    className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-[10px] font-black uppercase tracking-wider transition-all ${
+                      editingProfile
+                        ? "border-cyan/30 bg-cyan/10 text-cyan"
+                        : "border-white/10 bg-background/40 text-white hover:border-cyan/25 hover:text-cyan"
+                    }`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit Profile
+                  </button>
                 </div>
               )}
+              <SectionCard className="p-5">
+                <div className="flex items-center gap-4">
+                  <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}>
+                    <RankBadge rank={rank.tier} division={rank.division} size="xl" />
+                  </motion.div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-vapor">ELO Rating</p>
+                    <p className="mt-1 font-mono text-3xl font-black text-cyan text-glow-cyan">{elo.toLocaleString()}</p>
+                    <p className="text-xs font-semibold text-white">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
+                  </div>
+                </div>
+                <ProgressBar value={rankProgress} tone="from-cyan to-green" className="mt-4" />
+                <div className="mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-vapor">
+                  <span>{rankProgress}% through rank</span>
+                  <span>{nextRank ? `Next: ${nextRank.name}` : "Top rank"}</span>
+                </div>
+              </SectionCard>
+
+              <SectionCard className="p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-cyan" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Level {xpLevel}</span>
+                  </div>
+                  <span className="font-mono text-xs text-white">{currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP</span>
+                </div>
+                <ProgressBar value={xpProgress} tone="from-cyan to-green" />
+              </SectionCard>
             </div>
           </div>
-          {isOwnProfile && (
-            <div className="relative mt-6 rounded-xl border border-white/5 bg-secondary/25 p-4">
+
+          {isOwnProfile && editingProfile && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative border-t border-white/5 bg-background/25 p-4 sm:p-5"
+            >
               <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <label className="space-y-1">
-                    <span className="text-[10px] text-vapor uppercase">Profile picture URL</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span>
                     <input
                       value={avatarDraft}
                       onChange={(event) => setAvatarDraft(event.target.value)}
                       placeholder="https://i.imgur.com/example.png"
-                      className="w-full px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
                     />
                   </label>
                   <label className="space-y-1">
-                    <span className="text-[10px] text-vapor uppercase">Upload profile picture</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Upload profile picture</span>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleAvatarFile}
-                      className="w-full px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
                     />
                   </label>
                   {isVerifiedPlayer && (
                     <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Verified name color</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Verified name color</span>
                       <select
                         value={nameColorDraft}
                         onChange={(event) => setNameColorDraft(event.target.value)}
-                        className="w-full px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                        className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
                       >
                         {verifiedNameColors.map((color) => (
                           <option key={color.label} value={color.value}>{color.label}</option>
@@ -340,7 +587,7 @@ export default function Profile() {
                 <button
                   onClick={handleSaveProfileVisuals}
                   disabled={profileSaving}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-4 py-2 text-xs font-black uppercase tracking-wider text-background disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-xs font-black uppercase tracking-wider text-background transition-transform hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   {profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />}
                   Save
@@ -351,159 +598,436 @@ export default function Profile() {
                   {profileResult.message}
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.section>
 
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+        <nav className="mb-6 flex items-center gap-2 overflow-x-auto">
           {["overview", "matches", "badges", "inventory", "teams"].map((item) => (
             <button
               key={item}
               onClick={() => setTab(item)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
-                tab === item ? "bg-cyan/10 text-cyan" : "text-vapor hover:text-foreground"
+              className={`h-10 rounded-lg px-4 text-xs font-black uppercase tracking-wider transition-all ${
+                tab === item
+                  ? "bg-cyan text-background"
+                  : "bg-secondary text-vapor hover:text-foreground"
               }`}
             >
               {item}
             </button>
           ))}
-        </div>
+        </nav>
 
         {tab === "overview" && (
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              <StatCard icon={Swords} label="Record" value={`${wins}-${losses}`} color="text-cyan" />
-              <StatCard icon={Trophy} label="Win Rate" value={`${winRate}%`} color="text-green" />
-              <StatCard icon={Flame} label="Streak" value={rankedStats?.win_streak || user.current_win_streak || 0} color="text-orange" />
-              <StatCard icon={Award} label="Earnings" value={formatMoney(user.lifetime_earnings || user.total_wager_earnings || profile?.total_earnings)} color="text-purple-400" />
-            </div>
-            <div className="glass rounded-xl border border-white/5 p-5">
-              <h3 className="font-bold text-sm mb-3">Bio</h3>
-              <p className="text-sm text-vapor">{profile?.bio || "No bio has been added yet."}</p>
+          <div className="space-y-6">
+            <TrophyOverview trophies={trophyOverviewCards} />
+
+            <div className="grid gap-6 xl:grid-cols-12">
+              <RecentMatchesPanel matches={matches.slice(0, 5)} userId={user.id} className="xl:col-span-4" />
+              <RankProgressPanel rank={rank} elo={elo} rankProgress={rankProgress} rankJourneyIndex={rankJourneyIndex} className="xl:col-span-5" />
+              <AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} className="xl:col-span-3" />
+              <InventoryPreview items={inventoryPreview} className="xl:col-span-4" />
+              <TeamPanel team={mainTeam} memberships={teams} className="xl:col-span-4" />
+              <AchievementsPanel achievements={achievementCards} className="xl:col-span-4" />
             </div>
           </div>
         )}
 
-        {tab === "matches" && (
-          <List title="Recent Matches" empty="No matches found." rows={matches} render={(match) => (
-            <div className="px-5 py-4 grid md:grid-cols-5 gap-3 items-center">
-              <span className="font-semibold text-sm">{match.game_mode_display || match.game_mode || "Match"}</span>
-              <span className="text-xs text-vapor">{match.final_map_name || "Map pending"}</span>
-              <span className="text-xs text-vapor">{match.status || "unknown"}</span>
-              <span className="text-xs text-vapor">{formatDate(match.match_completed_date || match.completed_date || match.created_date)}</span>
-              <Link to={(match.entry_fee !== undefined || match.amount !== undefined) ? `/wagers-match/${match.id}` : `/ranked-match/${match.id}`} className="text-xs text-cyan hover:underline md:text-right">Open</Link>
-            </div>
-          )} />
-        )}
-
-        {tab === "badges" && (
-          <List title="Badges" empty="No badges earned yet." rows={badges} render={(badge) => (
-            <div className="px-5 py-4 flex items-center gap-3">
-              <UserBadges badges={[badge]} showForceStream={false} />
-              {!["verified_player", "streamer"].includes(badge.type) && (
-                <>
-                  <Award className="w-4 h-4 text-yellow-400" />
-                  <span className="font-semibold text-sm">{badge.name}</span>
-                  <span className="text-xs text-vapor">{badge.type}</span>
-                </>
-              )}
-            </div>
-          )} />
-        )}
-
-        {tab === "inventory" && (
-          <InventoryShowcase items={inventory} />
-        )}
-
-        {tab === "teams" && (
-          <List title="Teams" empty="No teams joined yet." rows={teams} render={(membership) => (
-            <div className="px-5 py-4 grid md:grid-cols-4 gap-3 items-center">
-              <span className="font-semibold text-sm">{membership.team.name}</span>
-              <span className="text-xs text-vapor">{membership.team.tag}</span>
-              <span className="text-xs text-vapor capitalize">{membership.role}</span>
-              <span className="text-xs text-vapor md:text-right"><Calendar className="w-3 h-3 inline mr-1" /> {formatDate(membership.joined_date)}</span>
-            </div>
-          )} />
-        )}
+        {tab === "matches" && <RecentMatchesPanel matches={matches} userId={user.id} expanded />}
+        {tab === "badges" && <AchievementsPanel achievements={achievementCards} badges={badges} expanded />}
+        {tab === "inventory" && <InventoryShowcase items={inventory} />}
+        {tab === "teams" && <TeamsList teams={teams} />}
       </div>
     </div>
   );
 }
 
-function InventoryShowcase({ items }) {
+function SectionCard({ children, className = "" }) {
   return (
-    <div className="glass rounded-xl border border-white/5 overflow-hidden">
-      <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
-        <h3 className="font-bold text-sm">Inventory</h3>
-        <span className="text-xs text-vapor">{items.length} rows</span>
-      </div>
-      {items.length === 0 ? (
-        <div className="px-5 py-8 text-center text-sm text-vapor">No inventory items found.</div>
-      ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5 p-5">
-          {items.map((item) => (
-            <motion.div
-              key={item.id}
-              whileHover={{ y: -4 }}
-              className={`relative glass rounded-xl border overflow-hidden transition-all group ${premiumInventoryEffectClass(item)} ${inventoryBorderClass(item)}`}
-            >
-              <div className="aspect-square relative overflow-hidden bg-secondary">
-                {item.item_image ? (
-                  <img src={item.item_image} alt={item.item_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Package className="w-12 h-12 text-vapor/30" />
-                  </div>
-                )}
-                <div className="absolute top-2 left-2">
-                  <RarityBadge rarity={item.item_rarity || "common"} />
-                </div>
-              </div>
-              <div className="p-3">
-                <h4 className="font-semibold text-sm mb-1 truncate">{item.item_name}</h4>
-                <p className="text-[10px] text-vapor capitalize">
-                  {inventoryCategoryLabels[item.item_category] || item.item_category || "Cosmetic"}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+    <div className={`glass relative overflow-hidden rounded-xl border border-white/5 ${className}`}>
+      <div className="pointer-events-none absolute inset-0 bg-cyan/[0.015]" />
+      <div className="relative">{children}</div>
+    </div>
+  );
+}
+
+function SectionHeader({ title, action, to }) {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <h3 className="text-sm font-black uppercase tracking-wider text-white">{title}</h3>
+      {action && to && (
+        <Link to={to} className="text-[10px] font-black uppercase tracking-wider text-cyan transition-colors hover:text-white">
+          {action}
+        </Link>
       )}
     </div>
   );
 }
 
-function StatCard({ icon: Icon, label, value, color }) {
+function ProgressBar({ value, tone = "from-cyan to-green", className = "" }) {
   return (
-    <motion.div whileHover={{ y: -2 }} className="glass rounded-xl p-5 border border-white/5">
-      <Icon className={`w-5 h-5 ${color} mb-3`} />
-      <p className={`text-2xl font-black font-mono ${color}`}>{value}</p>
-      <p className="text-[10px] text-vapor uppercase tracking-wider">{label}</p>
-    </motion.div>
-  );
-}
-
-function ProfileSignal({ label, value }) {
-  return (
-    <div className="rounded-lg border border-white/5 bg-background/30 px-3 py-2">
-      <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{label}</p>
-      <p className="mt-1 font-mono text-sm font-black text-white">{value}</p>
+    <div className={`h-2 overflow-hidden rounded-full bg-background/50 ${className}`}>
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${clampPercent(value)}%` }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className={`h-full rounded-full bg-gradient-to-r ${tone}`}
+      />
     </div>
   );
 }
 
-function List({ title, rows, empty, render }) {
+function HeroSignal({ icon: Icon, label, value, detail, tone = "text-cyan" }) {
   return (
-    <div className="glass rounded-xl border border-white/5 overflow-hidden">
-      <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
-        <h3 className="font-bold text-sm">{title}</h3>
-        <span className="text-xs text-vapor">{rows.length} rows</span>
+    <div className="rounded-lg border border-white/5 bg-secondary/60 p-4">
+      <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-vapor">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        {label}
       </div>
-      <div className="divide-y divide-white/5">
-        {rows.length === 0 ? <div className="px-5 py-8 text-center text-sm text-vapor">{empty}</div> : rows.map((row, index) => (
-          <div key={row.id || index}>{render(row)}</div>
+      <p className={`font-mono text-3xl font-black leading-none ${tone}`}>{value}</p>
+      {detail && <p className="mt-2 text-xs text-vapor">{detail}</p>}
+    </div>
+  );
+}
+
+function TrophyOverview({ trophies }) {
+  return (
+    <SectionCard className="p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Trophy className="h-4 w-4 text-yellow-400" />
+          <h3 className="text-sm font-black uppercase tracking-wider text-white">Trophy Overview</h3>
+        </div>
+        <Link to="/inventory" className="rounded-lg border border-white/5 bg-secondary px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:border-cyan/20 hover:text-cyan">
+          View All Trophies
+        </Link>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        {trophies.map((trophy) => {
+          const Icon = trophy.icon;
+          return (
+            <motion.div
+              key={trophy.key}
+              whileHover={{ y: -3 }}
+              className="relative overflow-hidden rounded-lg border border-white/5 bg-secondary/60 p-4 transition-colors hover:border-cyan/20 hover:bg-secondary/80"
+            >
+              <div className={`pointer-events-none absolute -left-8 -top-8 h-24 w-24 rounded-full blur-3xl ${trophy.tint}`} />
+              <div className="relative flex items-center gap-4">
+                <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-background/35 ${trophy.tone}`}>
+                  <Icon className="h-9 w-9" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[10px] font-black uppercase tracking-wider text-vapor">{trophy.label}</p>
+                  <p className={`mt-1 font-mono text-4xl font-black leading-none ${trophy.tone}`}>{trophy.value}</p>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
+function RecentMatchesPanel({ matches, userId, className = "", expanded = false }) {
+  return (
+    <SectionCard className={`p-5 ${className}`}>
+      <SectionHeader title="Recent Matches" action={expanded ? null : "View All"} to="/profile" />
+      {matches.length === 0 ? (
+        <EmptyPanel icon={Gamepad2} text="No matches found." />
+      ) : (
+        <div className="space-y-3">
+          {matches.map((match) => {
+            const [result, resultColor, resultClass] = matchResultFor(match, userId);
+            return (
+              <motion.div
+                key={match.id}
+                whileHover={{ x: 4 }}
+                className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/5 bg-background/25 p-3 transition-colors hover:border-cyan/20 hover:bg-cyan/5"
+              >
+                <span className={`rounded-md border px-2 py-1 text-[10px] font-black uppercase ${resultClass} ${resultColor}`}>
+                  {result}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{match.game_mode_display || match.game_mode || match.match_type || "Match"}</p>
+                  <p className="truncate text-[11px] text-vapor">{match.final_map_name || match.map_name || "Map pending"} / {formatDate(match.match_completed_date || match.completed_date || match.created_date)}</p>
+                </div>
+                <Link to={matchRouteFor(match)} className="flex items-center gap-2 font-mono text-sm font-black text-cyan">
+                  {matchScoreText(match)}
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function RankProgressPanel({ rank, elo, rankProgress, rankJourneyIndex, className = "" }) {
+  return (
+    <SectionCard className={`p-5 ${className}`}>
+      <SectionHeader title="Rank Progress" action="Leaderboard" to="/leaderboards" />
+      <div className="mb-6 grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
+        <motion.div animate={{ scale: [1, 1.03, 1] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
+          <RankBadge rank={rank.tier} division={rank.division} size="xl" />
+        </motion.div>
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-cyan" />
+            <p className="font-black uppercase tracking-wider text-cyan">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
+          </div>
+          <ProgressBar value={rankProgress} tone="from-cyan to-green" />
+          <div className="mt-3 flex flex-wrap gap-3 text-xs">
+            <span className="font-mono font-black text-white">{elo.toLocaleString()} ELO</span>
+            <span className="font-mono font-black text-green">+{Math.max(0, rankProgress)}% progress</span>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+        {rankJourney.map((step, index) => {
+          const active = index <= rankJourneyIndex;
+          const current = step.tier === rank.tier;
+          return (
+            <div key={step.tier} className="text-center">
+              <div className={`mx-auto mb-2 h-3 w-3 rounded-full border ${current ? "border-cyan bg-cyan shadow-[0_0_14px_rgba(20,216,255,0.45)]" : active ? "border-green bg-green/80" : "border-white/15 bg-background/40"}`} />
+              <p className={`truncate text-[10px] font-black uppercase ${current ? "text-cyan" : active ? "text-white" : "text-vapor"}`}>{step.label}</p>
+              <p className="truncate text-[9px] text-vapor">{step.range}</p>
+            </div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
+function AboutPanel({ profile, user, region, joinedDate, socialLinks, className = "" }) {
+  const rows = [
+    ["Country", region],
+    ["Favorite Game", profile?.favorite_game || user?.favorite_game || "N/A"],
+    ["Play Style", profile?.play_style || user?.play_style || "N/A"],
+    ["Joined", joinedDate],
+  ];
+  return (
+    <SectionCard className={`p-5 ${className}`}>
+      <SectionHeader title="About Me" />
+      <p className="mb-5 text-sm leading-6 text-vapor">{profile?.bio || "Competitive gamer and platform player. No bio has been added yet."}</p>
+      <div className="space-y-3">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between gap-3 border-b border-white/5 pb-2 last:border-b-0">
+            <span className="text-[10px] font-black uppercase tracking-wider text-vapor">{label}</span>
+            <span className="min-w-0 truncate text-right text-xs font-bold text-white">{value}</span>
+          </div>
         ))}
       </div>
+      {socialLinks.length > 0 && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {socialLinks.map((social) => (
+            social.url ? (
+              <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border border-white/5 bg-secondary/60 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan hover:border-cyan/30">
+                <Globe2 className="h-3 w-3" /> {social.label}
+              </a>
+            ) : (
+              <span key={social.key} className="inline-flex items-center gap-1 rounded-md border border-white/5 bg-secondary/60 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor">
+                <Globe2 className="h-3 w-3" /> {social.label}
+              </span>
+            )
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function InventoryPreview({ items, className = "" }) {
+  return (
+    <SectionCard className={`p-5 ${className}`}>
+      <SectionHeader title="Inventory Preview" action="View Inventory" to="/inventory" />
+      {items.length === 0 ? (
+        <EmptyPanel icon={Package} text="No inventory items found." />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-5">
+          {items.map((item) => (
+            <InventoryMiniCard key={item.id} item={item} />
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function TeamPanel({ team, memberships, className = "" }) {
+  return (
+    <SectionCard className={`p-5 ${className}`}>
+      <SectionHeader title="Current Team" action="View Team" to="/teams" />
+      {!team ? (
+        <EmptyPanel icon={Users} text="No active team found." />
+      ) : (
+        <div>
+          <div className="mb-5 flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-cyan/20 bg-cyan/10 text-xl font-black text-cyan">
+              {team.tag || String(team.name || "?").slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black">{team.name}</p>
+              <p className="text-xs text-vapor">{team.team_type || "general"} / {team.region || "N/A"}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <TeamStat label="Wins" value={team.total_wins || 0} />
+            <TeamStat label="Losses" value={team.total_losses || 0} />
+            <TeamStat label="Roster" value={team.roster_size || memberships.length || "-"} />
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function AchievementsPanel({ achievements, badges = [], className = "", expanded = false }) {
+  return (
+    <SectionCard className={`p-5 ${className}`}>
+      <SectionHeader title="Achievements" action={expanded ? null : "View All"} to="/profile" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {achievements.map((achievement) => (
+          <motion.div
+            key={achievement.label}
+            whileHover={{ y: -4 }}
+            className="relative overflow-hidden rounded-xl border border-white/5 bg-secondary/60 p-4 text-center transition-colors hover:border-cyan/20 hover:bg-secondary/80"
+          >
+            <achievement.icon className={`mx-auto mb-3 h-7 w-7 ${achievement.tone}`} />
+            <p className="font-mono text-xl font-black text-white">{achievement.value}</p>
+            <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-vapor">{achievement.label}</p>
+          </motion.div>
+        ))}
+      </div>
+      {expanded && badges.length > 0 && (
+        <div className="mt-5 space-y-3">
+          {badges.map((badge) => (
+            <div key={`${badge.type}-${badge.name}`} className="flex items-center gap-3 rounded-lg border border-white/5 bg-background/25 p-3">
+              <UserBadges badges={[badge]} showForceStream={false} />
+              {!["verified_player", "streamer"].includes(badge.type) && (
+                <>
+                  <Award className="h-4 w-4 text-yellow-300" />
+                  <span className="text-sm font-bold">{badge.name}</span>
+                  <span className="text-xs text-vapor">{badge.type}</span>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {expanded && badges.length === 0 && (
+        <div className="mt-5">
+          <EmptyPanel icon={Star} text="No badges earned yet." />
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function InventoryShowcase({ items }) {
+  return (
+    <SectionCard className="p-5">
+      <SectionHeader title="Inventory" />
+      {items.length === 0 ? (
+        <EmptyPanel icon={Package} text="No inventory items found." />
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {items.map((item) => (
+            <InventoryFullCard key={item.id} item={item} />
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function TeamsList({ teams }) {
+  return (
+    <SectionCard className="p-5">
+      <SectionHeader title="Teams" />
+      {teams.length === 0 ? (
+        <EmptyPanel icon={Users} text="No teams joined yet." />
+      ) : (
+        <div className="space-y-3">
+          {teams.map((membership) => (
+            <div key={membership.id} className="grid gap-3 rounded-lg border border-white/5 bg-background/25 p-4 md:grid-cols-4 md:items-center">
+              <span className="font-bold">{membership.team.name}</span>
+              <span className="text-xs font-black uppercase tracking-wider text-cyan">{membership.team.tag || "No tag"}</span>
+              <span className="text-xs capitalize text-vapor">{membership.role || "member"}</span>
+              <span className="text-xs text-vapor md:text-right"><Calendar className="mr-1 inline h-3 w-3" /> {formatDate(membership.joined_date)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function InventoryMiniCard({ item }) {
+  return (
+    <motion.div whileHover={{ y: -4 }} className={`relative overflow-hidden rounded-lg border bg-secondary/60 ${premiumInventoryEffectClass(item)} ${inventoryBorderClass(item)}`}>
+      <div className="aspect-square bg-secondary">
+        {item.item_image ? (
+          <img src={item.item_image} alt={item.item_name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Package className="h-8 w-8 text-vapor/30" />
+          </div>
+        )}
+      </div>
+      <div className="p-2">
+        <p className="truncate text-xs font-bold">{item.item_name}</p>
+        <p className="truncate text-[9px] uppercase tracking-wider text-vapor">{item.item_rarity || "common"}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+function InventoryFullCard({ item }) {
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className={`group relative overflow-hidden rounded-xl border bg-secondary/60 transition-all ${premiumInventoryEffectClass(item)} ${inventoryBorderClass(item)}`}
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
+        {item.item_image ? (
+          <img src={item.item_image} alt={item.item_name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Package className="h-12 w-12 text-vapor/30" />
+          </div>
+        )}
+        <div className="absolute left-3 top-3">
+          <RarityBadge rarity={item.item_rarity || "common"} />
+        </div>
+      </div>
+      <div className="p-4">
+        <h4 className="truncate text-sm font-black">{item.item_name}</h4>
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">
+          {inventoryCategoryLabels[item.item_category] || item.item_category || "Cosmetic"}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+function TeamStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-white/5 bg-background/25 p-3 text-center">
+      <p className="font-mono text-lg font-black text-white">{value}</p>
+      <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{label}</p>
+    </div>
+  );
+}
+
+function EmptyPanel({ icon: Icon, text }) {
+  return (
+    <div className="rounded-lg border border-white/5 bg-background/25 px-5 py-8 text-center">
+      <Icon className="mx-auto mb-3 h-9 w-9 text-vapor/30" />
+      <p className="text-sm text-vapor">{text}</p>
     </div>
   );
 }

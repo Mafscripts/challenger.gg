@@ -71,7 +71,7 @@ export default function Wallet() {
         
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold font-heading mb-2">Challenger Wallet</h1>
+          <h1 className="text-3xl font-bold font-heading mb-2">Topfragg Wallet</h1>
           <p className="text-vapor">Manage your funds for skill-based wagers</p>
         </div>
 

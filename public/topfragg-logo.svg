@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96">
+  <defs>
+    <linearGradient id="stroke" x1="14" y1="12" x2="74" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14D8FF"/>
+      <stop offset="0.58" stop-color="#00FF8A"/>
+      <stop offset="1" stop-color="#FF8200"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(46 38) rotate(90) scale(48)">
+      <stop stop-color="#14D8FF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#020408" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="360" height="96" rx="18" fill="#020408"/>
+  <rect x="18" y="12" width="72" height="72" rx="17" fill="#071018" stroke="#183342"/>
+  <rect x="19" y="13" width="70" height="70" rx="16" fill="url(#glow)"/>
+  <path d="M54 22 76 30.6v17c0 13.1-9.1 20.9-22 25.8-12.9-4.9-22-12.7-22-25.8v-17L54 22Z" fill="#08141D" stroke="url(#stroke)" stroke-width="3.6"/>
+  <path d="M39.6 37h28.8M54 37v24.3M44.1 49.2h19.8" stroke="#EAFBFF" stroke-width="5.4" stroke-linecap="round"/>
+  <path d="M54 37v24.3M44.1 49.2h19.8" stroke="#14D8FF" stroke-width="2.1" stroke-linecap="round"/>
+  <circle cx="74" cy="26.5" r="4.2" fill="#FF8200"/>
+  <text x="110" y="58" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="900">Top</text>
+  <text x="178" y="58" fill="#14D8FF" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="900">fragg</text>
+  <text x="288" y="58" fill="#FF8200" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="900">.gg</text>
+</svg>

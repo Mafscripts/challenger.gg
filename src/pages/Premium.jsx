@@ -57,7 +57,7 @@ export default function Premium() {
               <span className="text-orange text-glow-orange">GAME</span>
             </h1>
             <p className="text-vapor text-lg max-w-2xl mx-auto mb-10">
-              Unlock the full Challenger.gg experience with exclusive benefits, cosmetics, and competitive advantages that separate the good from the great.
+              Unlock the full Topfragg.gg experience with exclusive benefits, cosmetics, and competitive advantages that separate the good from the great.
             </p>
             <div className="flex items-center justify-center gap-6 mb-8">
               <div>

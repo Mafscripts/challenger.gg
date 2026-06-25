@@ -1,4 +1,15 @@
-const API_BASE = import.meta.env.VITE_API_URL || "/api";
+const normalizeApiBase = (value) => String(value || "").replace(/\/+$/, "");
+
+const API_BASE = (() => {
+  const configuredBase = normalizeApiBase(import.meta.env.VITE_API_URL || "/api");
+  if (configuredBase && configuredBase !== "/api") return configuredBase;
+
+  if (typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    return "http://localhost:4000/api";
+  }
+
+  return configuredBase || "/api";
+})();
 const TOKEN_KEYS = ["auth_token", "base44_access_token", "token"];
 const ENTITY_CACHE_MS = 15_000;
 const ME_CACHE_MS = 60_000;

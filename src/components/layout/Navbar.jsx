@@ -8,6 +8,7 @@ import {
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
   Activity, History, Settings, Package, Coins, LogOut, ShieldCheck
 } from "lucide-react";
+import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import ForgeModal from "@/components/navbar/ForgeModal";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -359,13 +360,8 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16">
             {/* Logo + primary destination */}
             <div className="flex items-center gap-3 shrink-0">
-              <Link to="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded bg-gradient-to-br from-cyan to-cyan/60 flex items-center justify-center">
-                  <span className="text-background font-bold text-sm font-mono">C</span>
-                </div>
-                <span className="font-bold text-lg tracking-tight hidden sm:block">
-                  beta<span className="text-cyan">.gg</span>
-                </span>
+              <Link to="/" className="flex items-center gap-2" aria-label="Topfragg.gg home">
+                <TopfraggLogo markClassName="h-8 w-8" wordmarkClassName="hidden text-lg sm:inline-flex" />
               </Link>
               {user && (
                 <Link

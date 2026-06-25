@@ -90,7 +90,7 @@ export default function Rules() {
             <span className="text-cyan text-xs font-mono font-semibold tracking-widest uppercase">Platform Guidelines</span>
           </div>
           <h1 className="text-4xl font-black tracking-tight mb-4">Rules & Regulations</h1>
-          <p className="text-vapor max-w-xl mx-auto">These rules ensure fair competition and a positive experience for all Challenger.gg users. Violations may result in warnings, suspensions, or permanent bans.</p>
+          <p className="text-vapor max-w-xl mx-auto">These rules ensure fair competition and a positive experience for all Topfragg.gg users. Violations may result in warnings, suspensions, or permanent bans.</p>
         </div>
 
         <div className="space-y-3">

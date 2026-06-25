@@ -88,6 +88,7 @@ const defaultMarketplaceForm = {
 };
 const defaultTournamentForm = {
   name: "",
+  image_url: "",
   game_mode: "snd_hp_snd",
   team_size: "2v2",
   entry_fee: "0",
@@ -105,6 +106,7 @@ const defaultTournamentForm = {
   reward_item_ids: [],
   elimination_reward_item_ids: [],
 };
+const tournamentStatusOptions = ["draft", "open", "registration", "closed", "live", "in_progress", "completed", "cancelled"];
 const defaultWalletAdjustmentForm = {
   user_id: "",
   type: "credits",
@@ -870,6 +872,7 @@ export default function Admin() {
     const hpMaps = parseMapList(tournamentForm.hp_maps, defaultTournamentHpMaps);
     return {
       name: tournamentForm.name.trim(),
+      image_url: tournamentForm.image_url.trim(),
       game_mode: tournamentForm.game_mode,
       team_size: tournamentForm.team_size,
       entry_fee: Number(tournamentForm.entry_fee || 0),
@@ -943,6 +946,7 @@ export default function Admin() {
     setTournamentForm({
       ...defaultTournamentForm,
       name: tournament.name || "",
+      image_url: tournament.image_url || tournament.banner_url || "",
       game_mode: tournament.game_mode || "snd",
       team_size: tournament.team_size || "2v2",
       entry_fee: String(tournament.entry_fee ?? 0),
@@ -1001,6 +1005,80 @@ export default function Admin() {
       }
     } catch (error) {
       toast({ title: "Tournament action failed", description: error.message || "Could not update tournament.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const manualTournamentStatusPatch = (tournament, status) => {
+    const timestamp = new Date().toISOString();
+    if (status === "open" || status === "registration") {
+      return {
+        status,
+        registration_locked: false,
+        cancelled_date: null,
+        cancelled_by: null,
+        cancelled_by_name: null,
+        cancel_reason: null,
+        completed_date: null,
+        completed_by: null,
+        completed_by_name: null,
+        winner_id: null,
+        winner_name: null,
+        runner_up_id: null,
+        runner_up_name: null,
+        reopened_date: timestamp,
+        reopened_by: currentUser?.id,
+        reopened_by_name: userName(currentUser),
+      };
+    }
+    if (status === "closed") {
+      return {
+        status,
+        registration_locked: true,
+        registration_closed_date: tournament.registration_closed_date || timestamp,
+        registration_closed_by: currentUser?.id,
+        registration_closed_by_name: userName(currentUser),
+      };
+    }
+    if (status === "completed") {
+      return {
+        status,
+        registration_locked: true,
+        completed_date: tournament.completed_date || timestamp,
+        completed_by: currentUser?.id,
+        completed_by_name: userName(currentUser),
+      };
+    }
+    return { status };
+  };
+
+  const handleSetTournamentStatus = async (tournament, status) => {
+    if (tournament.status === status) return;
+    const labels = {
+      open: "reopened",
+      registration: "set to registration",
+      closed: "closed",
+      completed: "completed",
+      cancelled: "cancelled",
+    };
+    const needsConfirm = ["completed", "cancelled"].includes(status);
+    if (needsConfirm && typeof window !== "undefined" && !window.confirm(`Set ${tournament.name} to ${statusText(status)}?`)) return;
+
+    setBusyId(`status:${status}:${tournament.id}`);
+    try {
+      const response = await base44.functions.invoke("updateTournament", {
+        tournament_id: tournament.id,
+        patch: manualTournamentStatusPatch(tournament, status),
+      });
+      if (response.data?.success) {
+        toast({ title: `Tournament ${labels[status] || "updated"}`, description: tournament.name });
+        loadAdminData();
+      } else {
+        toast({ title: "Tournament status failed", description: response.data?.error || "Could not update tournament.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Tournament status failed", description: error.message || "Could not update tournament.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -1833,6 +1911,15 @@ export default function Admin() {
                       />
                     </label>
                     <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Tournament image URL</span>
+                      <input
+                        value={tournamentForm.image_url}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, image_url: event.target.value }))}
+                        placeholder="https://example.com/tournament.png"
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                    <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">Game mode</span>
                       <select
                         value={tournamentForm.game_mode}
@@ -1862,7 +1949,7 @@ export default function Admin() {
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, status: event.target.value }))}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       >
-                        {["draft", "open", "registration", "live"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
+                        {tournamentStatusOptions.map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
                       </select>
                     </label>
                     <label className="space-y-1">
@@ -1950,6 +2037,13 @@ export default function Admin() {
                       />
                     </label>
                   </div>
+                  {tournamentForm.image_url && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-white/5 bg-secondary/40">
+                      <div className="aspect-[5/1] max-h-40 bg-background">
+                        <img src={tournamentForm.image_url} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">SND maps</span>
@@ -2005,6 +2099,9 @@ export default function Admin() {
                     ["Status", <StatusPill status={tournament.status} />],
                     ["Teams", `${tournament.registered_teams || 0}/${tournament.max_teams}`],
                     ["Prize", tournamentPrizeSummary(tournament)],
+                    ["Image", tournament.image_url ? (
+                      <img src={tournament.image_url} alt="" className="h-10 w-16 rounded object-cover bg-background" />
+                    ) : "None"],
                     ["Entry", `${(tournament.entry_type || (tournament.is_premium_only ? "premium" : "free")).replace(/_/g, " ")}${Number(tournament.entry_fee || 0) > 0 ? ` - ${tournament.entry_fee} credits` : ""}`],
                     ["Rewards", (
                       <div className="space-y-1">
@@ -2020,6 +2117,9 @@ export default function Admin() {
                     ["Actions", (
                       <div className="flex flex-wrap gap-2">
                         <button onClick={() => handleEditTournament(tournament)} className="text-xs text-cyan hover:underline">Edit</button>
+                        <button onClick={() => handleSetTournamentStatus(tournament, "open")} disabled={busyId === `status:open:${tournament.id}` || tournament.status === "open"} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Reopen</button>
+                        <button onClick={() => handleSetTournamentStatus(tournament, "closed")} disabled={busyId === `status:closed:${tournament.id}` || tournament.status === "closed"} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Close</button>
+                        <button onClick={() => handleSetTournamentStatus(tournament, "completed")} disabled={busyId === `status:completed:${tournament.id}` || tournament.status === "completed"} className="text-xs text-green hover:underline disabled:opacity-50">Complete</button>
                         <button onClick={() => handleTournamentAction(tournament, "closeTournamentRegistration")} disabled={busyId === `closeTournamentRegistration:${tournament.id}`} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Close Reg</button>
                         <button onClick={() => handleTournamentAction(tournament, "extendTournamentRegistration", { hours: 24 })} disabled={busyId === `extendTournamentRegistration:${tournament.id}`} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">+24h</button>
                         <button onClick={() => handleTournamentAction(tournament, "startTournament")} disabled={busyId === `startTournament:${tournament.id}`} className="text-xs text-green hover:underline disabled:opacity-50">Start</button>
