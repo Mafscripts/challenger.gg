@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -58,7 +58,31 @@ export default function MatchChat({
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const chatBodyRef = useRef(null);
+  const inputRef = useRef(null);
+  const previousMessageCountRef = useRef(0);
   const tone = accents[accent] || accents.cyan;
+
+  const scrollChatToBottom = (behavior = "smooth") => {
+    window.requestAnimationFrame(() => {
+      if (!chatBodyRef.current) return;
+      chatBodyRef.current.scrollTo({
+        top: chatBodyRef.current.scrollHeight,
+        behavior,
+      });
+    });
+  };
+
+  useEffect(() => {
+    previousMessageCountRef.current = 0;
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (loading) return;
+    const behavior = previousMessageCountRef.current === 0 ? "auto" : "smooth";
+    previousMessageCountRef.current = messages.length;
+    scrollChatToBottom(behavior);
+  }, [messages.length, loading]);
 
   useEffect(() => {
     let mounted = true;
@@ -122,6 +146,7 @@ export default function MatchChat({
       toast({ title: "Message failed", description: error.message || "Could not send chat message.", variant: "destructive" });
     } finally {
       setSending(false);
+      window.requestAnimationFrame(() => inputRef.current?.focus());
     }
   };
 
@@ -133,7 +158,7 @@ export default function MatchChat({
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
-      <div className={`flex-1 overflow-y-auto ${compact ? "p-3 space-y-2" : "p-4 space-y-3"}`}>
+      <div ref={chatBodyRef} className={`flex-1 overflow-y-auto ${compact ? "p-3 space-y-2" : "p-4 space-y-3"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
@@ -155,6 +180,7 @@ export default function MatchChat({
       </div>
       <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} border-t border-white/5 bg-secondary/30 flex items-center gap-2`}>
         <input
+          ref={inputRef}
           value={messageText}
           onChange={(event) => setMessageText(event.target.value)}
           maxLength={500}

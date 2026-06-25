@@ -19,7 +19,7 @@ export default function Notifications() {
       const user = await base44.auth.me();
       if (!user) return;
 
-      const data = await base44.entities.Notification.filter(
+      const data = await base44.entities.Notification.filterFresh(
         { user_id: user.id },
         '-created_date',
         50

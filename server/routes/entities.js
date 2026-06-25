@@ -238,7 +238,10 @@ router.post("/:entity", requireAuth, async (req, res, next) => {
 
 router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
-    if (adminManagedEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
+    if (["AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
+      return res.status(403).json({ error: "Moderator access required" });
+    }
+    if (adminManagedEntities.has(req.params.entity) && !["AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Admin access required" });
     }
     if (req.params.entity === "User") {

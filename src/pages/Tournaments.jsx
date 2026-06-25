@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Calendar, Crown, Loader2, Trophy, Users } from "lucide-react";
@@ -49,25 +49,48 @@ export default function Tournaments() {
   const [userTeams, setUserTeams] = useState([]);
   const [selectedTeamByTournament, setSelectedTeamByTournament] = useState({});
   const [paymentModeByTournament, setPaymentModeByTournament] = useState({});
+  const selectedTournamentIdRef = useRef(null);
+  const refreshInFlightRef = useRef(false);
 
   useEffect(() => {
     loadTournaments();
+
+    const refreshLiveTournaments = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      loadTournaments({ silent: true });
+    };
+    const interval = window.setInterval(refreshLiveTournaments, 5000);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") loadTournaments({ silent: true });
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
-  const loadTournaments = async () => {
+  useEffect(() => {
+    selectedTournamentIdRef.current = selectedTournamentId;
+  }, [selectedTournamentId]);
+
+  const loadTournaments = async ({ silent = false } = {}) => {
+    if (refreshInFlightRef.current && silent) return;
+    refreshInFlightRef.current = true;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       await base44.functions.invoke("syncTournamentLifecycle", {}).catch(() => null);
       const [currentUser, tournamentRows] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.entities.Tournament.filter({}, "-start_date", 100),
+        base44.entities.Tournament.filterFresh({}, "-start_date", 100),
       ]);
+      const rows = tournamentRows || [];
 
       setUser(currentUser);
-      setTournaments(tournamentRows || []);
+      setTournaments(rows);
       if (currentUser?.id) {
         const [allParticipants, memberships] = await Promise.all([
-          base44.entities.TournamentParticipant.filter({}, "-registered_date", 500).catch(() => []),
+          base44.entities.TournamentParticipant.filterFresh({}, "-registered_date", 500).catch(() => []),
           base44.entities.TeamMember.filter({ user_id: currentUser.id }, "-joined_date", 20).catch(() => []),
         ]);
         const joined = (allParticipants || []).filter((participant) => (
@@ -88,15 +111,32 @@ export default function Tournaments() {
         setJoinedTournamentIds(new Set());
         setUserTeams([]);
       }
-      if ((tournamentRows || []).length > 0 && !selectedTournamentId) {
-        setSelectedTournamentId(tournamentRows[0].id);
-        loadMatches(tournamentRows[0].id);
+
+      const currentSelectedId = selectedTournamentIdRef.current;
+      const nextSelectedId = rows.some((tournament) => tournament.id === currentSelectedId)
+        ? currentSelectedId
+        : rows[0]?.id;
+
+      if (nextSelectedId && nextSelectedId !== currentSelectedId) {
+        selectedTournamentIdRef.current = nextSelectedId;
+        setSelectedTournamentId(nextSelectedId);
       }
+
+      const tournamentIdsToRefresh = new Set([
+        nextSelectedId,
+        ...rows
+          .filter((tournament) => ["live", "in_progress"].includes(tournament.status))
+          .map((tournament) => tournament.id),
+      ].filter(Boolean));
+      await Promise.all([...tournamentIdsToRefresh].map((tournamentId) => loadMatches(tournamentId)));
     } catch (error) {
       console.error("Failed to load tournaments:", error);
-      toast({ title: "Tournaments unavailable", description: "Could not load tournaments.", variant: "destructive" });
+      if (!silent) {
+        toast({ title: "Tournaments unavailable", description: "Could not load tournaments.", variant: "destructive" });
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      refreshInFlightRef.current = false;
     }
   };
 
@@ -164,8 +204,8 @@ export default function Tournaments() {
     if (!tournamentId) return;
     try {
       const [matches, participants] = await Promise.all([
-        base44.entities.TournamentMatch.filter({ tournament_id: tournamentId }, "round", 256),
-        base44.entities.TournamentParticipant.filter({ tournament_id: tournamentId }, "seed", 256).catch(() => []),
+        base44.entities.TournamentMatch.filterFresh({ tournament_id: tournamentId }, "round", 256),
+        base44.entities.TournamentParticipant.filterFresh({ tournament_id: tournamentId }, "seed", 256).catch(() => []),
       ]);
       setMatchesByTournament((current) => ({ ...current, [tournamentId]: matches || [] }));
       setParticipantsByTournament((current) => ({ ...current, [tournamentId]: participants || [] }));
@@ -175,6 +215,7 @@ export default function Tournaments() {
   };
 
   const handleSelectTournament = (tournamentId) => {
+    selectedTournamentIdRef.current = tournamentId;
     setSelectedTournamentId(tournamentId);
     if (!matchesByTournament[tournamentId]) {
       loadMatches(tournamentId);

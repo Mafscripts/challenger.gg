@@ -70,7 +70,6 @@ const mobileNavSections = [
   },
 ];
 
-const adminRoles = new Set(["ceo", "super_admin", "admin"]);
 const activeMatchStatuses = new Set([
   "in_progress",
   "awaiting_team_alpha_report",
@@ -134,7 +133,7 @@ export default function Navbar() {
   const { isAuthenticated, user: authUser } = useAuth();
   const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
   const accountName = user?.display_name || user?.full_name || user?.username || user?.email || "Account";
-  const canSeeAdminLink = adminRoles.has(user?.role || "user");
+  const canSeeAdminLink = isStaffNotificationUser(user || authUser);
   const matchHistoryPath = profilePath;
 
   const closeDropdowns = () => {

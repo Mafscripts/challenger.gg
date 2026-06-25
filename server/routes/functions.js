@@ -2720,7 +2720,13 @@ async function requestAdminAlert(req) {
     status: "open",
     ticket_id: ticket.id,
     match_type: context.matchType,
+    match_id: context.match?.id || req.body.match_id,
+    action_url: context.actionUrl,
     related_entity_id: context.match?.id || req.body.match_id,
+    related_entity_type: context.entityName || context.matchType,
+    requested_by_user_id: req.user.id,
+    requested_by_name: nameFor(req.user),
+    notification_sound: "admin_request",
     created_date: nowIso(),
   });
   if (context.match?.id) {

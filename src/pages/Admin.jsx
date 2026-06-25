@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import {
   Archive,
   BadgeDollarSign,
+  BellRing,
   Boxes,
+  CheckCheck,
   ClipboardList,
   CreditCard,
   Edit3,
@@ -114,6 +116,7 @@ const tabs = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "users", label: "Users", icon: Users },
   { id: "roles", label: "Roles", icon: KeyRound },
+  { id: "alerts", label: "Alerts", icon: BellRing },
   { id: "tickets", label: "Tickets", icon: Ticket },
   { id: "disputes", label: "Disputes", icon: Gavel },
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
@@ -129,6 +132,7 @@ const tabs = [
 
 const initialData = {
   users: [],
+  adminAlerts: [],
   tickets: [],
   disputes: [],
   wagers: [],
@@ -149,7 +153,27 @@ const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 const statusText = (value) => String(value || "unknown").replace(/_/g, " ");
 const userName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unknown";
+const closedAdminAlertStatuses = new Set(["acknowledged", "resolved", "closed"]);
+const isOpenAdminAlert = (alert) => !closedAdminAlertStatuses.has(alert?.status || "open");
+const adminAlertActionUrl = (alert, ticket) => {
+  if (ticket?.action_url) return ticket.action_url;
+  if (alert?.action_url) return alert.action_url;
+  const id = alert?.match_id || alert?.related_entity_id;
+  if (!id) return "/admin";
+  const matchType = String(alert?.match_type || "").toLowerCase();
+  if (matchType === "tournament") return `/tournament-match/${id}`;
+  if (matchType === "wager") return `/wagers-match/${id}`;
+  if (matchType === "ranked") return `/ranked-match/${id}`;
+  if (matchType === "8s" || matchType === "eights") return `/8s-match/${id}`;
+  if (matchType === "xp") return `/xp-match/${id}`;
+  return "/admin";
+};
 const rolePowerFor = (role) => getRoleConfig(role || "user").power;
+const effectiveRoleFor = (user) => (
+  [user?.role, user?.admin_role, user?.is_admin ? "admin" : null]
+    .filter(Boolean)
+    .reduce((best, role) => (rolePowerFor(role) > rolePowerFor(best) ? role : best), "user")
+);
 const canAddWalletAdjustment = (role) => ["ceo", "super_admin"].includes(role || "user");
 const canAdjustUserWallet = (actorRole, targetRole) => canAddWalletAdjustment(actorRole) && (actorRole === "ceo" || targetRole !== "ceo");
 const ipHistoryText = (user) => (user?.ip_history || []).slice(-3).map((entry) => entry.ip).join(", ") || user?.last_login_ip || user?.registration_ip || "N/A";
@@ -328,6 +352,7 @@ export default function Admin() {
   const [ticketResolutionDrafts, setTicketResolutionDrafts] = useState({});
   const [walletAdjustmentOpen, setWalletAdjustmentOpen] = useState(false);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
+  const currentRole = effectiveRoleFor(currentUser);
 
   useEffect(() => {
     loadAdminData();
@@ -348,7 +373,7 @@ export default function Admin() {
       const me = await base44.auth.me().catch(() => null);
       setCurrentUser(me);
 
-      if (!canAccessAdminPanel(me?.role || "user")) {
+      if (!canAccessAdminPanel(effectiveRoleFor(me))) {
         setData(initialData);
         return;
       }
@@ -357,6 +382,7 @@ export default function Admin() {
 
       const [
         users,
+        adminAlerts,
         tickets,
         disputes,
         wagers,
@@ -373,6 +399,7 @@ export default function Admin() {
         messages,
       ] = await Promise.all([
         safeList("User"),
+        safeList("AdminAlert"),
         safeList("Ticket"),
         safeList("Dispute"),
         safeList("Wager"),
@@ -391,6 +418,7 @@ export default function Admin() {
 
       setData({
         users,
+        adminAlerts,
         tickets,
         disputes,
         wagers,
@@ -425,9 +453,21 @@ export default function Admin() {
     Object.fromEntries(data.wallets.map((wallet) => [wallet.user_id, wallet]))
   ), [data.wallets]);
 
+  const ticketById = useMemo(() => (
+    Object.fromEntries(data.tickets.map((ticket) => [ticket.id, ticket]))
+  ), [data.tickets]);
+
+  const adminAlertRows = useMemo(() => (
+    [...data.adminAlerts].sort((a, b) => {
+      const openDiff = Number(isOpenAdminAlert(b)) - Number(isOpenAdminAlert(a));
+      if (openDiff) return openDiff;
+      return new Date(b.created_date || 0) - new Date(a.created_date || 0);
+    })
+  ), [data.adminAlerts]);
+
   const walletAdjustmentUsers = useMemo(() => (
-    data.users.filter((user) => canAdjustUserWallet(currentUser?.role || "user", user.role || "user"))
-  ), [data.users, currentUser?.role]);
+    data.users.filter((user) => canAdjustUserWallet(currentRole, user.role || "user"))
+  ), [data.users, currentRole]);
 
   const tournamentRewardItems = useMemo(() => (
     data.marketplace
@@ -477,6 +517,7 @@ export default function Admin() {
     activeWagers: data.wagers.filter((wager) => ["open", "in_progress", "ready", "score_conflict"].includes(wager.status)).length,
     activeRanked: data.rankedMatches.filter((match) => ["open", "in_progress", "score_conflict"].includes(match.status)).length,
     activeTournaments: data.tournaments.filter((tournament) => ["live", "in_progress", "registration", "open"].includes(tournament.status)).length,
+    openAdminAlerts: data.adminAlerts.filter(isOpenAdminAlert).length,
     pendingWithdrawals: data.withdrawals.filter((withdrawal) => withdrawal.status === "pending").length,
     walletTotal: data.wallets.reduce((sum, wallet) => sum + Number(wallet.available_balance || 0), 0),
   }), [data]);
@@ -521,6 +562,27 @@ export default function Admin() {
 
   const handleJoinTicket = (ticket) => invokeTicketAction(ticket, "joinTicket", {}, "Ticket joined");
 
+  const handleAcknowledgeAlert = async (alert) => {
+    setBusyId(`alert:${alert.id}:acknowledge`);
+    try {
+      const updated = await base44.entities.AdminAlert.update(alert.id, {
+        status: "acknowledged",
+        acknowledged_by: currentUser?.id,
+        acknowledged_by_name: userName(currentUser),
+        acknowledged_date: new Date().toISOString(),
+      });
+      setData((prev) => ({
+        ...prev,
+        adminAlerts: prev.adminAlerts.map((row) => (row.id === alert.id ? { ...row, ...updated } : row)),
+      }));
+      toast({ title: "Alert acknowledged" });
+    } catch (error) {
+      toast({ title: "Alert update failed", description: error.message || "Could not acknowledge alert.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleReplyTicket = async (ticket, internal = false) => {
     const source = internal ? ticketNoteDrafts : ticketReplyDrafts;
     const message = (source[ticket.id] || "").trim();
@@ -543,7 +605,7 @@ export default function Admin() {
   const handleReopenTicket = (ticket) => invokeTicketAction(ticket, "reopenTicket", {}, "Ticket reopened");
 
   const handleSetRole = async (targetUser, role) => {
-    if (!canManageRoles(currentUser?.role || "user")) {
+    if (!canManageRoles(currentRole)) {
       toast({ title: "Not allowed", description: "Super Admin or CEO is required to manage roles.", variant: "destructive" });
       return;
     }
@@ -573,7 +635,7 @@ export default function Admin() {
     forceStream = Boolean(targetUser.force_stream_required || targetUser.stream_override_required),
     monitorCamRequired = Boolean(targetUser.monitor_cam_required || targetUser.required_monitor_cam || targetUser.moni_cam_required),
   ) => {
-    if (!canManageWallets(currentUser?.role || "user")) {
+    if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage badges.", variant: "destructive" });
       return;
     }
@@ -604,7 +666,7 @@ export default function Admin() {
   };
 
   const handleModerateUser = async (targetUser, action, duration) => {
-    if (!canAccessAdminPanel(currentUser?.role || "user")) {
+    if (!canAccessAdminPanel(currentRole)) {
       toast({ title: "Not allowed", description: "Moderator or higher is required.", variant: "destructive" });
       return;
     }
@@ -633,11 +695,11 @@ export default function Admin() {
   };
 
   const openWalletAdjustment = (targetUser, type) => {
-    if (!canAddWalletAdjustment(currentUser?.role || "user")) {
+    if (!canAddWalletAdjustment(currentRole)) {
       toast({ title: "Not allowed", description: "CEO or Super Admin is required.", variant: "destructive" });
       return;
     }
-    if (!canAdjustUserWallet(currentUser?.role || "user", targetUser?.role || "user")) {
+    if (!canAdjustUserWallet(currentRole, targetUser?.role || "user")) {
       toast({ title: "Not allowed", description: "Super Admin cannot adjust CEO accounts.", variant: "destructive" });
       return;
     }
@@ -658,7 +720,7 @@ export default function Admin() {
   const handleSubmitWalletAdjustment = async (event) => {
     event.preventDefault();
 
-    if (!canAddWalletAdjustment(currentUser?.role || "user")) {
+    if (!canAddWalletAdjustment(currentRole)) {
       toast({ title: "Not allowed", description: "CEO or Super Admin is required.", variant: "destructive" });
       return;
     }
@@ -668,7 +730,7 @@ export default function Admin() {
       toast({ title: "User required", description: "Select a user before adding funds.", variant: "destructive" });
       return;
     }
-    if (!canAdjustUserWallet(currentUser?.role || "user", targetUser.role || "user")) {
+    if (!canAdjustUserWallet(currentRole, targetUser.role || "user")) {
       toast({ title: "Not allowed", description: "Super Admin cannot adjust CEO accounts.", variant: "destructive" });
       return;
     }
@@ -722,7 +784,7 @@ export default function Admin() {
   };
 
   const handleWithdrawal = async (withdrawal, status) => {
-    if (!canManageWallets(currentUser?.role || "user")) {
+    if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required to process withdrawals.", variant: "destructive" });
       return;
     }
@@ -839,7 +901,7 @@ export default function Admin() {
   const handleSubmitTournament = async (event) => {
     event.preventDefault();
 
-    if (!canManageWallets(currentUser?.role || "user")) {
+    if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required to create tournaments.", variant: "destructive" });
       return;
     }
@@ -975,7 +1037,7 @@ export default function Admin() {
   const handleSubmitMarketplaceItem = async (event) => {
     event.preventDefault();
 
-    if (!canManageWallets(currentUser?.role || "user")) {
+    if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage marketplace items.", variant: "destructive" });
       return;
     }
@@ -1085,7 +1147,7 @@ export default function Admin() {
     );
   }
 
-  if (!canAccessAdminPanel(currentUser?.role || "user")) {
+  if (!canAccessAdminPanel(currentRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md px-6">
@@ -1107,7 +1169,7 @@ export default function Admin() {
               <p className="text-xs text-vapor mt-1">Users, roles, support, matches, economy, inventory, and audit logs.</p>
             </div>
             <div className="flex items-center gap-3">
-              <RoleBadge role={currentUser?.role || "user"} />
+              <RoleBadge role={currentRole} />
               <button onClick={loadAdminData} className="px-4 py-2 bg-secondary text-vapor text-xs font-bold rounded-lg hover:bg-white/10">
                 Refresh
               </button>
@@ -1115,8 +1177,9 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 mb-6">
           <StatCard icon={Users} label="Users" value={stats.totalUsers} />
+          <StatCard icon={BellRing} label="Alerts" value={stats.openAdminAlerts} color="text-red-400" />
           <StatCard icon={Ticket} label="Open Tickets" value={stats.openTickets} color="text-orange" />
           <StatCard icon={Gavel} label="Disputes" value={stats.pendingDisputes} color="text-yellow-400" />
           <StatCard icon={BadgeDollarSign} label="Wagers" value={stats.activeWagers} color="text-green" />
@@ -1146,9 +1209,9 @@ export default function Admin() {
               <h2 className="text-lg font-bold mb-4">Operational Overview</h2>
               <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
                 <SummaryPanel title="Support Queue" rows={[
+                  ["Open alerts", stats.openAdminAlerts],
                   ["Open tickets", stats.openTickets],
                   ["Pending disputes", stats.pendingDisputes],
-                  ["Admin alerts", data.tickets.filter((ticket) => ticket.priority === "high").length],
                 ]} />
                 <SummaryPanel title="Match Activity" rows={[
                   ["Active wagers", stats.activeWagers],
@@ -1184,7 +1247,7 @@ export default function Admin() {
                   />
                 </div>
               </div>
-              {walletAdjustmentOpen && canAddWalletAdjustment(currentUser?.role || "user") && (
+              {walletAdjustmentOpen && canAddWalletAdjustment(currentRole) && (
                 <form onSubmit={handleSubmitWalletAdjustment} className="mb-4 rounded-lg border border-white/5 bg-secondary/30 p-4">
                   <div className="grid gap-3 md:grid-cols-4">
                     <label className="space-y-1">
@@ -1277,7 +1340,7 @@ export default function Admin() {
                         <td className="py-3 px-4 min-w-[220px]">
                           <div className="space-y-2">
                             <UserBadges user={user} size="xs" />
-                            {canManageWallets(currentUser?.role || "user") && (
+                            {canManageWallets(currentRole) && (
                               <div className="flex flex-col gap-1.5">
                                 <select
                                   value={userBadgePreset(user)}
@@ -1338,7 +1401,7 @@ export default function Admin() {
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap justify-end gap-2">
                             <Link to={`/profile/${user.username || user.id}`} className="text-xs text-cyan hover:underline">View</Link>
-                            {canAdjustUserWallet(currentUser?.role || "user", user.role || "user") && (
+                            {canAdjustUserWallet(currentRole, user.role || "user") && (
                               <>
                                 <button onClick={() => openWalletAdjustment(user, "credits")} className="text-xs text-green hover:underline">Add Credits</button>
                                 <button onClick={() => openWalletAdjustment(user, "money")} className="text-xs text-cyan hover:underline">Add Money</button>
@@ -1381,9 +1444,9 @@ export default function Admin() {
                           key={role}
                           onClick={() => handleSetRole(user, role)}
                           disabled={
-                            !canManageRoles(currentUser?.role || "user") ||
-                            (rolePowerFor(currentUser?.role) <= rolePowerFor(user.role) && currentUser?.role !== "ceo") ||
-                            (rolePowerFor(currentUser?.role) <= rolePowerFor(role) && currentUser?.role !== "ceo") ||
+                            !canManageRoles(currentRole) ||
+                            (rolePowerFor(currentRole) <= rolePowerFor(user.role) && currentRole !== "ceo") ||
+                            (rolePowerFor(currentRole) <= rolePowerFor(role) && currentRole !== "ceo") ||
                             busyId === `${user.id}:${role}` ||
                             user.role === role
                           }
@@ -1397,6 +1460,69 @@ export default function Admin() {
                 ))}
               </div>
             </div>
+          )}
+
+          {activeTab === "alerts" && (
+            <ListSection
+              title="Admin Alerts"
+              rows={adminAlertRows}
+              empty="No admin alerts."
+              render={(alert) => {
+                const ticket = ticketById[alert.ticket_id];
+                const isOpen = isOpenAdminAlert(alert);
+                const actionUrl = adminAlertActionUrl(alert, ticket);
+                return (
+                  <div className={`px-5 py-4 ${isOpen ? "bg-red-500/[0.03]" : ""}`}>
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <StatusPill status={alert.status || "open"} />
+                          <StatusPill status={alert.priority || "high"} />
+                          {alert.match_type && <StatusPill status={alert.match_type} />}
+                        </div>
+                        <p className="font-semibold text-sm">{alert.subject || "Admin request"}</p>
+                        <p className="text-xs text-vapor">From: {alert.username || alert.requested_by_name || "Unknown"} - {formatDate(alert.created_date)}</p>
+                        {alert.message && <p className="text-sm text-foreground/80 mt-2 whitespace-pre-line">{alert.message}</p>}
+                      </div>
+                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                        <Link
+                          to={actionUrl}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan/10 text-cyan text-xs font-bold rounded border border-cyan/20 hover:bg-cyan/20"
+                        >
+                          Open Room
+                        </Link>
+                        {ticket && (
+                          <button
+                            onClick={() => handleJoinTicket(ticket)}
+                            disabled={busyId === `ticket:${ticket.id}:joinTicket`}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange/10 text-orange text-xs font-bold rounded border border-orange/20 hover:bg-orange/20 disabled:opacity-50"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" /> {busyId === `ticket:${ticket.id}:joinTicket` ? "Joining..." : "Join Ticket"}
+                          </button>
+                        )}
+                        {isOpen && (
+                          <button
+                            onClick={() => handleAcknowledgeAlert(alert)}
+                            disabled={busyId === `alert:${alert.id}:acknowledge`}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-50"
+                          >
+                            {busyId === `alert:${alert.id}:acknowledge` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />}
+                            Acknowledge
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <RowGrid compact columns={[
+                      ["Ticket", ticket ? `#${String(ticket.id).slice(-8)}` : "N/A"],
+                      ["Match", alert.related_entity_id ? `#${String(alert.related_entity_id).slice(-8)}` : ticket?.match_id ? `#${String(ticket.match_id).slice(-8)}` : "N/A"],
+                      ["Teams", ticket?.team_a_name || ticket?.team_b_name ? `${ticket.team_a_name || "Team A"} vs ${ticket.team_b_name || "Team B"}` : "N/A"],
+                      ["Assigned", ticket?.assigned_admin_name || "Unassigned"],
+                      ["Acknowledged", alert.acknowledged_by_name || "No"],
+                    ]} />
+                  </div>
+                );
+              }}
+            />
           )}
 
           {activeTab === "tickets" && (
@@ -1669,7 +1795,7 @@ export default function Admin() {
 
           {activeTab === "tournaments" && (
             <div>
-              {canManageWallets(currentUser?.role || "user") && (
+              {canManageWallets(currentRole) && (
                 <form onSubmit={handleSubmitTournament} className="p-5 border-b border-white/5">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
@@ -1954,7 +2080,7 @@ export default function Admin() {
 
           {activeTab === "marketplace" && (
             <div>
-              {canManageWallets(currentUser?.role || "user") && (
+              {canManageWallets(currentRole) && (
                 <form onSubmit={handleSubmitMarketplaceItem} className="p-5 border-b border-white/5">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <div>

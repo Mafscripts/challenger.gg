@@ -61,7 +61,7 @@ export default function Dashboard() {
           base44.entities.Wallet.filter({ user_id: userData.id }, "-created_date", 1).catch(() => []),
           base44.entities.RankedStats.filter({ user_id: userData.id }, "-season", 1).catch(() => []),
           base44.entities.XPStats.filter({ user_id: userData.id }, "-season", 1).catch(() => []),
-          base44.entities.Notification.filter({ user_id: userData.id }, "-created_date", 20).catch(() => []),
+          base44.entities.Notification.filterFresh({ user_id: userData.id }, "-created_date", 20).catch(() => []),
           base44.entities.Message.filter({ recipient_id: userData.id }, "-created_date", 20).catch(() => []),
           base44.entities.Wager.filter({ host_id: userData.id }, "-created_date", 20).catch(() => []),
           base44.entities.Wager.filter({ challenger_id: userData.id }, "-created_date", 20).catch(() => []),
