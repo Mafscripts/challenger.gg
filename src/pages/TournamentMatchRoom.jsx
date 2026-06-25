@@ -34,6 +34,19 @@ const defaultMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "
 const seedLabel = (seed) => seed ? `#${seed}` : "#-";
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const playerName = (player) => player?.user_name || player?.username || player?.display_name || player?.full_name || player?.email || "Unknown player";
+const identityKeys = (value) => [
+  value?.id,
+  value?.user_id,
+  value?.captain_id,
+  value?.team_id,
+  value?.username,
+  value?.handle,
+  value?.display_name,
+  value?.full_name,
+  value?.email,
+  value?.user_name,
+  value?.name,
+].filter(Boolean);
 const statNumber = (value) => {
   const number = Number(value || 0);
   return Number.isFinite(number) ? number : 0;
@@ -77,6 +90,13 @@ function normalizeRoster(participant, fallbackMembers = []) {
       role: "captain",
     });
   }
+  if (participant?.user_id && participant.user_id !== participant.captain_id) {
+    source.push({
+      user_id: participant.user_id,
+      user_name: participant.user_name || participant.captain_name || participant.team_name,
+      role: "captain",
+    });
+  }
   if (Array.isArray(participant?.members)) {
     source.push(...participant.members);
   }
@@ -90,12 +110,41 @@ function normalizeRoster(participant, fallbackMembers = []) {
     if (seen.has(key)) return players;
     seen.add(key);
     players.push({
+      id: member?.id,
       user_id: member?.user_id || key,
       user_name: name,
+      username: member?.username,
+      handle: member?.handle,
+      display_name: member?.display_name,
+      full_name: member?.full_name,
+      email: member?.email,
+      participant_id: participant?.id,
+      participant_user_id: participant?.user_id,
+      team_id: participant?.team_id,
+      captain_id: participant?.captain_id,
+      participant_name: participant?.team_name || participant?.user_name || participant?.name,
       role: member?.role || (participant?.captain_id && member?.user_id === participant.captain_id ? "captain" : "member"),
     });
     return players;
   }, []);
+}
+
+function rosterPlayerMatchesUser(player, user) {
+  if (!player || !user?.id) return false;
+
+  const userId = String(user.id);
+  const directIds = [
+    player.user_id,
+    player.id,
+    player.captain_id,
+    player.participant_user_id,
+    player.team_id,
+  ].filter(Boolean).map(String);
+
+  if (directIds.includes(userId)) return true;
+
+  const userKeys = new Set(identityKeys(user).map(cleanKey).filter(Boolean));
+  return identityKeys(player).some((key) => userKeys.has(cleanKey(key)));
 }
 
 function countInventoryTrophies(items = []) {
@@ -510,8 +559,8 @@ export default function TournamentMatchRoom() {
   const isStaff = staffRoles.has(user?.role);
   const isMatchParticipant = useMemo(() => {
     if (!user?.id) return false;
-    return [...teamAPlayers, ...teamBPlayers].some((player) => String(player.user_id || "") === String(user.id));
-  }, [teamAPlayers, teamBPlayers, user?.id]);
+    return [...teamAPlayers, ...teamBPlayers].some((player) => rosterPlayerMatchesUser(player, user));
+  }, [teamAPlayers, teamBPlayers, user]);
   const canStaffSubmitResult = isStaff && !isMatchParticipant;
   const canUseMatchControls = isMatchParticipant || isStaff;
   const canChat = isMatchParticipant || isStaff;

@@ -147,6 +147,46 @@ function participantIds(participant) {
   ].filter(Boolean).map(String))];
 }
 
+function identityValuesFor(value) {
+  return [
+    value?.id,
+    value?.user_id,
+    value?.captain_id,
+    value?.team_id,
+    value?.username,
+    value?.handle,
+    value?.display_name,
+    value?.full_name,
+    value?.email,
+    value?.user_name,
+    value?.name,
+  ].filter(Boolean);
+}
+
+function participantIdentityValues(participant) {
+  const members = Array.isArray(participant?.members) ? participant.members : [];
+  const memberValues = members.flatMap(identityValuesFor);
+  return [
+    participant?.id,
+    participant?.team_id,
+    participant?.user_id,
+    participant?.captain_id,
+    participant?.captain_name,
+    participant?.user_name,
+    ...memberValues,
+    ...(members.length ? [] : [participant?.team_name, participant?.name]),
+  ].filter(Boolean);
+}
+
+function participantIncludesUserIdentity(participant, user) {
+  if (!participant || !user?.id) return false;
+  const userId = String(user.id);
+  if (participantIds(participant).includes(userId)) return true;
+
+  const userKeys = new Set(identityValuesFor(user).map(cleanName).filter(Boolean));
+  return participantIdentityValues(participant).some((value) => userKeys.has(cleanName(value)));
+}
+
 async function notifyTournamentParticipants(tournamentId, notification) {
   const participants = await tournamentParticipants(tournamentId);
   return notifyUsers(participants.flatMap(participantUserIds), notification);
@@ -983,6 +1023,36 @@ async function tournamentParticipantUserIds(tournamentId, participantId) {
   ].filter(Boolean))];
 }
 
+function tournamentParticipantMatchesSlot(participant, match, slot) {
+  if (!participant || !match) return false;
+  const slotIds = slot === "team_a"
+    ? [match.team_a_participant_id, match.team_a_id]
+    : [match.team_b_participant_id, match.team_b_id];
+  const ids = new Set(participantIds(participant));
+  if (slotIds.some((value) => value && ids.has(String(value)))) return true;
+
+  const participantName = cleanName(participant.team_name || participant.user_name || participant.name);
+  const slotName = cleanName(slot === "team_a" ? match.team_a_name : match.team_b_name);
+  return Boolean(participantName && slotName && participantName === slotName);
+}
+
+async function tournamentMatchParticipantInfo(match, user) {
+  const participants = await listEntities("TournamentParticipant", { tournament_id: match.tournament_id }, "seed", 500).catch(() => []);
+  const participantA = participants.find((participant) => tournamentParticipantMatchesSlot(participant, match, "team_a"));
+  const participantB = participants.find((participant) => tournamentParticipantMatchesSlot(participant, match, "team_b"));
+  const teamAUserIds = participantA ? participantUserIds(participantA) : await tournamentParticipantUserIds(match.tournament_id, match.team_a_id);
+  const teamBUserIds = participantB ? participantUserIds(participantB) : await tournamentParticipantUserIds(match.tournament_id, match.team_b_id);
+  const teamAMatch = teamAUserIds.includes(user?.id) || participantIncludesUserIdentity(participantA, user);
+  const teamBMatch = teamBUserIds.includes(user?.id) || participantIncludesUserIdentity(participantB, user);
+
+  return {
+    teamAUserIds: teamAMatch ? [...new Set([...teamAUserIds, user.id])] : teamAUserIds,
+    teamBUserIds: teamBMatch ? [...new Set([...teamBUserIds, user.id])] : teamBUserIds,
+    isParticipant: teamAMatch || teamBMatch,
+    reportingSide: teamAMatch ? "team_a" : teamBMatch ? "team_b" : null,
+  };
+}
+
 function participantKey(participant) {
   return participant?.team_id || participant?.user_id || participant?.id || null;
 }
@@ -1630,7 +1700,31 @@ async function matchParticipantIds(matchType, match) {
 
 async function activeTeamMembers(teamId) {
   const members = await listEntities("TeamMember", { team_id: teamId }, "-joined_date", 50);
-  return members.filter((member) => member.is_active !== false);
+  return hydrateTeamMemberIdentities(members.filter((member) => member.is_active !== false));
+}
+
+async function hydrateTeamMemberIdentities(members = []) {
+  return Promise.all((members || []).map(async (member) => {
+    const user = await userFor(member.user_id).catch(() => null);
+    if (!user) return member;
+
+    const userName = nameFor(user);
+    if (member.id && member.user_name !== userName) {
+      await updateEntity("TeamMember", member.id, {
+        user_name: userName,
+      }).catch(() => null);
+    }
+
+    return {
+      ...member,
+      user_name: userName,
+      username: user.username || member.username,
+      handle: user.handle || member.handle,
+      display_name: user.display_name || member.display_name,
+      full_name: user.full_name || member.full_name,
+      email: user.email || member.email,
+    };
+  }));
 }
 
 function normalizeTeamType(value) {
@@ -2118,6 +2212,8 @@ async function assertTournamentRegistrationAllowed(req, tournament, team, member
   if (!teamTypeMatches(team, "tournament")) return "Select a tournament team";
   if (rosterLimitForTeam(team, requiredSize) !== requiredSize) return `Team roster size must match ${tournament.team_size}`;
   if ((members || []).length !== requiredSize) return `${tournament.team_size} tournaments require exactly ${requiredSize} active roster members`;
+  const memberIds = (members || []).map((member) => member.user_id).filter(Boolean);
+  if (new Set(memberIds).size !== memberIds.length) return "Team roster has duplicate player records";
   const memberUsers = await Promise.all((members || []).map((member) => userFor(member.user_id)));
   const bannedMember = memberUsers.find((memberUser) => {
     const memberSuspendedUntil = memberUser?.metadata?.suspended_until ? new Date(memberUser.metadata.suspended_until) : null;
@@ -2125,7 +2221,6 @@ async function assertTournamentRegistrationAllowed(req, tournament, team, member
   });
   if (bannedMember) return "Suspended or banned roster members cannot register";
 
-  const memberIds = (members || []).map((member) => member.user_id).filter(Boolean);
   const existingParticipants = await listEntities("TournamentParticipant", { tournament_id: tournament.id }, "seed", 500).catch(() => []);
   const duplicatePlayer = existingParticipants.find((participant) => {
     const participantIds = participantUserIds(participant);
@@ -2180,9 +2275,19 @@ async function registerTournament(req) {
   }
 
   const existingCount = Number(tournament.registered_teams || 0);
-  const captainName = team.captain_name || nameFor(req.user);
+  const captainUser = await userFor(team.captain_id).catch(() => null);
+  const captainName = captainUser ? nameFor(captainUser) : team.captain_name || nameFor(req.user);
+  if (team.captain_name !== captainName) {
+    await updateEntity("Team", team.id, { captain_name: captainName }).catch(() => null);
+  }
   const teamName = team.name;
-  const participantMembers = members.map((member) => ({ user_id: member.user_id, user_name: member.user_name }));
+  const participantMembers = members.map((member) => ({
+    user_id: member.user_id,
+    user_name: member.user_name,
+    username: member.username,
+    handle: member.handle,
+    display_name: member.display_name,
+  }));
 
   const participant = await createEntity("TournamentParticipant", {
     tournament_id: tournament.id,
@@ -3290,7 +3395,10 @@ async function sendMatchRoomMessage(req) {
   const match = await getEntity(matchEntityFor(matchType), matchId);
   const participantIds = await matchParticipantIds(matchType, match);
   const participantIdSet = new Set(participantIds.map(String));
-  if (!hasRole(req.user, "moderator") && !participantIdSet.has(String(req.user.id))) {
+  const isTournamentParticipant = matchType === "tournament"
+    ? (await tournamentMatchParticipantInfo(match, req.user)).isParticipant
+    : false;
+  if (!hasRole(req.user, "moderator") && !participantIdSet.has(String(req.user.id)) && !isTournamentParticipant) {
     return { success: false, error: "Only match participants can chat in this room" };
   }
 
@@ -4328,13 +4436,8 @@ async function completeTournamentMatch(req) {
   if (!match || match.status === "completed" || match.completed) {
     return { success: false, error: "Match is already completed" };
   }
-  const [teamAUserIds, teamBUserIds] = await Promise.all([
-    tournamentParticipantUserIds(match.tournament_id, match.team_a_id),
-    tournamentParticipantUserIds(match.tournament_id, match.team_b_id),
-  ]);
-  const involvedUserIds = [...new Set([...teamAUserIds, ...teamBUserIds])];
+  const { teamAUserIds, teamBUserIds, isParticipant, reportingSide } = await tournamentMatchParticipantInfo(match, req.user);
   const isStaff = hasRole(req.user, "moderator");
-  const isParticipant = involvedUserIds.includes(req.user.id);
   const canStaffOverride = isStaff && !isParticipant;
   if (!isStaff && !isParticipant) {
     return { success: false, error: "Only tournament match participants can submit results" };
@@ -4365,7 +4468,6 @@ async function completeTournamentMatch(req) {
     });
   }
 
-  const reportingSide = teamAUserIds.includes(req.user.id) ? "team_a" : "team_b";
   const otherSide = reportingSide === "team_a" ? "team_b" : "team_a";
   const otherAlpha = match[`${otherSide}_reported_score_alpha`];
   const otherBravo = match[`${otherSide}_reported_score_bravo`];
@@ -4428,7 +4530,10 @@ async function createDispute(req) {
   else match = await getEntity("Wager", matchId);
 
   const involvedUserIds = await matchParticipantIds(matchType, match);
-  if (!hasRole(req.user, "moderator") && !involvedUserIds.includes(req.user.id)) {
+  const isTournamentParticipant = matchType === "tournament"
+    ? (await tournamentMatchParticipantInfo(match, req.user)).isParticipant
+    : false;
+  if (!hasRole(req.user, "moderator") && !involvedUserIds.includes(req.user.id) && !isTournamentParticipant) {
     return { success: false, error: "Only match participants can submit disputes" };
   }
 

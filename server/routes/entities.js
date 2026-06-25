@@ -13,6 +13,37 @@ const adminManagedEntities = new Set([
 ]);
 
 const roleFields = new Set(["role", "admin_role", "is_admin"]);
+const cleanName = (value) => String(value || "").trim().toLowerCase();
+const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
+
+const identityValuesFor = (value) => [
+  value?.id,
+  value?.user_id,
+  value?.captain_id,
+  value?.team_id,
+  value?.username,
+  value?.handle,
+  value?.display_name,
+  value?.full_name,
+  value?.email,
+  value?.user_name,
+  value?.name,
+].filter(Boolean);
+
+const participantIdentityValues = (participant) => {
+  const members = Array.isArray(participant?.members) ? participant.members : [];
+  const memberValues = members.flatMap(identityValuesFor);
+  return [
+    participant?.id,
+    participant?.team_id,
+    participant?.user_id,
+    participant?.captain_id,
+    participant?.captain_name,
+    participant?.user_name,
+    ...memberValues,
+    ...(members.length ? [] : [participant?.team_name, participant?.name]),
+  ].filter(Boolean);
+};
 
 const router = Router();
 
@@ -28,20 +59,31 @@ const parseFilter = (value) => {
 
 const participantIncludesUser = (participant, userId) => {
   if (!participant || !userId) return false;
-  return (
-    String(participant.user_id || "") === String(userId)
-    || String(participant.captain_id || "") === String(userId)
-    || (Array.isArray(participant.members) && participant.members.some((member) => String(member?.user_id || "") === String(userId)))
-  );
+  const user = typeof userId === "object" ? userId : { id: userId };
+  const currentUserId = String(user.id || "");
+  if (
+    String(participant.user_id || "") === currentUserId
+    || String(participant.captain_id || "") === currentUserId
+    || (Array.isArray(participant.members) && participant.members.some((member) => String(member?.user_id || "") === currentUserId))
+  ) {
+    return true;
+  }
+
+  const userKeys = new Set(identityValuesFor(user).map(cleanName).filter(Boolean));
+  return participantIdentityValues(participant).some((value) => userKeys.has(cleanName(value)));
 };
 
 const participantMatchesTournamentMatch = (participant, match) => {
   if (!participant || !match) return false;
+  const memberIds = Array.isArray(participant.members)
+    ? participant.members.map((member) => member?.user_id).filter(Boolean)
+    : [];
   const participantIds = [
     participant.id,
     participant.team_id,
     participant.user_id,
     participant.captain_id,
+    ...memberIds,
   ].filter(Boolean).map(String);
   const matchIds = [
     match.team_a_participant_id,
@@ -49,7 +91,13 @@ const participantMatchesTournamentMatch = (participant, match) => {
     match.team_a_id,
     match.team_b_id,
   ].filter(Boolean).map(String);
-  return participantIds.some((id) => matchIds.includes(id));
+  if (participantIds.some((id) => matchIds.includes(id))) return true;
+
+  const participantName = cleanName(participant.team_name || participant.user_name || participant.name);
+  return Boolean(participantName && [
+    cleanName(match.team_a_name),
+    cleanName(match.team_b_name),
+  ].includes(participantName));
 };
 
 const canViewTournamentMatch = async (_req, match) => Boolean(match?.tournament_id);
@@ -60,7 +108,7 @@ const canViewTournamentChat = async (req, conversationId) => {
   if (!match?.tournament_id) return true;
   const participants = await listEntities("TournamentParticipant", { tournament_id: match.tournament_id }, "seed", 500).catch(() => []);
   return participants.some((participant) => (
-    participantIncludesUser(participant, req.user.id)
+    participantIncludesUser(participant, req.user)
     && participantMatchesTournamentMatch(participant, match)
   ));
 };
@@ -73,7 +121,39 @@ const canViewWager = async (req, wager) => {
   return participants.some((participant) => String(participant.user_id || "") === String(req.user.id));
 };
 
-const visibleTournamentParticipants = async (_req, rows) => rows;
+const refreshTournamentParticipantNames = async (participant) => {
+  if (!participant?.id) return participant;
+  const members = Array.isArray(participant.members) ? participant.members : [];
+  const freshMembers = await Promise.all(members.map(async (member) => {
+    if (!member?.user_id) return member;
+    const user = await getEntity("User", member.user_id).catch(() => null);
+    if (!user) return member;
+    return {
+      ...member,
+      user_name: nameFor(user),
+      username: user.username || member.username,
+      handle: user.handle || member.handle,
+      display_name: user.display_name || member.display_name,
+    };
+  }));
+
+  const captain = participant.captain_id ? await getEntity("User", participant.captain_id).catch(() => null) : null;
+  const patch = {};
+  if (captain && participant.captain_name !== nameFor(captain)) {
+    patch.captain_name = nameFor(captain);
+  }
+  if (JSON.stringify(freshMembers) !== JSON.stringify(members)) {
+    patch.members = freshMembers;
+  }
+
+  if (Object.keys(patch).length === 0) return participant;
+  return updateEntity("TournamentParticipant", participant.id, patch).catch(() => ({
+    ...participant,
+    ...patch,
+  }));
+};
+
+const visibleTournamentParticipants = async (_req, rows) => Promise.all((rows || []).map(refreshTournamentParticipantNames));
 
 const visibleTournamentMatches = async (_req, rows) => rows;
 
