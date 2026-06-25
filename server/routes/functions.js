@@ -2726,7 +2726,6 @@ async function requestAdminAlert(req) {
     related_entity_type: context.entityName || context.matchType,
     requested_by_user_id: req.user.id,
     requested_by_name: nameFor(req.user),
-    notification_sound: "admin_request",
     created_date: nowIso(),
   });
   if (context.match?.id) {
@@ -2746,7 +2745,6 @@ async function requestAdminAlert(req) {
     action_url: context.actionUrl,
     related_entity_id: ticket.id,
     related_entity_type: "Ticket",
-    notification_sound: "admin_request",
     requested_by_user_id: req.user.id,
     requested_by_name: nameFor(req.user),
     exclude_user_ids: [req.user.id],

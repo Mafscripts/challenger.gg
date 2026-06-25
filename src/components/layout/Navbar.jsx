@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,7 +11,6 @@ import {
 import ForgeModal from "@/components/navbar/ForgeModal";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { isStaffNotificationUser, playStaffNotificationSound, unlockNotificationSound } from "@/lib/notificationSound";
 
 const navGroups = [
   {
@@ -70,6 +69,13 @@ const mobileNavSections = [
   },
 ];
 
+const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const isStaffUser = (candidate) => (
+  staffRoles.has(candidate?.role)
+  || staffRoles.has(candidate?.admin_role)
+  || candidate?.is_admin === true
+);
+
 const activeMatchStatuses = new Set([
   "in_progress",
   "awaiting_team_alpha_report",
@@ -125,15 +131,11 @@ export default function Navbar() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [matchesOpen, setMatchesOpen] = useState(false);
   const [activeMatches, setActiveMatches] = useState([]);
-  const notificationSoundReady = useRef(false);
-  const messageSoundReady = useRef(false);
-  const seenNotificationIds = useRef(new Set());
-  const seenMessageIds = useRef(new Set());
   const location = useLocation();
   const { isAuthenticated, user: authUser } = useAuth();
   const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
   const accountName = user?.display_name || user?.full_name || user?.username || user?.email || "Account";
-  const canSeeAdminLink = isStaffNotificationUser(user || authUser);
+  const canSeeAdminLink = isStaffUser(user || authUser);
   const matchHistoryPath = profilePath;
 
   const closeDropdowns = () => {
@@ -152,10 +154,6 @@ export default function Navbar() {
     setUnreadMessagesCount(0);
     setWalletBalance(0);
     setActiveMatches([]);
-    notificationSoundReady.current = false;
-    messageSoundReady.current = false;
-    seenNotificationIds.current = new Set();
-    seenMessageIds.current = new Set();
   };
 
   useEffect(() => {
@@ -168,17 +166,6 @@ export default function Navbar() {
     setMobileOpen(false);
     closeDropdowns();
   }, [location.pathname]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !isStaffNotificationUser(user || authUser)) return undefined;
-    const unlock = () => unlockNotificationSound();
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-  }, [isAuthenticated, user, authUser]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -257,20 +244,6 @@ export default function Navbar() {
       const data = await base44.entities.Notification.filterFresh({ user_id: user.id }, '-created_date', 10);
       const rows = data || [];
       const unreadCount = rows.filter(n => !n.is_read).length;
-      const incomingAdminRequest = rows.some((notification) => (
-        notificationSoundReady.current
-        && !seenNotificationIds.current.has(notification.id)
-        && !notification.is_read
-        && notification.notification_sound === "admin_request"
-        && notification.requested_by_user_id !== user.id
-      ));
-      if (isStaffNotificationUser(user) && incomingAdminRequest) {
-        playStaffNotificationSound();
-      }
-      rows.forEach((notification) => {
-        if (notification.id) seenNotificationIds.current.add(notification.id);
-      });
-      notificationSoundReady.current = true;
       setNotifications(rows);
       setUnreadNotifCount(unreadCount);
     } catch (error) {
@@ -284,19 +257,6 @@ export default function Navbar() {
       if (!user) return;
       const data = await base44.entities.Message.filter({ recipient_id: user.id }, '-created_date', 5);
       const rows = data || [];
-      const incomingMessage = rows.some((message) => (
-        messageSoundReady.current
-        && !seenMessageIds.current.has(message.id)
-        && !message.is_read
-        && message.sender_id !== user.id
-      ));
-      if (isStaffNotificationUser(user) && incomingMessage) {
-        playStaffNotificationSound();
-      }
-      rows.forEach((message) => {
-        if (message.id) seenMessageIds.current.add(message.id);
-      });
-      messageSoundReady.current = true;
       setMessages(rows);
       setUnreadMessagesCount(rows.filter(m => !m.is_read).length);
     } catch (error) {
