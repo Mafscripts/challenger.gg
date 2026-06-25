@@ -85,12 +85,21 @@ function requiredRosterSize(teamSize) {
 }
 
 async function usersWithStaffRole() {
-  const users = await listEntities("User", {}, "-created_date", 500);
-  return users.filter((user) => (
-    staffRoles.includes(user.role)
-    || staffRoles.includes(user.admin_role)
-    || user.is_admin === true
-  ));
+  return prisma.user.findMany({
+    where: {
+      OR: [
+        { role: { in: staffRoles } },
+        { admin_role: { in: staffRoles } },
+        { is_admin: true },
+      ],
+    },
+    select: {
+      id: true,
+      role: true,
+      admin_role: true,
+      is_admin: true,
+    },
+  });
 }
 
 async function notifyUser(userId, {
