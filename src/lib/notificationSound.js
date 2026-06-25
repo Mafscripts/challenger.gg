@@ -13,7 +13,9 @@ const audioContextForPage = () => {
 };
 
 export const isStaffNotificationUser = (user) => (
-  staffNotificationSoundRoles.has(user?.role || user?.admin_role || "user")
+  staffNotificationSoundRoles.has(user?.role)
+  || staffNotificationSoundRoles.has(user?.admin_role)
+  || user?.is_admin === true
 );
 
 export const unlockNotificationSound = () => {

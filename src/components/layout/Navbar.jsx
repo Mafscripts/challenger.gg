@@ -255,7 +255,7 @@ export default function Navbar() {
     try {
       const user = await base44.auth.me();
       if (!user) return;
-      const data = await base44.entities.Notification.filter({ user_id: user.id }, '-created_date', 10);
+      const data = await base44.entities.Notification.filterFresh({ user_id: user.id }, '-created_date', 10);
       const rows = data || [];
       const unreadCount = rows.filter(n => !n.is_read).length;
       const incomingAdminRequest = rows.some((notification) => (

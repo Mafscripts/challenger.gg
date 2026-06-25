@@ -15,7 +15,11 @@ export const roleColors = {
 };
 
 export const hasRole = (user, required) => {
-  const userPower = rolePower[user?.role || "user"] || 0;
+  const userPower = Math.max(
+    rolePower[user?.role || "user"] || 0,
+    rolePower[user?.admin_role || "user"] || 0,
+    user?.is_admin ? rolePower.admin : 0,
+  );
   const requiredPower = rolePower[required] || 0;
   return userPower >= requiredPower;
 };

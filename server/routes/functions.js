@@ -86,7 +86,11 @@ function requiredRosterSize(teamSize) {
 
 async function usersWithStaffRole() {
   const users = await listEntities("User", {}, "-created_date", 500);
-  return users.filter((user) => staffRoles.includes(user.role));
+  return users.filter((user) => (
+    staffRoles.includes(user.role)
+    || staffRoles.includes(user.admin_role)
+    || user.is_admin === true
+  ));
 }
 
 async function notifyUser(userId, {
@@ -120,7 +124,9 @@ async function notifyUsers(userIds, notification) {
 
 async function notifyStaff(notification) {
   const staff = await usersWithStaffRole();
-  return notifyUsers(staff.map((user) => user.id), notification);
+  const { exclude_user_ids: excludeUserIds, ...payload } = notification;
+  const excludeIds = new Set((excludeUserIds || []).filter(Boolean));
+  return notifyUsers(staff.filter((user) => !excludeIds.has(user.id)).map((user) => user.id), payload);
 }
 
 async function tournamentParticipants(tournamentId) {
@@ -2716,6 +2722,7 @@ async function requestAdminAlert(req) {
     notification_sound: "admin_request",
     requested_by_user_id: req.user.id,
     requested_by_name: nameFor(req.user),
+    exclude_user_ids: [req.user.id],
   });
   await notifyTicketUsers(ticket, {
     title: existingTicket ? "Admin request updated" : "Admin request created",
