@@ -85,14 +85,7 @@ function requiredRosterSize(teamSize) {
 }
 
 async function usersWithStaffRole() {
-  return prisma.user.findMany({
-    where: {
-      OR: [
-        { role: { in: staffRoles } },
-        { admin_role: { in: staffRoles } },
-        { is_admin: true },
-      ],
-    },
+  const users = await prisma.user.findMany({
     select: {
       id: true,
       role: true,
@@ -100,6 +93,11 @@ async function usersWithStaffRole() {
       is_admin: true,
     },
   });
+  return users.filter((user) => (
+    staffRoles.includes(String(user.role || "").toLowerCase())
+    || staffRoles.includes(String(user.admin_role || "").toLowerCase())
+    || user.is_admin === true
+  ));
 }
 
 async function notifyUser(userId, {

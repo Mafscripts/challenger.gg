@@ -71,6 +71,40 @@ const userFields = new Set([
 ]);
 
 const toDate = (value) => value ? new Date(value) : null;
+const directEntityFields = new Set(["id", "created_date", "updated_date"]);
+
+const sortRows = (rows, order) => {
+  if (!order) return rows;
+  const desc = String(order).startsWith("-");
+  const field = desc ? String(order).slice(1) : String(order);
+  return [...rows].sort((a, b) => {
+    const av = a[field] ?? "";
+    const bv = b[field] ?? "";
+    if (av === bv) return 0;
+    return (av > bv ? 1 : -1) * (desc ? -1 : 1);
+  });
+};
+
+const orderByFor = (entity, order) => {
+  if (!order) return entity === "Notification" ? { created_date: "desc" } : undefined;
+  const desc = String(order).startsWith("-");
+  const field = desc ? String(order).slice(1) : String(order);
+  if (directEntityFields.has(field) || (entity === "User" && userFields.has(field))) {
+    return { [field]: desc ? "desc" : "asc" };
+  }
+  return undefined;
+};
+
+const notificationWhereFor = (filter = {}) => {
+  const userId = filter?.user_id;
+  if (!userId) return undefined;
+  return {
+    metadata: {
+      path: ["user_id"],
+      equals: userId,
+    },
+  };
+};
 
 export const dataForEntity = (entity, payload = {}, existingMetadata = {}) => {
   if (entity !== "User") {
@@ -127,7 +161,18 @@ export const getEntity = async (entity, id) => {
 
 export const listEntities = async (entity, filter = {}, order, limit = 100) => {
   const take = Math.min(Number(limit) || 100, 500);
-  const rows = await delegateFor(entity).findMany({ take: 500 });
+  const delegate = delegateFor(entity);
+  const orderBy = orderByFor(entity, order);
+  const rows = entity === "Notification"
+    ? await delegate.findMany({
+      where: notificationWhereFor(filter),
+      ...(orderBy ? { orderBy } : {}),
+      take,
+    })
+    : await delegate.findMany({
+      ...(orderBy ? { orderBy } : {}),
+      take: 500,
+    });
   let flattened = rows.map(serializeRow);
 
   flattened = flattened.filter((row) => Object.entries(filter || {}).every(([key, value]) => {
@@ -135,16 +180,7 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
     return String(row[key] ?? "") === String(value);
   }));
 
-  if (order) {
-    const desc = String(order).startsWith("-");
-    const field = desc ? String(order).slice(1) : String(order);
-    flattened.sort((a, b) => {
-      const av = a[field] ?? "";
-      const bv = b[field] ?? "";
-      if (av === bv) return 0;
-      return (av > bv ? 1 : -1) * (desc ? -1 : 1);
-    });
-  }
+  if (order && !orderBy) flattened = sortRows(flattened, order);
 
   return flattened.slice(0, take);
 };
