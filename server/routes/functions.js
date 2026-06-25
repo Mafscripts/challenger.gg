@@ -2652,6 +2652,11 @@ async function requestAdminAlert(req) {
     ...(req.body.screenshots || []),
     ...(req.body.videos || []),
   ].filter(Boolean);
+  const requesterIsStaff = hasRole(req.user, "moderator");
+  const requeueAdminRequest = existingTicket?.status === "admin_joined" && !requesterIsStaff;
+  const nextTicketStatus = requeueAdminRequest
+    ? "waiting_for_admin"
+    : existingTicket ? existingTicket.status : "waiting_for_admin";
   const ticketPayload = {
     user_id: existingTicket?.user_id || req.user.id,
     username: existingTicket?.username || nameFor(req.user),
@@ -2659,7 +2664,7 @@ async function requestAdminAlert(req) {
     description: existingTicket?.description || description,
     category: context.matchType,
     priority: req.body.priority || existingTicket?.priority || "high",
-    status: existingTicket ? existingTicket.status : "waiting_for_admin",
+    status: nextTicketStatus,
     requested_admin: true,
     request_type: req.body.request_type || existingTicket?.request_type || "admin_request",
     related_entity_id: context.match?.id || req.body.match_id,
@@ -2684,6 +2689,13 @@ async function requestAdminAlert(req) {
     match_details: context.match_details || null,
     messages: existingTicket?.messages || [],
     internal_notes: existingTicket?.internal_notes || [],
+    assigned_admin_id: requeueAdminRequest ? null : existingTicket?.assigned_admin_id,
+    assigned_admin_name: requeueAdminRequest ? null : existingTicket?.assigned_admin_name,
+    assigned_admin_role: requeueAdminRequest ? null : existingTicket?.assigned_admin_role,
+    joined_date: requeueAdminRequest ? null : existingTicket?.joined_date,
+    requeued_by: requeueAdminRequest ? req.user.id : existingTicket?.requeued_by,
+    requeued_by_name: requeueAdminRequest ? nameFor(req.user) : existingTicket?.requeued_by_name,
+    requeued_date: requeueAdminRequest ? nowIso() : existingTicket?.requeued_date,
     created_date: existingTicket?.created_date || nowIso(),
     updated_date: nowIso(),
   };
@@ -2707,8 +2719,8 @@ async function requestAdminAlert(req) {
       requested_admin: true,
       admin_request_status: ticket.status,
       admin_request_ticket_id: ticket.id,
-      assigned_admin_id: ticket.assigned_admin_id,
-      assigned_admin_name: ticket.assigned_admin_name,
+      assigned_admin_id: requeueAdminRequest ? null : ticket.assigned_admin_id,
+      assigned_admin_name: requeueAdminRequest ? null : ticket.assigned_admin_name,
       admin_request_updated_date: nowIso(),
     }).catch(() => null);
   }
