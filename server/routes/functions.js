@@ -25,22 +25,214 @@ const walletAdjustmentTypes = new Set(["credits", "money"]);
 const tournamentStatusesOpenForRegistration = ["open", "registration"];
 const tournamentStatusesStarted = ["live", "in_progress"];
 const openTicketStatuses = ["open", "waiting_for_admin", "admin_joined", "waiting_for_user", "escalated"];
+const tournamentTeamSizeOptions = new Set(Array.from({ length: 8 }, (_, index) => `${index + 1}v${index + 1}`));
 const tournamentSndMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const tournamentHpMapPool = ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"];
+const tournamentOverloadMapPool = ["Scar", "Gridlock", "Den", "Exposure"];
 const tournamentSndHpSndModes = [
+  { game_mode: "snd", mode: "Search and Destroy" },
+  { game_mode: "hp", mode: "Hardpoint" },
+  { game_mode: "snd", mode: "Search and Destroy" },
+];
+const tournamentHpOverloadSndModes = [
+  { game_mode: "hp", mode: "Hardpoint" },
+  { game_mode: "overload", mode: "Overload" },
+  { game_mode: "snd", mode: "Search and Destroy" },
+];
+const tournamentHpOverloadSndHpSndModes = [
+  { game_mode: "hp", mode: "Hardpoint" },
+  { game_mode: "overload", mode: "Overload" },
   { game_mode: "snd", mode: "Search and Destroy" },
   { game_mode: "hp", mode: "Hardpoint" },
   { game_mode: "snd", mode: "Search and Destroy" },
 ];
 const tournamentSndModes = Array.from({ length: 3 }, () => ({ game_mode: "snd", mode: "Search and Destroy" }));
 const tournamentHpModes = Array.from({ length: 3 }, () => ({ game_mode: "hp", mode: "Hardpoint" }));
-const tournamentBestOf = 3;
+const tournamentOverloadModes = Array.from({ length: 3 }, () => ({ game_mode: "overload", mode: "Overload" }));
+const tournamentBo1SndModes = [{ game_mode: "snd", mode: "Search and Destroy" }];
+const defaultTournamentBestOf = 3;
+const tournamentSeriesDefinitions = {
+  bo1_snd: { label: "Search and Destroy", games: tournamentBo1SndModes },
+  snd: { label: "Search and Destroy", games: tournamentSndModes },
+  hp: { label: "Hardpoint", games: tournamentHpModes },
+  overload: { label: "Overload", games: tournamentOverloadModes },
+  snd_hp_snd: { label: "SND / HP / SND", games: tournamentSndHpSndModes },
+  bo3_hp_overload_snd: { label: "HP / Overload / SND", games: tournamentHpOverloadSndModes },
+  bo5_hp_overload_snd_hp_snd: { label: "HP / Overload / SND / HP / SND", games: tournamentHpOverloadSndHpSndModes },
+};
 const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const specialUserBadgeTypes = new Set(["verified_player", "streamer"]);
 const specialUserBadgeLabels = {
   verified_player: "Verified Player",
   streamer: "Streamer",
 };
+const streamerTournamentTypes = new Set(["streamer", "streamer_tournament"]);
+const streamerSwitchFormats = new Set(["2v2", "4v4"]);
+
+function isStreamerUser(user) {
+  const badges = Array.isArray(user?.badges) ? user.badges : [];
+  return Boolean(
+    user?.streamer_badge
+    || user?.is_streamer
+    || badges.some((badge) => badge?.type === "streamer")
+  );
+}
+
+function isStreamerTournament(tournament) {
+  return Boolean(
+    tournament?.is_streamer_tournament
+    || streamerTournamentTypes.has(String(tournament?.tournament_type || "").toLowerCase())
+    || streamerTournamentTypes.has(String(tournament?.source || "").toLowerCase())
+  );
+}
+
+function streamerTournamentBanEntry(tournament, userId) {
+  const bannedIds = Array.isArray(tournament?.banned_user_ids) ? tournament.banned_user_ids : [];
+  const bannedUsers = Array.isArray(tournament?.banned_users) ? tournament.banned_users : [];
+  return bannedUsers.find((entry) => String(entry?.user_id || "") === String(userId))
+    || (bannedIds.map(String).includes(String(userId)) ? { user_id: userId } : null);
+}
+
+function canModerateStreamerTournament(user, tournament) {
+  return Boolean(
+    hasRole(user, "moderator")
+    || String(tournament?.host_id || tournament?.created_by || "") === String(user?.id || "")
+  );
+}
+
+function streamerDefaultMapPool() {
+  return [...new Set([...tournamentSndMapPool, ...tournamentHpMapPool, ...tournamentOverloadMapPool])];
+}
+
+function normalizeStreamerSwitchFormat(value) {
+  const format = String(value || "4v4").toLowerCase();
+  return streamerSwitchFormats.has(format) ? format : "4v4";
+}
+
+function streamerEntrySlotCount(format) {
+  return normalizeStreamerSwitchFormat(format) === "4v4" ? 2 : 1;
+}
+
+function cleanManualPlayerName(value) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, 32);
+}
+
+function normalizeStreamerSwitchEntries(value, format) {
+  const slotCount = streamerEntrySlotCount(format);
+  const rows = Array.isArray(value) ? value : [];
+  const seen = new Set();
+  return rows.map((entry, index) => {
+    const rawNames = Array.isArray(entry?.player_names)
+      ? entry.player_names
+      : [
+        entry?.player_one,
+        entry?.player_two,
+        entry?.player_name,
+        entry?.name,
+      ];
+    const playerNames = rawNames
+      .map(cleanManualPlayerName)
+      .filter(Boolean)
+      .slice(0, slotCount);
+    if (playerNames.length !== slotCount) return null;
+    const dedupeKey = playerNames.map((name) => name.toLowerCase()).join("|");
+    if (seen.has(dedupeKey)) return null;
+    seen.add(dedupeKey);
+    return {
+      id: String(entry?.id || globalThis.crypto?.randomUUID?.() || `switch-entry-${Date.now()}-${index}`),
+      player_names: playerNames,
+      linked_user_ids: Array.isArray(entry?.linked_user_ids) ? entry.linked_user_ids.filter(Boolean) : [],
+      created_date: entry?.created_date || nowIso(),
+    };
+  }).filter(Boolean);
+}
+
+function shuffledCopy(rows) {
+  const copy = [...rows];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+}
+
+function streamerManualMember(name, index) {
+  return {
+    user_id: null,
+    user_name: name,
+    username: name,
+    handle: name,
+    display_name: name,
+    manual_name: true,
+    slot: index + 1,
+  };
+}
+
+function streamerTeamName(playerNames, index) {
+  const first = cleanManualPlayerName(playerNames[0]);
+  return first ? `Team ${index + 1} - ${first}` : `Team ${index + 1}`;
+}
+
+function streamerTeamPlayerCount(format) {
+  return normalizeStreamerSwitchFormat(format) === "4v4" ? 4 : 2;
+}
+
+function streamerTeamId(tournamentId, index) {
+  return `streamer-team-${tournamentId}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${index}`}`;
+}
+
+function buildStreamerSwitchTeams(entries, format, tournamentId) {
+  const shuffledEntries = shuffledCopy(entries);
+  const generatedTeams = [];
+  for (let index = 0; index < shuffledEntries.length; index += 2) {
+    const pair = [shuffledEntries[index], shuffledEntries[index + 1]];
+    const playerNames = pair.flatMap((entry) => entry.player_names);
+    generatedTeams.push({
+      id: streamerTeamId(tournamentId, index),
+      name: streamerTeamName(playerNames, generatedTeams.length),
+      seed: generatedTeams.length + 1,
+      player_names: playerNames,
+      source_entry_ids: pair.map((entry) => entry.id),
+    });
+  }
+  return generatedTeams;
+}
+
+function normalizeStreamerSwitchTeams(value, format, tournamentId) {
+  const playerCount = streamerTeamPlayerCount(format);
+  const rows = Array.isArray(value) ? value : [];
+  return rows.map((team, index) => {
+    const rawNames = Array.isArray(team?.player_names)
+      ? team.player_names
+      : [team?.player_one, team?.player_two, team?.player_three, team?.player_four, team?.name].filter(Boolean);
+    const playerNames = rawNames.map(cleanManualPlayerName).filter(Boolean).slice(0, playerCount);
+    return {
+      id: String(team?.id || streamerTeamId(tournamentId, index)),
+      name: cleanManualPlayerName(team?.name) || streamerTeamName(playerNames, index),
+      seed: Number(team?.seed || index + 1),
+      player_names: playerNames,
+      source_entry_ids: Array.isArray(team?.source_entry_ids) ? team.source_entry_ids.filter(Boolean) : [],
+    };
+  }).filter((team) => team.player_names.length > 0);
+}
+
+function streamerSwitchTeamsValidationError(teams, format, maxTeams = 64) {
+  const playerCount = streamerTeamPlayerCount(format);
+  if (teams.length < 2) return "Spin or add at least two teams before locking the bracket";
+  if (teams.length > Number(maxTeams || 64)) return `This lobby is capped at ${maxTeams} generated teams`;
+  const seen = new Set();
+  for (const team of teams) {
+    if (team.player_names.length !== playerCount) {
+      return `${team.name || "Each team"} needs exactly ${playerCount} players`;
+    }
+    for (const name of team.player_names) {
+      const key = name.toLowerCase();
+      if (seen.has(key)) return `${name} is listed more than once`;
+      seen.add(key);
+    }
+  }
+  return null;
+}
 
 function assertStaff(req, minimumRole = "moderator") {
   if (!hasRole(req.user, minimumRole)) {
@@ -1102,28 +1294,50 @@ function tournamentMapPoolsFor(tournament = {}) {
   return {
     snd: normalizeMapPool(pools.snd || tournament?.snd_map_pool || tournament?.snd_maps || tournament?.maps, tournamentSndMapPool),
     hp: normalizeMapPool(pools.hp || tournament?.hp_map_pool || tournament?.hp_maps, tournamentHpMapPool),
+    overload: normalizeMapPool(pools.overload || tournament?.overload_map_pool || tournament?.overload_maps, tournamentOverloadMapPool),
   };
+}
+
+function streamerMapPoolsForBody(body = {}, tournament = {}) {
+  const source = body.map_pools || {};
+  const existing = tournamentMapPoolsFor(tournament);
+  return {
+    snd: normalizeMapPool(source.snd || body.snd_maps || existing.snd, tournamentSndMapPool).slice(0, 40),
+    hp: normalizeMapPool(source.hp || body.hp_maps || existing.hp, tournamentHpMapPool).slice(0, 40),
+    overload: normalizeMapPool(source.overload || body.overload_maps || existing.overload, tournamentOverloadMapPool).slice(0, 40),
+  };
+}
+
+function combinedMapPool(pools = {}) {
+  return [...new Set([
+    ...(Array.isArray(pools.snd) ? pools.snd : []),
+    ...(Array.isArray(pools.hp) ? pools.hp : []),
+    ...(Array.isArray(pools.overload) ? pools.overload : []),
+  ])];
+}
+
+function mapPoolForGameMode(gameMode, pools) {
+  if (gameMode === "hp") return pools.hp;
+  if (gameMode === "overload") return pools.overload;
+  return pools.snd;
 }
 
 function tournamentMapSeriesFor(gameMode, mapPools = {}) {
   const key = String(gameMode || "").toLowerCase();
+  const definition = tournamentSeriesDefinitions[key] || tournamentSeriesDefinitions.snd;
   const pools = {
     snd: normalizeMapPool(mapPools.snd, tournamentSndMapPool),
     hp: normalizeMapPool(mapPools.hp, tournamentHpMapPool),
+    overload: normalizeMapPool(mapPools.overload, tournamentOverloadMapPool),
   };
-  const modes = key === "snd_hp_snd"
-    ? tournamentSndHpSndModes
-    : key === "hp"
-      ? tournamentHpModes
-      : tournamentSndModes;
-  const label = key === "snd_hp_snd" ? "SND / HP / SND" : key === "hp" ? "Hardpoint" : "Search and Destroy";
 
   return {
-    key: key === "snd_hp_snd" || key === "hp" ? key : "snd",
-    label,
-    games: modes.map((game) => ({
+    key: tournamentSeriesDefinitions[key] ? key : "snd",
+    label: definition.label,
+    bestOf: definition.games.length,
+    games: definition.games.map((game) => ({
       ...game,
-      pool: game.game_mode === "hp" ? pools.hp : pools.snd,
+      pool: mapPoolForGameMode(game.game_mode, pools),
     })),
   };
 }
@@ -1139,15 +1353,13 @@ function tournamentMapSeriesForMatch(match, tournament = null) {
 function generatedMapForSeriesGame(match, game, index, series) {
   const pool = game.pool || tournamentSndMapPool;
   const round = Math.max(1, Number(match?.round || 1));
-  const matchNumber = Math.max(1, Number(match?.match_number || 1));
   const sameModeOffset = series.games
     .slice(0, index)
     .filter((entry) => entry.game_mode === game.game_mode)
     .length;
   const tournamentOffset = stableHash(`${match?.tournament_id}:${game.game_mode}`) % pool.length;
   const roundOffset = (round - 1) * series.games.length;
-  const matchOffset = matchNumber - 1;
-  const mapIndex = (tournamentOffset + roundOffset + matchOffset + sameModeOffset) % pool.length;
+  const mapIndex = (tournamentOffset + roundOffset + sameModeOffset) % pool.length;
 
   return pool[mapIndex];
 }
@@ -1158,15 +1370,35 @@ function generatedMapPoolForMatch(match, series = tournamentMapSeriesForMatch(ma
 
 function mapGenerationKey(match, series = tournamentMapSeriesForMatch(match)) {
   return [
-    `bo3-${series.key}`,
+    `bo${series.bestOf || series.games.length}-${series.key}`,
     match?.tournament_id || "tournament",
     `round-${match?.round || 1}`,
-    `match-${match?.match_number || 1}`,
     series.games.map((game) => `${game.game_mode}:${game.pool.join("-")}`).join("|").toLowerCase(),
   ].join(":");
 }
 
+function shouldGenerateTournamentMatchSetup(match) {
+  return !(match?.is_final && !hasBothTeams(match));
+}
+
 function firstHostForMatch(match, participantA, participantB) {
+  const hasA = Boolean(match.team_a_id || participantA);
+  const hasB = Boolean(match.team_b_id || participantB);
+  if (!hasA && !hasB) return null;
+  if (hasA && !hasB) {
+    return {
+      id: match.team_a_id || participantKey(participantA),
+      name: match.team_a_name || participantName(participantA),
+      seed: Number(match.team_a_seed || participantA?.seed) || null,
+    };
+  }
+  if (hasB && !hasA) {
+    return {
+      id: match.team_b_id || participantKey(participantB),
+      name: match.team_b_name || participantName(participantB),
+      seed: Number(match.team_b_seed || participantB?.seed) || null,
+    };
+  }
   const seedA = Number(match.team_a_seed || participantA?.seed || (match.team_a_id ? 1 : 999999));
   const seedB = Number(match.team_b_seed || participantB?.seed || (match.team_b_id ? 2 : 999999));
   if (seedA <= seedB) {
@@ -1184,6 +1416,9 @@ function firstHostForMatch(match, participantA, participantB) {
 }
 
 function secondHostForMatch(match, participantA, participantB, firstHost) {
+  const hasA = Boolean(match.team_a_id || participantA);
+  const hasB = Boolean(match.team_b_id || participantB);
+  if (!firstHost || !hasA || !hasB) return null;
   const seedA = Number(match.team_a_seed || participantA?.seed || (match.team_a_id ? 1 : 999999));
   const seedB = Number(match.team_b_seed || participantB?.seed || (match.team_b_id ? 2 : 999999));
   if (firstHost?.id === match.team_a_id) {
@@ -1204,7 +1439,7 @@ function generatedTournamentMaps(match, participantA, participantB, series = tou
   const selectedMaps = generatedMapPoolForMatch(match, series);
   const firstHost = firstHostForMatch(match, participantA, participantB);
   const secondHost = secondHostForMatch(match, participantA, participantB, firstHost);
-  const hosts = [firstHost, secondHost, null];
+  const hosts = series.games.map((_, index) => (index % 2 === 0 ? firstHost : secondHost));
 
   return selectedMaps.map((map, index) => ({
     game: index + 1,
@@ -1237,12 +1472,12 @@ function tournamentMatchSetupPatch(match, participants = [], tournament = null) 
   const series = tournamentMapSeriesForMatch(seededMatch, tournament);
   const firstHost = firstHostForMatch(seededMatch, participantA, participantB);
   const generationKey = mapGenerationKey(seededMatch, series);
-  const maps = Array.isArray(match.maps) && match.maps.length === tournamentBestOf && match.map_generation_key === generationKey
+  const maps = Array.isArray(match.maps) && match.maps.length === series.bestOf && match.map_generation_key === generationKey
     ? match.maps
     : generatedTournamentMaps(seededMatch, participantA, participantB, series);
 
   return {
-    best_of: tournamentBestOf,
+    best_of: series.bestOf,
     game_mode: series.label,
     tournament_game_mode: series.key,
     map_sequence: series.games.map((game, index) => ({
@@ -1260,6 +1495,36 @@ function tournamentMatchSetupPatch(match, participants = [], tournament = null) 
     map_generation_key: generationKey,
     map_generated_by: match.map_generated_by || "system",
     map_generated_date: match.map_generated_date || nowIso(),
+  };
+}
+
+function streamerMatchSetupPatch(match, tournament = null, participants = []) {
+  const base = tournamentMatchSetupPatch(match, participants, tournament);
+  if (tournament?.map_pools || tournament?.snd_maps || tournament?.hp_maps || tournament?.overload_maps) {
+    return {
+      ...base,
+      map_generation_key: `streamer:${base.map_generation_key}`,
+      map_generated_by: match.map_generated_by || "streamer",
+    };
+  }
+
+  const customMaps = normalizeMapPool(
+    tournament?.streamer_maps || tournament?.maps,
+    base.map_pool?.length ? base.map_pool : streamerDefaultMapPool()
+  );
+  const roundOffset = Math.max(0, Number(match?.round || 1) - 1) * Math.max(1, base.maps.length || 1);
+  const maps = base.maps.map((row, index) => ({
+    ...row,
+    map: customMaps[(roundOffset + index) % customMaps.length] || row.map,
+    selected_by: "streamer",
+  }));
+
+  return {
+    ...base,
+    maps,
+    map_pool: customMaps,
+    map_generation_key: `streamer:${base.map_generation_key}:${customMaps.join("|").toLowerCase()}`,
+    map_generated_by: match.map_generated_by || "streamer",
   };
 }
 
@@ -1385,12 +1650,21 @@ async function advanceTournamentWinner(match) {
     [`${slot}_participant_id`]: match.winner_id === match.team_a_id ? match.team_a_participant_id : match.team_b_participant_id,
   };
   const candidate = { ...nextMatch, ...patch };
-  if (hasBothTeams(candidate) && !["completed", "disputed"].includes(nextMatch.status)) {
-    patch.status = "ready";
-    patch.assigned_date = nowIso();
-    const participants = await tournamentParticipants(match.tournament_id);
-    const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
-    Object.assign(patch, tournamentMatchSetupPatch(candidate, participants, tournament));
+  if (!["completed", "disputed"].includes(nextMatch.status)) {
+    if (hasBothTeams(candidate)) {
+      patch.status = "ready";
+      patch.assigned_date = nowIso();
+    }
+    if (shouldGenerateTournamentMatchSetup(candidate)) {
+      const participants = await tournamentParticipants(match.tournament_id);
+      const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
+      Object.assign(
+        patch,
+        isStreamerTournament(tournament)
+          ? streamerMatchSetupPatch(candidate, tournament, participants)
+          : tournamentMatchSetupPatch(candidate, participants, tournament)
+      );
+    }
   }
   const updatedNext = await updateEntity("TournamentMatch", nextMatch.id, patch);
   if (patch.status === "ready") await notifyTournamentMatchAssigned(updatedNext);
@@ -1442,7 +1716,7 @@ function tournamentScoreResetPatch() {
 }
 
 function tournamentRequiredWins(match) {
-  const bestOf = Math.max(1, Number(match?.best_of || tournamentBestOf));
+  const bestOf = Math.max(1, Number(match?.best_of || defaultTournamentBestOf));
   return Math.floor(bestOf / 2) + 1;
 }
 
@@ -1615,7 +1889,12 @@ async function undoTournamentAdvancement(match, replacement = null) {
           tournamentParticipants(match.tournament_id),
           getEntity("Tournament", match.tournament_id).catch(() => null),
         ]);
-        Object.assign(patch, tournamentMatchSetupPatch(candidate, participants, activeTournament));
+        Object.assign(
+          patch,
+          isStreamerTournament(activeTournament)
+            ? streamerMatchSetupPatch(candidate, activeTournament, participants)
+            : tournamentMatchSetupPatch(candidate, participants, activeTournament)
+        );
       }
       const updatedLegacyNext = await updateEntity("TournamentMatch", downstreamMatch.id, patch);
       if (patch.status === "ready") await notifyTournamentMatchAssigned(updatedLegacyNext);
@@ -2366,6 +2645,651 @@ async function registerTournament(req) {
   return { success: true, participant };
 }
 
+async function createStreamerTournament(req) {
+  if (!isStreamerUser(req.user)) {
+    return { success: false, error: "Streamer badge is required to post streamer tournaments" };
+  }
+
+  const name = String(req.body.name || "").trim().slice(0, 80);
+  if (!name) return { success: false, error: "Tournament name is required" };
+
+  const switchFormat = normalizeStreamerSwitchFormat(req.body.switch_format || req.body.team_size || "4v4");
+  const teamSize = String(req.body.team_size || switchFormat);
+  const validTeamSize = tournamentTeamSizeOptions.has(teamSize) ? teamSize : switchFormat;
+  const requestedMaxTeams = Number(req.body.max_teams || 8);
+  const maxTeams = Math.max(2, Math.min(64, Number.isFinite(requestedMaxTeams) ? requestedMaxTeams : 8));
+  const gameMode = String(req.body.game_mode || "snd_hp_snd");
+  const startDate = req.body.start_date ? new Date(req.body.start_date) : null;
+  const description = String(req.body.description || "").trim().slice(0, 500);
+
+  const tournament = await createEntity("Tournament", {
+    name,
+    title: name,
+    description,
+    game_mode: tournamentSeriesDefinitions[gameMode] ? gameMode : "snd_hp_snd",
+    game: "Call of Duty",
+    region: req.body.region || req.user.region || "global",
+    team_size: validTeamSize,
+    entry_fee: 0,
+    entry_type: "free",
+    prize_pool: 0,
+    max_teams: maxTeams,
+    registered_teams: 0,
+    format: "single_elimination",
+    bracket_type: "single_elimination",
+    status: "open",
+    rules: "Streamer-hosted lobby. The streamer host moderates lobby chat. No tickets or disputes are created from this lobby.",
+    maps: streamerDefaultMapPool(),
+    map_pools: {
+      snd: tournamentSndMapPool,
+      hp: tournamentHpMapPool,
+      overload: tournamentOverloadMapPool,
+    },
+    switcheroo_enabled: true,
+    switch_format: switchFormat,
+    switch_entries: [],
+    switch_teams: [],
+    switch_bracket_generated: false,
+    streamer_maps: streamerDefaultMapPool(),
+    start_date: startDate && Number.isFinite(startDate.getTime()) ? startDate.toISOString() : undefined,
+    created_by: req.user.id,
+    created_by_name: nameFor(req.user),
+    host_id: req.user.id,
+    host_name: nameFor(req.user),
+    tournament_type: "streamer",
+    source: "streamer",
+    is_streamer_tournament: true,
+    streamer_chat_enabled: true,
+    streamer_moderator_ids: [req.user.id],
+    banned_user_ids: [],
+    banned_users: [],
+    created_date: nowIso(),
+  });
+
+  await createEntity("ChatMessage", {
+    conversation_id: tournament.id,
+    sender_id: req.user.id,
+    sender_name: nameFor(req.user),
+    sender_role: req.user.role || "user",
+    recipient_id: tournament.id,
+    recipient_name: "Streamer tournament lobby",
+    content: `${nameFor(req.user)} opened the streamer tournament lobby.`,
+    is_read: false,
+    match_type: "streamer_tournament",
+    system: true,
+    created_date: nowIso(),
+  }).catch(() => null);
+
+  return { success: true, tournament };
+}
+
+async function clearStreamerSwitchBracket(tournament) {
+  const [matches, participants] = await Promise.all([
+    listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500).catch(() => []),
+    listEntities("TournamentParticipant", { tournament_id: tournament.id }, "seed", 500).catch(() => []),
+  ]);
+
+  if (matches.some(tournamentMatchHasScoreActivity)) {
+    return { success: false, error: "This switch bracket already has completed or reported matches" };
+  }
+
+  await Promise.all(matches.map((match) => deleteEntity("TournamentMatch", match.id).catch(() => null)));
+  await Promise.all(participants.map((participant) => deleteEntity("TournamentParticipant", participant.id).catch(() => null)));
+  return { success: true };
+}
+
+async function saveStreamerSwitchEntries(req) {
+  const tournament = await getEntity("Tournament", req.body.tournament_id);
+  if (!isStreamerTournament(tournament)) {
+    return { success: false, error: "Streamer tournament not found" };
+  }
+  if (!canModerateStreamerTournament(req.user, tournament)) {
+    return { success: false, error: "Only the streamer host or staff can edit this switcheroo" };
+  }
+
+  const switchFormat = normalizeStreamerSwitchFormat(req.body.switch_format || tournament.switch_format || tournament.team_size);
+  const entries = normalizeStreamerSwitchEntries(req.body.entries, switchFormat);
+  const reset = await clearStreamerSwitchBracket(tournament);
+  if (!reset.success) return reset;
+
+  const updated = await updateEntity("Tournament", tournament.id, {
+    team_size: switchFormat,
+    switch_format: switchFormat,
+    switch_entries: entries,
+    switch_teams: [],
+    switch_bracket_generated: false,
+    bracket_generated: false,
+    registration_locked: false,
+    registered_teams: 0,
+    status: "open",
+    updated_by: req.user.id,
+    updated_by_name: nameFor(req.user),
+    updated_date: nowIso(),
+  });
+
+  return { success: true, tournament: updated, entries };
+}
+
+async function updateStreamerTournamentMaps(req) {
+  const tournament = await getEntity("Tournament", req.body.tournament_id);
+  if (!isStreamerTournament(tournament)) {
+    return { success: false, error: "Streamer tournament not found" };
+  }
+  if (!canModerateStreamerTournament(req.user, tournament)) {
+    return { success: false, error: "Only the streamer host or staff can edit maps" };
+  }
+
+  const mapPools = req.body.map_pools || req.body.snd_maps || req.body.hp_maps || req.body.overload_maps
+    ? streamerMapPoolsForBody(req.body, tournament)
+    : {
+      snd: normalizeMapPool(req.body.maps || req.body.streamer_maps, tournamentSndMapPool).slice(0, 40),
+      hp: tournamentMapPoolsFor(tournament).hp,
+      overload: tournamentMapPoolsFor(tournament).overload,
+    };
+  const maps = combinedMapPool(mapPools);
+  const updated = await updateEntity("Tournament", tournament.id, {
+    maps,
+    map_pools: mapPools,
+    streamer_maps: maps,
+    updated_by: req.user.id,
+    updated_by_name: nameFor(req.user),
+    updated_date: nowIso(),
+  });
+  const [participants, matches] = await Promise.all([
+    tournamentParticipants(tournament.id).catch(() => []),
+    listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500).catch(() => []),
+  ]);
+  const refreshedMatches = [];
+
+  for (const match of matches) {
+    if (tournamentMatchHasScoreActivity(match)) continue;
+    if (!shouldGenerateTournamentMatchSetup(match)) continue;
+    const refreshed = await updateEntity("TournamentMatch", match.id, streamerMatchSetupPatch({
+      ...match,
+      maps: [],
+      map_generation_key: null,
+    }, updated, participants)).catch(() => null);
+    if (refreshed) refreshedMatches.push(refreshed);
+  }
+
+  return { success: true, tournament: updated, refreshed_matches: refreshedMatches };
+}
+
+async function rollStreamerSwitchTeams(req) {
+  const tournament = await getEntity("Tournament", req.body.tournament_id);
+  if (!isStreamerTournament(tournament)) {
+    return { success: false, error: "Streamer tournament not found" };
+  }
+  if (!canModerateStreamerTournament(req.user, tournament)) {
+    return { success: false, error: "Only the streamer host or staff can roll this switcheroo" };
+  }
+
+  const switchFormat = normalizeStreamerSwitchFormat(req.body.switch_format || tournament.switch_format || tournament.team_size);
+  const entries = normalizeStreamerSwitchEntries(req.body.entries || tournament.switch_entries, switchFormat);
+  if (entries.length < 4) {
+    return { success: false, error: switchFormat === "4v4" ? "Add at least four duos to make two 4v4 teams" : "Add at least four players to make two 2v2 teams" };
+  }
+  if (entries.length % 2 !== 0) {
+    return { success: false, error: switchFormat === "4v4" ? "4v4 switcheroo needs an even number of duos" : "2v2 switcheroo needs an even number of players" };
+  }
+
+  const generatedTeams = buildStreamerSwitchTeams(entries, switchFormat, tournament.id);
+  const validationError = streamerSwitchTeamsValidationError(generatedTeams, switchFormat, tournament.max_teams);
+  if (validationError) return { success: false, error: validationError };
+
+  const reset = await clearStreamerSwitchBracket(tournament);
+  if (!reset.success) return reset;
+
+  const updatedTournament = await updateEntity("Tournament", tournament.id, {
+    team_size: switchFormat,
+    switch_format: switchFormat,
+    switch_entries: entries,
+    switch_teams: generatedTeams,
+    switch_bracket_generated: false,
+    bracket_generated: false,
+    registration_locked: false,
+    registered_teams: 0,
+    status: tournament.status === "cancelled" ? "cancelled" : "open",
+    last_switch_roll_date: nowIso(),
+    updated_by: req.user.id,
+    updated_by_name: nameFor(req.user),
+    updated_date: nowIso(),
+  });
+
+  return { success: true, tournament: updatedTournament, entries, teams: generatedTeams };
+}
+
+async function saveStreamerSwitchTeams(req) {
+  const tournament = await getEntity("Tournament", req.body.tournament_id);
+  if (!isStreamerTournament(tournament)) {
+    return { success: false, error: "Streamer tournament not found" };
+  }
+  if (!canModerateStreamerTournament(req.user, tournament)) {
+    return { success: false, error: "Only the streamer host or staff can edit these teams" };
+  }
+
+  const switchFormat = normalizeStreamerSwitchFormat(req.body.switch_format || tournament.switch_format || tournament.team_size);
+  const teams = normalizeStreamerSwitchTeams(req.body.teams, switchFormat, tournament.id);
+  const validationError = streamerSwitchTeamsValidationError(teams, switchFormat, tournament.max_teams);
+  if (validationError) return { success: false, error: validationError };
+
+  const reset = await clearStreamerSwitchBracket(tournament);
+  if (!reset.success) return reset;
+
+  const updatedTournament = await updateEntity("Tournament", tournament.id, {
+    team_size: switchFormat,
+    switch_format: switchFormat,
+    switch_teams: teams.map((team, index) => ({ ...team, seed: index + 1 })),
+    switch_bracket_generated: false,
+    bracket_generated: false,
+    registration_locked: false,
+    registered_teams: 0,
+    status: tournament.status === "cancelled" ? "cancelled" : "open",
+    updated_by: req.user.id,
+    updated_by_name: nameFor(req.user),
+    updated_date: nowIso(),
+  });
+
+  return { success: true, tournament: updatedTournament, teams: updatedTournament.switch_teams || teams };
+}
+
+async function generateStreamerSwitchBracket(req) {
+  const tournament = await getEntity("Tournament", req.body.tournament_id);
+  if (!isStreamerTournament(tournament)) {
+    return { success: false, error: "Streamer tournament not found" };
+  }
+  if (!canModerateStreamerTournament(req.user, tournament)) {
+    return { success: false, error: "Only the streamer host or staff can generate this bracket" };
+  }
+
+  const switchFormat = normalizeStreamerSwitchFormat(req.body.switch_format || tournament.switch_format || tournament.team_size);
+  const entries = normalizeStreamerSwitchEntries(req.body.entries || tournament.switch_entries, switchFormat);
+  let generatedTeams = normalizeStreamerSwitchTeams(req.body.teams || tournament.switch_teams, switchFormat, tournament.id);
+  if (generatedTeams.length === 0 && entries.length >= 4 && entries.length % 2 === 0) {
+    generatedTeams = buildStreamerSwitchTeams(entries, switchFormat, tournament.id);
+  }
+  const validationError = streamerSwitchTeamsValidationError(generatedTeams, switchFormat, tournament.max_teams);
+  if (validationError) return { success: false, error: validationError };
+  generatedTeams = generatedTeams.map((team, index) => ({ ...team, seed: index + 1 }));
+
+  const reset = await clearStreamerSwitchBracket(tournament);
+  if (!reset.success) return reset;
+
+  const participants = [];
+  for (const team of generatedTeams) {
+    const participant = await createEntity("TournamentParticipant", {
+      tournament_id: tournament.id,
+      team_id: team.id,
+      team_name: team.name,
+      captain_id: "",
+      captain_name: team.player_names[0] || team.name,
+      user_id: "",
+      user_name: team.name,
+      members: team.player_names.map(streamerManualMember),
+      switch_player_names: team.player_names,
+      seed: team.seed,
+      eliminated: false,
+      entry_type: "streamer_switch",
+      payment_mode: "free",
+      entry_fee_paid: 0,
+      paid_member_ids: [],
+      roster_locked: true,
+      registered_date: nowIso(),
+      created_date: nowIso(),
+    });
+    participants.push(participant);
+  }
+
+  const bracketSize = nextPowerOfTwo(participants.length);
+  const seededParticipants = seedPositions(bracketSize).map((seed) => participants[seed - 1] || null);
+  const totalRounds = Math.log2(bracketSize);
+  const matches = [];
+
+  for (let round = 1; round <= totalRounds; round += 1) {
+    const matchCount = bracketSize / (2 ** round);
+    for (let matchNumber = 1; matchNumber <= matchCount; matchNumber += 1) {
+      const isRoundOne = round === 1;
+      const a = isRoundOne ? seededParticipants[(matchNumber - 1) * 2] : null;
+      const b = isRoundOne ? seededParticipants[((matchNumber - 1) * 2) + 1] : null;
+      const hasA = Boolean(a);
+      const hasB = Boolean(b);
+      const hasBye = isRoundOne && hasA !== hasB;
+      const winner = hasBye ? (a || b) : null;
+      const matchPayload = {
+        tournament_id: tournament.id,
+        tournament_game_mode: tournament.game_mode || "snd_hp_snd",
+        bracket: "winner",
+        match_type: "streamer_tournament",
+        is_streamer_tournament: true,
+        round,
+        match_number: matchNumber,
+        ...(a ? participantSlotFields(a, "team_a") : {}),
+        ...(b ? participantSlotFields(b, "team_b") : {}),
+        status: isRoundOne ? (hasA && hasB ? "ready" : "completed") : "pending",
+        winner_id: winner ? participantKey(winner) : null,
+        winner_name: winner ? participantName(winner) : null,
+        completed: Boolean(winner),
+        completed_date: winner ? nowIso() : null,
+        next_match_round: round < totalRounds ? round + 1 : null,
+        next_match_number: round < totalRounds ? Math.ceil(matchNumber / 2) : null,
+        slot_in_next: round < totalRounds ? (matchNumber % 2 === 1 ? "team_a" : "team_b") : null,
+        is_final: round === totalRounds,
+        created_date: nowIso(),
+      };
+      matches.push(await createEntity("TournamentMatch", {
+        ...matchPayload,
+        ...(!hasBye && shouldGenerateTournamentMatchSetup(matchPayload) ? streamerMatchSetupPatch(matchPayload, tournament, participants) : {}),
+      }));
+    }
+  }
+
+  const switchTeams = generatedTeams.map((team, index) => ({
+    ...team,
+    participant_id: participants[index]?.id || null,
+  }));
+  const updatedTournament = await updateEntity("Tournament", tournament.id, {
+    team_size: switchFormat,
+    switch_format: switchFormat,
+    switch_entries: entries,
+    switch_teams: switchTeams,
+    switch_bracket_generated: true,
+    bracket_generated: true,
+    bracket_generated_date: nowIso(),
+    registration_locked: true,
+    registered_teams: participants.length,
+    status: "in_progress",
+    updated_by: req.user.id,
+    updated_by_name: nameFor(req.user),
+    updated_date: nowIso(),
+  });
+
+  await createEntity("ChatMessage", {
+    conversation_id: tournament.id,
+    sender_id: req.user.id,
+    sender_name: nameFor(req.user),
+    sender_role: req.user.role || "user",
+    recipient_id: tournament.id,
+    recipient_name: "Streamer tournament lobby",
+    content: `${nameFor(req.user)} generated the ${switchFormat} switcheroo bracket.`,
+    is_read: false,
+    match_type: "streamer_tournament",
+    system: true,
+    created_date: nowIso(),
+  }).catch(() => null);
+
+  for (const match of matches.filter((row) => row.status === "completed" && row.winner_id)) {
+    await advanceTournamentWinner(match);
+  }
+
+  const refreshedMatches = await listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500);
+  return {
+    success: true,
+    tournament: updatedTournament,
+    participants,
+    teams: switchTeams,
+    matches: refreshedMatches,
+    match_count: refreshedMatches.length,
+  };
+}
+
+async function advanceStreamerTournamentMatch(req) {
+  const match = await getEntity("TournamentMatch", req.body.tournament_match_id || req.body.match_id);
+  const tournament = await getEntity("Tournament", match.tournament_id);
+  if (!isStreamerTournament(tournament)) {
+    return { success: false, error: "Streamer tournament not found" };
+  }
+  if (!canModerateStreamerTournament(req.user, tournament)) {
+    return { success: false, error: "Only the streamer host or staff can advance this bracket" };
+  }
+  if (match.completed || match.status === "completed") {
+    return { success: true, match, already_completed: true };
+  }
+  if (!match.team_a_id || !match.team_b_id) {
+    return { success: false, error: "Both teams must be assigned before advancing" };
+  }
+
+  const requestedWinnerId = String(req.body.winner_id || "");
+  const winnerSlot = String(req.body.winner_slot || "").toLowerCase();
+  const winnerIsA = winnerSlot === "team_a"
+    || winnerSlot === "a"
+    || requestedWinnerId === String(match.team_a_id);
+  const winnerIsB = winnerSlot === "team_b"
+    || winnerSlot === "b"
+    || requestedWinnerId === String(match.team_b_id);
+  if (!winnerIsA && !winnerIsB) {
+    return { success: false, error: "Choose the winning team" };
+  }
+
+  const winsNeeded = tournamentRequiredWins(match);
+  const teamAScore = Number.isFinite(Number(req.body.team_a_score))
+    ? Number(req.body.team_a_score)
+    : winnerIsA ? winsNeeded : 0;
+  const teamBScore = Number.isFinite(Number(req.body.team_b_score))
+    ? Number(req.body.team_b_score)
+    : winnerIsB ? winsNeeded : 0;
+  if (teamAScore === teamBScore) {
+    return { success: false, error: "Scores cannot be tied" };
+  }
+
+  const updated = await updateEntity("TournamentMatch", match.id, {
+    team_a_score: teamAScore,
+    team_b_score: teamBScore,
+    winner_id: winnerIsA ? match.team_a_id : match.team_b_id,
+    winner_name: winnerIsA ? match.team_a_name : match.team_b_name,
+    completed: true,
+    status: "completed",
+    completed_date: nowIso(),
+    scores_confirmed: true,
+    confirmed_score_alpha: teamAScore,
+    confirmed_score_bravo: teamBScore,
+    confirmed_score_date: nowIso(),
+    confirmed_by: req.user.id,
+    confirmed_by_name: nameFor(req.user),
+    advanced_by: req.user.id,
+    advanced_by_name: nameFor(req.user),
+  });
+  const advancement = await advanceTournamentWinner(updated);
+
+  return { success: true, match: updated, ...advancement };
+}
+
+async function overturnStreamerTournamentMatch(req) {
+  const match = await getEntity("TournamentMatch", req.body.tournament_match_id || req.body.match_id);
+  const tournament = await getEntity("Tournament", match.tournament_id);
+  if (!isStreamerTournament(tournament)) {
+    return { success: false, error: "Streamer tournament not found" };
+  }
+  if (!canModerateStreamerTournament(req.user, tournament)) {
+    return { success: false, error: "Only the streamer host or staff can overturn this result" };
+  }
+  if (!match.team_a_id || !match.team_b_id) {
+    return { success: false, error: "Both teams must be assigned before overturning a result" };
+  }
+  if (!match.completed && match.status !== "completed" && !match.winner_id) {
+    return { success: false, error: "Only completed matches can be overturned" };
+  }
+
+  const requestedWinnerId = String(req.body.winner_id || "");
+  const winnerSlot = String(req.body.winner_slot || "").toLowerCase();
+  const winnerIsA = winnerSlot === "team_a"
+    || winnerSlot === "a"
+    || requestedWinnerId === String(match.team_a_id);
+  const winnerIsB = winnerSlot === "team_b"
+    || winnerSlot === "b"
+    || requestedWinnerId === String(match.team_b_id);
+  if (!winnerIsA && !winnerIsB) {
+    return { success: false, error: "Choose the corrected winning team" };
+  }
+
+  const winnerId = winnerIsA ? match.team_a_id : match.team_b_id;
+  if (String(match.winner_id || "") === String(winnerId)) {
+    return { success: false, error: "That team is already marked as the winner" };
+  }
+
+  const winnerName = winnerIsA ? match.team_a_name : match.team_b_name;
+  const loserId = winnerIsA ? match.team_b_id : match.team_a_id;
+  const loserName = winnerIsA ? match.team_b_name : match.team_a_name;
+  const reason = String(req.body.reason || "Streamer host overturned the result").trim().slice(0, 500);
+  const previous = {
+    winner_id: match.winner_id || null,
+    winner_name: match.winner_name || null,
+    team_a_score: Number(match.team_a_score || 0),
+    team_b_score: Number(match.team_b_score || 0),
+    status: match.status,
+    completed: Boolean(match.completed),
+  };
+
+  const rewardUndo = await undoTournamentMatchRewards(match);
+  const eliminationCleanup = await removeTournamentEliminationRewards(match.tournament_id, rewardUndo.previous_loser_id || tournamentMatchLoserId(match));
+  const undo = await undoTournamentAdvancement(match);
+  await clearParticipantEliminationFromMatch(match.tournament_id, match.id);
+
+  const { teamAScore, teamBScore } = tournamentForfeitScore(match, winnerIsA);
+  const completedDate = nowIso();
+  let updated = await updateEntity("TournamentMatch", match.id, {
+    ...tournamentScoreResetPatch(),
+    team_a_score: teamAScore,
+    team_b_score: teamBScore,
+    winner_id: winnerId,
+    winner_name: winnerName,
+    completed: true,
+    status: "completed",
+    completed_date: completedDate,
+    scores_confirmed: true,
+    confirmed_score_alpha: teamAScore,
+    confirmed_score_bravo: teamBScore,
+    confirmed_score_date: completedDate,
+    confirmed_by: req.user.id,
+    confirmed_by_name: nameFor(req.user),
+    is_forfeit: true,
+    forfeit_reason: reason,
+    forfeited_by_id: loserId || null,
+    forfeited_by_name: loserName || null,
+    forfeit_winner_id: winnerId || null,
+    forfeit_winner_name: winnerName || null,
+    forfeit_date: completedDate,
+    match_result_badge: "Result overturned",
+    match_result_note: `${winnerName || "Winning team"} was granted the win by the streamer host.`,
+    streamer_corrected_by: req.user.id,
+    streamer_corrected_by_name: nameFor(req.user),
+    streamer_correction_reason: reason,
+    streamer_corrected_date: completedDate,
+    previous_result: previous,
+  });
+
+  const [winnerUserIds, loserUserIds] = await Promise.all([
+    tournamentParticipantUserIds(match.tournament_id, winnerId),
+    tournamentParticipantUserIds(match.tournament_id, loserId),
+  ]);
+  await applyParticipantRewards(winnerUserIds, loserUserIds);
+  updated = await updateEntity("TournamentMatch", updated.id, tournamentRewardAppliedPatch(winnerUserIds, loserUserIds));
+  const loserIsEliminated = !updated.loser_match_id && !updated.loser_match_round && !updated.loser_match_number;
+  const elimination = loserIsEliminated
+    ? await grantTournamentEliminationRewards({
+      tournamentId: updated.tournament_id,
+      loserId,
+      match: updated,
+      loserUserIds,
+    })
+    : {};
+  const advancement = updated.next_match_round
+    ? await advanceTournamentWinner(updated)
+    : await advanceLegacyTournamentRound(updated.tournament_id, updated.round);
+
+  await createEntity("ChatMessage", {
+    conversation_id: tournament.id,
+    sender_id: req.user.id,
+    sender_name: nameFor(req.user),
+    sender_role: req.user.role || "user",
+    recipient_id: tournament.id,
+    recipient_name: "Streamer tournament lobby",
+    content: `${nameFor(req.user)} overturned a match result: ${winnerName || "Winning team"} was granted the win.`,
+    is_read: false,
+    match_type: "streamer_tournament",
+    system: true,
+    created_date: nowIso(),
+  }).catch(() => null);
+
+  const refreshedMatches = await listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500);
+  return {
+    success: true,
+    match: updated,
+    matches: refreshedMatches,
+    message: `${winnerName || "Winning team"} was granted the win.`,
+    elimination,
+    reward_undo: rewardUndo,
+    elimination_cleanup: eliminationCleanup,
+    ...undo,
+    ...advancement,
+  };
+}
+
+async function moderateStreamerTournamentUser(req) {
+  const tournament = await getEntity("Tournament", req.body.tournament_id);
+  if (!isStreamerTournament(tournament)) {
+    return { success: false, error: "Streamer tournament not found" };
+  }
+  if (!canModerateStreamerTournament(req.user, tournament)) {
+    return { success: false, error: "Only the streamer host or staff can moderate this lobby" };
+  }
+
+  const targetUserId = String(req.body.user_id || "").trim();
+  if (!targetUserId) return { success: false, error: "User id is required" };
+  if (String(targetUserId) === String(req.user.id)) {
+    return { success: false, error: "You cannot ban yourself from your own lobby" };
+  }
+
+  const target = await getEntity("User", targetUserId).catch(() => null);
+  if (!target) return { success: false, error: "User not found" };
+
+  const action = String(req.body.action || "ban").toLowerCase();
+  const bannedUsers = Array.isArray(tournament.banned_users) ? tournament.banned_users : [];
+  const bannedUserIds = new Set((tournament.banned_user_ids || []).map(String));
+  const reason = String(req.body.reason || "Streamer lobby moderation").trim().slice(0, 200);
+  let nextBannedUsers = bannedUsers;
+
+  if (action === "unban") {
+    bannedUserIds.delete(targetUserId);
+    nextBannedUsers = bannedUsers.filter((entry) => String(entry?.user_id || "") !== targetUserId);
+  } else {
+    bannedUserIds.add(targetUserId);
+    const entry = {
+      user_id: target.id,
+      user_name: nameFor(target),
+      banned_by: req.user.id,
+      banned_by_name: nameFor(req.user),
+      reason,
+      banned_date: nowIso(),
+    };
+    nextBannedUsers = [
+      ...bannedUsers.filter((row) => String(row?.user_id || "") !== targetUserId),
+      entry,
+    ];
+  }
+
+  const updated = await updateEntity("Tournament", tournament.id, {
+    banned_user_ids: [...bannedUserIds],
+    banned_users: nextBannedUsers,
+    updated_date: nowIso(),
+  });
+
+  await createEntity("ChatMessage", {
+    conversation_id: tournament.id,
+    sender_id: req.user.id,
+    sender_name: nameFor(req.user),
+    sender_role: req.user.role || "user",
+    recipient_id: tournament.id,
+    recipient_name: "Streamer tournament lobby",
+    content: `${nameFor(target)} was ${action === "unban" ? "unbanned from" : "banned from"} the lobby.`,
+    is_read: false,
+    match_type: "streamer_tournament",
+    system: true,
+    created_date: nowIso(),
+  }).catch(() => null);
+
+  return { success: true, tournament: updated };
+}
+
 function tournamentRegistrationIsLocked(tournament) {
   const registrationEnded = tournament?.registration_end && new Date(tournament.registration_end) <= new Date();
   return Boolean(
@@ -2493,12 +3417,20 @@ async function updateTournament(req) {
       listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500).catch(() => []),
     ]);
     for (const match of matches) {
-      if (!hasBothTeams(match) || tournamentMatchHasScoreActivity(match)) continue;
-      const updatedMatch = await updateEntity("TournamentMatch", match.id, tournamentMatchSetupPatch({
+      if (tournamentMatchHasScoreActivity(match)) continue;
+      if (!shouldGenerateTournamentMatchSetup(match)) continue;
+      const setupMatch = {
         ...match,
         maps: [],
         map_generation_key: null,
-      }, participants, tournament)).catch(() => null);
+      };
+      const updatedMatch = await updateEntity(
+        "TournamentMatch",
+        match.id,
+        isStreamerTournament(tournament)
+          ? streamerMatchSetupPatch(setupMatch, tournament, participants)
+          : tournamentMatchSetupPatch(setupMatch, participants, tournament)
+      ).catch(() => null);
       if (updatedMatch) refreshedMatches.push(updatedMatch);
     }
   }
@@ -2507,8 +3439,10 @@ async function updateTournament(req) {
 }
 
 async function deleteTournament(req) {
-  assertStaff(req, "admin");
   const tournament = await getEntity("Tournament", req.body.tournament_id);
+  if (!hasRole(req.user, "admin") && !(isStreamerTournament(tournament) && canModerateStreamerTournament(req.user, tournament))) {
+    return { success: false, error: "Only admins or the streamer host can delete this tournament" };
+  }
   const [matches, participants, wins] = await Promise.all([
     listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500).catch(() => []),
     listEntities("TournamentParticipant", { tournament_id: tournament.id }, "seed", 500).catch(() => []),
@@ -2522,19 +3456,22 @@ async function deleteTournament(req) {
 }
 
 async function cancelTournament(req) {
-  assertStaff(req, "admin");
-  const tournament = await updateEntity("Tournament", req.body.tournament_id, {
+  const current = await getEntity("Tournament", req.body.tournament_id);
+  if (!hasRole(req.user, "admin") && !(isStreamerTournament(current) && canModerateStreamerTournament(req.user, current))) {
+    return { success: false, error: "Only admins or the streamer host can cancel this tournament" };
+  }
+  const tournament = await updateEntity("Tournament", current.id, {
     status: "cancelled",
     cancelled_by: req.user.id,
     cancelled_by_name: nameFor(req.user),
-    cancel_reason: req.body.reason || "Cancelled by admin",
+    cancel_reason: req.body.reason || (isStreamerTournament(current) ? "Cancelled by streamer host" : "Cancelled by admin"),
     cancelled_date: nowIso(),
   });
   await notifyTournamentParticipants(tournament.id, {
     title: "Tournament cancelled",
     message: `${tournament.name} was cancelled.`,
     type: "tournament",
-    action_url: "/tournaments",
+    action_url: isStreamerTournament(current) ? `/streamer-tournament/${tournament.id}` : "/tournaments",
     related_entity_id: tournament.id,
     related_entity_type: "Tournament",
   });
@@ -2594,6 +3531,7 @@ async function completeRegistration(req) {
 
 function normalizeMatchType(matchType) {
   const value = String(matchType || "wager").toLowerCase();
+  if (value === "streamer" || value === "streamer_tournament") return "streamer_tournament";
   if (value === "ranked") return "ranked";
   if (value === "tournament") return "tournament";
   return "wager";
@@ -2711,6 +3649,7 @@ async function ticketMatchContext(matchTypeInput, matchId) {
     team_b_name: matchType === "tournament" ? match.team_b_name : match.challenger_name,
     wager_amount: matchType === "wager" ? money(match.entry_fee ?? match.amount) : undefined,
     tournament_name: tournament?.name,
+    is_streamer_tournament: isStreamerTournament(tournament),
     chat_logs: chatLogs,
     match_history: matchHistory,
     disputes,
@@ -2782,6 +3721,9 @@ async function createTicket(req) {
 
 async function requestAdminAlert(req) {
   const context = await ticketMatchContext(req.body.match_type, req.body.match_id);
+  if (context.matchType === "tournament" && context.is_streamer_tournament) {
+    return { success: false, error: "Streamer tournaments use host moderation instead of admin tickets" };
+  }
   const existingTickets = context.match?.id
     ? await listEntities("Ticket", { related_entity_id: context.match.id }, "-created_date", 50).catch(() => [])
     : [];
@@ -3556,9 +4498,34 @@ async function sendMatchRoomMessage(req) {
   const matchId = req.body.match_id || req.body.conversation_id;
   const content = String(req.body.content || req.body.message || "").trim();
 
-  if (!matchId) return { success: false, error: "Match id is required" };
+  if (!matchId) return { success: false, error: matchType === "streamer_tournament" ? "Tournament id is required" : "Match id is required" };
   if (!content) return { success: false, error: "Message is required" };
   if (content.length > 500) return { success: false, error: "Message is too long" };
+
+  if (matchType === "streamer_tournament") {
+    const tournament = await getEntity("Tournament", matchId);
+    if (!isStreamerTournament(tournament)) {
+      return { success: false, error: "Streamer tournament not found" };
+    }
+    if (streamerTournamentBanEntry(tournament, req.user.id) && !canModerateStreamerTournament(req.user, tournament)) {
+      return { success: false, error: "You are banned from this streamer lobby chat" };
+    }
+
+    const message = await createEntity("ChatMessage", {
+      conversation_id: tournament.id,
+      sender_id: req.user.id,
+      sender_name: nameFor(req.user),
+      sender_role: req.user.role || "user",
+      recipient_id: tournament.id,
+      recipient_name: "Streamer tournament lobby",
+      content,
+      is_read: false,
+      match_type: matchType,
+      created_date: nowIso(),
+    });
+
+    return { success: true, message };
+  }
 
   const match = await getEntity(matchEntityFor(matchType), matchId);
   const participantIds = await matchParticipantIds(matchType, match);
@@ -4402,7 +5369,7 @@ async function generateTournamentBracket(req) {
       };
       matches.push(await createEntity("TournamentMatch", {
         ...matchPayload,
-        ...(hasA && hasB ? tournamentMatchSetupPatch(matchPayload, participants, tournament) : {}),
+        ...(!hasBye && shouldGenerateTournamentMatchSetup(matchPayload) ? tournamentMatchSetupPatch(matchPayload, participants, tournament) : {}),
       }));
     }
   }
@@ -4696,6 +5663,13 @@ async function createDispute(req) {
   if (matchType === "ranked") match = await getEntity("RankedMatch", matchId);
   else if (matchType === "tournament") match = await getEntity("TournamentMatch", matchId);
   else match = await getEntity("Wager", matchId);
+
+  if (matchType === "tournament" && match?.tournament_id) {
+    const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
+    if (isStreamerTournament(tournament)) {
+      return { success: false, error: "Streamer tournaments do not create dispute cases" };
+    }
+  }
 
   const involvedUserIds = await matchParticipantIds(matchType, match);
   const isTournamentParticipant = matchType === "tournament"
@@ -5195,6 +6169,15 @@ const handlers = {
   depositToWallet: addFunds,
   adminAdjustWallet,
   forgeMoneyToCredits,
+  createStreamerTournament,
+  saveStreamerSwitchEntries,
+  rollStreamerSwitchTeams,
+  saveStreamerSwitchTeams,
+  updateStreamerTournamentMaps,
+  generateStreamerSwitchBracket,
+  advanceStreamerTournamentMatch,
+  overturnStreamerTournamentMatch,
+  moderateStreamerTournamentUser,
   registerTournament,
   leaveTournament,
   updateTournament,

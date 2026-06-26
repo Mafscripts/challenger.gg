@@ -22,6 +22,14 @@
       "type": "string",
       "title": "Team Captain Name"
     },
+    "user_id": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "user_name": {
+      "type": "string",
+      "title": "User Name"
+    },
     "members": {
       "type": "array",
       "items": {
@@ -46,9 +54,21 @@
       "type": "string",
       "enum": [
         "own",
-        "full_team"
+        "full_team",
+        "free"
       ],
       "title": "Payment Mode"
+    },
+    "entry_type": {
+      "type": "string",
+      "title": "Entry Type"
+    },
+    "switch_player_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Switcheroo Player Names"
     },
     "entry_fee_paid": {
       "type": "number",

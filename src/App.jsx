@@ -17,6 +17,8 @@ import Eights from '@/pages/Eights';
 import Ranked from '@/pages/Ranked';
 import Wagers from '@/pages/Wagers';
 import Tournaments from '@/pages/Tournaments';
+import StreamerTournaments from '@/pages/StreamerTournaments';
+import StreamerTournamentLobby from '@/pages/StreamerTournamentLobby';
 import TournamentMatchRoom from '@/pages/TournamentMatchRoom';
 import XP from '@/pages/XP';
 import MatchRoom from '@/pages/MatchRoom';
@@ -87,6 +89,8 @@ const AuthenticatedApp = () => {
           <Route path="/ranked" element={<Ranked />} />
           <Route path="/wagers" element={<Wagers />} />
           <Route path="/tournaments" element={<Tournaments />} />
+          <Route path="/streamer-tournaments" element={<StreamerTournaments />} />
+          <Route path="/streamer-tournament/:id" element={<StreamerTournamentLobby />} />
           <Route path="/tournament-match/:id" element={<TournamentMatchRoom />} />
           <Route path="/xp" element={<XP />} />
           <Route path="/match-room/:id" element={<MatchRoom />} />

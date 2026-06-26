@@ -612,10 +612,9 @@ export default function Teams() {
                     onChange={(event) => setTeamForm((current) => ({ ...current, roster_size: Number(event.target.value) }))}
                     className="w-full px-4 py-3 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                   >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                    <option value={4}>4</option>
+                    {Array.from({ length: 8 }, (_, index) => index + 1).map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
                   </select>
                 </label>
               </div>

@@ -11,6 +11,8 @@ import {
   Loader2,
   LogOut,
   Medal,
+  Monitor,
+  Radio,
   Star,
   Swords,
   Trophy,
@@ -20,6 +22,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const adminRoles = new Set(["ceo", "super_admin", "admin"]);
 
 const statusLabels = {
   draft: "Draft",
@@ -33,10 +36,13 @@ const statusLabels = {
 };
 
 const modeLabels = {
-  snd_hp_snd: "SND / HP / SND",
-  snd: "Search & Destroy",
-  overload: "Overload",
-  hp: "Hardpoint",
+  bo1_snd: "BO1 SND",
+  snd_hp_snd: "BO3 SND / HP / SND",
+  bo3_hp_overload_snd: "BO3 HP / Overload / SND",
+  bo5_hp_overload_snd_hp_snd: "BO5 HP / Overload / SND / HP / SND",
+  snd: "BO3 Search & Destroy",
+  overload: "BO3 Overload",
+  hp: "BO3 Hardpoint",
 };
 
 const formatDate = (value) => {
@@ -69,6 +75,15 @@ const statusTone = (status) => {
 };
 const compactModeLabel = (tournament) => `${tournament?.team_size || "1v1"} - ${modeLabels[tournament?.game_mode] || tournament?.game_mode || "Mode TBD"}`;
 const tournamentImageUrl = (tournament) => tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || "";
+const isStreamerTournament = (tournament) => Boolean(
+  tournament?.is_streamer_tournament
+  || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
+  || ["streamer", "streamer_tournament"].includes(String(tournament?.source || "").toLowerCase())
+);
+const isStreamerUser = (user) => {
+  const badges = Array.isArray(user?.badges) ? user.badges : [];
+  return Boolean(user?.streamer_badge || user?.is_streamer || badges.some((badge) => badge?.type === "streamer"));
+};
 const tournamentEntryInfo = (tournament) => {
   const entryType = tournament?.entry_type || (tournament?.is_premium_only ? "premium" : (Number(tournament?.entry_fee || 0) > 0 ? "credits" : "free"));
   const fee = Number(tournament?.entry_fee || 0);
@@ -178,6 +193,7 @@ export default function Tournaments() {
         base44.entities.Tournament.filterFresh({}, "-start_date", 100),
       ]);
       const rows = tournamentRows || [];
+      const officialRows = rows.filter((tournament) => !isStreamerTournament(tournament));
 
       setUser(currentUser);
       setTournaments(rows);
@@ -206,18 +222,21 @@ export default function Tournaments() {
       }
 
       const currentSelectedId = selectedTournamentIdRef.current;
-      const nextSelectedId = rows.some((tournament) => tournament.id === currentSelectedId)
+      const nextSelectedId = officialRows.some((tournament) => tournament.id === currentSelectedId)
         ? currentSelectedId
-        : rows[0]?.id;
+        : officialRows[0]?.id;
 
       if (nextSelectedId && nextSelectedId !== currentSelectedId) {
         selectedTournamentIdRef.current = nextSelectedId;
         setSelectedTournamentId(nextSelectedId);
+      } else if (!nextSelectedId) {
+        selectedTournamentIdRef.current = null;
+        setSelectedTournamentId(null);
       }
 
       const tournamentIdsToRefresh = new Set([
         nextSelectedId,
-        ...rows
+        ...officialRows
           .filter((tournament) => ["live", "in_progress"].includes(tournament.status))
           .map((tournament) => tournament.id),
       ].filter(Boolean));
@@ -367,15 +386,17 @@ export default function Tournaments() {
     }
   };
 
+  const officialTournaments = useMemo(() => tournaments.filter((tournament) => !isStreamerTournament(tournament)), [tournaments]);
+  const streamerTournaments = useMemo(() => tournaments.filter(isStreamerTournament), [tournaments]);
   const filteredTournaments = useMemo(() => (
-    tournaments.filter((tournament) => filter === "All" || statusLabels[tournament.status] === filter || tournament.status === filter)
-  ), [tournaments, filter]);
+    officialTournaments.filter((tournament) => filter === "All" || statusLabels[tournament.status] === filter || tournament.status === filter)
+  ), [officialTournaments, filter]);
   const carouselTournaments = useMemo(() => {
-    const activeRows = tournaments
+    const activeRows = officialTournaments
       .filter((tournament) => !["completed", "cancelled"].includes(tournament.status))
       .sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
-    return activeRows.length > 0 ? activeRows : tournaments;
-  }, [tournaments]);
+    return activeRows.length > 0 ? activeRows : officialTournaments;
+  }, [officialTournaments]);
 
   useEffect(() => {
     if (activeFeaturedIndex >= carouselTournaments.length) setActiveFeaturedIndex(0);
@@ -387,16 +408,18 @@ export default function Tournaments() {
     if (selectedIndex >= 0 && selectedIndex !== activeFeaturedIndex) setActiveFeaturedIndex(selectedIndex);
   }, [activeFeaturedIndex, carouselTournaments, selectedTournamentId]);
 
-  const liveTournaments = tournaments.filter((tournament) => ["live", "in_progress"].includes(tournament.status));
-  const featuredTournaments = tournaments.filter((tournament) => tournament.is_premium_only || tournament.prize_pool >= 1000).slice(0, 2);
-  const selectedTournament = tournaments.find((tournament) => tournament.id === selectedTournamentId);
+  const liveTournaments = officialTournaments.filter((tournament) => ["live", "in_progress"].includes(tournament.status));
+  const featuredTournaments = officialTournaments.filter((tournament) => tournament.is_premium_only || tournament.prize_pool >= 1000).slice(0, 2);
+  const selectedTournament = officialTournaments.find((tournament) => tournament.id === selectedTournamentId);
   const selectedMatches = matchesByTournament[selectedTournamentId] || [];
   const selectedParticipants = participantsByTournament[selectedTournamentId] || [];
   const featuredTournament = carouselTournaments[activeFeaturedIndex]
     || selectedTournament
     || featuredTournaments[0]
-    || tournaments[0];
+    || officialTournaments[0];
   const isStaff = staffRoles.has(user?.role);
+  const isAdmin = adminRoles.has(user?.role);
+  const canPostStreamerTournament = isStreamerUser(user);
   const participantIncludesCurrentUser = (participant) => (
     participant.captain_id === user?.id
     || participant.user_id === user?.id
@@ -424,12 +447,12 @@ export default function Tournaments() {
     || currentUserTeamKeys.has(String(match.team_a_name || "").toLowerCase())
     || currentUserTeamKeys.has(String(match.team_b_name || "").toLowerCase())
   ));
-  const totalPrizePool = tournaments.reduce((sum, tournament) => sum + Number(tournament.prize_pool || 0), 0);
-  const totalTeams = tournaments.reduce((sum, tournament) => sum + Number(tournament.registered_teams || 0), 0);
-  const totalPlayers = tournaments.reduce((sum, tournament) => (
+  const totalPrizePool = officialTournaments.reduce((sum, tournament) => sum + Number(tournament.prize_pool || 0), 0);
+  const totalTeams = officialTournaments.reduce((sum, tournament) => sum + Number(tournament.registered_teams || 0), 0);
+  const totalPlayers = officialTournaments.reduce((sum, tournament) => (
     sum + (Number(tournament.registered_teams || 0) * rosterSize(tournament.team_size))
   ), 0);
-  const recentChampions = tournaments
+  const recentChampions = officialTournaments
     .filter((tournament) => tournament.winner_name || tournament.status === "completed")
     .sort((a, b) => new Date(b.completed_date || b.updated_date || b.start_date || 0) - new Date(a.completed_date || a.updated_date || a.start_date || 0))
     .slice(0, 4);
@@ -478,7 +501,7 @@ export default function Tournaments() {
 
         <SeasonOverview
           totalPrizePool={totalPrizePool}
-          tournamentCount={tournaments.length}
+          tournamentCount={officialTournaments.length}
           totalTeams={totalTeams}
           totalPlayers={totalPlayers}
         />
@@ -566,172 +589,174 @@ export default function Tournaments() {
                 />
               ))}
             </div>
+            <div className="mt-6">
+              <StreamerTournamentPanel tournaments={streamerTournaments} canPost={canPostStreamerTournament} />
+            </div>
           </div>
 
-          <div className="lg:col-span-5 glass rounded-xl border border-white/5 overflow-hidden">
-            <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold">Live Bracket Preview</h2>
-                <p className="text-xs text-vapor">
-                  {`${selectedParticipants.length} participant${selectedParticipants.length === 1 ? "" : "s"} registered. Bracket is public.`}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {selectedTournament && joinedTournamentIds.has(selectedTournament.id) && (
-                  <span className="px-3 py-2 bg-green/10 text-green text-xs font-bold rounded-lg border border-green/20 uppercase tracking-wider">
-                    Joined
-                  </span>
-                )}
-                {canLeaveSelectedTournament && (
-                  <button
-                    type="button"
-                    onClick={() => handleLeaveTournament(selectedTournament)}
-                    disabled={leavingId === selectedTournament.id}
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-red-500/10 text-red-300 text-xs font-bold rounded-lg border border-red-500/20 hover:bg-red-500/20 disabled:opacity-50 uppercase tracking-wider"
-                  >
-                    {leavingId === selectedTournament.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
-                    Leave
-                  </button>
-                )}
-                {selectedUserMatch && (
-                  <Link
-                    to={`/tournament-match/${selectedUserMatch.id}`}
-                    className="px-3 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 uppercase tracking-wider"
-                  >
-                    Open My Match
-                  </Link>
-                )}
-                {selectedTournament && canJoinTournament(selectedTournament) && (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={selectedTeamByTournament[selectedTournament.id] || ""}
-                      onChange={(event) => setSelectedTeamByTournament((current) => ({ ...current, [selectedTournament.id]: event.target.value }))}
-                      className="px-3 py-2 bg-secondary text-vapor text-xs rounded-lg border border-white/5 focus:border-cyan/30 focus:outline-none"
+          <div className="lg:col-span-5 space-y-6">
+            <div className="glass rounded-xl border border-white/5 overflow-hidden">
+              <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold">Live Bracket Preview</h2>
+                  <p className="text-xs text-vapor">
+                    {`${selectedParticipants.length} participant${selectedParticipants.length === 1 ? "" : "s"} registered. Bracket is public.`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedTournament && joinedTournamentIds.has(selectedTournament.id) && (
+                    <span className="px-3 py-2 bg-green/10 text-green text-xs font-bold rounded-lg border border-green/20 uppercase tracking-wider">
+                      Joined
+                    </span>
+                  )}
+                  {canLeaveSelectedTournament && (
+                    <button
+                      type="button"
+                      onClick={() => handleLeaveTournament(selectedTournament)}
+                      disabled={leavingId === selectedTournament.id}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-red-500/10 text-red-300 text-xs font-bold rounded-lg border border-red-500/20 hover:bg-red-500/20 disabled:opacity-50 uppercase tracking-wider"
                     >
-                      <option value="">Select team</option>
-                      {compatibleTeamsFor(selectedTournament).map((team) => (
-                        <option key={team.id} value={team.id}>
-                          {team.name} ({team.members.length}/{rosterSize(selectedTournament.team_size)})
-                        </option>
-                      ))}
-                    </select>
-                    {selectedTeamByTournament[selectedTournament.id] && !isTournamentTeamReady(selectedTeamFor(selectedTournament), selectedTournament) && (
-                      <span className="text-[10px] text-orange">
-                        Needs exactly {rosterSize(selectedTournament.team_size)} active players
-                      </span>
-                    )}
-                    {!isFreeTournament(selectedTournament) && (
+                      {leavingId === selectedTournament.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                      Leave
+                    </button>
+                  )}
+                  {selectedUserMatch && (
+                    <Link
+                      to={`/tournament-match/${selectedUserMatch.id}`}
+                      className="px-3 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 uppercase tracking-wider"
+                    >
+                      Open My Match
+                    </Link>
+                  )}
+                  {selectedTournament && canJoinTournament(selectedTournament) && (
+                    <div className="flex items-center gap-2">
                       <select
-                        value={paymentModeByTournament[selectedTournament.id] || "own"}
-                        onChange={(event) => setPaymentModeByTournament((current) => ({ ...current, [selectedTournament.id]: event.target.value }))}
+                        value={selectedTeamByTournament[selectedTournament.id] || ""}
+                        onChange={(event) => setSelectedTeamByTournament((current) => ({ ...current, [selectedTournament.id]: event.target.value }))}
                         className="px-3 py-2 bg-secondary text-vapor text-xs rounded-lg border border-white/5 focus:border-cyan/30 focus:outline-none"
                       >
-                        <option value="own">Pay my own entry only</option>
-                        <option value="full_team">Pay full team entry</option>
+                        <option value="">Select team</option>
+                        {compatibleTeamsFor(selectedTournament).map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.name} ({team.members.length}/{rosterSize(selectedTournament.team_size)})
+                          </option>
+                        ))}
                       </select>
-                    )}
-                    <button
-                      onClick={() => handleJoinTournament(selectedTournament)}
-                      disabled={joiningId === selectedTournament.id}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-green text-background text-xs font-bold rounded-lg disabled:opacity-50 uppercase tracking-wider"
-                    >
-                      {joiningId === selectedTournament.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
-                      Join
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-            {isStaff && selectedParticipants.length > 0 && (
-              <div className="px-5 py-3 border-b border-white/5 bg-secondary/20">
-                <p className="text-[10px] text-vapor uppercase tracking-wider mb-2">Participants</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedParticipants.map((participant) => (
-                    <span key={participant.id} className="px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-xs text-vapor">
-                      #{participant.seed || "-"} {participant.team_name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="divide-y divide-white/5 max-h-[640px] overflow-y-auto">
-              {!selectedTournamentId ? (
-                <p className="px-5 py-8 text-center text-sm text-vapor">No tournament selected.</p>
-              ) : selectedMatches.length === 0 ? (
-                <div className="px-5 py-8 text-center">
-                  <Users className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
-                  <p className="text-sm text-vapor">No bracket matches generated yet.</p>
-                </div>
-              ) : selectedMatches.map((match) => {
-                const isComplete = match.completed || match.status === "completed";
-                const teamAScore = Number(match.team_a_score || 0);
-                const teamBScore = Number(match.team_b_score || 0);
-                const teamAWon = isComplete && (
-                  String(match.winner_id || "") === String(match.team_a_id || "")
-                  || (!match.winner_id && teamAScore > teamBScore)
-                );
-                const teamBWon = isComplete && (
-                  String(match.winner_id || "") === String(match.team_b_id || "")
-                  || (!match.winner_id && teamBScore > teamAScore)
-                );
-                const teamRowClass = (won) => {
-                  if (won) return "border-green/25 bg-green/10 text-white";
-                  if (isComplete) return "border-red-400/15 bg-red-500/5 text-vapor";
-                  return "border-white/5 bg-background/25 text-vapor";
-                };
-                const resultBadge = (won) => {
-                  if (!isComplete) return "TBD";
-                  return won ? "WIN" : "LOSS";
-                };
-                const badgeClass = (won) => {
-                  if (!isComplete) return "border-white/5 bg-secondary text-vapor";
-                  return won ? "border-green/20 bg-green/10 text-green" : "border-red-400/20 bg-red-500/10 text-red-300";
-                };
-
-                return (
-                  <Link
-                    key={match.id}
-                    to={`/tournament-match/${match.id}`}
-                    className="block px-5 py-4 hover:bg-white/[0.02] transition-colors"
-                  >
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold">
-                          {match.bracket === "grand_final" ? "Grand Final" : `${match.bracket === "loser" ? "Loser" : "Winner"} Round ${match.round}`}
-                        </p>
-                        <p className="mt-1 text-[10px] text-vapor uppercase">
-                          Match {match.match_number || "-"} {match.is_forfeit ? "- Match forfeited" : ""}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="rounded border border-cyan/20 bg-cyan/10 px-2 py-1 text-xs font-mono font-black text-cyan">
-                          {isComplete ? `${teamAScore}-${teamBScore}` : "TBD"}
+                      {selectedTeamByTournament[selectedTournament.id] && !isTournamentTeamReady(selectedTeamFor(selectedTournament), selectedTournament) && (
+                        <span className="text-[10px] text-orange">
+                          Needs exactly {rosterSize(selectedTournament.team_size)} active players
                         </span>
-                        <span className="text-[10px] text-vapor uppercase">{match.status}</span>
-                      </div>
+                      )}
+                      {!isFreeTournament(selectedTournament) && (
+                        <select
+                          value={paymentModeByTournament[selectedTournament.id] || "own"}
+                          onChange={(event) => setPaymentModeByTournament((current) => ({ ...current, [selectedTournament.id]: event.target.value }))}
+                          className="px-3 py-2 bg-secondary text-vapor text-xs rounded-lg border border-white/5 focus:border-cyan/30 focus:outline-none"
+                        >
+                          <option value="own">Pay my own entry only</option>
+                          <option value="full_team">Pay full team entry</option>
+                        </select>
+                      )}
+                      <button
+                        onClick={() => handleJoinTournament(selectedTournament)}
+                        disabled={joiningId === selectedTournament.id}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green text-background text-xs font-bold rounded-lg disabled:opacity-50 uppercase tracking-wider"
+                      >
+                        {joiningId === selectedTournament.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
+                        Join
+                      </button>
                     </div>
-                    <div className="space-y-2 text-xs">
-                      <div className={`grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded border px-3 py-2.5 ${teamRowClass(teamAWon)}`}>
-                        <span className="min-w-0 truncate font-semibold">#{match.team_a_seed || "-"} {match.team_a_name || "Open slot"}</span>
-                        <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase ${badgeClass(teamAWon)}`}>{resultBadge(teamAWon)}</span>
-                        <span className="min-w-8 text-right font-mono text-sm font-black">{isComplete ? teamAScore : "-"}</span>
-                      </div>
-                      <div className={`grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded border px-3 py-2.5 ${teamRowClass(teamBWon)}`}>
-                        <span className="min-w-0 truncate font-semibold">#{match.team_b_seed || "-"} {match.team_b_name || "Open slot"}</span>
-                        <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase ${badgeClass(teamBWon)}`}>{resultBadge(teamBWon)}</span>
-                        <span className="min-w-8 text-right font-mono text-sm font-black">{isComplete ? teamBScore : "-"}</span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+                  )}
+                </div>
+              </div>
+              {isStaff && selectedParticipants.length > 0 && (
+                <div className="px-5 py-3 border-b border-white/5 bg-secondary/20">
+                  <p className="text-[10px] text-vapor uppercase tracking-wider mb-2">Participants</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedParticipants.map((participant) => (
+                      <span key={participant.id} className="px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-xs text-vapor">
+                        #{participant.seed || "-"} {participant.team_name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="divide-y divide-white/5 max-h-[640px] overflow-y-auto">
+                {!selectedTournamentId ? (
+                  <p className="px-5 py-8 text-center text-sm text-vapor">No tournament selected.</p>
+                ) : selectedMatches.length === 0 ? (
+                  <div className="px-5 py-8 text-center">
+                    <Users className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
+                    <p className="text-sm text-vapor">No bracket matches generated yet.</p>
+                  </div>
+                ) : selectedMatches.map((match) => {
+                  const isComplete = match.completed || match.status === "completed";
+                  const teamAScore = Number(match.team_a_score || 0);
+                  const teamBScore = Number(match.team_b_score || 0);
+                  const teamAWon = isComplete && (
+                    String(match.winner_id || "") === String(match.team_a_id || "")
+                    || (!match.winner_id && teamAScore > teamBScore)
+                  );
+                  const teamBWon = isComplete && (
+                    String(match.winner_id || "") === String(match.team_b_id || "")
+                    || (!match.winner_id && teamBScore > teamAScore)
+                  );
+                  const teamRowClass = (won) => {
+                    if (won) return "border-green/25 bg-green/10 text-white";
+                    if (isComplete) return "border-red-400/15 bg-red-500/5 text-vapor";
+                    return "border-white/5 bg-background/25 text-vapor";
+                  };
+                  const resultBadge = (won) => {
+                    if (!isComplete) return "TBD";
+                    return won ? "WIN" : "LOSS";
+                  };
+                  const badgeClass = (won) => {
+                    if (!isComplete) return "border-white/5 bg-secondary text-vapor";
+                    return won ? "border-green/20 bg-green/10 text-green" : "border-red-400/20 bg-red-500/10 text-red-300";
+                  };
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-12">
-          <RecentChampionsPanel champions={recentChampions} />
-          {isStaff && <CreateTournamentPanel />}
+                  return (
+                    <Link
+                      key={match.id}
+                      to={`/tournament-match/${match.id}`}
+                      className="block px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold">
+                            {match.bracket === "grand_final" ? "Grand Final" : `${match.bracket === "loser" ? "Loser" : "Winner"} Round ${match.round}`}
+                          </p>
+                          <p className="mt-1 text-[10px] text-vapor uppercase">
+                            Match {match.match_number || "-"} {match.is_forfeit ? "- Match forfeited" : ""}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="rounded border border-cyan/20 bg-cyan/10 px-2 py-1 text-xs font-mono font-black text-cyan">
+                            {isComplete ? `${teamAScore}-${teamBScore}` : "TBD"}
+                          </span>
+                          <span className="text-[10px] text-vapor uppercase">{match.status}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className={`grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded border px-3 py-2.5 ${teamRowClass(teamAWon)}`}>
+                          <span className="min-w-0 truncate font-semibold">#{match.team_a_seed || "-"} {match.team_a_name || "Open slot"}</span>
+                          <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase ${badgeClass(teamAWon)}`}>{resultBadge(teamAWon)}</span>
+                          <span className="min-w-8 text-right font-mono text-sm font-black">{isComplete ? teamAScore : "-"}</span>
+                        </div>
+                        <div className={`grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded border px-3 py-2.5 ${teamRowClass(teamBWon)}`}>
+                          <span className="min-w-0 truncate font-semibold">#{match.team_b_seed || "-"} {match.team_b_name || "Open slot"}</span>
+                          <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase ${badgeClass(teamBWon)}`}>{resultBadge(teamBWon)}</span>
+                          <span className="min-w-8 text-right font-mono text-sm font-black">{isComplete ? teamBScore : "-"}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+            <RecentChampionsPanel champions={recentChampions} />
+            {isAdmin && <CreateTournamentPanel />}
+          </div>
         </div>
       </div>
     </div>
@@ -1013,6 +1038,65 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
         </div>
       </div>
     </motion.button>
+  );
+}
+
+function StreamerTournamentPanel({ tournaments, canPost }) {
+  const visible = [...tournaments]
+    .sort((a, b) => new Date(b.created_date || b.start_date || 0) - new Date(a.created_date || a.start_date || 0))
+    .slice(0, 3);
+
+  return (
+    <section className="glass rounded-xl border border-blue-400/15 p-5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-blue-400/25 bg-blue-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-300">
+            <Monitor className="h-3.5 w-3.5" /> Streamer Badge
+          </div>
+          <h2 className="text-sm font-black uppercase tracking-wider">Streamer Tournaments</h2>
+          <p className="mt-1 text-xs text-vapor">Visible to everyone. Streamer accounts can post their own lobby.</p>
+        </div>
+        <Link
+          to="/streamer-tournaments"
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-blue-400/20 bg-blue-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-blue-300 hover:bg-blue-500/20"
+        >
+          {canPost ? "Post Lobby" : "Browse Lobbies"} <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
+      {!canPost && (
+        <div className="mb-4 rounded-lg border border-white/5 bg-background/25 px-4 py-3 text-xs text-vapor">
+          Streamer badge required to post. Everyone can open streamer lobbies and view the chat.
+        </div>
+      )}
+
+      {visible.length === 0 ? (
+        <div className="rounded-lg border border-white/5 bg-background/25 px-5 py-8 text-center">
+          <Radio className="mx-auto mb-3 h-9 w-9 text-vapor/30" />
+          <p className="text-sm text-vapor">No streamer lobbies posted yet.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {visible.map((tournament) => (
+            <Link
+              key={tournament.id}
+              to={`/streamer-tournament/${tournament.id}`}
+              className="grid gap-3 rounded-lg border border-white/5 bg-background/25 p-4 transition-colors hover:border-blue-400/25 hover:bg-blue-500/[0.03] sm:grid-cols-[1fr_auto] sm:items-center"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black">{tournament.name}</p>
+                <p className="mt-1 truncate text-xs text-vapor">
+                  {tournament.host_name || tournament.created_by_name || "Streamer"} / {compactModeLabel(tournament)}
+                </p>
+              </div>
+              <span className="inline-flex w-fit items-center gap-2 rounded border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan">
+                Open Lobby <ArrowRight className="h-3 w-3" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

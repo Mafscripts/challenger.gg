@@ -6,7 +6,7 @@ import {
   Menu, X, Gamepad2, Swords, Trophy, ShoppingBag,
   BarChart3, Users, Newspaper, BookOpen, Zap, Target, Flame,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, Coins, LogOut, ShieldCheck
+  Activity, History, Settings, Package, Coins, LogOut, ShieldCheck, Monitor
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import ForgeModal from "@/components/navbar/ForgeModal";
@@ -76,6 +76,10 @@ const isStaffUser = (candidate) => (
   || staffRoles.has(candidate?.admin_role)
   || candidate?.is_admin === true
 );
+const isStreamerUser = (candidate) => {
+  const badges = Array.isArray(candidate?.badges) ? candidate.badges : [];
+  return Boolean(candidate?.streamer_badge || candidate?.is_streamer || badges.some((badge) => badge?.type === "streamer"));
+};
 
 const activeMatchStatuses = new Set([
   "in_progress",
@@ -137,6 +141,7 @@ export default function Navbar() {
   const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
   const accountName = user?.display_name || user?.full_name || user?.username || user?.email || "Account";
   const canSeeAdminLink = isStaffUser(user || authUser);
+  const canSeeStreamerShortcut = isStreamerUser(user || authUser);
   const matchHistoryPath = profilePath;
 
   const closeDropdowns = () => {
@@ -779,6 +784,7 @@ export default function Navbar() {
                         label="Account"
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
+                          ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
                           { label: "Settings", path: "/settings", icon: Settings },
                         ]}
                         onSelect={() => setProfileOpen(false)}
@@ -929,6 +935,15 @@ export default function Navbar() {
                       >
                         <ShieldCheck className="w-5 h-5" />
                         Admin Console
+                      </Link>
+                    )}
+                    {canSeeStreamerShortcut && (
+                      <Link
+                        to="/streamer-tournaments"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-blue-300 hover:bg-blue-500/10 transition-all"
+                      >
+                        <Monitor className="w-5 h-5" />
+                        Streamer Tournaments
                       </Link>
                     )}
                     <Link

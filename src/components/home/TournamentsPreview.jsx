@@ -6,6 +6,15 @@ import { base44 } from "@/api/base44Client";
 
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "Not scheduled";
+const tournamentModeLabels = {
+  bo1_snd: "BO1 SND",
+  snd_hp_snd: "BO3 SND / HP / SND",
+  bo3_hp_overload_snd: "BO3 HP / Overload / SND",
+  bo5_hp_overload_snd_hp_snd: "BO5 HP / Overload / SND / HP / SND",
+  snd: "BO3 Search & Destroy",
+  overload: "BO3 Overload",
+  hp: "BO3 Hardpoint",
+};
 
 export default function TournamentsPreview() {
   const [tournaments, setTournaments] = useState([]);
@@ -56,7 +65,7 @@ export default function TournamentsPreview() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="font-bold text-lg mb-1">{tournament.name}</h3>
-                    <p className="text-sm text-vapor">{tournament.team_size} {tournament.game_mode}</p>
+                    <p className="text-sm text-vapor">{tournament.team_size} {tournamentModeLabels[tournament.game_mode] || tournament.game_mode}</p>
                   </div>
                   <span className="text-xs font-mono font-semibold text-cyan">{String(tournament.status || "open").replace(/_/g, " ")}</span>
                 </div>

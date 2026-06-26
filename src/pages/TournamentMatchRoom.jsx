@@ -33,6 +33,11 @@ const adminCorrectionRoles = new Set(["ceo", "super_admin", "admin"]);
 const defaultMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const seedLabel = (seed) => seed ? `#${seed}` : "#-";
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
+const isStreamerTournament = (tournament) => Boolean(
+  tournament?.is_streamer_tournament
+  || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
+  || ["streamer", "streamer_tournament"].includes(String(tournament?.source || "").toLowerCase())
+);
 const playerName = (player) => player?.user_name || player?.username || player?.display_name || player?.full_name || player?.email || "Unknown player";
 const identityKeys = (value) => [
   value?.id,
@@ -378,15 +383,16 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
 function MapSeries({ match }) {
   const maps = Array.isArray(match.maps) ? match.maps : [];
   const pool = Array.isArray(match.map_pool) && match.map_pool.length ? match.map_pool : defaultMapPool;
+  const bestOf = Math.max(1, Number(match.best_of || match.map_sequence?.length || maps.length || 3));
 
   return (
     <div className="glass rounded-xl border border-cyan/20 p-5">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
-            <MapIcon className="h-4 w-4 text-cyan" /> BO3 Map Series
+            <MapIcon className="h-4 w-4 text-cyan" /> BO{bestOf} Map Series
           </h2>
-          <p className="text-xs text-vapor mt-1">{match.game_mode || `Best of ${match.best_of || 3}`}</p>
+          <p className="text-xs text-vapor mt-1">{match.game_mode || `Best of ${bestOf}`}</p>
         </div>
         <div className="text-xs text-vapor">
           First host: <span className="font-bold text-green">{match.first_host_team_name || "TBD"}</span>
@@ -603,11 +609,12 @@ export default function TournamentMatchRoom() {
       ]);
       let activeMatch = matchData;
       const setupStatuses = ["pending", "ready", "in_progress", "awaiting_team_a_report", "awaiting_team_b_report"];
+      const expectedMapCount = Math.max(1, Number(activeMatch.best_of || activeMatch.map_sequence?.length || 3));
       if (
         activeMatch.team_a_id &&
         activeMatch.team_b_id &&
         setupStatuses.includes(activeMatch.status) &&
-        (!Array.isArray(activeMatch.maps) || activeMatch.maps.length < 3 || !activeMatch.team_a_seed || !activeMatch.team_b_seed || !activeMatch.first_host_team_id || !activeMatch.map_generation_key)
+        (!Array.isArray(activeMatch.maps) || activeMatch.maps.length < expectedMapCount || !activeMatch.team_a_seed || !activeMatch.team_b_seed || !activeMatch.first_host_team_id || !activeMatch.map_generation_key)
       ) {
         const setup = await base44.functions.invoke("ensureTournamentMatchSetup", {
           tournament_match_id: activeMatch.id,
@@ -687,6 +694,10 @@ export default function TournamentMatchRoom() {
   };
 
   const handleRequestAdmin = async () => {
+    if (isStreamerTournament(tournament)) {
+      toast({ title: "Streamer lobby moderation", description: "Streamer tournaments use host chat moderation instead of admin tickets." });
+      return;
+    }
     setRequestingAdmin(true);
     try {
       const response = await base44.functions.invoke("requestAdminAlert", {
@@ -711,6 +722,10 @@ export default function TournamentMatchRoom() {
   };
 
   const handleCreateDispute = async () => {
+    if (isStreamerTournament(tournament)) {
+      toast({ title: "Disputes disabled", description: "Streamer tournaments do not create dispute cases." });
+      return;
+    }
     const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
     if (evidenceText === null) return;
     const evidenceUrls = evidenceText.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
@@ -840,6 +855,7 @@ export default function TournamentMatchRoom() {
   const predictedWinner = scoreA === scoreB ? null : scoreA > scoreB ? match.team_a_name : match.team_b_name;
   const canAdminCorrect = adminCorrectionRoles.has(user?.role) && match?.team_a_id && match?.team_b_id;
   const canAdminResolve = isStaff && canSubmit && !canAdminCorrect;
+  const isStreamerMatch = isStreamerTournament(tournament);
 
   return (
     <div className="min-h-screen bg-obsidian py-6">
@@ -999,20 +1015,24 @@ export default function TournamentMatchRoom() {
             >
               <Check className="w-4 h-4" /> {submitting ? "Submitting..." : canStaffSubmitResult ? "Submit Result" : "Submit Score Report"}
             </button>
-            <button
-              onClick={handleRequestAdmin}
-              disabled={!isMatchParticipant || requestingAdmin}
-              className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
-            >
-              <Gavel className="w-4 h-4" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
-            </button>
-            <button
-              onClick={handleCreateDispute}
-              disabled={!isMatchParticipant || disputing}
-              className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50"
-            >
-              {disputing ? "Submitting..." : "Submit Dispute"}
-            </button>
+            {!isStreamerMatch && (
+              <button
+                onClick={handleRequestAdmin}
+                disabled={!isMatchParticipant || requestingAdmin}
+                className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+              >
+                <Gavel className="w-4 h-4" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
+              </button>
+            )}
+            {!isStreamerMatch && (
+              <button
+                onClick={handleCreateDispute}
+                disabled={!isMatchParticipant || disputing}
+                className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50"
+              >
+                {disputing ? "Submitting..." : "Submit Dispute"}
+              </button>
+            )}
             <button
               onClick={loadRoom}
               className="px-4 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/5 hover:bg-secondary transition-all"
@@ -1021,7 +1041,7 @@ export default function TournamentMatchRoom() {
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
-          {(match.admin_request_status || match.requested_admin) && (
+          {!isStreamerMatch && (match.admin_request_status || match.requested_admin) && (
             <p className="text-xs text-vapor mt-3">
               Admin request: {{
                 waiting_for_admin: "Waiting for admin",

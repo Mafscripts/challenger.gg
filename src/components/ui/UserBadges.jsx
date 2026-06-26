@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { AlertTriangle, BadgeCheck, Monitor } from "lucide-react";
 
 const specialBadgeConfig = {
@@ -42,6 +43,7 @@ export default function UserBadges({
   showForceStream = true,
   showMonitorCam = false,
   iconOnly = false,
+  streamerHref = "",
   className = "",
 }) {
   const rows = badges || userSpecialBadges(user);
@@ -71,26 +73,31 @@ export default function UserBadges({
         const config = specialBadgeConfig[badge.type];
         if (!config) return null;
         const Icon = config.icon;
+        const badgeHref = badge.type === "streamer" ? streamerHref : "";
+        const BadgeTag = badgeHref ? Link : "span";
+        const linkProps = badgeHref ? { to: badgeHref, title: "Open streamer tournaments" } : {};
         if (iconOnly) {
           return (
-            <span
+            <BadgeTag
               key={badge.type}
-              className={`group relative inline-flex shrink-0 cursor-default select-none items-center justify-center rounded-full border ${iconOnlyClass} ${config.className}`}
+              {...linkProps}
+              className={`group relative inline-flex shrink-0 select-none items-center justify-center rounded-full border ${iconOnlyClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
             >
               <Icon className={iconClass} />
               {tooltip(badge.name || config.label, config.description, Icon, config.className.split(" ").find((token) => token.startsWith("text-")) || "text-white")}
-            </span>
+            </BadgeTag>
           );
         }
         return (
-          <span
+          <BadgeTag
             key={badge.type}
-            className={`group relative inline-flex cursor-default select-none items-center gap-1 rounded-md border font-black uppercase tracking-wider ${sizeClass} ${config.className}`}
+            {...linkProps}
+            className={`group relative inline-flex select-none items-center gap-1 rounded-md border font-black uppercase tracking-wider ${sizeClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
           >
             <Icon className={iconClass} />
             {badge.name || config.label}
             {tooltip(badge.name || config.label, config.description, Icon, config.className.split(" ").find((token) => token.startsWith("text-")) || "text-white")}
-          </span>
+          </BadgeTag>
         );
       })}
       {forcedStream && (

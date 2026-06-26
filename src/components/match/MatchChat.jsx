@@ -47,6 +47,9 @@ export default function MatchChat({
   conversationId,
   matchType = "wager",
   accent = "cyan",
+  title = "Match Chat",
+  placeholder = "Type a message...",
+  disabledReason = "",
   live = false,
   pollIntervalMs = 2000,
   heightClass = "h-[600px]",
@@ -154,7 +157,7 @@ export default function MatchChat({
     <div className={`glass rounded-xl border ${tone.border} overflow-hidden flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
       <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} bg-secondary/50 border-b border-white/5 flex items-center justify-between`}>
         <h3 className="font-bold text-sm flex items-center gap-2">
-          <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> Match Chat
+          <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> {title}
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
@@ -184,13 +187,13 @@ export default function MatchChat({
           value={messageText}
           onChange={(event) => setMessageText(event.target.value)}
           maxLength={500}
-          placeholder="Type a message..."
-          disabled={!currentUser || sending}
+          placeholder={disabledReason || placeholder}
+          disabled={!currentUser || sending || Boolean(disabledReason)}
           className="flex-1 px-3 py-2 bg-background/60 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-cyan/30 disabled:opacity-50"
         />
         <button
           type="submit"
-          disabled={!messageText.trim() || !currentUser || sending}
+          disabled={!messageText.trim() || !currentUser || sending || Boolean(disabledReason)}
           className={`p-2 rounded-lg bg-secondary border ${tone.border} ${tone.text} hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
           title="Send message"
         >

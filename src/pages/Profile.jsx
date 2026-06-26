@@ -15,6 +15,7 @@ import {
   Gamepad2,
   Globe2,
   Medal,
+  Monitor,
   Package,
   Pencil,
   Save,
@@ -214,6 +215,7 @@ export default function Profile() {
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [avatarDraft, setAvatarDraft] = useState("");
+  const [bioDraft, setBioDraft] = useState("");
   const [nameColorDraft, setNameColorDraft] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -276,6 +278,7 @@ export default function Profile() {
       const loadedProfile = profileRows[0] || null;
       setProfile(loadedProfile);
       setAvatarDraft(loadedProfile?.avatar_url || userRow?.avatar_url || "");
+      setBioDraft(loadedProfile?.bio || "");
       setNameColorDraft(userRow?.display_name_color || "");
       setRankedStats(rankedRows[0] || null);
       setXpStats(xpRows[0] || null);
@@ -311,6 +314,7 @@ export default function Profile() {
   const badges = useMemo(() => user?.badges || [], [user]);
   const isOwnProfile = Boolean(currentUser?.id && user?.id && currentUser.id === user.id);
   const isVerifiedPlayer = Boolean(user?.verified_player || user?.is_verified_player || badges.some((badge) => badge.type === "verified_player"));
+  const hasStreamerBadge = Boolean(user?.streamer_badge || user?.is_streamer || badges.some((badge) => badge.type === "streamer"));
   const activeNameColor = isOwnProfile ? nameColorDraft : (user?.display_name_color || "");
   const selectedNameColor = verifiedNameColors.some((color) => color.value === activeNameColor)
     ? activeNameColor
@@ -370,6 +374,7 @@ export default function Profile() {
         username: user.username,
         handle: user.handle || user.username,
         avatar_url: avatarDraft.trim(),
+        bio: bioDraft.trim().slice(0, 500),
       };
       if (profile?.id) nextProfile = await base44.entities.PlayerProfile.update(profile.id, profilePatch);
       else nextProfile = await base44.entities.PlayerProfile.create(profilePatch);
@@ -380,9 +385,9 @@ export default function Profile() {
       });
       setProfile(nextProfile);
       setUser((current) => ({ ...current, ...nextUser }));
-      setProfileResult({ success: true, message: "Profile visuals saved." });
+      setProfileResult({ success: true, message: "Profile saved." });
     } catch (error) {
-      setProfileResult({ success: false, message: error.message || "Could not save profile visuals." });
+      setProfileResult({ success: false, message: error.message || "Could not save profile." });
     } finally {
       setProfileSaving(false);
     }
@@ -452,7 +457,7 @@ export default function Profile() {
                       {name}
                     </h1>
                     <RoleBadge role={user.role || "user"} />
-                    <UserBadges user={user} />
+                    <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
                     {user.is_premium && (
                       <span className="inline-flex items-center gap-1 rounded-md border border-orange/25 bg-orange/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-orange">
                         <Crown className="h-3 w-3" /> Premium
@@ -479,6 +484,11 @@ export default function Profile() {
                         </span>
                       )
                     ))}
+                    {isOwnProfile && hasStreamerBadge && (
+                      <Link to="/streamer-tournaments" className="inline-flex items-center gap-1 rounded-md border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-500/20">
+                        <Monitor className="h-3 w-3" /> Create Streamer Tournament
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
@@ -583,6 +593,18 @@ export default function Profile() {
                       </select>
                     </label>
                   )}
+                  <label className="space-y-1 md:col-span-2 xl:col-span-3">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Bio</span>
+                    <textarea
+                      value={bioDraft}
+                      onChange={(event) => setBioDraft(event.target.value)}
+                      maxLength={500}
+                      rows={4}
+                      placeholder="Tell players about your playstyle, team role, stream, or tournament history."
+                      className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
+                    />
+                    <span className="block text-right text-[10px] font-semibold text-vapor">{bioDraft.length}/500</span>
+                  </label>
                 </div>
                 <button
                   onClick={handleSaveProfileVisuals}

@@ -43,8 +43,20 @@ const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "tr
 const tournamentRewardCategories = new Set(["knife", "weapon_skin", "trophy"]);
 const defaultTournamentSndMaps = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const defaultTournamentHpMaps = ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"];
+const defaultTournamentOverloadMaps = ["Scar", "Gridlock", "Den", "Exposure"];
 const defaultTournamentSndMapsText = defaultTournamentSndMaps.join("\n");
 const defaultTournamentHpMapsText = defaultTournamentHpMaps.join("\n");
+const defaultTournamentOverloadMapsText = defaultTournamentOverloadMaps.join("\n");
+const tournamentGameModeOptions = [
+  { value: "bo1_snd", label: "BO1 SND - 1 and done" },
+  { value: "snd", label: "BO3 Search & Destroy" },
+  { value: "hp", label: "BO3 Hardpoint" },
+  { value: "overload", label: "BO3 Overload" },
+  { value: "snd_hp_snd", label: "BO3 SND / HP / SND" },
+  { value: "bo3_hp_overload_snd", label: "BO3 HP / Overload / SND" },
+  { value: "bo5_hp_overload_snd_hp_snd", label: "BO5 HP / Overload / SND / HP / SND" },
+];
+const tournamentTeamSizeOptions = Array.from({ length: 8 }, (_, index) => `${index + 1}v${index + 1}`);
 const userBadgeOptions = [
   { value: "none", label: "No special badge", types: [] },
   { value: "verified_player", label: "Verified player", types: ["verified_player"] },
@@ -98,6 +110,7 @@ const defaultTournamentForm = {
   second_place_prize: "0",
   snd_maps: defaultTournamentSndMapsText,
   hp_maps: defaultTournamentHpMapsText,
+  overload_maps: defaultTournamentOverloadMapsText,
   max_teams: "8",
   status: "open",
   registration_end: "",
@@ -870,6 +883,7 @@ export default function Admin() {
     const secondPlacePrize = Number(tournamentForm.second_place_prize || 0);
     const sndMaps = parseMapList(tournamentForm.snd_maps, defaultTournamentSndMaps);
     const hpMaps = parseMapList(tournamentForm.hp_maps, defaultTournamentHpMaps);
+    const overloadMaps = parseMapList(tournamentForm.overload_maps, defaultTournamentOverloadMaps);
     return {
       name: tournamentForm.name.trim(),
       image_url: tournamentForm.image_url.trim(),
@@ -885,6 +899,7 @@ export default function Admin() {
       map_pools: {
         snd: sndMaps,
         hp: hpMaps,
+        overload: overloadMaps,
       },
       maps: sndMaps,
       max_teams: Number(tournamentForm.max_teams || 0),
@@ -956,6 +971,7 @@ export default function Admin() {
       second_place_prize: tournamentPlacementPrizeValue(tournament, 2),
       snd_maps: mapListText(tournament.map_pools?.snd || tournament.snd_map_pool || tournament.snd_maps || tournament.maps, defaultTournamentSndMaps),
       hp_maps: mapListText(tournament.map_pools?.hp || tournament.hp_map_pool || tournament.hp_maps, defaultTournamentHpMaps),
+      overload_maps: mapListText(tournament.map_pools?.overload || tournament.overload_map_pool || tournament.overload_maps, defaultTournamentOverloadMaps),
       max_teams: String(tournament.max_teams ?? 8),
       status: tournament.status || "open",
       registration_end: tournament.registration_end ? new Date(tournament.registration_end).toISOString().slice(0, 16) : "",
@@ -1926,10 +1942,9 @@ export default function Admin() {
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode: event.target.value }))}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       >
-                        <option value="snd_hp_snd">SND / HP / SND BO3</option>
-                        <option value="snd">Search & Destroy</option>
-                        <option value="overload">Overload</option>
-                        <option value="hp">Hardpoint</option>
+                        {tournamentGameModeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
                       </select>
                     </label>
                     <label className="space-y-1">
@@ -1939,7 +1954,7 @@ export default function Admin() {
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, team_size: event.target.value }))}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       >
-                        {["1v1", "2v2", "3v3", "4v4"].map((size) => <option key={size} value={size}>{size}</option>)}
+                        {tournamentTeamSizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
                       </select>
                     </label>
                     <label className="space-y-1">
@@ -2044,7 +2059,7 @@ export default function Admin() {
                       </div>
                     </div>
                   )}
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">SND maps</span>
                       <textarea
@@ -2059,6 +2074,15 @@ export default function Admin() {
                       <textarea
                         value={tournamentForm.hp_maps}
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, hp_maps: event.target.value }))}
+                        rows={5}
+                        className="w-full resize-y px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Overload maps</span>
+                      <textarea
+                        value={tournamentForm.overload_maps}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, overload_maps: event.target.value }))}
                         rows={5}
                         className="w-full resize-y px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       />

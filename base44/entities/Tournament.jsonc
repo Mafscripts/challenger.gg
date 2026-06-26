@@ -17,7 +17,10 @@
     "game_mode": {
       "type": "string",
       "enum": [
+        "bo1_snd",
         "snd_hp_snd",
+        "bo3_hp_overload_snd",
+        "bo5_hp_overload_snd_hp_snd",
         "snd",
         "overload",
         "hp"
@@ -47,7 +50,11 @@
         "1v1",
         "2v2",
         "3v3",
-        "4v4"
+        "4v4",
+        "5v5",
+        "6v6",
+        "7v7",
+        "8v8"
       ],
       "title": "Team Size"
     },
@@ -139,6 +146,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "overload": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "title": "Tournament Map Pools"
@@ -207,6 +220,107 @@
       "type": "boolean",
       "default": false,
       "title": "Premium Only Tournament"
+    },
+    "tournament_type": {
+      "type": "string",
+      "title": "Tournament Type"
+    },
+    "source": {
+      "type": "string",
+      "title": "Tournament Source"
+    },
+    "is_streamer_tournament": {
+      "type": "boolean",
+      "default": false,
+      "title": "Streamer Tournament"
+    },
+    "host_id": {
+      "type": "string",
+      "title": "Streamer Host User ID"
+    },
+    "host_name": {
+      "type": "string",
+      "title": "Streamer Host Name"
+    },
+    "streamer_chat_enabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "Streamer Chat Enabled"
+    },
+    "streamer_moderator_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Streamer Moderator IDs"
+    },
+    "banned_user_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Streamer Lobby Banned User IDs"
+    },
+    "banned_users": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "title": "Streamer Lobby Banned Users"
+    },
+    "switcheroo_enabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "Switcheroo Enabled"
+    },
+    "switch_format": {
+      "type": "string",
+      "enum": [
+        "2v2",
+        "4v4"
+      ],
+      "title": "Switcheroo Format"
+    },
+    "switch_entries": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "title": "Switcheroo Manual Entries"
+    },
+    "switch_teams": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "title": "Switcheroo Generated Teams"
+    },
+    "switch_bracket_generated": {
+      "type": "boolean",
+      "default": false,
+      "title": "Switcheroo Bracket Generated"
+    },
+    "streamer_maps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Streamer Map Rotation"
+    },
+    "bracket_generated": {
+      "type": "boolean",
+      "default": false,
+      "title": "Bracket Generated"
+    },
+    "bracket_generated_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Bracket Generated Date"
+    },
+    "registration_locked": {
+      "type": "boolean",
+      "default": false,
+      "title": "Registration Locked"
     }
   },
   "required": [
