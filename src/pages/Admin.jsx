@@ -680,6 +680,52 @@ export default function Admin() {
     }
   };
 
+  const handleSetTemporaryPassword = async (targetUser) => {
+    if (!canManageWallets(currentRole)) {
+      toast({ title: "Not allowed", description: "Admin or higher is required to manage passwords.", variant: "destructive" });
+      return;
+    }
+    const temporaryPassword = window.prompt(
+      `Enter a temporary password for ${userName(targetUser)} (minimum 8 characters):`,
+      "",
+    );
+    if (temporaryPassword === null) return;
+    if (temporaryPassword.length < 8) {
+      toast({ title: "Password too short", description: "Use at least 8 characters.", variant: "destructive" });
+      return;
+    }
+    const confirmation = window.prompt("Enter the same temporary password again:", "");
+    if (confirmation === null) return;
+    if (temporaryPassword !== confirmation) {
+      toast({ title: "Passwords do not match", variant: "destructive" });
+      return;
+    }
+
+    setBusyId(`${targetUser.id}:password`);
+    try {
+      const response = await base44.functions.invoke("setUserTemporaryPassword", {
+        user_id: targetUser.id,
+        temporary_password: temporaryPassword,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Password update failed", description: response.data?.error || "Could not set temporary password.", variant: "destructive" });
+        return;
+      }
+      toast({
+        title: "Temporary password set",
+        description: `${userName(targetUser)} must create a new password after logging in.`,
+      });
+      setData((prev) => ({
+        ...prev,
+        users: prev.users.map((row) => (row.id === targetUser.id ? { ...row, ...response.data.user } : row)),
+      }));
+    } catch (error) {
+      toast({ title: "Password update failed", description: error.message || "Could not set temporary password.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleModerateUser = async (targetUser, action, duration) => {
     if (!canAccessAdminPanel(currentRole)) {
       toast({ title: "Not allowed", description: "Moderator or higher is required.", variant: "destructive" });
@@ -1500,6 +1546,19 @@ export default function Admin() {
                                 <button onClick={() => openWalletAdjustment(user, "credits")} className="text-xs text-green hover:underline">Add Credits</button>
                                 <button onClick={() => openWalletAdjustment(user, "money")} className="text-xs text-cyan hover:underline">Add Money</button>
                               </>
+                            )}
+                            {canManageWallets(currentRole) && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetTemporaryPassword(user)}
+                                disabled={busyId === `${user.id}:password`}
+                                className="inline-flex items-center gap-1 text-xs text-pink-400 hover:underline disabled:opacity-50"
+                              >
+                                {busyId === `${user.id}:password`
+                                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                                  : <KeyRound className="h-3 w-3" />}
+                                Set Password
+                              </button>
                             )}
                             <button onClick={() => handleModerateUser(user, "warning")} className="text-xs text-yellow-400 hover:underline">Warn</button>
                             <button onClick={() => handleModerateUser(user, "suspension", "24h")} className="text-xs text-orange hover:underline">Suspend 24h</button>

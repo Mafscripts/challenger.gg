@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Award, Clock, Globe, Plus, Swords, Trophy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import CompetitionHero from "@/components/match/CompetitionHero";
 import RankBadge from "@/components/ui/RankBadge";
 import { toast } from "@/components/ui/use-toast";
 import {
@@ -124,18 +125,25 @@ export default function Ranked() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight">Ranked</h1>
-            <p className="text-vapor text-sm mt-1">Season 1 competitive ladder</p>
-          </div>
+        <CompetitionHero
+          eyebrow="Season 1 Competitive Ladder"
+          title="Ranked"
+          description="Open or accept a ranked lobby, complete the map flow, and report the result from a consistent competitive match room."
+          action={
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-cyan text-background font-bold text-sm rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider"
           >
             <Plus className="w-4 h-4" /> Create Ranked Match
           </button>
-        </div>
+          }
+          stats={[
+            { label: "Current Rank", value: rank.name, icon: Trophy, color: "text-cyan" },
+            { label: "Current ELO", value: elo.toLocaleString(), icon: Swords, color: "text-green" },
+            { label: "Open Matches", value: rankedMatches.length, icon: Globe, color: "text-orange" },
+            { label: "Season Wins", value: currentStats?.wins || 0, icon: Award, color: "text-yellow-400" },
+          ]}
+        />
 
         <div className="glass rounded-xl border border-white/5 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">

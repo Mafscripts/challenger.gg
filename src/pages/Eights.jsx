@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import CompetitionHero from "@/components/match/CompetitionHero";
 import { toast } from "@/components/ui/use-toast";
 
 const modes = ["All", "1v1", "2v2", "3v3", "4v4"];
@@ -26,6 +27,7 @@ export default function Eights() {
   const [joinTeamByLobby, setJoinTeamByLobby] = useState({});
   const [stats, setStats] = useState({ activeLobbies: 0, playersQueued: 0, matchesLive: 0 });
   const [joiningId, setJoiningId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadLobbies();
@@ -33,6 +35,7 @@ export default function Eights() {
 
   const loadLobbies = async () => {
     try {
+      setLoading(true);
       const currentUser = await base44.auth.me().catch(() => null);
       setUser(currentUser);
       if (currentUser?.id) {
@@ -61,6 +64,7 @@ export default function Eights() {
 
       setLobbies(lobbiesWithParticipants.map(({ wager, participantCount }) => ({
         id: wager.id,
+        hostId: wager.host_id,
         host: wager.host_name || "Host unavailable",
         teamName: wager.host_team_name || wager.host_name || "Host unavailable",
         hostSlug: wager.host_name || wager.host_id || "",
@@ -78,6 +82,9 @@ export default function Eights() {
       });
     } catch (error) {
       console.error("Failed to load 8s lobbies:", error);
+      toast({ title: "Could not load lobbies", description: error.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -130,21 +137,25 @@ export default function Eights() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight">8s Lobbies</h1>
-            <p className="text-vapor text-sm mt-1">Find a lobby or create your own</p>
-          </div>
-          <div className="flex items-center gap-3">
+        <CompetitionHero
+          eyebrow="Season 1 Match Hub"
+          title="8s Lobbies"
+          description="Find an open lobby, bring your roster, and move straight into the same competitive match-room flow used by tournaments."
+          action={
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider"
             >
               <Plus className="w-3.5 h-3.5" /> Create Lobby
             </button>
-          </div>
-        </div>
+          }
+          stats={[
+            { label: "Active Lobbies", value: stats.activeLobbies, icon: Gamepad2, color: "text-cyan" },
+            { label: "Players Queued", value: stats.playersQueued, icon: Users, color: "text-green" },
+            { label: "Matches Live", value: stats.matchesLive, icon: Zap, color: "text-orange" },
+            { label: "Queue Type", value: "Open", icon: Clock, color: "text-purple-400" },
+          ]}
+        />
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 mb-6">
@@ -182,24 +193,6 @@ export default function Eights() {
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: "Active Lobbies", value: stats.activeLobbies, icon: Gamepad2, color: "text-cyan" },
-            { label: "Players Queued", value: stats.playersQueued, icon: Users, color: "text-green" },
-            { label: "Matches Live", value: stats.matchesLive, icon: Zap, color: "text-orange" },
-            { label: "Queue Type", value: "Open", icon: Clock, color: "text-purple-400" },
-          ].map((s, i) => (
-            <div key={i} className="glass rounded-lg px-4 py-3 flex items-center gap-3 border border-white/5">
-              <s.icon className={`w-4 h-4 ${s.color}`} />
-              <div>
-                <p className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</p>
-                <p className="text-[10px] text-vapor uppercase tracking-wider">{s.label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Lobby List */}
         <div className="glass rounded-xl border border-white/5 overflow-hidden">
           <div className="hidden md:grid grid-cols-7 gap-4 px-5 py-3 border-b border-white/5 text-xs text-vapor uppercase tracking-wider font-semibold">
@@ -212,7 +205,9 @@ export default function Eights() {
             <span>Status</span>
           </div>
           <div className="divide-y divide-white/5">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="px-5 py-8 text-center text-vapor">Loading 8s lobbies...</div>
+            ) : filtered.length === 0 ? (
               <div className="px-5 py-8 text-center text-vapor">No 8s lobbies available.</div>
             ) : filtered.map((lobby) => (
               <motion.div
@@ -238,7 +233,11 @@ export default function Eights() {
                     lobby.status === "Almost Full" ? "text-orange" :
                     lobby.status === "In Progress" ? "text-red-400" : "text-cyan"
                   }`}>{lobby.status}</span>
-                  {lobby.status !== "In Progress" && lobby.players.split("/")[0] !== lobby.players.split("/")[1] && (
+                  {lobby.hostId === user?.id ? (
+                    <Link to={`/8s-match/${lobby.id}`} className="ml-3 px-3 py-1.5 bg-secondary text-cyan text-xs font-bold rounded hover:bg-white/10 transition-all">
+                      Open Room
+                    </Link>
+                  ) : lobby.status !== "In Progress" && lobby.players.split("/")[0] !== lobby.players.split("/")[1] && (
                     <div className="ml-3 flex flex-col gap-2">
                       {rosterSize(lobby.mode) > 1 && (
                         <>
@@ -274,9 +273,10 @@ export default function Eights() {
           onClose={() => setIsCreateModalOpen(false)}
           user={user}
           mode="8s"
-          onCreate={() => {
+          onCreate={(result) => {
             setIsCreateModalOpen(false);
             loadLobbies();
+            if (result?.wager_id) navigate(`/8s-match/${result.wager_id}`);
           }}
         />
       </div>

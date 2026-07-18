@@ -8,6 +8,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import CompetitionHero from "@/components/match/CompetitionHero";
 import MapVetoModal from "@/components/match/MapVetoModal";
 
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
@@ -182,38 +183,25 @@ export default function Wagers() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight">Wagers</h1>
-            <p className="text-vapor text-sm mt-1">Put your skills on the line</p>
-          </div>
+        <CompetitionHero
+          eyebrow="Season 1 Match Hub"
+          title="Wagers"
+          description="Put your skills on the line with a clear lobby, roster and match-room flow consistent with tournaments."
+          action={
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-green text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-green/25 transition-all uppercase tracking-wider"
           >
             <Plus className="w-3.5 h-3.5" /> Create Wager
           </button>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
+          }
+          stats={[
             { label: "Active Wagers", value: wagers.length.toString(), icon: Zap, color: "text-orange" },
             { label: "Your Balance", value: user ? `$${(user.wallet_balance || 0).toFixed(2)}` : "$0", icon: DollarSign, color: "text-green" },
             { label: "Premium", value: hasActivePremium ? "Yes" : "No", icon: Star, color: hasActivePremium ? "text-yellow-400" : "text-vapor" },
             { label: "Fee Rate", value: hasActivePremium ? "5%" : "10%", icon: TrendingUp, color: "text-cyan" },
-          ].map((s, i) => (
-            <div 
-              key={i} 
-              className="glass rounded-lg px-4 py-3 border border-white/5"
-            >
-              <s.icon className={`w-4 h-4 ${s.color} mb-2`} />
-              <p className={`text-xl font-bold font-mono ${s.color}`}>{s.value}</p>
-              <p className="text-[10px] text-vapor uppercase tracking-wider">{s.label}</p>
-            </div>
-          ))}
-        </div>
+          ]}
+        />
 
         {/* Tabs */}
         <div className="flex items-center gap-4 mb-6 border-b border-white/5 pb-4">
@@ -267,7 +255,11 @@ export default function Wagers() {
                     <span className="text-sm font-mono font-bold text-cyan">BO{w.best_of || 1}</span>
                     <span className={`text-xs font-semibold text-green`}>{w.status}</span>
                     <div>
-                      {w.status === "open" && (
+                      {w.status === "open" && w.host_id === user?.id ? (
+                        <span className="inline-flex rounded border border-orange/20 bg-orange/10 px-4 py-1.5 text-xs font-bold text-orange">
+                          Waiting for Opponent
+                        </span>
+                      ) : w.status === "open" && (
                         <div className="flex flex-col gap-2">
                           {rosterSize(w.team_size) > 1 && (
                             <>
@@ -343,9 +335,12 @@ export default function Wagers() {
           onClose={() => setIsCreateModalOpen(false)}
           user={user}
           mode="wager"
-          onCreate={() => {
+          onCreate={(result) => {
             loadData();
             setIsCreateModalOpen(false);
+            if (result?.wager_id) {
+              toast({ title: "Wager posted", description: "The match room opens after another player accepts your wager." });
+            }
           }}
         />
 

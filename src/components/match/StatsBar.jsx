@@ -1,7 +1,7 @@
 import React from "react";
 import { Trophy, TrendingUp, Flame, DollarSign, Star, Users, Shield } from "lucide-react";
 
-export default function StatsBar({ teamAPlayers, teamBPlayers, wager }) {
+export default function StatsBar({ teamAPlayers, teamBPlayers }) {
   if (!teamAPlayers || teamAPlayers.length === 0) return null;
   
   const safeTeamB = teamBPlayers || [];
@@ -51,7 +51,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers, wager }) {
           <Trophy className="w-3.5 h-3.5 text-yellow-400" />
           <p className="text-[9px] text-vapor uppercase">Top Earner</p>
         </div>
-        <p className="text-xs font-bold truncate">{topEarner.full_name}</p>
+        <p className="text-xs font-bold truncate">{topEarner.full_name || topEarner.username || topEarner.user_name || "Player"}</p>
         <p className="text-xs font-bold text-green">${topEarner.total_wager_earnings?.toLocaleString()}</p>
       </div>
 
@@ -60,7 +60,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers, wager }) {
           <TrendingUp className="w-3.5 h-3.5 text-cyan" />
           <p className="text-[9px] text-vapor uppercase">Win Rate</p>
         </div>
-        <p className="text-xs font-bold truncate">{topWinRate.full_name}</p>
+        <p className="text-xs font-bold truncate">{topWinRate.full_name || topWinRate.username || topWinRate.user_name || "Player"}</p>
         <p className="text-xs font-bold text-cyan">{((topWinRate.wager_wins || 0) / ((topWinRate.wager_wins || 0) + (topWinRate.wager_losses || 0) || 1) * 100).toFixed(1)}%</p>
       </div>
 
@@ -69,7 +69,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers, wager }) {
           <Flame className="w-3.5 h-3.5 text-orange" />
           <p className="text-[9px] text-vapor uppercase">Streak</p>
         </div>
-        <p className="text-xs font-bold truncate">{topStreak.full_name}</p>
+        <p className="text-xs font-bold truncate">{topStreak.full_name || topStreak.username || topStreak.user_name || "Player"}</p>
         <p className="text-xs font-bold text-orange">{topStreak.current_win_streak}W</p>
       </div>
 
@@ -78,7 +78,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers, wager }) {
           <DollarSign className="w-3.5 h-3.5 text-purple-400" />
           <p className="text-[9px] text-vapor uppercase">Biggest</p>
         </div>
-        <p className="text-xs font-bold truncate">{biggestWin.full_name}</p>
+        <p className="text-xs font-bold truncate">{biggestWin.full_name || biggestWin.username || biggestWin.user_name || "Player"}</p>
         <p className="text-xs font-bold text-purple-400">${biggestWin.biggest_wager_win}</p>
       </div>
 
@@ -105,7 +105,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers, wager }) {
           <Star className="w-3.5 h-3.5 text-yellow-400" />
           <p className="text-[9px] text-vapor uppercase">Top Level</p>
         </div>
-        <p className="text-xs font-bold truncate">{topXP.full_name}</p>
+        <p className="text-xs font-bold truncate">{topXP.full_name || topXP.username || topXP.user_name || "Player"}</p>
         <p className="text-xs font-bold text-yellow-400">LVL {topXP.xp_level}</p>
       </div>
 

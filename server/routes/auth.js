@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "node:crypto";
 import { prisma } from "../prisma.js";
 import {
   createUserWithPassword,
@@ -8,9 +9,11 @@ import {
   signUser,
   updateUserIdentity,
   verifyPassword,
+  hashPassword,
 } from "../auth.js";
 import { requireAuth } from "../middleware/auth.js";
 import { dataForEntity } from "../entity.js";
+import { isEmailConfigured, sendPasswordResetEmail } from "../email.js";
 
 const router = Router();
 
@@ -78,6 +81,7 @@ router.post("/login", async (req, res, next) => {
     res.json({
       access_token: signUser(loginUser),
       user: bootstrap.user,
+      password_change_required: Boolean(loginUser.metadata?.force_password_change),
     });
   } catch (error) {
     next(error);
@@ -155,8 +159,127 @@ router.post("/resend-otp", async (req, res, next) => {
   }
 });
 
-router.post("/reset-password", (_req, res) => {
-  res.status(501).json({ error: "Password reset email delivery is not configured yet." });
+const resetTokenHash = (token) => crypto.createHash("sha256").update(token).digest("hex");
+
+const resetAppUrl = (req) => {
+  const configured = process.env.APP_URL || process.env.FRONTEND_URL || process.env.CORS_ORIGIN;
+  const candidate = configured || req.get("origin") || `${req.protocol}://${req.get("host")}`;
+  try {
+    const url = new URL(candidate);
+    return ["http:", "https:"].includes(url.protocol) ? url.origin : null;
+  } catch {
+    return null;
+  }
+};
+
+router.post("/reset-password-request", async (req, res, next) => {
+  try {
+    if (!isEmailConfigured()) {
+      return res.status(503).json({ error: "Password reset email delivery is not configured" });
+    }
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
+
+    if (user) {
+      const token = crypto.randomBytes(32).toString("hex");
+      const metadata = safeUserMetadata(user.metadata);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: dataForEntity("User", {
+          password_reset_token_hash: resetTokenHash(token),
+          password_reset_expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        }, metadata),
+      });
+
+      const appUrl = resetAppUrl(req);
+      if (!appUrl) {
+        const error = new Error("Password reset URL is not configured");
+        error.status = 503;
+        throw error;
+      }
+      const delivery = await sendPasswordResetEmail({
+        to: user.email,
+        resetUrl: `${appUrl}/reset-password?token=${encodeURIComponent(token)}`,
+      });
+      if (!delivery.sent) {
+        const error = new Error("Password reset email delivery is not configured");
+        error.status = 503;
+        throw error;
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/reset-password", async (req, res, next) => {
+  try {
+    const token = String(req.body?.resetToken || "");
+    const newPassword = String(req.body?.newPassword || "");
+    if (!token || newPassword.length < 6) {
+      return res.status(400).json({ error: "A valid reset link and a password of at least 6 characters are required" });
+    }
+
+    const tokenHash = resetTokenHash(token);
+    const users = await prisma.user.findMany({
+      where: { metadata: { path: ["password_reset_token_hash"], equals: tokenHash } },
+      take: 1,
+    });
+    const user = users[0];
+    const metadata = safeUserMetadata(user?.metadata);
+    const expiresAt = Date.parse(metadata.password_reset_expires_at || "");
+    if (!user || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      return res.status(400).json({ error: "This password reset link is invalid or has expired" });
+    }
+
+    delete metadata.password_reset_token_hash;
+    delete metadata.password_reset_expires_at;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password_hash: await hashPassword(newPassword),
+        metadata,
+      },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/change-password", requireAuth, async (req, res, next) => {
+  try {
+    const currentPassword = String(req.body?.currentPassword || "");
+    const newPassword = String(req.body?.newPassword || "");
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user?.password_hash || !await verifyPassword(currentPassword, user.password_hash)) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "New password must be at least 8 characters" });
+    }
+    if (await verifyPassword(newPassword, user.password_hash)) {
+      return res.status(400).json({ error: "New password must be different from the temporary password" });
+    }
+
+    const metadata = safeUserMetadata(user.metadata);
+    delete metadata.force_password_change;
+    delete metadata.temporary_password_set_by;
+    delete metadata.temporary_password_set_by_name;
+    delete metadata.temporary_password_set_date;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password_hash: await hashPassword(newPassword),
+        metadata,
+      },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default router;

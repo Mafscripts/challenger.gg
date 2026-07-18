@@ -164,7 +164,57 @@ const buildVerificationMessage = ({ from, to, code }) => {
   ].join("\r\n");
 };
 
-export const sendVerificationEmail = async ({ to, code }) => {
+const buildResetPasswordMessage = ({ from, to, resetUrl }) => {
+  const safeFrom = sanitizeHeader(from);
+  const safeTo = sanitizeHeader(to);
+  const safeResetUrl = String(resetUrl).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const subject = "Reset your Challenger.gg password";
+  const boundary = `challenger-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const text = [
+    "A password reset was requested for your Challenger.gg account.",
+    "",
+    resetUrl,
+    "",
+    "This link expires in 30 minutes and can only be used once.",
+    "If you did not request this, you can ignore this email.",
+  ].join("\r\n");
+  const html = [
+    "<div style=\"font-family:Arial,sans-serif;line-height:1.5;color:#111827\">",
+    "<h2>Reset your Challenger.gg password</h2>",
+    "<p>A password reset was requested for your account.</p>",
+    `<p><a href="${safeResetUrl}" style="display:inline-block;padding:12px 18px;background:#06b6d4;color:#081018;text-decoration:none;border-radius:6px;font-weight:700">Reset password</a></p>`,
+    "<p>This link expires in 30 minutes and can only be used once.</p>",
+    "<p>If you did not request this, you can ignore this email.</p>",
+    "</div>",
+  ].join("");
+
+  return [
+    `From: ${safeFrom}`,
+    `To: ${safeTo}`,
+    `Subject: ${subject}`,
+    `Date: ${new Date().toUTCString()}`,
+    `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@challenger.gg>`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    text,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    html,
+    "",
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+};
+
+const sendEmail = async ({ to, buildMessage }) => {
   const config = smtpConfig();
   if (!config) {
     return { sent: false, reason: "not_configured" };
@@ -188,7 +238,7 @@ export const sendVerificationEmail = async ({ to, code }) => {
     await sendCommand(socket, `MAIL FROM:<${extractAddress(config.from)}>`, [250]);
     await sendCommand(socket, `RCPT TO:<${extractAddress(to)}>`, [250, 251]);
     await sendCommand(socket, "DATA", [354]);
-    socket.write(`${dotStuff(buildVerificationMessage({ from: config.from, to, code }))}\r\n.\r\n`);
+    socket.write(`${dotStuff(buildMessage(config.from))}\r\n.\r\n`);
     expect(await readResponse(socket), [250], "DATA");
     await sendCommand(socket, "QUIT", [221]).catch(() => null);
     return { sent: true, provider: "smtp" };
@@ -196,3 +246,13 @@ export const sendVerificationEmail = async ({ to, code }) => {
     socket.destroy();
   }
 };
+
+export const sendVerificationEmail = ({ to, code }) => sendEmail({
+  to,
+  buildMessage: (from) => buildVerificationMessage({ from, to, code }),
+});
+
+export const sendPasswordResetEmail = ({ to, resetUrl }) => sendEmail({
+  to,
+  buildMessage: (from) => buildResetPasswordMessage({ from, to, resetUrl }),
+});

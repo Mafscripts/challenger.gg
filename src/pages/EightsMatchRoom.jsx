@@ -1,19 +1,74 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
-  AlertTriangle, Clock, Check,
-  AlertCircle
+  AlertTriangle, Clock, Check, AlertCircle, Flag, Map as MapIcon,
+  RefreshCw, Shield, Swords, Trophy
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-import StatsBar from "@/components/match/StatsBar";
-import TeamRoster from "@/components/match/TeamRoster";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
-import HeadToHead from "@/components/match/HeadToHead";
-import RecentForm from "@/components/match/RecentForm";
-import TrophyCase from "@/components/match/TrophyCase";
 import MatchChat from "@/components/match/MatchChat";
+import UserBadges from "@/components/ui/UserBadges";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
+
+const playerName = (player) => player?.full_name || player?.display_name || player?.username || player?.user_name || "Unknown player";
+const statusLabel = (status) => String(status || "open").replace(/_/g, " ");
+
+function RoomTeamCard({ label, tone, name, players, score, setScore, disabled, host }) {
+  const cyan = tone === "cyan";
+  const accent = cyan ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
+
+  return (
+    <section className={`glass rounded-xl border p-5 ${accent}`}>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</p>
+          <div className="mt-2 flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/5 bg-background/40">
+              <Shield className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="truncate text-xl font-black">{name || "Open slot"}</h2>
+              <p className="text-xs text-vapor">{host ? "Lobby host" : name ? "Challenger" : "Waiting for opponent"}</p>
+            </div>
+          </div>
+        </div>
+        <div className="shrink-0 rounded-xl border border-white/5 bg-background/35 p-2">
+          <label className="mb-1 block text-center text-[9px] font-black uppercase tracking-wider text-vapor">Score</label>
+          <input
+            aria-label={`${label} score`}
+            type="number"
+            min="0"
+            value={score}
+            disabled={disabled || !name}
+            onChange={(event) => setScore(Math.max(0, Number(event.target.value)))}
+            className={`h-14 w-20 rounded-lg border bg-background/50 text-center font-mono text-3xl font-black outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${cyan ? "border-cyan/30 text-cyan focus:ring-cyan/20" : "border-orange/30 text-orange focus:ring-orange/20"}`}
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-white/5 pt-4">
+        <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-vapor">Players</p>
+        {players.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-xs text-vapor">Roster unavailable</p>
+        ) : (
+          <div className="space-y-2">
+            {players.map((player, index) => (
+              <div key={player.id || player.user_id || index} className="flex items-center gap-3 rounded-lg border border-white/5 bg-background/30 px-3 py-2">
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-[10px] font-black ${cyan ? "bg-cyan/15 text-cyan" : "bg-orange/15 text-orange"}`}>
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-bold">{playerName(player)}</span>
+                <UserBadges user={player} badges={player.badges || []} size="xs" iconOnly showMonitorCam />
+                <span className="text-[10px] font-mono text-vapor">{player.wager_wins || 0}-{player.wager_losses || 0}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export default function EightsMatchRoom() {
   const { id } = useParams();
@@ -217,145 +272,110 @@ export default function EightsMatchRoom() {
     );
   }
 
+  const isParticipant = user?.id === wager.host_id || user?.id === wager.challenger_id;
+  const isComplete = wager.status === "completed";
+  const canSubmit = isParticipant && Boolean(wager.challenger_id) && !isComplete;
+  const predictedWinner = scoreA === scoreB ? null : scoreA > scoreB ? wager.host_name : wager.challenger_name;
+
   return (
     <div className="min-h-screen bg-obsidian py-6">
-      <div className="max-w-[1800px] mx-auto px-4 lg:px-6">
-        
-        {/* Match Header */}
+      <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
         <div className="glass rounded-xl border border-orange/20 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-            
-            {/* Left: Match Info */}
-            <div className="w-full lg:w-auto">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
               <div className="flex items-center gap-3 mb-2">
-                <span className="w-3 h-3 rounded-full bg-green animate-pulse" />
-                <span className="text-xs font-mono font-semibold text-orange uppercase tracking-wider">8s Match</span>
+                <Swords className="h-5 w-5 text-orange" />
+                <span className="text-xs font-mono font-semibold text-orange uppercase tracking-wider">
+                  8s Match - {statusLabel(wager.status)}
+                </span>
               </div>
-              <p className="text-sm text-vapor font-mono">
-                {wager.team_size} {wager.game_mode_display} - {wager.final_map_name || "Map pending"}
-              </p>
-              <p className="text-[10px] text-vapor font-mono mt-1">Match ID: #{wager.id?.slice(-8)}</p>
+              <h1 className="text-2xl font-black">{wager.host_name || "Team Alpha"} vs {wager.challenger_name || "Open slot"}</h1>
+              <p className="mt-1 text-sm text-vapor">{wager.team_size} {wager.game_mode_display || wager.game_mode} · Match #{wager.id?.slice(-8)}</p>
             </div>
-
-            {/* Center: Scoreboard */}
-            <div className="flex-1 flex items-center justify-center gap-4 md:gap-6 lg:gap-8">
-              <div className="text-center">
-                <p className="text-lg md:text-xl lg:text-2xl font-black text-orange mb-1">TEAM ALPHA</p>
-                <p className="text-xs text-vapor">{wager.host_name}</p>
-              </div>
-              <div className="flex items-center gap-2 md:gap-3 lg:gap-4">
-                <input
-                  type="number"
-                  value={scoreA}
-                  onChange={(e) => setScoreA(Number(e.target.value))}
-                  className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-orange focus:outline-none focus:border-orange/30"
-                />
-                <span className="text-2xl md:text-3xl lg:text-4xl text-vapor font-bold">-</span>
-                <input
-                  type="number"
-                  value={scoreB}
-                  onChange={(e) => setScoreB(Number(e.target.value))}
-                  className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-cyan focus:outline-none focus:border-cyan/30"
-                />
-              </div>
-              <div className="text-center">
-                <p className="text-lg md:text-xl lg:text-2xl font-black text-cyan mb-1">TEAM BRAVO</p>
-                <p className="text-xs text-vapor">{wager.challenger_name || "Opponent pending"}</p>
-              </div>
-            </div>
-
-            {/* Right: Prize & Timer */}
-            <div className="w-full lg:w-auto flex items-center justify-center lg:justify-end gap-3 md:gap-4">
-              <div className="bg-green/10 border border-green/20 rounded-lg px-3 md:px-4 py-2 md:py-3 text-center">
-                <p className="text-[9px] md:text-[10px] text-green uppercase tracking-wider">Prize Pool</p>
-                <p className="text-xl md:text-2xl font-black text-green font-mono">${((wager.entry_fee || 0) * 2).toLocaleString()}</p>
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
               {timeRemaining && (
-                <div className={`px-3 md:px-4 py-2 md:py-3 rounded-lg font-mono font-bold text-sm flex flex-col items-center ${
+                <div className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 font-mono text-xs font-bold ${
                   timeRemaining === "EXPIRED" ? "bg-red-500/20 text-red-400" : "bg-orange/10 text-orange"
                 }`}>
-                  <Clock className="w-3 h-3 md:w-4 md:h-4 mb-1" />
-                  <span>{timeRemaining === "EXPIRED" ? "EXPIRED" : timeRemaining}</span>
-                  <span className="text-[8px] md:text-[9px] uppercase">Time</span>
+                  <Clock className="h-4 w-4" /> {timeRemaining}
                 </div>
               )}
+              <Link to="/8s" className="rounded-lg bg-secondary px-4 py-2 text-xs font-bold text-vapor transition-all hover:bg-white/10">8s Lobbies</Link>
             </div>
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <StatsBar teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} />
-
-        {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-12 gap-6 mb-6">
-          
-          {/* Left: Team Alpha Roster */}
-          <div className="lg:col-span-3">
-            <TeamRoster players={teamAPlayers} teamColor="orange" teamName="TEAM ALPHA" />
+        {isComplete && (
+          <div className="glass mb-6 flex items-center gap-3 rounded-xl border border-green/20 bg-green/5 p-5">
+            <Trophy className="h-5 w-5 text-green" />
+            <p className="font-bold text-green">Winner: {wager.winner_name || "Match completed"}</p>
           </div>
+        )}
 
-          {/* Center: Map Veto */}
-          <div className="lg:col-span-3">
-            <MapVetoVertical wager={wager} />
+        {canSubmit && (
+          <div className="mb-3 flex items-center gap-3 rounded-lg border border-cyan/20 bg-cyan/5 px-4 py-3 text-xs text-vapor">
+            <Flag className="h-4 w-4 shrink-0 text-cyan" />
+            <p><span className="font-black uppercase tracking-wider text-cyan">Report final score</span><span className="ml-2">Both teams must submit the same score. Conflicts are sent to staff.</span></p>
           </div>
+        )}
 
-          {/* Right: Team Bravo Roster */}
-          <div className="lg:col-span-3">
-            <TeamRoster players={teamBPlayers} teamColor="cyan" teamName="TEAM BRAVO" />
-          </div>
-
-          {/* Far Right: Chat */}
-          <div className="lg:col-span-3">
-            <MatchChat conversationId={wager.id} matchType="wager" accent="orange" />
-          </div>
+        <div className="mb-5 grid gap-5 lg:grid-cols-2">
+          <RoomTeamCard label="Team Alpha" tone="cyan" name={wager.host_name} players={teamAPlayers} score={scoreA} setScore={setScoreA} disabled={!canSubmit} host />
+          <RoomTeamCard label="Team Bravo" tone="orange" name={wager.challenger_name} players={teamBPlayers} score={scoreB} setScore={setScoreB} disabled={!canSubmit} />
         </div>
 
-        {/* Action Bar */}
-        <div className="glass rounded-xl border border-white/5 p-4 mb-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <button 
-              onClick={handleReportScore}
-              disabled={submitting}
-              className="flex-1 min-w-[200px] py-3 bg-green/10 text-green font-bold text-sm rounded-lg border border-green/20 hover:bg-green/20 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Check className="w-4 h-4" /> {submitting ? "Submitting..." : "Submit Score"}
-            </button>
-            <button
-              onClick={() => handleSupportTicket("I need support for this 8s match.")}
-              disabled={supporting}
-              className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider flex items-center gap-2"
-            >
-              <AlertTriangle className="w-4 h-4" /> {supporting ? "Requesting..." : "Request Admin"}
-            </button>
-            <button onClick={handleCreateDispute} disabled={disputing} className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50">
-              {disputing ? "Submitting..." : "Submit Dispute"}
-            </button>
-            <button onClick={() => handleSupportTicket("Opponent no-show report.")} disabled={supporting} className="px-6 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/5 hover:bg-secondary transition-all uppercase tracking-wider disabled:opacity-50">
-              Report No Show
-            </button>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_420px]">
+          <div className="min-w-0 space-y-5">
+            <section className="glass rounded-xl border border-cyan/20 p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider"><MapIcon className="h-4 w-4 text-cyan" /> Match Map</h2>
+                  <p className="mt-1 text-xs text-vapor">{wager.game_mode_display || wager.game_mode}</p>
+                </div>
+                <span className="rounded-md border border-cyan/20 bg-cyan/10 px-3 py-1 text-[10px] font-black uppercase text-cyan">BO{wager.best_of || 1}</span>
+              </div>
+              <div className="rounded-xl border border-white/5 bg-secondary/40 p-5">
+                <p className="text-[10px] font-black uppercase tracking-wider text-cyan">Selected map</p>
+                <h3 className="mt-1 text-2xl font-black">{wager.final_map_name || "Map pending"}</h3>
+              </div>
+              <div className="mt-4"><MapVetoVertical wager={wager} /></div>
+            </section>
+
+            <section className="glass rounded-xl border border-white/5 p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <button onClick={handleReportScore} disabled={!canSubmit || submitting} className="flex min-w-[220px] flex-1 items-center justify-center gap-2 rounded-lg border border-green/20 bg-green/10 py-3 text-sm font-bold uppercase tracking-wider text-green transition-all hover:bg-green/20 disabled:cursor-not-allowed disabled:opacity-50">
+                  <Check className="h-4 w-4" /> {submitting ? "Submitting..." : "Submit Score Report"}
+                </button>
+                <button onClick={() => handleSupportTicket("I need support for this 8s match.")} disabled={!isParticipant || supporting} className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-red-400 disabled:opacity-50">
+                  <AlertTriangle className="h-4 w-4" /> {supporting ? "Requesting..." : "Request Admin"}
+                </button>
+                <button onClick={handleCreateDispute} disabled={!isParticipant || disputing} className="rounded-lg border border-orange/20 bg-orange/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-orange disabled:opacity-50">
+                  {disputing ? "Submitting..." : "Submit Dispute"}
+                </button>
+                <button onClick={loadWager} className="rounded-lg border border-white/5 bg-secondary/50 p-3 text-vapor hover:bg-secondary" title="Refresh"><RefreshCw className="h-4 w-4" /></button>
+              </div>
+              {predictedWinner && canSubmit && <p className="mt-3 text-xs text-vapor">Current score would report <span className="font-bold text-cyan">{predictedWinner}</span> as winner.</p>}
+            </section>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <section className="glass rounded-xl border border-white/5 p-5">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-bold"><Shield className="h-4 w-4 text-cyan" /> Match State</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between gap-3"><span className="text-vapor">Status</span><span className="capitalize">{statusLabel(wager.status)}</span></div>
+                  <div className="flex justify-between gap-3"><span className="text-vapor">Format</span><span>BO{wager.best_of || 1}</span></div>
+                  <div className="flex justify-between gap-3"><span className="text-vapor">Requested admin</span><span>{wager.requested_admin ? "Yes" : "No"}</span></div>
+                </div>
+              </section>
+              <section className="glass rounded-xl border border-white/5 p-5">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-bold"><Trophy className="h-4 w-4 text-orange" /> Match Rules</h2>
+                <p className="text-xs leading-5 text-vapor">Both teams submit the final score independently. Matching reports complete the match; conflicting reports create a staff review.</p>
+              </section>
+            </div>
           </div>
-          {(wager.admin_request_status || wager.requested_admin) && (
-            <p className="text-xs text-vapor mt-3">
-              Admin request: {{
-                waiting_for_admin: "Waiting for admin",
-                admin_joined: "Admin joined",
-                waiting_for_user: "Waiting for user",
-                escalated: "Escalated",
-                resolved: "Resolved",
-                closed: "Closed",
-              }[wager.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
-            </p>
-          )}
+          <aside className="min-w-0">
+            <MatchChat conversationId={wager.id} matchType="wager" accent="orange" live compact sticky={false} />
+          </aside>
         </div>
-
-        {/* Bottom Section */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-6">
-          <HeadToHead teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} />
-          <TrophyCase teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} />
-        </div>
-
-        <RecentForm teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} />
-
       </div>
     </div>
   );

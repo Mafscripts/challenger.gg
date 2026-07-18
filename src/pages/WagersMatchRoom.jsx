@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle, Clock, Check,
-  AlertCircle, ShieldCheck
+  AlertCircle, Award, Crown, DollarSign, Medal, ShieldCheck, Sparkles, Trophy
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -59,20 +59,58 @@ function SimpleRoster({ title, players, tone = "cyan" }) {
       <div className={`border-b px-4 py-3 ${color}`}>
         <h2 className="text-sm font-black uppercase tracking-wider">{title}</h2>
       </div>
-      <div className="divide-y divide-white/5">
+      <div className="space-y-3 p-3">
         {players.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-vapor">Waiting for roster</div>
         ) : players.map((player, index) => (
-          <div key={player.id || player.user_id || index} className="flex items-center gap-3 px-4 py-3">
-            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-black text-background ${tone === "cyan" ? "bg-cyan" : "bg-orange"}`}>
-              {playerName(player).charAt(0)}
+          <div key={player.id || player.user_id || index} className="rounded-xl border border-white/5 bg-background/30 p-4">
+            <div className="flex items-start gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-black text-background ${tone === "cyan" ? "bg-cyan" : "bg-orange"}`}>
+                {playerName(player).charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate text-sm font-black">{playerName(player)}</p>
+                  <UserBadges user={player} size="xs" iconOnly streamerHref="/streamer-tournaments" />
+                </div>
+                <p className={`mt-1 text-[10px] uppercase tracking-wider ${player.payment_status === "pending" ? "text-orange" : "text-green"}`}>
+                  {player.payment_status === "pending" ? "Payment pending" : "Ready"}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] font-black uppercase tracking-wider text-vapor">W-L</p>
+                <p className="font-mono text-sm font-black">{player.wager_wins || 0}-{player.wager_losses || 0}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold">{playerName(player)}</p>
-              <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
-              <p className={`text-[10px] uppercase tracking-wider ${player.payment_status === "pending" ? "text-orange" : "text-vapor"}`}>
-                {player.payment_status === "pending" ? "Payment pending" : "Ready"}
-              </p>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-green/15 bg-green/5 px-3 py-2">
+                <p className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-vapor"><DollarSign className="h-3 w-3 text-green" /> Lifetime earnings</p>
+                <p className="mt-1 font-mono text-sm font-black text-green">{formatMoney(player.lifetime_earnings)}</p>
+              </div>
+              <div className="rounded-lg border border-white/5 bg-secondary/40 px-3 py-2">
+                <p className="text-[9px] font-black uppercase tracking-wider text-vapor">XP level</p>
+                <p className="mt-1 font-mono text-sm font-black">{player.xp_level || 1}</p>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-wider text-vapor">Trophy case</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[
+                  ["Gold", player.gold_count, Trophy, "text-yellow-400 border-yellow-400/15 bg-yellow-400/5"],
+                  ["Silver", player.silver_count, Medal, "text-slate-300 border-slate-300/15 bg-slate-300/5"],
+                  ["Bronze", player.bronze_count, Award, "text-amber-600 border-amber-600/15 bg-amber-600/5"],
+                  ["Premium", player.premium_count, Crown, "text-purple-300 border-purple-300/15 bg-purple-300/5"],
+                  ["Champion", player.champion_count, Sparkles, "text-cyan border-cyan/15 bg-cyan/5"],
+                ].map(([label, count, Icon, classes]) => (
+                  <div key={label} title={`${label} trophies`} className={`rounded-lg border px-1 py-2 text-center ${classes}`}>
+                    <Icon className="mx-auto h-3.5 w-3.5" />
+                    <p className="mt-1 font-mono text-xs font-black">{Number(count || 0)}</p>
+                    <p className="mt-0.5 truncate text-[7px] font-bold uppercase tracking-tight">{label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ))}
@@ -416,6 +454,51 @@ export default function WagersMatchRoom() {
   const needsPayment = currentParticipant?.payment_status === "pending";
   const isStaff = staffRoles.has(user?.role);
   const canAdminResolve = isStaff && wager.status !== "completed" && wager.status !== "cancelled" && Boolean(wager.challenger_id);
+  const isWaitingForOpponent = !wager.challenger_id || wager.status === "open";
+  const canUseMatchRoom = Boolean(wager.challenger_id) && wager.status !== "open";
+
+  if (isWaitingForOpponent) {
+    return (
+      <div className="min-h-screen bg-obsidian py-8">
+        <div className="mx-auto max-w-4xl px-4 lg:px-6">
+          <section className="glass overflow-hidden rounded-2xl border border-cyan/20">
+            <div className="border-b border-white/5 bg-gradient-to-r from-cyan/10 via-secondary/60 to-green/5 p-6 md:p-8">
+              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Open Wager</p>
+                  <h1 className="mt-2 text-3xl font-black">Waiting for an opponent</h1>
+                  <p className="mt-2 text-sm text-vapor">The match room stays locked until another player accepts this wager from the Wagers page.</p>
+                </div>
+                <div className="rounded-xl border border-green/20 bg-green/10 px-5 py-3 text-center">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-green">Prize pool after acceptance</p>
+                  <p className="mt-1 font-mono text-2xl font-black text-green">{formatMoney(prizePool)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-5 p-6 md:grid-cols-[1fr_auto_1fr] md:p-8">
+              <SimpleRoster title="Host" players={teamAPlayers} tone="cyan" />
+              <div className="flex items-center justify-center text-2xl font-black text-vapor">VS</div>
+              <div className="flex min-h-64 items-center justify-center rounded-xl border border-dashed border-orange/20 bg-orange/5 p-6 text-center">
+                <div>
+                  <div className="mx-auto mb-3 h-3 w-3 animate-pulse rounded-full bg-orange" />
+                  <p className="font-black text-orange">Opponent pending</p>
+                  <p className="mt-2 text-xs leading-5 text-vapor">Another player must accept and pay the entry before scores, chat and match controls unlock.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-background/25 px-6 py-4 md:px-8">
+              <div className="text-xs text-vapor">{wager.game_mode_display || wager.game_mode} · {wager.final_map_name || "Map pending"} · BO{bestOf}</div>
+              <Link to="/wagers" className="rounded-lg bg-cyan px-5 py-2.5 text-xs font-black uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/20">
+                Back to Wagers
+              </Link>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-obsidian py-5">
@@ -447,16 +530,18 @@ export default function WagersMatchRoom() {
                 type="number"
                 min="0"
                 value={scoreA}
+                disabled={!canUseMatchRoom || wager.status !== "in_progress"}
                 onChange={(event) => setScoreA(Number(event.target.value))}
-                className="h-20 w-20 rounded-lg border border-cyan/20 bg-secondary text-center font-mono text-5xl font-black text-cyan focus:border-cyan/40 focus:outline-none"
+                className="h-20 w-20 rounded-lg border border-cyan/20 bg-secondary text-center font-mono text-5xl font-black text-cyan focus:border-cyan/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               />
               <span className="text-3xl font-black text-vapor">:</span>
               <input
                 type="number"
                 min="0"
                 value={scoreB}
+                disabled={!canUseMatchRoom || wager.status !== "in_progress"}
                 onChange={(event) => setScoreB(Number(event.target.value))}
-                className="h-20 w-20 rounded-lg border border-orange/20 bg-secondary text-center font-mono text-5xl font-black text-orange focus:border-orange/40 focus:outline-none"
+                className="h-20 w-20 rounded-lg border border-orange/20 bg-secondary text-center font-mono text-5xl font-black text-orange focus:border-orange/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
             <div className="min-w-0 text-left lg:text-right">
@@ -517,7 +602,7 @@ export default function WagersMatchRoom() {
           <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
             <button
               onClick={handleReportScore}
-              disabled={submitting || wager.status !== "in_progress"}
+              disabled={!canUseMatchRoom || submitting || wager.status !== "in_progress"}
               className="flex items-center justify-center gap-2 rounded-lg border border-green/20 bg-green/10 px-6 py-4 text-sm font-black uppercase tracking-wider text-green transition-all hover:bg-green/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Check className="h-4 w-4" /> {submitting ? "Submitting..." : "Submit Score"}
@@ -533,21 +618,21 @@ export default function WagersMatchRoom() {
             )}
             <button
               onClick={() => handleRequestAdmin("A dispute needs staff review.")}
-              disabled={requestingAdmin}
+              disabled={!canUseMatchRoom || requestingAdmin}
               className="flex items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-5 py-4 text-xs font-bold uppercase tracking-wider text-red-400 transition-all hover:bg-red-500/20 disabled:opacity-50"
             >
               <AlertTriangle className="h-4 w-4" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
             </button>
             <button
               onClick={handleCreateDispute}
-              disabled={requestingAdmin}
+              disabled={!canUseMatchRoom || requestingAdmin}
               className="rounded-lg border border-orange/20 bg-orange/10 px-5 py-4 text-xs font-bold uppercase tracking-wider text-orange transition-all hover:bg-orange/20 disabled:opacity-50"
             >
               Submit Dispute
             </button>
             <button
               onClick={() => handleRequestAdmin("Opponent no-show report.")}
-              disabled={requestingAdmin}
+              disabled={!canUseMatchRoom || requestingAdmin}
               className="rounded-lg border border-white/5 bg-secondary/50 px-5 py-4 text-xs font-bold uppercase tracking-wider text-vapor transition-all hover:bg-secondary disabled:opacity-50"
             >
               Report No Show

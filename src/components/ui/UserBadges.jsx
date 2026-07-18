@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, BadgeCheck, Monitor } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Crown, Monitor } from "lucide-react";
 
 const specialBadgeConfig = {
   verified_player: {
@@ -14,6 +14,12 @@ const specialBadgeConfig = {
     description: "Streamer badge.",
     className: "border-blue-400/35 bg-blue-500/10 text-blue-300 shadow-[0_0_14px_rgba(96,165,250,0.18)]",
     icon: Monitor,
+  },
+  premium: {
+    label: "Premium",
+    description: "Active Premium member.",
+    className: "border-yellow-400/35 bg-yellow-400/10 text-yellow-300 shadow-[0_0_14px_rgba(250,204,21,0.18)]",
+    icon: Crown,
   },
 };
 
@@ -29,6 +35,7 @@ export function userSpecialBadges(user) {
 
   if (user?.verified_player || user?.is_verified_player) types.add("verified_player");
   if (user?.streamer_badge || user?.is_streamer) types.add("streamer");
+  if (user?.is_premium) types.add("premium");
 
   return [...types].map((type) => ({
     type,

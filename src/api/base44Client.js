@@ -172,8 +172,16 @@ const auth = {
     return apiFetch("/auth/resend-otp", { method: "POST", body: { email }, dedupe: false });
   },
 
+  resetPasswordRequest(email) {
+    return apiFetch("/auth/reset-password-request", { method: "POST", body: { email }, dedupe: false });
+  },
+
   resetPassword(payload) {
     return apiFetch("/auth/reset-password", { method: "POST", body: payload, dedupe: false });
+  },
+
+  changePassword(payload) {
+    return apiFetch("/auth/change-password", { method: "POST", body: payload, dedupe: false });
   },
 
   async updateMe(payload) {

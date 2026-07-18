@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, updateEntity } from "../entity.js";
-import { ensureUserRecords, publicUser } from "../auth.js";
+import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
 import { hasRole, rolePower } from "../roles.js";
 
 const router = Router();
@@ -6020,6 +6020,51 @@ async function updateUserBadges(req) {
   return { success: true, user: publicUser(user) };
 }
 
+async function setUserTemporaryPassword(req) {
+  assertStaff(req, "admin");
+  const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
+  if (!target) return { success: false, error: "User not found" };
+  if (!canModerateUser(req.user.role, target.role)) {
+    return { success: false, error: "Role hierarchy prevents updating this account" };
+  }
+
+  const temporaryPassword = String(req.body.temporary_password || "");
+  if (temporaryPassword.length < 8) {
+    return { success: false, error: "Temporary password must be at least 8 characters" };
+  }
+
+  const metadata = {
+    ...(target.metadata || {}),
+    force_password_change: true,
+    temporary_password_set_by: req.user.id,
+    temporary_password_set_by_name: nameFor(req.user),
+    temporary_password_set_date: nowIso(),
+  };
+  delete metadata.password_reset_token_hash;
+  delete metadata.password_reset_expires_at;
+
+  const user = await prisma.user.update({
+    where: { id: target.id },
+    data: {
+      password_hash: await hashPassword(temporaryPassword),
+      metadata,
+    },
+  });
+
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "temporary_password_set",
+    target_user_id: target.id,
+    target_username: nameFor(target),
+    description: `Set a temporary password for ${nameFor(target)} and required a password change`,
+    created_date: nowIso(),
+  }).catch(() => null);
+
+  return { success: true, user: publicUser(user) };
+}
+
 function banExpiration(duration) {
   if (!duration || duration === "permanent") return null;
   const hours = {
@@ -6198,6 +6243,7 @@ const handlers = {
   moderateDispute,
   updateUserRole,
   updateUserBadges,
+  setUserTemporaryPassword,
   moderateUser,
   changeDisplayName,
   adminAction: async (req) => ({ success: true, action: await createEntity("AdminAction", { ...req.body, admin_id: req.user.id, admin_name: nameFor(req.user), created_date: new Date().toISOString() }) }),

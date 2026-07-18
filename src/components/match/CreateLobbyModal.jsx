@@ -107,6 +107,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
       try {
         const gameModeObj = gameModes.find(gm => gm.id === selectedGameMode);
         const teamSizeObj = teamSizes.find(ts => ts.id === selectedTeamSize);
+        let createdResult = {};
         
         const matchType = mode === 'ranked' ? 'ranked' : mode === 'xp' ? 'xp' : mode === '8s' ? '8s' : 'wagers';
         
@@ -145,6 +146,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             title: "Wager created!",
             description: `Created ${selectedTeamSize} ${gameModeObj.name} for $${enteredAmount}`,
           });
+          createdResult = {
+            wager_id: response.data.wager_id || response.data.id || response.data.wager?.id,
+            match: response.data.wager || response.data.match,
+          };
         } else if (mode === "ranked") {
           const mapPool = mapsByMode[selectedGameMode] || [];
           const randomMap = mapPool[Math.floor(Math.random() * mapPool.length)];
@@ -222,9 +227,18 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             title: "Lobby created!",
             description: `Created ${selectedTeamSize} ${gameModeObj.name}`,
           });
+          createdResult = {
+            wager_id: response.data.wager_id || response.data.id || response.data.wager?.id,
+            match: response.data.wager || response.data.match,
+          };
         }
         
-        onCreate({ gameMode: selectedGameMode, teamSize: selectedTeamSize, amount: isWager ? enteredAmount : 0 });
+        onCreate({
+          gameMode: selectedGameMode,
+          teamSize: selectedTeamSize,
+          amount: isWager ? enteredAmount : 0,
+          ...createdResult,
+        });
         setStep(1);
         setSelectedGameMode(null);
         setSelectedTeamSize(null);

@@ -30,7 +30,7 @@ export default function Login() {
       } else {
         await checkUserAuth();
       }
-      navigate("/dashboard", { replace: true });
+      navigate(result?.password_change_required ? "/change-password" : "/dashboard", { replace: true });
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
