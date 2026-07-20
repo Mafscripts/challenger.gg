@@ -7,16 +7,13 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-import DepositModal from "@/components/wallet/DepositModal";
-import WithdrawModal from "@/components/wallet/WithdrawModal";
 import TransactionHistory from "@/components/wallet/TransactionHistory";
+import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 
 
 export default function Wallet() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showDeposit, setShowDeposit] = useState(false);
-  const [showWithdraw, setShowWithdraw] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
@@ -72,8 +69,10 @@ export default function Wallet() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold font-heading mb-2">Topfragg Wallet</h1>
-          <p className="text-vapor">Manage your funds for skill-based wagers</p>
+          <p className="text-vapor">View test funds granted by Topfragg staff</p>
         </div>
+
+        <CommercePausedNotice className="mb-6" />
 
         {/* Balance Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -92,17 +91,18 @@ export default function Wallet() {
             </div>
             <div className="p-6">
               <button
-                onClick={() => setShowDeposit(true)}
-                className="w-full py-3 bg-cyan/10 text-cyan font-bold text-sm rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all uppercase tracking-wider flex items-center justify-center gap-2 mb-2"
+                type="button"
+                disabled
+                className="mb-2 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] py-3 text-sm font-bold uppercase tracking-wider text-vapor"
               >
-                <ArrowDownLeft className="w-4 h-4" /> Deposit
+                <ArrowDownLeft className="w-4 h-4" /> Deposits Paused
               </button>
               <button
-                onClick={() => setShowWithdraw(true)}
-                disabled={withdrawable <= 0}
-                className="w-full py-3 bg-green/10 text-green font-bold text-sm rounded-lg border border-green/20 hover:bg-green/20 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                disabled
+                className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] py-3 text-sm font-bold uppercase tracking-wider text-vapor"
               >
-                <ArrowUpRight className="w-4 h-4" /> Withdraw
+                <ArrowUpRight className="w-4 h-4" /> Withdrawals Paused
               </button>
             </div>
           </motion.div>
@@ -242,8 +242,8 @@ export default function Wallet() {
                       About Deposits
                     </h3>
                     <p className="text-xs text-vapor leading-relaxed">
-                      Deposit funds securely via Base44 Payments. Funds are available instantly for wagers. 
-                      Minimum deposit: $5.00. All transactions are protected and secure.
+                      Public deposits are disabled during testing. Topfragg staff can grant test funds
+                      through the admin console.
                     </p>
                   </div>
                   <div className="bg-green/5 border border-green/20 rounded-lg p-4">
@@ -252,8 +252,8 @@ export default function Wallet() {
                       About Withdrawals
                     </h3>
                     <p className="text-xs text-vapor leading-relaxed">
-                      Withdraw your winnings anytime. Processing time: 1-3 business days. 
-                      Minimum withdrawal: $10.00. Must have no active wagers.
+                      Withdrawals are disabled while the platform is in public testing. Your displayed
+                      balance remains available for testing supported competition features.
                     </p>
                   </div>
                 </div>
@@ -269,23 +269,6 @@ export default function Wallet() {
             )}
           </div>
         </div>
-
-        {/* Modals */}
-        <DepositModal
-          isOpen={showDeposit}
-          onClose={() => {
-            setShowDeposit(false);
-            loadUserData();
-          }}
-        />
-        <WithdrawModal
-          isOpen={showWithdraw}
-          onClose={() => {
-            setShowWithdraw(false);
-            loadUserData();
-          }}
-          availableBalance={withdrawable}
-        />
       </div>
     </div>
   );

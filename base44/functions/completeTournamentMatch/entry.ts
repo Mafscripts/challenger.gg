@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const staffRoles = ['ceo', 'super_admin', 'admin', 'moderator'];
+const startWindowMinutes = 15;
 
 const toScore = (value) => {
   const score = Number(value);
-  return Number.isFinite(score) ? Math.trunc(score) : null;
+  return Number.isFinite(score) ? score : null;
 };
 
 const participantName = (match, teamId) => (
@@ -14,6 +15,28 @@ const participantName = (match, teamId) => (
 const participantPayload = (match, teamId) => ({
   team_id: teamId,
   team_name: participantName(match, teamId),
+});
+
+const requiredWins = (match) => Math.floor(Math.max(1, Math.trunc(Number(match?.best_of || 3))) / 2) + 1;
+
+const scoreError = (match, teamAScore, teamBScore) => {
+  const bestOf = Math.max(1, Math.trunc(Number(match?.best_of || 3)));
+  const winsNeeded = requiredWins(match);
+  const label = `BO${bestOf} results must end ${winsNeeded}-0 through ${winsNeeded}-${winsNeeded - 1}`;
+  if (!Number.isInteger(teamAScore) || !Number.isInteger(teamBScore) || teamAScore < 0 || teamBScore < 0) {
+    return `Scores must be whole, non-negative numbers. ${label}.`;
+  }
+  if (Math.max(teamAScore, teamBScore) !== winsNeeded || Math.min(teamAScore, teamBScore) >= winsNeeded) {
+    return `${label}.`;
+  }
+  return '';
+};
+
+const startWindow = (start = new Date()) => ({
+  assigned_date: start.toISOString(),
+  scheduled_start_date: start.toISOString(),
+  start_deadline: new Date(start.getTime() + (startWindowMinutes * 60 * 1000)).toISOString(),
+  start_window_minutes: startWindowMinutes,
 });
 
 async function placeTeam(base44, matchId, team, slot) {
@@ -29,6 +52,7 @@ async function placeTeam(base44, matchId, team, slot) {
   const otherSlot = slot === 'a' ? 'b' : 'a';
   const hasOtherTeam = Boolean(target[`team_${otherSlot}_id`]);
   update.status = hasOtherTeam ? 'ready' : target.status || 'pending';
+  if (hasOtherTeam) Object.assign(update, startWindow());
 
   await base44.asServiceRole.entities.TournamentMatch.update(matchId, update);
   return { ...target, ...update };
@@ -48,10 +72,6 @@ Deno.serve(async (req) => {
 
     if (!matchId || teamAScore === null || teamBScore === null) {
       return Response.json({ error: 'Missing tournament_match_id, team_a_score, or team_b_score' }, { status: 400 });
-    }
-
-    if (teamAScore < 0 || teamBScore < 0 || teamAScore === teamBScore) {
-      return Response.json({ error: 'Scores must be non-negative and cannot be tied' }, { status: 400 });
     }
 
     const match = await base44.asServiceRole.entities.TournamentMatch.get(matchId);
@@ -81,6 +101,10 @@ Deno.serve(async (req) => {
 
     if (!match.team_a_id || !match.team_b_id) {
       return Response.json({ error: 'Tournament match is not ready' }, { status: 400 });
+    }
+    const invalidScore = scoreError(match, teamAScore, teamBScore);
+    if (invalidScore) {
+      return Response.json({ error: invalidScore }, { status: 400 });
     }
 
     const winnerId = teamAScore > teamBScore ? match.team_a_id : match.team_b_id;

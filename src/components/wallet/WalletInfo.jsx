@@ -85,12 +85,9 @@ export default function WalletInfo({ user, wagerAmount }) {
               <span className="text-xs text-red-400 font-bold">Insufficient Balance</span>
               <span className="text-xs text-vapor">Need ${insufficientAmount.toFixed(2)} more</span>
             </div>
-            <Link
-              to="/wallet"
-              className="px-3 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20 transition-all uppercase"
-            >
-              Deposit
-            </Link>
+            <span className="rounded border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] font-bold uppercase text-vapor">
+              Admin grant only
+            </span>
           </div>
         </div>
       )}

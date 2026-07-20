@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { activisionIdRequiredForUserIds, activisionIdRequiredResponse } from '../_shared/activision.ts';
 
 const toMoney = (value) => {
   const amount = Number(value || 0);
@@ -225,6 +226,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const activisionResponse = activisionIdRequiredResponse([user]);
+    if (activisionResponse) return activisionResponse;
 
     const body = await req.json();
     const {
@@ -250,10 +253,16 @@ Deno.serve(async (req) => {
     const teamResult = isTeamMatch
       ? await selectedTeamRoster(base44, body.team_id, user.id, teamTypeFor(wager.match_type || 'wagers'), requiredSize)
       : { team: null, roster: null };
+    const existingRows = await base44.asServiceRole.entities.WagerParticipant.filter({ wager_id: wager.id }, '-joined_date', 20).catch(() => []);
+    const enrolledActivisionResponse = await activisionIdRequiredForUserIds(base44, existingRows.map((participant) => participant.user_id));
+    if (enrolledActivisionResponse) return enrolledActivisionResponse;
+    const rosterActivisionResponse = isTeamMatch
+      ? await activisionIdRequiredForUserIds(base44, teamResult.roster.map((member) => member.user_id))
+      : null;
+    if (rosterActivisionResponse) return rosterActivisionResponse;
 
     if (isTeamMatch) {
       if (teamResult.team.id === wager.host_team_id) return Response.json({ error: 'Select a different team' }, { status: 400 });
-      const existingRows = await base44.asServiceRole.entities.WagerParticipant.filter({ wager_id: wager.id }, '-joined_date', 20).catch(() => []);
       const existingUserIds = existingRows.map((participant) => participant.user_id).filter(Boolean);
       const duplicateRosterMember = teamResult.roster.find((member) => existingUserIds.includes(member.user_id));
       if (duplicateRosterMember) return Response.json({ error: 'A roster member is already enrolled in this wager' }, { status: 400 });

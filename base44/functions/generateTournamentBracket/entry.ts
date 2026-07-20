@@ -4,6 +4,14 @@ const staffRoles = ['ceo', 'super_admin', 'admin', 'moderator'];
 const tournamentSndMapPool = ['Hacienda', 'Gridlock', 'Raid', 'Scar', 'Den', 'Sake', 'Colossus'];
 const tournamentMatchMode = 'Search and Destroy';
 const tournamentBestOf = 3;
+const tournamentStartWindowMinutes = 15;
+
+const startWindowPayload = (start = new Date()) => ({
+  assigned_date: start.toISOString(),
+  scheduled_start_date: start.toISOString(),
+  start_deadline: new Date(start.getTime() + (tournamentStartWindowMinutes * 60 * 1000)).toISOString(),
+  start_window_minutes: tournamentStartWindowMinutes,
+});
 
 const nextPowerOfTwo = (value) => {
   let size = 1;
@@ -66,7 +74,7 @@ const secondHostForMatch = (match, participantA, participantB, firstHost) => {
 const setupPayload = (match, participantA, participantB) => {
   const firstHost = firstHostForMatch(match, participantA, participantB);
   const secondHost = secondHostForMatch(match, participantA, participantB, firstHost);
-  const hosts = [firstHost, secondHost, firstHost];
+  const hosts = [firstHost, secondHost, null];
   return {
     best_of: tournamentBestOf,
     game_mode: tournamentMatchMode,
@@ -116,7 +124,8 @@ async function placeTeam(base44, matchId, participant, slot) {
       [row.team_id, row],
     ].filter(([id]) => Boolean(id))));
     const candidate = { ...target, ...update };
-    update.assigned_date = new Date().toISOString();
+    const assignedDate = new Date();
+    Object.assign(update, startWindowPayload(assignedDate));
     Object.assign(update, setupPayload(candidate, byId[candidate.team_a_participant_id] || byId[candidate.team_a_id], byId[candidate.team_b_participant_id] || byId[candidate.team_b_id]));
   }
 
@@ -155,6 +164,7 @@ async function generateSingleElimination(base44, tournament, participants, size)
       const teamB = round === 1 ? slots[index * 2 + 1] : null;
       const solo = round === 1 && (hasTeam(teamA) !== hasTeam(teamB));
       const both = round === 1 && hasTeam(teamA) && hasTeam(teamB);
+      const readyDate = both ? new Date() : null;
 
       const matchPayload = {
         tournament_id: tournament.id,
@@ -164,6 +174,7 @@ async function generateSingleElimination(base44, tournament, participants, size)
         ...teamPayload(teamA, 'a'),
         ...teamPayload(teamB, 'b'),
         status: both ? 'ready' : solo ? 'completed' : 'pending',
+        ...(readyDate ? startWindowPayload(readyDate) : {}),
         completed: solo,
         winner_id: solo ? (teamA || teamB).team_id : '',
         winner_name: solo ? (teamA || teamB).team_name : '',
@@ -297,11 +308,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No registered tournament participants' }, { status: 400 });
     }
 
-    const size = nextPowerOfTwo(participants.length);
+    const randomizedParticipants = [...participants];
+    for (let index = randomizedParticipants.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [randomizedParticipants[index], randomizedParticipants[swapIndex]] = [randomizedParticipants[swapIndex], randomizedParticipants[index]];
+    }
+    const seededParticipants = await Promise.all(randomizedParticipants.map(async (participant, index) => {
+      const seed = index + 1;
+      await base44.asServiceRole.entities.TournamentParticipant.update(participant.id, { seed });
+      return { ...participant, seed };
+    }));
+
+    const size = nextPowerOfTwo(seededParticipants.length);
     const format = tournament.format || tournament.bracket_type || 'single_elimination';
     const created = format === 'double_elimination'
-      ? await generateDoubleElimination(base44, tournament, participants, size)
-      : await generateSingleElimination(base44, tournament, participants, size);
+      ? await generateDoubleElimination(base44, tournament, seededParticipants, size)
+      : await generateSingleElimination(base44, tournament, seededParticipants, size);
 
     await base44.asServiceRole.entities.Tournament.update(tournament_id, {
       status: 'in_progress',

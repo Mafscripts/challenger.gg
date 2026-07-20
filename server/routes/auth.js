@@ -96,6 +96,18 @@ router.patch("/me", requireAuth, async (req, res, next) => {
   try {
     const current = await prisma.user.findUnique({ where: { id: req.user.id } });
     const { username, display_name, avatar_url: _avatarUrl, ...rest } = req.body || {};
+    const selfServiceFields = new Set([
+      "activision_id",
+      "playstation_id",
+      "xbox_id",
+      "discord_webhook_url",
+      "discord_alerts_enabled",
+      "display_name_color",
+    ]);
+    const unsupportedFields = Object.keys(rest).filter((field) => !selfServiceFields.has(field));
+    if (unsupportedFields.length > 0) {
+      return res.status(403).json({ error: "One or more account fields require an admin action" });
+    }
     let user = current;
     if (Object.keys(rest).length > 0) {
       user = await prisma.user.update({

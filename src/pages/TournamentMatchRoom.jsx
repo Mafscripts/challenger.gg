@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Award,
   Check,
+  Clock3,
   Crown,
   Flag,
   Gavel,
@@ -15,15 +16,18 @@ import {
   Sparkles,
   Swords,
   Trophy,
+  Unlock,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
 import UserBadges from "@/components/ui/UserBadges";
+import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
+import TournamentBracket from "@/components/tournaments/TournamentBracket";
 
 const bracketLabels = {
   winner: "Winner Bracket",
-  loser: "Loser Bracket",
+  loser: "Lower Bracket",
   grand_final: "Grand Final",
 };
 
@@ -58,6 +62,37 @@ const statNumber = (value) => {
 };
 const moneyLabel = (value) => `$${statNumber(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const emptyTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, invitational: 0, premium: 0 });
+const tournamentBestOf = (match) => {
+  const bestOf = Math.trunc(Number(match?.best_of || match?.map_sequence?.length || 3));
+  return Number.isFinite(bestOf) && bestOf > 0 ? bestOf : 3;
+};
+const tournamentRequiredWins = (match) => Math.floor(tournamentBestOf(match) / 2) + 1;
+const tournamentScoreError = (match, teamAScore, teamBScore) => {
+  const bestOf = tournamentBestOf(match);
+  const winsNeeded = tournamentRequiredWins(match);
+  const label = `BO${bestOf} must finish ${winsNeeded}–0 through ${winsNeeded}–${winsNeeded - 1}`;
+  if (
+    !Number.isInteger(teamAScore)
+    || !Number.isInteger(teamBScore)
+    || teamAScore < 0
+    || teamBScore < 0
+  ) {
+    return `Use whole, non-negative map scores. ${label}.`;
+  }
+  if (Math.max(teamAScore, teamBScore) !== winsNeeded || Math.min(teamAScore, teamBScore) >= winsNeeded) {
+    return `${label}.`;
+  }
+  return "";
+};
+const seriesScoreExamples = (match) => {
+  const winsNeeded = tournamentRequiredWins(match);
+  return Array.from({ length: winsNeeded }, (_, score) => `${winsNeeded}–${score}`).join(" or ");
+};
+const formatCountdown = (seconds) => {
+  const safeSeconds = Math.max(0, Number(seconds || 0));
+  const minutes = Math.floor(safeSeconds / 60);
+  return `${String(minutes).padStart(2, "0")}:${String(safeSeconds % 60).padStart(2, "0")}`;
+};
 
 const trophySlots = [
   { key: "gold", label: "Gold trophies", icon: Trophy, className: "text-yellow-400" },
@@ -194,6 +229,8 @@ function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
     user_name: playerName(userRow || profileRow || player),
     username: userRow?.username || profileRow?.username || player?.username,
     handle: userRow?.handle || profileRow?.handle || player?.handle,
+    avatar_url: userRow?.avatar_url || profileRow?.avatar_url || player?.avatar_url || "",
+    activision_id: userRow?.activision_id || player?.activision_id || "",
     badges: userRow?.badges || [],
     verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
     streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
@@ -246,9 +283,15 @@ async function matchRosters(match) {
   return { teamA, teamB };
 }
 
+function teamMonogram(name) {
+  const words = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length > 1) return words.slice(0, 2).map((word) => word.charAt(0)).join("").toUpperCase();
+  return String(words[0] || "--").slice(0, 2).toUpperCase();
+}
+
 function BetaBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-green/30 bg-green/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-green shadow-[0_0_18px_rgba(0,255,128,0.35)] animate-pulse">
+    <span className="beta-glow-pulse inline-flex items-center gap-1 rounded-md border border-red-400/35 bg-red-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-red-400">
       <Sparkles className="h-3 w-3" /> Beta
     </span>
   );
@@ -257,16 +300,16 @@ function BetaBadge() {
 function TrophyCounts({ trophies }) {
   const counts = trophies || emptyTrophyCounts();
   return (
-    <div className="flex justify-end gap-1 overflow-visible">
+    <div className="flex flex-wrap justify-end gap-1.5 overflow-visible">
       {trophySlots.map(({ key, label, icon: Icon, className }) => (
         <span
           key={key}
           aria-label={`${label}: ${statNumber(counts[key])}`}
-          className={`group relative inline-flex min-w-[24px] cursor-default select-none items-center justify-center gap-0.5 rounded bg-background/50 px-1.5 py-1 text-[10px] font-black ${className}`}
+          className={`group relative inline-flex min-w-[30px] cursor-default select-none items-center justify-center gap-1 rounded-md bg-background/50 px-2 py-1.5 text-[11px] font-black ${className}`}
         >
-          <Icon className="h-3 w-3" />
+          <Icon className="h-3.5 w-3.5" />
           {statNumber(counts[key])}
-          <span className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 w-36 -translate-x-1/2 rounded-lg border border-white/10 bg-[#111821] px-3 py-2 text-left opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
+          <span className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 w-36 -translate-x-1/2 rounded-lg border border-white/10 bg-popover px-3 py-2 text-left opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
             <span className={`mb-1 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider ${className}`}>
               <Icon className="h-3.5 w-3.5" />
               {label}
@@ -279,31 +322,25 @@ function TrophyCounts({ trophies }) {
   );
 }
 
-function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirstHost, players = [] }) {
-  const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
+function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirstHost, maxScore, players = [], currentUser }) {
+  const isCyan = color === "cyan";
+  const colorClass = isCyan ? "border-cyan/20" : "border-orange/20";
+  const toneClass = isCyan ? "text-cyan" : "text-orange";
+  const tintClass = isCyan ? "bg-cyan/10 border-cyan/20" : "bg-orange/10 border-orange/20";
   const scoreId = `${label.toLowerCase().replace(/\s+/g, "-")}-score`;
-  const scoreAccent = color === "cyan"
+  const scoreAccent = isCyan
     ? "border-cyan/35 bg-cyan/10 text-cyan focus:border-cyan focus:ring-cyan/25"
     : "border-orange/35 bg-orange/10 text-orange focus:border-cyan focus:ring-cyan/25";
 
   return (
-    <div className={`glass rounded-xl border p-5 ${colorClass}`}>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-wider">{label}</p>
-        <span className="rounded bg-background/40 px-2 py-1 text-[10px] font-black uppercase tracking-wider">
-          Seed {seedLabel(seed)}
-        </span>
-      </div>
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-lg bg-background/40 border border-white/5 flex items-center justify-center">
-          <Shield className="w-6 h-6" />
-        </div>
+    <section className={`relative min-w-0 overflow-hidden rounded-2xl border bg-card/80 shadow-[0_20px_50px_-42px_rgba(0,0,0,.95)] ${colorClass}`}>
+      <div className={`absolute inset-x-0 top-0 h-px ${isCyan ? "bg-gradient-to-r from-cyan via-cyan/40 to-transparent" : "bg-gradient-to-l from-orange via-orange/40 to-transparent"}`} />
+      <div className="flex flex-col gap-5 border-b border-white/[0.06] p-5 sm:flex-row sm:items-center sm:p-6">
+        <span className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border font-mono text-lg font-black ${tintClass} ${toneClass}`}>{teamMonogram(name)}</span>
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="text-xl font-black truncate">{name || "Open slot"}</h2>
-            {name && <BetaBadge />}
-          </div>
-          <p className="text-xs text-vapor">{isFirstHost ? "Higher seed - hosts map 1" : "Tournament participant"}</p>
+          <div className="flex flex-wrap items-center gap-2"><p className={`text-[9px] font-black uppercase tracking-[0.18em] ${toneClass}`}>{label} roster</p><span className="rounded-md border border-white/[0.06] bg-background/40 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-vapor">Seed {seedLabel(seed)}</span>{isFirstHost && <span className={`rounded-md border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${tintClass} ${toneClass}`}>Hosts map 1</span>}</div>
+          <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5"><h3 className="truncate text-xl font-black sm:text-2xl">{name || "Open slot"}</h3>{name && <BetaBadge />}</div>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">{players.length} confirmed player{players.length === 1 ? "" : "s"}</p>
         </div>
         <div className="shrink-0 rounded-xl border border-white/5 bg-background/35 p-2 shadow-inner">
           <label htmlFor={scoreId} className="mb-1 block text-center text-[10px] font-black uppercase tracking-wider text-vapor">
@@ -314,69 +351,55 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
             aria-label={`${label} final score`}
             type="number"
             min="0"
+            max={maxScore}
+            step="1"
             value={score}
             disabled={disabled || !name}
-            onChange={(event) => setScore(Number(event.target.value))}
-            className={`h-14 w-24 rounded-lg border text-center font-mono text-3xl font-black outline-none transition-all duration-200 focus:ring-2 focus:shadow-[0_0_0_3px_rgba(20,216,255,0.10)] disabled:cursor-not-allowed disabled:opacity-60 ${scoreAccent}`}
+            onChange={(event) => {
+              const nextScore = Number(event.target.value);
+              setScore(Number.isFinite(nextScore) ? Math.min(maxScore, Math.max(0, Math.trunc(nextScore))) : 0);
+            }}
+            className={`h-16 w-24 rounded-lg border text-center font-mono text-3xl font-black outline-none transition-all duration-200 focus:ring-2 focus:shadow-[0_0_0_3px_rgba(20,216,255,0.10)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-28 ${scoreAccent}`}
           />
         </div>
       </div>
-      <div className="mt-5 border-t border-white/5 pt-4">
-        <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-vapor">Players</p>
+      <div className="p-5 sm:p-6">
+        <div className="mb-4 flex items-center justify-between gap-3"><p className="text-[11px] font-black uppercase tracking-[0.16em] text-vapor">Confirmed lineup</p><p className="text-[10px] font-bold uppercase tracking-wider text-vapor/60">Identity & stats</p></div>
         {players.length === 0 ? (
-          <p className="text-xs text-vapor">Roster unavailable</p>
+          <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-white/10 bg-background/20 text-xs text-vapor">Roster unavailable</div>
         ) : (
-          <div className="overflow-visible">
-            <div className="min-w-[560px] space-y-2">
-              <div className="grid grid-cols-[minmax(140px,1fr)_58px_44px_190px_64px] items-center gap-2 px-3 text-[9px] font-black uppercase tracking-wider text-vapor">
-                <span>Player</span>
-                <span>Role</span>
-                <span className="text-right">W-L</span>
-                <span className="text-right">Trophies</span>
-                <span className="text-right">Earnings</span>
-              </div>
-              {players.map((player, index) => {
-                const profileSlug = player.user_id || player.username || player.handle || player.user_name;
-                return (
-                <div key={player.user_id || `${player.user_name}-${index}`} className="grid grid-cols-[minmax(140px,1fr)_58px_44px_190px_64px] items-center gap-2 rounded-lg border border-white/5 bg-background/30 px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-secondary text-[10px] font-black font-mono">
-                      {index + 1}
-                    </span>
-                    {profileSlug ? (
-                      <Link
-                        to={`/profile/${encodeURIComponent(profileSlug)}`}
-                        className="truncate text-sm font-bold text-white transition-colors hover:text-cyan"
-                      >
-                        {player.user_name}
-                      </Link>
-                    ) : (
-                      <span className="truncate text-sm font-bold text-white">{player.user_name}</span>
-                    )}
-                    <UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />
+          <div className="space-y-3">
+            {players.map((player, index) => {
+              const profileSlug = player.user_id || player.username || player.handle || player.user_name;
+              const isCurrentUser = rosterPlayerMatchesUser(player, currentUser);
+              return (
+                <article key={player.user_id || `${player.user_name}-${index}`} className={`rounded-xl border p-4 ${isCurrentUser ? (isCyan ? "border-cyan/25 bg-cyan/[0.055]" : "border-orange/25 bg-orange/[0.055]") : "border-white/[0.055] bg-background/30"}`}>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
+                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                      <span className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border font-mono text-sm font-black ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : String(player.user_name || "?").charAt(0).toUpperCase()}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} className="truncate text-base font-black text-white transition-colors hover:text-cyan">{player.user_name}</Link> : <span className="truncate text-base font-black text-white">{player.user_name}</span>}
+                          {isCurrentUser && <span className={`rounded px-2 py-0.5 text-[8px] font-black uppercase ${isCyan ? "bg-cyan text-background" : "bg-orange text-background"}`}>You</span>}
+                          <UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />
+                        </div>
+                        <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
+                      </div>
+                    </div>
+                    <div className="grid shrink-0 grid-cols-3 gap-2.5 xl:min-w-[240px]">
+                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Role</p><p className={`mt-1 text-[10px] font-black uppercase ${player.role === "captain" ? "text-green" : "text-white"}`}>{player.role === "captain" ? "Captain" : "Member"}</p></div>
+                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Record</p><p className="mt-1 font-mono text-sm font-black text-white">{statNumber(player.wins)}-{statNumber(player.losses)}</p></div>
+                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Earned</p><p className="mt-1 font-mono text-sm font-black text-green">{moneyLabel(player.earnings)}</p></div>
+                    </div>
                   </div>
-                  <div className="flex justify-start">
-                    {player.role === "captain" ? (
-                      <span className="rounded bg-green/10 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-green">
-                        Captain
-                      </span>
-                    ) : (
-                      <span className="rounded bg-white/5 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-vapor">
-                        Member
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-right text-xs font-black text-white">{statNumber(player.wins)}-{statNumber(player.losses)}</p>
-                  <TrophyCounts trophies={player.trophies} />
-                  <p className="text-right text-xs font-black text-green">{moneyLabel(player.earnings)}</p>
-                </div>
-                );
-              })}
-            </div>
+                  <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-3"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor/70">Trophies</p><TrophyCounts trophies={player.trophies} /></div>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -386,8 +409,8 @@ function MapSeries({ match }) {
   const bestOf = Math.max(1, Number(match.best_of || match.map_sequence?.length || maps.length || 3));
 
   return (
-    <div className="glass rounded-xl border border-cyan/20 p-5">
-      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div className="glass rounded-xl border border-cyan/20 p-5 sm:p-6">
+      <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
             <MapIcon className="h-4 w-4 text-cyan" /> BO{bestOf} Map Series
@@ -400,13 +423,13 @@ function MapSeries({ match }) {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         {maps.length === 0 ? (
           <div className="rounded-lg border border-white/5 bg-secondary/40 p-4 text-sm text-vapor md:col-span-3">
             Maps are being generated.
           </div>
         ) : maps.map((map) => (
-          <div key={`${map.game}-${map.game_mode || map.mode}-${map.map}`} className="rounded-lg border border-white/5 bg-secondary/40 p-4">
+          <div key={`${map.game}-${map.game_mode || map.mode}-${map.map}`} className="rounded-xl border border-white/5 bg-secondary/40 p-5">
             <p className="text-[10px] font-black uppercase tracking-wider text-cyan">Map {map.game}</p>
             <h3 className="mt-1 text-lg font-black">{map.map}</h3>
             <p className="mt-2 text-xs text-vapor">{map.mode || "Search and Destroy"}</p>
@@ -429,114 +452,8 @@ function MapSeries({ match }) {
 }
 
 function BracketPreview({ matches, currentId, tournament }) {
-  const grouped = matches
-    .slice()
-    .sort((a, b) => Number(a.round || 0) - Number(b.round || 0) || Number(a.match_number || 0) - Number(b.match_number || 0))
-    .reduce((groups, match) => {
-      const key = `${match.bracket || "winner"}-${match.round || 1}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(match);
-      return groups;
-    }, {});
-
-  const rounds = Object.entries(grouped);
-  const finalWinnerName = tournament?.winner_name
-    || matches.find((match) => (
-      (match.completed || match.status === "completed")
-      && match.winner_name
-      && !match.next_match_round
-      && !match.next_match_number
-    ))?.winner_name;
-
-  if (rounds.length === 0) return null;
-
-  return (
-    <div className="glass rounded-xl border border-white/5 p-5 mb-6">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider">
-          <Trophy className="h-4 w-4 text-orange" /> Bracket
-        </h2>
-        {finalWinnerName && (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-green/20 bg-green/10 px-3 py-2 text-xs font-black uppercase tracking-wider text-green">
-            <Crown className="h-4 w-4" /> Champion: {finalWinnerName}
-          </div>
-        )}
-      </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {rounds.map(([key, roundMatches]) => (
-          <div key={key} className="rounded-lg border border-white/5 bg-secondary/30 p-3">
-            <p className="mb-3 text-[10px] font-black uppercase tracking-wider text-vapor">
-              {bracketLabels[roundMatches[0]?.bracket] || "Bracket"} - Round {roundMatches[0]?.round || 1}
-            </p>
-            <div className="space-y-2">
-              {roundMatches.map((roundMatch) => {
-                const isCurrent = roundMatch.id === currentId;
-                const isComplete = roundMatch.completed || roundMatch.status === "completed";
-                const teamAScore = Number(roundMatch.team_a_score || 0);
-                const teamBScore = Number(roundMatch.team_b_score || 0);
-                const teamAWon = isComplete && (
-                  String(roundMatch.winner_id || "") === String(roundMatch.team_a_id || "")
-                  || (!roundMatch.winner_id && teamAScore > teamBScore)
-                );
-                const teamBWon = isComplete && (
-                  String(roundMatch.winner_id || "") === String(roundMatch.team_b_id || "")
-                  || (!roundMatch.winner_id && teamBScore > teamAScore)
-                );
-                const teamRowClass = (won) => {
-                  if (won) return "border-green/20 bg-green/10 text-white";
-                  if (isComplete) return "border-red-400/15 bg-red-500/5 text-vapor";
-                  return "border-white/5 bg-background/25 text-vapor";
-                };
-                const scoreClass = (won) => won ? "bg-green/15 text-green" : "bg-background/50 text-vapor";
-                const resultLabel = (won) => {
-                  if (!isComplete) return null;
-                  return won ? "Win" : "Loss";
-                };
-                const resultClass = (won) => won ? "text-green" : "text-red-300";
-                return (
-                  <Link
-                    key={roundMatch.id}
-                    to={`/tournament-match/${roundMatch.id}`}
-                    className={`block rounded-md border px-3 py-2 transition-all ${isCurrent ? "border-green/40 bg-green/10 shadow-[0_0_18px_rgba(0,255,128,0.18)]" : "border-white/5 bg-background/30 hover:border-cyan/20"}`}
-                  >
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-bold uppercase text-vapor">Match {roundMatch.match_number}</span>
-                      <span className="text-[10px] uppercase text-vapor">
-                        {statusLabel(roundMatch.status)}{roundMatch.is_forfeit ? " - forfeited" : ""}
-                      </span>
-                    </div>
-                    <div className={`mt-2 flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs ${teamRowClass(teamAWon)}`}>
-                      <span className="truncate">{seedLabel(roundMatch.team_a_seed)} {roundMatch.team_a_name || "TBD"}</span>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        {resultLabel(teamAWon) && <span className={`text-[9px] font-black uppercase ${resultClass(teamAWon)}`}>{resultLabel(teamAWon)}</span>}
-                        <span className={`min-w-6 rounded px-1.5 py-0.5 text-center font-mono font-black ${scoreClass(teamAWon)}`}>
-                          {isComplete ? teamAScore : "-"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={`mt-1 flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs ${teamRowClass(teamBWon)}`}>
-                      <span className="truncate">{seedLabel(roundMatch.team_b_seed)} {roundMatch.team_b_name || "TBD"}</span>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        {resultLabel(teamBWon) && <span className={`text-[9px] font-black uppercase ${resultClass(teamBWon)}`}>{resultLabel(teamBWon)}</span>}
-                        <span className={`min-w-6 rounded px-1.5 py-0.5 text-center font-mono font-black ${scoreClass(teamBWon)}`}>
-                          {isComplete ? teamBScore : "-"}
-                        </span>
-                      </div>
-                    </div>
-                    {isComplete && roundMatch.winner_name && (
-                      <div className="mt-2 rounded border border-green/10 bg-green/5 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-green">
-                        Winner: {roundMatch.winner_name}
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  if (matches.length === 0) return null;
+  return <TournamentBracket matches={matches} currentId={currentId} tournament={tournament} />;
 }
 
 export default function TournamentMatchRoom() {
@@ -553,6 +470,7 @@ export default function TournamentMatchRoom() {
   const [resolvingAdmin, setResolvingAdmin] = useState(false);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
+  const [clockNow, setClockNow] = useState(Date.now());
   const [teamAPlayers, setTeamAPlayers] = useState([]);
   const [teamBPlayers, setTeamBPlayers] = useState([]);
   const joinedAdminRooms = useRef(new Set());
@@ -579,6 +497,24 @@ export default function TournamentMatchRoom() {
       && (!["disputed", "score_conflict"].includes(match?.status) || canStaffSubmitResult)
     )
   ), [match?.team_a_id, match?.team_b_id, match?.status, isMatchParticipant, canStaffSubmitResult, isComplete]);
+  const bestOf = tournamentBestOf(match);
+  const winsNeeded = tournamentRequiredWins(match);
+  const scoreValidationError = tournamentScoreError(match, scoreA, scoreB);
+  const scoreIsValid = !scoreValidationError;
+  const startDeadlineMs = new Date(match?.start_deadline || "").getTime();
+  const hasStartDeadline = Number.isFinite(startDeadlineMs);
+  const startSecondsRemaining = hasStartDeadline
+    ? Math.max(0, Math.ceil((startDeadlineMs - clockNow) / 1000))
+    : null;
+  const startWindowExpired = hasStartDeadline && startSecondsRemaining === 0;
+  const supportWindowUnlocked = isStaff || startWindowExpired;
+
+  useEffect(() => {
+    setClockNow(Date.now());
+    if (!match?.start_deadline || isComplete) return undefined;
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [match?.start_deadline, isComplete]);
 
   useEffect(() => {
     if (!match?.id || !user?.id || !staffRoles.has(user.role)) return;
@@ -614,7 +550,7 @@ export default function TournamentMatchRoom() {
         activeMatch.team_a_id &&
         activeMatch.team_b_id &&
         setupStatuses.includes(activeMatch.status) &&
-        (!Array.isArray(activeMatch.maps) || activeMatch.maps.length < expectedMapCount || !activeMatch.team_a_seed || !activeMatch.team_b_seed || !activeMatch.first_host_team_id || !activeMatch.map_generation_key)
+        (!Array.isArray(activeMatch.maps) || activeMatch.maps.length < expectedMapCount || !activeMatch.team_a_seed || !activeMatch.team_b_seed || !activeMatch.first_host_team_id || !activeMatch.map_generation_key || !activeMatch.start_deadline)
       ) {
         const setup = await base44.functions.invoke("ensureTournamentMatchSetup", {
           tournament_match_id: activeMatch.id,
@@ -650,8 +586,8 @@ export default function TournamentMatchRoom() {
 
   const handleComplete = async () => {
     if (!canSubmit) return;
-    if (scoreA === scoreB) {
-      toast({ title: "Invalid score", description: "Scores cannot be tied.", variant: "destructive" });
+    if (scoreValidationError) {
+      toast({ title: "Invalid series score", description: scoreValidationError, variant: "destructive" });
       return;
     }
 
@@ -698,6 +634,13 @@ export default function TournamentMatchRoom() {
       toast({ title: "Streamer lobby moderation", description: "Streamer tournaments use host chat moderation instead of admin tickets." });
       return;
     }
+    if (!supportWindowUnlocked) {
+      toast({
+        title: "Admin support is still locked",
+        description: "You can call an admin after the 15-minute match start timer reaches 00:00.",
+      });
+      return;
+    }
     setRequestingAdmin(true);
     try {
       const response = await base44.functions.invoke("requestAdminAlert", {
@@ -724,6 +667,13 @@ export default function TournamentMatchRoom() {
   const handleCreateDispute = async () => {
     if (isStreamerTournament(tournament)) {
       toast({ title: "Disputes disabled", description: "Streamer tournaments do not create dispute cases." });
+      return;
+    }
+    if (!supportWindowUnlocked) {
+      toast({
+        title: "Disputes are still locked",
+        description: "You can open a dispute after the 15-minute match start timer reaches 00:00.",
+      });
       return;
     }
     const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
@@ -852,15 +802,15 @@ export default function TournamentMatchRoom() {
     );
   }
 
-  const predictedWinner = scoreA === scoreB ? null : scoreA > scoreB ? match.team_a_name : match.team_b_name;
+  const predictedWinner = scoreIsValid ? (scoreA > scoreB ? match.team_a_name : match.team_b_name) : null;
   const canAdminCorrect = adminCorrectionRoles.has(user?.role) && match?.team_a_id && match?.team_b_id;
   const canAdminResolve = isStaff && canSubmit && !canAdminCorrect;
   const isStreamerMatch = isStreamerTournament(tournament);
 
   return (
-    <div className="min-h-screen bg-obsidian py-6">
-      <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
-        <div className="glass rounded-xl border border-orange/20 p-6 mb-6">
+    <div className="min-h-screen bg-obsidian py-6 sm:py-8">
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
+        <div className="glass mb-6 rounded-xl border border-orange/20 p-6 sm:p-7">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
@@ -888,6 +838,53 @@ export default function TournamentMatchRoom() {
           </div>
         </div>
 
+        {!isComplete && match.team_a_id && match.team_b_id && (
+          <div className={`relative mb-6 overflow-hidden rounded-2xl p-[1px] ${
+            startWindowExpired
+              ? "bg-gradient-to-r from-orange/45 via-red-400/20 to-orange/45"
+              : "bg-gradient-to-r from-cyan/45 via-blue-400/15 to-cyan/45"
+          }`}>
+            <div className="relative overflow-hidden rounded-[15px] bg-[linear-gradient(135deg,rgba(18,26,37,0.97),rgba(10,14,21,0.94))] px-5 py-5 sm:px-6">
+              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-4">
+                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                    startWindowExpired ? "bg-orange/12 text-orange" : "bg-cyan/12 text-cyan"
+                  }`}>
+                    {startWindowExpired ? <Unlock className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
+                  </span>
+                  <div>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${
+                      startWindowExpired ? "text-orange" : "text-cyan"
+                    }`}>
+                      {startWindowExpired ? "Start window expired" : "Match start window"}
+                    </p>
+                    <h2 className="mt-1 text-lg font-black text-white">
+                      {startWindowExpired
+                        ? "Admin support is now available"
+                        : "Your match is ready — start now"}
+                    </h2>
+                    {!startWindowExpired && (
+                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-vapor">
+                        You have 15 minutes to enter the lobby and begin. Admin support and disputes unlock only when this timer reaches 00:00.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0 rounded-xl bg-black/25 px-6 py-4 text-center shadow-inner ring-1 ring-white/5">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">
+                    {hasStartDeadline ? "Time remaining" : "Waiting for schedule"}
+                  </p>
+                  <p className={`mt-1 font-mono text-3xl font-black tabular-nums ${
+                    startWindowExpired ? "text-orange" : "text-cyan"
+                  }`}>
+                    {hasStartDeadline ? formatCountdown(startSecondsRemaining) : "--:--"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isComplete && (
           <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex items-center gap-3">
             <Trophy className="w-5 h-5 text-green" />
@@ -912,8 +909,8 @@ export default function TournamentMatchRoom() {
           <div className="mb-3 flex items-center gap-3 rounded-lg border border-cyan/20 bg-cyan/5 px-4 py-3 text-xs text-vapor">
             <Flag className="h-4 w-4 shrink-0 text-cyan" />
             <p>
-              <span className="font-black uppercase tracking-wider text-cyan">Report final score</span>
-              <span className="ml-2">Both teams must submit the same score before the win is awarded. Conflicting reports open staff review.</span>
+              <span className="font-black uppercase tracking-wider text-cyan">BO{bestOf} · First to {winsNeeded}</span>
+              <span className="ml-2">Valid final scores: {seriesScoreExamples(match)}. Both teams must report the same result.</span>
             </p>
           </div>
         )}
@@ -927,7 +924,7 @@ export default function TournamentMatchRoom() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-5 mb-5">
+        <div className="mb-6 grid gap-6 lg:grid-cols-2">
           <TeamCard
             label="Team A"
             color="cyan"
@@ -937,7 +934,9 @@ export default function TournamentMatchRoom() {
             score={scoreA}
             setScore={setScoreA}
             disabled={!canSubmit}
+            maxScore={winsNeeded}
             players={teamAPlayers}
+            currentUser={user}
           />
           <TeamCard
             label="Team B"
@@ -948,12 +947,14 @@ export default function TournamentMatchRoom() {
             score={scoreB}
             setScore={setScoreB}
             disabled={!canSubmit}
+            maxScore={winsNeeded}
             players={teamBPlayers}
+            currentUser={user}
           />
         </div>
 
-        <div className={`grid gap-5 ${canChat ? "xl:grid-cols-[minmax(0,1.35fr)_420px]" : ""}`}>
-          <div className="min-w-0 space-y-5">
+        <div className={`grid gap-6 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_460px]" : ""}`}>
+          <div className="min-w-0 space-y-6">
             <MapSeries match={match} />
 
         {canUseMatchControls && (
@@ -1010,7 +1011,7 @@ export default function TournamentMatchRoom() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleComplete}
-              disabled={!canSubmit || submitting}
+              disabled={!canSubmit || !scoreIsValid || submitting}
               className="flex-1 min-w-[200px] py-3 bg-green/10 text-green font-bold text-sm rounded-lg border border-green/20 hover:bg-green/20 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4" /> {submitting ? "Submitting..." : canStaffSubmitResult ? "Submit Result" : "Submit Score Report"}
@@ -1018,7 +1019,8 @@ export default function TournamentMatchRoom() {
             {!isStreamerMatch && (
               <button
                 onClick={handleRequestAdmin}
-                disabled={!isMatchParticipant || requestingAdmin}
+                disabled={!isMatchParticipant || !supportWindowUnlocked || requestingAdmin}
+                title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : undefined}
                 className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
               >
                 <Gavel className="w-4 h-4" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
@@ -1027,7 +1029,8 @@ export default function TournamentMatchRoom() {
             {!isStreamerMatch && (
               <button
                 onClick={handleCreateDispute}
-                disabled={!isMatchParticipant || disputing}
+                disabled={!isMatchParticipant || !supportWindowUnlocked || disputing}
+                title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : undefined}
                 className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50"
               >
                 {disputing ? "Submitting..." : "Submit Dispute"}
@@ -1059,10 +1062,16 @@ export default function TournamentMatchRoom() {
               Matching reports will advance {predictedWinner}.
             </p>
           )}
+          {canSubmit && !scoreIsValid && (
+            <p className="mt-3 flex items-center gap-2 text-xs text-orange">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              {scoreValidationError}
+            </p>
+          )}
         </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid gap-6 md:grid-cols-2">
           <div className="glass rounded-xl border border-white/5 p-5">
             <h2 className="font-bold text-sm mb-3 flex items-center gap-2">
               <Swords className="w-4 h-4 text-cyan" />
@@ -1118,13 +1127,13 @@ export default function TournamentMatchRoom() {
                 live
                 compact
                 sticky={false}
-                heightClass="h-[420px] xl:h-[500px]"
+                heightClass="h-[440px] xl:h-[540px]"
               />
             </aside>
           )}
         </div>
 
-        <div id="tournament-bracket" className="mt-5 scroll-mt-6">
+        <div id="tournament-bracket" className="mt-6 scroll-mt-6">
           <BracketPreview matches={bracketMatches} currentId={match.id} tournament={tournament} />
         </div>
       </div>

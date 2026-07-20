@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { activisionIdRequiredForUserIds, activisionIdRequiredResponse } from '../_shared/activision.ts';
 
 const playerName = (user) => user.display_name || user.full_name || user.username || user.email || 'Unnamed player';
 
@@ -7,6 +8,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const activisionResponse = activisionIdRequiredResponse([user]);
+    if (activisionResponse) return activisionResponse;
 
     const { ranked_match_id, match_id } = await req.json();
     const id = ranked_match_id || match_id;
@@ -16,6 +19,8 @@ Deno.serve(async (req) => {
     if (!match) return Response.json({ error: 'Ranked match not found' }, { status: 404 });
     if (match.status !== 'open') return Response.json({ error: 'Ranked match is no longer open' }, { status: 400 });
     if (match.host_id === user.id) return Response.json({ error: 'Cannot accept your own ranked match' }, { status: 400 });
+    const hostActivisionResponse = await activisionIdRequiredForUserIds(base44, [match.host_id]);
+    if (hostActivisionResponse) return hostActivisionResponse;
 
     const now = new Date().toISOString();
     const deadline = new Date(Date.now() + 15 * 60 * 1000).toISOString();

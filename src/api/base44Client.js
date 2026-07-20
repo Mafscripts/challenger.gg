@@ -1,3 +1,9 @@
+import {
+  blockedPublicCommerceFunctions,
+  commerceUnavailableMessage,
+  publicCommerceEnabled,
+} from "@/lib/commerce";
+
 const normalizeApiBase = (value) => String(value || "").replace(/\/+$/, "");
 
 const API_BASE = (() => {
@@ -229,9 +235,15 @@ const entityClient = (entity) => ({
     return apiFetch(`/entities/${entity}${toQuery({ filter, order, limit })}`, { dedupe: false });
   },
 
-  get(id) {
+  async get(id) {
     requireToken();
-    return apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`);
+    const cacheKey = `${entity}:get:${String(id)}`;
+    const cached = entityCache.get(cacheKey);
+    if (cached && cached.expiresAt > now()) return cached.value;
+
+    const value = await apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`);
+    entityCache.set(cacheKey, { value, expiresAt: now() + ENTITY_CACHE_MS });
+    return value;
   },
 
   async create(payload) {
@@ -271,6 +283,12 @@ export const base44 = {
   }),
   functions: {
     async invoke(name, payload = {}) {
+      if (!publicCommerceEnabled && blockedPublicCommerceFunctions.has(name)) {
+        const error = new Error(commerceUnavailableMessage);
+        error.code = "PUBLIC_COMMERCE_DISABLED";
+        error.status = 503;
+        throw error;
+      }
       requireToken();
       const data = await apiFetch(`/functions/${name}`, { method: "POST", body: payload, dedupe: false });
       entityCache.clear();

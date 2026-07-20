@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { activisionIdRequiredResponse } from '../_shared/activision.ts';
 
 const nowIso = () => new Date().toISOString();
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || user?.id || 'Unnamed player';
@@ -76,6 +77,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    const activisionResponse = activisionIdRequiredResponse([user]);
+    if (activisionResponse) return activisionResponse;
 
     const body = await req.json();
     const tournament = await base44.asServiceRole.entities.Tournament.get(body.tournament_id || '').catch(() => null);
@@ -103,6 +106,13 @@ Deno.serve(async (req) => {
     }
 
     const feeType = tournament.entry_type || (tournament.is_premium_only ? 'premium' : (Number(tournament.entry_fee || 0) > 0 ? 'credits' : 'free'));
+    const inviteOnly = tournament.invite_only === true || feeType === 'invitational';
+    const invitedUserIds = Array.isArray(tournament.invited_user_ids)
+      ? tournament.invited_user_ids.map(String)
+      : [];
+    if (inviteOnly && !invitedUserIds.includes(String(user.id))) {
+      return Response.json({ success: false, error: 'This tournament is invite only' }, { status: 403 });
+    }
     if ((feeType === 'premium' || feeType === 'credits_premium') && !user.is_premium) {
       return Response.json({ success: false, error: 'Premium membership is required' }, { status: 400 });
     }
@@ -110,6 +120,8 @@ Deno.serve(async (req) => {
     const entryFee = Number(tournament.entry_fee || 0);
     const paymentMode = paymentModeFor(body.payment_mode);
     const memberUsers = await Promise.all(members.map((member) => base44.asServiceRole.entities.User.get(member.user_id).catch(() => null)));
+    const rosterActivisionResponse = activisionIdRequiredResponse(memberUsers);
+    if (rosterActivisionResponse) return rosterActivisionResponse;
 
     if ((feeType === 'credits' || feeType === 'credits_premium') && entryFee > 0) {
       if (paymentMode === 'full_team') {

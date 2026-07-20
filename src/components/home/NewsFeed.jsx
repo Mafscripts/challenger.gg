@@ -44,7 +44,7 @@ export default function NewsFeed() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.08 }}
-                whileHover={{ x: 4 }}
+                whileHover={{ x: 4, transition: { duration: 0.1, ease: "easeOut" } }}
                 className="glass rounded-xl p-5 border border-white/5 hover:border-white/10 transition-all flex items-center gap-4"
               >
                 <span className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider text-green bg-green/10 shrink-0">

@@ -17,6 +17,7 @@ import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchChat from "@/components/match/MatchChat";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
+import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import { getRankForElo } from "@/lib/ranks";
 
 const playerName = (user, fallback = "Unnamed player") => (
@@ -54,6 +55,7 @@ function PlayerPanel({ label, color, player, waiting }) {
         <div className="min-w-0">
           <h2 className="text-xl font-black truncate">{player.name}</h2>
           <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
+          <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
           <p className="text-xs text-vapor">{rank.name} - {(player.elo || 0).toLocaleString()} ELO</p>
         </div>
       </div>
@@ -118,6 +120,7 @@ export default function RankedMatchRoom() {
     return {
       id: userId,
       name: playerName(userRows, fallbackName),
+      activision_id: userRows?.activision_id || "",
       elo: stats.elo || 0,
       wins: stats.wins || 0,
       losses: stats.losses || 0,

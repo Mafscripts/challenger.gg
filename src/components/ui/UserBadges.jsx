@@ -25,6 +25,13 @@ const specialBadgeConfig = {
 
 export const specialBadgeTypes = Object.keys(specialBadgeConfig);
 
+export function hasActivePremium(user) {
+  if (!user?.is_premium) return false;
+  if (!user.premium_expires) return true;
+  const expiresAt = new Date(user.premium_expires).getTime();
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
 export function userSpecialBadges(user) {
   const badges = Array.isArray(user?.badges) ? user.badges : [];
   const types = new Set(
@@ -35,7 +42,8 @@ export function userSpecialBadges(user) {
 
   if (user?.verified_player || user?.is_verified_player) types.add("verified_player");
   if (user?.streamer_badge || user?.is_streamer) types.add("streamer");
-  if (user?.is_premium) types.add("premium");
+  if (hasActivePremium(user)) types.add("premium");
+  else types.delete("premium");
 
   return [...types].map((type) => ({
     type,
@@ -63,7 +71,7 @@ export default function UserBadges({
   const iconOnlyClass = size === "xs" ? "h-5 w-5" : "h-6 w-6";
 
   const tooltip = (label, description, Icon, toneClass) => (
-    <span className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 w-36 -translate-x-1/2 rounded-lg border border-white/10 bg-[#111821] px-3 py-2 text-left opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
+    <span className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 w-36 -translate-x-1/2 rounded-lg border border-white/10 bg-popover px-3 py-2 text-left opacity-0 shadow-xl transition-all group-hover/badge:visible group-hover/badge:opacity-100">
       <span className={`mb-1 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider ${toneClass}`}>
         <Icon className="h-3.5 w-3.5" />
         {label}
@@ -88,7 +96,7 @@ export default function UserBadges({
             <BadgeTag
               key={badge.type}
               {...linkProps}
-              className={`group relative inline-flex shrink-0 select-none items-center justify-center rounded-full border ${iconOnlyClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
+              className={`group/badge relative inline-flex shrink-0 select-none items-center justify-center rounded-full border ${iconOnlyClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
             >
               <Icon className={iconClass} />
               {tooltip(badge.name || config.label, config.description, Icon, config.className.split(" ").find((token) => token.startsWith("text-")) || "text-white")}
@@ -99,7 +107,7 @@ export default function UserBadges({
           <BadgeTag
             key={badge.type}
             {...linkProps}
-            className={`group relative inline-flex select-none items-center gap-1 rounded-md border font-black uppercase tracking-wider ${sizeClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
+            className={`group/badge relative inline-flex select-none items-center gap-1 rounded-md border font-black uppercase tracking-wider ${sizeClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
           >
             <Icon className={iconClass} />
             {badge.name || config.label}
@@ -109,7 +117,7 @@ export default function UserBadges({
       })}
       {forcedStream && (
         <span
-          className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} group relative inline-flex cursor-default select-none items-center border border-orange/25 bg-orange/10 font-black uppercase tracking-wider text-orange`}
+          className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} group/badge relative inline-flex cursor-default select-none items-center border border-orange/25 bg-orange/10 font-black uppercase tracking-wider text-orange`}
         >
           {iconOnly ? <AlertTriangle className={iconClass} /> : "Stream Required"}
           {tooltip("Stream Required", "Admin requires this player to stream", AlertTriangle, "text-orange")}
@@ -117,7 +125,7 @@ export default function UserBadges({
       )}
       {monitorCamRequired && (
         <span
-          className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} group relative inline-flex cursor-default select-none items-center border border-red-400/35 bg-red-500/10 font-black uppercase tracking-wider text-red-400 shadow-[0_0_14px_rgba(248,113,113,0.2)]`}
+          className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} group/badge relative inline-flex cursor-default select-none items-center border border-red-400/35 bg-red-500/10 font-black uppercase tracking-wider text-red-400 shadow-[0_0_14px_rgba(248,113,113,0.2)]`}
         >
           {iconOnly ? "!" : "Monitor Cam Required"}
           {tooltip("Monitor Cam", "This player must use monitor cam in match rooms.", AlertTriangle, "text-red-400")}

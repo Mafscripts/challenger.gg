@@ -9,6 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchChat from "@/components/match/MatchChat";
 import UserBadges from "@/components/ui/UserBadges";
+import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 
 const playerName = (player) => player?.full_name || player?.display_name || player?.username || player?.user_name || "Unknown player";
@@ -58,7 +59,10 @@ function RoomTeamCard({ label, tone, name, players, score, setScore, disabled, h
                 <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-[10px] font-black ${cyan ? "bg-cyan/15 text-cyan" : "bg-orange/15 text-orange"}`}>
                   {index + 1}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-bold">{playerName(player)}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">{playerName(player)}</p>
+                  <ActivisionIdLabel user={player} className="mt-0.5 max-w-full" />
+                </div>
                 <UserBadges user={player} badges={player.badges || []} size="xs" iconOnly showMonitorCam />
                 <span className="text-[10px] font-mono text-vapor">{player.wager_wins || 0}-{player.wager_losses || 0}</span>
               </div>

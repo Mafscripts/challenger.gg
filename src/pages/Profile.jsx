@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import {
   Award,
   BadgeCheck,
-  BarChart3,
   Calendar,
   Camera,
   ChevronRight,
@@ -34,6 +33,7 @@ import UserBadges from "@/components/ui/UserBadges";
 import { base44 } from "@/api/base44Client";
 import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
+import { activisionIdFor } from "@/lib/activision";
 
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
@@ -267,7 +267,7 @@ export default function Profile() {
         base44.entities.RankedStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
         base44.entities.XPStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
         base44.entities.Wallet.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
-        base44.entities.UserInventory.filter({ user_id: userRow.id }, "-acquired_date", 20).catch(() => []),
+        base44.entities.UserInventory.filter({ user_id: userRow.id }, "-acquired_date", 200).catch(() => []),
         base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
         base44.entities.Wager.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.Wager.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
@@ -320,7 +320,8 @@ export default function Profile() {
     ? activeNameColor
     : "";
   const trophyCount = profileTrophyCount(user, inventory);
-  const primaryTeams = teams.map((membership) => membership.team).filter(Boolean).slice(0, 4);
+  const profileTeams = teams.filter((membership) => membership.team && membership.team.is_demo !== true);
+  const primaryTeams = profileTeams.map((membership) => membership.team).slice(0, 4);
   const elo = Number(rankedStats?.elo || profile?.elo || 0);
   const nextRank = getNextRankForElo(elo);
   const rankProgress = getRankProgress(elo);
@@ -335,7 +336,7 @@ export default function Profile() {
     statNumber(profile?.total_earnings),
     statNumber(user?.total_wager_earnings),
   );
-  const mainTeam = teams[0]?.team || null;
+  const mainTeam = profileTeams[0]?.team || null;
   const inventoryPreview = inventory.slice(0, 5);
   const socialLinks = socialLinksFor(profile, user);
   const joinedDate = formatDate(profile?.account_created_date || user?.account_created_date || user?.created_date);
@@ -348,6 +349,10 @@ export default function Profile() {
     { label: "Ranked", value: rank.name || `${rank.tier} ${rank.division || ""}`.trim(), icon: Medal, tone: "text-cyan" },
   ];
   const trophyOverviewCards = trophyOverviewFor(user, profile, inventory, matches);
+  const earnedTrophyItems = inventory.filter((item) => {
+    const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
+    return item.item_category === "trophy" || text.includes("trophy");
+  }).slice(0, 12);
 
   const handleAvatarFile = async (event) => {
     const file = event.target.files?.[0];
@@ -417,60 +422,71 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+    <div className="min-h-screen py-10 sm:py-14">
+      <div className="mx-auto max-w-[1560px] px-4 sm:px-6 lg:px-10">
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass relative mb-6 overflow-hidden rounded-xl border border-white/5"
+          className="premium-panel relative mb-8 overflow-hidden rounded-[1.75rem]"
         >
           <motion.div
             aria-hidden="true"
-            className="absolute inset-0 opacity-80"
+            className="absolute inset-0 opacity-90"
             animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
             transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
             style={{
               backgroundImage:
-                "linear-gradient(115deg, rgba(16,22,31,.94) 0%, rgba(31,37,46,.88) 46%, rgba(25,49,57,.72) 72%, rgba(16,22,31,.94) 100%), radial-gradient(circle at 82% 8%, rgba(20,216,255,.16), transparent 34%)",
+                "radial-gradient(circle at 86% 6%, rgba(20,216,255,.14), transparent 28%), radial-gradient(circle at 8% 100%, rgba(255,112,0,.065), transparent 25%), linear-gradient(118deg, rgba(15,20,29,.98) 0%, rgba(24,31,41,.96) 54%, rgba(15,28,34,.95) 100%)",
               backgroundSize: "180% 180%",
             }}
           />
           <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan/35 to-transparent" />
-          <div className="relative grid gap-6 p-5 sm:p-7 xl:grid-cols-[1fr_430px]">
-            <div className="flex min-w-0 flex-col justify-between gap-6">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+          <div className="relative grid gap-8 p-6 sm:p-8 lg:p-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-10">
+            <div className="flex min-w-0 flex-col justify-between gap-9">
+              <div className="flex flex-col gap-7 lg:flex-row lg:items-center">
                 <div className="relative mx-auto shrink-0 lg:mx-0">
-                  <div className="absolute -inset-2 rounded-full bg-cyan/20 blur-md" />
-                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-2 border-cyan/40 bg-secondary text-4xl font-black shadow-[0_0_28px_rgba(20,216,255,0.18)] sm:h-36 sm:w-36">
+                  <div className="absolute -inset-3 rounded-[2.2rem] bg-gradient-to-br from-cyan/20 via-cyan/5 to-orange/10 blur-xl" />
+                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-secondary to-background text-4xl font-black shadow-[0_24px_50px_rgba(0,0,0,0.35),0_0_0_1px_rgba(20,216,255,0.22)] sm:h-40 sm:w-40">
                     {avatarDraft || profile?.avatar_url ? (
                       <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" />
                     ) : (
                       <span className="text-cyan">{name.charAt(0)}</span>
                     )}
                   </div>
-                  <span className="absolute bottom-3 right-2 h-5 w-5 rounded-full border-2 border-background bg-green shadow-[0_0_14px_rgba(0,255,128,0.45)]" />
+                  <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl bg-card shadow-[0_8px_20px_rgba(0,0,0,.35)]">
+                    <span className="h-3 w-3 rounded-full bg-green shadow-[0_0_14px_rgba(0,255,128,0.55)]" />
+                  </span>
                 </div>
 
                 <div className="min-w-0 flex-1 text-center lg:text-left">
-                  <div className="mb-2 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-                    <h1 className="truncate text-3xl font-black tracking-normal sm:text-4xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.24em] text-cyan/80">TopFragg competitor profile</p>
+                  <div className="mb-3 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
+                    <h1 className="truncate text-4xl font-black leading-none tracking-[-0.04em] text-[#eef1f7] sm:text-5xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
                       {name}
                     </h1>
                     <RoleBadge role={user.role || "user"} />
                     <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
-                    {user.is_premium && (
-                      <span className="inline-flex items-center gap-1 rounded-md border border-orange/25 bg-orange/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-orange">
-                        <Crown className="h-3 w-3" /> Premium
-                      </span>
-                    )}
                   </div>
-                  <p className="mb-4 text-sm text-vapor">
+                  <p className="mb-4 text-sm font-medium text-vapor">
                     @{user.handle || profile?.handle || user.username || "player"} <span className="px-2 text-white/20">/</span> {region} <span className="px-2 text-white/20">/</span> Joined {joinedDate}
                   </p>
+                  <p className="mx-auto mb-5 max-w-2xl text-sm leading-6 text-white/60 lg:mx-0">
+                    {profile?.bio || "Competitive player building a legacy on TopFragg."}
+                  </p>
                   <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                    <span className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px] font-black tracking-wider ${activisionIdFor(user) ? "border-purple-400/25 bg-purple-400/10 text-purple-300" : "border-orange/20 bg-orange/10 text-orange"}`}>
+                      <Gamepad2 className="h-3 w-3 shrink-0" />
+                      <span className="shrink-0 uppercase">Activision ID</span>
+                      <span className="truncate normal-case">{activisionIdFor(user) || "Not set"}</span>
+                    </span>
+                    {isOwnProfile && !activisionIdFor(user) && (
+                      <Link to="/settings#gaming-ids" className="rounded-md bg-orange px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90">
+                        Add in Settings
+                      </Link>
+                    )}
                     {primaryTeams.map((team) => (
-                      <Link key={team.id} to="/teams" className="rounded-md border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/20">
-                        {team.tag || team.name}
+                      <Link key={team.id} to="/teams" title={`Open ${team.name}`} className="inline-flex items-center gap-1.5 rounded-md border border-orange/20 bg-orange/[0.07] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange transition-colors hover:border-orange/35 hover:bg-orange/10">
+                        <Shield className="h-3 w-3" /> Team · {team.tag || team.name}
                       </Link>
                     ))}
                     {socialLinks.map((social) => (
@@ -493,16 +509,16 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 2xl:grid-cols-5">
                 <HeroSignal label="Record" value={`${wins} - ${losses}`} detail="Wins - Losses" icon={Swords} tone="text-cyan" />
                 <HeroSignal label="Win Rate" value={`${winRate}%`} detail="This season" icon={Target} tone="text-green" />
-                <HeroSignal label="Teams" value={teams.length} detail="Total teams" icon={Users} tone="text-cyan" />
+                <HeroSignal label="Teams" value={profileTeams.length} detail="Total teams" icon={Users} tone="text-cyan" />
                 <HeroSignal label="Streak" value={currentStreak} detail="Wins in a row" icon={Flame} tone="text-orange" />
                 <HeroSignal label="Earnings" value={formatMoney(earnedMoney)} detail="Total earned" icon={DollarSign} tone="text-green" />
               </div>
             </div>
 
-            <div className="grid content-start gap-4">
+            <div className="grid content-start gap-4 xl:border-l xl:border-white/[0.05] xl:pl-9">
               {isOwnProfile && (
                 <div className="flex justify-end">
                   <button
@@ -522,25 +538,26 @@ export default function Profile() {
                   </button>
                 </div>
               )}
-              <SectionCard className="p-5">
+              <div className="premium-card relative overflow-hidden rounded-2xl p-6">
+                <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan/10 blur-3xl" />
                 <div className="flex items-center gap-4">
                   <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}>
                     <RankBadge rank={rank.tier} division={rank.division} size="xl" />
                   </motion.div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-vapor">ELO Rating</p>
-                    <p className="mt-1 font-mono text-3xl font-black text-cyan text-glow-cyan">{elo.toLocaleString()}</p>
-                    <p className="text-xs font-semibold text-white">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-vapor">Competitive rating</p>
+                    <p className="mt-1 font-mono text-4xl font-black tracking-tight text-cyan text-glow-cyan">{elo.toLocaleString()}</p>
+                    <p className="mt-1 text-sm font-bold text-white">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
                   </div>
                 </div>
-                <ProgressBar value={rankProgress} tone="from-cyan to-green" className="mt-4" />
-                <div className="mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-vapor">
+                <ProgressBar value={rankProgress} tone="from-cyan via-cyan to-green" className="mt-5" />
+                <div className="mt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-vapor">
                   <span>{rankProgress}% through rank</span>
                   <span>{nextRank ? `Next: ${nextRank.name}` : "Top rank"}</span>
                 </div>
-              </SectionCard>
+              </div>
 
-              <SectionCard className="p-5">
+              <div className="premium-card rounded-2xl p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-cyan" />
@@ -549,7 +566,7 @@ export default function Profile() {
                   <span className="font-mono text-xs text-white">{currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP</span>
                 </div>
                 <ProgressBar value={xpProgress} tone="from-cyan to-green" />
-              </SectionCard>
+              </div>
             </div>
           </div>
 
@@ -624,15 +641,15 @@ export default function Profile() {
           )}
         </motion.section>
 
-        <nav className="mb-6 flex items-center gap-2 overflow-x-auto">
+        <nav className="mb-8 flex w-full items-center gap-1 overflow-x-auto rounded-2xl bg-white/[0.025] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.025)] sm:w-fit">
           {["overview", "matches", "badges", "inventory", "teams"].map((item) => (
             <button
               key={item}
               onClick={() => setTab(item)}
-              className={`h-10 rounded-lg px-4 text-xs font-black uppercase tracking-wider transition-all ${
+              className={`h-10 whitespace-nowrap rounded-xl px-5 text-[11px] font-black uppercase tracking-[0.12em] transition-all ${
                 tab === item
-                  ? "bg-cyan text-background"
-                  : "bg-secondary text-vapor hover:text-foreground"
+                  ? "bg-cyan text-background shadow-[0_8px_24px_rgba(20,216,255,.18)]"
+                  : "text-vapor hover:bg-white/[0.04] hover:text-foreground"
               }`}
             >
               {item}
@@ -641,15 +658,15 @@ export default function Profile() {
         </nav>
 
         {tab === "overview" && (
-          <div className="space-y-6">
-            <TrophyOverview trophies={trophyOverviewCards} />
+          <div className="space-y-8">
+            <TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} />
 
-            <div className="grid gap-6 xl:grid-cols-12">
+            <div className="grid gap-6 xl:grid-cols-12 2xl:gap-7">
               <RecentMatchesPanel matches={matches.slice(0, 5)} userId={user.id} className="xl:col-span-4" />
               <RankProgressPanel rank={rank} elo={elo} rankProgress={rankProgress} rankJourneyIndex={rankJourneyIndex} className="xl:col-span-5" />
               <AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} className="xl:col-span-3" />
               <InventoryPreview items={inventoryPreview} className="xl:col-span-4" />
-              <TeamPanel team={mainTeam} memberships={teams} className="xl:col-span-4" />
+              <TeamPanel team={mainTeam} memberships={profileTeams} className="xl:col-span-4" />
               <AchievementsPanel achievements={achievementCards} className="xl:col-span-4" />
             </div>
           </div>
@@ -658,7 +675,7 @@ export default function Profile() {
         {tab === "matches" && <RecentMatchesPanel matches={matches} userId={user.id} expanded />}
         {tab === "badges" && <AchievementsPanel achievements={achievementCards} badges={badges} expanded />}
         {tab === "inventory" && <InventoryShowcase items={inventory} />}
-        {tab === "teams" && <TeamsList teams={teams} />}
+        {tab === "teams" && <TeamsList teams={profileTeams} />}
       </div>
     </div>
   );
@@ -666,8 +683,8 @@ export default function Profile() {
 
 function SectionCard({ children, className = "" }) {
   return (
-    <div className={`glass relative overflow-hidden rounded-xl border border-white/5 ${className}`}>
-      <div className="pointer-events-none absolute inset-0 bg-cyan/[0.015]" />
+    <div className={`premium-panel relative overflow-hidden rounded-3xl ${className}`}>
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       <div className="relative">{children}</div>
     </div>
   );
@@ -675,11 +692,11 @@ function SectionCard({ children, className = "" }) {
 
 function SectionHeader({ title, action, to }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <h3 className="text-sm font-black uppercase tracking-wider text-white">{title}</h3>
+    <div className="mb-5 flex items-center justify-between gap-3">
+      <h3 className="text-base font-black tracking-tight text-white">{title}</h3>
       {action && to && (
-        <Link to={to} className="text-[10px] font-black uppercase tracking-wider text-cyan transition-colors hover:text-white">
-          {action}
+        <Link to={to} className="group inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan transition-colors hover:text-white">
+          {action} <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
         </Link>
       )}
     </div>
@@ -688,12 +705,12 @@ function SectionHeader({ title, action, to }) {
 
 function ProgressBar({ value, tone = "from-cyan to-green", className = "" }) {
   return (
-    <div className={`h-2 overflow-hidden rounded-full bg-background/50 ${className}`}>
+    <div className={`h-2.5 overflow-hidden rounded-full bg-black/25 shadow-[inset_0_1px_3px_rgba(0,0,0,.35)] ${className}`}>
       <motion.div
         initial={{ width: 0 }}
         animate={{ width: `${clampPercent(value)}%` }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className={`h-full rounded-full bg-gradient-to-r ${tone}`}
+        className={`h-full rounded-full bg-gradient-to-r shadow-[0_0_18px_rgba(20,216,255,.25)] ${tone}`}
       />
     </div>
   );
@@ -701,27 +718,34 @@ function ProgressBar({ value, tone = "from-cyan to-green", className = "" }) {
 
 function HeroSignal({ icon: Icon, label, value, detail, tone = "text-cyan" }) {
   return (
-    <div className="rounded-lg border border-white/5 bg-secondary/60 p-4">
-      <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-vapor">
-        <Icon className={`h-4 w-4 ${tone}`} />
-        {label}
+    <motion.div whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }} className="premium-card group relative overflow-hidden rounded-2xl p-4 sm:p-5">
+      <div className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-current opacity-[0.055] blur-2xl ${tone}`} />
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-vapor">{label}</p>
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.035]">
+          <Icon className={`h-4 w-4 ${tone}`} />
+        </span>
       </div>
-      <p className={`font-mono text-3xl font-black leading-none ${tone}`}>{value}</p>
-      {detail && <p className="mt-2 text-xs text-vapor">{detail}</p>}
-    </div>
+      <p className="font-mono text-2xl font-black leading-none tracking-tight text-white sm:text-3xl">{value}</p>
+      {detail && <p className="mt-2 text-[11px] font-medium text-vapor">{detail}</p>}
+    </motion.div>
   );
 }
 
-function TrophyOverview({ trophies }) {
+function TrophyOverview({ trophies, items = [] }) {
   return (
-    <SectionCard className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-yellow-400" />
-          <h3 className="text-sm font-black uppercase tracking-wider text-white">Trophy Overview</h3>
+    <SectionCard className="p-6 sm:p-8">
+      <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-yellow-400">
+            <Trophy className="h-4 w-4" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Legacy collection</span>
+          </div>
+          <h3 className="text-2xl font-black tracking-tight text-white">Trophy cabinet</h3>
+          <p className="mt-1 text-sm text-vapor">Every finish, event, and milestone earned on TopFragg.</p>
         </div>
-        <Link to="/inventory" className="rounded-lg border border-white/5 bg-secondary px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:border-cyan/20 hover:text-cyan">
-          View All Trophies
+        <Link to="/inventory" className="group inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.045] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.04)] hover:bg-cyan/10 hover:text-cyan">
+          View Collection <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
@@ -730,23 +754,46 @@ function TrophyOverview({ trophies }) {
           return (
             <motion.div
               key={trophy.key}
-              whileHover={{ y: -3 }}
-              className="relative overflow-hidden rounded-lg border border-white/5 bg-secondary/60 p-4 transition-colors hover:border-cyan/20 hover:bg-secondary/80"
+              whileHover={{ y: -5, transition: { duration: 0.1, ease: "easeOut" } }}
+              className="premium-card group relative overflow-hidden rounded-2xl p-5"
             >
-              <div className={`pointer-events-none absolute -left-8 -top-8 h-24 w-24 rounded-full blur-3xl ${trophy.tint}`} />
-              <div className="relative flex items-center gap-4">
-                <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-white/5 bg-background/35 ${trophy.tone}`}>
-                  <Icon className="h-9 w-9" />
+              <div className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-70 blur-3xl ${trophy.tint}`} />
+              <div className="relative">
+                <div className={`mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${trophy.tone}`}>
+                  <Icon className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[10px] font-black uppercase tracking-wider text-vapor">{trophy.label}</p>
-                  <p className={`mt-1 font-mono text-4xl font-black leading-none ${trophy.tone}`}>{trophy.value}</p>
-                </div>
+                <p className="font-mono text-4xl font-black leading-none tracking-tight text-white">{trophy.value}</p>
+                <p className="mt-2 truncate text-[10px] font-black uppercase tracking-[0.16em] text-vapor">{trophy.label}</p>
               </div>
             </motion.div>
           );
         })}
       </div>
+      {items.length > 0 && (
+        <div className="mt-7 border-t border-white/[0.06] pt-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan">Tournament history</p>
+              <h4 className="mt-1 text-lg font-black text-white">Earned tournament trophies</h4>
+            </div>
+            <span className="rounded-lg bg-white/[0.04] px-3 py-1.5 font-mono text-xs font-black text-vapor">{items.length} shown</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {items.map((item) => (
+              <div key={item.id} className="premium-card flex min-w-0 items-center gap-3 rounded-2xl p-3.5">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-yellow-400/15 bg-yellow-400/[0.06] text-yellow-400">
+                  {item.item_image ? <img src={item.item_image} alt="" className="h-full w-full object-cover" /> : <Trophy className="h-5 w-5" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-black text-white">{item.item_name || "Tournament Trophy"}</span>
+                  <span className="mt-0.5 block truncate text-[10px] font-medium text-vapor">{item.source_tournament_name || `Placement #${item.tournament_placement || "-"}`}</span>
+                  <span className="mt-1 block text-[9px] font-black uppercase tracking-wider text-yellow-400/80">Earned {formatDate(item.acquired_date)}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </SectionCard>
   );
 }
@@ -764,7 +811,7 @@ function RecentMatchesPanel({ matches, userId, className = "", expanded = false 
             return (
               <motion.div
                 key={match.id}
-                whileHover={{ x: 4 }}
+                whileHover={{ x: 4, transition: { duration: 0.1, ease: "easeOut" } }}
                 className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/5 bg-background/25 p-3 transition-colors hover:border-cyan/20 hover:bg-cyan/5"
               >
                 <span className={`rounded-md border px-2 py-1 text-[10px] font-black uppercase ${resultClass} ${resultColor}`}>
@@ -789,33 +836,40 @@ function RecentMatchesPanel({ matches, userId, className = "", expanded = false 
 
 function RankProgressPanel({ rank, elo, rankProgress, rankJourneyIndex, className = "" }) {
   return (
-    <SectionCard className={`p-5 ${className}`}>
+    <SectionCard className={`p-6 sm:p-7 ${className}`}>
       <SectionHeader title="Rank Progress" action="Leaderboard" to="/leaderboards" />
-      <div className="mb-6 grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
-        <motion.div animate={{ scale: [1, 1.03, 1] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
-          <RankBadge rank={rank.tier} division={rank.division} size="xl" />
-        </motion.div>
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-cyan" />
-            <p className="font-black uppercase tracking-wider text-cyan">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
-          </div>
-          <ProgressBar value={rankProgress} tone="from-cyan to-green" />
-          <div className="mt-3 flex flex-wrap gap-3 text-xs">
-            <span className="font-mono font-black text-white">{elo.toLocaleString()} ELO</span>
-            <span className="font-mono font-black text-green">+{Math.max(0, rankProgress)}% progress</span>
+      <div className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-cyan/[0.075] via-white/[0.025] to-transparent p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)] sm:p-6">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-cyan/10 blur-3xl" />
+        <div className="relative grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
+          <motion.div animate={{ y: [0, -3, 0] }} transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}>
+            <RankBadge rank={rank.tier} division={rank.division} size="xl" />
+          </motion.div>
+          <div>
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Current division</p>
+                <p className="mt-1 text-lg font-black text-cyan">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
+              </div>
+              <p className="font-mono text-2xl font-black tracking-tight text-white">{elo.toLocaleString()} <span className="text-[10px] tracking-[0.12em] text-vapor">ELO</span></p>
+            </div>
+            <ProgressBar value={rankProgress} tone="from-cyan via-cyan to-green" />
+            <div className="mt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-vapor">
+              <span>Division progress</span>
+              <span className="font-mono text-green">{Math.max(0, rankProgress)}%</span>
+            </div>
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+      <div className="relative grid grid-cols-4 gap-y-5 sm:grid-cols-8 sm:gap-2">
+        <div className="pointer-events-none absolute left-[6%] right-[6%] top-[7px] hidden h-px bg-gradient-to-r from-green/50 via-cyan/25 to-white/10 sm:block" />
         {rankJourney.map((step, index) => {
           const active = index <= rankJourneyIndex;
           const current = step.tier === rank.tier;
           return (
-            <div key={step.tier} className="text-center">
-              <div className={`mx-auto mb-2 h-3 w-3 rounded-full border ${current ? "border-cyan bg-cyan shadow-[0_0_14px_rgba(20,216,255,0.45)]" : active ? "border-green bg-green/80" : "border-white/15 bg-background/40"}`} />
-              <p className={`truncate text-[10px] font-black uppercase ${current ? "text-cyan" : active ? "text-white" : "text-vapor"}`}>{step.label}</p>
-              <p className="truncate text-[9px] text-vapor">{step.range}</p>
+            <div key={step.tier} className="relative text-center">
+              <div className={`relative z-[1] mx-auto mb-3 h-3.5 w-3.5 rounded-full ring-4 ring-background ${current ? "bg-cyan shadow-[0_0_18px_rgba(20,216,255,0.65)]" : active ? "bg-green/90" : "bg-white/15"}`} />
+              <p className={`truncate text-[9px] font-black uppercase tracking-[0.08em] ${current ? "text-cyan" : active ? "text-white" : "text-vapor/70"}`}>{step.label}</p>
+              <p className="mt-1 truncate text-[8px] text-vapor/60">{step.range}</p>
             </div>
           );
         })}
@@ -915,7 +969,7 @@ function AchievementsPanel({ achievements, badges = [], className = "", expanded
         {achievements.map((achievement) => (
           <motion.div
             key={achievement.label}
-            whileHover={{ y: -4 }}
+            whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
             className="relative overflow-hidden rounded-xl border border-white/5 bg-secondary/60 p-4 text-center transition-colors hover:border-cyan/20 hover:bg-secondary/80"
           >
             <achievement.icon className={`mx-auto mb-3 h-7 w-7 ${achievement.tone}`} />
@@ -990,7 +1044,7 @@ function TeamsList({ teams }) {
 
 function InventoryMiniCard({ item }) {
   return (
-    <motion.div whileHover={{ y: -4 }} className={`relative overflow-hidden rounded-lg border bg-secondary/60 ${premiumInventoryEffectClass(item)} ${inventoryBorderClass(item)}`}>
+    <motion.div whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }} className={`relative overflow-hidden rounded-lg border bg-secondary/60 ${premiumInventoryEffectClass(item)} ${inventoryBorderClass(item)}`}>
       <div className="aspect-square bg-secondary">
         {item.item_image ? (
           <img src={item.item_image} alt={item.item_name} className="h-full w-full object-cover" />
@@ -1011,7 +1065,7 @@ function InventoryMiniCard({ item }) {
 function InventoryFullCard({ item }) {
   return (
     <motion.div
-      whileHover={{ y: -5 }}
+      whileHover={{ y: -5, transition: { duration: 0.1, ease: "easeOut" } }}
       className={`group relative overflow-hidden rounded-xl border bg-secondary/60 transition-all ${premiumInventoryEffectClass(item)} ${inventoryBorderClass(item)}`}
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-secondary">

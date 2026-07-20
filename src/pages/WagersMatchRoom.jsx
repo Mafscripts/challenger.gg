@@ -9,6 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import UserBadges from "@/components/ui/UserBadges";
+import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 
 const formatStatus = (value) => String(value || "open").replace(/_/g, " ");
 const formatDate = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Pending";
@@ -73,6 +74,7 @@ function SimpleRoster({ title, players, tone = "cyan" }) {
                   <p className="truncate text-sm font-black">{playerName(player)}</p>
                   <UserBadges user={player} size="xs" iconOnly streamerHref="/streamer-tournaments" />
                 </div>
+                <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
                 <p className={`mt-1 text-[10px] uppercase tracking-wider ${player.payment_status === "pending" ? "text-orange" : "text-green"}`}>
                   {player.payment_status === "pending" ? "Payment pending" : "Ready"}
                 </p>

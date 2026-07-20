@@ -46,7 +46,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
-      <div className="glass rounded-lg p-3 border border-white/5">
+      <div className="premium-card rounded-xl p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <Trophy className="w-3.5 h-3.5 text-yellow-400" />
           <p className="text-[9px] text-vapor uppercase">Top Earner</p>
@@ -55,7 +55,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
         <p className="text-xs font-bold text-green">${topEarner.total_wager_earnings?.toLocaleString()}</p>
       </div>
 
-      <div className="glass rounded-lg p-3 border border-white/5">
+      <div className="premium-card rounded-xl p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <TrendingUp className="w-3.5 h-3.5 text-cyan" />
           <p className="text-[9px] text-vapor uppercase">Win Rate</p>
@@ -64,7 +64,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
         <p className="text-xs font-bold text-cyan">{((topWinRate.wager_wins || 0) / ((topWinRate.wager_wins || 0) + (topWinRate.wager_losses || 0) || 1) * 100).toFixed(1)}%</p>
       </div>
 
-      <div className="glass rounded-lg p-3 border border-white/5">
+      <div className="premium-card rounded-xl p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <Flame className="w-3.5 h-3.5 text-orange" />
           <p className="text-[9px] text-vapor uppercase">Streak</p>
@@ -73,7 +73,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
         <p className="text-xs font-bold text-orange">{topStreak.current_win_streak}W</p>
       </div>
 
-      <div className="glass rounded-lg p-3 border border-white/5">
+      <div className="premium-card rounded-xl p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <DollarSign className="w-3.5 h-3.5 text-purple-400" />
           <p className="text-[9px] text-vapor uppercase">Biggest</p>
@@ -82,7 +82,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
         <p className="text-xs font-bold text-purple-400">${biggestWin.biggest_wager_win}</p>
       </div>
 
-      <div className="glass rounded-lg p-3 border border-cyan/20 bg-cyan/5">
+      <div className="premium-card rounded-xl bg-cyan/[0.055] p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <Shield className="w-3.5 h-3.5 text-cyan" />
           <p className="text-[9px] text-vapor uppercase">Alpha</p>
@@ -91,7 +91,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
         <p className="text-[9px] text-cyan/70">{teamAWinRate}% WR</p>
       </div>
 
-      <div className="glass rounded-lg p-3 border border-orange/20 bg-orange/5">
+      <div className="premium-card rounded-xl bg-orange/[0.055] p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <Shield className="w-3.5 h-3.5 text-orange" />
           <p className="text-[9px] text-vapor uppercase">Bravo</p>
@@ -100,7 +100,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
         <p className="text-[9px] text-orange/70">{teamBWinRate}% WR</p>
       </div>
 
-      <div className="glass rounded-lg p-3 border border-white/5">
+      <div className="premium-card rounded-xl p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <Star className="w-3.5 h-3.5 text-yellow-400" />
           <p className="text-[9px] text-vapor uppercase">Top Level</p>
@@ -109,7 +109,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
         <p className="text-xs font-bold text-yellow-400">LVL {topXP.xp_level}</p>
       </div>
 
-      <div className="glass rounded-lg p-3 border border-white/5">
+      <div className="premium-card rounded-xl p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <Users className="w-3.5 h-3.5 text-blue-400" />
           <p className="text-[9px] text-vapor uppercase">Matches</p>

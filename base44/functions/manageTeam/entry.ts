@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
       const name = String(body.name || '').trim();
       const tag = String(body.tag || '').trim().toUpperCase().slice(0, 6);
       const teamType = normalizeTeamType(body.team_type);
-      const rosterSize = Math.max(1, Number(body.roster_size || (teamType === '8s' ? 4 : 2)));
+      const rosterSize = Math.min(4, Math.max(1, Number(body.roster_size || (teamType === '8s' ? 4 : 2))));
       if (!name || !tag) return Response.json({ success: false, error: 'Team name and tag are required' }, { status: 400 });
 
       if (teamType === '8s') {
@@ -130,6 +130,7 @@ Deno.serve(async (req) => {
         region: body.region || user.region || 'na',
         team_type: teamType,
         roster_size: rosterSize,
+        banner_url: String(body.banner_url || '').trim(),
         roster_locked: false,
         total_wins: 0,
         total_losses: 0,

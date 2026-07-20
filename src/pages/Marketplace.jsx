@@ -266,7 +266,7 @@ function ItemCard({ item, user, ownedItemIds, onPurchased, featured = false }) {
   return (
     <Link to={`/item/${item.id}`}>
       <motion.div
-        whileHover={{ y: featured ? -8 : -4, scale: featured ? 1.02 : 1 }}
+        whileHover={{ y: featured ? -8 : -4, scale: featured ? 1.02 : 1, transition: { duration: 0.1, ease: "easeOut" } }}
         className={`relative glass rounded-xl border overflow-hidden transition-all group cursor-pointer ${premiumEffectClass(item)} ${
           item.rarity === "exclusive" ? "border-cyan/30 glow-cyan" :
           item.rarity === "mythic" ? "border-fuchsia-400/30" :

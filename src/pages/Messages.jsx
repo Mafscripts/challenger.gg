@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Mail, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Mail, Trash2, Trophy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -18,12 +19,39 @@ export default function Messages() {
       const user = await base44.auth.me();
       if (!user) return;
 
-      const data = await base44.entities.Message.filter(
-        { recipient_id: user.id },
-        '-created_date',
-        50
-      );
-      setMessages(data || []);
+      const [messageRows, notificationRows] = await Promise.all([
+        base44.entities.Message.filterFresh({ recipient_id: user.id }, '-created_date', 50),
+        base44.entities.Notification.filterFresh({ user_id: user.id }, '-created_date', 100).catch(() => []),
+      ]);
+      const messages = messageRows || [];
+      const invitationMessageTournamentIds = new Set(messages
+        .filter((message) => message.message_type === "tournament_invitation")
+        .map((message) => message.related_entity_id)
+        .filter(Boolean));
+      const legacyInvitations = (notificationRows || [])
+        .filter((notification) => (
+          notification.title === "Tournament invitation"
+          && !invitationMessageTournamentIds.has(notification.related_entity_id)
+        ))
+        .map((notification) => ({
+          id: `notification:${notification.id}`,
+          source_id: notification.id,
+          source_entity: "Notification",
+          sender_id: "topfragg-tournaments",
+          sender_name: "Topfragg Tournaments",
+          recipient_id: user.id,
+          subject: "You're invited to compete!",
+          content: notification.message,
+          is_read: notification.is_read,
+          action_url: notification.action_url,
+          related_entity_id: notification.related_entity_id,
+          related_entity_type: "Tournament",
+          message_type: "tournament_invitation",
+          created_date: notification.created_date,
+        }));
+      setMessages([...messages, ...legacyInvitations].sort((a, b) => (
+        new Date(b.created_date || 0) - new Date(a.created_date || 0)
+      )));
     } catch (error) {
       console.error('Failed to load messages:', error);
       toast({ title: "Error", description: "Failed to load messages", variant: "destructive" });
@@ -34,7 +62,12 @@ export default function Messages() {
 
   const markAsRead = async (id) => {
     try {
-      await base44.entities.Message.update(id, { is_read: true });
+      const message = messages.find((row) => row.id === id);
+      if (message?.source_entity === "Notification") {
+        await base44.entities.Notification.update(message.source_id, { is_read: true });
+      } else {
+        await base44.entities.Message.update(id, { is_read: true });
+      }
       setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: true } : m));
     } catch (error) {
       console.error('Failed to mark as read:', error);
@@ -44,7 +77,11 @@ export default function Messages() {
   const markAllAsRead = async () => {
     try {
       const unread = messages.filter(m => !m.is_read);
-      await Promise.all(unread.map(m => base44.entities.Message.update(m.id, { is_read: true })));
+      await Promise.all(unread.map((message) => (
+        message.source_entity === "Notification"
+          ? base44.entities.Notification.update(message.source_id, { is_read: true })
+          : base44.entities.Message.update(message.id, { is_read: true })
+      )));
       setMessages(prev => prev.map(m => ({ ...m, is_read: true })));
       toast({ title: "All marked as read", description: `${unread.length} messages marked as read` });
     } catch (error) {
@@ -54,7 +91,12 @@ export default function Messages() {
 
   const deleteMessage = async (id) => {
     try {
-      await base44.entities.Message.delete(id);
+      const message = messages.find((row) => row.id === id);
+      if (message?.source_entity === "Notification") {
+        await base44.entities.Notification.delete(message.source_id);
+      } else {
+        await base44.entities.Message.delete(id);
+      }
       setMessages(prev => prev.filter(m => m.id !== id));
       toast({ title: "Deleted", description: "Message deleted" });
     } catch (error) {
@@ -153,7 +195,9 @@ export default function Messages() {
                 <div className="flex items-start gap-4">
                   {/* Avatar */}
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan/30 to-orange/30 border border-white/10 flex items-center justify-center text-sm font-bold shrink-0">
-                    {(message.sender_name || "Unknown sender").charAt(0)}
+                    {message.message_type === "tournament_invitation"
+                      ? <Trophy className="h-5 w-5 text-cyan" />
+                      : (message.sender_name || "Unknown sender").charAt(0)}
                   </div>
 
                   {/* Content */}
@@ -171,9 +215,21 @@ export default function Messages() {
                         <p className="text-xs text-vapor mb-1">
                           {message.subject || 'No subject'}
                         </p>
-                        <p className={`text-sm truncate ${!message.is_read ? 'text-foreground/80' : 'text-vapor'}`}>
+                        <p className={`text-sm ${message.message_type === "tournament_invitation" ? "" : "truncate"} ${!message.is_read ? 'text-foreground/80' : 'text-vapor'}`}>
                           {message.content}
                         </p>
+                        {message.action_url && (
+                          <Link
+                            to={message.action_url}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              markAsRead(message.id);
+                            }}
+                            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-xs font-bold text-cyan hover:bg-cyan/20"
+                          >
+                            View Tournament <ArrowRight className="h-3.5 w-3.5" />
+                          </Link>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <button

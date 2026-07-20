@@ -35,7 +35,7 @@ export default function News() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.04 }}
-                whileHover={{ x: 4 }}
+                whileHover={{ x: 4, transition: { duration: 0.1, ease: "easeOut" } }}
                 className="glass rounded-xl border border-white/5 hover:border-white/10 p-6 transition-all"
               >
                 <div className="flex flex-col sm:flex-row gap-4">

@@ -48,7 +48,7 @@ export default function TeamStatsComparison({ teamAPlayers, teamBPlayers }) {
   const statsB = calcTeamStats(teamBPlayers);
 
   return (
-    <div className="glass rounded-xl border border-white/5 p-5">
+    <div className="premium-panel rounded-3xl p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Trophy className="w-4 h-4 text-cyan" />

@@ -59,7 +59,7 @@ export default function TournamentsPreview() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -4 }}
+                whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                 className="glass rounded-xl p-6 border border-white/5 hover:border-orange/20 transition-all group cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-4">

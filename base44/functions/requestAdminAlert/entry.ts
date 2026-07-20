@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const allowedMatchTypes = ['wager', 'tournament'];
+const staffRoles = new Set(['ceo', 'super_admin', 'admin', 'moderator']);
 
 const playerName = (user) => user.display_name || user.full_name || user.username || user.email || 'Unnamed player';
 
@@ -20,6 +21,18 @@ Deno.serve(async (req) => {
 
     if (!matchId) {
       return Response.json({ error: 'Missing match_id' }, { status: 400 });
+    }
+
+    if (matchType === 'tournament' && !staffRoles.has(user.role)) {
+      const match = await base44.asServiceRole.entities.TournamentMatch.get(matchId).catch(() => null);
+      if (!match) return Response.json({ error: 'Tournament match not found' }, { status: 404 });
+      const deadline = new Date(match.start_deadline || '').getTime();
+      if (!Number.isFinite(deadline)) {
+        return Response.json({ error: 'The match start timer is not available yet. Refresh the match room.' }, { status: 400 });
+      }
+      if (Date.now() < deadline) {
+        return Response.json({ error: 'Admin support unlocks when the 15-minute match start timer expires.' }, { status: 400 });
+      }
     }
 
     const subject = body.subject || `${matchType} match admin request`;

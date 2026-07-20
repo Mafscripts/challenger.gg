@@ -78,9 +78,32 @@
       "type": "string",
       "title": "Next Match ID (For Bracket Progression)"
     },
+    "next_match_bracket": {
+      "type": "string",
+      "enum": ["winner", "loser", "grand_final"],
+      "title": "Next Match Bracket"
+    },
     "loser_match_id": {
       "type": "string",
       "title": "Loser Bracket Match ID (For Double Elimination)"
+    },
+    "loser_match_round": {
+      "type": "number",
+      "title": "Loser Bracket Round"
+    },
+    "loser_match_number": {
+      "type": "number",
+      "title": "Loser Bracket Match Number"
+    },
+    "loser_match_bracket": {
+      "type": "string",
+      "enum": ["loser", "grand_final"],
+      "title": "Loser Destination Bracket"
+    },
+    "loser_slot_in_next": {
+      "type": "string",
+      "enum": ["team_a", "team_b"],
+      "title": "Loser Slot In Next Match"
     },
     "next_match_round": {
       "type": "number",
@@ -97,6 +120,29 @@
         "team_b"
       ],
       "title": "Slot In Next Match"
+    },
+    "team_a_source_match_id": {
+      "type": "string",
+      "title": "Team A Source Match"
+    },
+    "team_a_source_outcome": {
+      "type": "string",
+      "enum": ["winner", "loser"],
+      "title": "Team A Source Outcome"
+    },
+    "team_b_source_match_id": {
+      "type": "string",
+      "title": "Team B Source Match"
+    },
+    "team_b_source_outcome": {
+      "type": "string",
+      "enum": ["winner", "loser"],
+      "title": "Team B Source Outcome"
+    },
+    "double_elimination_reset_eligible": {
+      "type": "boolean",
+      "default": false,
+      "title": "Grand Final Reset Eligible"
     },
     "is_final": {
       "type": "boolean",
@@ -164,6 +210,26 @@
       "type": "number",
       "title": "First Host Seed"
     },
+    "assigned_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Match Assigned Date"
+    },
+    "scheduled_start_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Match Start Window Opens"
+    },
+    "start_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Match Start Deadline"
+    },
+    "start_window_minutes": {
+      "type": "number",
+      "default": 15,
+      "title": "Start Window Minutes"
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -171,6 +237,9 @@
         "ready",
         "in_progress",
         "awaiting_report",
+        "awaiting_team_a_report",
+        "awaiting_team_b_report",
+        "score_conflict",
         "disputed",
         "completed",
         "reset"

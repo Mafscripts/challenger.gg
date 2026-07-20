@@ -10,6 +10,8 @@ import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionHero from "@/components/match/CompetitionHero";
 import MapVetoModal from "@/components/match/MapVetoModal";
+import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
+import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 
@@ -86,6 +88,10 @@ export default function Wagers() {
         description: "Please login to accept wagers",
         variant: "destructive"
       });
+      return;
+    }
+    if (!hasActivisionId(user)) {
+      toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
     }
 
@@ -202,6 +208,7 @@ export default function Wagers() {
             { label: "Fee Rate", value: hasActivePremium ? "5%" : "10%", icon: TrendingUp, color: "text-cyan" },
           ]}
         />
+        <ActivisionIdNotice user={user} className="mb-6" />
 
         {/* Tabs */}
         <div className="flex items-center gap-4 mb-6 border-b border-white/5 pb-4">
@@ -246,7 +253,7 @@ export default function Wagers() {
                 filteredWagers.map((w) => (
                   <motion.div
                     key={w.id}
-                    whileHover={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+                    whileHover={{ backgroundColor: "rgba(255,255,255,0.02)", transition: { duration: 0.1, ease: "easeOut" } }}
                     className="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 px-5 py-4 items-center"
                   >
                     <Link to={`/profile/${w.host_name || w.host_id || ""}`} className="font-semibold text-sm hover:text-cyan transition-colors">{w.host_name || "Host unavailable"}</Link>

@@ -50,7 +50,7 @@ export default function MarketplacePreview() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -8 }}
+                  whileHover={{ y: -8, transition: { duration: 0.1, ease: "easeOut" } }}
                   className="glass rounded-xl border border-white/5 hover:border-white/10 overflow-hidden transition-all group cursor-pointer"
                 >
                   <div className="aspect-square relative overflow-hidden bg-secondary">

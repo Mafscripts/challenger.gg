@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Archive,
+  Award,
   BadgeDollarSign,
   BellRing,
   Boxes,
   CheckCheck,
   ClipboardList,
+  Crown,
   CreditCard,
   Edit3,
   Gavel,
@@ -14,6 +16,7 @@ import {
   Landmark,
   LayoutDashboard,
   Loader2,
+  Medal,
   MessageSquare,
   Plus,
   RefreshCw,
@@ -112,12 +115,16 @@ const defaultTournamentForm = {
   hp_maps: defaultTournamentHpMapsText,
   overload_maps: defaultTournamentOverloadMapsText,
   max_teams: "8",
+  bracket_type: "single_elimination",
   status: "open",
   registration_end: "",
   start_date: "",
   is_premium_only: false,
+  invite_only: false,
+  invited_user_ids: [],
   reward_item_ids: [],
   elimination_reward_item_ids: [],
+  placement_trophy_item_ids: { 1: [], 2: [], 3: [] },
 };
 const tournamentStatusOptions = ["draft", "open", "registration", "closed", "live", "in_progress", "completed", "cancelled"];
 const defaultWalletAdjustmentForm = {
@@ -191,6 +198,17 @@ const effectiveRoleFor = (user) => (
 );
 const canAddWalletAdjustment = (role) => ["ceo", "super_admin"].includes(role || "user");
 const canAdjustUserWallet = (actorRole, targetRole) => canAddWalletAdjustment(actorRole) && (actorRole === "ceo" || targetRole !== "ceo");
+const canGrantUserPremium = (actorRole, targetRole) => (
+  actorRole === "ceo"
+  || (actorRole === "super_admin" && targetRole !== "ceo")
+  || (actorRole === "admin" && !["ceo", "super_admin"].includes(targetRole || "user"))
+);
+const hasActivePremium = (user) => {
+  if (!user?.is_premium) return false;
+  if (!user.premium_expires) return true;
+  const expiresAt = new Date(user.premium_expires).getTime();
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+};
 const ipHistoryText = (user) => (user?.ip_history || []).slice(-3).map((entry) => entry.ip).join(", ") || user?.last_login_ip || user?.registration_ip || "N/A";
 const marketplacePlacementText = (item) => [
   item.is_featured === true ? "Featured" : null,
@@ -204,11 +222,28 @@ const tournamentItemIds = (tournament, idsKey, itemsKey) => {
 };
 const tournamentRewardIds = (tournament) => tournamentItemIds(tournament, "reward_item_ids", "reward_items");
 const tournamentEliminationRewardIds = (tournament) => tournamentItemIds(tournament, "elimination_reward_item_ids", "elimination_reward_items");
+const tournamentPlacementTrophyIds = (tournament, placement) => {
+  const selectedIds = Array.isArray(tournament?.placement_trophy_item_ids?.[placement])
+    ? tournament.placement_trophy_item_ids[placement]
+    : [];
+  const snapshotIds = Array.isArray(tournament?.placement_trophy_items?.[placement])
+    ? tournament.placement_trophy_items[placement].map((item) => item?.id || item?.item_id)
+    : [];
+  return [...new Set([...selectedIds, ...snapshotIds].filter(Boolean))];
+};
 const tournamentRewardSummary = (tournament, marketplace = [], idsKey = "reward_item_ids", itemsKey = "reward_items") => {
   const byId = Object.fromEntries(marketplace.map((item) => [item.id, item]));
   const snapshots = Array.isArray(tournament?.[itemsKey]) ? tournament[itemsKey] : [];
   const rewards = tournamentItemIds(tournament, idsKey, itemsKey).map((id) => byId[id] || snapshots.find((item) => item?.id === id || item?.item_id === id)).filter(Boolean);
   return rewards.map((item) => item.name).slice(0, 3).join(", ") + (rewards.length > 3 ? ` +${rewards.length - 3}` : "") || "None";
+};
+const tournamentPlacementTrophySummary = (tournament, marketplace = [], placement) => {
+  const byId = Object.fromEntries(marketplace.map((item) => [item.id, item]));
+  const snapshots = Array.isArray(tournament?.placement_trophy_items?.[placement]) ? tournament.placement_trophy_items[placement] : [];
+  const items = tournamentPlacementTrophyIds(tournament, placement)
+    .map((id) => byId[id] || snapshots.find((item) => item?.id === id || item?.item_id === id))
+    .filter(Boolean);
+  return items.map((item) => item.name).join(", ") || "None";
 };
 const tournamentPlacementPrizeValue = (tournament, placement) => {
   const distribution = tournament?.prize_distribution || {};
@@ -361,6 +396,7 @@ export default function Admin() {
   const [marketplaceForm, setMarketplaceForm] = useState(defaultMarketplaceForm);
   const [editingMarketplaceId, setEditingMarketplaceId] = useState(null);
   const [tournamentForm, setTournamentForm] = useState(defaultTournamentForm);
+  const [tournamentInviteSearch, setTournamentInviteSearch] = useState("");
   const [editingTournamentId, setEditingTournamentId] = useState(null);
   const [ticketReplyDrafts, setTicketReplyDrafts] = useState({});
   const [ticketNoteDrafts, setTicketNoteDrafts] = useState({});
@@ -489,6 +525,10 @@ export default function Admin() {
       .filter((item) => tournamentRewardCategories.has(item.category) && item.is_active !== false && item.is_available !== false)
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
   ), [data.marketplace]);
+
+  const tournamentTrophyItems = useMemo(() => (
+    tournamentRewardItems.filter((item) => item.category === "trophy")
+  ), [tournamentRewardItems]);
 
   const sharedIpCount = (targetUser) => {
     const ips = new Set([
@@ -726,6 +766,44 @@ export default function Admin() {
     }
   };
 
+  const handleGrantPremium = async (targetUser) => {
+    if (!canGrantUserPremium(currentRole, targetUser?.role || "user")) {
+      toast({ title: "Not allowed", description: "Admin or higher is required to manage this player's Premium access.", variant: "destructive" });
+      return;
+    }
+
+    const verb = hasActivePremium(targetUser) ? "extend" : "give";
+    const confirmed = window.confirm(
+      `${verb === "extend" ? "Extend" : "Give"} Premium for ${userName(targetUser)} by 30 days?`,
+    );
+    if (!confirmed) return;
+
+    setBusyId(`${targetUser.id}:premium`);
+    try {
+      const response = await base44.functions.invoke("adminGrantPremium", {
+        user_id: targetUser.id,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Premium update failed", description: response.data?.error || "Could not grant Premium.", variant: "destructive" });
+        return;
+      }
+
+      const updatedUser = response.data.user;
+      setData((prev) => ({
+        ...prev,
+        users: prev.users.map((user) => (user.id === targetUser.id ? { ...user, ...updatedUser } : user)),
+      }));
+      toast({
+        title: hasActivePremium(targetUser) ? "Premium extended" : "Premium granted",
+        description: `${userName(targetUser)} now has Premium until ${formatDate(updatedUser.premium_expires)}.`,
+      });
+    } catch (error) {
+      toast({ title: "Premium update failed", description: error.message || "Could not grant Premium.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleModerateUser = async (targetUser, action, duration) => {
     if (!canAccessAdminPanel(currentRole)) {
       toast({ title: "Not allowed", description: "Moderator or higher is required.", variant: "destructive" });
@@ -915,6 +993,11 @@ export default function Admin() {
     const entryType = tournamentForm.entry_type || (tournamentForm.is_premium_only ? "premium" : "free");
     const rewardItemIds = [...new Set((tournamentForm.reward_item_ids || []).filter(Boolean))];
     const eliminationRewardItemIds = [...new Set((tournamentForm.elimination_reward_item_ids || []).filter(Boolean))];
+    const placementTrophyItemIds = {
+      1: [...new Set((tournamentForm.placement_trophy_item_ids?.[1] || []).filter(Boolean))],
+      2: [...new Set((tournamentForm.placement_trophy_item_ids?.[2] || []).filter(Boolean))],
+      3: [...new Set((tournamentForm.placement_trophy_item_ids?.[3] || []).filter(Boolean))],
+    };
     const marketplaceById = Object.fromEntries(data.marketplace.map((item) => [item.id, item]));
     const itemSnapshot = (ids) => ids.map((id) => marketplaceById[id]).filter(Boolean).map((item) => ({
       id: item.id,
@@ -925,6 +1008,11 @@ export default function Admin() {
     }));
     const rewardItems = itemSnapshot(rewardItemIds);
     const eliminationRewardItems = itemSnapshot(eliminationRewardItemIds);
+    const placementTrophyItems = {
+      1: itemSnapshot(placementTrophyItemIds[1]),
+      2: itemSnapshot(placementTrophyItemIds[2]),
+      3: itemSnapshot(placementTrophyItemIds[3]),
+    };
     const firstPlacePrize = Number(tournamentForm.first_place_prize || 0);
     const secondPlacePrize = Number(tournamentForm.second_place_prize || 0);
     const sndMaps = parseMapList(tournamentForm.snd_maps, defaultTournamentSndMaps);
@@ -950,15 +1038,21 @@ export default function Admin() {
       maps: sndMaps,
       max_teams: Number(tournamentForm.max_teams || 0),
       status: tournamentForm.status,
-      format: "single_elimination",
-      bracket_type: "single_elimination",
+      format: tournamentForm.bracket_type,
+      bracket_type: tournamentForm.bracket_type,
       registration_end: tournamentForm.registration_end ? new Date(tournamentForm.registration_end).toISOString() : undefined,
       start_date: tournamentForm.start_date ? new Date(tournamentForm.start_date).toISOString() : undefined,
       is_premium_only: entryType === "premium" || entryType === "credits_premium",
+      invite_only: tournamentForm.invite_only || entryType === "invitational",
+      invited_user_ids: tournamentForm.invite_only || entryType === "invitational"
+        ? [...new Set(tournamentForm.invited_user_ids || [])]
+        : [],
       reward_item_ids: rewardItemIds,
       reward_items: rewardItems,
       elimination_reward_item_ids: eliminationRewardItemIds,
       elimination_reward_items: eliminationRewardItems,
+      placement_trophy_item_ids: placementTrophyItemIds,
+      placement_trophy_items: placementTrophyItems,
     };
   };
 
@@ -980,13 +1074,7 @@ export default function Admin() {
       const payload = tournamentPayload();
       const response = editingTournamentId
         ? await base44.functions.invoke("updateTournament", { tournament_id: editingTournamentId, patch: payload })
-        : { data: { success: true, tournament: await base44.entities.Tournament.create({
-          ...payload,
-          registered_teams: 0,
-          created_by: currentUser?.id,
-          created_by_name: userName(currentUser),
-          created_date: new Date().toISOString(),
-        }) } };
+        : await base44.functions.invoke("createTournament", payload);
       if (!response.data?.success) {
         toast({ title: "Save failed", description: response.data?.error || "Could not save tournament.", variant: "destructive" });
         return;
@@ -1019,12 +1107,20 @@ export default function Admin() {
       hp_maps: mapListText(tournament.map_pools?.hp || tournament.hp_map_pool || tournament.hp_maps, defaultTournamentHpMaps),
       overload_maps: mapListText(tournament.map_pools?.overload || tournament.overload_map_pool || tournament.overload_maps, defaultTournamentOverloadMaps),
       max_teams: String(tournament.max_teams ?? 8),
+      bracket_type: tournament.bracket_type || tournament.format || "single_elimination",
       status: tournament.status || "open",
       registration_end: tournament.registration_end ? new Date(tournament.registration_end).toISOString().slice(0, 16) : "",
       start_date: tournament.start_date ? new Date(tournament.start_date).toISOString().slice(0, 16) : "",
       is_premium_only: Boolean(tournament.is_premium_only),
+      invite_only: tournament.invite_only === true || tournament.entry_type === "invitational",
+      invited_user_ids: tournament.invited_user_ids || [],
       reward_item_ids: tournamentRewardIds(tournament),
       elimination_reward_item_ids: tournamentEliminationRewardIds(tournament),
+      placement_trophy_item_ids: {
+        1: tournamentPlacementTrophyIds(tournament, 1),
+        2: tournamentPlacementTrophyIds(tournament, 2),
+        3: tournamentPlacementTrophyIds(tournament, 3),
+      },
     });
   };
 
@@ -1039,6 +1135,22 @@ export default function Admin() {
       if (rewardIds.has(itemId)) rewardIds.delete(itemId);
       else rewardIds.add(itemId);
       return { ...prev, [field]: [...rewardIds] };
+    });
+  };
+
+  const togglePlacementTrophyReward = (placement, itemId) => {
+    setTournamentForm((prev) => {
+      const rewardIds = new Set(prev.placement_trophy_item_ids?.[placement] || []);
+      if (rewardIds.has(itemId)) rewardIds.delete(itemId);
+      else rewardIds.add(itemId);
+      return {
+        ...prev,
+        placement_trophy_item_ids: {
+          1: placement === 1 ? [...rewardIds] : (prev.placement_trophy_item_ids?.[1] || []),
+          2: placement === 2 ? [...rewardIds] : (prev.placement_trophy_item_ids?.[2] || []),
+          3: placement === 3 ? [...rewardIds] : (prev.placement_trophy_item_ids?.[3] || []),
+        },
+      };
     });
   };
 
@@ -1531,7 +1643,16 @@ export default function Admin() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4"><StatusPill status={user.is_banned ? "banned" : "active"} /></td>
+                        <td className="py-3 px-4 min-w-[155px]">
+                          <div className="flex flex-col items-start gap-1.5">
+                            <StatusPill status={user.is_banned ? "banned" : "active"} />
+                            {hasActivePremium(user) && (
+                              <span className="inline-flex items-center gap-1 rounded-md border border-orange/25 bg-orange/10 px-2 py-1 text-[10px] font-bold text-orange">
+                                <Crown className="h-3 w-3" /> Premium until {user.premium_expires ? new Date(user.premium_expires).toLocaleDateString() : "active"}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-3 px-4 text-sm font-mono">{formatMoney(walletByUserId[user.id]?.available_balance ?? 0)}</td>
                         <td className="py-3 px-4 text-xs text-vapor max-w-[180px] truncate" title={ipHistoryText(user)}>
                           {ipHistoryText(user)}
@@ -1548,17 +1669,32 @@ export default function Admin() {
                               </>
                             )}
                             {canManageWallets(currentRole) && (
-                              <button
-                                type="button"
-                                onClick={() => handleSetTemporaryPassword(user)}
-                                disabled={busyId === `${user.id}:password`}
-                                className="inline-flex items-center gap-1 text-xs text-pink-400 hover:underline disabled:opacity-50"
-                              >
-                                {busyId === `${user.id}:password`
-                                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                                  : <KeyRound className="h-3 w-3" />}
-                                Set Password
-                              </button>
+                              <>
+                                {canGrantUserPremium(currentRole, user.role || "user") && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleGrantPremium(user)}
+                                    disabled={busyId === `${user.id}:premium`}
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-orange hover:underline disabled:opacity-50"
+                                  >
+                                    {busyId === `${user.id}:premium`
+                                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                                      : <Crown className="h-3 w-3" />}
+                                    {hasActivePremium(user) ? "Extend Premium +30d" : "Give Premium 30d"}
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetTemporaryPassword(user)}
+                                  disabled={busyId === `${user.id}:password`}
+                                  className="inline-flex items-center gap-1 text-xs text-pink-400 hover:underline disabled:opacity-50"
+                                >
+                                  {busyId === `${user.id}:password`
+                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                    : <KeyRound className="h-3 w-3" />}
+                                  Set Password
+                                </button>
+                              </>
                             )}
                             <button onClick={() => handleModerateUser(user, "warning")} className="text-xs text-yellow-400 hover:underline">Warn</button>
                             <button onClick={() => handleModerateUser(user, "suspension", "24h")} className="text-xs text-orange hover:underline">Suspend 24h</button>
@@ -2040,7 +2176,12 @@ export default function Admin() {
                       <span className="text-[10px] text-vapor uppercase">Entry type</span>
                       <select
                         value={tournamentForm.entry_type}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, entry_type: event.target.value, is_premium_only: ["premium", "credits_premium"].includes(event.target.value) }))}
+                        onChange={(event) => setTournamentForm((prev) => ({
+                          ...prev,
+                          entry_type: event.target.value,
+                          is_premium_only: ["premium", "credits_premium"].includes(event.target.value),
+                          invite_only: event.target.value === "invitational" ? true : prev.invite_only,
+                        }))}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       >
                         <option value="free">Free</option>
@@ -2091,6 +2232,20 @@ export default function Admin() {
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, max_teams: event.target.value }))}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Bracket format</span>
+                      <select
+                        value={tournamentForm.bracket_type}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, bracket_type: event.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      >
+                        <option value="single_elimination">Single Elimination</option>
+                        <option value="double_elimination">Double Elimination · Losers Bracket</option>
+                      </select>
+                      <span className="block text-[10px] leading-relaxed text-vapor/75">
+                        Double elimination adds a Lower Bracket and Grand Final to every match room.
+                      </span>
                     </label>
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">Start date</span>
@@ -2148,9 +2303,47 @@ export default function Admin() {
                     </label>
                   </div>
                   <div className="mt-4 grid gap-3">
+                    <div className="rounded-xl border border-white/5 bg-secondary/40 p-4">
+                      <div className="mb-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-vapor">Automatic placement trophies</p>
+                        <p className="mt-1 text-xs text-vapor">Every roster member receives a permanent profile trophy when the tournament finishes.</p>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="flex items-center gap-3 rounded-lg border border-yellow-400/15 bg-yellow-400/[0.04] px-3 py-3">
+                          <Trophy className="h-5 w-5 text-yellow-400" />
+                          <div><p className="text-xs font-black text-yellow-300">#1 Gold</p><p className="text-[10px] text-vapor">Tournament champion</p></div>
+                        </div>
+                        <div className="flex items-center gap-3 rounded-lg border border-slate-300/15 bg-slate-300/[0.04] px-3 py-3">
+                          <Medal className="h-5 w-5 text-slate-300" />
+                          <div><p className="text-xs font-black text-slate-200">#2 Silver</p><p className="text-[10px] text-vapor">Final runner-up</p></div>
+                        </div>
+                        <div className="flex items-center gap-3 rounded-lg border border-amber-600/20 bg-amber-600/[0.05] px-3 py-3">
+                          <Award className="h-5 w-5 text-amber-600" />
+                          <div><p className="text-xs font-black text-amber-500">#3 Bronze</p><p className="text-[10px] text-vapor">Semifinalist</p></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-cyan">Extra custom trophies by placement</p>
+                        <p className="mt-1 text-xs text-vapor">Optional trophy items are awarded together with Gold, Silver, or Bronze.</p>
+                      </div>
+                      <div className="grid gap-3 xl:grid-cols-3">
+                        {[1, 2, 3].map((placement) => (
+                          <TournamentRewardPicker
+                            key={placement}
+                            title={`#${placement} extra trophies`}
+                            description={placement === 3 ? "Granted to the semifinal loser roster(s)." : `Granted to every player finishing #${placement}.`}
+                            selectedIds={tournamentForm.placement_trophy_item_ids?.[placement] || []}
+                            items={tournamentTrophyItems}
+                            onToggle={(itemId) => togglePlacementTrophyReward(placement, itemId)}
+                          />
+                        ))}
+                      </div>
+                    </div>
                     <TournamentRewardPicker
                       title="Champion reward items"
-                      description="Optional knife, gun skin, or trophy rewards granted to the winning roster."
+                      description="Optional bonus knife, gun skin, or trophy rewards granted to the winning roster."
                       selectedIds={tournamentForm.reward_item_ids || []}
                       items={tournamentRewardItems}
                       onToggle={(itemId) => toggleTournamentReward("reward_item_ids", itemId)}
@@ -2172,6 +2365,64 @@ export default function Admin() {
                     />
                     Premium only
                   </label>
+                  <label className="ml-5 inline-flex items-center gap-2 mt-4 text-xs text-vapor">
+                    <input
+                      type="checkbox"
+                      checked={tournamentForm.invite_only}
+                      onChange={(event) => setTournamentForm((prev) => ({
+                        ...prev,
+                        invite_only: event.target.checked,
+                        entry_type: event.target.checked && prev.entry_type === "free" ? "invitational" : prev.entry_type,
+                      }))}
+                      className="accent-cyan"
+                    />
+                    Invite only
+                  </label>
+                  {tournamentForm.invite_only && (
+                    <div className="mt-4 rounded-xl border border-cyan/15 bg-cyan/[0.03] p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs font-bold">Allowed players</p>
+                          <p className="text-[10px] text-vapor">Only a selected player can register; their teammates do not need separate invitations.</p>
+                        </div>
+                        <input
+                          value={tournamentInviteSearch}
+                          onChange={(event) => setTournamentInviteSearch(event.target.value)}
+                          placeholder="Search name or email"
+                          className="w-full sm:w-64 px-3 py-2 bg-secondary rounded-lg text-xs border border-white/5 focus:border-cyan/30 focus:outline-none"
+                        />
+                      </div>
+                      <div className="mt-3 grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
+                        {data.users
+                          .filter((candidate) => `${userName(candidate)} ${candidate.email || ""}`.toLowerCase().includes(tournamentInviteSearch.toLowerCase()))
+                          .map((candidate) => {
+                            const checked = (tournamentForm.invited_user_ids || []).includes(candidate.id);
+                            return (
+                              <label key={candidate.id} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs ${checked ? "border-cyan/30 bg-cyan/10" : "border-white/5 bg-secondary/40"}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => setTournamentForm((prev) => ({
+                                    ...prev,
+                                    invited_user_ids: checked
+                                      ? (prev.invited_user_ids || []).filter((id) => id !== candidate.id)
+                                      : [...(prev.invited_user_ids || []), candidate.id],
+                                  }))}
+                                  className="accent-cyan"
+                                />
+                                <span className="min-w-0">
+                                  <span className="block truncate font-semibold">{userName(candidate)}</span>
+                                  <span className="block truncate text-[10px] text-vapor">{candidate.email || candidate.role || "User"}</span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                      </div>
+                      <p className="mt-3 text-[10px] font-semibold text-cyan">
+                        {(tournamentForm.invited_user_ids || []).length} player(s) selected
+                      </p>
+                    </div>
+                  )}
                 </form>
               )}
               <ListSection title="Tournaments" rows={data.tournaments} empty="No tournaments." render={(tournament) => {
@@ -2181,6 +2432,7 @@ export default function Admin() {
                     ["Name", tournament.name],
                     ["Status", <StatusPill status={tournament.status} />],
                     ["Teams", `${tournament.registered_teams || 0}/${tournament.max_teams}`],
+                    ["Format", (tournament.bracket_type || tournament.format) === "double_elimination" ? "Double Elimination · Lower Bracket" : "Single Elimination"],
                     ["Prize", tournamentPrizeSummary(tournament)],
                     ["Image", tournament.image_url ? (
                       <img src={tournament.image_url} alt="" className="h-10 w-16 rounded object-cover bg-background" />
@@ -2188,11 +2440,14 @@ export default function Admin() {
                     ["Entry", `${(tournament.entry_type || (tournament.is_premium_only ? "premium" : "free")).replace(/_/g, " ")}${Number(tournament.entry_fee || 0) > 0 ? ` - ${tournament.entry_fee} credits` : ""}`],
                     ["Rewards", (
                       <div className="space-y-1">
-                        <p><span className="text-vapor">Winner:</span> {tournamentRewardSummary(tournament, data.marketplace)}</p>
+                        <p><span className="text-yellow-400">#1 Gold</span><span className="text-vapor"> · Extra:</span> {tournamentPlacementTrophySummary(tournament, data.marketplace, 1)}</p>
+                        <p><span className="text-slate-300">#2 Silver</span><span className="text-vapor"> · Extra:</span> {tournamentPlacementTrophySummary(tournament, data.marketplace, 2)}</p>
+                        <p><span className="text-amber-600">#3 Bronze</span><span className="text-vapor"> · Extra:</span> {tournamentPlacementTrophySummary(tournament, data.marketplace, 3)}</p>
+                        <p><span className="text-vapor">Champion bonus:</span> {tournamentRewardSummary(tournament, data.marketplace)}</p>
                         <p><span className="text-vapor">Eliminated:</span> {tournamentRewardSummary(tournament, data.marketplace, "elimination_reward_item_ids", "elimination_reward_items")}</p>
                       </div>
                     )],
-                    ["Bracket", hasMatches ? "Generated" : (
+                    ["Bracket", hasMatches ? ((tournament.bracket_type || tournament.format) === "double_elimination" ? "Winners + Lower + Grand Final" : "Generated") : (
                       <button onClick={() => handleGenerateBracket(tournament)} disabled={busyId === `bracket:${tournament.id}`} className="text-cyan hover:underline disabled:opacity-50">
                         {busyId === `bracket:${tournament.id}` ? "Generating..." : "Generate"}
                       </button>

@@ -10,8 +10,16 @@ export const requireAuth = async (req, res, next) => {
     if (!token) return res.status(401).json({ error: "Authentication required" });
 
     const payload = verifyToken(token);
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    let user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user) return res.status(401).json({ error: "Authentication required" });
+
+    const premiumExpires = user.premium_expires ? new Date(user.premium_expires) : null;
+    if (user.is_premium && premiumExpires && premiumExpires <= new Date()) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { is_premium: false },
+      });
+    }
 
     const activeBans = await listEntities("Ban", { status: "active" }, "-created_date", 500).catch(() => []);
     const blockingBan = activeBans.find((ban) => {

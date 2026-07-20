@@ -7,6 +7,8 @@ import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionHero from "@/components/match/CompetitionHero";
 import RankBadge from "@/components/ui/RankBadge";
 import { toast } from "@/components/ui/use-toast";
+import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
+import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import {
   RANK_REWARDS,
   RANK_THRESHOLDS,
@@ -96,6 +98,15 @@ export default function Ranked() {
   const progress = getRankProgress(elo);
 
   const handleAcceptMatch = async (match) => {
+    if (!user) {
+      toast({ title: "Login required", description: "Please log in to accept ranked matches.", variant: "destructive" });
+      return;
+    }
+    if (!hasActivisionId(user)) {
+      toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
+      return;
+    }
+
     try {
       const response = await base44.functions.invoke("acceptRankedMatch", {
         ranked_match_id: match.id,
@@ -144,6 +155,7 @@ export default function Ranked() {
             { label: "Season Wins", value: currentStats?.wins || 0, icon: Award, color: "text-yellow-400" },
           ]}
         />
+        <ActivisionIdNotice user={user} className="mb-6" />
 
         <div className="glass rounded-xl border border-white/5 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -195,7 +207,7 @@ export default function Ranked() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <motion.div whileHover={{ y: -2 }} className="glass rounded-xl p-8 border border-cyan/10 relative overflow-hidden">
+            <motion.div whileHover={{ y: -2, transition: { duration: 0.1, ease: "easeOut" } }} className="glass rounded-xl p-8 border border-cyan/10 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-60 h-60 bg-cyan/5 rounded-full blur-[80px]" />
               <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
                 <RankBadge rank={rank.tier} division={rank.division} size="lg" />

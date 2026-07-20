@@ -34,7 +34,7 @@ export default function WhySection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              whileHover={{ y: -4 }}
+              whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
               className="glass rounded-xl p-6 border border-white/5 hover:border-white/10 transition-all group"
             >
               <div className={`inline-flex p-3 rounded-lg bg-secondary mb-4 ${f.color} group-hover:scale-110 transition-transform`}>

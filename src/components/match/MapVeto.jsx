@@ -99,7 +99,7 @@ export default function MapVeto({ wager }) {
             return (
               <motion.div
                 key={map.id}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.05, transition: { duration: 0.1, ease: "easeOut" } }}
                 className={`p-2 rounded-lg border text-center transition-all ${
                   isHostBanned
                     ? "border-red-500/30 bg-red-500/10"

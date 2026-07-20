@@ -45,7 +45,7 @@ export default function FeaturedPlayers() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.08 }}
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                   className="glass rounded-xl p-5 border border-white/5 hover:border-white/10 transition-all group"
                 >
                   <div className="flex items-center gap-4 mb-4">

@@ -8,7 +8,7 @@ export default function CompetitionHero({
   stats = [],
 }) {
   return (
-    <section className="relative mb-8 overflow-hidden rounded-2xl border border-cyan/15 bg-gradient-to-br from-cyan/[0.08] via-secondary/70 to-orange/[0.06] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.24)] md:p-8">
+    <section className="premium-panel relative mb-10 overflow-hidden rounded-[1.75rem] p-6 md:p-9">
       <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-cyan/10 blur-3xl" />
       <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-2xl">
@@ -22,7 +22,7 @@ export default function CompetitionHero({
       {stats.length > 0 && (
         <div className="relative mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stats.map(({ label, value, icon: Icon, color = "text-cyan" }) => (
-            <div key={label} className="rounded-xl border border-white/5 bg-background/35 px-4 py-3 backdrop-blur-sm">
+            <div key={label} className="premium-card rounded-2xl px-4 py-4">
               <div className="flex items-center gap-2">
                 {Icon && <Icon className={`h-4 w-4 ${color}`} />}
                 <span className="text-[10px] font-black uppercase tracking-wider text-vapor">{label}</span>

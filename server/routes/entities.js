@@ -7,12 +7,29 @@ const adminManagedEntities = new Set([
   "Tournament",
   "MarketplaceItem",
   "WithdrawalRequest",
+  "Wallet",
+  "WalletTransaction",
+  "CreditTransaction",
+  "CreditPurchase",
+  "Purchase",
+  "UserInventory",
+  "Inventory",
+  "PremiumMembership",
   "Ban",
   "AdminAction",
   "AdminAlert",
 ]);
 
 const roleFields = new Set(["role", "admin_role", "is_admin"]);
+const economyUserFields = new Set([
+  "credits",
+  "wallet_balance",
+  "lifetime_earnings",
+  "total_wager_earnings",
+  "biggest_wager_win",
+  "is_premium",
+  "premium_expires",
+]);
 const cleanName = (value) => String(value || "").trim().toLowerCase();
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 
@@ -248,8 +265,12 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
       const payload = req.body || {};
       const changingRole = Object.keys(payload).some((key) => roleFields.has(key));
       const changingModeration = ["is_banned", "ban_reason"].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+      const changingEconomy = Object.keys(payload).some((key) => economyUserFields.has(key));
       if (changingRole) return res.status(403).json({ error: "Use role management actions" });
       if (changingModeration) return res.status(403).json({ error: "Use moderation actions" });
+      if (changingEconomy && !hasRole(req.user, "admin")) {
+        return res.status(403).json({ error: "Only admins can change account balances or premium access" });
+      }
       if (req.params.id !== req.user.id && !hasRole(req.user, "moderator")) return res.status(403).json({ error: "Cannot update another user" });
     }
     res.json(await updateEntity(req.params.entity, req.params.id, req.body || {}));

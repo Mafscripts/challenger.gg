@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet, Bell, MessageSquare, ChevronDown, User, Crown,
   Menu, X, Gamepad2, Swords, Trophy, ShoppingBag,
-  BarChart3, Users, Newspaper, BookOpen, Zap, Target, Flame,
+  BarChart3, Users, Newspaper, BookOpen, Zap, Target,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, Coins, LogOut, ShieldCheck, Monitor
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
-import ForgeModal from "@/components/navbar/ForgeModal";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -89,16 +87,17 @@ const activeMatchStatuses = new Set([
   "awaiting_challenger_report",
   "score_conflict",
 ]);
-const activeTournamentStatuses = new Set(["ready", "in_progress", "awaiting_report", "disputed"]);
+const activeTournamentStatuses = new Set([
+  "ready",
+  "in_progress",
+  "awaiting_report",
+  "awaiting_team_a_report",
+  "awaiting_team_b_report",
+  "score_conflict",
+  "disputed",
+]);
 
-const dropdownMotion = {
-  initial: { opacity: 0, y: 8, scale: 0.98 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: 8, scale: 0.98 },
-  transition: { duration: 0.16, ease: "easeOut" },
-};
-
-const navButtonClass = "relative inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-all duration-200";
+const navButtonClass = "relative inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-all duration-100";
 
 const participantBelongsToUser = (participant, userId) => (
   participant?.captain_id === userId
@@ -125,7 +124,6 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [navMenuOpen, setNavMenuOpen] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [forgeOpen, setForgeOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -136,6 +134,10 @@ export default function Navbar() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [matchesOpen, setMatchesOpen] = useState(false);
   const [activeMatches, setActiveMatches] = useState([]);
+  const activeMatchesLoadedAt = useRef(0);
+  const notificationsLoadedAt = useRef(0);
+  const messagesLoadedAt = useRef(0);
+  const dropdownCloseTimer = useRef(null);
   const location = useLocation();
   const { isAuthenticated, user: authUser } = useAuth();
   const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
@@ -144,7 +146,22 @@ export default function Navbar() {
   const canSeeStreamerShortcut = isStreamerUser(user || authUser);
   const matchHistoryPath = profilePath;
 
+  const cancelDropdownClose = () => {
+    if (!dropdownCloseTimer.current) return;
+    window.clearTimeout(dropdownCloseTimer.current);
+    dropdownCloseTimer.current = null;
+  };
+
+  const scheduleDropdownClose = (close) => {
+    cancelDropdownClose();
+    dropdownCloseTimer.current = window.setTimeout(() => {
+      close();
+      dropdownCloseTimer.current = null;
+    }, 220);
+  };
+
   const closeDropdowns = () => {
+    cancelDropdownClose();
     setNavMenuOpen(null);
     setMatchesOpen(false);
     setNotifOpen(false);
@@ -163,9 +180,24 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    let animationFrame = null;
+    const handleScroll = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        const next = window.scrollY > 20;
+        setScrolled((current) => current === next ? current : next);
+        animationFrame = null;
+      });
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, []);
+
+  useEffect(() => () => {
+    if (dropdownCloseTimer.current) window.clearTimeout(dropdownCloseTimer.current);
   }, []);
 
   useEffect(() => {
@@ -176,58 +208,45 @@ export default function Navbar() {
   useEffect(() => {
     if (!isAuthenticated) {
       clearUserState();
-      return;
-    }
-
-    loadUser();
-    loadNotifications();
-    loadMessages();
-    loadActiveMatches();
-  }, [location.pathname, isAuthenticated]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      clearUserState();
-      return;
+      return undefined;
     }
 
     if (authUser) {
       setUser(authUser);
     }
 
-    loadUser();
-    loadNotifications();
-    loadMessages();
-    loadActiveMatches();
-    
-    const interval = setInterval(() => {
-      loadUser();
-      loadNotifications();
-      loadMessages();
-      loadActiveMatches();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, authUser]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return undefined;
-    const notificationInterval = setInterval(() => {
-      loadNotifications();
-    }, 5000);
-    return () => clearInterval(notificationInterval);
+    const refreshHeader = () => {
+      if (document.visibilityState === "hidden") return;
+      loadUser(authUser);
+      loadNotifications({ userId: authUser?.id });
+      loadMessages({ userId: authUser?.id });
+    };
+    refreshHeader();
+    const interval = window.setInterval(refreshHeader, 60000);
+    document.addEventListener("visibilitychange", refreshHeader);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshHeader);
+    };
   }, [isAuthenticated, authUser?.id]);
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const messageInterval = setInterval(() => {
-      loadMessages();
-    }, 5000);
-    return () => clearInterval(messageInterval);
+    const loadWhenIdle = () => {
+      if (document.visibilityState !== "hidden") loadActiveMatches();
+    };
+    const idleHandle = "requestIdleCallback" in window
+      ? window.requestIdleCallback(loadWhenIdle, { timeout: 3500 })
+      : window.setTimeout(loadWhenIdle, 1500);
+    return () => {
+      if ("cancelIdleCallback" in window) window.cancelIdleCallback(idleHandle);
+      else window.clearTimeout(idleHandle);
+    };
   }, [isAuthenticated, authUser?.id]);
 
-  const loadUser = async () => {
+  const loadUser = async (knownUser = null) => {
     try {
-      const userData = await base44.auth.me();
+      const userData = knownUser?.id ? knownUser : await base44.auth.me();
       if (!userData) {
         setUser(null);
         setWalletBalance(0);
@@ -243,34 +262,46 @@ export default function Navbar() {
     }
   };
 
-  const loadNotifications = async () => {
+  const loadNotifications = async ({ fresh = false, userId = null } = {}) => {
     try {
-      const user = await base44.auth.me();
-      if (!user) return;
-      const data = await base44.entities.Notification.filterFresh({ user_id: user.id }, '-created_date', 10);
+      if (fresh && Date.now() - notificationsLoadedAt.current < 10000) return;
+      const resolvedUserId = userId || user?.id || authUser?.id || (await base44.auth.me())?.id;
+      if (!resolvedUserId) return;
+      const notificationQuery = fresh
+        ? base44.entities.Notification.filterFresh
+        : base44.entities.Notification.filter;
+      const data = await notificationQuery({ user_id: resolvedUserId }, '-created_date', 10);
       const rows = data || [];
       const unreadCount = rows.filter(n => !n.is_read).length;
       setNotifications(rows);
       setUnreadNotifCount(unreadCount);
+      notificationsLoadedAt.current = Date.now();
     } catch (error) {
       console.error('Failed to load notifications:', error);
     }
   };
 
-  const loadMessages = async () => {
+  const loadMessages = async ({ fresh = false, userId = null } = {}) => {
     try {
-      const user = await base44.auth.me();
-      if (!user) return;
-      const data = await base44.entities.Message.filter({ recipient_id: user.id }, '-created_date', 5);
+      if (fresh && Date.now() - messagesLoadedAt.current < 10000) return;
+      const resolvedUserId = userId || user?.id || authUser?.id || (await base44.auth.me())?.id;
+      if (!resolvedUserId) return;
+      const messageQuery = fresh
+        ? base44.entities.Message.filterFresh
+        : base44.entities.Message.filter;
+      const data = await messageQuery({ recipient_id: resolvedUserId }, '-created_date', 5);
       const rows = data || [];
       setMessages(rows);
       setUnreadMessagesCount(rows.filter(m => !m.is_read).length);
+      messagesLoadedAt.current = Date.now();
     } catch (error) {
       console.error('Failed to load messages:', error);
     }
   };
 
   const loadActiveMatches = async () => {
+    if (Date.now() - activeMatchesLoadedAt.current < 30000) return;
+    activeMatchesLoadedAt.current = Date.now();
     try {
       const user = await base44.auth.me();
       if (!user) return;
@@ -286,7 +317,7 @@ export default function Navbar() {
         base44.entities.Wager.filter({ challenger_id: user.id }).catch(() => []),
         base44.entities.RankedMatch.filter({ host_id: user.id }).catch(() => []),
         base44.entities.RankedMatch.filter({ challenger_id: user.id }).catch(() => []),
-        base44.entities.TournamentParticipant.filterFresh({}, "-registered_date", 500).catch(() => []),
+        base44.entities.TournamentParticipant.filter({}, "-registered_date", 500).catch(() => []),
       ]);
 
       const byId = new Map();
@@ -298,7 +329,7 @@ export default function Navbar() {
       const tournamentIds = [...new Set(userParticipants.map((participant) => participant.tournament_id).filter(Boolean))];
       const [tournamentMatchesByTournament, tournaments] = await Promise.all([
         Promise.all(tournamentIds.map((tournamentId) => (
-          base44.entities.TournamentMatch.filterFresh({ tournament_id: tournamentId }, "-created_date", 256).catch(() => [])
+          base44.entities.TournamentMatch.filter({ tournament_id: tournamentId }, "-created_date", 256).catch(() => [])
         ))),
         Promise.all(tournamentIds.map((tournamentId) => (
           base44.entities.Tournament.get(tournamentId).catch(() => null)
@@ -332,6 +363,7 @@ export default function Navbar() {
       
       setActiveMatches(active);
     } catch (error) {
+      activeMatchesLoadedAt.current = 0;
       console.error('Failed to load active matches:', error);
     }
   };
@@ -358,8 +390,8 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled ? "glass-nav shadow-lg shadow-black/20" : "bg-transparent"
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
+        scrolled ? "glass-nav" : "bg-transparent"
       }`}>
         <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
           <div className="flex items-center justify-between h-16">
@@ -394,17 +426,20 @@ export default function Navbar() {
                   return (
                     <div
                       key={group.label}
-                      className="relative"
+                      className="nav-dropdown-anchor relative"
                       onMouseEnter={() => {
+                        cancelDropdownClose();
                         setNavMenuOpen(group.label);
                         setMatchesOpen(false);
                         setNotifOpen(false);
                         setMessagesOpen(false);
                         setProfileOpen(false);
                       }}
-                      onMouseLeave={() => setNavMenuOpen(null)}
+                      onMouseLeave={() => scheduleDropdownClose(() => setNavMenuOpen(null))}
                     >
                       <button
+                        type="button"
+                        onClick={() => setNavMenuOpen(open ? null : group.label)}
                         className={`${navButtonClass} ${
                           active || open
                             ? "bg-cyan/10 text-cyan border border-cyan/20"
@@ -416,12 +451,8 @@ export default function Navbar() {
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
                       </button>
 
-                      <AnimatePresence>
-                        {open && (
-                          <motion.div
-                            {...dropdownMotion}
-                            className="absolute left-0 top-11 w-56 rounded-lg border border-white/10 bg-background/95 p-2 shadow-2xl shadow-black/40 backdrop-blur-xl"
-                          >
+                      {open && (
+                          <div className="nav-popover nav-popover-enter absolute left-0 top-11 w-56 rounded-xl p-2">
                             {group.items.map((item) => {
                               const ItemIcon = item.icon;
                               const itemActive = location.pathname === item.path;
@@ -442,16 +473,16 @@ export default function Navbar() {
                                 </Link>
                               );
                             })}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                          </div>
+                      )}
                     </div>
                   );
                 })}
 
                 <div
-                  className="relative"
+                  className="nav-dropdown-anchor relative"
                   onMouseEnter={() => {
+                    cancelDropdownClose();
                     setMatchesOpen(true);
                     setNavMenuOpen(null);
                     setNotifOpen(false);
@@ -459,7 +490,7 @@ export default function Navbar() {
                     setProfileOpen(false);
                     loadActiveMatches();
                   }}
-                  onMouseLeave={() => setMatchesOpen(false)}
+                  onMouseLeave={() => scheduleDropdownClose(() => setMatchesOpen(false))}
                 >
                   <button
                     className={`${navButtonClass} ${
@@ -476,12 +507,8 @@ export default function Navbar() {
                     )}
                   </button>
 
-                  <AnimatePresence>
-                    {matchesOpen && (
-                      <motion.div
-                        {...dropdownMotion}
-                        className="absolute left-0 top-11 w-80 overflow-hidden rounded-lg border border-white/10 bg-background/95 shadow-2xl shadow-black/40 backdrop-blur-xl"
-                      >
+                  {matchesOpen && (
+                      <div className="nav-popover nav-popover-enter absolute left-0 top-11 w-80 overflow-hidden rounded-xl">
                         <div className="grid grid-cols-2 gap-2 p-2 border-b border-white/5">
                           <Link
                             to="/dashboard"
@@ -555,9 +582,8 @@ export default function Navbar() {
                             })
                           )}
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                      </div>
+                  )}
                 </div>
               </div>
             )}
@@ -576,16 +602,17 @@ export default function Navbar() {
 
               {/* Notifications */}
               <div
-                className="relative"
+                className="nav-dropdown-anchor relative"
                 onMouseEnter={() => {
+                  cancelDropdownClose();
                   setNotifOpen(true);
                   setNavMenuOpen(null);
                   setMatchesOpen(false);
                   setMessagesOpen(false);
                   setProfileOpen(false);
-                  loadNotifications();
+                  loadNotifications({ fresh: true });
                 }}
-                onMouseLeave={() => setNotifOpen(false)}
+                onMouseLeave={() => scheduleDropdownClose(() => setNotifOpen(false))}
               >
                 <button
                   type="button"
@@ -597,14 +624,8 @@ export default function Navbar() {
                   )}
                 </button>
 
-                <AnimatePresence>
-                  {notifOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                      className="absolute right-0 top-12 w-80 glass rounded-xl border border-white/10 shadow-2xl overflow-hidden z-50"
-                    >
+                {notifOpen && (
+                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl">
                       <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                         <h3 className="font-bold text-sm">Notifications</h3>
                         <Link to="/notifications" onClick={() => setNotifOpen(false)} className="text-xs text-cyan hover:underline">
@@ -653,23 +674,23 @@ export default function Navbar() {
                           ))
                         )}
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                )}
               </div>
 
               {/* Messages */}
               <div
-                className="relative hidden sm:block"
+                className="nav-dropdown-anchor relative hidden sm:block"
                 onMouseEnter={() => {
+                  cancelDropdownClose();
                   setMessagesOpen(true);
                   setNavMenuOpen(null);
                   setMatchesOpen(false);
                   setNotifOpen(false);
                   setProfileOpen(false);
-                  loadMessages();
+                  loadMessages({ fresh: true });
                 }}
-                onMouseLeave={() => setMessagesOpen(false)}
+                onMouseLeave={() => scheduleDropdownClose(() => setMessagesOpen(false))}
               >
                 <button
                   type="button"
@@ -681,14 +702,8 @@ export default function Navbar() {
                   )}
                 </button>
 
-                <AnimatePresence>
-                  {messagesOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                      className="absolute right-0 top-12 w-80 glass rounded-xl border border-white/10 shadow-2xl overflow-hidden z-50"
-                    >
+                {messagesOpen && (
+                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl">
                       <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                         <h3 className="font-bold text-sm">Messages</h3>
                         <Link to="/messages" onClick={() => setMessagesOpen(false)} className="text-xs text-cyan hover:underline">
@@ -703,8 +718,9 @@ export default function Navbar() {
                           </div>
                         ) : (
                           messages.map((message) => (
-                            <div
+                            <Link
                               key={message.id}
+                              to={message.action_url || "/messages"}
                               onClick={() => { markMessageAsRead(message.id); setMessagesOpen(false); }}
                               className={`px-4 py-3 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-all ${
                                 !message.is_read ? 'bg-cyan/5' : ''
@@ -727,13 +743,12 @@ export default function Navbar() {
                                   <span className="w-2 h-2 bg-cyan rounded-full shrink-0" />
                                 )}
                               </div>
-                            </div>
+                            </Link>
                           ))
                         )}
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                )}
               </div>
 
               {canSeeAdminLink && (
@@ -748,15 +763,16 @@ export default function Navbar() {
 
               {/* Profile */}
               <div
-                className="relative"
+                className="nav-dropdown-anchor relative"
                 onMouseEnter={() => {
+                  cancelDropdownClose();
                   setProfileOpen(true);
                   setNavMenuOpen(null);
                   setMatchesOpen(false);
                   setNotifOpen(false);
                   setMessagesOpen(false);
                 }}
-                onMouseLeave={() => setProfileOpen(false)}
+                onMouseLeave={() => scheduleDropdownClose(() => setProfileOpen(false))}
               >
                 <button
                   type="button"
@@ -768,12 +784,8 @@ export default function Navbar() {
                   <ChevronDown className={`w-3.5 h-3.5 text-vapor transition-transform ${profileOpen ? "rotate-180" : ""}`} />
                 </button>
 
-                <AnimatePresence>
-                  {profileOpen && (
-                    <motion.div
-                      {...dropdownMotion}
-                      className="absolute right-0 top-12 z-50 w-72 rounded-lg border border-white/10 bg-background/95 p-2 shadow-2xl shadow-black/40 backdrop-blur-xl"
-                    >
+                {profileOpen && (
+                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-72 rounded-xl p-2">
                       <div className="px-3 py-2 border-b border-white/5 mb-1">
                         <p className="text-sm font-semibold">{accountName}</p>
                         <p className="text-xs text-vapor">
@@ -784,6 +796,7 @@ export default function Navbar() {
                         label="Account"
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
+                          { label: "My Teams", path: "/teams", icon: Users },
                           ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
                           { label: "Settings", path: "/settings", icon: Settings },
                         ]}
@@ -793,7 +806,6 @@ export default function Navbar() {
                         label="Armory"
                         items={[
                           { label: "Wallet", path: "/wallet", icon: Wallet },
-                          { label: "Buy Credits", path: "/marketplace#credits-store", icon: Coins },
                           { label: "Inventory", path: "/inventory", icon: Package },
                           { label: "Trading", path: "/trading", icon: ShoppingBag },
                         ]}
@@ -805,33 +817,25 @@ export default function Navbar() {
                           <Link
                             to="/admin"
                             onClick={() => setProfileOpen(false)}
-                            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-vapor transition-all hover:bg-white/5 hover:text-foreground"
+                            className="nav-menu-item flex items-center gap-3 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
                           >
                             <ShieldCheck className="w-4 h-4 text-pink-300" />
                             Admin Console
                           </Link>
-                          <button
-                            onClick={() => { setProfileOpen(false); setForgeOpen(true); }}
-                            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-vapor transition-all hover:bg-orange/10 hover:text-orange"
-                          >
-                            <Flame className="w-4 h-4 text-orange" />
-                            Forge Money to Credits
-                          </button>
                         </div>
                       )}
                       <div className="border-t border-white/5 mt-1 pt-1">
                         <Link
                           to="/logout"
                           onClick={() => setProfileOpen(false)}
-                          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-destructive transition-all hover:bg-destructive/10"
+                          className="nav-menu-item flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10"
                         >
                           <LogOut className="w-4 h-4" />
                           Sign Out
                         </Link>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                )}
               </div>
                 </>
               ) : (
@@ -866,14 +870,8 @@ export default function Navbar() {
       </nav>
 
       {/* Mobile Menu */}
-      <AnimatePresence>
-        {user && mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xl pt-20 overflow-y-auto xl:hidden"
-          >
+      {user && mobileOpen && (
+          <div className="mobile-menu-enter fixed inset-0 z-40 overflow-y-auto bg-background/98 pt-20 xl:hidden">
             <div className="max-w-lg mx-auto px-6 py-4 space-y-1">
               <Link
                 to="/dashboard"
@@ -954,6 +952,13 @@ export default function Navbar() {
                       My Profile
                     </Link>
                     <Link
+                      to="/teams"
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
+                    >
+                      <Users className="w-5 h-5" />
+                      My Teams
+                    </Link>
+                    <Link
                       to="/wallet"
                       className="flex items-center gap-2 px-4 py-3 rounded-xl hover:bg-secondary transition-all"
                     >
@@ -990,10 +995,8 @@ export default function Navbar() {
                 )}
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <ForgeModal open={forgeOpen} onClose={() => setForgeOpen(false)} />
+          </div>
+      )}
     </>
   );
 }
@@ -1010,7 +1013,7 @@ function ProfileMenuSection({ label, items, onSelect }) {
             key={item.path}
             to={item.path}
             onClick={onSelect}
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-vapor transition-all hover:bg-white/5 hover:text-foreground"
+            className="nav-menu-item flex items-center gap-3 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
           >
             <Icon className="w-4 h-4 text-cyan" />
             {item.label}

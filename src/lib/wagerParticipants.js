@@ -28,6 +28,7 @@ export async function loadWagerParticipants(base44, wager) {
       id: participant.id,
       user_id: participant.user_id,
       full_name: userRow?.display_name || userRow?.full_name || userRow?.username || participant.user_name || "Unnamed player",
+      activision_id: userRow?.activision_id || "",
       wager_wins: userRow?.wager_wins || 0,
       wager_losses: userRow?.wager_losses || 0,
       total_wager_earnings: userRow?.total_wager_earnings || 0,

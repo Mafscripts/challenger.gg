@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
+import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 
 const gameModes = [
   { id: "snd", name: "Search & Destroy", icon: Target, description: "Best of 11 rounds" },
@@ -102,6 +104,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   }, [isOpen, user?.id]);
 
   const handleCreate = async () => {
+    if (!hasActivisionId(user)) {
+      toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
+      return;
+    }
+
     if (selectedGameMode && selectedTeamSize && user) {
       setIsCreating(true);
       try {
@@ -302,6 +309,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
           {/* Content */}
           <div className="p-6">
+            <ActivisionIdNotice user={user} className="mb-5" />
             {/* Step 1: Game Mode */}
             {step === 1 && (
               <div>
@@ -316,7 +324,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     return (
                       <motion.button
                         key={mode.id}
-                        whileHover={{ y: -4 }}
+                        whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                         onClick={() => setSelectedGameMode(mode.id)}
                         className={`p-4 rounded-xl border text-left transition-all ${
                           isSelected
@@ -365,7 +373,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     return (
                       <motion.button
                         key={size.id}
-                        whileHover={{ y: -4 }}
+                        whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                         onClick={() => setSelectedTeamSize(size.id)}
                         className={`p-5 rounded-xl border text-left transition-all ${
                           isSelected
@@ -451,7 +459,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   {[1, 3, 5].map(bo => (
                     <motion.button
                       key={bo}
-                      whileHover={{ y: -4 }}
+                      whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                       onClick={() => setBestOf(bo)}
                       className={`p-4 rounded-xl border text-center transition-all ${
                         bestOf === bo
@@ -596,7 +604,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     return (
                       <motion.button
                         key={map.id}
-                        whileHover={{ y: -2 }}
+                        whileHover={{ y: -2, transition: { duration: 0.1, ease: "easeOut" } }}
                         onClick={() => setHostBannedMap(map.id)}
                         className={`p-3 rounded-lg border text-left transition-all ${
                           isSelected

@@ -175,7 +175,7 @@ export default function ItemDetail() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
               {relatedItems.map((related) => (
                 <Link key={related.id} to={`/item/${related.id}`}>
-                  <motion.div whileHover={{ y: -4 }} className="glass rounded-xl border border-white/5 overflow-hidden cursor-pointer">
+                  <motion.div whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }} className="glass rounded-xl border border-white/5 overflow-hidden cursor-pointer">
                     <div className="aspect-square bg-secondary overflow-hidden">
                       <MarketplaceImage item={related} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                     </div>

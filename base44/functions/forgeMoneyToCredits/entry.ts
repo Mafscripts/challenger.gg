@@ -1,10 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { commercePausedResponse } from '../_shared/commerce.ts';
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const pausedResponse = commercePausedResponse();
+    if (pausedResponse) return pausedResponse;
 
     const wallets = await base44.asServiceRole.entities.Wallet.filter({ user_id: user.id });
     const legacyBalance = user.wallet_balance || 0;

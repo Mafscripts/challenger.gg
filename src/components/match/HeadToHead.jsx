@@ -18,7 +18,7 @@ export default function HeadToHead({ teamAPlayers, teamBPlayers }) {
   const teamB = getRecord(teamBPlayers);
 
   return (
-    <div className="glass rounded-xl border border-white/5 p-6">
+    <div className="premium-panel rounded-3xl p-6">
       <div className="flex items-center gap-2 mb-4">
         <Trophy className="w-5 h-5 text-yellow-400" />
         <h3 className="font-bold text-sm">TEAM RECORD COMPARISON</h3>
@@ -42,11 +42,11 @@ export default function HeadToHead({ teamAPlayers, teamBPlayers }) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-secondary/50 rounded-lg p-4 border border-white/5">
+            <div className="premium-card rounded-2xl p-4">
               <p className="text-xs text-vapor mb-1 uppercase tracking-wider">Team Alpha Win Rate</p>
               <p className="text-lg font-bold text-cyan">{teamA.winRate}%</p>
             </div>
-            <div className="bg-secondary/50 rounded-lg p-4 border border-white/5">
+            <div className="premium-card rounded-2xl p-4">
               <p className="text-xs text-vapor mb-1 uppercase tracking-wider">Team Bravo Win Rate</p>
               <p className="text-lg font-bold text-orange">{teamB.winRate}%</p>
             </div>

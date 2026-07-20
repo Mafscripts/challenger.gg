@@ -55,7 +55,7 @@ export default function LiveMatches() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                   className="glass rounded-xl p-6 border border-white/5 hover:border-red-500/20 transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between mb-4">

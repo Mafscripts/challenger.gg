@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import TopfraggLogo from "@/components/brand/TopfraggLogo";
 
 const accents = {
   cyan: {
@@ -27,7 +28,7 @@ const accents = {
 };
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "";
-const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const adminRoles = new Set(["ceo", "super_admin", "admin"]);
 const displaySenderName = (message) => {
   const name = message.sender_name || "Unknown sender";
   const content = String(message.content || "");
@@ -36,12 +37,38 @@ const displaySenderName = (message) => {
   }
   return name;
 };
-const isAdminMessage = (message) => (
-  staffRoles.has(message.sender_role)
-  || String(message.sender_name || "").startsWith("Admin ")
-  || (message.system && String(message.content || "").includes("entered the room as admin"))
-  || (message.system && String(message.content || "").includes("has joined the match room"))
-);
+const staffKindForMessage = (message) => {
+  const roles = [message.sender_role, message.sender_admin_role, message.admin_role]
+    .map((role) => String(role || "").toLowerCase());
+  const senderName = String(message.sender_name || "");
+  const content = String(message.content || "");
+  if (roles.includes("moderator") || senderName.startsWith("Moderator ")) return "moderator";
+  if (
+    roles.some((role) => adminRoles.has(role))
+    || senderName.startsWith("Admin ")
+    || (message.system && content.includes("entered the room as admin"))
+    || (message.system && content.includes("has joined the match room"))
+  ) return "admin";
+  return "";
+};
+
+function StaffBadge({ kind }) {
+  if (!kind) return null;
+  const isModerator = kind === "moderator";
+  return (
+    <span
+      title={isModerator ? "Official TopFragg Moderator" : "Official TopFragg Staff"}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
+        isModerator
+          ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-300"
+          : "border-red-400/30 bg-red-500/10 text-red-300"
+      }`}
+    >
+      <TopfraggLogo showWordmark={false} markClassName="h-3.5 w-3.5" />
+      {isModerator ? "TopFragg Mod" : "TopFragg Staff"}
+    </span>
+  );
+}
 
 export default function MatchChat({
   conversationId,
@@ -169,17 +196,37 @@ export default function MatchChat({
             <MessageSquare className="w-8 h-8 text-vapor/30 mb-3" />
             <p className="text-sm text-vapor">No chat messages yet.</p>
           </div>
-        ) : messages.map((message) => (
-          <div key={message.id} className={`rounded-lg bg-secondary/40 border border-white/5 ${compact ? "p-2.5" : "p-3"}`}>
-            <div className="flex items-center justify-between gap-3 mb-1">
-              <span className={`text-xs font-semibold ${isAdminMessage(message) ? "text-pink-300 drop-shadow-[0_0_8px_rgba(244,114,182,0.45)]" : tone.text}`}>
-                {displaySenderName(message)}
-              </span>
-              <span className="text-[10px] text-vapor">{formatDate(message.created_date)}</span>
+        ) : messages.map((message) => {
+          const staffKind = staffKindForMessage(message);
+          const isModerator = staffKind === "moderator";
+          const isAdmin = staffKind === "admin";
+          return (
+            <div key={message.id} className={`rounded-lg border ${compact ? "p-2.5" : "p-3"} ${
+              isAdmin
+                ? "border-red-400/20 bg-red-500/[0.055]"
+                : isModerator
+                  ? "border-yellow-400/20 bg-yellow-400/[0.045]"
+                  : "border-white/5 bg-secondary/40"
+            }`}>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span className={`truncate text-xs font-black ${
+                    isAdmin
+                      ? "text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.32)]"
+                      : isModerator
+                        ? "text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.24)]"
+                        : tone.text
+                  }`}>
+                    {displaySenderName(message)}
+                  </span>
+                  <StaffBadge kind={staffKind} />
+                </div>
+                <span className="shrink-0 text-[10px] text-vapor">{formatDate(message.created_date)}</span>
+              </div>
+              <p className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap ${isAdmin ? "text-red-50/85" : isModerator ? "text-yellow-50/85" : "text-foreground/80"}`}>{message.content}</p>
             </div>
-            <p className={`${compact ? "text-xs" : "text-sm"} text-foreground/80 whitespace-pre-wrap`}>{message.content}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} border-t border-white/5 bg-secondary/30 flex items-center gap-2`}>
         <input

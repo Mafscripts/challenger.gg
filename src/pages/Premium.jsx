@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
-import { Crown, Check, Zap, Shield, ShoppingBag, Trophy, Users, Sparkles, ArrowRight } from "lucide-react";
-import { base44 } from "@/api/base44Client";
-import { toast } from "@/components/ui/use-toast";
+import { Crown, Check, Zap, Shield, ShoppingBag, Trophy, Users, Sparkles, LockKeyhole } from "lucide-react";
+import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 
 const benefits = [
   { icon: Zap, title: "2x XP Boost", desc: "Double experience on all matches. Level up and prestige faster than ever." },
@@ -20,24 +19,6 @@ const cosmetics = [
 ];
 
 export default function Premium() {
-  const [subscribing, setSubscribing] = useState(false);
-
-  const handleSubscribe = async () => {
-    setSubscribing(true);
-    try {
-      const response = await base44.functions.invoke("subscribePremium", { plan_type: "monthly" });
-      if (response.data.success) {
-        toast({ title: "Premium activated", description: "Your premium membership is now active." });
-      } else {
-        toast({ title: "Subscription failed", description: response.data.error || "Unable to activate premium", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Subscription failed", description: error.message || "Unable to activate premium", variant: "destructive" });
-    } finally {
-      setSubscribing(false);
-    }
-  };
-
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
@@ -65,12 +46,13 @@ export default function Premium() {
                 <span className="text-vapor text-lg ml-1">/mo</span>
               </div>
             </div>
+            <CommercePausedNotice className="mx-auto mb-6 max-w-xl text-left" />
             <button
-              onClick={handleSubscribe}
-              disabled={subscribing}
-              className="inline-flex items-center gap-2 px-10 py-5 bg-orange text-white font-bold rounded-xl hover:shadow-2xl hover:shadow-orange/25 transition-all text-lg uppercase tracking-wider"
+              type="button"
+              disabled
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-10 py-5 text-lg font-bold uppercase tracking-wider text-vapor"
             >
-              <Crown className="w-5 h-5" /> {subscribing ? "Subscribing..." : "Subscribe Now"} <ArrowRight className="w-5 h-5" />
+              <LockKeyhole className="w-5 h-5" /> Subscriptions Paused
             </button>
           </motion.div>
         </div>
@@ -84,7 +66,7 @@ export default function Premium() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              whileHover={{ y: -4 }}
+              whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
               className="glass rounded-xl p-8 border border-orange/10 hover:border-orange/20 transition-all group"
             >
               <div className="inline-flex p-3 rounded-xl bg-orange/10 text-orange mb-5 group-hover:scale-110 transition-transform">

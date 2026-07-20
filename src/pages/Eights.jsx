@@ -9,6 +9,8 @@ import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionHero from "@/components/match/CompetitionHero";
 import { toast } from "@/components/ui/use-toast";
+import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
+import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 
 const modes = ["All", "1v1", "2v2", "3v3", "4v4"];
 const gameModes = ["All", "Search & Destroy", "Hardpoint", "Overload"];
@@ -89,6 +91,15 @@ export default function Eights() {
   };
 
   const handleJoinLobby = async (lobby) => {
+    if (!user) {
+      toast({ title: "Login required", description: "Please log in to join 8s lobbies.", variant: "destructive" });
+      return;
+    }
+    if (!hasActivisionId(user)) {
+      toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
+      return;
+    }
+
     const required = rosterSize(lobby.mode);
     const selectedTeam = compatibleTeamsFor(lobby).find((team) => team.id === joinTeamByLobby[lobby.id]);
     if (required > 1 && !joinTeamByLobby[lobby.id]) {
@@ -156,6 +167,7 @@ export default function Eights() {
             { label: "Queue Type", value: "Open", icon: Clock, color: "text-purple-400" },
           ]}
         />
+        <ActivisionIdNotice user={user} className="mb-6" />
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 mb-6">
@@ -214,7 +226,7 @@ export default function Eights() {
                 key={lobby.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                whileHover={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+                whileHover={{ backgroundColor: "rgba(255,255,255,0.02)", transition: { duration: 0.1, ease: "easeOut" } }}
                 className="grid grid-cols-2 md:grid-cols-7 gap-2 md:gap-4 px-5 py-4 cursor-pointer items-center transition-all"
               >
                 <div>

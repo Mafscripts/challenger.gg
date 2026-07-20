@@ -14,12 +14,22 @@ export default function GamingIdsSection({ user, onUserUpdate }) {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    const activisionId = formData.activision_id.trim();
+    if (!activisionId) {
+      toast({
+        title: "Activision ID required",
+        description: "Add your Activision ID to enter tournaments and competitive matches.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       await base44.auth.updateMe({
-        activision_id: formData.activision_id,
-        playstation_id: formData.playstation_id,
-        xbox_id: formData.xbox_id,
+        activision_id: activisionId,
+        playstation_id: formData.playstation_id.trim(),
+        xbox_id: formData.xbox_id.trim(),
       });
       toast({
         title: "Gaming IDs saved",
@@ -41,6 +51,7 @@ export default function GamingIdsSection({ user, onUserUpdate }) {
 
   return (
     <motion.div
+      id="gaming-ids"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="glass rounded-xl border border-white/5 overflow-hidden mb-6"
@@ -52,7 +63,7 @@ export default function GamingIdsSection({ user, onUserUpdate }) {
           </div>
           <div>
             <h3 className="font-bold text-sm">Gaming IDs</h3>
-            <p className="text-xs text-vapor">Connect your gaming accounts</p>
+            <p className="text-xs text-vapor">Your Activision ID is required for competitive play</p>
           </div>
         </div>
         {!isEditing && (
@@ -67,15 +78,21 @@ export default function GamingIdsSection({ user, onUserUpdate }) {
 
       <div className="p-6 space-y-4">
         <div>
-          <label className="text-xs text-vapor mb-2 block">Activision ID</label>
+          <label className="mb-2 flex items-center gap-2 text-xs text-vapor">
+            Activision ID
+            <span className="rounded bg-orange/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-orange">Required</span>
+          </label>
           <input
             type="text"
+            required
+            aria-required="true"
             value={formData.activision_id}
             onChange={(e) => setFormData({ ...formData, activision_id: e.target.value })}
             disabled={!isEditing}
-            placeholder="Your Activision ID"
+            placeholder="PlayerName#1234567"
             className="w-full bg-secondary border border-white/5 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-cyan/30 disabled:opacity-50"
           />
+          <p className="mt-2 text-[11px] leading-5 text-vapor">Required to create or join tournaments, ranked matches, 8s, XP matches and wagers.</p>
         </div>
 
         <div>

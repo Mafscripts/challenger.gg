@@ -35,6 +35,22 @@
       "type": "string",
       "title": "Conversation ID"
     },
+    "action_url": {
+      "type": "string",
+      "title": "Action URL"
+    },
+    "related_entity_id": {
+      "type": "string",
+      "title": "Related Entity ID"
+    },
+    "related_entity_type": {
+      "type": "string",
+      "title": "Related Entity Type"
+    },
+    "message_type": {
+      "type": "string",
+      "title": "Message Type"
+    },
     "created_date": {
       "type": "string",
       "format": "date-time",

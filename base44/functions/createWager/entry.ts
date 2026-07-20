@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { activisionIdRequiredForUserIds, activisionIdRequiredResponse } from '../_shared/activision.ts';
 
 const toMoney = (value) => {
   const amount = Number(value || 0);
@@ -188,6 +189,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const activisionResponse = activisionIdRequiredResponse([user]);
+    if (activisionResponse) return activisionResponse;
 
     const body = await req.json();
     const {
@@ -217,6 +220,10 @@ Deno.serve(async (req) => {
     const teamResult = isTeamMatch
       ? await selectedTeamRoster(base44, body.team_id, user.id, teamTypeFor(normalizedMatchType), requiredSize)
       : { team: null, roster: null };
+    const rosterActivisionResponse = isTeamMatch
+      ? await activisionIdRequiredForUserIds(base44, teamResult.roster.map((member) => member.user_id))
+      : null;
+    if (rosterActivisionResponse) return rosterActivisionResponse;
     const platformFeePercent = hasActivePremium(user) ? 5 : 10;
     const totalPrizePool = toMoney(entryFee * (isTeamMatch ? requiredSize * 2 : 2));
     const platformFeeAmount = toMoney(totalPrizePool * (platformFeePercent / 100));

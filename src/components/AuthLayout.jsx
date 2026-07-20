@@ -3,16 +3,16 @@ import React from "react";
 export default function AuthLayout({ icon: Icon, title, subtitle, footer, children, compact = false }) {
   if (compact) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#111418] px-4 py-6 sm:py-8">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-6 sm:py-8">
         <div className="w-full max-w-[540px]">
           <div className="text-center mb-5">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-cyan to-[#0EA5C7] shadow-[0_0_28px_rgba(20,216,255,0.18)] mb-3">
-              <Icon className="w-6 h-6 text-[#111418]" aria-hidden="true" />
+              <Icon className="w-6 h-6 text-background" aria-hidden="true" />
             </div>
             <h1 className="text-2xl font-black tracking-tight text-foreground">{title}</h1>
             {subtitle && <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>}
           </div>
-          <div className="bg-[#1C2128] rounded-xl shadow-[0_18px_60px_rgba(0,0,0,0.28)] border border-[#2A313B] p-6">
+          <div className="premium-panel rounded-3xl p-6">
             {children}
           </div>
           {footer && (

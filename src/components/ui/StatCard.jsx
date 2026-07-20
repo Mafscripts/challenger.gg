@@ -12,16 +12,18 @@ export default function StatCard({ icon: Icon, label, value, accent = "cyan", cl
 
   return (
     <motion.div
-      whileHover={{ scale: 1.02, y: -2 }}
-      className={`glass rounded-xl p-5 border border-white/5 hover:border-white/10 transition-all ${className}`}
+      whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
+      transition={{ duration: 0.1, ease: "easeOut" }}
+      className={`premium-card group relative overflow-hidden rounded-2xl p-5 ${className}`}
     >
+      <div className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-3xl ${cls}`} />
       <div className="flex items-start justify-between mb-3">
-        <div className={`p-2 rounded-lg ${cls}`}>
+        <div className={`relative rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110 ${cls}`}>
           {Icon && <Icon className="w-4 h-4" />}
         </div>
       </div>
-      <p className="text-2xl font-bold font-mono mb-1">{value}</p>
-      <p className="text-xs text-vapor uppercase tracking-wider">{label}</p>
+      <p className="relative mb-1 font-mono text-3xl font-black tracking-tight text-white">{value}</p>
+      <p className="relative text-[10px] font-bold uppercase tracking-[0.16em] text-vapor">{label}</p>
     </motion.div>
   );
 }

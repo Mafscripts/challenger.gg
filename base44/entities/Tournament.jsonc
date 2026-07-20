@@ -14,6 +14,10 @@
       "type": "string",
       "title": "Description"
     },
+    "image_url": {
+      "type": "string",
+      "title": "Tournament Image URL"
+    },
     "game_mode": {
       "type": "string",
       "enum": [
@@ -63,6 +67,18 @@
       "default": 0,
       "title": "Entry Fee Per Team"
     },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "free",
+        "invitational",
+        "credits",
+        "premium",
+        "credits_premium"
+      ],
+      "default": "free",
+      "title": "Entry Type"
+    },
     "prize_pool": {
       "type": "number",
       "title": "Total Prize Pool"
@@ -77,6 +93,12 @@
           "type": "number"
         },
         "third": {
+          "type": "number"
+        },
+        "first_amount": {
+          "type": "number"
+        },
+        "second_amount": {
           "type": "number"
         }
       },
@@ -114,6 +136,7 @@
         "open",
         "live",
         "registration",
+        "closed",
         "in_progress",
         "completed",
         "cancelled"
@@ -220,6 +243,54 @@
       "type": "boolean",
       "default": false,
       "title": "Premium Only Tournament"
+    },
+    "invite_only": {
+      "type": "boolean",
+      "default": false,
+      "title": "Invite Only Tournament"
+    },
+    "invited_user_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Invited User IDs"
+    },
+    "reward_item_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Champion Reward Item IDs"
+    },
+    "reward_items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "title": "Champion Reward Items"
+    },
+    "elimination_reward_item_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Elimination Reward Item IDs"
+    },
+    "elimination_reward_items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "title": "Elimination Reward Items"
+    },
+    "placement_trophy_item_ids": {
+      "type": "object",
+      "title": "Extra Trophy Item IDs By Placement"
+    },
+    "placement_trophy_items": {
+      "type": "object",
+      "title": "Extra Trophy Items By Placement"
     },
     "tournament_type": {
       "type": "string",

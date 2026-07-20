@@ -3,7 +3,7 @@ import { Trophy, DollarSign, TrendingUp, Flame, Target, BookOpen } from "lucide-
 
 function InsightCard({ label, value, subtext, icon: Icon, color, highlight }) {
   return (
-    <div className={`glass rounded-lg border p-3 ${highlight ? `border-${color}/30 bg-${color}/5` : 'border-white/5'}`}>
+    <div className={`premium-card rounded-xl p-3 ${highlight ? "bg-orange/[0.055]" : ""}`}>
       <div className="flex items-center gap-1.5 mb-1">
         {Icon && <Icon className={`w-3 h-3 ${color}`} />}
         <p className="text-[9px] text-vapor uppercase tracking-wider">{label}</p>
@@ -18,7 +18,7 @@ export default function MatchupInsights({ teamAPlayers, teamBPlayers }) {
   const allPlayers = [...(teamAPlayers || []), ...(teamBPlayers || [])];
   if (allPlayers.length === 0) {
     return (
-      <div className="glass rounded-xl border border-white/5 p-6">
+      <div className="premium-panel rounded-3xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <Target className="w-5 h-5 text-cyan" />
           <h3 className="font-bold text-sm">Matchup Insights</h3>
@@ -64,7 +64,7 @@ export default function MatchupInsights({ teamAPlayers, teamBPlayers }) {
   const teamBWinRate = teamBWins + teamBLosses > 0 ? ((teamBWins / (teamBWins + teamBLosses)) * 100).toFixed(1) : 0;
 
   return (
-    <div className="glass rounded-xl border border-white/5 p-6">
+    <div className="premium-panel rounded-3xl p-6">
       <div className="flex items-center gap-2 mb-4">
         <Target className="w-5 h-5 text-cyan" />
         <h3 className="font-bold text-sm">Matchup Insights</h3>

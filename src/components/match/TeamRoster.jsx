@@ -1,6 +1,7 @@
 import React from "react";
 import { Star, Trophy, Medal, Award, Crown, Target } from "lucide-react";
 import UserBadges from "@/components/ui/UserBadges";
+import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 
 function PlayerRow({ player, teamColor }) {
   const wins = player.wager_wins || 0;
@@ -29,6 +30,7 @@ function PlayerRow({ player, teamColor }) {
             )}
           </div>
           <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
+          <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
         </div>
       </div>
       

@@ -13,15 +13,28 @@ const money = (value) => {
 };
 const roundedMoney = (value) => Math.round(money(value) * 100) / 100;
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
+const activisionIdFor = (user) => String(user?.activision_id || user?.metadata?.activision_id || "").trim();
+const activisionSettingsMessage = "Add your Activision ID in Settings > Gaming IDs before joining competitive matches.";
 const cleanName = (value) => String(value || "").trim().toLowerCase();
 const nowIso = () => new Date().toISOString();
 const WIN_XP = 150;
 const LOSS_XP = 50;
 const RANKED_WIN_ELO = 25;
 const RANKED_LOSS_ELO = -15;
+const adminPremiumGrantDays = 30;
 const staffRoles = ["ceo", "super_admin", "admin", "moderator"];
 const walletAdjustmentRoles = new Set(["ceo", "super_admin"]);
 const walletAdjustmentTypes = new Set(["credits", "money"]);
+const publicCommerceEnabled = String(process.env.PUBLIC_COMMERCE_ENABLED || "").toLowerCase() === "true";
+const blockedPublicCommerceFunctions = new Set([
+  "buyWithCredits",
+  "create-checkout",
+  "depositToWallet",
+  "forgeMoneyToCredits",
+  "subscribePremium",
+  "withdrawFromWallet",
+]);
+const commerceUnavailableMessage = "Purchases are temporarily unavailable during public testing. Credits and funds can only be granted by Topfragg staff.";
 const tournamentStatusesOpenForRegistration = ["open", "registration"];
 const tournamentStatusesStarted = ["live", "in_progress"];
 const openTicketStatuses = ["open", "waiting_for_admin", "admin_joined", "waiting_for_user", "escalated"];
@@ -51,6 +64,7 @@ const tournamentHpModes = Array.from({ length: 3 }, () => ({ game_mode: "hp", mo
 const tournamentOverloadModes = Array.from({ length: 3 }, () => ({ game_mode: "overload", mode: "Overload" }));
 const tournamentBo1SndModes = [{ game_mode: "snd", mode: "Search and Destroy" }];
 const defaultTournamentBestOf = 3;
+const tournamentStartWindowMinutes = 15;
 const tournamentSeriesDefinitions = {
   bo1_snd: { label: "Search and Destroy", games: tournamentBo1SndModes },
   snd: { label: "Search and Destroy", games: tournamentSndModes },
@@ -292,6 +306,17 @@ async function usersWithStaffRole() {
   ));
 }
 
+function effectiveChatRole(user) {
+  const candidates = [
+    String(user?.role || "user").toLowerCase(),
+    String(user?.admin_role || "user").toLowerCase(),
+    user?.is_admin ? "admin" : "user",
+  ];
+  return candidates.reduce((best, candidate) => (
+    (rolePower[candidate] || 0) > (rolePower[best] || 0) ? candidate : best
+  ), "user");
+}
+
 async function notifyUser(userId, {
   title,
   message,
@@ -418,6 +443,22 @@ function tournamentEliminationRewardItemIds(tournament) {
   return [...new Set([...selectedIds, ...snapshotIds].filter(Boolean).map(String))];
 }
 
+function tournamentPlacementTrophyItemIds(tournament, placement) {
+  const selectedIds = Array.isArray(tournament?.placement_trophy_item_ids?.[placement])
+    ? tournament.placement_trophy_item_ids[placement]
+    : [];
+  const snapshotIds = Array.isArray(tournament?.placement_trophy_items?.[placement])
+    ? tournament.placement_trophy_items[placement].map((item) => item?.id || item?.item_id)
+    : [];
+  return [...new Set([...selectedIds, ...snapshotIds].filter(Boolean).map(String))];
+}
+
+const tournamentPlacementTrophyConfig = {
+  1: { tier: "gold", label: "Gold", rarity: "legendary" },
+  2: { tier: "silver", label: "Silver", rarity: "epic" },
+  3: { tier: "bronze", label: "Bronze", rarity: "rare" },
+};
+
 async function marketplaceItemsByIds(itemIds = []) {
   const ids = new Set(itemIds.filter(Boolean).map(String));
   if (ids.size === 0) return [];
@@ -475,6 +516,74 @@ async function grantMarketplaceItemsToUsers(users = [], items = [], context = {}
   }
 
   return granted;
+}
+
+async function grantStandardTournamentPlacementTrophy(tournament, participantId, userIds = [], placement = 1) {
+  const config = tournamentPlacementTrophyConfig[placement];
+  const uniqueUserIds = [...new Set((userIds || []).filter(Boolean))];
+  if (!config || uniqueUserIds.length === 0) return [];
+
+  const grants = [];
+  for (const userId of uniqueUserIds) {
+    const unlockKey = `tournament_placement:${tournament.id}:${participantId}:${placement}:${userId}`;
+    const inventory = await listEntities("UserInventory", { user_id: userId }, "-acquired_date", 500).catch(() => []);
+    const existing = inventory.find((item) => String(item.unlock_key || "") === unlockKey);
+    if (existing) {
+      grants.push({ user_id: userId, inventory_id: existing.id, placement, existing: true });
+      continue;
+    }
+
+    const trophy = await createEntity("UserInventory", {
+      user_id: userId,
+      item_id: `standard_tournament_${config.tier}_trophy`,
+      item_name: `${config.label} Tournament Trophy - ${tournament.name || "Tournament"}`,
+      item_category: "trophy",
+      item_rarity: config.rarity,
+      item_image: tournament.image_url || tournament.banner_url || null,
+      purchase_method: "admin_grant",
+      price_paid: 0,
+      unlock_type: "tournament_placement_trophy",
+      unlock_key: unlockKey,
+      source_tournament_id: tournament.id,
+      source_tournament_name: tournament.name,
+      tournament_placement: placement,
+      trophy_tier: config.tier,
+      is_unlocked: true,
+      is_equipped: false,
+      is_tradable: false,
+      acquired_date: nowIso(),
+    });
+    grants.push({ user_id: userId, inventory_id: trophy.id, placement, tier: config.tier });
+
+    await notifyUser(userId, {
+      title: `${config.label} tournament trophy earned`,
+      message: `You finished #${placement} in ${tournament.name || "the tournament"}. Your ${config.label} trophy is now in your profile cabinet.`,
+      type: "tournament",
+      action_url: `/profile/${userId}`,
+      related_entity_id: tournament.id,
+      related_entity_type: "Tournament",
+    });
+  }
+
+  return grants;
+}
+
+async function grantTournamentPlacementRewards(tournament, participantId, userIds = [], placement = 1) {
+  if (!participantId || (userIds || []).length === 0) return { standard: [], custom: [] };
+  const standard = await grantStandardTournamentPlacementTrophy(tournament, participantId, userIds, placement);
+  const customItemIds = tournamentPlacementTrophyItemIds(tournament, placement);
+  const customItems = await marketplaceItemsByIds(customItemIds);
+  const users = await Promise.all([...new Set(userIds.filter(Boolean))].map((userId) => userFor(userId)));
+  const custom = await grantMarketplaceItemsToUsers(users.filter(Boolean), customItems, {
+    tournament,
+    participant_id: participantId,
+    placement,
+    unlock_type: "tournament_placement_reward",
+    unlockKeyForItem: (item) => `tournament_placement_reward:${tournament.id}:${participantId}:${placement}:${item.id}`,
+    notificationTitle: `#${placement} tournament trophy unlocked`,
+    messageForItem: (item) => `${item.name} unlocked for finishing #${placement} in ${tournament.name}.`,
+  });
+  return { standard, custom };
 }
 
 async function grantTournamentMarketplaceUnlocks(users = [], context = {}) {
@@ -627,6 +736,22 @@ async function walletFor(userId) {
 async function userFor(userId) {
   if (!userId) return null;
   return prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+}
+
+function activisionIdErrorForUsers(users = []) {
+  const missing = (users || []).filter((user) => user && !activisionIdFor(user));
+  if (missing.length === 0) return null;
+  if (missing.length === 1) {
+    return `${nameFor(missing[0])} needs an Activision ID. ${activisionSettingsMessage}`;
+  }
+  const names = missing.slice(0, 3).map(nameFor).join(", ");
+  const suffix = missing.length > 3 ? ` and ${missing.length - 3} more` : "";
+  return `${names}${suffix} need an Activision ID. Every roster member must add one in Settings > Gaming IDs.`;
+}
+
+async function activisionIdErrorForMembers(members = []) {
+  const users = await Promise.all((members || []).map((member) => userFor(member.user_id)));
+  return activisionIdErrorForUsers(users);
 }
 
 async function syncUserWalletBalance(userId, wallet) {
@@ -1439,7 +1564,11 @@ function generatedTournamentMaps(match, participantA, participantB, series = tou
   const selectedMaps = generatedMapPoolForMatch(match, series);
   const firstHost = firstHostForMatch(match, participantA, participantB);
   const secondHost = secondHostForMatch(match, participantA, participantB, firstHost);
-  const hosts = series.games.map((_, index) => (index % 2 === 0 ? firstHost : secondHost));
+  // Hosting is intentionally only assigned for the first two maps. Any
+  // deciding map is agreed in the match room and therefore remains TBD.
+  const hosts = series.games.map((_, index) => (
+    index === 0 ? firstHost : index === 1 ? secondHost : null
+  ));
 
   return selectedMaps.map((map, index) => ({
     game: index + 1,
@@ -1551,8 +1680,10 @@ async function notifyTournamentMatchAssigned(match) {
     tournamentParticipantUserIds(match.tournament_id, match.team_b_id),
   ]);
   await notifyUsers([...teamAUserIds, ...teamBUserIds], {
-    title: "Tournament match assigned",
-    message: `${match.team_a_name || "Team A"} vs ${match.team_b_name || "Team B"}`,
+    title: match.start_deadline ? "Your tournament match is ready" : "Tournament match assigned",
+    message: match.start_deadline
+      ? `${match.team_a_name || "Team A"} vs ${match.team_b_name || "Team B"}. Open the match room and start within ${tournamentStartWindowMinutes} minutes.`
+      : `${match.team_a_name || "Team A"} vs ${match.team_b_name || "Team B"}. The start timer will appear when the tournament begins.`,
     type: "match",
     action_url: `/tournament-match/${match.id}`,
     related_entity_id: match.id,
@@ -1560,13 +1691,75 @@ async function notifyTournamentMatchAssigned(match) {
   });
 }
 
+async function tournamentThirdPlaceEntries(tournamentId, winnerId, runnerUpId) {
+  const [matches, participants] = await Promise.all([
+    listEntities("TournamentMatch", { tournament_id: tournamentId }, "round", 500).catch(() => []),
+    tournamentParticipants(tournamentId).catch(() => []),
+  ]);
+  const completedMatches = matches.filter((match) => (
+    (match.completed || match.status === "completed")
+    && match.winner_id
+    && match.team_a_id
+    && match.team_b_id
+  ));
+  const lowerFinal = completedMatches
+    .filter((match) => ["loser", "lower"].includes(String(match.bracket || "").toLowerCase()))
+    .sort((a, b) => Number(b.round || 0) - Number(a.round || 0))[0];
+  if (lowerFinal) {
+    const thirdId = tournamentMatchLoserId(lowerFinal, lowerFinal.winner_id);
+    if (!thirdId || [winnerId, runnerUpId].filter(Boolean).map(String).includes(String(thirdId))) return [];
+    const participant = participants.find((row) => participantIds(row).includes(String(thirdId)));
+    return [{
+      participant,
+      participantId: participant?.id || thirdId,
+      entryId: thirdId,
+      name: String(thirdId) === String(lowerFinal.team_a_id) ? lowerFinal.team_a_name : lowerFinal.team_b_name,
+      userIds: participant ? participantUserIds(participant) : await tournamentParticipantUserIds(tournamentId, thirdId),
+    }];
+  }
+  const finalRound = Math.max(0, ...completedMatches.map((match) => Number(match.round || 0)));
+  if (finalRound < 2) return [];
+
+  const semifinalRound = finalRound - 1;
+  const semifinalMatches = completedMatches.filter((match) => (
+    Number(match.round || 0) === semifinalRound
+    && !["loser", "lower"].includes(String(match.bracket || "winner").toLowerCase())
+  ));
+  const excludedIds = new Set([winnerId, runnerUpId].filter(Boolean).map(String));
+  const seen = new Set();
+  const entries = [];
+
+  for (const match of semifinalMatches) {
+    const loserId = tournamentMatchLoserId(match, match.winner_id);
+    if (!loserId || excludedIds.has(String(loserId))) continue;
+    const participant = participants.find((row) => participantIds(row).includes(String(loserId)));
+    const canonicalId = participant?.id || loserId;
+    if (seen.has(String(canonicalId))) continue;
+    seen.add(String(canonicalId));
+    entries.push({
+      participant,
+      participantId: canonicalId,
+      entryId: loserId,
+      name: String(loserId) === String(match.team_a_id) ? match.team_a_name : match.team_b_name,
+      userIds: participant ? participantUserIds(participant) : await tournamentParticipantUserIds(tournamentId, loserId),
+    });
+  }
+
+  return entries;
+}
+
 async function completeTournament(tournamentId, winnerId, winnerName, runnerUpId = null, runnerUpName = null) {
   const tournament = await getEntity("Tournament", tournamentId);
   if (tournament.status === "completed" || tournament.winner_id) {
     return tournament;
   }
-  const winnerUserIds = await tournamentParticipantUserIds(tournamentId, winnerId);
-  const runnerUpUserIds = runnerUpId ? await tournamentParticipantUserIds(tournamentId, runnerUpId) : [];
+  const [winnerUserIds, runnerUpUserIds, winnerParticipant, runnerUpParticipant, thirdPlaceEntries] = await Promise.all([
+    tournamentParticipantUserIds(tournamentId, winnerId),
+    runnerUpId ? tournamentParticipantUserIds(tournamentId, runnerUpId) : [],
+    tournamentParticipantForEntry(tournamentId, winnerId).catch(() => null),
+    runnerUpId ? tournamentParticipantForEntry(tournamentId, runnerUpId).catch(() => null) : null,
+    tournamentThirdPlaceEntries(tournamentId, winnerId, runnerUpId),
+  ]);
   const updated = await updateEntity("Tournament", tournamentId, {
     status: "completed",
     winner_id: winnerId,
@@ -1595,6 +1788,29 @@ async function completeTournament(tournamentId, winnerId, winnerName, runnerUpId
   const prize = { first: firstPrize, second: secondPrize };
 
   const rewardTournament = { ...tournament, ...updated };
+  const placementEntries = [
+    { placement: 1, participant: winnerParticipant, participantId: winnerParticipant?.id || winnerId, userIds: winnerUserIds },
+    { placement: 2, participant: runnerUpParticipant, participantId: runnerUpParticipant?.id || runnerUpId, userIds: runnerUpUserIds },
+    ...thirdPlaceEntries.map((entry) => ({ placement: 3, ...entry })),
+  ].filter((entry) => entry.participantId && entry.userIds.length > 0);
+  await Promise.all(placementEntries.map((entry) => (
+    entry.participant?.id
+      ? updateEntity("TournamentParticipant", entry.participant.id, { final_rank: entry.placement }).catch(() => null)
+      : Promise.resolve(null)
+  )));
+  const placement_trophies = [];
+  for (const entry of placementEntries) {
+    placement_trophies.push({
+      placement: entry.placement,
+      participant_id: entry.participantId,
+      rewards: await grantTournamentPlacementRewards(
+        rewardTournament,
+        entry.participantId,
+        entry.userIds,
+        entry.placement,
+      ),
+    });
+  }
   const selectedRewardItems = await marketplaceItemsByIds(tournamentRewardItemIds(rewardTournament));
   const tournament_reward_items = await grantMarketplaceItemsToUsers(updatedWinners, selectedRewardItems, {
     tournament: rewardTournament,
@@ -1621,54 +1837,239 @@ async function completeTournament(tournamentId, winnerId, winnerName, runnerUpId
     related_entity_type: "Tournament",
   });
 
-  return { ...updated, prize, reward_items: tournament_reward_items, elimination_reward_items, unlocked_items };
+  return { ...updated, prize, placement_trophies, reward_items: tournament_reward_items, elimination_reward_items, unlocked_items };
+}
+
+function tournamentOutcomeRoute(match, outcome = "winner") {
+  const loserRoute = outcome === "loser";
+  return {
+    id: loserRoute ? match?.loser_match_id : match?.next_match_id,
+    round: loserRoute ? match?.loser_match_round : match?.next_match_round,
+    number: loserRoute ? match?.loser_match_number : match?.next_match_number,
+    bracket: loserRoute ? match?.loser_match_bracket : match?.next_match_bracket,
+    slot: (loserRoute ? match?.loser_slot_in_next : match?.slot_in_next) === "team_b" ? "team_b" : "team_a",
+  };
+}
+
+function tournamentOutcomeEntry(match, outcome = "winner") {
+  const entryId = outcome === "loser" ? tournamentMatchLoserId(match, match?.winner_id) : match?.winner_id;
+  if (!entryId) return null;
+  const fromTeamA = String(entryId) === String(match?.team_a_id || "");
+  return {
+    id: entryId,
+    name: fromTeamA ? match?.team_a_name : match?.team_b_name,
+    seed: fromTeamA ? match?.team_a_seed : match?.team_b_seed,
+    participant_id: fromTeamA ? match?.team_a_participant_id : match?.team_b_participant_id,
+  };
+}
+
+function tournamentMatchLoserIsEliminated(match) {
+  const hasLoserRoute = Boolean(match?.loser_match_id || (match?.loser_match_round && match?.loser_match_number));
+  const winnerBracketChampionContinues = Boolean(
+    match?.double_elimination_reset_eligible
+    && match?.bracket === "grand_final"
+    && Number(match?.round || 1) === 1
+    && String(match?.winner_id || "") === String(match?.team_b_id || "")
+  );
+  return !hasLoserRoute && !winnerBracketChampionContinues;
+}
+
+async function tournamentRouteTarget(match, outcome = "winner") {
+  const route = tournamentOutcomeRoute(match, outcome);
+  if (route.id) {
+    const direct = await getEntity("TournamentMatch", route.id).catch(() => null);
+    if (direct) return { route, target: direct };
+  }
+  if (!route.round || !route.number) return { route, target: null };
+  const candidates = await listEntities("TournamentMatch", {
+    tournament_id: match.tournament_id,
+    round: route.round,
+  }, "match_number", 256);
+  const target = candidates.find((row) => (
+    String(row.match_number) === String(route.number)
+    && (!route.bracket || String(row.bracket || "winner") === String(route.bracket))
+  ));
+  return { route, target: target || null };
+}
+
+async function prepareTournamentMatchWhenReady(match, patch = {}) {
+  const candidate = { ...match, ...patch };
+  if (!hasBothTeams(candidate) || ["completed", "disputed"].includes(match.status)) return patch;
+  const assignedDate = patch.assigned_date || match.assigned_date || nowIso();
+  const [tournament, participants] = await Promise.all([
+    getEntity("Tournament", match.tournament_id).catch(() => null),
+    tournamentParticipants(match.tournament_id),
+  ]);
+  Object.assign(patch, {
+    status: "ready",
+    assigned_date: assignedDate,
+    ...(tournamentStatusesStarted.includes(tournament?.status) ? tournamentStartWindowPatch(assignedDate) : {}),
+    ...(isStreamerTournament(tournament)
+      ? streamerMatchSetupPatch(candidate, tournament, participants)
+      : tournamentMatchSetupPatch(candidate, participants, tournament)),
+  });
+  return patch;
+}
+
+async function sendTournamentOutcomeToRoute(match, outcome = "winner") {
+  const { route, target } = await tournamentRouteTarget(match, outcome);
+  const entry = tournamentOutcomeEntry(match, outcome);
+  if (!target || !entry) return null;
+
+  const patch = {
+    [`${route.slot}_id`]: entry.id,
+    [`${route.slot}_name`]: entry.name,
+    [`${route.slot}_source_match_id`]: match.id,
+    [`${route.slot}_source_outcome`]: outcome,
+    [`${route.slot}_seed`]: entry.seed || null,
+    [`${route.slot}_participant_id`]: entry.participant_id || null,
+  };
+  await prepareTournamentMatchWhenReady(target, patch);
+  const updatedTarget = await updateEntity("TournamentMatch", target.id, patch);
+  if (patch.status === "ready" && target.status !== "ready") await notifyTournamentMatchAssigned(updatedTarget);
+  return updatedTarget;
+}
+
+async function createDoubleEliminationReset(match, tournament) {
+  const existing = await listEntities("TournamentMatch", {
+    tournament_id: match.tournament_id,
+    bracket: "grand_final",
+    round: 2,
+  }, "match_number", 10).catch(() => []);
+  if (existing[0]) return existing[0];
+
+  const assignedDate = nowIso();
+  const resetPayload = {
+    tournament_id: match.tournament_id,
+    tournament_game_mode: tournament?.game_mode || match.tournament_game_mode || "snd",
+    bracket: "grand_final",
+    round: 2,
+    match_number: 1,
+    match_label: "Grand Final Reset",
+    double_elimination_reset: true,
+    is_final: true,
+    team_a_id: match.team_a_id,
+    team_a_name: match.team_a_name,
+    team_a_seed: match.team_a_seed,
+    team_a_participant_id: match.team_a_participant_id,
+    team_a_source_match_id: match.id,
+    team_a_source_outcome: "loser",
+    team_b_id: match.team_b_id,
+    team_b_name: match.team_b_name,
+    team_b_seed: match.team_b_seed,
+    team_b_participant_id: match.team_b_participant_id,
+    team_b_source_match_id: match.id,
+    team_b_source_outcome: "winner",
+    status: "ready",
+    assigned_date: assignedDate,
+    ...(tournamentStatusesStarted.includes(tournament?.status) ? tournamentStartWindowPatch(assignedDate) : {}),
+    created_date: assignedDate,
+  };
+  const participants = await tournamentParticipants(match.tournament_id);
+  Object.assign(resetPayload, tournamentMatchSetupPatch(resetPayload, participants, tournament));
+  const resetMatch = await createEntity("TournamentMatch", resetPayload);
+  await updateEntity("TournamentMatch", match.id, {
+    next_match_id: resetMatch.id,
+    next_match_round: 2,
+    next_match_number: 1,
+    next_match_bracket: "grand_final",
+    slot_in_next: "team_b",
+    loser_match_id: resetMatch.id,
+    loser_match_round: 2,
+    loser_match_number: 1,
+    loser_match_bracket: "grand_final",
+    loser_slot_in_next: "team_a",
+  });
+  await notifyTournamentMatchAssigned(resetMatch);
+  return resetMatch;
+}
+
+async function routeTournamentResult(match) {
+  if (!match?.winner_id) return {};
+  const winnerRoute = tournamentOutcomeRoute(match, "winner");
+  const loserRoute = tournamentOutcomeRoute(match, "loser");
+  const hasWinnerRoute = Boolean(winnerRoute.id || (winnerRoute.round && winnerRoute.number));
+  const hasLoserRoute = Boolean(loserRoute.id || (loserRoute.round && loserRoute.number));
+
+  const advancedTo = hasWinnerRoute ? await sendTournamentOutcomeToRoute(match, "winner") : null;
+  const loserSentTo = hasLoserRoute ? await sendTournamentOutcomeToRoute(match, "loser") : null;
+  if (advancedTo || loserSentTo) {
+    return {
+      ...(advancedTo ? { advanced_to: advancedTo } : {}),
+      ...(loserSentTo ? { loser_sent_to: loserSentTo } : {}),
+    };
+  }
+  if (hasWinnerRoute || hasLoserRoute) return {};
+
+  const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
+  const isResetEligibleGrandFinal = Boolean(
+    match.double_elimination_reset_eligible
+    && match.bracket === "grand_final"
+    && Number(match.round || 1) === 1
+  );
+  if (isResetEligibleGrandFinal && String(match.winner_id) === String(match.team_b_id)) {
+    const resetMatch = await createDoubleEliminationReset(match, tournament);
+    return { advanced_to: resetMatch, grand_final_reset: true };
+  }
+
+  const runnerUpId = tournamentMatchLoserId(match, match.winner_id);
+  const runnerUpName = String(runnerUpId || "") === String(match.team_a_id || "") ? match.team_a_name : match.team_b_name;
+  const completedTournament = await completeTournament(match.tournament_id, match.winner_id, match.winner_name, runnerUpId, runnerUpName);
+  return { tournament_completed: true, tournament: completedTournament };
+}
+
+async function resolveTournamentBracketByes(tournamentId) {
+  const resolved = [];
+  for (let pass = 0; pass < 64; pass += 1) {
+    const matches = await listEntities("TournamentMatch", { tournament_id: tournamentId }, "round", 500);
+    const byId = Object.fromEntries(matches.map((row) => [String(row.id), row]));
+    const candidate = matches.find((row) => {
+      if (row.completed || row.status === "completed" || row.status === "disputed") return false;
+      if (!row.team_a_source_match_id || !row.team_b_source_match_id) return false;
+      if (hasBothTeams(row) && row.status !== "pending" && row.status !== "reset") return false;
+      return [row.team_a_source_match_id, row.team_b_source_match_id]
+        .every((sourceId) => byId[String(sourceId)]?.completed || byId[String(sourceId)]?.status === "completed");
+    });
+    if (!candidate) break;
+
+    if (hasBothTeams(candidate)) {
+      const patch = {};
+      await prepareTournamentMatchWhenReady(candidate, patch);
+      const ready = await updateEntity("TournamentMatch", candidate.id, patch);
+      if (candidate.status !== "ready") await notifyTournamentMatchAssigned(ready);
+      resolved.push(ready);
+      continue;
+    }
+
+    const populatedSlot = candidate.team_a_id ? "team_a" : candidate.team_b_id ? "team_b" : null;
+    const byePatch = populatedSlot ? {
+      status: "completed",
+      completed: true,
+      completed_date: nowIso(),
+      winner_id: candidate[`${populatedSlot}_id`],
+      winner_name: candidate[`${populatedSlot}_name`],
+      bye: true,
+    } : {
+      status: "completed",
+      completed: true,
+      completed_date: nowIso(),
+      empty_bracket_slot: true,
+    };
+    const completedBye = await updateEntity("TournamentMatch", candidate.id, byePatch);
+    resolved.push(completedBye);
+    if (completedBye.winner_id) await routeTournamentResult(completedBye);
+  }
+  return resolved;
 }
 
 async function advanceTournamentWinner(match) {
   if (!match?.winner_id) return {};
-
-  if (!match.next_match_round || !match.next_match_number) {
-    const runnerUpId = tournamentMatchLoserId(match, match.winner_id);
-    const runnerUpName = String(runnerUpId || "") === String(match.team_a_id || "") ? match.team_a_name : match.team_b_name;
-    const tournament = await completeTournament(match.tournament_id, match.winner_id, match.winner_name, runnerUpId, runnerUpName);
-    return { tournament_completed: true, tournament };
-  }
-
-  const nextMatches = await listEntities("TournamentMatch", {
-    tournament_id: match.tournament_id,
-    round: match.next_match_round,
-  }, "match_number", 256);
-  const nextMatch = nextMatches.find((row) => String(row.match_number) === String(match.next_match_number));
-  if (!nextMatch) return {};
-
-  const slot = match.slot_in_next === "team_b" ? "team_b" : "team_a";
-  const patch = {
-    [`${slot}_id`]: match.winner_id,
-    [`${slot}_name`]: match.winner_name,
-    [`${slot}_source_match_id`]: match.id,
-    [`${slot}_seed`]: match.winner_id === match.team_a_id ? match.team_a_seed : match.team_b_seed,
-    [`${slot}_participant_id`]: match.winner_id === match.team_a_id ? match.team_a_participant_id : match.team_b_participant_id,
+  const advancement = await routeTournamentResult(match);
+  const resolvedByes = await resolveTournamentBracketByes(match.tournament_id);
+  return {
+    ...advancement,
+    ...(resolvedByes.length > 0 ? { resolved_byes: resolvedByes } : {}),
   };
-  const candidate = { ...nextMatch, ...patch };
-  if (!["completed", "disputed"].includes(nextMatch.status)) {
-    if (hasBothTeams(candidate)) {
-      patch.status = "ready";
-      patch.assigned_date = nowIso();
-    }
-    if (shouldGenerateTournamentMatchSetup(candidate)) {
-      const participants = await tournamentParticipants(match.tournament_id);
-      const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
-      Object.assign(
-        patch,
-        isStreamerTournament(tournament)
-          ? streamerMatchSetupPatch(candidate, tournament, participants)
-          : tournamentMatchSetupPatch(candidate, participants, tournament)
-      );
-    }
-  }
-  const updatedNext = await updateEntity("TournamentMatch", nextMatch.id, patch);
-  if (patch.status === "ready") await notifyTournamentMatchAssigned(updatedNext);
-  return { advanced_to: updatedNext };
 }
 
 function tournamentScoreResetPatch() {
@@ -1716,8 +2117,69 @@ function tournamentScoreResetPatch() {
 }
 
 function tournamentRequiredWins(match) {
-  const bestOf = Math.max(1, Number(match?.best_of || defaultTournamentBestOf));
+  const bestOf = tournamentBestOf(match);
   return Math.floor(bestOf / 2) + 1;
+}
+
+function tournamentBestOf(match) {
+  const requested = Math.trunc(Number(match?.best_of || defaultTournamentBestOf));
+  return Number.isFinite(requested) && requested > 0 ? requested : defaultTournamentBestOf;
+}
+
+function tournamentScoreRule(match) {
+  const bestOf = tournamentBestOf(match);
+  const winsNeeded = tournamentRequiredWins({ best_of: bestOf });
+  return {
+    bestOf,
+    winsNeeded,
+    label: `BO${bestOf} results must end ${winsNeeded}-0 through ${winsNeeded}-${winsNeeded - 1}`,
+  };
+}
+
+function tournamentScoreError(match, teamAScore, teamBScore) {
+  const { winsNeeded, label } = tournamentScoreRule(match);
+  if (
+    !Number.isInteger(teamAScore)
+    || !Number.isInteger(teamBScore)
+    || teamAScore < 0
+    || teamBScore < 0
+  ) {
+    return `Scores must be whole, non-negative numbers. ${label}.`;
+  }
+  const highScore = Math.max(teamAScore, teamBScore);
+  const lowScore = Math.min(teamAScore, teamBScore);
+  if (highScore !== winsNeeded || lowScore >= winsNeeded) {
+    return `${label}.`;
+  }
+  return null;
+}
+
+function tournamentStartWindowPatch(startDate = nowIso()) {
+  const parsedStart = new Date(startDate);
+  const start = Number.isFinite(parsedStart.getTime()) ? parsedStart : new Date();
+  return {
+    scheduled_start_date: start.toISOString(),
+    start_deadline: new Date(start.getTime() + (tournamentStartWindowMinutes * 60 * 1000)).toISOString(),
+    start_window_minutes: tournamentStartWindowMinutes,
+  };
+}
+
+function tournamentStartWindowBase(match, tournament) {
+  const dates = [match?.assigned_date, tournament?.started_date]
+    .map((value) => new Date(value || "").getTime())
+    .filter(Number.isFinite);
+  return dates.length > 0 ? new Date(Math.max(...dates)).toISOString() : nowIso();
+}
+
+function tournamentSupportWindowError(match) {
+  const deadline = new Date(match?.start_deadline || "").getTime();
+  if (!Number.isFinite(deadline)) {
+    return "The match start timer is not available yet. Refresh the match room.";
+  }
+  if (Date.now() < deadline) {
+    return "Admin support and disputes unlock when the 15-minute match start timer expires.";
+  }
+  return null;
 }
 
 function tournamentForfeitScore(match, teamAWins) {
@@ -1759,12 +2221,15 @@ function tournamentMatchHasScoreActivity(match) {
 
 async function clearTournamentChampionResult(tournamentId, oldWinnerId) {
   if (!tournamentId) return { removed_wins: 0, removed_rewards: 0 };
+  const participants = await tournamentParticipants(tournamentId).catch(() => []);
   const oldWinnerUserIds = oldWinnerId ? await tournamentParticipantUserIds(tournamentId, oldWinnerId) : [];
+  const oldWinnerSet = new Set(oldWinnerUserIds.map(String));
+  const affectedUserIds = [...new Set(participants.flatMap(participantUserIds).filter(Boolean))];
   let removedRewards = 0;
 
-  await Promise.all(oldWinnerUserIds.map(async (userId) => {
-    const user = await userFor(userId);
-    if (user) {
+  await Promise.all(affectedUserIds.map(async (userId) => {
+    const user = oldWinnerSet.has(String(userId)) ? await userFor(userId) : null;
+    if (user && oldWinnerSet.has(String(userId))) {
       await prisma.user.update({
         where: { id: userId },
         data: { tournament_wins: Math.max(0, Number(user.tournament_wins || 0) - 1) },
@@ -1772,14 +2237,21 @@ async function clearTournamentChampionResult(tournamentId, oldWinnerId) {
     }
 
     const inventory = await listEntities("UserInventory", { user_id: userId }, "-acquired_date", 500).catch(() => []);
-    const championRewards = inventory.filter((item) => (
+    const tournamentRewards = inventory.filter((item) => (
       String(item.source_tournament_id || "") === String(tournamentId)
-      && item.unlock_type === "tournament_champion_reward"
-      && String(item.unlock_key || "").startsWith(`tournament_champion:${tournamentId}:`)
+      && (
+        (item.unlock_type === "tournament_champion_reward" && String(item.unlock_key || "").startsWith(`tournament_champion:${tournamentId}:`))
+        || item.unlock_type === "tournament_placement_trophy"
+        || item.unlock_type === "tournament_placement_reward"
+      )
     ));
-    removedRewards += championRewards.length;
-    await Promise.all(championRewards.map((item) => deleteEntity("UserInventory", item.id).catch(() => null)));
+    removedRewards += tournamentRewards.length;
+    await Promise.all(tournamentRewards.map((item) => deleteEntity("UserInventory", item.id).catch(() => null)));
   }));
+
+  await Promise.all(participants.map((participant) => updateEntity("TournamentParticipant", participant.id, {
+    final_rank: null,
+  }).catch(() => null)));
 
   const wins = await listEntities("TournamentWin", { tournament_id: tournamentId }, "-created_date", 500).catch(() => []);
   await Promise.all(wins.map((win) => deleteEntity("TournamentWin", win.id).catch(() => null)));
@@ -1807,41 +2279,71 @@ async function clearParticipantEliminationFromMatch(tournamentId, matchId) {
 async function undoTournamentAdvancement(match, replacement = null) {
   if (!match?.winner_id) return {};
 
-  if (match.next_match_round && match.next_match_number) {
-    const nextMatches = await listEntities("TournamentMatch", {
-      tournament_id: match.tournament_id,
-      round: match.next_match_round,
-    }, "match_number", 256);
-    const nextMatch = nextMatches.find((row) => String(row.match_number) === String(match.next_match_number));
-    if (!nextMatch) return {};
-
-    const slot = match.slot_in_next === "team_b" ? "team_b" : "team_a";
-    const sourceField = `${slot}_source_match_id`;
-    const idField = `${slot}_id`;
-    const ownsSlot = String(nextMatch[sourceField] || "") === String(match.id)
-      || (!nextMatch[sourceField] && String(nextMatch[idField] || "") === String(match.winner_id));
-    if (!ownsSlot) return {};
-
-    if (tournamentMatchHasScoreActivity(nextMatch)) {
-      badRequest("Cannot revert this result because the next-round match already has a score or winner. Reset that match first.");
+  const structuredRoutes = [
+    { outcome: "winner", entry: tournamentOutcomeEntry(match, "winner") },
+    { outcome: "loser", entry: tournamentOutcomeEntry(match, "loser") },
+  ].filter(({ outcome }) => {
+    const route = tournamentOutcomeRoute(match, outcome);
+    return Boolean(route.id || (route.round && route.number));
+  });
+  if (structuredRoutes.length > 0) {
+    if (match.double_elimination_reset_eligible && match.next_match_id) {
+      const resetMatch = await getEntity("TournamentMatch", match.next_match_id).catch(() => null);
+      if (resetMatch?.double_elimination_reset) {
+        if (tournamentMatchHasScoreActivity(resetMatch)) {
+          badRequest("Cannot revert the Grand Final because the reset match already has a score or winner. Reset that match first.");
+        }
+        await deleteEntity("TournamentMatch", resetMatch.id);
+        await updateEntity("TournamentMatch", match.id, {
+          next_match_id: null,
+          next_match_round: null,
+          next_match_number: null,
+          next_match_bracket: null,
+          slot_in_next: null,
+          loser_match_id: null,
+          loser_match_round: null,
+          loser_match_number: null,
+          loser_match_bracket: null,
+          loser_slot_in_next: null,
+        });
+        return { removed_grand_final_reset: resetMatch };
+      }
     }
-
-    const patch = {
-      [`${slot}_id`]: null,
-      [`${slot}_name`]: null,
-      [`${slot}_source_match_id`]: null,
-      [`${slot}_seed`]: null,
-      [`${slot}_participant_id`]: null,
-      status: "pending",
-      assigned_date: null,
-      maps: [],
-      first_host_team_id: null,
-      first_host_team_name: null,
-      first_host_seed: null,
-      map_generation_key: null,
-    };
-    const updatedNext = await updateEntity("TournamentMatch", nextMatch.id, patch);
-    return { cleared_next_match: updatedNext };
+    const cleared = [];
+    for (const { outcome, entry } of structuredRoutes) {
+      const { route, target } = await tournamentRouteTarget(match, outcome);
+      if (!target) continue;
+      const sourceField = `${route.slot}_source_match_id`;
+      const idField = `${route.slot}_id`;
+      const ownsSlot = String(target[sourceField] || "") === String(match.id)
+        || (!target[sourceField] && entry && String(target[idField] || "") === String(entry.id));
+      if (!ownsSlot) continue;
+      if (tournamentMatchHasScoreActivity(target)) {
+        badRequest("Cannot revert this result because a downstream tournament match already has a score or winner. Reset that match first.");
+      }
+      const targetPatch = {
+        [`${route.slot}_id`]: null,
+        [`${route.slot}_name`]: null,
+        [`${route.slot}_seed`]: null,
+        [`${route.slot}_participant_id`]: null,
+        status: "pending",
+        assigned_date: null,
+        scheduled_start_date: null,
+        start_deadline: null,
+        maps: [],
+        first_host_team_id: null,
+        first_host_team_name: null,
+        first_host_seed: null,
+        map_generation_key: null,
+      };
+      cleared.push(await updateEntity("TournamentMatch", target.id, targetPatch));
+    }
+    if (cleared.length > 0) {
+      return {
+        cleared_next_match: cleared[0],
+        cleared_downstream_matches: cleared,
+      };
+    }
   }
 
   const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
@@ -2169,7 +2671,7 @@ async function manageTeam(req) {
     const name = String(req.body.name || "").trim();
     const tag = String(req.body.tag || "").trim().toUpperCase().slice(0, 6);
     const teamType = normalizeTeamType(req.body.team_type);
-    const rosterSize = Math.max(1, Number(req.body.roster_size || (teamType === "8s" ? 4 : 2)));
+    const rosterSize = Math.min(4, Math.max(1, Number(req.body.roster_size || (teamType === "8s" ? 4 : 2))));
     if (!name || !tag) return { success: false, error: "Team name and tag are required" };
     if (teamType === "8s") {
       const active8sTeams = await userActiveTeamMemberships(req.user.id, "8s");
@@ -2479,6 +2981,8 @@ async function maybeStartWager(wagerId) {
 }
 
 async function payWagerEntry(req) {
+  const activisionError = activisionIdErrorForUsers([req.userRow]);
+  if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const wager = await getEntity("Wager", req.body.wager_id);
   if (!wager || ["completed", "cancelled", "disputed"].includes(wager.status)) {
     return { success: false, error: "Wager is not payable" };
@@ -2520,6 +3024,13 @@ async function assertTournamentRegistrationAllowed(req, tournament, team, member
   }
 
   const feeType = tournament.entry_type || (tournament.is_premium_only ? "premium" : (Number(tournament.entry_fee || 0) > 0 ? "credits" : "free"));
+  const inviteOnly = tournament.invite_only === true || feeType === "invitational";
+  const invitedUserIds = Array.isArray(tournament.invited_user_ids)
+    ? tournament.invited_user_ids.map(String)
+    : [];
+  if (inviteOnly && !invitedUserIds.includes(String(req.user.id))) {
+    return "This tournament is invite only";
+  }
   const requiresPremium = feeType === "premium" || feeType === "credits_premium";
   if (requiresPremium && !req.user.is_premium) {
     return "Premium membership is required";
@@ -2538,6 +3049,8 @@ async function assertTournamentRegistrationAllowed(req, tournament, team, member
   const memberIds = (members || []).map((member) => member.user_id).filter(Boolean);
   if (new Set(memberIds).size !== memberIds.length) return "Team roster has duplicate player records";
   const memberUsers = await Promise.all((members || []).map((member) => userFor(member.user_id)));
+  const activisionError = activisionIdErrorForUsers(memberUsers);
+  if (activisionError) return activisionError;
   const bannedMember = memberUsers.find((memberUser) => {
     const memberSuspendedUntil = memberUser?.metadata?.suspended_until ? new Date(memberUser.metadata.suspended_until) : null;
     return memberUser?.is_banned || (memberSuspendedUntil && memberSuspendedUntil > new Date());
@@ -2710,7 +3223,7 @@ async function createStreamerTournament(req) {
     conversation_id: tournament.id,
     sender_id: req.user.id,
     sender_name: nameFor(req.user),
-    sender_role: req.user.role || "user",
+    sender_role: effectiveChatRole(req.user),
     recipient_id: tournament.id,
     recipient_name: "Streamer tournament lobby",
     content: `${nameFor(req.user)} opened the streamer tournament lobby.`,
@@ -2955,6 +3468,7 @@ async function generateStreamerSwitchBracket(req) {
       const hasB = Boolean(b);
       const hasBye = isRoundOne && hasA !== hasB;
       const winner = hasBye ? (a || b) : null;
+      const readyDate = isRoundOne && hasA && hasB ? nowIso() : null;
       const matchPayload = {
         tournament_id: tournament.id,
         tournament_game_mode: tournament.game_mode || "snd_hp_snd",
@@ -2966,6 +3480,7 @@ async function generateStreamerSwitchBracket(req) {
         ...(a ? participantSlotFields(a, "team_a") : {}),
         ...(b ? participantSlotFields(b, "team_b") : {}),
         status: isRoundOne ? (hasA && hasB ? "ready" : "completed") : "pending",
+        ...(readyDate ? { assigned_date: readyDate, ...tournamentStartWindowPatch(readyDate) } : {}),
         winner_id: winner ? participantKey(winner) : null,
         winner_name: winner ? participantName(winner) : null,
         completed: Boolean(winner),
@@ -3007,7 +3522,7 @@ async function generateStreamerSwitchBracket(req) {
     conversation_id: tournament.id,
     sender_id: req.user.id,
     sender_name: nameFor(req.user),
-    sender_role: req.user.role || "user",
+    sender_role: effectiveChatRole(req.user),
     recipient_id: tournament.id,
     recipient_name: "Streamer tournament lobby",
     content: `${nameFor(req.user)} generated the ${switchFormat} switcheroo bracket.`,
@@ -3067,8 +3582,9 @@ async function advanceStreamerTournamentMatch(req) {
   const teamBScore = Number.isFinite(Number(req.body.team_b_score))
     ? Number(req.body.team_b_score)
     : winnerIsB ? winsNeeded : 0;
-  if (teamAScore === teamBScore) {
-    return { success: false, error: "Scores cannot be tied" };
+  const scoreError = tournamentScoreError(match, teamAScore, teamBScore);
+  if (scoreError) {
+    return { success: false, error: scoreError };
   }
 
   const updated = await updateEntity("TournamentMatch", match.id, {
@@ -3183,7 +3699,7 @@ async function overturnStreamerTournamentMatch(req) {
   ]);
   await applyParticipantRewards(winnerUserIds, loserUserIds);
   updated = await updateEntity("TournamentMatch", updated.id, tournamentRewardAppliedPatch(winnerUserIds, loserUserIds));
-  const loserIsEliminated = !updated.loser_match_id && !updated.loser_match_round && !updated.loser_match_number;
+  const loserIsEliminated = tournamentMatchLoserIsEliminated(updated);
   const elimination = loserIsEliminated
     ? await grantTournamentEliminationRewards({
       tournamentId: updated.tournament_id,
@@ -3192,7 +3708,7 @@ async function overturnStreamerTournamentMatch(req) {
       loserUserIds,
     })
     : {};
-  const advancement = updated.next_match_round
+  const advancement = (updated.next_match_id || updated.next_match_round || updated.loser_match_id || updated.is_final || updated.bracket !== "winner")
     ? await advanceTournamentWinner(updated)
     : await advanceLegacyTournamentRound(updated.tournament_id, updated.round);
 
@@ -3200,7 +3716,7 @@ async function overturnStreamerTournamentMatch(req) {
     conversation_id: tournament.id,
     sender_id: req.user.id,
     sender_name: nameFor(req.user),
-    sender_role: req.user.role || "user",
+    sender_role: effectiveChatRole(req.user),
     recipient_id: tournament.id,
     recipient_name: "Streamer tournament lobby",
     content: `${nameFor(req.user)} overturned a match result: ${winnerName || "Winning team"} was granted the win.`,
@@ -3277,7 +3793,7 @@ async function moderateStreamerTournamentUser(req) {
     conversation_id: tournament.id,
     sender_id: req.user.id,
     sender_name: nameFor(req.user),
-    sender_role: req.user.role || "user",
+    sender_role: effectiveChatRole(req.user),
     recipient_id: tournament.id,
     recipient_name: "Streamer tournament lobby",
     content: `${nameFor(target)} was ${action === "unban" ? "unbanned from" : "banned from"} the lobby.`,
@@ -3399,7 +3915,21 @@ async function leaveTournament(req) {
 
 async function updateTournament(req) {
   assertStaff(req, "admin");
+  const previousTournament = await getEntity("Tournament", req.body.tournament_id);
   const patch = req.body.patch || {};
+  const requestedBracketType = patch.bracket_type || patch.format;
+  if (
+    previousTournament.bracket_generated
+    && requestedBracketType
+    && requestedBracketType !== (previousTournament.bracket_type || previousTournament.format || "single_elimination")
+  ) {
+    return { success: false, error: "The bracket format cannot be changed after the bracket has been generated" };
+  }
+  if (requestedBracketType) {
+    const normalizedBracketType = requestedBracketType === "double_elimination" ? "double_elimination" : "single_elimination";
+    patch.bracket_type = normalizedBracketType;
+    patch.format = normalizedBracketType;
+  }
   const tournament = await updateEntity("Tournament", req.body.tournament_id, {
     ...patch,
     updated_by: req.user.id,
@@ -3435,7 +3965,91 @@ async function updateTournament(req) {
     }
   }
 
+  const previousInviteIds = new Set((previousTournament.invited_user_ids || []).map(String));
+  const invitedUserIds = (tournament.invited_user_ids || []).map(String);
+  const newlyInvited = invitedUserIds.filter((userId) => !previousInviteIds.has(userId));
+  if (newlyInvited.length > 0) {
+    await Promise.all(newlyInvited.map(async (userId) => {
+      const content = `You're officially invited to compete in ${tournament.name}! Assemble your team, claim your spot, and get ready to battle for the title. As the invited captain, you can join with any eligible team you lead.`;
+      await Promise.all([
+        notifyUser(userId, {
+          title: "Tournament invitation",
+          message: content,
+          type: "tournament",
+          action_url: `/tournaments?tournament=${tournament.id}`,
+          related_entity_id: tournament.id,
+          related_entity_type: "Tournament",
+        }),
+        createEntity("Message", {
+          sender_id: req.user.id,
+          sender_name: "Topfragg Tournaments",
+          recipient_id: userId,
+          subject: `You're invited to compete: ${tournament.name}`,
+          content,
+          is_read: false,
+          action_url: `/tournaments?tournament=${tournament.id}`,
+          related_entity_id: tournament.id,
+          related_entity_type: "Tournament",
+          message_type: "tournament_invitation",
+          created_date: nowIso(),
+        }),
+      ]);
+    }));
+  }
+
   return { success: true, tournament, refreshed_matches: refreshedMatches };
+}
+
+async function createTournament(req) {
+  assertStaff(req, "admin");
+  const name = String(req.body.name || "").trim().slice(0, 80);
+  if (!name) return { success: false, error: "Tournament name is required" };
+  const invitedUserIds = [...new Set((req.body.invited_user_ids || []).filter(Boolean).map(String))];
+  const bracketType = (req.body.bracket_type || req.body.format) === "double_elimination"
+    ? "double_elimination"
+    : "single_elimination";
+  const tournament = await createEntity("Tournament", {
+    ...req.body,
+    name,
+    title: name,
+    format: bracketType,
+    bracket_type: bracketType,
+    invited_user_ids: invitedUserIds,
+    invite_only: req.body.invite_only === true || req.body.entry_type === "invitational",
+    registered_teams: 0,
+    created_by: req.user.id,
+    created_by_name: nameFor(req.user),
+    created_date: nowIso(),
+  });
+  if (tournament.invite_only && invitedUserIds.length > 0) {
+    await Promise.all(invitedUserIds.map(async (userId) => {
+      const content = `You're officially invited to compete in ${tournament.name}! Assemble your team, claim your spot, and get ready to battle for the title. As the invited captain, you can join with any eligible team you lead.`;
+      await Promise.all([
+        notifyUser(userId, {
+          title: "Tournament invitation",
+          message: content,
+          type: "tournament",
+          action_url: `/tournaments?tournament=${tournament.id}`,
+          related_entity_id: tournament.id,
+          related_entity_type: "Tournament",
+        }),
+        createEntity("Message", {
+          sender_id: req.user.id,
+          sender_name: "Topfragg Tournaments",
+          recipient_id: userId,
+          subject: `You're invited to compete: ${tournament.name}`,
+          content,
+          is_read: false,
+          action_url: `/tournaments?tournament=${tournament.id}`,
+          related_entity_id: tournament.id,
+          related_entity_type: "Tournament",
+          message_type: "tournament_invitation",
+          created_date: nowIso(),
+        }),
+      ]);
+    }));
+  }
+  return { success: true, tournament };
 }
 
 async function deleteTournament(req) {
@@ -3568,14 +4182,16 @@ function matchRoomTeamNames(matchType, match) {
 
 async function createMatchRoomSystemMessage(matchType, match, content, actor) {
   if (!match?.id || !content) return null;
-  const actorRole = actor?.role || "user";
+  const actorRole = effectiveChatRole(actor);
   const senderName = actor && staffRoles.includes(actorRole)
-    ? `Admin ${nameFor(actor)}`
+    ? `${actorRole === "moderator" ? "Moderator" : "Admin"} ${nameFor(actor)}`
     : actor ? nameFor(actor) : "Match Admin";
   return createEntity("ChatMessage", {
     conversation_id: match.id,
     sender_id: actor?.id || "system",
     sender_name: senderName,
+    sender_role: actorRole,
+    staff_badge: staffRoles.includes(actorRole),
     recipient_id: match.id,
     recipient_name: "Match room",
     content,
@@ -3681,7 +4297,7 @@ function ticketMessagePayload(ticket, content, user, internal = false) {
     conversation_id: ticket.id,
     sender_id: user.id,
     sender_name: nameFor(user),
-    sender_role: user.role || "user",
+    sender_role: effectiveChatRole(user),
     content,
     internal: Boolean(internal),
     created_date: nowIso(),
@@ -3723,6 +4339,10 @@ async function requestAdminAlert(req) {
   const context = await ticketMatchContext(req.body.match_type, req.body.match_id);
   if (context.matchType === "tournament" && context.is_streamer_tournament) {
     return { success: false, error: "Streamer tournaments use host moderation instead of admin tickets" };
+  }
+  if (context.matchType === "tournament" && !hasRole(req.user, "moderator")) {
+    const supportWindowError = tournamentSupportWindowError(context.match);
+    if (supportWindowError) return { success: false, error: supportWindowError };
   }
   const existingTickets = context.match?.id
     ? await listEntities("Ticket", { related_entity_id: context.match.id }, "-created_date", 50).catch(() => [])
@@ -4326,7 +4946,7 @@ async function adminCorrectTournamentMatch(req) {
     await applyParticipantRewards(winnerUserIds, loserUserIds);
     updated = await updateEntity("TournamentMatch", updated.id, tournamentRewardAppliedPatch(winnerUserIds, loserUserIds));
   }
-  const loserIsEliminated = !updated.loser_match_id && !updated.loser_match_round && !updated.loser_match_number;
+  const loserIsEliminated = tournamentMatchLoserIsEliminated(updated);
   const elimination = loserIsEliminated
     ? await grantTournamentEliminationRewards({
       tournamentId: updated.tournament_id,
@@ -4335,7 +4955,7 @@ async function adminCorrectTournamentMatch(req) {
       loserUserIds,
     })
     : {};
-  const advancement = updated.next_match_round
+  const advancement = (updated.next_match_id || updated.next_match_round || updated.loser_match_id || updated.is_final || updated.bracket !== "winner")
     ? await advanceTournamentWinner(updated)
     : await advanceLegacyTournamentRound(updated.tournament_id, updated.round);
 
@@ -4515,7 +5135,7 @@ async function sendMatchRoomMessage(req) {
       conversation_id: tournament.id,
       sender_id: req.user.id,
       sender_name: nameFor(req.user),
-      sender_role: req.user.role || "user",
+      sender_role: effectiveChatRole(req.user),
       recipient_id: tournament.id,
       recipient_name: "Streamer tournament lobby",
       content,
@@ -4541,7 +5161,7 @@ async function sendMatchRoomMessage(req) {
     conversation_id: match.id,
     sender_id: req.user.id,
     sender_name: nameFor(req.user),
-    sender_role: req.user.role || "user",
+    sender_role: effectiveChatRole(req.user),
     recipient_id: match.id,
     recipient_name: "Match room",
     content,
@@ -4554,6 +5174,8 @@ async function sendMatchRoomMessage(req) {
 }
 
 async function createWager(req) {
+  const activisionError = activisionIdErrorForUsers([req.userRow]);
+  if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const entryFee = money(req.body.entry_fee ?? req.body.amount);
   const matchType = req.body.match_type === "8s" ? "8s" : req.body.match_type === "xp" ? "xp" : "wagers";
   const requiredSize = requiredRosterSize(req.body.team_size);
@@ -4570,6 +5192,8 @@ async function createWager(req) {
     });
     hostTeam = result.team;
     hostRoster = result.roster;
+    const rosterActivisionError = await activisionIdErrorForMembers(hostRoster);
+    if (rosterActivisionError) return { success: false, error: rosterActivisionError, code: "ACTIVISION_ID_REQUIRED" };
   } else if (entryFee > 0) {
     const wallet = await walletFor(req.user.id);
     if (money(wallet.available_balance) < entryFee) {
@@ -4631,6 +5255,8 @@ async function createWager(req) {
 }
 
 async function acceptWager(req) {
+  const activisionError = activisionIdErrorForUsers([req.userRow]);
+  if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const wager = await getEntity("Wager", req.body.wager_id);
   if (!wager || wager.status !== "open") {
     return { success: false, error: "Wager is not open" };
@@ -4648,6 +5274,9 @@ async function acceptWager(req) {
   const paymentMode = paymentModeFor(req.body.payment_mode);
   let challengerTeam = null;
   let challengerRoster = null;
+  const enrolledParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
+  const enrolledActivisionError = await activisionIdErrorForMembers(enrolledParticipants);
+  if (enrolledActivisionError) return { success: false, error: enrolledActivisionError, code: "ACTIVISION_ID_REQUIRED" };
 
   if (isTeamMatch) {
     const result = await teamRoster(req.body.team_id, {
@@ -4657,11 +5286,12 @@ async function acceptWager(req) {
     });
     challengerTeam = result.team;
     challengerRoster = result.roster;
+    const rosterActivisionError = await activisionIdErrorForMembers(challengerRoster);
+    if (rosterActivisionError) return { success: false, error: rosterActivisionError, code: "ACTIVISION_ID_REQUIRED" };
     if (challengerTeam.id === wager.host_team_id) {
       return { success: false, error: "Select a different team" };
     }
-    const existingRows = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
-    const existingUserIds = existingRows.map((participant) => participant.user_id).filter(Boolean);
+    const existingUserIds = enrolledParticipants.map((participant) => participant.user_id).filter(Boolean);
     const duplicateRosterMember = challengerRoster.find((member) => existingUserIds.includes(member.user_id));
     if (duplicateRosterMember) {
       return { success: false, error: "A roster member is already enrolled in this wager" };
@@ -4967,6 +5597,8 @@ async function refundWager(req) {
 }
 
 async function createRankedMatch(req) {
+  const activisionError = activisionIdErrorForUsers([req.userRow]);
+  if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const match = await createEntity("RankedMatch", {
     ...req.body,
     host_id: req.user.id,
@@ -4978,9 +5610,14 @@ async function createRankedMatch(req) {
 }
 
 async function acceptRankedMatch(req) {
+  const activisionError = activisionIdErrorForUsers([req.userRow]);
+  if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const id = req.body.ranked_match_id || req.body.id;
   const match = await getEntity("RankedMatch", id);
   if (match.status !== "open") return { success: false, error: "Ranked match is not open" };
+  const host = await userFor(match.host_id);
+  const hostActivisionError = activisionIdErrorForUsers([host]);
+  if (hostActivisionError) return { success: false, error: hostActivisionError, code: "ACTIVISION_ID_REQUIRED" };
   const updated = await updateEntity("RankedMatch", id, {
     challenger_id: req.user.id,
     challenger_name: nameFor(req.user),
@@ -5178,7 +5815,9 @@ async function buyWithCredits(req) {
 }
 
 async function addFunds(req) {
-  const userId = req.body.user_id || req.user.id;
+  assertStaff(req, "admin");
+  const userId = req.body.user_id;
+  if (!userId) return { success: false, error: "Target user is required" };
   const amount = money(req.body.amount);
   if (amount <= 0) return { success: false, error: "Amount must be greater than zero" };
   const wallet = await walletFor(userId);
@@ -5333,10 +5972,52 @@ async function generateTournamentBracket(req) {
   if (participants.length < 2) return { success: false, error: "At least two participants are required" };
   const existing = await listEntities("TournamentMatch", { tournament_id: tournamentId }, "round", 500);
   if (existing.length > 0) return { success: true, match_count: existing.length, matches: existing, already_generated: true };
-  const bracketSize = nextPowerOfTwo(participants.length);
-  const seededParticipants = seedPositions(bracketSize).map((seed) => participants[seed - 1] || null);
+  const randomizedParticipants = [...participants];
+  for (let index = randomizedParticipants.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [randomizedParticipants[index], randomizedParticipants[swapIndex]] = [randomizedParticipants[swapIndex], randomizedParticipants[index]];
+  }
+  const participantsWithRandomSeeds = await Promise.all(randomizedParticipants.map((participant, index) => (
+    updateEntity("TournamentParticipant", participant.id, { seed: index + 1 })
+  )));
+  const bracketSize = nextPowerOfTwo(participantsWithRandomSeeds.length);
+  const seededParticipants = seedPositions(bracketSize).map((seed) => participantsWithRandomSeeds[seed - 1] || null);
   const totalRounds = Math.log2(bracketSize);
+  const doubleElimination = (tournament.bracket_type || tournament.format) === "double_elimination";
   const matches = [];
+  const matchByKey = new Map();
+  const matchKey = (bracket, round, matchNumber) => `${bracket}:${round}:${matchNumber}`;
+
+  const createBracketMatch = async (payload) => {
+    const created = await createEntity("TournamentMatch", payload);
+    matches.push(created);
+    matchByKey.set(matchKey(created.bracket || "winner", created.round, created.match_number), created);
+    return created;
+  };
+
+  const linkRoute = async (source, target, outcome, slot) => {
+    if (!source || !target) return;
+    const loserRoute = outcome === "loser";
+    const sourcePatch = loserRoute ? {
+      loser_match_id: target.id,
+      loser_match_round: target.round,
+      loser_match_number: target.match_number,
+      loser_match_bracket: target.bracket || "winner",
+      loser_slot_in_next: slot,
+    } : {
+      next_match_id: target.id,
+      next_match_round: target.round,
+      next_match_number: target.match_number,
+      next_match_bracket: target.bracket || "winner",
+      slot_in_next: slot,
+    };
+    const targetPatch = {
+      [`${slot}_source_match_id`]: source.id,
+      [`${slot}_source_outcome`]: outcome,
+    };
+    Object.assign(source, await updateEntity("TournamentMatch", source.id, sourcePatch));
+    Object.assign(target, await updateEntity("TournamentMatch", target.id, targetPatch));
+  };
 
   for (let round = 1; round <= totalRounds; round += 1) {
     const matchCount = bracketSize / (2 ** round);
@@ -5348,6 +6029,7 @@ async function generateTournamentBracket(req) {
       const hasB = Boolean(b);
       const hasBye = isRoundOne && hasA !== hasB;
       const winner = hasBye ? (a || b) : null;
+      const readyDate = isRoundOne && hasA && hasB && req.body.start_immediately === true ? nowIso() : null;
       const matchPayload = {
         tournament_id: tournamentId,
         tournament_game_mode: tournament.game_mode || "snd",
@@ -5357,6 +6039,7 @@ async function generateTournamentBracket(req) {
         ...(a ? participantSlotFields(a, "team_a") : {}),
         ...(b ? participantSlotFields(b, "team_b") : {}),
         status: isRoundOne ? (hasA && hasB ? "ready" : "completed") : "pending",
+        ...(readyDate ? { assigned_date: readyDate, ...tournamentStartWindowPatch(readyDate) } : {}),
         winner_id: winner ? participantKey(winner) : null,
         winner_name: winner ? participantName(winner) : null,
         completed: Boolean(winner),
@@ -5364,13 +6047,102 @@ async function generateTournamentBracket(req) {
         next_match_round: round < totalRounds ? round + 1 : null,
         next_match_number: round < totalRounds ? Math.ceil(matchNumber / 2) : null,
         slot_in_next: round < totalRounds ? (matchNumber % 2 === 1 ? "team_a" : "team_b") : null,
-        is_final: round === totalRounds,
+        is_final: !doubleElimination && round === totalRounds,
+        bracket_final: round === totalRounds,
         created_date: nowIso(),
       };
-      matches.push(await createEntity("TournamentMatch", {
+      await createBracketMatch({
         ...matchPayload,
-        ...(!hasBye && shouldGenerateTournamentMatchSetup(matchPayload) ? tournamentMatchSetupPatch(matchPayload, participants, tournament) : {}),
-      }));
+        ...(!hasBye && hasBothTeams(matchPayload) ? tournamentMatchSetupPatch(matchPayload, participantsWithRandomSeeds, tournament) : {}),
+      });
+    }
+  }
+
+  if (doubleElimination && totalRounds >= 2) {
+    const totalLowerRounds = (totalRounds * 2) - 2;
+    for (let lowerRound = 1; lowerRound <= totalLowerRounds; lowerRound += 1) {
+      const winnerRound = Math.floor((lowerRound + 1) / 2) + 1;
+      const matchCount = bracketSize / (2 ** winnerRound);
+      for (let matchNumber = 1; matchNumber <= matchCount; matchNumber += 1) {
+        await createBracketMatch({
+          tournament_id: tournamentId,
+          tournament_game_mode: tournament.game_mode || "snd",
+          bracket: "loser",
+          round: lowerRound,
+          match_number: matchNumber,
+          status: "pending",
+          completed: false,
+          is_final: false,
+          bracket_final: lowerRound === totalLowerRounds,
+          created_date: nowIso(),
+        });
+      }
+    }
+  }
+
+  if (doubleElimination) {
+    await createBracketMatch({
+      tournament_id: tournamentId,
+      tournament_game_mode: tournament.game_mode || "snd",
+      bracket: "grand_final",
+      round: 1,
+      match_number: 1,
+      match_label: "Grand Final",
+      status: "pending",
+      completed: false,
+      is_final: true,
+      double_elimination_reset_eligible: true,
+      created_date: nowIso(),
+    });
+  }
+
+  for (let round = 1; round <= totalRounds; round += 1) {
+    const matchCount = bracketSize / (2 ** round);
+    for (let matchNumber = 1; matchNumber <= matchCount; matchNumber += 1) {
+      const source = matchByKey.get(matchKey("winner", round, matchNumber));
+      if (round < totalRounds) {
+        const target = matchByKey.get(matchKey("winner", round + 1, Math.ceil(matchNumber / 2)));
+        await linkRoute(source, target, "winner", matchNumber % 2 === 1 ? "team_a" : "team_b");
+      } else if (doubleElimination) {
+        await linkRoute(source, matchByKey.get(matchKey("grand_final", 1, 1)), "winner", "team_a");
+      }
+
+      if (!doubleElimination) continue;
+      if (totalRounds === 1) {
+        await linkRoute(source, matchByKey.get(matchKey("grand_final", 1, 1)), "loser", "team_b");
+      } else if (round === 1) {
+        await linkRoute(
+          source,
+          matchByKey.get(matchKey("loser", 1, Math.ceil(matchNumber / 2))),
+          "loser",
+          matchNumber % 2 === 1 ? "team_a" : "team_b"
+        );
+      } else {
+        await linkRoute(source, matchByKey.get(matchKey("loser", (round * 2) - 2, matchNumber)), "loser", "team_b");
+      }
+    }
+  }
+
+  if (doubleElimination && totalRounds >= 2) {
+    const totalLowerRounds = (totalRounds * 2) - 2;
+    for (let lowerRound = 1; lowerRound <= totalLowerRounds; lowerRound += 1) {
+      const winnerRound = Math.floor((lowerRound + 1) / 2) + 1;
+      const matchCount = bracketSize / (2 ** winnerRound);
+      for (let matchNumber = 1; matchNumber <= matchCount; matchNumber += 1) {
+        const source = matchByKey.get(matchKey("loser", lowerRound, matchNumber));
+        if (lowerRound === totalLowerRounds) {
+          await linkRoute(source, matchByKey.get(matchKey("grand_final", 1, 1)), "winner", "team_b");
+        } else if (lowerRound % 2 === 1) {
+          await linkRoute(source, matchByKey.get(matchKey("loser", lowerRound + 1, matchNumber)), "winner", "team_a");
+        } else {
+          await linkRoute(
+            source,
+            matchByKey.get(matchKey("loser", lowerRound + 1, Math.ceil(matchNumber / 2))),
+            "winner",
+            matchNumber % 2 === 1 ? "team_a" : "team_b"
+          );
+        }
+      }
     }
   }
 
@@ -5379,6 +6151,11 @@ async function generateTournamentBracket(req) {
     registration_locked: true,
     bracket_generated: true,
     bracket_generated_date: nowIso(),
+    ...(req.body.start_immediately === true ? {
+      started_by: req.user.id,
+      started_by_name: nameFor(req.user),
+      started_date: nowIso(),
+    } : {}),
   }).catch(() => null);
   await notifyTournamentParticipants(tournamentId, {
     title: "Bracket generated",
@@ -5388,16 +6165,18 @@ async function generateTournamentBracket(req) {
     related_entity_id: tournamentId,
     related_entity_type: "Tournament",
   });
-  const participantByTeamId = Object.fromEntries(participants.map((participant) => [participant.team_id, participant]));
-  await Promise.all(matches.map((match) => {
+  const participantByTeamId = Object.fromEntries(participantsWithRandomSeeds.map((participant) => [participant.team_id, participant]));
+  await Promise.all(matches.filter((match) => hasBothTeams(match) && match.status === "ready").map((match) => {
     const teamA = participantByTeamId[match.team_a_id];
     const teamB = participantByTeamId[match.team_b_id];
     return notifyUsers([
       ...participantUserIds(teamA),
       ...participantUserIds(teamB),
     ], {
-      title: "Tournament match assigned",
-      message: `${match.team_a_name || "Open slot"} vs ${match.team_b_name || "Open slot"}`,
+      title: req.body.start_immediately === true ? "Your tournament match is ready" : "Tournament match assigned",
+      message: req.body.start_immediately === true
+        ? `${match.team_a_name || "Open slot"} vs ${match.team_b_name || "Open slot"}. Open the match room and start within ${tournamentStartWindowMinutes} minutes.`
+        : `${match.team_a_name || "Open slot"} vs ${match.team_b_name || "Open slot"}`,
       type: "match",
       action_url: `/tournament-match/${match.id}`,
       related_entity_id: match.id,
@@ -5426,6 +6205,14 @@ async function ensureTournamentMatchSetup(req) {
     getEntity("Tournament", match.tournament_id).catch(() => null),
   ]);
   const patch = tournamentMatchSetupPatch(match, participants, tournament);
+  if (
+    tournamentStatusesStarted.includes(tournament?.status)
+    && !match.start_deadline
+    && !match.completed
+    && match.status !== "completed"
+  ) {
+    Object.assign(patch, tournamentStartWindowPatch(tournamentStartWindowBase(match, tournament)));
+  }
   const updated = await updateEntity("TournamentMatch", match.id, patch);
   return { success: true, match: updated };
 }
@@ -5440,16 +6227,32 @@ async function startTournament(req) {
     if (!generated.success) return generated;
     bracket = generated.matches || [];
   }
+  const startedDate = nowIso();
+  bracket = await Promise.all(bracket.map(async (match) => {
+    if (
+      !hasBothTeams(match)
+      || match.completed
+      || match.status === "completed"
+      || match.start_deadline
+    ) {
+      return match;
+    }
+    return updateEntity("TournamentMatch", match.id, {
+      status: match.status === "pending" ? "ready" : match.status,
+      assigned_date: match.assigned_date || startedDate,
+      ...tournamentStartWindowPatch(startedDate),
+    });
+  }));
   const updated = await updateEntity("Tournament", tournament.id, {
     status: "in_progress",
     registration_locked: true,
     started_by: req.user.id,
     started_by_name: nameFor(req.user),
-    started_date: nowIso(),
+    started_date: startedDate,
   });
   await notifyTournamentParticipants(tournament.id, {
     title: "Tournament started",
-    message: `${tournament.name} has started.`,
+    message: `${tournament.name} has started. Round 1 is ready—open your match room and start within ${tournamentStartWindowMinutes} minutes.`,
     type: "tournament",
     action_url: "/tournaments",
     related_entity_id: tournament.id,
@@ -5551,7 +6354,7 @@ async function finalizeTournamentMatch(match, teamAScore, teamBScore, patch = {}
     related_entity_id: match.id,
     related_entity_type: "TournamentMatch",
   });
-  const loserIsEliminated = !updated.loser_match_id && !updated.loser_match_round && !updated.loser_match_number;
+  const loserIsEliminated = tournamentMatchLoserIsEliminated(updated);
   const elimination = loserIsEliminated
     ? await grantTournamentEliminationRewards({
       tournamentId: updated.tournament_id,
@@ -5560,7 +6363,7 @@ async function finalizeTournamentMatch(match, teamAScore, teamBScore, patch = {}
       loserUserIds,
     })
     : {};
-  const advancement = updated.next_match_round
+  const advancement = (updated.next_match_id || updated.next_match_round || updated.loser_match_id || updated.is_final || updated.bracket !== "winner")
     ? await advanceTournamentWinner(updated)
     : await advanceLegacyTournamentRound(updated.tournament_id, updated.round);
   return { success: true, match: updated, elimination, ...advancement };
@@ -5582,15 +6385,11 @@ async function completeTournamentMatch(req) {
   }
   const teamAScore = Number(req.body.team_a_score || 0);
   const teamBScore = Number(req.body.team_b_score || 0);
-  if (!Number.isFinite(teamAScore) || !Number.isFinite(teamBScore) || teamAScore < 0 || teamBScore < 0) {
-    return { success: false, error: "Scores must be valid numbers" };
-  }
   if (!match.team_a_id || !match.team_b_id) {
     return { success: false, error: "Both tournament slots must be assigned before completion" };
   }
-  if (teamAScore === teamBScore) {
-    return { success: false, error: "Tournament match scores cannot be tied" };
-  }
+  const scoreError = tournamentScoreError(match, teamAScore, teamBScore);
+  if (scoreError) return { success: false, error: scoreError };
 
   if (canStaffOverride) {
     return finalizeTournamentMatch(match, teamAScore, teamBScore, {
@@ -5668,6 +6467,10 @@ async function createDispute(req) {
     const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
     if (isStreamerTournament(tournament)) {
       return { success: false, error: "Streamer tournaments do not create dispute cases" };
+    }
+    if (!hasRole(req.user, "moderator")) {
+      const supportWindowError = tournamentSupportWindowError(match);
+      if (supportWindowError) return { success: false, error: supportWindowError };
     }
   }
 
@@ -6065,6 +6868,70 @@ async function setUserTemporaryPassword(req) {
   return { success: true, user: publicUser(user) };
 }
 
+async function adminGrantPremium(req) {
+  assertStaff(req, "admin");
+  const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
+  if (!target) return { success: false, error: "User not found" };
+  if (!canModerateUser(req.user.role, target.role)) {
+    return { success: false, error: "Role hierarchy prevents changing Premium for this account" };
+  }
+
+  const now = new Date();
+  const currentExpiration = target.premium_expires ? new Date(target.premium_expires) : null;
+  const validCurrentExpiration = currentExpiration && Number.isFinite(currentExpiration.getTime()) ? currentExpiration : null;
+  const startsAt = validCurrentExpiration && validCurrentExpiration > now ? validCurrentExpiration : now;
+  const endsAt = new Date(startsAt.getTime() + (adminPremiumGrantDays * 24 * 60 * 60 * 1000));
+
+  const user = await prisma.user.update({
+    where: { id: target.id },
+    data: {
+      is_premium: true,
+      premium_expires: endsAt,
+    },
+  });
+
+  await createEntity("PremiumMembership", {
+    user_id: target.id,
+    plan_type: "monthly",
+    price_paid: 0,
+    start_date: now.toISOString(),
+    end_date: endsAt.toISOString(),
+    is_active: true,
+    auto_renew: false,
+    source: "admin_grant",
+    granted_by: req.user.id,
+    granted_by_name: nameFor(req.user),
+  }).catch(() => null);
+
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "premium_granted",
+    target_user_id: target.id,
+    target_username: nameFor(target),
+    description: `Granted ${adminPremiumGrantDays} days of Premium to ${nameFor(target)}`,
+    details: {
+      days: adminPremiumGrantDays,
+      previous_expiration: validCurrentExpiration?.toISOString() || null,
+      premium_expires: endsAt.toISOString(),
+    },
+    created_date: nowIso(),
+  }).catch(() => null);
+
+  await notifyUser(target.id, {
+    title: "30 days of Premium added",
+    message: `TopFragg staff granted you 30 days of Premium. Your Premium access is active until ${endsAt.toLocaleDateString("en-GB")}.`,
+    type: "premium",
+    action_url: `/profile/${target.username || target.id}`,
+    related_entity_id: target.id,
+    related_entity_type: "User",
+    premium_expires: endsAt.toISOString(),
+  });
+
+  return { success: true, user: publicUser(user), premium_expires: endsAt.toISOString() };
+}
+
 function banExpiration(duration) {
   if (!duration || duration === "permanent") return null;
   const hours = {
@@ -6225,6 +7092,7 @@ const handlers = {
   moderateStreamerTournamentUser,
   registerTournament,
   leaveTournament,
+  createTournament,
   updateTournament,
   deleteTournament,
   cancelTournament,
@@ -6244,6 +7112,7 @@ const handlers = {
   updateUserRole,
   updateUserBadges,
   setUserTemporaryPassword,
+  adminGrantPremium,
   moderateUser,
   changeDisplayName,
   adminAction: async (req) => ({ success: true, action: await createEntity("AdminAction", { ...req.body, admin_id: req.user.id, admin_name: nameFor(req.user), created_date: new Date().toISOString() }) }),
@@ -6256,6 +7125,12 @@ router.post("/:name", requireAuth, async (req, res, next) => {
   try {
     const handler = handlers[req.params.name];
     if (!handler) return res.status(404).json({ error: `Function ${req.params.name} is not implemented` });
+    if (!publicCommerceEnabled && blockedPublicCommerceFunctions.has(req.params.name)) {
+      return res.status(503).json({
+        error: commerceUnavailableMessage,
+        code: "PUBLIC_COMMERCE_DISABLED",
+      });
+    }
     res.json(await handler(req));
   } catch (error) {
     next(error);

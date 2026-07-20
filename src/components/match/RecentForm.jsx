@@ -25,15 +25,15 @@ function RecordCard({ label, color, record }) {
         <span className={`text-sm font-bold ${colorClass}`}>{label}</span>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-lg bg-secondary/50 border border-white/5 p-3">
+        <div className="premium-card rounded-xl p-3">
           <p className="text-[10px] text-vapor uppercase tracking-wider">Record</p>
           <p className="text-lg font-black font-mono">{record.wins}-{record.losses}</p>
         </div>
-        <div className="rounded-lg bg-secondary/50 border border-white/5 p-3">
+        <div className="premium-card rounded-xl p-3">
           <p className="text-[10px] text-vapor uppercase tracking-wider">Win Rate</p>
           <p className={`text-lg font-black font-mono ${colorClass}`}>{record.winRate}%</p>
         </div>
-        <div className="rounded-lg bg-secondary/50 border border-white/5 p-3">
+        <div className="premium-card rounded-xl p-3">
           <p className="text-[10px] text-vapor uppercase tracking-wider">Matches</p>
           <p className="text-lg font-black font-mono">{record.total}</p>
         </div>
@@ -48,7 +48,7 @@ export default function RecentForm({ teamAPlayers, teamBPlayers }) {
   const teamBRecord = getTeamRecord(teamBPlayers);
 
   return (
-    <div className="glass rounded-xl border border-white/5 p-6">
+    <div className="premium-panel rounded-3xl p-6">
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="w-5 h-5 text-green" />
         <h3 className="font-bold text-sm">Team Record</h3>

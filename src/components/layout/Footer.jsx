@@ -34,25 +34,25 @@ const footerLinks = {
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-background">
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+    <footer className="mt-16 bg-gradient-to-b from-transparent to-black/15">
+      <div className="mx-auto max-w-[1560px] px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+        <div className="grid grid-cols-2 gap-10 md:grid-cols-5 lg:gap-14">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="mb-4 inline-flex" aria-label="Topfragg.gg home">
               <TopfraggLogo markClassName="h-8 w-8" wordmarkClassName="text-lg" />
             </Link>
-            <p className="text-vapor text-sm leading-relaxed mb-6">
+            <p className="mb-7 text-sm leading-6 text-vapor">
               The premier competitive Call of Duty platform. Play. Compete. Win.
             </p>
             <div className="flex items-center gap-3">
-              <a href="https://x.com/TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on X" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
+              <a href="https://x.com/TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on X" className="rounded-xl bg-white/[0.035] p-2.5 text-vapor shadow-[inset_0_1px_0_rgba(255,255,255,.03)] transition-all hover:-translate-y-0.5 hover:bg-cyan/10 hover:text-cyan">
                 <Twitter className="w-4 h-4" />
               </a>
-              <a href="https://www.youtube.com/@TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on YouTube" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
+              <a href="https://www.youtube.com/@TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on YouTube" className="rounded-xl bg-white/[0.035] p-2.5 text-vapor shadow-[inset_0_1px_0_rgba(255,255,255,.03)] transition-all hover:-translate-y-0.5 hover:bg-cyan/10 hover:text-cyan">
                 <Youtube className="w-4 h-4" />
               </a>
-              <a href="https://discord.gg/topfragg" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg Discord" className="p-2 rounded-lg bg-secondary hover:bg-cyan/10 hover:text-cyan text-vapor transition-all">
+              <a href="https://discord.gg/topfragg" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg Discord" className="rounded-xl bg-white/[0.035] p-2.5 text-vapor shadow-[inset_0_1px_0_rgba(255,255,255,.03)] transition-all hover:-translate-y-0.5 hover:bg-cyan/10 hover:text-cyan">
                 <MessageCircle className="w-4 h-4" />
               </a>
             </div>
@@ -60,8 +60,8 @@ export default function Footer() {
 
           {Object.entries(footerLinks).map(([title, links]) => (
             <div key={title}>
-              <h4 className="font-semibold text-sm mb-4 text-foreground">{title}</h4>
-              <ul className="space-y-2.5">
+              <h4 className="mb-5 text-xs font-black uppercase tracking-[0.14em] text-foreground">{title}</h4>
+              <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link.label}>
                     <Link to={link.path} className="text-sm text-vapor hover:text-cyan transition-colors">
@@ -74,7 +74,7 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="border-t border-white/5 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/[0.04] pt-8 sm:flex-row">
           <p className="text-xs text-vapor">
             (c) 2026 Topfragg.gg - All rights reserved. Not affiliated with Activision or Call of Duty.
           </p>

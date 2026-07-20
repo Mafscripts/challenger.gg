@@ -4,6 +4,7 @@ const nowIso = () => new Date().toISOString();
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || user?.id || 'Unnamed player';
 const staffRoles = new Set(['ceo', 'super_admin', 'admin', 'moderator']);
 const streamerTournamentTypes = new Set(['streamer', 'streamer_tournament']);
+const startWindowMinutes = 15;
 const tournamentSndMapPool = ['Hacienda', 'Gridlock', 'Raid', 'Scar', 'Den', 'Sake', 'Colossus'];
 const tournamentHpMapPool = ['Sake', 'Colossus', 'Den', 'Scar', 'Gridlock', 'Hacienda'];
 const tournamentOverloadMapPool = ['Gaza', 'Airstrip', 'Tipperary', 'Rivet', 'Khandor'];
@@ -73,6 +74,27 @@ function requiredWins(match) {
   return Math.floor(Number(match.best_of || 1) / 2) + 1;
 }
 
+function scoreError(match, teamAScore, teamBScore) {
+  const bestOf = Math.max(1, Math.trunc(Number(match?.best_of || 1)));
+  const winsNeeded = requiredWins({ best_of: bestOf });
+  const label = `BO${bestOf} results must end ${winsNeeded}-0 through ${winsNeeded}-${winsNeeded - 1}`;
+  if (!Number.isInteger(teamAScore) || !Number.isInteger(teamBScore) || teamAScore < 0 || teamBScore < 0) {
+    return `Scores must be whole, non-negative numbers. ${label}.`;
+  }
+  if (Math.max(teamAScore, teamBScore) !== winsNeeded || Math.min(teamAScore, teamBScore) >= winsNeeded) {
+    return `${label}.`;
+  }
+  return '';
+}
+
+function startWindow(start = new Date()) {
+  return {
+    scheduled_start_date: start.toISOString(),
+    start_deadline: new Date(start.getTime() + (startWindowMinutes * 60 * 1000)).toISOString(),
+    start_window_minutes: startWindowMinutes,
+  };
+}
+
 async function advanceWinner(base44, match, tournament) {
   if (!match?.winner_id) return {};
   if (!match.next_match_round || !match.next_match_number) {
@@ -100,8 +122,10 @@ async function advanceWinner(base44, match, tournament) {
   };
   const candidate = { ...nextMatch, ...patch };
   if (candidate.team_a_id && candidate.team_b_id && !['completed', 'disputed'].includes(nextMatch.status)) {
+    const assignedDate = new Date();
     patch.status = 'ready';
-    patch.assigned_date = nowIso();
+    patch.assigned_date = assignedDate.toISOString();
+    Object.assign(patch, startWindow(assignedDate));
     patch.best_of = (seriesDefinitions[tournament.game_mode] || seriesDefinitions.snd_hp_snd).length;
     patch.map_pool = normalizeMapPool(tournament.streamer_maps || tournament.maps);
     patch.maps = matchMaps(candidate, tournament);
@@ -145,8 +169,9 @@ Deno.serve(async (req) => {
     const winsNeeded = requiredWins(match);
     const teamAScore = Number.isFinite(Number(body.team_a_score)) ? Number(body.team_a_score) : winnerIsA ? winsNeeded : 0;
     const teamBScore = Number.isFinite(Number(body.team_b_score)) ? Number(body.team_b_score) : winnerIsB ? winsNeeded : 0;
-    if (teamAScore === teamBScore) {
-      return Response.json({ success: false, error: 'Scores cannot be tied' }, { status: 400 });
+    const invalidScore = scoreError(match, teamAScore, teamBScore);
+    if (invalidScore) {
+      return Response.json({ success: false, error: invalidScore }, { status: 400 });
     }
 
     const updated = await base44.asServiceRole.entities.TournamentMatch.update(match.id, {

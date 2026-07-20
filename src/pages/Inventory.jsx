@@ -117,7 +117,7 @@ export default function Inventory() {
             {filtered.map((item) => (
             <motion.div
               key={item.id}
-              whileHover={{ y: -4 }}
+              whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
               className={`relative glass rounded-xl border overflow-hidden transition-all cursor-pointer group ${premiumEffectClass(item)} ${rarityBorderClass(item)}`}
             >
               <div className="aspect-square relative overflow-hidden bg-secondary">

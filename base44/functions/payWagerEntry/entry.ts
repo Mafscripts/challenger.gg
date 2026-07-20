@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { activisionIdRequiredResponse } from '../_shared/activision.ts';
 
 const toMoney = (value) => {
   const amount = Number(value || 0);
@@ -89,6 +90,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    const activisionResponse = activisionIdRequiredResponse([user]);
+    if (activisionResponse) return activisionResponse;
 
     const { wager_id } = await req.json();
     if (!wager_id) return Response.json({ success: false, error: 'Missing wager_id' }, { status: 400 });

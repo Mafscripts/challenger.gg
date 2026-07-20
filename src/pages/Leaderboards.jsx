@@ -185,7 +185,7 @@ export default function Leaderboards() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: index * 0.03 }}
-                    whileHover={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+                    whileHover={{ backgroundColor: "rgba(255,255,255,0.02)", transition: { duration: 0.1, ease: "easeOut" } }}
                     className="grid grid-cols-3 md:grid-cols-7 gap-2 md:gap-4 px-5 py-4 items-center"
                   >
                     <span className={`text-sm font-bold font-mono ${row.rank <= 3 ? "text-orange" : "text-vapor"}`}>#{row.rank}</span>
