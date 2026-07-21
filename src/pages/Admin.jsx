@@ -976,6 +976,45 @@ export default function Admin() {
     }
   };
 
+  const handleResetBracket = async (tournament) => {
+    const registeredTeams = Number(tournament.registered_teams || 0);
+    const currentLimit = Math.max(registeredTeams, Number(tournament.max_teams || 0));
+    if (typeof window === "undefined") return;
+    if (!window.confirm(`Reset the bracket for ${tournament.name}? Existing players stay registered, all bracket matches and results are removed, and registration reopens.`)) return;
+    const requestedLimit = window.prompt("Maximum number of teams after reopening:", String(currentLimit));
+    if (requestedLimit === null) return;
+    const maxTeams = Number(requestedLimit);
+    if (!Number.isInteger(maxTeams) || maxTeams < registeredTeams || maxTeams < 2) {
+      toast({
+        title: "Invalid player limit",
+        description: `Enter a whole number of at least ${Math.max(2, registeredTeams)}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBusyId(`reset-bracket:${tournament.id}`);
+    try {
+      const response = await base44.functions.invoke("resetTournamentBracket", {
+        tournament_id: tournament.id,
+        max_teams: maxTeams,
+      });
+      if (response.data?.success) {
+        toast({
+          title: "Bracket reset and registration reopened",
+          description: `${response.data.retained_participant_count} existing participant(s) kept. Limit: ${maxTeams}.`,
+        });
+        loadAdminData();
+      } else {
+        toast({ title: "Reset failed", description: response.data?.error || "Could not reset bracket.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Reset failed", description: error.message || "Could not reset bracket.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleModerateDispute = async (dispute, action) => {
     const notes = typeof window !== "undefined" ? window.prompt(`Notes for ${action.replace(/_/g, " ")}:`, "") : "";
     if (notes === null) return;
@@ -2465,6 +2504,11 @@ export default function Admin() {
                     ["Actions", (
                       <div className="flex flex-wrap gap-2">
                         <button onClick={() => handleEditTournament(tournament)} className="text-xs text-cyan hover:underline">Edit</button>
+                        {hasMatches && (
+                          <button onClick={() => handleResetBracket(tournament)} disabled={busyId === `reset-bracket:${tournament.id}`} className="text-xs text-orange hover:underline disabled:opacity-50">
+                            {busyId === `reset-bracket:${tournament.id}` ? "Resetting..." : "Reset & reopen"}
+                          </button>
+                        )}
                         <button onClick={() => handleSetTournamentStatus(tournament, "open")} disabled={busyId === `status:open:${tournament.id}` || tournament.status === "open"} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Reopen</button>
                         <button onClick={() => handleSetTournamentStatus(tournament, "closed")} disabled={busyId === `status:closed:${tournament.id}` || tournament.status === "closed"} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Close</button>
                         <button onClick={() => handleSetTournamentStatus(tournament, "completed")} disabled={busyId === `status:completed:${tournament.id}` || tournament.status === "completed"} className="text-xs text-green hover:underline disabled:opacity-50">Complete</button>

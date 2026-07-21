@@ -6205,6 +6205,105 @@ async function generateTournamentBracket(req) {
   return { success: true, match_count: refreshedMatches.length, matches: refreshedMatches };
 }
 
+async function resetTournamentBracket(req) {
+  assertStaff(req, "admin");
+  const tournamentId = req.body.tournament_id;
+  if (!tournamentId) return { success: false, error: "Tournament id is required" };
+
+  const tournament = await getEntity("Tournament", tournamentId);
+  const [matches, participants, wins] = await Promise.all([
+    listEntities("TournamentMatch", { tournament_id: tournamentId }, "round", 500).catch(() => []),
+    listEntities("TournamentParticipant", { tournament_id: tournamentId }, "seed", 500).catch(() => []),
+    listEntities("TournamentWin", { tournament_id: tournamentId }, "-created_date", 500).catch(() => []),
+  ]);
+
+  // Completed tournaments can already have paid prizes and inventory rewards. Those
+  // financial mutations must never be silently reversed by a bracket-only reset.
+  if (wins.length > 0) {
+    return {
+      success: false,
+      error: "This tournament already has awarded results. Remove or reverse the awards before resetting the bracket.",
+    };
+  }
+
+  const requestedMaxTeams = Number(req.body.max_teams);
+  const currentMaxTeams = Number(tournament.max_teams || 0);
+  const maxTeams = Number.isFinite(requestedMaxTeams) && requestedMaxTeams > 0
+    ? Math.max(participants.length, Math.floor(requestedMaxTeams))
+    : Math.max(participants.length, currentMaxTeams);
+
+  await Promise.all(matches.map((match) => deleteEntity("TournamentMatch", match.id)));
+  await Promise.all(participants.map((participant, index) => updateEntity("TournamentParticipant", participant.id, {
+    seed: index + 1,
+    status: "registered",
+    eliminated: false,
+    eliminated_date: null,
+    final_rank: null,
+    wins: 0,
+    losses: 0,
+    roster_locked: false,
+  })));
+
+  const resetDate = nowIso();
+  const updated = await updateEntity("Tournament", tournamentId, {
+    status: "registration",
+    registration_locked: false,
+    registration_end: null,
+    registration_closed_date: null,
+    registration_closed_by: null,
+    bracket_generated: false,
+    bracket_generated_date: null,
+    started_date: null,
+    started_by: null,
+    started_by_name: null,
+    completed_date: null,
+    completed_by: null,
+    completed_by_name: null,
+    winner_id: null,
+    winner_name: null,
+    runner_up_id: null,
+    runner_up_name: null,
+    max_teams: maxTeams,
+    registered_teams: participants.length,
+    bracket_reset_date: resetDate,
+    bracket_reset_by: req.user.id,
+    bracket_reset_by_name: nameFor(req.user),
+  });
+
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "tournament_reset_bracket",
+    target_user_id: tournamentId,
+    target_username: tournament.name,
+    description: `Reset bracket and reopened registration for ${tournament.name}`,
+    details: {
+      tournament_id: tournamentId,
+      deleted_match_count: matches.length,
+      retained_participant_count: participants.length,
+      max_teams: maxTeams,
+    },
+    created_date: resetDate,
+  }).catch(() => null);
+
+  await notifyTournamentParticipants(tournamentId, {
+    title: "Bracket reset",
+    message: `${tournament.name} registration has reopened. The bracket will be generated again after registration closes.`,
+    type: "tournament",
+    action_url: "/tournaments",
+    related_entity_id: tournamentId,
+    related_entity_type: "Tournament",
+  });
+
+  return {
+    success: true,
+    tournament: updated,
+    deleted_match_count: matches.length,
+    retained_participant_count: participants.length,
+  };
+}
+
 async function ensureTournamentMatchSetup(req) {
   const matchId = req.body.tournament_match_id || req.body.match_id;
   if (!matchId) return { success: false, error: "Tournament match id is required" };
@@ -7114,6 +7213,7 @@ const handlers = {
   withdrawFromWallet: async (req) => ({ success: true, withdrawal: await createEntity("WithdrawalRequest", { ...req.body, user_id: req.user.id, status: "pending", created_date: new Date().toISOString() }) }),
   processWithdrawal: async (req) => ({ success: true, withdrawal: await updateEntity("WithdrawalRequest", req.body.withdrawal_id, { status: req.body.status, processed_date: new Date().toISOString() }) }),
   generateTournamentBracket,
+  resetTournamentBracket,
   ensureTournamentMatchSetup,
   startTournament,
   syncTournamentLifecycle,
