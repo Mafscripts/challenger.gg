@@ -201,7 +201,7 @@ function TeamSlot({ match, slot, source, displayNumbers }) {
   );
 }
 
-function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers, pairingNumber }) {
+function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers }) {
   const current = String(match.id) === String(currentId || "");
   const completed = isCompleteMatch(match);
   const sourceA = sourceForSlot(match, "a", matches);
@@ -220,10 +220,7 @@ function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers,
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white">
-              Match {displayNumbers.get(String(match.id)) || match.round || "-"}
-              <span className="ml-1.5 text-vapor">· Pairing {pairingNumber}</span>
-            </p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white">Match {displayNumbers.get(String(match.id)) || match.match_number || "-"}</p>
             {current && <span className="rounded bg-green/15 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">You are here</span>}
           </div>
           {timer && (
@@ -293,10 +290,7 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
   const groupNames = Object.fromEntries(groups.map((group) => [group.key, stageName(group, maxWinnerRound, isDoubleElimination)]));
   const displayNumbers = new Map();
   groups.forEach((group) => {
-    const phaseNumber = group.bracket === "grand_final"
-      ? maxWinnerRound + group.round
-      : group.round;
-    group.matches.forEach((match) => displayNumbers.set(String(match.id), phaseNumber));
+    group.matches.forEach((match, index) => displayNumbers.set(String(match.id), index + 1));
   });
   const champion = tournament?.winner_name || visibleMatches.find((match) => (
     isCompleteMatch(match)
@@ -342,6 +336,7 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
 
       <div className="space-y-6">
         {lanes.map((lane) => {
+          const laneMaxMatches = Math.max(1, ...lane.groups.map((group) => group.matches.length));
           return (
           <section key={lane.key} className={`h-auto overflow-visible rounded-2xl border bg-card/80 p-4 shadow-[0_18px_55px_-38px_rgba(0,0,0,.9)] sm:p-5 ${lane.key === "loser" ? "border-orange/25" : lane.key === "grand_final" ? "border-green/25" : "border-cyan/25"}`}>
             {isDoubleElimination && (
@@ -350,20 +345,20 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
                 <h3 className={`text-xs font-black uppercase tracking-[0.18em] ${lane.accent}`}>{lane.label}</h3>
               </div>
             )}
-            <div className="h-auto pb-3">
-              <div className="space-y-6">
+            <div className="h-auto overflow-x-auto pb-3 [scrollbar-color:rgba(20,216,255,.25)_transparent]">
+              <div className="grid min-w-max gap-6" style={{ gridTemplateColumns: `repeat(${lane.groups.length}, minmax(272px, 1fr))` }}>
           {lane.groups.map((group, groupIndex) => {
             const completedCount = group.matches.filter(isCompleteMatch).length;
             return (
-              <section key={group.key}>
+              <section key={group.key} className="flex min-w-0 flex-col">
                 <div className="mb-4 flex items-end justify-between gap-3 rounded-xl border border-white/[0.06] bg-black/15 px-3 py-3">
                   <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Round {groupIndex + 1}</p><h3 className="mt-1 text-sm font-black text-white">{groupNames[group.key]}</h3></div>
                   <p className="text-[9px] font-bold uppercase text-vapor">{completedCount}/{group.matches.length} complete</p>
                 </div>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid content-start gap-4" style={{ gridTemplateRows: `repeat(${laneMaxMatches}, minmax(220px, auto))` }}>
                   {group.matches.map((match, matchIndex) => (
-                    <div key={match.id} className="min-h-[220px]">
-                      <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} pairingNumber={matchIndex + 1} />
+                    <div key={match.id} className="min-h-[220px]" style={{ gridRow: matchIndex + 1 }}>
+                      <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
                     </div>
                   ))}
                 </div>

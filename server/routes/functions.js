@@ -1484,9 +1484,8 @@ function generatedMapForSeriesGame(match, game, index, series) {
     .length;
   const tournamentOffset = stableHash(`${match?.tournament_id}:${game.game_mode}`) % pool.length;
   const roundOffset = (round - 1) * series.games.length;
-  const matchOffset = Math.max(0, Number(match?.match_number || 1) - 1);
   const bracketOffset = match?.bracket === "loser" ? 1 : match?.bracket === "grand_final" ? 2 : 0;
-  const mapIndex = (tournamentOffset + roundOffset + matchOffset + bracketOffset + sameModeOffset) % pool.length;
+  const mapIndex = (tournamentOffset + roundOffset + bracketOffset + sameModeOffset) % pool.length;
 
   return pool[mapIndex];
 }
@@ -6018,7 +6017,14 @@ async function generateTournamentBracket(req) {
     updateEntity("TournamentParticipant", participant.id, { seed: index + 1 })
   )));
   const bracketSize = nextPowerOfTwo(participantsWithRandomSeeds.length);
-  const seededParticipants = seedPositions(bracketSize).map((seed) => participantsWithRandomSeeds[seed - 1] || null);
+  // Keep every registered team in the opening round. For a non-power-of-two
+  // field (for example 10 teams), this creates five real Round 1 matches and
+  // leaves only trailing internal routing nodes empty. Any unavoidable odd bye
+  // happens after those opening matches instead of skipping teams past Round 1.
+  const seededParticipants = [
+    ...participantsWithRandomSeeds,
+    ...Array(Math.max(0, bracketSize - participantsWithRandomSeeds.length)).fill(null),
+  ];
   const totalRounds = Math.log2(bracketSize);
   const doubleElimination = (tournament.bracket_type || tournament.format) === "double_elimination";
   const matches = [];
