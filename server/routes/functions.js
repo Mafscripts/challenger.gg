@@ -6009,6 +6009,9 @@ async function generateTournamentBracket(req) {
   const existing = await listEntities("TournamentMatch", { tournament_id: tournamentId }, "round", 500);
   if (existing.length > 0) return { success: true, match_count: existing.length, matches: existing, already_generated: true };
   const preserveSeeds = req.body.preserve_seeds === true;
+  const preservedSeedMap = req.body.preserved_seed_map && typeof req.body.preserved_seed_map === "object"
+    ? req.body.preserved_seed_map
+    : {};
   const orderedParticipants = [...participants];
   if (!preserveSeeds) {
     for (let index = orderedParticipants.length - 1; index > 0; index -= 1) {
@@ -6017,7 +6020,10 @@ async function generateTournamentBracket(req) {
     }
   }
   const participantsWithSeeds = await Promise.all(orderedParticipants.map((participant, index) => {
-    const seed = preserveSeeds && Number(participant.seed) > 0 ? Number(participant.seed) : index + 1;
+    const preservedSeed = Number(preservedSeedMap[participant.id] || preservedSeedMap[participant.team_id]);
+    const seed = preserveSeeds
+      ? (preservedSeed > 0 ? preservedSeed : (Number(participant.seed) > 0 ? Number(participant.seed) : index + 1))
+      : index + 1;
     return Number(participant.seed) === seed
       ? participant
       : updateEntity("TournamentParticipant", participant.id, { seed });
@@ -6165,7 +6171,11 @@ async function generateTournamentBracket(req) {
           matchNumber % 2 === 1 ? "team_a" : "team_b"
         );
       } else {
-        await linkRoute(source, matchByKey.get(matchKey("loser", (round * 2) - 2, matchNumber)), "loser", "team_b");
+        // Cross incoming Winners Bracket losers so a team cannot immediately
+        // rematch the opponent it just faced before dropping down.
+        const lowerMatchCount = bracketSize / (2 ** round);
+        const crossedMatchNumber = lowerMatchCount - matchNumber + 1;
+        await linkRoute(source, matchByKey.get(matchKey("loser", (round * 2) - 2, crossedMatchNumber)), "loser", "team_b");
       }
     }
   }
@@ -6265,6 +6275,13 @@ async function resetTournamentBracket(req) {
   const maxTeams = Number.isFinite(requestedMaxTeams) && requestedMaxTeams > 0
     ? Math.max(participants.length, Math.floor(requestedMaxTeams))
     : Math.max(participants.length, currentMaxTeams);
+  // Capture the exact database values before deleting any match or resetting
+  // participant state. This is passed directly into regeneration so ordering
+  // differences in entity queries can never reshuffle the seeds.
+  const preservedSeedMap = Object.fromEntries(participants.flatMap((participant, index) => {
+    const seed = Number(participant.seed) > 0 ? Number(participant.seed) : index + 1;
+    return [[participant.id, seed], ...(participant.team_id ? [[participant.team_id, seed]] : [])];
+  }));
 
   await Promise.all(matches.map((match) => deleteEntity("TournamentMatch", match.id)));
   await Promise.all(participants.map((participant, index) => updateEntity("TournamentParticipant", participant.id, {
@@ -6330,6 +6347,7 @@ async function resetTournamentBracket(req) {
         tournament_id: tournamentId,
         start_immediately: false,
         preserve_seeds: true,
+        preserved_seed_map: preservedSeedMap,
         system: true,
       },
     });
