@@ -336,7 +336,6 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
 
       <div className="space-y-6">
         {lanes.map((lane) => {
-          const laneMaxMatches = Math.max(1, ...lane.groups.map((group) => group.matches.length));
           return (
           <section key={lane.key} className={`h-auto overflow-visible rounded-2xl border bg-card/80 p-4 shadow-[0_18px_55px_-38px_rgba(0,0,0,.9)] sm:p-5 ${lane.key === "loser" ? "border-orange/25" : lane.key === "grand_final" ? "border-green/25" : "border-cyan/25"}`}>
             {isDoubleElimination && (
@@ -345,28 +344,24 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
                 <h3 className={`text-xs font-black uppercase tracking-[0.18em] ${lane.accent}`}>{lane.label}</h3>
               </div>
             )}
-            <div className="h-auto overflow-x-auto pb-3 [scrollbar-color:rgba(20,216,255,.25)_transparent]">
-              <div className="grid min-w-max gap-x-5 gap-y-4 pr-3" style={{ gridTemplateColumns: `repeat(${laneMaxMatches}, minmax(292px, 318px))` }}>
-                {Array.from({ length: laneMaxMatches }, (_, index) => (
-                  <div key={`column-${index + 1}`} className="border-b border-white/[0.08] px-1 pb-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Match column</p>
-                    <h3 className="mt-1 text-sm font-black text-white">Match {index + 1}</h3>
-                  </div>
-                ))}
+            <div className="h-auto pb-3">
+              <div className="space-y-6">
           {lane.groups.map((group, groupIndex) => {
             const completedCount = group.matches.filter(isCompleteMatch).length;
             return (
-              <React.Fragment key={group.key}>
-                <div className="mt-3 flex items-end justify-between gap-3 rounded-xl border border-white/[0.06] bg-black/15 px-3 py-3" style={{ gridColumn: "1 / -1" }}>
+              <section key={group.key}>
+                <div className="mb-4 flex items-end justify-between gap-3 rounded-xl border border-white/[0.06] bg-black/15 px-3 py-3">
                   <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Round {groupIndex + 1}</p><h3 className="mt-1 text-sm font-black text-white">{groupNames[group.key]}</h3></div>
                   <p className="text-[9px] font-bold uppercase text-vapor">{completedCount}/{group.matches.length} complete</p>
                 </div>
-                  {group.matches.map((match, matchIndex) => (
-                    <div key={match.id} className="min-h-[220px]" style={{ gridColumn: matchIndex + 1 }}>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                  {group.matches.map((match) => (
+                    <div key={match.id} className="min-h-[220px]">
                       <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
                     </div>
                   ))}
-              </React.Fragment>
+                </div>
+              </section>
             );
           })}
               </div>
