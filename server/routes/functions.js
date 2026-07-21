@@ -2617,10 +2617,25 @@ async function rosterChangeError(team) {
 }
 
 async function findUserForTeamInvite(identifier) {
-  const needle = String(identifier || "").trim().toLowerCase();
+  const rawIdentifier = String(identifier || "").trim();
+  const needle = rawIdentifier.toLowerCase();
   if (!needle) return null;
-  const direct = await userFor(identifier).catch(() => null);
+  const direct = await userFor(rawIdentifier).catch(() => null);
   if (direct) return direct;
+
+  const indexedMatch = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: { equals: rawIdentifier, mode: "insensitive" } },
+        { username: { equals: rawIdentifier, mode: "insensitive" } },
+        { handle: { equals: rawIdentifier, mode: "insensitive" } },
+        { display_name: { equals: rawIdentifier, mode: "insensitive" } },
+        { full_name: { equals: rawIdentifier, mode: "insensitive" } },
+      ],
+    },
+  }).catch(() => null);
+  if (indexedMatch) return publicUser(indexedMatch);
+
   const users = await listEntities("User", {}, "-created_date", 500).catch(() => []);
   return users.find((user) => [
     user.id,
@@ -2743,10 +2758,8 @@ async function manageTeam(req) {
     if (target.id === req.user.id) return { success: false, error: "You are already on this team" };
     if (members.some((member) => member.user_id === target.id)) return { success: false, error: "Player is already on this team" };
 
-    if (normalizeTeamType(team.team_type) === "8s") {
-      const target8sTeams = await userActiveTeamMemberships(target.id, "8s");
-      if (target8sTeams.length > 0) return { success: false, error: "Player already has an active 8s team" };
-    }
+    const targetTeams = await userActiveTeamMemberships(target.id, normalizeTeamType(team.team_type));
+    if (targetTeams.length > 0) return { success: false, error: "Player needs to leave current team" };
 
     const existingInvite = await firstEntity("TeamInvite", {
       team_id: team.id,

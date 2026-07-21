@@ -126,6 +126,16 @@ const defaultTournamentForm = {
   elimination_reward_item_ids: [],
   placement_trophy_item_ids: { 1: [], 2: [], 3: [] },
 };
+
+const toLocalDateTimeInputValue = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const tournamentStatusOptions = ["draft", "open", "registration", "closed", "live", "in_progress", "completed", "cancelled"];
 const defaultWalletAdjustmentForm = {
   user_id: "",
@@ -1109,8 +1119,8 @@ export default function Admin() {
       max_teams: String(tournament.max_teams ?? 8),
       bracket_type: tournament.bracket_type || tournament.format || "single_elimination",
       status: tournament.status || "open",
-      registration_end: tournament.registration_end ? new Date(tournament.registration_end).toISOString().slice(0, 16) : "",
-      start_date: tournament.start_date ? new Date(tournament.start_date).toISOString().slice(0, 16) : "",
+      registration_end: toLocalDateTimeInputValue(tournament.registration_end),
+      start_date: toLocalDateTimeInputValue(tournament.start_date),
       is_premium_only: Boolean(tournament.is_premium_only),
       invite_only: tournament.invite_only === true || tournament.entry_type === "invitational",
       invited_user_ids: tournament.invited_user_ids || [],

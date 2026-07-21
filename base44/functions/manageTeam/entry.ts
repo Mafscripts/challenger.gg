@@ -68,10 +68,26 @@ async function rosterChangeError(base44, team) {
 }
 
 async function findUserForInvite(base44, identifier) {
-  const needle = String(identifier || '').trim().toLowerCase();
+  const rawIdentifier = String(identifier || '').trim();
+  const needle = rawIdentifier.toLowerCase();
   if (!needle) return null;
-  const direct = await base44.asServiceRole.entities.User.get(identifier).catch(() => null);
+  const direct = await base44.asServiceRole.entities.User.get(rawIdentifier).catch(() => null);
   if (direct) return direct;
+
+  const fields = ['email', 'username', 'handle', 'display_name', 'full_name'];
+  const exactMatches = await Promise.all(fields.map((field) => (
+    base44.asServiceRole.entities.User.filter({ [field]: rawIdentifier }, '-created_date', 10).catch(() => [])
+  )));
+  const exact = exactMatches.flat().find((user) => [
+    user.id,
+    user.email,
+    user.username,
+    user.handle,
+    user.display_name,
+    user.full_name,
+  ].filter(Boolean).some((value) => String(value).toLowerCase() === needle));
+  if (exact) return exact;
+
   const users = await base44.asServiceRole.entities.User.filter({}, '-created_date', 500).catch(() => []);
   return (users || []).find((user) => [
     user.id,
@@ -158,10 +174,8 @@ Deno.serve(async (req) => {
       if (target.id === user.id || members.some((member) => member.user_id === target.id)) {
         return Response.json({ success: false, error: 'Player is already on this team' }, { status: 400 });
       }
-      if (normalizeTeamType(team.team_type) === '8s') {
-        const target8sTeams = await userActiveTeamMemberships(base44, target.id, '8s');
-        if (target8sTeams.length > 0) return Response.json({ success: false, error: 'Player already has an active 8s team' }, { status: 400 });
-      }
+      const targetTeams = await userActiveTeamMemberships(base44, target.id, normalizeTeamType(team.team_type));
+      if (targetTeams.length > 0) return Response.json({ success: false, error: 'Player needs to leave current team' }, { status: 400 });
 
       const existingInvites = await base44.asServiceRole.entities.TeamInvite.filter({ team_id: team.id, invited_user_id: target.id, status: 'pending' }).catch(() => []);
       if (existingInvites.length > 0) return Response.json({ success: false, error: 'Invite already pending' }, { status: 400 });
