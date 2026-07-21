@@ -1484,7 +1484,9 @@ function generatedMapForSeriesGame(match, game, index, series) {
     .length;
   const tournamentOffset = stableHash(`${match?.tournament_id}:${game.game_mode}`) % pool.length;
   const roundOffset = (round - 1) * series.games.length;
-  const mapIndex = (tournamentOffset + roundOffset + sameModeOffset) % pool.length;
+  const matchOffset = Math.max(0, Number(match?.match_number || 1) - 1);
+  const bracketOffset = match?.bracket === "loser" ? 1 : match?.bracket === "grand_final" ? 2 : 0;
+  const mapIndex = (tournamentOffset + roundOffset + matchOffset + bracketOffset + sameModeOffset) % pool.length;
 
   return pool[mapIndex];
 }
@@ -1497,7 +1499,9 @@ function mapGenerationKey(match, series = tournamentMapSeriesForMatch(match)) {
   return [
     `bo${series.bestOf || series.games.length}-${series.key}`,
     match?.tournament_id || "tournament",
+    match?.bracket || "winner",
     `round-${match?.round || 1}`,
+    `match-${match?.match_number || 1}`,
     series.games.map((game) => `${game.game_mode}:${game.pool.join("-")}`).join("|").toLowerCase(),
   ].join(":");
 }
@@ -6324,7 +6328,9 @@ async function ensureTournamentMatchSetup(req) {
     tournamentParticipants(match.tournament_id),
     getEntity("Tournament", match.tournament_id).catch(() => null),
   ]);
-  const patch = tournamentMatchSetupPatch(match, participants, tournament);
+  const patch = isStreamerTournament(tournament)
+    ? streamerMatchSetupPatch(match, tournament, participants)
+    : tournamentMatchSetupPatch(match, participants, tournament);
   if (
     tournamentStatusesStarted.includes(tournament?.status)
     && !match.start_deadline
@@ -6340,7 +6346,10 @@ async function ensureTournamentMatchSetup(req) {
 async function startTournament(req) {
   assertStaff(req, "admin");
   const tournament = await getEntity("Tournament", req.body.tournament_id);
-  const matches = await listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500);
+  const [matches, participants] = await Promise.all([
+    listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500),
+    tournamentParticipants(tournament.id),
+  ]);
   let bracket = matches;
   if (matches.length === 0) {
     const generated = await generateTournamentBracket({ ...req, body: { tournament_id: tournament.id, start_immediately: true } });
@@ -6353,14 +6362,17 @@ async function startTournament(req) {
       !hasBothTeams(match)
       || match.completed
       || match.status === "completed"
-      || match.start_deadline
     ) {
       return match;
     }
+    const setupPatch = isStreamerTournament(tournament)
+      ? streamerMatchSetupPatch(match, tournament, participants)
+      : tournamentMatchSetupPatch(match, participants, tournament);
     return updateEntity("TournamentMatch", match.id, {
       status: match.status === "pending" ? "ready" : match.status,
       assigned_date: match.assigned_date || startedDate,
-      ...tournamentStartWindowPatch(startedDate),
+      ...(!match.start_deadline ? tournamentStartWindowPatch(startedDate) : {}),
+      ...setupPatch,
     });
   }));
   const updated = await updateEntity("Tournament", tournament.id, {

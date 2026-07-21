@@ -7,6 +7,50 @@ const normalizedBracket = (match) => match?.bracket || "winner";
 const isCompleteMatch = (match) => Boolean(match?.winner_id && (match?.completed || match?.status === "completed"));
 const cleanStatus = (value) => String(value || "pending").replace(/_/g, " ");
 
+function displayedStatus(match) {
+  if (isCompleteMatch(match)) {
+    if (match?.empty_bracket_slot) return "Skipped";
+    if (!match?.team_a_id || !match?.team_b_id) return "Bye · auto advance";
+    return "Completed";
+  }
+  // Legacy empty routes were stored as completed so bracket propagation could
+  // continue. They are not played matches and must not look like results.
+  if ((match?.completed || match?.status === "completed") && !match?.winner_id) return "Skipped";
+  return cleanStatus(match?.status);
+}
+
+function matchFreshness(match) {
+  const updated = new Date(match?.updated_date || match?.created_date || 0).getTime();
+  const populated = Number(Boolean(match?.team_a_id)) + Number(Boolean(match?.team_b_id));
+  const resolved = Number(Boolean(match?.winner_id));
+  return (Number.isFinite(updated) ? updated : 0) + (populated * 10) + (resolved * 100);
+}
+
+function uniqueBracketMatches(matches) {
+  const unique = new Map();
+  matches.forEach((match) => {
+    const assignedTeams = Number(Boolean(match?.team_a_id)) + Number(Boolean(match?.team_b_id));
+    const isAutomaticBye = Boolean(
+      match?.winner_id
+      && assignedTeams < 2
+      && (match?.completed || match?.status === "completed")
+    );
+    const isEmptyRoute = Boolean(
+      assignedTeams === 0
+      && (match?.empty_bracket_slot || ((match?.completed || match?.status === "completed") && !match?.winner_id))
+    );
+    // Power-of-two routing may contain internal bye/empty nodes. They are not
+    // real matches and must not inflate a 10-team bracket to 16 visible slots.
+    if (isAutomaticBye || isEmptyRoute) return;
+    // The bracket position is the identity users see. This also protects the UI
+    // from legacy duplicate rows left behind by an older reset/generation flow.
+    const position = `${normalizedBracket(match)}:${Number(match?.round || 1)}:${Number(match?.match_number || 1)}`;
+    const current = unique.get(position);
+    if (!current || matchFreshness(match) >= matchFreshness(current)) unique.set(position, match);
+  });
+  return [...unique.values()];
+}
+
 function statusStyle(match, isCurrent) {
   if (isCurrent) return "border-green/35 bg-green/[0.07] shadow-[0_0_0_1px_rgba(0,255,128,.08),0_18px_45px_-30px_rgba(0,255,128,.55)]";
   if (isCompleteMatch(match)) return "border-white/[0.07] bg-background/55";
@@ -189,7 +233,7 @@ function MatchCard({ match, matches, currentId, now, groupNames }) {
               ? "border-cyan/20 bg-cyan/10 text-cyan"
               : "border-white/[0.06] bg-white/[0.03] text-vapor"
         }`}>
-          {cleanStatus(match.status)}
+          {displayedStatus(match)}
         </span>
       </div>
 
@@ -217,8 +261,9 @@ function MatchCard({ match, matches, currentId, now, groupNames }) {
 }
 
 export default function TournamentBracket({ matches = [], currentId = null, tournament = null, now = Date.now(), showHeader = true }) {
+  const visibleMatches = useMemo(() => uniqueBracketMatches(matches), [matches]);
   const groups = useMemo(() => {
-    const grouped = matches
+    const grouped = visibleMatches
       .slice()
       .sort((a, b) => (
         (bracketOrder[normalizedBracket(a)] || 9) - (bracketOrder[normalizedBracket(b)] || 9)
@@ -232,15 +277,15 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
         return result;
       }, {});
     return Object.values(grouped);
-  }, [matches]);
+  }, [visibleMatches]);
 
-  if (matches.length === 0) return null;
+  if (visibleMatches.length === 0) return null;
 
   const isDoubleElimination = (tournament?.bracket_type || tournament?.format) === "double_elimination"
     || groups.some((group) => group.bracket === "loser");
   const maxWinnerRound = Math.max(1, ...groups.filter((group) => group.bracket === "winner").map((group) => group.round));
   const groupNames = Object.fromEntries(groups.map((group) => [group.key, stageName(group, maxWinnerRound, isDoubleElimination)]));
-  const champion = tournament?.winner_name || matches.find((match) => (
+  const champion = tournament?.winner_name || visibleMatches.find((match) => (
     isCompleteMatch(match)
     && match.winner_name
     && !match.next_match_id
@@ -308,7 +353,7 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
                 </div>
                 <div className="flex flex-1 flex-col justify-around gap-4" style={{ minHeight: `${Math.max(190, laneMaxMatches * 180)}px` }}>
                   {group.matches.map((match) => (
-                    <MatchCard key={match.id} match={match} matches={matches} currentId={currentId} now={now} groupNames={groupNames} />
+                    <MatchCard key={match.id} match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} />
                   ))}
                 </div>
               </div>
