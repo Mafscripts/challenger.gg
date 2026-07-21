@@ -239,7 +239,7 @@ export default function Tournaments() {
   }, [selectedTournamentId]);
 
   useEffect(() => {
-    const countdownInterval = window.setInterval(() => setNow(Date.now()), 5000);
+    const countdownInterval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(countdownInterval);
   }, []);
 
