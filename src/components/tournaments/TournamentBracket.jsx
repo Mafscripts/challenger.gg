@@ -201,7 +201,7 @@ function TeamSlot({ match, slot, source, displayNumbers }) {
   );
 }
 
-function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers }) {
+function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers, pairingNumber }) {
   const current = String(match.id) === String(currentId || "");
   const completed = isCompleteMatch(match);
   const sourceA = sourceForSlot(match, "a", matches);
@@ -220,7 +220,10 @@ function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers 
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white">Match {displayNumbers.get(String(match.id)) || match.match_number || "-"}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white">
+              Match {displayNumbers.get(String(match.id)) || match.round || "-"}
+              <span className="ml-1.5 text-vapor">· Pairing {pairingNumber}</span>
+            </p>
             {current && <span className="rounded bg-green/15 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">You are here</span>}
           </div>
           {timer && (
@@ -290,7 +293,10 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
   const groupNames = Object.fromEntries(groups.map((group) => [group.key, stageName(group, maxWinnerRound, isDoubleElimination)]));
   const displayNumbers = new Map();
   groups.forEach((group) => {
-    group.matches.forEach((match, index) => displayNumbers.set(String(match.id), index + 1));
+    const phaseNumber = group.bracket === "grand_final"
+      ? maxWinnerRound + group.round
+      : group.round;
+    group.matches.forEach((match) => displayNumbers.set(String(match.id), phaseNumber));
   });
   const champion = tournament?.winner_name || visibleMatches.find((match) => (
     isCompleteMatch(match)
@@ -355,9 +361,9 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
                   <p className="text-[9px] font-bold uppercase text-vapor">{completedCount}/{group.matches.length} complete</p>
                 </div>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                  {group.matches.map((match) => (
+                  {group.matches.map((match, matchIndex) => (
                     <div key={match.id} className="min-h-[220px]">
-                      <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
+                      <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} pairingNumber={matchIndex + 1} />
                     </div>
                   ))}
                 </div>
