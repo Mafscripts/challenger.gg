@@ -256,9 +256,9 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
     : [{ key: "winner", label: "Bracket", accent: "text-cyan", groups }];
 
   return (
-    <section className={showHeader ? "rounded-2xl border border-white/[0.07] bg-card/80 p-4 sm:p-5" : ""}>
+    <section className="space-y-6">
       {showHeader && (
-        <div className="mb-5 flex flex-col gap-4 border-b border-white/[0.06] pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-2xl border border-white/[0.07] bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
             <div className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange/10 text-orange"><Trophy className="h-4 w-4" /></span>
@@ -282,11 +282,11 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
         </div>
       )}
 
-      <div className="space-y-7">
+      <div className="space-y-6">
         {lanes.map((lane) => {
           const laneMaxMatches = Math.max(1, ...lane.groups.map((group) => group.matches.length));
           return (
-          <section key={lane.key} className={`rounded-2xl border p-4 ${lane.key === "loser" ? "border-orange/15 bg-orange/[0.025]" : lane.key === "grand_final" ? "border-green/15 bg-green/[0.025]" : "border-cyan/15 bg-cyan/[0.02]"}`}>
+          <section key={lane.key} className={`rounded-2xl border bg-card/80 p-4 shadow-[0_18px_55px_-38px_rgba(0,0,0,.9)] sm:p-5 ${lane.key === "loser" ? "border-orange/25" : lane.key === "grand_final" ? "border-green/25" : "border-cyan/25"}`}>
             {isDoubleElimination && (
               <div className="mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-3">
                 <GitBranch className={`h-4 w-4 ${lane.accent}`} />
