@@ -1015,6 +1015,34 @@ export default function Admin() {
     }
   };
 
+  const handleRepairBracket = async (tournament) => {
+    if (typeof window === "undefined") return;
+    if (!window.confirm(`Repair the bracket for ${tournament.name}? All match scores are removed, but every team keeps its current seed. A corrected bracket is generated immediately.`)) return;
+
+    setBusyId(`repair-bracket:${tournament.id}`);
+    try {
+      const response = await base44.functions.invoke("resetTournamentBracket", {
+        tournament_id: tournament.id,
+        max_teams: tournament.max_teams,
+        regenerate_immediately: true,
+        preserve_seeds: true,
+      });
+      if (response.data?.success) {
+        toast({
+          title: "Bracket repaired with the same seeds",
+          description: `${response.data.retained_participant_count} teams kept their seed. You can report the matches again now.`,
+        });
+        loadAdminData();
+      } else {
+        toast({ title: "Repair failed", description: response.data?.error || "Could not repair bracket.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Repair failed", description: error.message || "Could not repair bracket.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleModerateDispute = async (dispute, action) => {
     const notes = typeof window !== "undefined" ? window.prompt(`Notes for ${action.replace(/_/g, " ")}:`, "") : "";
     if (notes === null) return;
@@ -2505,9 +2533,14 @@ export default function Admin() {
                       <div className="flex flex-wrap gap-2">
                         <button onClick={() => handleEditTournament(tournament)} className="text-xs text-cyan hover:underline">Edit</button>
                         {hasMatches && (
-                          <button onClick={() => handleResetBracket(tournament)} disabled={busyId === `reset-bracket:${tournament.id}`} className="text-xs text-orange hover:underline disabled:opacity-50">
-                            {busyId === `reset-bracket:${tournament.id}` ? "Resetting..." : "Reset & reopen"}
-                          </button>
+                          <>
+                            <button onClick={() => handleRepairBracket(tournament)} disabled={busyId === `repair-bracket:${tournament.id}`} className="text-xs text-green hover:underline disabled:opacity-50">
+                              {busyId === `repair-bracket:${tournament.id}` ? "Repairing..." : "Repair · keep seeds"}
+                            </button>
+                            <button onClick={() => handleResetBracket(tournament)} disabled={busyId === `reset-bracket:${tournament.id}`} className="text-xs text-orange hover:underline disabled:opacity-50">
+                              {busyId === `reset-bracket:${tournament.id}` ? "Resetting..." : "Reset & reopen"}
+                            </button>
+                          </>
                         )}
                         <button onClick={() => handleSetTournamentStatus(tournament, "open")} disabled={busyId === `status:open:${tournament.id}` || tournament.status === "open"} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Reopen</button>
                         <button onClick={() => handleSetTournamentStatus(tournament, "closed")} disabled={busyId === `status:closed:${tournament.id}` || tournament.status === "closed"} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Close</button>

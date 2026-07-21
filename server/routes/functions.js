@@ -6008,20 +6008,27 @@ async function generateTournamentBracket(req) {
   if (participants.length < 2) return { success: false, error: "At least two participants are required" };
   const existing = await listEntities("TournamentMatch", { tournament_id: tournamentId }, "round", 500);
   if (existing.length > 0) return { success: true, match_count: existing.length, matches: existing, already_generated: true };
-  const randomizedParticipants = [...participants];
-  for (let index = randomizedParticipants.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [randomizedParticipants[index], randomizedParticipants[swapIndex]] = [randomizedParticipants[swapIndex], randomizedParticipants[index]];
+  const preserveSeeds = req.body.preserve_seeds === true;
+  const orderedParticipants = [...participants];
+  if (!preserveSeeds) {
+    for (let index = orderedParticipants.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [orderedParticipants[index], orderedParticipants[swapIndex]] = [orderedParticipants[swapIndex], orderedParticipants[index]];
+    }
   }
-  const participantsWithRandomSeeds = await Promise.all(randomizedParticipants.map((participant, index) => (
-    updateEntity("TournamentParticipant", participant.id, { seed: index + 1 })
-  )));
-  const bracketSize = nextPowerOfTwo(participantsWithRandomSeeds.length);
+  const participantsWithSeeds = await Promise.all(orderedParticipants.map((participant, index) => {
+    const seed = preserveSeeds && Number(participant.seed) > 0 ? Number(participant.seed) : index + 1;
+    return Number(participant.seed) === seed
+      ? participant
+      : updateEntity("TournamentParticipant", participant.id, { seed });
+  }));
+  participantsWithSeeds.sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0));
+  const bracketSize = nextPowerOfTwo(participantsWithSeeds.length);
   // Place seeds in a balanced bracket (1 v last, 8 v 9, etc.). For a field that
   // is not a power of two this distributes byes across the bracket instead of
   // creating real matches on the left and dead routing branches on the right.
   const seededParticipants = seedPositions(bracketSize)
-    .map((seed) => participantsWithRandomSeeds[seed - 1] || null);
+    .map((seed) => participantsWithSeeds[seed - 1] || null);
   const totalRounds = Math.log2(bracketSize);
   const doubleElimination = (tournament.bracket_type || tournament.format) === "double_elimination";
   const matches = [];
@@ -6093,7 +6100,7 @@ async function generateTournamentBracket(req) {
       };
       await createBracketMatch({
         ...matchPayload,
-        ...(!hasBye && hasBothTeams(matchPayload) ? tournamentMatchSetupPatch(matchPayload, participantsWithRandomSeeds, tournament) : {}),
+        ...(!hasBye && hasBothTeams(matchPayload) ? tournamentMatchSetupPatch(matchPayload, participantsWithSeeds, tournament) : {}),
       });
     }
   }
@@ -6205,7 +6212,7 @@ async function generateTournamentBracket(req) {
     related_entity_id: tournamentId,
     related_entity_type: "Tournament",
   });
-  const participantByTeamId = Object.fromEntries(participantsWithRandomSeeds.map((participant) => [participant.team_id, participant]));
+  const participantByTeamId = Object.fromEntries(participantsWithSeeds.map((participant) => [participant.team_id, participant]));
   await Promise.all(matches.filter((match) => hasBothTeams(match) && match.status === "ready").map((match) => {
     const teamA = participantByTeamId[match.team_a_id];
     const teamB = participantByTeamId[match.team_b_id];
@@ -6261,7 +6268,7 @@ async function resetTournamentBracket(req) {
 
   await Promise.all(matches.map((match) => deleteEntity("TournamentMatch", match.id)));
   await Promise.all(participants.map((participant, index) => updateEntity("TournamentParticipant", participant.id, {
-    seed: index + 1,
+    seed: Number(participant.seed) > 0 ? Number(participant.seed) : index + 1,
     status: "registered",
     eliminated: false,
     eliminated_date: null,
@@ -6304,7 +6311,9 @@ async function resetTournamentBracket(req) {
     action_type: "tournament_reset_bracket",
     target_user_id: tournamentId,
     target_username: tournament.name,
-    description: `Reset bracket and reopened registration for ${tournament.name}`,
+    description: req.body.regenerate_immediately === true
+      ? `Repaired bracket while preserving seeds for ${tournament.name}`
+      : `Reset bracket and reopened registration for ${tournament.name}`,
     details: {
       tournament_id: tournamentId,
       deleted_match_count: matches.length,
@@ -6313,6 +6322,28 @@ async function resetTournamentBracket(req) {
     },
     created_date: resetDate,
   }).catch(() => null);
+
+  if (req.body.regenerate_immediately === true) {
+    const regenerated = await generateTournamentBracket({
+      ...req,
+      body: {
+        tournament_id: tournamentId,
+        start_immediately: false,
+        preserve_seeds: true,
+        system: true,
+      },
+    });
+    return {
+      success: regenerated.success === true,
+      tournament: updated,
+      deleted_match_count: matches.length,
+      retained_participant_count: participants.length,
+      match_count: regenerated.match_count || 0,
+      matches: regenerated.matches || [],
+      seeds_preserved: true,
+      error: regenerated.error,
+    };
+  }
 
   await notifyTournamentParticipants(tournamentId, {
     title: "Bracket reset",
