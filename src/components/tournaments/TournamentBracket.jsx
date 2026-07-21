@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Clock3, Crown, GitBranch, Trophy, Zap } from "lucide-react";
+import { ArrowDown, Clock3, Crown, GitBranch, Trophy, Zap } from "lucide-react";
 
 const bracketOrder = { winner: 1, loser: 2, grand_final: 3 };
 const normalizedBracket = (match) => match?.bracket || "winner";
@@ -251,12 +251,12 @@ function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers 
         <span className="min-w-0 truncate">
           {target ? `Winner → ${targetStage || "Next round"} · M${displayNumbers.get(String(target.id)) || target.match_number}` : "Winner → Tournament champion"}
         </span>
-        {target ? <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" /> : <Crown className="h-3.5 w-3.5 shrink-0" />}
+        {target ? <ArrowDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-y-0.5" /> : <Crown className="h-3.5 w-3.5 shrink-0" />}
       </div>
       {loserTarget && (
         <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-orange/15 bg-orange/[0.045] px-2.5 py-2 text-[9px] font-black uppercase tracking-wide text-orange">
           <span className="min-w-0 truncate">Loser → {compactStageName(loserTarget)} · M{displayNumbers.get(String(loserTarget.id)) || loserTarget.match_number}</span>
-          <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" />
+          <ArrowDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-y-0.5" />
         </div>
       )}
     </Link>
@@ -326,7 +326,7 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
             <div className="inline-flex items-center gap-2 rounded-xl border border-green/20 bg-green/10 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-green"><Crown className="h-4 w-4" /> Champion: {champion}</div>
           ) : (
             <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-wider">
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-cyan/15 bg-cyan/[0.05] px-2.5 py-1.5 text-cyan"><GitBranch className="h-3 w-3" /> Win advances right</span>
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-cyan/15 bg-cyan/[0.05] px-2.5 py-1.5 text-cyan"><GitBranch className="h-3 w-3" /> Win advances down</span>
               {isDoubleElimination && <span className="inline-flex items-center gap-1.5 rounded-lg border border-orange/15 bg-orange/[0.05] px-2.5 py-1.5 text-orange"><GitBranch className="h-3 w-3" /> Loss drops to lower</span>}
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-vapor"><Zap className="h-3 w-3" /> # is tournament seed</span>
             </div>
@@ -346,29 +346,27 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
               </div>
             )}
             <div className="h-auto overflow-x-auto pb-3 [scrollbar-color:rgba(20,216,255,.25)_transparent]">
-              <div className="grid min-w-max gap-8 pr-3" style={{ gridTemplateColumns: `repeat(${lane.groups.length}, minmax(292px, 318px))` }}>
+              <div className="grid min-w-max gap-x-5 gap-y-4 pr-3" style={{ gridTemplateColumns: `repeat(${laneMaxMatches}, minmax(292px, 318px))` }}>
+                {Array.from({ length: laneMaxMatches }, (_, index) => (
+                  <div key={`column-${index + 1}`} className="border-b border-white/[0.08] px-1 pb-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Match column</p>
+                    <h3 className="mt-1 text-sm font-black text-white">Match {index + 1}</h3>
+                  </div>
+                ))}
           {lane.groups.map((group, groupIndex) => {
             const completedCount = group.matches.filter(isCompleteMatch).length;
             return (
-              <div key={group.key} className="relative flex min-w-0 flex-col">
-                {groupIndex < lane.groups.length - 1 && (
-                  <span className="pointer-events-none absolute -right-6 top-5 hidden h-8 w-4 items-center justify-center rounded-full border border-cyan/15 bg-card text-cyan xl:flex"><ArrowRight className="h-3 w-3" /></span>
-                )}
-                <div className="mb-3 flex items-end justify-between gap-3 border-b border-white/[0.06] px-1 pb-3">
+              <React.Fragment key={group.key}>
+                <div className="mt-3 flex items-end justify-between gap-3 rounded-xl border border-white/[0.06] bg-black/15 px-3 py-3" style={{ gridColumn: "1 / -1" }}>
                   <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Round {groupIndex + 1}</p><h3 className="mt-1 text-sm font-black text-white">{groupNames[group.key]}</h3></div>
                   <p className="text-[9px] font-bold uppercase text-vapor">{completedCount}/{group.matches.length} complete</p>
                 </div>
-                <div
-                  className="grid flex-1 content-start gap-4"
-                  style={{ gridTemplateRows: `repeat(${laneMaxMatches}, minmax(220px, auto))` }}
-                >
                   {group.matches.map((match, matchIndex) => (
-                    <div key={match.id} style={{ gridRow: matchIndex + 1 }}>
+                    <div key={match.id} className="min-h-[220px]" style={{ gridColumn: matchIndex + 1 }}>
                       <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
                     </div>
                   ))}
-                </div>
-              </div>
+              </React.Fragment>
             );
           })}
               </div>
