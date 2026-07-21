@@ -713,8 +713,8 @@ export default function Tournaments() {
           </div>
 
           <div className="lg:col-span-5 space-y-6">
-            <div id="tournament-bracket-preview" className="glass scroll-mt-24 rounded-xl border border-white/5 overflow-hidden">
-              <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between gap-3">
+            <div id="tournament-bracket-preview" className="scroll-mt-24 space-y-5">
+              <div className="glass flex items-center justify-between gap-3 rounded-xl border border-white/5 px-5 py-4">
                 <div>
                   <h2 className="text-lg font-bold">Live Bracket Preview</h2>
                   <p className="text-xs text-vapor">
@@ -797,7 +797,7 @@ export default function Tournaments() {
                 </div>
               </div>
               {isStaff && selectedParticipants.length > 0 && (
-                <div className="px-5 py-3 border-b border-white/5 bg-secondary/20">
+                <div className="glass rounded-xl border border-white/5 bg-secondary/20 px-5 py-3">
                   <p className="text-[10px] text-vapor uppercase tracking-wider mb-2">Participants</p>
                   <div className="flex flex-wrap gap-2">
                     {selectedParticipants.map((participant) => (
@@ -810,22 +810,20 @@ export default function Tournaments() {
               )}
               <div>
                 {!selectedTournamentId ? (
-                  <p className="px-5 py-8 text-center text-sm text-vapor">No tournament selected.</p>
+                  <p className="glass rounded-xl border border-white/5 px-5 py-8 text-center text-sm text-vapor">No tournament selected.</p>
                 ) : selectedMatches.length === 0 ? (
-                  <div className="px-5 py-8 text-center">
+                  <div className="glass rounded-xl border border-white/5 px-5 py-8 text-center">
                     <Users className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
                     <p className="text-sm text-vapor">No bracket matches generated yet.</p>
                   </div>
                 ) : (
-                  <div className="p-4 sm:p-5">
-                    <TournamentBracket
-                      matches={selectedMatches}
-                      currentId={selectedUserMatch?.id}
-                      tournament={selectedTournament}
-                      now={now}
-                      showHeader={false}
-                    />
-                  </div>
+                  <TournamentBracket
+                    matches={selectedMatches}
+                    currentId={selectedUserMatch?.id}
+                    tournament={selectedTournament}
+                    now={now}
+                    showHeader={false}
+                  />
                 )}
               </div>
             </div>
