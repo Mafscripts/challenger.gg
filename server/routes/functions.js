@@ -1898,7 +1898,8 @@ async function tournamentRouteTarget(match, outcome = "winner") {
 
 async function prepareTournamentMatchWhenReady(match, patch = {}) {
   const candidate = { ...match, ...patch };
-  if (!hasBothTeams(candidate) || ["completed", "disputed"].includes(match.status)) return patch;
+  const hasRealResult = Boolean(match?.winner_id && (match?.completed || match?.status === "completed"));
+  if (!hasBothTeams(candidate) || hasRealResult || match.status === "disputed") return patch;
   const assignedDate = patch.assigned_date || match.assigned_date || nowIso();
   const [tournament, participants] = await Promise.all([
     getEntity("Tournament", match.tournament_id).catch(() => null),
@@ -1906,6 +1907,9 @@ async function prepareTournamentMatchWhenReady(match, patch = {}) {
   ]);
   Object.assign(patch, {
     status: "ready",
+    completed: false,
+    completed_date: null,
+    empty_bracket_slot: false,
     assigned_date: assignedDate,
     ...(tournamentStatusesStarted.includes(tournament?.status) ? tournamentStartWindowPatch(assignedDate) : {}),
     ...(isStreamerTournament(tournament)
@@ -2031,8 +2035,16 @@ async function resolveTournamentBracketByes(tournamentId) {
       if (row.completed || row.status === "completed" || row.status === "disputed") return false;
       if (!row.team_a_source_match_id || !row.team_b_source_match_id) return false;
       if (hasBothTeams(row) && row.status !== "pending" && row.status !== "reset") return false;
-      return [row.team_a_source_match_id, row.team_b_source_match_id]
-        .every((sourceId) => byId[String(sourceId)]?.completed || byId[String(sourceId)]?.status === "completed");
+      return ["a", "b"].every((slot) => {
+        const source = byId[String(row[`team_${slot}_source_match_id`])];
+        if (!(source?.completed || source?.status === "completed")) return false;
+        const outcome = row[`team_${slot}_source_outcome`] === "loser" ? "loser" : "winner";
+        const expectedEntry = tournamentOutcomeEntry(source, outcome);
+        // If this source has a real entrant, wait until routing has actually
+        // populated the slot. This prevents a target from being closed as an
+        // empty bye while sequential source advancement is still running.
+        return !expectedEntry || Boolean(row[`team_${slot}_id`]);
+      });
     });
     if (!candidate) break;
 
@@ -6331,6 +6343,14 @@ async function ensureTournamentMatchSetup(req) {
   const patch = isStreamerTournament(tournament)
     ? streamerMatchSetupPatch(match, tournament, participants)
     : tournamentMatchSetupPatch(match, participants, tournament);
+  if (hasBothTeams(match) && (match.completed || match.status === "completed") && !match.winner_id) {
+    Object.assign(patch, {
+      status: "ready",
+      completed: false,
+      completed_date: null,
+      empty_bracket_slot: false,
+    });
+  }
   if (
     tournamentStatusesStarted.includes(tournament?.status)
     && !match.start_deadline

@@ -15,7 +15,9 @@ function displayedStatus(match) {
   }
   // Legacy empty routes were stored as completed so bracket propagation could
   // continue. They are not played matches and must not look like results.
-  if ((match?.completed || match?.status === "completed") && !match?.winner_id) return "Skipped";
+  if ((match?.completed || match?.status === "completed") && !match?.winner_id) {
+    return match?.team_a_id && match?.team_b_id ? "Ready" : "Skipped";
+  }
   return cleanStatus(match?.status);
 }
 
@@ -62,11 +64,11 @@ function statusStyle(match, isCurrent) {
 function stageName(group, maxWinnerRound, isDoubleElimination) {
   if (group.bracket === "grand_final") return group.round > 1 ? "Grand Final Reset" : "Grand Final";
   if (group.bracket === "loser") return `Lower Bracket · Round ${group.round}`;
-  const matches = group.matches.length;
-  if (matches >= 8) return "Round of 16";
-  if (matches === 4) return "Quarterfinals";
-  if (matches === 2) return "Semifinals";
-  if (matches === 1 && group.round === maxWinnerRound) return isDoubleElimination ? "Winners Final" : "Final";
+  const roundsBeforeFinal = maxWinnerRound - group.round;
+  if (roundsBeforeFinal === 0) return isDoubleElimination ? "Winners Final" : "Final";
+  if (roundsBeforeFinal === 1) return "Semifinals";
+  if (roundsBeforeFinal === 2) return "Quarterfinals";
+  if (roundsBeforeFinal === 3) return "Round of 16";
   return `Winner Bracket · Round ${group.round}`;
 }
 
@@ -149,7 +151,7 @@ function startWindowLabel(match, now) {
   };
 }
 
-function TeamSlot({ match, slot, source }) {
+function TeamSlot({ match, slot, source, displayNumbers }) {
   const isA = slot === "a";
   const teamId = isA ? match.team_a_id : match.team_b_id;
   const teamName = isA ? match.team_a_name : match.team_b_name;
@@ -162,8 +164,9 @@ function TeamSlot({ match, slot, source }) {
   );
   const sourceResolved = source && isCompleteMatch(source);
   const sourceOutcome = match?.[`team_${slot}_source_outcome`] === "loser" ? "Loser" : "Winner";
+  const sourceNumber = source ? (displayNumbers.get(String(source.id)) || source.match_number) : null;
   const sourceText = source
-    ? `${sourceResolved ? sourceOutcome : `${sourceOutcome} of`} ${compactStageName(source)} · M${source.match_number}`
+    ? `${sourceResolved ? sourceOutcome : `${sourceOutcome} of`} ${compactStageName(source)} · M${sourceNumber}`
     : "Open bracket slot";
 
   return (
@@ -198,7 +201,7 @@ function TeamSlot({ match, slot, source }) {
   );
 }
 
-function MatchCard({ match, matches, currentId, now, groupNames }) {
+function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers }) {
   const current = String(match.id) === String(currentId || "");
   const completed = isCompleteMatch(match);
   const sourceA = sourceForSlot(match, "a", matches);
@@ -217,7 +220,7 @@ function MatchCard({ match, matches, currentId, now, groupNames }) {
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white">Match {match.match_number || "-"}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white">Match {displayNumbers.get(String(match.id)) || match.match_number || "-"}</p>
             {current && <span className="rounded bg-green/15 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">You are here</span>}
           </div>
           {timer && (
@@ -238,21 +241,21 @@ function MatchCard({ match, matches, currentId, now, groupNames }) {
       </div>
 
       <div className="space-y-2">
-        <TeamSlot match={match} slot="a" source={sourceA} />
-        <TeamSlot match={match} slot="b" source={sourceB} />
+        <TeamSlot match={match} slot="a" source={sourceA} displayNumbers={displayNumbers} />
+        <TeamSlot match={match} slot="b" source={sourceB} displayNumbers={displayNumbers} />
       </div>
 
       <div className={`mt-3 flex items-center justify-between gap-3 rounded-lg border px-2.5 py-2 text-[9px] font-black uppercase tracking-wide ${
         target ? "border-cyan/10 bg-cyan/[0.035] text-cyan" : "border-yellow-400/10 bg-yellow-400/[0.04] text-yellow-300"
       }`}>
         <span className="min-w-0 truncate">
-          {target ? `Winner → ${targetStage || "Next round"} · M${target.match_number}` : "Winner → Tournament champion"}
+          {target ? `Winner → ${targetStage || "Next round"} · M${displayNumbers.get(String(target.id)) || target.match_number}` : "Winner → Tournament champion"}
         </span>
         {target ? <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" /> : <Crown className="h-3.5 w-3.5 shrink-0" />}
       </div>
       {loserTarget && (
         <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-orange/15 bg-orange/[0.045] px-2.5 py-2 text-[9px] font-black uppercase tracking-wide text-orange">
-          <span className="min-w-0 truncate">Loser → {compactStageName(loserTarget)} · M{loserTarget.match_number}</span>
+          <span className="min-w-0 truncate">Loser → {compactStageName(loserTarget)} · M{displayNumbers.get(String(loserTarget.id)) || loserTarget.match_number}</span>
           <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" />
         </div>
       )}
@@ -285,6 +288,10 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
     || groups.some((group) => group.bracket === "loser");
   const maxWinnerRound = Math.max(1, ...groups.filter((group) => group.bracket === "winner").map((group) => group.round));
   const groupNames = Object.fromEntries(groups.map((group) => [group.key, stageName(group, maxWinnerRound, isDoubleElimination)]));
+  const displayNumbers = new Map();
+  groups.forEach((group) => {
+    group.matches.forEach((match, index) => displayNumbers.set(String(match.id), index + 1));
+  });
   const champion = tournament?.winner_name || visibleMatches.find((match) => (
     isCompleteMatch(match)
     && match.winner_name
@@ -353,7 +360,7 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
                 </div>
                 <div className="flex flex-1 flex-col justify-around gap-4" style={{ minHeight: `${Math.max(190, laneMaxMatches * 180)}px` }}>
                   {group.matches.map((match) => (
-                    <MatchCard key={match.id} match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} />
+                    <MatchCard key={match.id} match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
                   ))}
                 </div>
               </div>

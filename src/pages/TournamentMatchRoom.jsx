@@ -551,7 +551,7 @@ export default function TournamentMatchRoom() {
       if (
         activeMatch.team_a_id &&
         activeMatch.team_b_id &&
-        (!Array.isArray(activeMatch.maps) || activeMatch.maps.length < expectedMapCount || !activeMatch.team_a_seed || !activeMatch.team_b_seed || !activeMatch.first_host_team_id || !activeMatch.map_generation_key || (!(activeMatch.completed || activeMatch.status === "completed") && !activeMatch.start_deadline))
+        (!Array.isArray(activeMatch.maps) || activeMatch.maps.length < expectedMapCount || !activeMatch.team_a_seed || !activeMatch.team_b_seed || !activeMatch.first_host_team_id || !activeMatch.map_generation_key || ((activeMatch.completed || activeMatch.status === "completed") && !activeMatch.winner_id) || (!(activeMatch.completed || activeMatch.status === "completed") && !activeMatch.start_deadline))
       ) {
         const setup = await base44.functions.invoke("ensureTournamentMatchSetup", {
           tournament_match_id: activeMatch.id,
