@@ -6017,14 +6017,11 @@ async function generateTournamentBracket(req) {
     updateEntity("TournamentParticipant", participant.id, { seed: index + 1 })
   )));
   const bracketSize = nextPowerOfTwo(participantsWithRandomSeeds.length);
-  // Keep every registered team in the opening round. For a non-power-of-two
-  // field (for example 10 teams), this creates five real Round 1 matches and
-  // leaves only trailing internal routing nodes empty. Any unavoidable odd bye
-  // happens after those opening matches instead of skipping teams past Round 1.
-  const seededParticipants = [
-    ...participantsWithRandomSeeds,
-    ...Array(Math.max(0, bracketSize - participantsWithRandomSeeds.length)).fill(null),
-  ];
+  // Place seeds in a balanced bracket (1 v last, 8 v 9, etc.). For a field that
+  // is not a power of two this distributes byes across the bracket instead of
+  // creating real matches on the left and dead routing branches on the right.
+  const seededParticipants = seedPositions(bracketSize)
+    .map((seed) => participantsWithRandomSeeds[seed - 1] || null);
   const totalRounds = Math.log2(bracketSize);
   const doubleElimination = (tournament.bracket_type || tournament.format) === "double_elimination";
   const matches = [];

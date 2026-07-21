@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, Clock3, Crown, GitBranch, Trophy, Zap } from "lucide-react";
+import { ArrowRight, Clock3, Crown, GitBranch, Trophy, Zap } from "lucide-react";
 
 const bracketOrder = { winner: 1, loser: 2, grand_final: 3 };
 const normalizedBracket = (match) => match?.bracket || "winner";
@@ -41,9 +41,9 @@ function uniqueBracketMatches(matches) {
       assignedTeams === 0
       && (match?.empty_bracket_slot || ((match?.completed || match?.status === "completed") && !match?.winner_id))
     );
-    // Power-of-two routing may contain internal bye/empty nodes. They are not
-    // real matches and must not inflate a 10-team bracket to 16 visible slots.
-    if (isAutomaticBye || isEmptyRoute) return;
+    // A bye is a meaningful part of the route and remains visible. Only a fully
+    // empty legacy node is omitted.
+    if (isEmptyRoute && !isAutomaticBye) return;
     // The bracket position is the identity users see. This also protects the UI
     // from legacy duplicate rows left behind by an older reset/generation flow.
     const position = `${normalizedBracket(match)}:${Number(match?.round || 1)}:${Number(match?.match_number || 1)}`;
@@ -167,7 +167,7 @@ function TeamSlot({ match, slot, source, displayNumbers }) {
   const sourceNumber = source ? (displayNumbers.get(String(source.id)) || source.match_number) : null;
   const sourceText = source
     ? `${sourceResolved ? sourceOutcome : `${sourceOutcome} of`} ${compactStageName(source)} · M${sourceNumber}`
-    : "Open bracket slot";
+    : "Bye";
 
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${
@@ -217,6 +217,15 @@ function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers 
       to={`/tournament-match/${match.id}`}
       className={`group relative block h-full rounded-2xl border p-3 transition-[border-color,background-color,box-shadow] duration-150 hover:border-cyan/35 hover:bg-cyan/[0.055] ${statusStyle(match, current)}`}
     >
+      {target && (
+        <span aria-hidden="true" className="pointer-events-none absolute left-full top-1/2 hidden w-6 -translate-y-1/2 items-center xl:flex">
+          <span className="h-px w-full bg-cyan/35" />
+          <span className="h-2 w-2 -translate-x-1 rotate-45 border-r border-t border-cyan/50" />
+        </span>
+      )}
+      {loserTarget && normalizedBracket(match) === "winner" && (
+        <span aria-hidden="true" className="pointer-events-none absolute -bottom-4 right-6 hidden h-4 border-r border-dashed border-orange/40 xl:block" />
+      )}
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -251,12 +260,12 @@ function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers 
         <span className="min-w-0 truncate">
           {target ? `Winner → ${targetStage || "Next round"} · M${displayNumbers.get(String(target.id)) || target.match_number}` : "Winner → Tournament champion"}
         </span>
-        {target ? <ArrowDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-y-0.5" /> : <Crown className="h-3.5 w-3.5 shrink-0" />}
+        {target ? <ArrowRight className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" /> : <Crown className="h-3.5 w-3.5 shrink-0" />}
       </div>
       {loserTarget && (
         <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-orange/15 bg-orange/[0.045] px-2.5 py-2 text-[9px] font-black uppercase tracking-wide text-orange">
           <span className="min-w-0 truncate">Loser → {compactStageName(loserTarget)} · M{displayNumbers.get(String(loserTarget.id)) || loserTarget.match_number}</span>
-          <ArrowDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-y-0.5" />
+          <GitBranch className="h-3.5 w-3.5 shrink-0" />
         </div>
       )}
     </Link>
@@ -337,6 +346,7 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
       <div className="space-y-6">
         {lanes.map((lane) => {
           const laneMaxMatches = Math.max(1, ...lane.groups.map((group) => group.matches.length));
+          const laneHeight = Math.max(236, laneMaxMatches * 236);
           return (
           <section key={lane.key} className={`h-auto overflow-visible rounded-2xl border bg-card/80 p-4 shadow-[0_18px_55px_-38px_rgba(0,0,0,.9)] sm:p-5 ${lane.key === "loser" ? "border-orange/25" : lane.key === "grand_final" ? "border-green/25" : "border-cyan/25"}`}>
             {isDoubleElimination && (
@@ -355,9 +365,9 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
                   <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Round {groupIndex + 1}</p><h3 className="mt-1 text-sm font-black text-white">{groupNames[group.key]}</h3></div>
                   <p className="text-[9px] font-bold uppercase text-vapor">{completedCount}/{group.matches.length} complete</p>
                 </div>
-                <div className="grid content-start gap-4" style={{ gridTemplateRows: `repeat(${laneMaxMatches}, minmax(220px, auto))` }}>
+                <div className="flex flex-col justify-around gap-4" style={{ minHeight: `${laneHeight}px` }}>
                   {group.matches.map((match, matchIndex) => (
-                    <div key={match.id} className="min-h-[220px]" style={{ gridRow: matchIndex + 1 }}>
+                    <div key={match.id} className="min-h-[220px]">
                       <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
                     </div>
                   ))}

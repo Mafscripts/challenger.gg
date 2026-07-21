@@ -19,6 +19,12 @@ const nextPowerOfTwo = (value) => {
   return size;
 };
 
+const seedPositions = (size) => {
+  if (size <= 2) return [1, 2];
+  const previous = seedPositions(size / 2);
+  return previous.flatMap((seed) => [seed, size + 1 - seed]);
+};
+
 const teamPayload = (participant, slot) => ({
   [`team_${slot}_id`]: participant?.team_id || '',
   [`team_${slot}_name`]: participant?.team_name || '',
@@ -152,7 +158,7 @@ async function autoAdvanceBye(base44, match, participant) {
 
 async function generateSingleElimination(base44, tournament, participants, size) {
   const rounds = Math.max(1, Math.log2(size));
-  const slots = [...participants, ...Array(size - participants.length).fill(null)];
+  const slots = seedPositions(size).map((seed) => participants[seed - 1] || null);
   const createdByRound = [];
 
   for (let round = 1; round <= rounds; round += 1) {
