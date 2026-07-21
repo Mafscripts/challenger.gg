@@ -4,7 +4,7 @@ import { ArrowRight, Clock3, Crown, GitBranch, Trophy, Zap } from "lucide-react"
 
 const bracketOrder = { winner: 1, loser: 2, grand_final: 3 };
 const normalizedBracket = (match) => match?.bracket || "winner";
-const isCompleteMatch = (match) => Boolean(match?.completed || match?.status === "completed");
+const isCompleteMatch = (match) => Boolean(match?.winner_id && (match?.completed || match?.status === "completed"));
 const cleanStatus = (value) => String(value || "pending").replace(/_/g, " ");
 
 function statusStyle(match, isCurrent) {
@@ -240,13 +240,20 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
     || groups.some((group) => group.bracket === "loser");
   const maxWinnerRound = Math.max(1, ...groups.filter((group) => group.bracket === "winner").map((group) => group.round));
   const groupNames = Object.fromEntries(groups.map((group) => [group.key, stageName(group, maxWinnerRound, isDoubleElimination)]));
-  const maxMatches = Math.max(1, ...groups.map((group) => group.matches.length));
   const champion = tournament?.winner_name || matches.find((match) => (
     isCompleteMatch(match)
     && match.winner_name
     && !match.next_match_id
     && !match.next_match_round
   ))?.winner_name;
+
+  const lanes = isDoubleElimination
+    ? [
+        { key: "winner", label: "Winners Bracket", accent: "text-cyan", groups: groups.filter((group) => group.bracket === "winner") },
+        { key: "loser", label: "Lower Bracket", accent: "text-orange", groups: groups.filter((group) => group.bracket === "loser") },
+        { key: "grand_final", label: "Championship", accent: "text-green", groups: groups.filter((group) => group.bracket === "grand_final") },
+      ].filter((lane) => lane.groups.length > 0)
+    : [{ key: "winner", label: "Bracket", accent: "text-cyan", groups }];
 
   return (
     <section className={showHeader ? "rounded-2xl border border-white/[0.07] bg-card/80 p-4 sm:p-5" : ""}>
@@ -275,20 +282,31 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
         </div>
       )}
 
-      <div className="overflow-x-auto pb-3 [scrollbar-color:rgba(20,216,255,.25)_transparent]">
-        <div className="grid min-w-max gap-8 pr-3" style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(292px, 318px))` }}>
-          {groups.map((group, groupIndex) => {
+      <div className="space-y-7">
+        {lanes.map((lane) => {
+          const laneMaxMatches = Math.max(1, ...lane.groups.map((group) => group.matches.length));
+          return (
+          <section key={lane.key} className={`rounded-2xl border p-4 ${lane.key === "loser" ? "border-orange/15 bg-orange/[0.025]" : lane.key === "grand_final" ? "border-green/15 bg-green/[0.025]" : "border-cyan/15 bg-cyan/[0.02]"}`}>
+            {isDoubleElimination && (
+              <div className="mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-3">
+                <GitBranch className={`h-4 w-4 ${lane.accent}`} />
+                <h3 className={`text-xs font-black uppercase tracking-[0.18em] ${lane.accent}`}>{lane.label}</h3>
+              </div>
+            )}
+            <div className="overflow-x-auto pb-3 [scrollbar-color:rgba(20,216,255,.25)_transparent]">
+              <div className="grid min-w-max gap-8 pr-3" style={{ gridTemplateColumns: `repeat(${lane.groups.length}, minmax(292px, 318px))` }}>
+          {lane.groups.map((group, groupIndex) => {
             const completedCount = group.matches.filter(isCompleteMatch).length;
             return (
               <div key={group.key} className="relative flex min-w-0 flex-col">
-                {groupIndex < groups.length - 1 && (
+                {groupIndex < lane.groups.length - 1 && (
                   <span className="pointer-events-none absolute -right-6 top-5 hidden h-8 w-4 items-center justify-center rounded-full border border-cyan/15 bg-card text-cyan xl:flex"><ArrowRight className="h-3 w-3" /></span>
                 )}
                 <div className="mb-3 flex items-end justify-between gap-3 border-b border-white/[0.06] px-1 pb-3">
-                  <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Stage {groupIndex + 1}</p><h3 className="mt-1 text-sm font-black text-white">{groupNames[group.key]}</h3></div>
+                  <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Round {groupIndex + 1}</p><h3 className="mt-1 text-sm font-black text-white">{groupNames[group.key]}</h3></div>
                   <p className="text-[9px] font-bold uppercase text-vapor">{completedCount}/{group.matches.length} complete</p>
                 </div>
-                <div className="flex flex-1 flex-col justify-around gap-4" style={{ minHeight: `${Math.max(190, maxMatches * 180)}px` }}>
+                <div className="flex flex-1 flex-col justify-around gap-4" style={{ minHeight: `${Math.max(190, laneMaxMatches * 180)}px` }}>
                   {group.matches.map((match) => (
                     <MatchCard key={match.id} match={match} matches={matches} currentId={currentId} now={now} groupNames={groupNames} />
                   ))}
@@ -296,8 +314,12 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
               </div>
             );
           })}
+              </div>
+            </div>
+          </section>
+          );
+        })}
         </div>
-      </div>
     </section>
   );
 }

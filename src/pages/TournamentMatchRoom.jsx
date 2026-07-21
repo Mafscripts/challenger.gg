@@ -479,7 +479,10 @@ export default function TournamentMatchRoom() {
     loadRoom();
   }, [id]);
 
-  const isComplete = match?.completed || match?.status === "completed";
+  // A completed flag without a winner is a stale/reset record, not a result.
+  // Treating that state as complete produced the misleading "Winner:" / 0-0
+  // banner and also hid all score controls after an admin reset.
+  const isComplete = Boolean(match?.winner_id && (match?.completed || match?.status === "completed"));
   const isStaff = staffRoles.has(user?.role);
   const isMatchParticipant = useMemo(() => {
     if (!user?.id) return false;

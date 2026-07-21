@@ -4839,9 +4839,17 @@ async function adminCorrectTournamentMatch(req) {
     const rewardUndo = await undoTournamentMatchRewards(match);
     const eliminationCleanup = await removeTournamentEliminationRewards(match.tournament_id, rewardUndo.previous_loser_id || tournamentMatchLoserId(match));
     await clearParticipantEliminationFromMatch(match.tournament_id, match.id);
+    const [resetParticipants, resetTournament] = await Promise.all([
+      tournamentParticipants(match.tournament_id),
+      getEntity("Tournament", match.tournament_id).catch(() => null),
+    ]);
+    const resetSetup = isStreamerTournament(resetTournament)
+      ? streamerMatchSetupPatch(match, resetTournament, resetParticipants)
+      : tournamentMatchSetupPatch(match, resetParticipants, resetTournament);
     const updated = await updateEntity("TournamentMatch", match.id, {
       ...tournamentScoreResetPatch(),
       ...tournamentRewardResetPatch(),
+      ...resetSetup,
       status: "ready",
       admin_corrected_by: req.user.id,
       admin_corrected_by_name: nameFor(req.user),
