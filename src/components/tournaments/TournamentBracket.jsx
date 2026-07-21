@@ -215,7 +215,7 @@ function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers 
   return (
     <Link
       to={`/tournament-match/${match.id}`}
-      className={`group relative block rounded-2xl border p-3 transition-[border-color,background-color,box-shadow] duration-150 hover:border-cyan/35 hover:bg-cyan/[0.055] ${statusStyle(match, current)}`}
+      className={`group relative block h-full rounded-2xl border p-3 transition-[border-color,background-color,box-shadow] duration-150 hover:border-cyan/35 hover:bg-cyan/[0.055] ${statusStyle(match, current)}`}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
@@ -338,14 +338,14 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
         {lanes.map((lane) => {
           const laneMaxMatches = Math.max(1, ...lane.groups.map((group) => group.matches.length));
           return (
-          <section key={lane.key} className={`rounded-2xl border bg-card/80 p-4 shadow-[0_18px_55px_-38px_rgba(0,0,0,.9)] sm:p-5 ${lane.key === "loser" ? "border-orange/25" : lane.key === "grand_final" ? "border-green/25" : "border-cyan/25"}`}>
+          <section key={lane.key} className={`h-auto overflow-visible rounded-2xl border bg-card/80 p-4 shadow-[0_18px_55px_-38px_rgba(0,0,0,.9)] sm:p-5 ${lane.key === "loser" ? "border-orange/25" : lane.key === "grand_final" ? "border-green/25" : "border-cyan/25"}`}>
             {isDoubleElimination && (
               <div className="mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-3">
                 <GitBranch className={`h-4 w-4 ${lane.accent}`} />
                 <h3 className={`text-xs font-black uppercase tracking-[0.18em] ${lane.accent}`}>{lane.label}</h3>
               </div>
             )}
-            <div className="overflow-x-auto pb-3 [scrollbar-color:rgba(20,216,255,.25)_transparent]">
+            <div className="h-auto overflow-x-auto pb-3 [scrollbar-color:rgba(20,216,255,.25)_transparent]">
               <div className="grid min-w-max gap-8 pr-3" style={{ gridTemplateColumns: `repeat(${lane.groups.length}, minmax(292px, 318px))` }}>
           {lane.groups.map((group, groupIndex) => {
             const completedCount = group.matches.filter(isCompleteMatch).length;
@@ -358,9 +358,14 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
                   <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Round {groupIndex + 1}</p><h3 className="mt-1 text-sm font-black text-white">{groupNames[group.key]}</h3></div>
                   <p className="text-[9px] font-bold uppercase text-vapor">{completedCount}/{group.matches.length} complete</p>
                 </div>
-                <div className="flex flex-1 flex-col justify-around gap-4" style={{ minHeight: `${Math.max(190, laneMaxMatches * 180)}px` }}>
-                  {group.matches.map((match) => (
-                    <MatchCard key={match.id} match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
+                <div
+                  className="grid flex-1 content-start gap-4"
+                  style={{ gridTemplateRows: `repeat(${laneMaxMatches}, minmax(220px, auto))` }}
+                >
+                  {group.matches.map((match, matchIndex) => (
+                    <div key={match.id} style={{ gridRow: matchIndex + 1 }}>
+                      <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
+                    </div>
                   ))}
                 </div>
               </div>
