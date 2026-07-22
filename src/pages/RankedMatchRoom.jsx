@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
   AlertCircle,
   Check,
@@ -108,62 +108,59 @@ function PlayerPanel({ label, color, players = [], slots = 1 }) {
 
 function RankedResultOverlay({ match, result, onContinue }) {
   const reduceMotion = useReducedMotion();
-  const [displayedElo, setDisplayedElo] = useState(Number(result.previous_elo || 0));
   const [showContinue, setShowContinue] = useState(Boolean(reduceMotion));
   const previousElo = Number(result.previous_elo || 0);
   const newElo = Number(result.new_elo || 0);
   const delta = Number(result.delta || 0);
+  const animatedElo = useMotionValue(previousElo);
+  const animatedDelta = useTransform(animatedElo, (value) => {
+    const currentDelta = Math.round(value) - previousElo;
+    return `${currentDelta > 0 ? "+" : ""}${currentDelta} ELO`;
+  });
+  const progressScale = useTransform(animatedElo, (value) => (
+    Math.max(0, Math.min(1, Math.abs(value - previousElo) / Math.max(Math.abs(delta), 1)))
+  ));
 
   useEffect(() => {
+    animatedElo.set(previousElo);
     if (reduceMotion) {
-      setDisplayedElo(newElo);
+      animatedElo.set(newElo);
       setShowContinue(true);
       return undefined;
     }
-
-    let frameId;
-    let startTime;
-    const startTimer = window.setTimeout(() => {
-      const tick = (time) => {
-        startTime ??= time;
-        const progress = Math.min(1, (time - startTime) / 1350);
-        const eased = 1 - ((1 - progress) ** 3);
-        setDisplayedElo(Math.round(previousElo + ((newElo - previousElo) * eased)));
-        if (progress < 1) frameId = window.requestAnimationFrame(tick);
-      };
-      frameId = window.requestAnimationFrame(tick);
-    }, 900);
-    const continueTimer = window.setTimeout(() => setShowContinue(true), 2200);
+    setShowContinue(false);
+    const controls = animate(animatedElo, newElo, {
+      delay: 0.72,
+      duration: 1.05,
+      ease: [0.22, 1, 0.36, 1],
+      onComplete: () => setShowContinue(true),
+    });
     return () => {
-      window.clearTimeout(startTimer);
-      window.clearTimeout(continueTimer);
-      if (frameId) window.cancelAnimationFrame(frameId);
+      controls.stop();
     };
-  }, [newElo, previousElo, reduceMotion]);
+  }, [animatedElo, newElo, previousElo, reduceMotion]);
 
   const accent = result.won ? "text-green" : "text-red-400";
-  const displayedDelta = displayedElo - previousElo;
-  const progressWidth = Math.max(0, Math.min(100, Math.abs(displayedDelta) / Math.max(Math.abs(delta), 1) * 100));
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
       <motion.div
         initial={{ opacity: 0, y: 34, scale: 0.94 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", stiffness: 210, damping: 20 }}
-        className={`relative w-full max-w-md overflow-hidden rounded-3xl border bg-card p-7 text-center shadow-2xl ${result.won ? "border-green/30" : "border-red-500/30"}`}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+        className={`relative w-full max-w-md overflow-hidden rounded-3xl border bg-card p-7 text-center shadow-xl will-change-transform ${result.won ? "border-green/30" : "border-red-500/30"}`}
       >
         <motion.div className={`absolute inset-x-0 top-0 h-1 ${result.won ? "bg-green" : "bg-red-500"}`} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.75, delay: 0.15 }} />
-        <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", delay: 0.2 }} className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${result.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
+        <motion.div initial={{ scale: 0.75, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.28, delay: 0.12, ease: "easeOut" }} className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl will-change-transform ${result.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
           <Trophy className="h-8 w-8" />
         </motion.div>
-        <motion.p initial={{ opacity: 0, letterSpacing: "0.45em" }} animate={{ opacity: 1, letterSpacing: "0.22em" }} transition={{ delay: 0.4, duration: 0.55 }} className={`mt-5 text-xs font-black uppercase ${accent}`}>{result.won ? "Victory" : "Defeat"}</motion.p>
+        <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, duration: 0.25 }} className={`mt-5 text-xs font-black uppercase tracking-[0.22em] ${accent}`}>{result.won ? "Victory" : "Defeat"}</motion.p>
         <motion.h2 initial={{ opacity: 0, scale: 1.35 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6, duration: 0.35 }} className="mt-2 text-3xl font-black">{match.confirmed_score_alpha ?? match.winner_score} - {match.confirmed_score_bravo ?? match.loser_score}</motion.h2>
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
           <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your ELO change</p>
-          <p className={`mt-2 font-mono text-4xl font-black tabular-nums ${accent}`}>{displayedDelta > 0 ? "+" : ""}{displayedDelta} ELO</p>
+          <motion.p className={`mt-2 font-mono text-4xl font-black tabular-nums ${accent}`}>{animatedDelta}</motion.p>
           <p className={`mt-1 text-[10px] font-black uppercase tracking-[0.18em] ${accent}`}>{delta >= 0 ? "ELO gained" : "ELO lost"}</p>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5"><motion.div className={`h-full rounded-full ${result.won ? "bg-green" : "bg-red-500"}`} animate={{ width: `${progressWidth}%` }} transition={{ duration: 0.16 }} /></div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5"><motion.div className={`h-full origin-left rounded-full will-change-transform ${result.won ? "bg-green" : "bg-red-500"}`} style={{ scaleX: progressScale }} /></div>
           <div className="mt-3 flex items-center justify-center gap-2 text-xs text-vapor"><span>{previousElo.toLocaleString()} ELO</span><span>→</span><span className="font-bold text-white">{newElo.toLocaleString()} ELO total</span></div>
         </motion.div>
         <AnimatePresence>
