@@ -272,7 +272,7 @@ export default function Wagers() {
               <span className="rounded-full bg-cyan/10 px-3 py-1.5 font-mono text-xs font-black text-cyan">{filteredWagers.length} OPEN</span>
             </div>
             <div className="hidden grid-cols-[1.1fr_1.6fr_.7fr_.7fr_1.5fr] gap-5 border-b border-white/5 bg-white/[0.015] px-6 py-3.5 text-xs font-black uppercase tracking-[0.12em] text-vapor md:grid">
-              <span>Player</span><span>Challenge</span><span>Stake</span><span>Series</span><span className="text-right">Action</span>
+              <span>Posted by</span><span>Challenge</span><span>Stake</span><span>Series</span><span className="text-right">Action</span>
             </div>
             <div className="divide-y divide-white/5">
               {loading ? (
@@ -286,7 +286,10 @@ export default function Wagers() {
                     whileHover={{ backgroundColor: "rgba(255,255,255,0.02)", transition: { duration: 0.1, ease: "easeOut" } }}
                     className="grid gap-4 px-6 py-6 md:min-h-24 md:grid-cols-[1.1fr_1.6fr_.7fr_.7fr_1.5fr] md:items-center md:gap-5"
                   >
-                    <div><Link to={`/profile/${w.host_name || w.host_id || ""}`} className="text-base font-black hover:text-cyan">{w.host_name || "Host unavailable"}</Link>{w.host_id === user?.id && <span className="ml-2 rounded bg-cyan/10 px-2 py-1 text-[10px] font-black uppercase text-cyan">You</span>}</div>
+                    <div>
+                      <p className="text-base font-black">{w.host_id === user?.id ? "Your wager" : "Anonymous player"}</p>
+                      <p className="mt-1 text-xs text-vapor">Identity revealed after acceptance</p>
+                    </div>
                     <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · {w.final_map_name || "Map decided by veto"}</p></div>
                     <div><p className="font-mono text-xl font-black text-green">${w.entry_fee ?? w.amount ?? 0}</p><p className="text-[11px] uppercase text-vapor">per player</p></div>
                     <span className="w-fit rounded-md border border-cyan/15 bg-cyan/5 px-3 py-1.5 font-mono text-xs font-black text-cyan">BO{w.best_of || 1}</span>
