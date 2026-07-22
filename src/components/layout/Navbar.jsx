@@ -30,8 +30,8 @@ const navGroups = [
     eyebrow: "Competitive Rankings",
     tone: "gold",
     items: [
-      { label: "Leaderboard", path: "/leaderboards", icon: Trophy, tone: "gold" },
-      { label: "XP Ladder", path: "/xp", icon: Zap, tone: "purple" },
+      { label: "Leaderboard", description: "Explore all competitive rankings", path: "/leaderboards", icon: Trophy, tone: "gold" },
+      { label: "XP Ladder", description: "Compare account levels and XP", path: "/xp", icon: Zap, tone: "purple" },
     ],
   },
   {
