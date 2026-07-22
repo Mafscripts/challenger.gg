@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
   AlertTriangle, Clock, Check,
   AlertCircle, Award, Crown, DollarSign, Flag, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy
@@ -171,6 +172,55 @@ function ActivityTimeline({ match }) {
   );
 }
 
+function WagerMoneyResultOverlay({ wager, result, onContinue }) {
+  const reduceMotion = useReducedMotion();
+  const balance = useMotionValue(Number(result.previous_balance || 0));
+  const displayedBalance = useTransform(balance, (value) => formatMoney(value));
+  const [showContinue, setShowContinue] = useState(Boolean(reduceMotion));
+  const won = Boolean(result.won);
+  const delta = Number(result.match_delta || 0);
+  const alphaScore = wager.confirmed_score_alpha ?? (wager.winner_id === wager.host_id ? wager.winner_score : wager.loser_score);
+  const bravoScore = wager.confirmed_score_bravo ?? (wager.winner_id === wager.challenger_id ? wager.winner_score : wager.loser_score);
+
+  useEffect(() => {
+    balance.set(Number(result.previous_balance || 0));
+    if (reduceMotion) {
+      balance.set(Number(result.new_balance || 0));
+      setShowContinue(true);
+      return undefined;
+    }
+    setShowContinue(false);
+    const controls = animate(balance, Number(result.new_balance || 0), {
+      delay: 0.72,
+      duration: 1.55,
+      ease: [0.22, 1, 0.36, 1],
+      onComplete: () => setShowContinue(true),
+    });
+    return () => controls.stop();
+  }, [balance, reduceMotion, result.new_balance, result.previous_balance]);
+
+  return (
+    <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <motion.div initial={{ opacity: 0, y: 32, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className={`relative w-full max-w-md overflow-hidden rounded-3xl border bg-card p-7 text-center shadow-2xl ${won ? "border-green/35" : "border-red-500/35"}`}>
+        <motion.div className={`absolute inset-x-0 top-0 h-1 origin-left ${won ? "bg-green" : "bg-red-500"}`} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.15, duration: 0.7 }} />
+        <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}><DollarSign className="h-8 w-8" /></div>
+        <p className={`mt-5 text-xs font-black uppercase tracking-[0.24em] ${won ? "text-green" : "text-red-400"}`}>{won ? "Wager won" : "Wager lost"}</p>
+        <h2 className="mt-2 text-4xl font-black">{alphaScore ?? 0} - {bravoScore ?? 0}</h2>
+
+        <div className="mt-6 rounded-2xl border border-white/5 bg-background/45 p-5">
+          <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Wallet balance</p>
+          <motion.p className={`mt-2 font-mono text-4xl font-black tabular-nums ${won ? "text-green" : "text-red-400"}`}>{displayedBalance}</motion.p>
+          <p className={`mt-2 font-mono text-lg font-black ${delta > 0 ? "text-green" : delta < 0 ? "text-red-400" : "text-vapor"}`}>{delta > 0 ? `+${formatMoney(delta)}` : delta < 0 ? `-${formatMoney(Math.abs(delta))}` : formatMoney(0)}</p>
+          <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-vapor">{delta > 0 ? "Net profit" : delta < 0 ? "Entry lost" : "No personal balance change"}</p>
+          <div className="mt-4 flex justify-between text-xs text-vapor"><span>{formatMoney(result.previous_balance)}</span><span>→</span><span className="font-bold text-white">{formatMoney(result.new_balance)}</span></div>
+        </div>
+
+        <AnimatePresence>{showContinue && <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} onClick={onContinue} className="mt-6 w-full rounded-xl bg-green px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to wagers</motion.button>}</AnimatePresence>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function WagersMatchRoom() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -187,11 +237,42 @@ export default function WagersMatchRoom() {
   const [payingEntry, setPayingEntry] = useState(false);
   const [resolvingAdmin, setResolvingAdmin] = useState(false);
   const joinedAdminRooms = useRef(new Set());
+  const rosterSignatureRef = useRef("");
+  const [resultDismissed, setResultDismissed] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     loadUser();
     loadWager();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return undefined;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const [latest, participantRows] = await Promise.all([
+          base44.entities.Wager.getFresh(id),
+          base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 20).catch(() => []),
+        ]);
+        if (!active || !latest) return;
+        setWager(latest);
+        const signature = (participantRows || []).map((participant) => `${participant.user_id}:${participant.team}:${participant.payment_status}`).sort().join("|");
+        if (signature === rosterSignatureRef.current) return;
+        const participants = await loadWagerParticipants(base44, latest, { participantRows, fresh: true });
+        if (!active) return;
+        rosterSignatureRef.current = signature;
+        setTeamAPlayers(participants.teamAPlayers);
+        setTeamBPlayers(participants.teamBPlayers);
+      } catch (error) {
+        console.error("Failed to refresh wager match:", error);
+      }
+    };
+    const interval = setInterval(refresh, 1000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [id]);
 
   const loadUser = async () => {
@@ -232,10 +313,14 @@ export default function WagersMatchRoom() {
 
   const loadWager = async () => {
     try {
-      const wagerData = await base44.entities.Wager.get(id);
+      const [wagerData, participantRows] = await Promise.all([
+        base44.entities.Wager.getFresh(id),
+        base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 20).catch(() => []),
+      ]);
       setWager(wagerData);
 
-      const { teamAPlayers, teamBPlayers } = await loadWagerParticipants(base44, wagerData);
+      const { teamAPlayers, teamBPlayers } = await loadWagerParticipants(base44, wagerData, { participantRows, fresh: true });
+      rosterSignatureRef.current = (participantRows || []).map((participant) => `${participant.user_id}:${participant.team}:${participant.payment_status}`).sort().join("|");
       setTeamAPlayers(teamAPlayers);
       setTeamBPlayers(teamBPlayers);
     } catch (error) {
@@ -304,7 +389,7 @@ export default function WagersMatchRoom() {
             title: "Match completed!", 
             description: `${response.data.winner_name} won ${response.data.winner_score}-${response.data.loser_score}` 
           });
-          navigate('/wagers');
+          setWager(completeResponse.data.wager || { ...wager, status: "completed", winner_id: completeResponse.data.winner_id, winner_name: completeResponse.data.winner_name, wallet_changes: completeResponse.data.wallet_changes });
         } else if (response.data.status === 'score_conflict') {
           toast({ 
             title: "Score conflict detected", 
@@ -544,10 +629,16 @@ export default function WagersMatchRoom() {
   const hostDisplayName = wager.host_team_name || wager.host_name || "Team Alpha";
   const challengerDisplayName = wager.challenger_team_name || wager.challenger_name || "Team Bravo";
   const isComplete = wager.status === "completed";
+  const personalMoneyResult = wager.wallet_changes?.[user?.id] || null;
+  const dismissResult = () => {
+    setResultDismissed(true);
+    navigate("/wagers", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-obsidian py-6 sm:py-8">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
+        {isComplete && personalMoneyResult && !resultDismissed && <WagerMoneyResultOverlay wager={wager} result={personalMoneyResult} onContinue={dismissResult} />}
         <header className="glass mb-6 rounded-xl border border-green/20 p-6 sm:p-7">
           <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
             <div>

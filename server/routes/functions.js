@@ -913,7 +913,7 @@ async function escrowWagerStake({ userId, wagerId, entryFee, team }) {
 async function releaseWagerEscrow(wager, winnerId) {
   const entryFee = money(wager.entry_fee ?? wager.amount);
   const isPaidWager = (wager.match_type || "wagers") === "wagers" && entryFee > 0;
-  if (!isPaidWager || !winnerId) return { totalPot: 0, winnerProfit: 0 };
+  if (!isPaidWager || !winnerId) return { totalPot: 0, winnerProfit: 0, walletChanges: {} };
 
   const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 10).catch(() => []);
   const paidParticipants = participants.filter((participant) => money(participant.entry_fee_paid) > 0);
@@ -942,7 +942,21 @@ async function releaseWagerEscrow(wager, winnerId) {
         lifetime_earnings: { increment: entryFee },
       },
     }).catch(() => null);
-    return { totalPot: entryFee, winnerProfit: entryFee, legacy: true };
+    return {
+      totalPot: entryFee,
+      winnerProfit: entryFee,
+      legacy: true,
+      walletChanges: {
+        [winnerId]: {
+          won: true,
+          stake: 0,
+          payout: entryFee,
+          match_delta: entryFee,
+          previous_balance: roundedMoney(money(updatedWallet.available_balance) - entryFee),
+          new_balance: roundedMoney(updatedWallet.available_balance),
+        },
+      },
+    };
   }
   const participantRows = paidParticipants.length > 0
     ? paidParticipants
@@ -951,30 +965,65 @@ async function releaseWagerEscrow(wager, winnerId) {
       { user_id: wager.challenger_id, entry_fee_paid: entryFee },
     ].filter((participant) => participant.user_id);
   const totalPot = roundedMoney(participantRows.reduce((sum, participant) => sum + money(participant.entry_fee_paid), 0));
-  const winnerStake = roundedMoney(participantRows
-    .filter((participant) => participant.user_id === winnerId)
+  const winningSide = winnerId === wager.host_id ? "host" : "challenger";
+  const winningPayers = participantRows.filter((participant) => participant.team === winningSide);
+  const winnerStake = roundedMoney(winningPayers
     .reduce((sum, participant) => sum + money(participant.entry_fee_paid), 0));
   const winnerProfit = roundedMoney(Math.max(0, totalPot - winnerStake));
+  const totalPotCents = Math.round(totalPot * 100);
+  let allocatedCents = 0;
+  const payoutByParticipant = new Map();
+  winningPayers.forEach((participant, index) => {
+    const stake = money(participant.entry_fee_paid);
+    const payoutCents = index === winningPayers.length - 1
+      ? totalPotCents - allocatedCents
+      : Math.round(totalPotCents * (stake / Math.max(winnerStake, 0.01)));
+    allocatedCents += payoutCents;
+    payoutByParticipant.set(participant.id || participant.user_id, payoutCents / 100);
+  });
+  const walletChanges = {};
 
   for (const participant of participantRows) {
     const stake = money(participant.entry_fee_paid);
     if (!participant.user_id || stake <= 0) continue;
 
     const wallet = await walletFor(participant.user_id);
-    const isWinner = participant.user_id === winnerId;
+    const won = participant.team === winningSide;
+    const payout = roundedMoney(payoutByParticipant.get(participant.id || participant.user_id) || 0);
+    const balanceBeforeEscrow = roundedMoney(money(wallet.available_balance) + stake);
     const updatedWallet = await updateEntity("Wallet", wallet.id, {
-      available_balance: roundedMoney(money(wallet.available_balance) + (isWinner ? totalPot : 0)),
-      withdrawable_balance: roundedMoney(money(wallet.withdrawable_balance) + (isWinner ? totalPot : 0)),
+      available_balance: roundedMoney(money(wallet.available_balance) + payout),
+      withdrawable_balance: roundedMoney(money(wallet.withdrawable_balance) + payout),
       pending_balance: roundedMoney(Math.max(0, money(wallet.pending_balance) - stake)),
       escrow_balance: roundedMoney(Math.max(0, money(wallet.escrow_balance) - stake)),
-      total_earnings: roundedMoney(money(wallet.total_earnings) + (isWinner ? winnerProfit : 0)),
+      total_earnings: roundedMoney(money(wallet.total_earnings) + Math.max(0, payout - stake)),
     });
     await syncUserWalletBalance(participant.user_id, updatedWallet);
 
+    const participantProfit = roundedMoney(Math.max(0, payout - stake));
+    if (participantProfit > 0) {
+      await prisma.user.update({
+        where: { id: participant.user_id },
+        data: {
+          total_wager_earnings: { increment: participantProfit },
+          lifetime_earnings: { increment: participantProfit },
+        },
+      }).catch(() => null);
+    }
+
+    walletChanges[participant.user_id] = {
+      won,
+      stake,
+      payout,
+      match_delta: roundedMoney(payout - stake),
+      previous_balance: balanceBeforeEscrow,
+      new_balance: roundedMoney(updatedWallet.available_balance),
+    };
+
     await createWalletTransaction(participant.user_id, updatedWallet, {
-      type: isWinner ? "wager_payout" : "wager_loss",
-      amount: isWinner ? totalPot : 0,
-      description: isWinner ? `Wager payout for ${wager.id}` : `Wager lost for ${wager.id}`,
+      type: payout > 0 ? "wager_payout" : "wager_loss",
+      amount: payout,
+      description: payout > 0 ? `Wager payout for ${wager.id}` : `Wager lost for ${wager.id}`,
       reference_type: "Wager",
       reference_id: wager.id,
     });
@@ -987,17 +1036,21 @@ async function releaseWagerEscrow(wager, winnerId) {
     }
   }
 
-  if (winnerProfit > 0) {
-    await prisma.user.update({
-      where: { id: winnerId },
-      data: {
-        total_wager_earnings: { increment: winnerProfit },
-        lifetime_earnings: { increment: winnerProfit },
-      },
-    }).catch(() => null);
+  const allParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
+  for (const participant of allParticipants) {
+    if (!participant.user_id || walletChanges[participant.user_id]) continue;
+    const wallet = await walletFor(participant.user_id);
+    walletChanges[participant.user_id] = {
+      won: participant.team === winningSide,
+      stake: 0,
+      payout: 0,
+      match_delta: 0,
+      previous_balance: roundedMoney(wallet.available_balance),
+      new_balance: roundedMoney(wallet.available_balance),
+    };
   }
 
-  return { totalPot, winnerProfit };
+  return { totalPot, winnerProfit, walletChanges };
 }
 
 async function refundWagerEscrow(wager, reason = "Wager refunded") {
@@ -5771,11 +5824,16 @@ async function completeWager(req) {
       });
     }
   }
-  if (isPaidWager) {
-    await releaseWagerEscrow(wager, winnerId);
-  }
+  const payoutResult = isPaidWager
+    ? await releaseWagerEscrow(wager, winnerId)
+    : { totalPot: 0, winnerProfit: 0, walletChanges: {} };
   const xpChanges = await applyMatchRewards({ winnerId, loserId, ranked: false });
-  const completedWager = await updateEntity("Wager", wager.id, { xp_changes: xpChanges });
+  const completedWager = await updateEntity("Wager", wager.id, {
+    xp_changes: xpChanges,
+    wallet_changes: payoutResult.walletChanges,
+    payout_total: payoutResult.totalPot,
+    winner_profit: payoutResult.winnerProfit,
+  });
   await notifyUsers([winnerId, loserId], {
     title: "Match completed",
     message: `${winnerName} won ${wager.game_mode_display || wager.game_mode || "the match"}.`,
@@ -5785,7 +5843,7 @@ async function completeWager(req) {
     related_entity_type: "Wager",
   });
 
-  return { success: true, winner_id: winnerId, winner_name: winnerName, xp_changes: xpChanges, wager: completedWager };
+  return { success: true, winner_id: winnerId, winner_name: winnerName, xp_changes: xpChanges, wallet_changes: payoutResult.walletChanges, wager: completedWager };
 }
 
 async function refundWager(req) {

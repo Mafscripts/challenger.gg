@@ -36,14 +36,56 @@ export default function Wagers() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const wagerList = await base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 50);
+        if (!active) return;
+        setWagers((wagerList || []).filter((wager) => (
+          (wager.match_type || ((wager.entry_fee ?? wager.amount ?? 0) > 0 ? "wagers" : "ranked")) === "wagers"
+        )));
+
+        if (user?.id) {
+          const [wallets, hosted, challenged] = await Promise.all([
+            base44.entities.Wallet.filterFresh({ user_id: user.id }, "-created_date", 1),
+            base44.entities.Wager.filterFresh({ host_id: user.id }, "-created_date", 50),
+            base44.entities.Wager.filterFresh({ challenger_id: user.id }, "-created_date", 50),
+          ]);
+          if (!active) return;
+          const wallet = (wallets || [])[0];
+          setUser((current) => current ? { ...current, wallet_balance: Number(wallet?.available_balance ?? current.wallet_balance ?? 0), wallet: wallet || current.wallet } : current);
+          setHistoryWagers([...hosted, ...challenged]
+            .filter((wager, index, list) => list.findIndex((item) => item.id === wager.id) === index)
+            .filter((wager) => ["completed", "cancelled", "disputed", "score_conflict"].includes(wager.status))
+            .sort((a, b) => new Date(b.match_completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.accepted_date || a.created_date || 0)));
+        }
+      } catch (error) {
+        console.error("Failed to refresh wagers:", error);
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const interval = setInterval(refresh, 1000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [user?.id]);
+
   const loadData = async () => {
     try {
       const [currentUser, wagerList] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.entities.Wager.filter({ status: "open" })
+        base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 50)
       ]);
       if (currentUser) {
-        const wallets = await base44.entities.Wallet.filter({ user_id: currentUser.id });
+        const wallets = await base44.entities.Wallet.filterFresh({ user_id: currentUser.id }, "-created_date", 1);
         const [hosted, challenged, memberships] = await Promise.all([
           base44.entities.Wager.filter({ host_id: currentUser.id }, "-created_date", 50),
           base44.entities.Wager.filter({ challenger_id: currentUser.id }, "-created_date", 50),
