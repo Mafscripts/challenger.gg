@@ -111,7 +111,7 @@ export default function RankedMatchRoom() {
         console.error("Failed to refresh ranked match:", error);
       }
     };
-    const interval = setInterval(refresh, 3000);
+    const interval = setInterval(refresh, 1000);
     return () => {
       active = false;
       clearInterval(interval);

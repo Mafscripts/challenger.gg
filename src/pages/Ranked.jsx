@@ -59,6 +59,34 @@ export default function Ranked() {
     loadRankedData();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const refreshOpenMatches = async () => {
+      try {
+        const matches = await base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20);
+        if (active) setRankedMatches(matches || []);
+      } catch (error) {
+        console.error("Failed to refresh ranked matches:", error);
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") refreshOpenMatches();
+    };
+
+    const interval = setInterval(refreshOpenMatches, 1000);
+    window.addEventListener("focus", refreshOpenMatches);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", refreshOpenMatches);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+
   const loadRankedData = async () => {
     try {
       setLoadingMatches(true);
@@ -66,8 +94,8 @@ export default function Ranked() {
       setUser(currentUser);
 
       const [matches, statsRows] = await Promise.all([
-        base44.entities.RankedMatch.filter({ status: "open" }, "-created_date", 20),
-        base44.entities.RankedStats.filter({}, "-elo", 100),
+        base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
+        base44.entities.RankedStats.filterFresh({}, "-elo", 100),
       ]);
 
       setRankedMatches(matches || []);
