@@ -461,7 +461,7 @@ export default function Profile() {
                 <div className="min-w-0 flex-1 text-center lg:text-left">
                   <p className="mb-3 text-[10px] font-black uppercase tracking-[0.24em] text-cyan/80">TopFragg competitor profile</p>
                   <div className="mb-3 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
-                    <h1 className="truncate text-4xl font-black leading-none tracking-[-0.04em] text-[#eef1f7] sm:text-5xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
+                    <h1 className="max-w-full break-words pb-1 text-4xl font-black leading-[1.08] tracking-[-0.04em] text-[#eef1f7] sm:text-5xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
                       {name}
                     </h1>
                     <RoleBadge role={user.role || "user"} />
