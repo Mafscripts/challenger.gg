@@ -88,18 +88,31 @@ export default function Ranked() {
 
   useEffect(() => {
     let active = true;
+    let leaderboardRefreshTick = 0;
 
     if (!user?.id) return undefined;
 
     const refreshOpenMatches = async () => {
       try {
-        const [matches, playerMatches] = await Promise.all([
+        const [matches, playerMatches, playerStats] = await Promise.all([
           base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
           base44.entities.RankedMatch.filterFresh({}, "-created_date", 100),
+          base44.entities.RankedStats.filterFresh({ user_id: user.id }, "-elo", 1),
         ]);
         if (active) {
           setRankedMatches(matches || []);
           setActiveRankedMatch(selectActiveRankedMatch(playerMatches || [], user.id));
+          setCurrentStats((playerStats || [])[0] || null);
+        }
+
+        leaderboardRefreshTick += 1;
+        if (leaderboardRefreshTick >= 5) {
+          leaderboardRefreshTick = 0;
+          const leaderboard = await base44.entities.RankedStats.filterFresh({}, "-elo", 500);
+          if (active) {
+            const position = (leaderboard || []).findIndex((stats) => stats.user_id === user.id);
+            setLeaderboardPosition(position >= 0 ? position + 1 : null);
+          }
         }
       } catch (error) {
         console.error("Failed to refresh ranked matches:", error);

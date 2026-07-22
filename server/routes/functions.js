@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, updateEntity } from "../entity.js";
+import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
 import { hasRole, rolePower } from "../roles.js";
 
@@ -6277,6 +6277,108 @@ async function adminAdjustWallet(req) {
   };
 }
 
+async function adminAdjustRankedElo(req) {
+  if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access required" };
+  const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
+  if (!target) return { success: false, error: "Player not found" };
+  const delta = Number(req.body.amount);
+  if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 5000) {
+    return { success: false, error: "ELO adjustment must be a whole number between -5000 and 5000" };
+  }
+  const reason = String(req.body.reason || "").trim();
+  if (reason.length < 3) return { success: false, error: "A clear reason is required" };
+
+  const stats = await ensureRankedStats(target.id);
+  const profile = await ensurePlayerProfile(target.id);
+  const beforeElo = Math.max(0, Number(stats?.elo || 0));
+  const afterElo = Math.max(0, beforeElo + delta);
+  const appliedDelta = afterElo - beforeElo;
+  const timestamp = nowIso();
+  const updatedStats = await updateEntity("RankedStats", stats.id, {
+    elo: afterElo,
+    peak_elo: Math.max(Number(stats.peak_elo || 0), afterElo),
+    last_admin_adjustment_date: timestamp,
+  });
+  if (profile) {
+    await updateEntity("PlayerProfile", profile.id, {
+      elo: afterElo,
+      peak_elo: Math.max(Number(profile.peak_elo || 0), afterElo),
+      last_active_date: timestamp,
+    });
+  }
+  const action = await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "ranked_elo_adjustment",
+    target_user_id: target.id,
+    target_username: nameFor(target),
+    description: `${appliedDelta >= 0 ? "Added" : "Removed"} ${Math.abs(appliedDelta)} ELO ${appliedDelta >= 0 ? "to" : "from"} ${nameFor(target)}: ${reason}`,
+    details: { before_elo: beforeElo, after_elo: afterElo, requested_delta: delta, applied_delta: appliedDelta, reason },
+    created_date: timestamp,
+  });
+  await notifyUser(target.id, {
+    title: "Ranked ELO corrected",
+    message: `Your Ranked ELO was adjusted from ${beforeElo} to ${afterElo}. Reason: ${reason}`,
+    type: "system",
+    action_url: "/ranked",
+    related_entity_id: action.id,
+    related_entity_type: "AdminAction",
+  });
+  return { success: true, ranked_stats: updatedStats, before_elo: beforeElo, after_elo: afterElo, applied_delta: appliedDelta, action };
+}
+
+async function adminResetRankedSeason(req) {
+  if (!hasRole(req.user, "super_admin")) return { success: false, error: "Super Admin or CEO access required" };
+  const reason = String(req.body.reason || "New Ranked season").trim();
+  if (reason.length < 3) return { success: false, error: "A reset reason is required" };
+  // A season reset must cover the complete ladder, not only the first entity page.
+  const statsRows = (await prisma.rankedStats.findMany()).map(serializeRow);
+  const timestamp = nowIso();
+  let bronzeResets = 0;
+  let platinumResets = 0;
+
+  await Promise.all(statsRows.map(async (stats) => {
+    const oldElo = Math.max(0, Number(stats.elo || 0));
+    const resetElo = oldElo >= 1800 ? 1800 : 0;
+    if (resetElo === 1800) platinumResets += 1;
+    else bronzeResets += 1;
+    const history = Array.isArray(stats.season_history) ? stats.season_history : [];
+    await updateEntity("RankedStats", stats.id, {
+      elo: resetElo,
+      peak_elo: resetElo,
+      wins: 0,
+      losses: 0,
+      win_streak: 0,
+      matches_played: 0,
+      season: Number(stats.season || 1) + 1,
+      season_history: [...history.slice(-4), {
+        season: Number(stats.season || 1),
+        final_elo: oldElo,
+        peak_elo: Number(stats.peak_elo || oldElo),
+        wins: Number(stats.wins || 0),
+        losses: Number(stats.losses || 0),
+        matches_played: Number(stats.matches_played || 0),
+        reset_date: timestamp,
+      }],
+      season_reset_date: timestamp,
+    });
+    const profile = await ensurePlayerProfile(stats.user_id);
+    if (profile) await updateEntity("PlayerProfile", profile.id, { elo: resetElo, peak_elo: resetElo });
+  }));
+
+  const action = await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "ranked_season_reset",
+    description: `Reset Ranked season for ${statsRows.length} players: ${reason}`,
+    details: { players_reset: statsRows.length, bronze_resets: bronzeResets, platinum_resets: platinumResets, reason, reset_date: timestamp },
+    created_date: timestamp,
+  });
+  return { success: true, players_reset: statsRows.length, bronze_resets: bronzeResets, platinum_resets: platinumResets, action };
+}
+
 async function forgeMoneyToCredits(req) {
   const amount = money(req.body.amount);
   const credits = Math.floor(amount * 100);
@@ -7570,6 +7672,8 @@ const handlers = {
   addFunds,
   depositToWallet: addFunds,
   adminAdjustWallet,
+  adminAdjustRankedElo,
+  adminResetRankedSeason,
   forgeMoneyToCredits,
   createStreamerTournament,
   saveStreamerSwitchEntries,

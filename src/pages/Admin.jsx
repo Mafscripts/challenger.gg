@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Plus,
   RefreshCw,
+  RotateCcw,
   ScrollText,
   Search,
   Send,
@@ -39,7 +40,9 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
+import RankBadge from "@/components/ui/RankBadge";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, getRoleConfig } from "@/lib/roles";
+import { getRankForElo } from "@/lib/ranks";
 
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
@@ -152,7 +155,7 @@ const tabs = [
   { id: "tickets", label: "Tickets", icon: Ticket },
   { id: "disputes", label: "Disputes", icon: Gavel },
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
-  { id: "ranked", label: "Ranked Matches", icon: Swords },
+  { id: "ranked", label: "Ranked Management", icon: Swords },
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "tournamentMatches", label: "Tournament Matches", icon: ClipboardList },
   { id: "wallets", label: "Wallets", icon: Wallet },
@@ -169,6 +172,7 @@ const initialData = {
   disputes: [],
   wagers: [],
   rankedMatches: [],
+  rankedStats: [],
   tournaments: [],
   tournamentMatches: [],
   wallets: [],
@@ -413,6 +417,8 @@ export default function Admin() {
   const [ticketResolutionDrafts, setTicketResolutionDrafts] = useState({});
   const [walletAdjustmentOpen, setWalletAdjustmentOpen] = useState(false);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
+  const [rankedPlayerSearch, setRankedPlayerSearch] = useState("");
+  const [rankedAdjustment, setRankedAdjustment] = useState({ user_id: "", amount: "", reason: "" });
   const currentRole = effectiveRoleFor(currentUser);
 
   useEffect(() => {
@@ -448,6 +454,7 @@ export default function Admin() {
         disputes,
         wagers,
         rankedMatches,
+        rankedStats,
         tournaments,
         tournamentMatches,
         wallets,
@@ -465,6 +472,7 @@ export default function Admin() {
         safeList("Dispute"),
         safeList("Wager"),
         safeList("RankedMatch"),
+        safeList("RankedStats"),
         safeList("Tournament"),
         safeList("TournamentMatch"),
         safeList("Wallet"),
@@ -484,6 +492,7 @@ export default function Admin() {
         disputes,
         wagers,
         rankedMatches,
+        rankedStats,
         tournaments,
         tournamentMatches,
         wallets,
@@ -513,6 +522,19 @@ export default function Admin() {
   const walletByUserId = useMemo(() => (
     Object.fromEntries(data.wallets.map((wallet) => [wallet.user_id, wallet]))
   ), [data.wallets]);
+
+  const rankedStatsByUserId = useMemo(() => (
+    Object.fromEntries(data.rankedStats.map((stats) => [stats.user_id, stats]))
+  ), [data.rankedStats]);
+
+  const rankedPlayerRows = useMemo(() => {
+    const query = rankedPlayerSearch.trim().toLowerCase();
+    return data.users
+      .filter((player) => !query || `${userName(player)} ${player.username || ""} ${player.email || ""} ${player.activision_id || ""}`.toLowerCase().includes(query))
+      .map((player) => ({ player, stats: rankedStatsByUserId[player.id] || null }))
+      .sort((a, b) => Number(b.stats?.elo || 0) - Number(a.stats?.elo || 0))
+      .slice(0, 25);
+  }, [data.users, rankedPlayerSearch, rankedStatsByUserId]);
 
   const ticketById = useMemo(() => (
     Object.fromEntries(data.tickets.map((ticket) => [ticket.id, ticket]))
@@ -1465,6 +1487,60 @@ export default function Admin() {
     }
   };
 
+  const handleRankedEloAdjustment = async (event) => {
+    event.preventDefault();
+    if (!canManageWallets(currentRole)) {
+      toast({ title: "Not allowed", description: "Admin or higher is required.", variant: "destructive" });
+      return;
+    }
+    const amount = Number(rankedAdjustment.amount);
+    if (!rankedAdjustment.user_id || !Number.isInteger(amount) || amount === 0) {
+      toast({ title: "Invalid correction", description: "Select a player and enter a whole positive or negative ELO amount.", variant: "destructive" });
+      return;
+    }
+    if (rankedAdjustment.reason.trim().length < 3) {
+      toast({ title: "Reason required", description: "Explain why this ELO correction is needed.", variant: "destructive" });
+      return;
+    }
+    setBusyId("ranked:adjust");
+    try {
+      const response = await base44.functions.invoke("adminAdjustRankedElo", {
+        user_id: rankedAdjustment.user_id,
+        amount,
+        reason: rankedAdjustment.reason.trim(),
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "ELO correction failed");
+      toast({ title: "ELO corrected", description: `${response.data.before_elo} → ${response.data.after_elo} ELO` });
+      setRankedAdjustment({ user_id: "", amount: "", reason: "" });
+      await loadAdminData();
+    } catch (error) {
+      toast({ title: "ELO correction failed", description: error.message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRankedSeasonReset = async () => {
+    if (!canManageRoles(currentRole)) {
+      toast({ title: "Not allowed", description: "Super Admin or CEO is required for a season reset.", variant: "destructive" });
+      return;
+    }
+    const reason = window.prompt("Reason/name for this season reset:", "Start of new Ranked season");
+    if (reason === null || reason.trim().length < 3) return;
+    if (!window.confirm("Reset the complete Ranked ladder? Players below Platinum go to 0 ELO; Platinum and above go to 1800 ELO. Season records will reset.")) return;
+    setBusyId("ranked:season-reset");
+    try {
+      const response = await base44.functions.invoke("adminResetRankedSeason", { reason: reason.trim() });
+      if (!response.data?.success) throw new Error(response.data?.error || "Season reset failed");
+      toast({ title: "Ranked season reset", description: `${response.data.players_reset} players reset (${response.data.bronze_resets} Bronze, ${response.data.platinum_resets} Platinum).` });
+      await loadAdminData();
+    } catch (error) {
+      toast({ title: "Season reset failed", description: error.message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -2148,15 +2224,147 @@ export default function Admin() {
           )}
 
           {activeTab === "ranked" && (
-            <ListSection title="Ranked Matches" rows={data.rankedMatches} empty="No ranked matches." render={(match) => (
-              <RowGrid columns={[
-                ["Match", `${match.team_size || ""} ${match.game_mode_display || match.game_mode || ""}`],
-                ["Players", `${match.host_name || "Host unavailable"} vs ${match.challenger_name || "Opponent pending"}`],
-                ["Status", <StatusPill status={match.status} />],
-                ["Winner", match.winner_name || "N/A"],
-                ["Room", <Link to={`/ranked-match/${match.id}`} className="text-cyan hover:underline">Open</Link>],
-              ]} />
-            )} />
+            <div className="space-y-6">
+              <section className="glass rounded-xl border border-white/5 overflow-hidden">
+                <div className="p-5 border-b border-white/5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Award className="w-5 h-5 text-cyan" />
+                      <h2 className="text-lg font-black">Ranked Player Management</h2>
+                    </div>
+                    <p className="text-xs text-vapor mt-1">Search a player and restore or deduct ELO. Every correction is recorded in the audit log.</p>
+                  </div>
+                  {canManageRoles(currentRole) && (
+                    <button
+                      type="button"
+                      onClick={handleRankedSeasonReset}
+                      disabled={busyId === "ranked:season-reset"}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs font-black hover:bg-red-500/20 disabled:opacity-50"
+                    >
+                      {busyId === "ranked:season-reset" ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                      Reset for New Season
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)] gap-5 p-5">
+                  <div className="space-y-3">
+                    <label className="relative block">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-vapor" />
+                      <input
+                        value={rankedPlayerSearch}
+                        onChange={(event) => setRankedPlayerSearch(event.target.value)}
+                        placeholder="Search player, username, email or Activision ID..."
+                        className="w-full pl-10 pr-4 py-3 bg-background/60 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-cyan/50"
+                      />
+                    </label>
+                    <div className="max-h-[520px] overflow-y-auto space-y-2 pr-1">
+                      {rankedPlayerRows.length === 0 && (
+                        <div className="py-12 text-center text-sm text-vapor">No players found.</div>
+                      )}
+                      {rankedPlayerRows.map(({ player, stats }) => {
+                        const elo = Number(stats?.elo || 0);
+                        const rank = getRankForElo(elo);
+                        const selected = rankedAdjustment.user_id === player.id;
+                        return (
+                          <button
+                            key={player.id}
+                            type="button"
+                            onClick={() => setRankedAdjustment((current) => ({ ...current, user_id: player.id }))}
+                            className={`w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selected ? "border-cyan/50 bg-cyan/10" : "border-white/5 bg-background/35 hover:border-white/15 hover:bg-white/[0.04]"}`}
+                          >
+                            <RankBadge elo={elo} size="sm" showLabel={false} />
+                            <span className="min-w-0">
+                              <span className="block font-black truncate">{userName(player)}</span>
+                              <span className="block text-[11px] text-vapor truncate">{player.email || player.activision_id || "No player ID"}</span>
+                              <span className="block text-[10px] text-vapor mt-1">{Number(stats?.wins || 0)}W - {Number(stats?.losses || 0)}L | Peak {Number(stats?.peak_elo || elo)} ELO</span>
+                            </span>
+                            <span className="text-right">
+                              <span className={`block text-sm font-black ${rank.color}`}>{elo} ELO</span>
+                              <span className="block text-[10px] uppercase tracking-wider text-vapor">{rank.name}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleRankedEloAdjustment} className="rounded-xl border border-white/10 bg-background/40 p-5 h-fit space-y-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-cyan font-black">ELO Correction</p>
+                      {rankedAdjustment.user_id ? (() => {
+                        const player = data.users.find((entry) => entry.id === rankedAdjustment.user_id);
+                        const stats = rankedStatsByUserId[rankedAdjustment.user_id];
+                        const elo = Number(stats?.elo || 0);
+                        return (
+                          <div className="flex items-center gap-3 mt-3 rounded-lg border border-white/5 bg-white/[0.03] p-3">
+                            <RankBadge elo={elo} size="sm" showLabel={false} />
+                            <div className="min-w-0">
+                              <p className="font-black truncate">{userName(player)}</p>
+                              <p className="text-xs text-vapor">Current balance: <span className="text-cyan font-black">{elo} ELO</span></p>
+                            </div>
+                          </div>
+                        );
+                      })() : <p className="text-sm text-vapor mt-2">Select a player from the search results.</p>}
+                    </div>
+
+                    <label className="block space-y-1.5">
+                      <span className="text-[10px] uppercase tracking-wider text-vapor font-bold">Add or deduct ELO</span>
+                      <input
+                        type="number"
+                        step="1"
+                        min="-5000"
+                        max="5000"
+                        value={rankedAdjustment.amount}
+                        onChange={(event) => setRankedAdjustment((current) => ({ ...current, amount: event.target.value }))}
+                        placeholder="Example: +25 or -25"
+                        className="w-full px-3 py-3 bg-background/70 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-cyan/50"
+                      />
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[-100, -25, 25, 100].map((amount) => (
+                        <button
+                          key={amount}
+                          type="button"
+                          onClick={() => setRankedAdjustment((current) => ({ ...current, amount: String(amount) }))}
+                          className={`py-2 rounded-lg border text-xs font-black ${amount < 0 ? "border-red-500/20 text-red-300 hover:bg-red-500/10" : "border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/10"}`}
+                        >
+                          {amount > 0 ? `+${amount}` : amount}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="block space-y-1.5">
+                      <span className="text-[10px] uppercase tracking-wider text-vapor font-bold">Required reason</span>
+                      <textarea
+                        value={rankedAdjustment.reason}
+                        onChange={(event) => setRankedAdjustment((current) => ({ ...current, reason: event.target.value }))}
+                        placeholder="Describe the bug or correction..."
+                        rows={3}
+                        className="w-full px-3 py-3 bg-background/70 border border-white/10 rounded-lg text-sm resize-none focus:outline-none focus:border-cyan/50"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={busyId === "ranked:adjust" || !rankedAdjustment.user_id}
+                      className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg bg-cyan text-background text-xs font-black hover:bg-cyan/90 disabled:opacity-40"
+                    >
+                      {busyId === "ranked:adjust" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Apply ELO Correction
+                    </button>
+                  </form>
+                </div>
+              </section>
+
+              <ListSection title="Ranked Matches" rows={data.rankedMatches} empty="No ranked matches." render={(match) => (
+                <RowGrid columns={[
+                  ["Match", `${match.team_size || ""} ${match.game_mode_display || match.game_mode || ""}`],
+                  ["Players", `${match.host_name || "Host unavailable"} vs ${match.challenger_name || "Opponent pending"}`],
+                  ["Status", <StatusPill status={match.status} />],
+                  ["Winner", match.winner_name || "N/A"],
+                  ["Room", <Link to={`/ranked-match/${match.id}`} className="text-cyan hover:underline">Open</Link>],
+                ]} />
+              )} />
+            </div>
           )}
 
           {activeTab === "tournaments" && (
