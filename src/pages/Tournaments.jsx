@@ -23,7 +23,6 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
-import TournamentBracket from "@/components/tournaments/TournamentBracket";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
 
@@ -650,7 +649,7 @@ export default function Tournaments() {
                 </Link>
               ) : (
                 <button onClick={() => handleSelectTournament(tournament.id)} className="inline-flex items-center gap-2 px-5 py-2 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-bold rounded-lg hover:bg-red-500/20 transition-all uppercase tracking-wider">
-                  View Bracket <ArrowRight className="w-3.5 h-3.5" />
+                  View Tournament <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
             </motion.div>
@@ -716,13 +715,11 @@ export default function Tournaments() {
             <div id="tournament-bracket-preview" className="scroll-mt-24 space-y-5">
               <div className="glass flex items-center justify-between gap-3 rounded-xl border border-white/5 px-5 py-4">
                 <div>
-                  <h2 className="text-lg font-bold">Live Bracket Preview</h2>
+                  <h2 className="text-lg font-bold">Tournament Access</h2>
                   <p className="text-xs text-vapor">
-                    {`${selectedParticipants.length} participant${selectedParticipants.length === 1 ? "" : "s"} registered. ${
-                      selectedTournament?.invite_only || selectedTournament?.entry_type === "invitational"
-                        ? "Invite-only registration."
-                        : "Bracket is public."
-                    }`}
+                    {selectedTournament?.invite_only || selectedTournament?.entry_type === "invitational"
+                      ? "Invite-only tournament. Registered teams remain private."
+                      : "Join with an eligible tournament team. Registered teams remain private."}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
@@ -795,36 +792,6 @@ export default function Tournaments() {
                     </div>
                   )}
                 </div>
-              </div>
-              {isStaff && selectedParticipants.length > 0 && (
-                <div className="glass rounded-xl border border-white/5 bg-secondary/20 px-5 py-3">
-                  <p className="text-[10px] text-vapor uppercase tracking-wider mb-2">Participants</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedParticipants.map((participant) => (
-                      <span key={participant.id} className="px-2 py-1 rounded bg-white/[0.03] border border-white/5 text-xs text-vapor">
-                        #{participant.seed || "-"} {participant.team_name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div>
-                {!selectedTournamentId ? (
-                  <p className="glass rounded-xl border border-white/5 px-5 py-8 text-center text-sm text-vapor">No tournament selected.</p>
-                ) : selectedMatches.length === 0 ? (
-                  <div className="glass rounded-xl border border-white/5 px-5 py-8 text-center">
-                    <Users className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
-                    <p className="text-sm text-vapor">No bracket matches generated yet.</p>
-                  </div>
-                ) : (
-                  <TournamentBracket
-                    matches={selectedMatches}
-                    currentId={selectedUserMatch?.id}
-                    tournament={selectedTournament}
-                    now={now}
-                    showHeader={false}
-                  />
-                )}
               </div>
             </div>
             <RecentChampionsPanel champions={recentChampions} />
@@ -1001,7 +968,7 @@ function FeaturedTournamentPanel({
                   onClick={() => onSelect(tournament.id)}
                   className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan/20 bg-cyan/10 px-6 py-3 text-sm font-black uppercase tracking-wider text-cyan hover:bg-cyan/20"
                 >
-                  View Bracket <ArrowRight className="h-4 w-4" />
+                  View Tournament <ArrowRight className="h-4 w-4" />
                 </button>
               )}
             </div>
