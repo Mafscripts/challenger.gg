@@ -5955,8 +5955,7 @@ async function cancelRankedMatch(req) {
   const id = req.body.ranked_match_id || req.body.id;
   const existing = await getEntity("RankedMatch", id);
   const staff = hasRole(req.user, "moderator");
-  const participatingStaff = staff && (req.user.id === existing.host_id || req.user.id === existing.challenger_id || rankedRosterIds(existing, "alpha").includes(req.user.id) || rankedRosterIds(existing, "bravo").includes(req.user.id));
-  const staffOverride = staff && !participatingStaff;
+  const staffOverride = staff;
   if (req.user.id !== existing.host_id && !staffOverride) {
     return { success: false, error: "Only the host can cancel this ranked match" };
   }

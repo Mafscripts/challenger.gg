@@ -541,7 +541,7 @@ export default function RankedMatchRoom() {
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            {isStaff && !isParticipant && !["completed", "cancelled"].includes(match.status) && (
+            {isStaff && !["completed", "cancelled"].includes(match.status) && (
               <button
                 onClick={handleCancel}
                 className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider"
@@ -549,8 +549,8 @@ export default function RankedMatchRoom() {
                 Staff Cancel
               </button>
             )}
-            {isHost && joinedOpponentCount === 0 && !["completed", "cancelled"].includes(match.status) && <button onClick={handleCancel} className="rounded-lg border border-red-500/20 bg-red-500/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20">Cancel Open Match</button>}
-            {isHost && joinedOpponentCount > 0 && !["completed", "cancelled"].includes(match.status) && (
+            {isHost && !isStaff && joinedOpponentCount === 0 && !["completed", "cancelled"].includes(match.status) && <button onClick={handleCancel} className="rounded-lg border border-red-500/20 bg-red-500/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20">Cancel Open Match</button>}
+            {isHost && !isStaff && joinedOpponentCount > 0 && !["completed", "cancelled"].includes(match.status) && (
               <button
                 onClick={() => handleCancelVote("request")}
                 disabled={cancelVoting || cancelVoteLocked || ["pending", "rejected", "approved"].includes(match.cancel_vote_status)}
