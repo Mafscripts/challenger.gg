@@ -620,10 +620,6 @@
   animation: champion-compact-pulse 1.05s ease-in-out infinite;
 }
 
-.champion-rank-group:hover .champion-rank-badge--full {
-  transform: translateY(-4px);
-}
-
 .champion-rank-group:hover .champion-rank-aura {
   opacity: .86;
 }
