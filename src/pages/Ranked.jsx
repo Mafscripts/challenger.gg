@@ -301,8 +301,8 @@ export default function Ranked() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="relative overflow-hidden rounded-xl border border-cyan/35 bg-gradient-to-br from-cyan/15 via-cyan/[0.06] to-background/50 p-5 shadow-lg shadow-cyan/5">
+          <div className="flex flex-col gap-6">
+            <div className="order-2 relative overflow-hidden rounded-xl border border-cyan/35 bg-gradient-to-br from-cyan/15 via-cyan/[0.06] to-background/50 p-5 shadow-lg shadow-cyan/5">
               <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-cyan/20 blur-3xl" />
               <div className="relative">
                 <div className="mb-3 flex items-center justify-between gap-3">
@@ -326,7 +326,7 @@ export default function Ranked() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-cyan/20 bg-card">
+            <div className="order-1 overflow-hidden rounded-xl border border-cyan/20 bg-card">
               <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Season 1 rating</p>
@@ -375,7 +375,7 @@ export default function Ranked() {
               </div>
             </div>
 
-            <div className="glass rounded-xl border border-white/5 p-5">
+            <div className="order-3 glass rounded-xl border border-white/5 p-5">
               <h3 className="font-bold text-sm mb-4">Season Stats</h3>
               <div className="space-y-3">
                 {[
