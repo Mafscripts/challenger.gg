@@ -1,5 +1,5 @@
 export const ROLES = {
-  ceo: { label: "CEO", color: "text-cyan", bg: "bg-cyan/10", border: "border-cyan/20", power: 500 },
+  ceo: { label: "CEO", color: "text-red-300", bg: "bg-red-500/20", border: "border-red-500/40", power: 500 },
   super_admin: { label: "Super Admin", color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20", power: 400 },
   admin: { label: "Admin", color: "text-pink-400", bg: "bg-pink-500/10", border: "border-pink-500/20", power: 300 },
   moderator: { label: "Moderator", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/20", power: 200 },
