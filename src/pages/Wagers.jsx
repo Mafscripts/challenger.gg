@@ -288,7 +288,6 @@ export default function Wagers() {
                   >
                     <div>
                       <p className="text-base font-black">{w.host_id === user?.id ? "Your wager" : "Anonymous player"}</p>
-                      <p className="mt-1 text-xs text-vapor">Identity revealed after acceptance</p>
                     </div>
                     <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · {w.final_map_name || "Map decided by veto"}</p></div>
                     <div><p className="font-mono text-xl font-black text-green">${w.entry_fee ?? w.amount ?? 0}</p><p className="text-[11px] uppercase text-vapor">per player</p></div>
