@@ -846,17 +846,6 @@ export default function Navbar() {
 
                 {profileOpen && (
                     <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 rounded-xl p-2.5">
-                      <div className="mb-2 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.025] p-3">
-                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 to-orange/20">
-                          <User className="h-5 w-5 text-cyan" />
-                          {profileAvatar && <img src={profileAvatar} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-black">{accountName}</p>
-                          <p className={`mt-0.5 text-[9px] font-black uppercase tracking-wider ${canSeeAdminLink ? "text-red-300" : "text-cyan"}`}>{canSeeAdminLink ? `${(user?.role || "Staff").replace("_", " ")} · Topfragg Staff` : "Topfragg Competitor"}</p>
-                          <Link to={profilePath} onClick={() => setProfileOpen(false)} className="mt-1 inline-block text-[10px] font-bold text-vapor hover:text-cyan">View public profile →</Link>
-                        </div>
-                      </div>
                       <ProfileMenuSection
                         label="Account"
                         items={[
