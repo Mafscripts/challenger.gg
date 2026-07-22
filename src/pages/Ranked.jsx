@@ -183,15 +183,27 @@ export default function Ranked() {
           title="Ranked"
           description="Open or accept a ranked lobby, complete the map flow, and report the result from a consistent competitive match room."
           action={
-            <div className="flex w-full xl:w-auto">
+            <div className="flex w-full flex-col gap-3 xl:w-[320px]">
+              <Link to="/rules" className="group rounded-xl border border-cyan/25 bg-cyan/[0.06] px-4 py-3 transition-colors hover:border-cyan/45 hover:bg-cyan/10">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/10 text-cyan"><Trophy className="h-4 w-4" /></div>
+                    <div>
+                      <div className="flex items-center gap-2"><p className="text-xs font-black uppercase tracking-wider text-cyan">CDL Rules</p><span className="rounded-full border border-cyan/20 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-cyan">Required</span></div>
+                      <p className="mt-1 text-[10px] text-vapor">Competitive Ranked ruleset</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-cyan transition-transform group-hover:translate-x-0.5" />
+                </div>
+              </Link>
               {activeRankedMatch ? (
-                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-colors hover:bg-cyan/90">
+                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-colors hover:bg-cyan/90">
                   Return to Active Match <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/25"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/25"
                 >
                   <Plus className="w-4 h-4" /> Create Ranked Match
                 </button>
@@ -302,30 +314,6 @@ export default function Ranked() {
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="order-2 relative overflow-hidden rounded-xl border border-cyan/35 bg-gradient-to-br from-cyan/15 via-cyan/[0.06] to-background/50 p-5 shadow-lg shadow-cyan/5">
-              <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-cyan/20 blur-3xl" />
-              <div className="relative">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-cyan">
-                    <Trophy className="h-4 w-4" />
-                    CDL Rules
-                  </h3>
-                  <span className="rounded-full border border-cyan/25 bg-cyan/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan">
-                    Ranked Standard
-                  </span>
-                </div>
-                <p className="text-sm font-bold leading-relaxed text-foreground">
-                  All Ranked matches are played using the competitive CDL ruleset.
-                </p>
-                <p className="mt-2 text-xs leading-relaxed text-vapor">
-                  CDL modes, maps, settings and restrictions apply. Topfragg hosting, disconnect and dispute rules also remain active.
-                </p>
-                <Link to="/rules" className="mt-4 inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-cyan transition-colors hover:text-white">
-                  View full rules <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </div>
-
             <div className="order-1 overflow-hidden rounded-xl border border-cyan/20 bg-card">
               <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
                 <div>
