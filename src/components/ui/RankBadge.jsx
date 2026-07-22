@@ -25,10 +25,16 @@ export default function RankBadge({ rank, elo, size = "md", showLabel = true }) 
     lg: "h-36 w-36",
     xl: "h-48 w-48",
   };
+  const isChampion = rankKey === "champion";
+  const isCompact = size === "sm";
 
   return (
-    <div className="flex shrink-0 flex-col items-center gap-1.5">
-      <img src={cfg.icon} alt={label} className={`${sizes[size]} object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)]`} />
+    <div className={`group/rank flex shrink-0 flex-col items-center gap-1.5 ${isChampion ? "champion-rank-group" : ""}`}>
+      <div className={`relative ${sizes[size]} ${isChampion ? `champion-rank-badge ${isCompact ? "champion-rank-badge--compact" : "champion-rank-badge--full"}` : ""}`}>
+        {isChampion && <span aria-hidden="true" className="champion-rank-aura" />}
+        <img src={cfg.icon} alt={label} className="relative z-[1] h-full w-full object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)]" />
+        {isChampion && !isCompact && <img aria-hidden="true" src={cfg.icon} alt="" className="champion-rank-shine" />}
+      </div>
       {showLabel && size !== "sm" && <span className={`text-xs font-mono font-black ${cfg.text}`}>{label}</span>}
     </div>
   );
