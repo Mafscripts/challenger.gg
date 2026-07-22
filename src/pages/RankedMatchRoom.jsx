@@ -124,6 +124,12 @@ export default function RankedMatchRoom() {
     return () => clearInterval(interval);
   }, [match?.match_start_deadline]);
 
+  useEffect(() => {
+    if (match?.status === "cancelled") {
+      navigate("/ranked", { replace: true });
+    }
+  }, [match?.status, navigate]);
+
   const isParticipant = useMemo(() => (
     user?.id && (user.id === match?.host_id || user.id === match?.challenger_id)
   ), [user?.id, match?.host_id, match?.challenger_id]);
