@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -275,20 +275,19 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        transition={{ duration: 0.14 }}
+        className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
         onClick={handleClose}
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
+          initial={{ scale: 0.98, opacity: 0, y: 10 }}
           animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="glass rounded-2xl border border-white/10 w-full max-w-2xl overflow-hidden"
+          className="glass rounded-2xl border border-white/10 w-full max-w-2xl overflow-hidden will-change-transform"
         >
           {/* Header */}
           <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
@@ -316,11 +315,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     const Icon = mode.icon;
                     const isSelected = selectedGameMode === mode.id;
                     return (
-                      <motion.button
+                      <button
                         key={mode.id}
-                        whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                         onClick={() => setSelectedGameMode(mode.id)}
-                        className={`p-4 rounded-xl border text-left transition-all ${
+                        className={`relative transform-gpu p-4 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
                           isSelected
                             ? "bg-cyan/10 border-cyan/30 ring-2 ring-cyan/20"
                             : "bg-secondary border-white/5 hover:border-white/10"
@@ -338,7 +336,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                             <Check className="w-4 h-4 text-cyan" />
                           </div>
                         )}
-                      </motion.button>
+                      </button>
                     );
                   })}
                 </div>
@@ -365,11 +363,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   {teamSizes.map((size) => {
                     const isSelected = selectedTeamSize === size.id;
                     return (
-                      <motion.button
+                      <button
                         key={size.id}
-                        whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                         onClick={() => setSelectedTeamSize(size.id)}
-                        className={`p-5 rounded-xl border text-left transition-all ${
+                        className={`relative transform-gpu p-5 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
                           isSelected
                             ? "bg-cyan/10 border-cyan/30 ring-2 ring-cyan/20"
                             : "bg-secondary border-white/5 hover:border-white/10"
@@ -391,7 +388,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                             <Check className="w-4 h-4 text-cyan" />
                           </div>
                         )}
-                      </motion.button>
+                      </button>
                     );
                   })}
                 </div>
@@ -451,11 +448,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 </h3>
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   {[1, 3, 5].map(bo => (
-                    <motion.button
+                    <button
                       key={bo}
-                      whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
                       onClick={() => setBestOf(bo)}
-                      className={`p-4 rounded-xl border text-center transition-all ${
+                      className={`relative transform-gpu p-4 rounded-xl border text-center transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
                         bestOf === bo
                           ? "bg-cyan/10 border-cyan/30 ring-2 ring-cyan/20"
                           : "bg-secondary border-white/5 hover:border-white/10"
@@ -468,7 +464,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                           <Check className="w-4 h-4 text-cyan" />
                         </div>
                       )}
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
                 <div className="flex justify-between">
@@ -596,11 +592,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   {(mapsByMode[selectedGameMode] || []).map((map) => {
                     const isSelected = hostBannedMap === map.id;
                     return (
-                      <motion.button
+                      <button
                         key={map.id}
-                        whileHover={{ y: -2, transition: { duration: 0.1, ease: "easeOut" } }}
                         onClick={() => setHostBannedMap(map.id)}
-                        className={`p-3 rounded-lg border text-left transition-all ${
+                        className={`relative transform-gpu p-3 rounded-lg border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
                           isSelected
                             ? "bg-red-500/10 border-red-500/30 ring-2 ring-red-500/20"
                             : "bg-secondary border-white/5 hover:border-white/10"
@@ -612,7 +607,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                             <X className="w-4 h-4 text-red-400" />
                           </div>
                         )}
-                      </motion.button>
+                      </button>
                     );
                   })}
                 </div>
@@ -678,6 +673,5 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
   );
 }
