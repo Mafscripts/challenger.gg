@@ -207,13 +207,13 @@ export default function Ranked() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <motion.div whileHover={{ y: -2, transition: { duration: 0.1, ease: "easeOut" } }} className="glass rounded-xl p-8 border border-cyan/10 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-60 h-60 bg-cyan/5 rounded-full blur-[80px]" />
-              <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                <RankBadge rank={rank.tier} division={rank.division} size="lg" />
+            <motion.div whileHover={{ y: -2, transition: { duration: 0.1, ease: "easeOut" } }} className="glass rounded-2xl p-8 border border-cyan/10 relative overflow-hidden">
+              <div className="absolute -top-24 right-0 h-80 w-80 rounded-full bg-cyan/10 blur-[100px]" />
+              <div className="relative flex flex-col items-center gap-7 sm:flex-row sm:items-center">
+                <RankBadge rank={rank.tier} division={rank.division} size="xl" showLabel={false} />
                 <div>
-                  <p className="text-xs text-vapor uppercase tracking-wider mb-1">Your Current Rank</p>
-                  <h2 className="text-3xl font-black">{rank.name}</h2>
+                  <p className="text-xs text-vapor uppercase tracking-[0.18em] mb-2">Your Current Rank</p>
+                  <h2 className={`text-4xl font-black ${rank.color}`}>{rank.name}</h2>
                   <div className="flex flex-wrap items-center gap-4 mt-2">
                     <span className="text-cyan font-mono font-bold text-xl">{elo.toLocaleString()} ELO</span>
                     <span className="text-xs text-vapor">
@@ -234,22 +234,24 @@ export default function Ranked() {
               </div>
             </motion.div>
 
-            <div className="glass rounded-xl border border-white/5 overflow-hidden">
+            <div className="glass rounded-2xl border border-white/5 overflow-hidden">
               <div className="px-5 py-4 border-b border-white/5">
-                <h3 className="font-bold text-sm">Rank Tiers</h3>
+                <h3 className="font-bold text-lg">Rank Tiers</h3>
+                <p className="mt-1 text-sm text-vapor">Climb through every division and earn the Champion crest.</p>
               </div>
-              <div className="divide-y divide-white/5">
+              <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
                 {groupedRanks.map((tier) => (
-                  <div key={tier.tier} className="px-5 py-4 flex items-center gap-4 hover:bg-white/[0.02] transition-colors">
-                    <RankBadge rank={tier.tier} division={tier.divisions[0]} />
-                    <div className="flex-1">
-                      <p className={`font-bold ${tier.color}`}>{tier.name}</p>
-                      <p className="text-xs text-vapor">Divisions: {tier.divisions.join(", ")}</p>
+                  <motion.div key={tier.tier} whileHover={{ y: -4 }} className="relative overflow-hidden rounded-xl border border-white/10 bg-background/40 p-5 text-center transition-colors hover:border-cyan/25">
+                    <div className="pointer-events-none absolute inset-x-8 top-3 h-24 rounded-full bg-cyan/5 blur-3xl" />
+                    <div className="relative flex justify-center"><RankBadge rank={tier.tier} division={tier.divisions[0]} size="lg" showLabel={false} /></div>
+                    <div className="relative mt-2">
+                      <p className={`text-lg font-black ${tier.color}`}>{tier.name}</p>
+                      <p className="mt-1 text-xs text-vapor">{tier.tier === "champion" ? "Top rank" : `Divisions ${tier.divisions.join(" · ")}`}</p>
+                      <span className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-xs font-bold text-vapor">
+                        {rankRangeLabel(tier)}
+                      </span>
                     </div>
-                    <span className="text-sm font-mono text-vapor">
-                      {rankRangeLabel(tier)}
-                    </span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
