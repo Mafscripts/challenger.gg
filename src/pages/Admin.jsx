@@ -426,6 +426,7 @@ export default function Admin() {
   const [currentUser, setCurrentUser] = useState(null);
   const [data, setData] = useState(initialData);
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedUserId, setExpandedUserId] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [marketplaceForm, setMarketplaceForm] = useState(defaultMarketplaceForm);
   const [editingMarketplaceId, setEditingMarketplaceId] = useState(null);
@@ -1842,7 +1843,7 @@ export default function Admin() {
                         <td className="py-3 px-4 min-w-[220px]">
                           <div className="space-y-2">
                             <UserBadges user={user} size="xs" />
-                            {canManageWallets(currentRole) && (
+                            {canManageWallets(currentRole) && expandedUserId === user.id && (
                               <div className="flex flex-col gap-1.5">
                                 <select
                                   value={userBadgePreset(user)}
@@ -1904,14 +1905,17 @@ export default function Admin() {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-sm font-mono">{formatMoney(walletByUserId[user.id]?.available_balance ?? 0)}</td>
-                        <td className="py-3 px-4 text-xs text-vapor max-w-[180px] truncate" title={ipHistoryText(user)}>
-                          {ipHistoryText(user)}
-                          {sharedIpCount(user) > 0 && <span className="ml-2 text-orange">Shared: {sharedIpCount(user)}</span>}
+                        <td className="py-3 px-4 text-xs text-vapor" title={ipHistoryText(user)}>
+                          <span>{Math.max(1, Array.isArray(user.ip_history) ? user.ip_history.length : 0)} known</span>
+                          {sharedIpCount(user) > 0 && <span className="ml-2 rounded bg-orange/10 px-1.5 py-0.5 font-bold text-orange">{sharedIpCount(user)} shared</span>}
                         </td>
-                        <td className="py-3 px-4 text-sm text-vapor">{formatDate(user.account_created_date)}</td>
+                        <td className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap justify-end gap-2">
-                            <Link to={`/profile/${user.username || user.id}`} className="text-xs text-cyan hover:underline">View</Link>
+                            <Link to={`/profile/${user.username || user.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20">Profile</Link>
+                            <button type="button" onClick={() => setExpandedUserId((current) => current === user.id ? null : user.id)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${expandedUserId === user.id ? "border-white/20 bg-white/10 text-foreground" : "border-white/10 bg-secondary text-vapor hover:text-foreground"}`}>{expandedUserId === user.id ? "Close" : "Manage"}</button>
+                            {expandedUserId === user.id && (
+                              <div className="mt-2 flex w-full flex-wrap justify-end gap-2 rounded-lg border border-white/5 bg-background/35 p-3 [&_button]:rounded-md [&_button]:border [&_button]:border-white/10 [&_button]:bg-secondary/70 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:no-underline [&_button:hover]:bg-white/10">
                             {canAdjustUserWallet(currentRole, user.role || "user") && (
                               <>
                                 <button onClick={() => openWalletAdjustment(user, "credits")} className="text-xs text-green hover:underline">Add Credits</button>
@@ -1956,6 +1960,8 @@ export default function Admin() {
                             <button onClick={() => handleModerateUser(user, "ban", "permanent")} className="text-xs text-red-400 hover:underline">Permanent Ban</button>
                             <button onClick={() => handleModerateUser(user, "email_ban")} className="text-xs text-red-400 hover:underline">Email Ban</button>
                             {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="text-xs text-green hover:underline">Unban</button>}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
