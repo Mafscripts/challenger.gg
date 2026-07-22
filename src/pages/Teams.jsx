@@ -625,7 +625,7 @@ function TeamsCommandHero({ overview, onCreate, onOpenTeam }) {
   const featured = overview.featuredSummary;
   const activeMatch = featured?.activeMatch;
   return (
-    <section className="relative mb-8 overflow-hidden rounded-3xl border border-cyan/15 bg-card shadow-[0_28px_70px_-46px_rgba(20,216,255,.48)]">
+    <section className="relative mb-8 overflow-hidden rounded-3xl border border-cyan/15 bg-card">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(20,216,255,.16),transparent_30%),radial-gradient(circle_at_88%_5%,rgba(255,130,0,.11),transparent_27%),linear-gradient(118deg,rgba(14,22,32,.99),rgba(18,28,39,.96)_50%,rgba(10,17,26,.99))]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] [background-size:38px_38px]" />
       <div className="relative grid gap-7 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-stretch">
@@ -636,7 +636,7 @@ function TeamsCommandHero({ overview, onCreate, onOpenTeam }) {
               <h1 className="text-4xl font-black tracking-[-0.04em] sm:text-5xl">Your competition squads</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-vapor">Manage every roster, follow active matches and keep your teams ready for the next tournament.</p>
             </div>
-            <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background shadow-[0_12px_30px_-16px_rgba(20,216,255,.85)] transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-cyan/90"><Plus className="h-3.5 w-3.5" /> Create Team</button>
+            <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-cyan/90"><Plus className="h-3.5 w-3.5" /> Create Team</button>
           </div>
           <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <CommandMetric label="Teams" value={overview.teamCount} detail="Active rosters" icon={Shield} tone="text-cyan" />
@@ -696,7 +696,7 @@ function TeamCard({ summary, usersById, onOpen }) {
   const { team, members, requiredPlayers, rosterPercent, rosterReady, wins, losses, winRate, activeMatch, currentTournament, userRole } = summary;
   const slots = [...members.slice(0, requiredPlayers), ...Array.from({ length: Math.max(0, requiredPlayers - members.length) }, () => null)].slice(0, 4);
   return (
-    <button type="button" onClick={onOpen} className="group relative flex h-full min-h-[590px] w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.07] bg-card text-left shadow-[0_24px_55px_-38px_rgba(0,0,0,.98)] transition-[transform,border-color,box-shadow] duration-150 hover:-translate-y-1 hover:border-cyan/25 hover:shadow-[0_30px_70px_-42px_rgba(20,216,255,.32)]">
+    <button type="button" onClick={onOpen} className="group relative flex h-full min-h-[590px] w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.07] bg-card text-left transition-[transform,border-color] duration-150 hover:-translate-y-1 hover:border-cyan/25">
       <div className="relative h-36 min-h-36 w-full shrink-0 overflow-hidden">
         <TeamBanner team={team} />
         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/25 to-black/5" />
