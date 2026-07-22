@@ -172,6 +172,7 @@ export default function EightsMatchRoom() {
   const [resettingDispute, setResettingDispute] = useState(false);
   const [resultDismissed, setResultDismissed] = useState(false);
   const rosterSignatureRef = useRef("");
+  const joinedAdminRooms = useRef(new Set());
 
   useEffect(() => {
     setLoading(true);
@@ -400,6 +401,25 @@ export default function EightsMatchRoom() {
     }
   };
 
+  useEffect(() => {
+    if (!wager?.id || !user?.id || !["ceo", "super_admin", "admin", "moderator"].includes(user.role)) return;
+    if (!wager.requested_admin || !wager.admin_request_ticket_id) return;
+    if (["admin_joined", "resolved", "closed"].includes(wager.admin_request_status)) return;
+    if (joinedAdminRooms.current.has(wager.id)) return;
+
+    joinedAdminRooms.current.add(wager.id);
+    base44.functions.invoke("joinMatchRoomAsAdmin", {
+      match_type: "8s",
+      match_id: wager.id,
+      ticket_id: wager.admin_request_ticket_id,
+    }).then((response) => {
+      if (response.data?.success && response.data?.match) setWager(response.data.match);
+    }).catch((error) => {
+      joinedAdminRooms.current.delete(wager.id);
+      console.error("Failed to join 8s room as admin:", error);
+    });
+  }, [wager?.id, wager?.requested_admin, wager?.admin_request_status, wager?.admin_request_ticket_id, user?.id, user?.role]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -526,7 +546,7 @@ export default function EightsMatchRoom() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between gap-3"><span className="text-vapor">Status</span><span className="capitalize">{statusLabel(wager.status)}</span></div>
                   <div className="flex justify-between gap-3"><span className="text-vapor">Format</span><span>BO{wager.best_of || 1}</span></div>
-                  <div className="flex justify-between gap-3"><span className="text-vapor">Requested admin</span><span>{wager.requested_admin ? "Yes" : "No"}</span></div>
+                  <div className="flex justify-between gap-3"><span className="text-vapor">Admin request</span><span>{wager.admin_request_status === "admin_joined" ? `${wager.assigned_admin_name || "Admin"} joined` : wager.requested_admin ? "Waiting for admin" : "Not requested"}</span></div>
                 </div>
               </section>
               <section className="glass rounded-xl border border-white/5 p-5">

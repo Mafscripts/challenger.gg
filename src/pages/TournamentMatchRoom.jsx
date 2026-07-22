@@ -1084,7 +1084,7 @@ export default function TournamentMatchRoom() {
             <p className="text-xs text-vapor mt-3">
               Admin request: {{
                 waiting_for_admin: "Waiting for admin",
-                admin_joined: "Admin joined",
+                admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined",
                 waiting_for_user: "Waiting for user",
                 escalated: "Escalated",
                 resolved: "Resolved",

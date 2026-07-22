@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
@@ -195,6 +195,7 @@ export default function RankedMatchRoom() {
   const [disputing, setDisputing] = useState(false);
   const [cancelVoting, setCancelVoting] = useState(false);
   const [resettingDispute, setResettingDispute] = useState(false);
+  const joinedAdminRooms = useRef(new Set());
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -269,6 +270,26 @@ export default function RankedMatchRoom() {
   const emptyLobbyCancelLocked = joinedOpponentCount === 0 && timeRemaining !== "EXPIRED";
   const cancelVoteLocked = joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
   const personalResult = match?.elo_changes?.[user?.id] || null;
+
+  useEffect(() => {
+    if (!match?.id || !user?.id || !isStaff) return;
+    if (!match.requested_admin || !match.admin_request_ticket_id) return;
+    if (["admin_joined", "resolved", "closed"].includes(match.admin_request_status)) return;
+    if (joinedAdminRooms.current.has(match.id)) return;
+
+    joinedAdminRooms.current.add(match.id);
+    base44.functions.invoke("joinMatchRoomAsAdmin", {
+      match_type: "ranked",
+      match_id: match.id,
+      ticket_id: match.admin_request_ticket_id,
+    }).then((response) => {
+      if (response.data?.success && response.data?.match) setMatch(response.data.match);
+    }).catch((error) => {
+      joinedAdminRooms.current.delete(match.id);
+      console.error("Failed to join ranked room as admin:", error);
+    });
+  }, [match?.id, match?.requested_admin, match?.admin_request_status, match?.admin_request_ticket_id, user?.id, isStaff]);
+
   const visibleRosterPlayers = (side, loadedPlayers) => {
     const names = roomRosterNames(match, side);
     return roomRosterIds(match, side).map((playerId, index) => (
@@ -767,7 +788,7 @@ export default function RankedMatchRoom() {
             <p className="text-xs text-vapor mt-3">
               Admin request: {{
                 waiting_for_admin: "Waiting for admin",
-                admin_joined: "Admin joined",
+                admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined",
                 waiting_for_user: "Waiting for user",
                 escalated: "Escalated",
                 resolved: "Resolved",

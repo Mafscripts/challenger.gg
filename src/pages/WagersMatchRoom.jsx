@@ -831,7 +831,7 @@ export default function WagersMatchRoom() {
             <p className="mt-3 text-xs text-vapor">
               Admin request: {{
                 waiting_for_admin: "Waiting for admin",
-                admin_joined: "Admin joined",
+                admin_joined: wager.assigned_admin_name ? `${wager.assigned_admin_name} joined` : "Admin joined",
                 waiting_for_user: "Waiting for user",
                 escalated: "Escalated",
                 resolved: "Resolved",

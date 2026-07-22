@@ -4659,8 +4659,8 @@ async function joinTicket(req) {
 async function joinMatchRoomAsAdmin(req) {
   assertStaff(req, "moderator");
   const matchType = normalizeMatchType(req.body.match_type);
-  if (!["wager", "tournament"].includes(matchType)) {
-    return { success: false, error: "Admin room join is only available for wager and tournament matches" };
+  if (!["wager", "tournament", "ranked"].includes(matchType)) {
+    return { success: false, error: "Admin room join is not available for this match type" };
   }
 
   const entityName = matchEntityFor(matchType);
