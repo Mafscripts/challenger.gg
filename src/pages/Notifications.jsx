@@ -79,11 +79,35 @@ export default function Notifications() {
 
   const deleteAllNotifications = async () => {
     if (notifications.length === 0 || removingAll) return;
-    if (!window.confirm(`Remove all ${notifications.length} notifications? This cannot be undone.`)) return;
+    if (!window.confirm("Remove all notifications? This cannot be undone.")) return;
 
     setRemovingAll(true);
     try {
-      await Promise.all(notifications.map(notification => base44.entities.Notification.delete(notification.id)));
+      const user = await base44.auth.me();
+      let batchesRemoved = 0;
+
+      while (batchesRemoved < 20) {
+        const rows = await base44.entities.Notification.filterFresh(
+          { user_id: user.id },
+          "-created_date",
+          500
+        );
+        if (!rows?.length) break;
+
+        for (let index = 0; index < rows.length; index += 25) {
+          const batch = rows.slice(index, index + 25);
+          await Promise.all(batch.map(notification => base44.entities.Notification.delete(notification.id)));
+        }
+        batchesRemoved += 1;
+      }
+
+      const remaining = await base44.entities.Notification.filterFresh(
+        { user_id: user.id },
+        "-created_date",
+        1
+      );
+      if (remaining?.length) throw new Error("Notification cleanup did not finish");
+
       setNotifications([]);
       setFilter("all");
       syncNotificationBell({ unreadCount: 0, clearAll: true });
