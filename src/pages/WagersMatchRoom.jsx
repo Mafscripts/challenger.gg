@@ -524,6 +524,31 @@ export default function WagersMatchRoom() {
     }
   };
 
+  const handleAdminCancel = async () => {
+    const confirmed = typeof window === "undefined"
+      ? true
+      : window.confirm("Cancel this match and refund all paid wager entries? This cannot be undone.");
+    if (!confirmed) return;
+
+    setResolvingAdmin(true);
+    try {
+      const response = await base44.functions.invoke("refundWager", {
+        wager_id: wager.id,
+        reason: `Cancelled by staff (${user?.full_name || user?.username || user?.email || "Admin"}).`,
+      });
+      if (response.data?.success) {
+        setWager(response.data.wager || { ...wager, status: "cancelled" });
+        toast({ title: "Match cancelled", description: "All paid entries were refunded." });
+      } else {
+        toast({ title: "Cancel failed", description: response.data?.error || "Could not cancel match.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Cancel failed", description: error.message || "Could not cancel match.", variant: "destructive" });
+    } finally {
+      setResolvingAdmin(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -555,6 +580,20 @@ export default function WagersMatchRoom() {
   const canAdminResolve = isStaff && wager.status !== "completed" && wager.status !== "cancelled" && Boolean(wager.challenger_id);
   const isWaitingForOpponent = !wager.challenger_id || wager.status === "open";
   const canUseMatchRoom = Boolean(wager.challenger_id) && wager.status !== "open";
+  const isHostCaptain = user?.id === wager.host_id;
+  const isChallengerCaptain = user?.id === wager.challenger_id;
+  const currentReportPrefix = isHostCaptain ? "host" : isChallengerCaptain ? "challenger" : null;
+  const currentTeamHasReported = currentReportPrefix
+    ? wager[`${currentReportPrefix}_reported_score_alpha`] !== undefined
+      && wager[`${currentReportPrefix}_reported_score_alpha`] !== null
+      && wager[`${currentReportPrefix}_reported_score_bravo`] !== undefined
+      && wager[`${currentReportPrefix}_reported_score_bravo`] !== null
+    : false;
+  const scoreReportingOpen = ["in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report"].includes(wager.status);
+  const canReportScore = canUseMatchRoom
+    && scoreReportingOpen
+    && Boolean(currentReportPrefix)
+    && !currentTeamHasReported;
 
   if (wager.status === "cancelled") {
     return (
@@ -682,8 +721,8 @@ export default function WagersMatchRoom() {
         )}
 
         <div className="mb-6 grid gap-6 lg:grid-cols-2">
-          <SimpleRoster title="Team Alpha" name={hostDisplayName} players={teamAPlayers} tone="cyan" score={scoreA} setScore={setScoreA} scoreDisabled={!canUseMatchRoom || wager.status !== "in_progress"} maxScore={winsNeeded} />
-          <SimpleRoster title="Team Bravo" name={challengerDisplayName} players={teamBPlayers} tone="orange" score={scoreB} setScore={setScoreB} scoreDisabled={!canUseMatchRoom || wager.status !== "in_progress"} maxScore={winsNeeded} />
+          <SimpleRoster title="Team Alpha" name={hostDisplayName} players={teamAPlayers} tone="cyan" score={scoreA} setScore={setScoreA} scoreDisabled={!canReportScore} maxScore={winsNeeded} />
+          <SimpleRoster title="Team Bravo" name={challengerDisplayName} players={teamBPlayers} tone="orange" score={scoreB} setScore={setScoreB} scoreDisabled={!canReportScore} maxScore={winsNeeded} />
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
@@ -692,7 +731,7 @@ export default function WagersMatchRoom() {
 
         <div className="glass rounded-xl border border-white/5 p-4">
           {canAdminResolve && (
-            <div className="mb-3 grid gap-3 border-b border-white/5 pb-3 md:grid-cols-2">
+            <div className="mb-3 grid gap-3 border-b border-white/5 pb-3 md:grid-cols-3">
               <button
                 onClick={() => handleAdminResolve("approve_team_a")}
                 disabled={resolvingAdmin}
@@ -707,15 +746,22 @@ export default function WagersMatchRoom() {
               >
                 <ShieldCheck className="h-4 w-4" /> Grant {challengerDisplayName} Win
               </button>
+              <button
+                onClick={handleAdminCancel}
+                disabled={resolvingAdmin}
+                className="flex items-center justify-center gap-2 rounded-lg border border-red-400/25 bg-red-500/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-red-300 transition-all hover:bg-red-500/20 disabled:opacity-50"
+              >
+                <AlertTriangle className="h-4 w-4" /> Staff Cancel Match
+              </button>
             </div>
           )}
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleReportScore}
-              disabled={!canUseMatchRoom || submitting || wager.status !== "in_progress"}
+              disabled={!canReportScore || submitting}
               className="flex min-w-[220px] flex-1 items-center justify-center gap-2 rounded-lg border border-green/20 bg-green/10 px-6 py-3 text-sm font-black uppercase tracking-wider text-green transition-all hover:bg-green/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Check className="h-4 w-4" /> {submitting ? "Submitting..." : "Submit Score"}
+              <Check className="h-4 w-4" /> {submitting ? "Submitting..." : currentTeamHasReported ? "Score Submitted" : "Submit Score"}
             </button>
             {needsPayment && (
               <button

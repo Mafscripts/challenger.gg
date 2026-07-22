@@ -5666,7 +5666,7 @@ async function submitScore(req) {
   }
   const isHost = req.user.id === wager.host_id;
   const isChallenger = req.user.id === wager.challenger_id;
-  if (!isHost && !isChallenger && !hasRole(req.user, "moderator")) {
+  if (!isHost && !isChallenger) {
     return { success: false, error: "Only match participants can report scores" };
   }
   const teamAlphaScore = Number(req.body.team_alpha_score);
@@ -5691,6 +5691,12 @@ async function submitScore(req) {
   }
   const reportingTeam = isHost ? "host" : "challenger";
   const otherTeam = isHost ? "challenger" : "host";
+  const ownAlpha = wager[`${reportingTeam}_reported_score_alpha`];
+  const ownBravo = wager[`${reportingTeam}_reported_score_bravo`];
+  const ownHasReport = ownAlpha !== undefined && ownAlpha !== null && ownBravo !== undefined && ownBravo !== null;
+  if (ownHasReport) {
+    return { success: false, error: "Your team has already submitted its final score" };
+  }
   const otherAlpha = wager[`${otherTeam}_reported_score_alpha`];
   const otherBravo = wager[`${otherTeam}_reported_score_bravo`];
   const otherHasReport = otherAlpha !== undefined && otherAlpha !== null && otherBravo !== undefined && otherBravo !== null;
