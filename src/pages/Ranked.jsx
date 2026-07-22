@@ -291,7 +291,6 @@ export default function Ranked() {
                       return `${joined}/${slots} players · ${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`;
                     })()}
                   </p>
-                  <p className="text-xs text-vapor mb-3">Host: {match.host_name || "Host unavailable"}</p>
                   {match.host_id === user?.id || match.team_alpha_player_ids?.includes(user?.id) || match.team_bravo_player_ids?.includes(user?.id) ? (
                     <Link
                       to={`/ranked-match/${match.id}`}
