@@ -61,6 +61,17 @@ const rankRangeLabel = (tier) => (
     : `${tier.min.toLocaleString()}-${tier.max.toLocaleString()} ELO`
 );
 
+const rankCardTones = {
+  bronze: { border: "border-amber-500/30", wash: "from-amber-500/[0.12] via-card to-card", accent: "bg-amber-500", soft: "border-amber-500/20 bg-amber-500/[0.07]", text: "text-amber-400" },
+  silver: { border: "border-slate-300/30", wash: "from-slate-300/[0.12] via-card to-card", accent: "bg-slate-300", soft: "border-slate-300/20 bg-slate-300/[0.07]", text: "text-slate-200" },
+  gold: { border: "border-yellow-400/30", wash: "from-yellow-400/[0.12] via-card to-card", accent: "bg-yellow-400", soft: "border-yellow-400/20 bg-yellow-400/[0.07]", text: "text-yellow-400" },
+  platinum: { border: "border-teal-300/30", wash: "from-teal-300/[0.12] via-card to-card", accent: "bg-teal-300", soft: "border-teal-300/20 bg-teal-300/[0.07]", text: "text-teal-300" },
+  diamond: { border: "border-cyan/30", wash: "from-cyan/[0.12] via-card to-card", accent: "bg-cyan", soft: "border-cyan/20 bg-cyan/[0.07]", text: "text-cyan" },
+  master: { border: "border-purple-400/30", wash: "from-purple-400/[0.12] via-card to-card", accent: "bg-purple-400", soft: "border-purple-400/20 bg-purple-400/[0.07]", text: "text-purple-400" },
+  pro: { border: "border-blue-400/30", wash: "from-blue-400/[0.12] via-card to-card", accent: "bg-blue-400", soft: "border-blue-400/20 bg-blue-400/[0.07]", text: "text-blue-400" },
+  champion: { border: "border-orange/35", wash: "from-orange/[0.14] via-card to-card", accent: "bg-orange", soft: "border-orange/20 bg-orange/[0.07]", text: "text-orange" },
+};
+
 export default function Ranked() {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -138,6 +149,7 @@ export default function Ranked() {
   const rank = getRankForElo(elo);
   const nextRank = getNextRankForElo(elo);
   const progress = getRankProgress(elo);
+  const rankTone = rankCardTones[rank.tier] || rankCardTones.bronze;
 
   const handleAcceptMatch = async (match) => {
     if (!user) {
@@ -314,29 +326,31 @@ export default function Ranked() {
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="order-1 overflow-hidden rounded-xl border border-cyan/20 bg-card">
-              <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
+            <div className={`order-1 relative overflow-hidden rounded-2xl border bg-gradient-to-br ${rankTone.border} ${rankTone.wash}`}>
+              <div className={`absolute inset-x-0 top-0 h-1 ${rankTone.accent}`} />
+              <div className="flex items-center justify-between border-b border-white/5 bg-background/20 px-5 py-4">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Season 1 rating</p>
-                  <h3 className="mt-1 text-sm font-black uppercase tracking-wide">Your Rank</h3>
+                  <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${rankTone.text}`}>Season 1 competitive</p>
+                  <h3 className="mt-1 text-base font-black uppercase tracking-wide">Your Rank</h3>
                 </div>
-                <span className="rounded-full border border-white/10 bg-background/40 px-3 py-1.5 font-mono text-xs font-black text-cyan">
-                  {leaderboardPosition ? `#${leaderboardPosition}` : "Unranked"}
-                </span>
+                <div className="text-right"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Global place</p><span className={`mt-1 inline-flex rounded-full border px-3 py-1 font-mono text-sm font-black ${rankTone.soft} ${rankTone.text}`}>{leaderboardPosition ? `#${leaderboardPosition}` : "Unranked"}</span></div>
               </div>
               <div className="p-5">
+                <div className="rounded-2xl border border-white/5 bg-background/30 p-4">
                 <div className="flex items-center gap-4">
-                  <RankBadge rank={rank.tier} size="lg" showLabel={false} />
+                  <div className={`flex min-h-32 w-32 shrink-0 items-center justify-center rounded-2xl border ${rankTone.soft}`}><RankBadge rank={rank.tier} size="lg" showLabel={false} /></div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-end justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className={`text-2xl font-black ${rank.color}`}>{rank.name}</p>
-                        <p className="mt-0.5 font-mono text-sm font-black text-cyan">{elo.toLocaleString()} ELO</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Current division</p>
+                        <p className={`mt-1 text-3xl font-black ${rank.color}`}>{rank.name}</p>
+                        <p className={`mt-1 font-mono text-base font-black ${rankTone.text}`}>{elo.toLocaleString()} ELO</p>
                       </div>
-                      <p className="text-right text-[10px] font-bold text-vapor">{nextRank ? `${Math.max(0, nextRank.min - elo)} to ${nextRank.name}` : "Top rank reached"}</p>
+                      <span className={`rounded-lg border px-2.5 py-1.5 text-right text-[9px] font-black uppercase tracking-wider ${rankTone.soft} ${rankTone.text}`}>{progress}% complete</span>
                     </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-                      <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: progress / 100 }} transition={{ duration: 0.7, ease: "easeOut" }} className="h-full origin-left rounded-full bg-gradient-to-r from-cyan to-blue-400" />
+                    <div className="mt-4 flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Rank progress</p><p className="text-right text-[10px] font-bold text-vapor">{nextRank ? <><span className={rankTone.text}>{Math.max(0, nextRank.min - elo)} ELO</span> to {nextRank.name}</> : "Top rank reached"}</p></div>
+                    <div className="mt-2 h-2.5 overflow-hidden rounded-full border border-white/5 bg-secondary">
+                      <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: progress / 100 }} transition={{ duration: 0.7, ease: "easeOut" }} className={`h-full origin-left rounded-full ${rankTone.accent}`} />
                     </div>
                     <div className="mt-2 flex justify-between text-[9px] font-bold uppercase tracking-wider text-vapor">
                       <span>{rank.min.toLocaleString()}</span>
@@ -344,21 +358,22 @@ export default function Ranked() {
                     </div>
                   </div>
                 </div>
+                </div>
 
                 <div className="mt-5 grid grid-cols-2 gap-2">
                   {[
-                    { label: "Record", value: `${currentStats?.wins || 0}W - ${currentStats?.losses || 0}L`, icon: Medal, color: "text-cyan" },
-                    { label: "Win rate", value: `${currentStats?.matches_played ? Math.round(((currentStats?.wins || 0) / currentStats.matches_played) * 100) : 0}%`, icon: Trophy, color: "text-yellow-400" },
-                    { label: "Win streak", value: currentStats?.win_streak || 0, icon: Flame, color: "text-orange" },
-                    { label: "Peak ELO", value: currentStats?.peak_elo || elo, icon: Award, color: "text-purple-400" },
+                    { label: "Record", value: `${currentStats?.wins || 0}W - ${currentStats?.losses || 0}L`, icon: Medal, color: "text-cyan", accent: "bg-cyan" },
+                    { label: "Win rate", value: `${currentStats?.matches_played ? Math.round(((currentStats?.wins || 0) / currentStats.matches_played) * 100) : 0}%`, icon: Trophy, color: "text-yellow-400", accent: "bg-yellow-400" },
+                    { label: "Win streak", value: currentStats?.win_streak || 0, icon: Flame, color: "text-orange", accent: "bg-orange" },
+                    { label: "Peak ELO", value: currentStats?.peak_elo || elo, icon: Award, color: "text-purple-400", accent: "bg-purple-400" },
                   ].map((stat) => {
                     const Icon = stat.icon;
-                    return <div key={stat.label} className="rounded-xl border border-white/5 bg-background/30 p-3"><div className="flex items-center gap-2"><Icon className={`h-3.5 w-3.5 ${stat.color}`} /><p className="text-[9px] font-black uppercase tracking-wider text-vapor">{stat.label}</p></div><p className="mt-2 font-mono text-sm font-black">{stat.value}</p></div>;
+                    return <div key={stat.label} className="relative overflow-hidden rounded-xl border border-white/5 bg-background/35 p-3.5"><div className={`absolute inset-x-0 top-0 h-0.5 ${stat.accent}`} /><div className="flex items-center gap-2"><Icon className={`h-3.5 w-3.5 ${stat.color}`} /><p className="text-[9px] font-black uppercase tracking-wider text-vapor">{stat.label}</p></div><p className="mt-2 font-mono text-base font-black">{stat.value}</p></div>;
                   })}
                 </div>
-                <div className="mt-3 flex items-center justify-between rounded-xl border border-white/5 bg-background/20 px-3 py-2.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Global leaderboard</span>
-                  <span className="font-mono text-sm font-black text-cyan">{leaderboardPosition ? `#${leaderboardPosition}` : "Play to rank"}</span>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-white/5 bg-background/25 px-3 py-3"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Global leaderboard</p><p className={`mt-1 font-mono text-sm font-black ${rankTone.text}`}>{leaderboardPosition ? `#${leaderboardPosition}` : "Play to rank"}</p></div>
+                  <div className="rounded-xl border border-white/5 bg-background/25 px-3 py-3"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Season matches</p><p className="mt-1 font-mono text-sm font-black">{currentStats?.matches_played || 0}</p></div>
                 </div>
               </div>
             </div>
