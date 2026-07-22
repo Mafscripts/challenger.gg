@@ -78,7 +78,7 @@ function RosterPlayerCard({ player, color }) {
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               <p className="truncate text-base font-black text-foreground">{player.name}</p>
-              <UserBadges user={player} size="xs" iconOnly showMonitorCam />
+              <UserBadges user={player} size="xs" iconOnly showMonitorCam showTooltip={false} className="shrink-0" />
             </div>
             <span className={`shrink-0 rounded-md border border-white/[0.07] bg-background/30 px-2 py-1 font-mono text-xs font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} ELO</span>
           </div>
@@ -304,6 +304,8 @@ export default function RankedMatchRoom() {
       peak_elo: stats.peak_elo || 0,
       matches_played: stats.matches_played || 0,
       badges: userRows?.badges || [],
+      is_premium: Boolean(userRows?.is_premium),
+      premium_expires: userRows?.premium_expires || null,
       verified_player: userRows?.verified_player || userRows?.is_verified_player || false,
       streamer_badge: userRows?.streamer_badge || userRows?.is_streamer || false,
       force_stream_required: userRows?.force_stream_required || userRows?.stream_override_required || false,

@@ -471,6 +471,32 @@ export default function WagersMatchRoom() {
   const isWaitingForOpponent = !wager.challenger_id || wager.status === "open";
   const canUseMatchRoom = Boolean(wager.challenger_id) && wager.status !== "open";
 
+  if (wager.status === "cancelled") {
+    return (
+      <div className="min-h-screen bg-obsidian py-8">
+        <div className="mx-auto max-w-2xl px-4 lg:px-6">
+          <section className="glass overflow-hidden rounded-2xl border border-orange/20">
+            <div className="border-b border-white/5 bg-gradient-to-r from-orange/10 via-secondary/60 to-red-500/5 p-7 text-center sm:p-10">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-orange/20 bg-orange/10 text-orange">
+                <RefreshCw className="h-6 w-6" />
+              </div>
+              <p className="mt-5 text-[10px] font-black uppercase tracking-[0.22em] text-orange">Wager cancelled</p>
+              <h1 className="mt-2 text-3xl font-black">Entry refunded</h1>
+              <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-vapor">
+                This wager is no longer active. Any reserved entry funds have been returned to the players' wallets.
+              </p>
+              {wager.cancel_reason && <p className="mt-3 text-xs text-vapor">Reason: {wager.cancel_reason}</p>}
+            </div>
+            <div className="flex flex-col gap-3 p-5 sm:flex-row sm:justify-center">
+              <Link to="/wallet" className="rounded-lg bg-green px-6 py-3 text-center text-xs font-black uppercase tracking-wider text-background">View Wallet</Link>
+              <Link to="/wagers" className="rounded-lg border border-white/10 bg-secondary px-6 py-3 text-center text-xs font-black uppercase tracking-wider text-vapor hover:text-white">Back to Wagers</Link>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   if (isWaitingForOpponent) {
     return (
       <div className="min-h-screen bg-obsidian py-8">

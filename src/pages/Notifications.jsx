@@ -197,7 +197,7 @@ export default function Notifications() {
                     </p>
                     {notification.action_url && (
                       <Link
-                        to={notification.action_url}
+                        to={notification.title === "Wager refunded" ? "/wallet" : notification.action_url}
                         onClick={(event) => event.stopPropagation()}
                         className="inline-flex mt-3 text-xs text-cyan hover:underline font-semibold"
                       >

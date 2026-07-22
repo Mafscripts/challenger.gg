@@ -5700,7 +5700,7 @@ async function refundWager(req) {
     title: "Wager refunded",
     message: `${wager.game_mode_display || wager.game_mode || "Match"} was cancelled and escrow was returned.`,
     type: "match",
-    action_url: `/wagers-match/${wager.id}`,
+    action_url: "/wallet",
     related_entity_id: wager.id,
     related_entity_type: "Wager",
   });

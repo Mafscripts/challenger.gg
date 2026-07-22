@@ -707,7 +707,7 @@ export default function Navbar() {
                           notifications.map((notification) => (
                             <Link
                               key={notification.id}
-                              to={notification.action_url || "/notifications"}
+                              to={notification.title === "Wager refunded" ? "/wallet" : (notification.action_url || "/notifications")}
                               onClick={() => { markNotifAsRead(notification.id); setNotifOpen(false); }}
                               className={`block px-4 py-3 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-all ${
                                 !notification.is_read ? 'bg-cyan/5' : ''
