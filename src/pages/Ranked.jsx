@@ -129,18 +129,42 @@ export default function Ranked() {
           title="Ranked"
           description="Open or accept a ranked lobby, complete the map flow, and report the result from a consistent competitive match room."
           action={
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-cyan text-background font-bold text-sm rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider"
-          >
-            <Plus className="w-4 h-4" /> Create Ranked Match
-          </button>
+            <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center xl:w-auto">
+              <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-cyan/15 bg-background/35 px-4 py-3 shadow-lg shadow-black/10">
+                <RankBadge rank={rank.tier} size="md" showLabel={false} />
+                <div className="min-w-0 flex-1 sm:w-52">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Your rank</p>
+                      <p className={`text-xl font-black ${rank.color}`}>{rank.name}</p>
+                    </div>
+                    <span className="whitespace-nowrap font-mono text-sm font-black text-cyan">{elo.toLocaleString()} ELO</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 1.2 }}
+                      className="h-full rounded-full bg-gradient-to-r from-cyan to-blue-400"
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-vapor">
+                    {nextRank ? `${Math.max(0, nextRank.min - elo)} ELO to ${nextRank.name}` : "Top rank reached"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/25"
+              >
+                <Plus className="w-4 h-4" /> Create Ranked Match
+              </button>
+            </div>
           }
           stats={[
-            { label: "Current Rank", value: rank.name, icon: Trophy, color: "text-cyan" },
-            { label: "Current ELO", value: elo.toLocaleString(), icon: Swords, color: "text-green" },
             { label: "Open Matches", value: rankedMatches.length, icon: Globe, color: "text-orange" },
             { label: "Season Wins", value: currentStats?.wins || 0, icon: Award, color: "text-yellow-400" },
+            { label: "Matches Played", value: currentStats?.matches_played || 0, icon: Trophy, color: "text-cyan" },
           ]}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
@@ -195,33 +219,6 @@ export default function Ranked() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <motion.div whileHover={{ y: -2, transition: { duration: 0.1, ease: "easeOut" } }} className="glass rounded-2xl p-8 border border-cyan/10 relative overflow-hidden">
-              <div className="absolute -top-24 right-0 h-80 w-80 rounded-full bg-cyan/10 blur-[100px]" />
-              <div className="relative flex flex-col items-center gap-7 sm:flex-row sm:items-center">
-                <RankBadge rank={rank.tier} division={rank.division} size="xl" showLabel={false} />
-                <div>
-                  <p className="text-xs text-vapor uppercase tracking-[0.18em] mb-2">Your Current Rank</p>
-                  <h2 className={`text-4xl font-black ${rank.color}`}>{rank.name}</h2>
-                  <div className="flex flex-wrap items-center gap-4 mt-2">
-                    <span className="text-cyan font-mono font-bold text-xl">{elo.toLocaleString()} ELO</span>
-                    <span className="text-xs text-vapor">
-                      {nextRank ? `${Math.max(0, nextRank.min - elo)} ELO to ${nextRank.name}` : "Top rank reached"}
-                    </span>
-                  </div>
-                  <div className="mt-3 w-full max-w-xs">
-                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress}%` }}
-                        transition={{ duration: 1.5 }}
-                        className="h-full bg-gradient-to-r from-cyan to-blue-400 rounded-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
             <div className="glass rounded-2xl border border-white/5 overflow-hidden">
               <div className="px-5 py-4 border-b border-white/5">
                 <h3 className="font-bold text-lg">Rank Tiers</h3>

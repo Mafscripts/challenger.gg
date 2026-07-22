@@ -7,6 +7,8 @@ export default function CompetitionHero({
   action,
   stats = [],
 }) {
+  const statsGridClass = stats.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4";
+
   return (
     <section className="premium-panel relative mb-10 overflow-hidden rounded-[1.75rem] p-6 md:p-9">
       <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-cyan/10 blur-3xl" />
@@ -20,7 +22,7 @@ export default function CompetitionHero({
       </div>
 
       {stats.length > 0 && (
-        <div className="relative mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className={`relative mt-7 grid grid-cols-2 gap-3 ${statsGridClass}`}>
           {stats.map(({ label, value, icon: Icon, color = "text-cyan" }) => (
             <div key={label} className="premium-card rounded-2xl px-4 py-4">
               <div className="flex items-center gap-2">

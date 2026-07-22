@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, ChevronDown, BookOpen, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor } from "lucide-react";
+import { Shield, ChevronDown, BookOpen, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb } from "lucide-react";
 
 const sections = [
   {
@@ -20,6 +20,8 @@ const sections = [
     title: "Match Rules",
     icon: Swords,
     rules: [
+      "No Stretch Defuse.",
+      "If you have ever been console restricted, you are required to play on console in all Topfragg tournaments.",
       "Maps are selected via the official veto system. Manual map selection is not permitted.",
       "Each team receives one map veto per match.",
       "Match results must be reported within 10 minutes of completion.",
@@ -28,6 +30,38 @@ const sections = [
       "Screen recording is strongly recommended for all competitive matches.",
       "Verified players do not have to stream by default. They must stream only when an opponent requests it with clips or evidence and an admin validates that request.",
       "Admins may override a verified player and force them to stream when match integrity requires it.",
+    ],
+  },
+  {
+    title: "Hardpoint Rules",
+    icon: RotateCcw,
+    rules: [
+      "If the combined score is under 150 when a player disconnects, the game must be reset.",
+      "If the combined score is 150 or higher when a player disconnects, the game must be played out. Ending the game early results in a forfeit.",
+    ],
+  },
+  {
+    title: "Search & Destroy Rules",
+    icon: Bomb,
+    rules: [
+      "If a player disconnects from the lobby, end the game and resume play from the point where the game left off before the disconnection.",
+    ],
+  },
+  {
+    title: "Timer & Grace Period Rules",
+    icon: Clock,
+    rules: [
+      "If opponents do not show up within the allotted 15-minute timer window shown in the Match Room, the absent team is automatically forfeited.",
+    ],
+  },
+  {
+    title: "Host & Connection Rules",
+    icon: Wifi,
+    rules: [
+      "SND hosting: Map 1 is hosted by the higher seed. Map 2 is hosted by the lower seed. Map 3 is hosted by the team with the better combined stats across Maps 1 and 2.",
+      "HP/SND hosting: Map 1 is hosted by the higher seed. Map 2 is hosted by the lower seed. Map 3 is hosted by the winner of the Hardpoint map.",
+      "HP hosting: Map 1 is hosted by the higher seed. Map 2 is hosted by the lower seed. Map 3 is hosted by the team with the better combined stats across Maps 1 and 2.",
+      "Players may use a neutral host when both teams agree.",
     ],
   },
   {
