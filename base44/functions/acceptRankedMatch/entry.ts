@@ -3,6 +3,12 @@ import { activisionIdRequiredForUserIds, activisionIdRequiredResponse } from '..
 
 const playerName = (user) => user.display_name || user.full_name || user.username || user.email || 'Unnamed player';
 
+const mapsByMode = {
+  snd: ['Hacienda', 'Gridlock', 'Raid', 'Scar', 'Den', 'Sake', 'Fringe'],
+  hp: ['Sake', 'Colossus', 'Den', 'Scar', 'Gridlock', 'Hacienda'],
+  overload: ['Scar', 'Gridlock', 'Den', 'Exposure'],
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -24,12 +30,17 @@ Deno.serve(async (req) => {
 
     const now = new Date().toISOString();
     const deadline = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const pool = mapsByMode[match.game_mode] || mapsByMode.snd;
+    const selectedMap = match.final_map_name || pool[Math.floor(Math.random() * pool.length)];
     await base44.asServiceRole.entities.RankedMatch.update(id, {
       challenger_id: user.id,
       challenger_name: playerName(user),
       status: 'in_progress',
       match_started_date: now,
       match_start_deadline: deadline,
+      best_of: 1,
+      final_map_id: match.final_map_id || selectedMap.toLowerCase().replace(/\s+/g, '_'),
+      final_map_name: selectedMap,
     });
 
     return Response.json({ success: true, ranked_match_id: id, match_start_deadline: deadline });

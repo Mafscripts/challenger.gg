@@ -97,6 +97,28 @@ export default function RankedMatchRoom() {
   }, [id]);
 
   useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const latest = await base44.entities.RankedMatch.get(id);
+        if (!active || !latest) return;
+        setMatch(latest);
+        if (latest.challenger_id && latest.challenger_id !== match?.challenger_id) {
+          const challenger = await loadPlayer(latest.challenger_id, latest.challenger_name);
+          if (active) setChallengerPlayer(challenger);
+        }
+      } catch (error) {
+        console.error("Failed to refresh ranked match:", error);
+      }
+    };
+    const interval = setInterval(refresh, 3000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [id, match?.challenger_id]);
+
+  useEffect(() => {
     const interval = setInterval(calculateTimeRemaining, 1000);
     calculateTimeRemaining();
     return () => clearInterval(interval);
@@ -138,10 +160,16 @@ export default function RankedMatchRoom() {
   const loadRoom = async () => {
     try {
       setLoading(true);
-      const [currentUser, matchData] = await Promise.all([
+      const [currentUser, loadedMatch] = await Promise.all([
         base44.auth.me().catch(() => null),
         base44.entities.RankedMatch.get(id),
       ]);
+      let matchData = loadedMatch;
+
+      if (!matchData.final_map_name) {
+        const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
+        if (mapResponse?.data?.match) matchData = mapResponse.data.match;
+      }
 
       setUser(currentUser);
       setMatch(matchData);
@@ -401,7 +429,7 @@ export default function RankedMatchRoom() {
             <PlayerPanel label="Team Alpha" color="cyan" player={hostPlayer} />
           </div>
           <div className="lg:col-span-4">
-            <MapVetoVertical wager={match} />
+            <MapVetoVertical wager={match} ranked />
           </div>
           <div className="lg:col-span-4">
             <PlayerPanel label="Team Bravo" color="orange" player={challengerPlayer} waiting={!match.challenger_id} />
