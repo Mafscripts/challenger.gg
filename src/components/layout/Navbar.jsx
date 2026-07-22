@@ -816,16 +816,6 @@ export default function Navbar() {
                 )}
               </div>
 
-              {canSeeAdminLink && (
-                <Link
-                  to="/admin"
-                  className="hidden h-10 items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 text-sm font-black text-red-300 transition-colors hover:border-red-400/50 hover:bg-red-500/15 hover:text-red-200 lg:inline-flex"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  Admin
-                </Link>
-              )}
-
               {/* Profile */}
               <div
                 className="nav-dropdown-anchor relative"
