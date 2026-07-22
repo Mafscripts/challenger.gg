@@ -13,6 +13,7 @@ import {
   Gamepad2,
   Globe2,
   Medal,
+  MessageSquare,
   Monitor,
   Package,
   Pencil,
@@ -513,7 +514,7 @@ export default function Profile() {
             </div>
 
             <div className="grid content-start gap-4 xl:border-l xl:border-white/[0.05] xl:pl-9">
-              {isOwnProfile && (
+              {isOwnProfile ? (
                 <div className="flex justify-end">
                   <button
                     type="button"
@@ -531,7 +532,17 @@ export default function Profile() {
                     Edit Profile
                   </button>
                 </div>
-              )}
+              ) : currentUser?.id && user?.id ? (
+                <div className="flex justify-end">
+                  <Link
+                    to={`/messages?compose=${encodeURIComponent(user.id)}`}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-4 text-[10px] font-black uppercase tracking-wider text-cyan transition-all hover:-translate-y-0.5 hover:bg-cyan/15"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Message
+                  </Link>
+                </div>
+              ) : null}
               <div className="premium-card relative overflow-hidden rounded-2xl p-6">
                 <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan/10 blur-3xl" />
                 <div className="flex items-center gap-4">

@@ -1,255 +1,413 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { ArrowRight, Mail, Trash2, Trophy } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  ArrowRight,
+  Mail,
+  MessageSquare,
+  Plus,
+  Search,
+  Send,
+  Trophy,
+  User,
+  X,
+} from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
+const initials = (name) => String(name || "Player").trim().slice(0, 1).toUpperCase();
+const messageTime = (value) => value
+  ? new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  : "";
+const messageDate = (value) => value
+  ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric" })
+  : "";
+
+function PlayerAvatar({ player, size = "md" }) {
+  const dimensions = size === "lg" ? "h-12 w-12" : "h-10 w-10";
+  return (
+    <div className={`${dimensions} shrink-0 overflow-hidden rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 to-orange/10 flex items-center justify-center font-black text-cyan`}>
+      {player?.avatar_url ? (
+        <img src={player.avatar_url} alt="" className="h-full w-full object-cover" />
+      ) : initials(player?.name)}
+    </div>
+  );
+}
+
 export default function Messages() {
-  const [messages, setMessages] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [directMessages, setDirectMessages] = useState([]);
+  const [players, setPlayers] = useState({});
+  const [invitations, setInvitations] = useState([]);
+  const [activePlayerId, setActivePlayerId] = useState(searchParams.get("conversation") || "");
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(Boolean(searchParams.get("compose")));
+  const [playerQuery, setPlayerQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const chatEndRef = useRef(null);
+  const activePlayerIdRef = useRef(activePlayerId);
 
   useEffect(() => {
-    loadMessages();
+    activePlayerIdRef.current = activePlayerId;
+  }, [activePlayerId]);
+
+  const loadInvitations = async (userId) => {
+    const rows = await base44.entities.Message.filterFresh({ recipient_id: userId }, "-created_date", 100).catch(() => []);
+    setInvitations((rows || []).filter(message => message.message_type === "tournament_invitation"));
+  };
+
+  const loadDirectMessages = async ({ initial = false, viewerId = "" } = {}) => {
+    try {
+      const response = await base44.functions.invoke("getDirectMessages");
+      const data = response.data || {};
+      const nextPlayers = Object.fromEntries((data.users || []).map(player => [player.id, player]));
+      setDirectMessages(data.messages || []);
+      setPlayers(current => ({ ...current, ...nextPlayers }));
+
+      if (!activePlayerIdRef.current && data.messages?.length) {
+        const latest = data.messages[data.messages.length - 1];
+        const ownId = viewerId || currentUser?.id;
+        const otherId = latest.sender_id === ownId ? latest.recipient_id : latest.sender_id;
+        setActivePlayerId(otherId);
+      }
+    } catch (error) {
+      if (initial) toast({ title: "Messages unavailable", description: error.message, variant: "destructive" });
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const initialize = async () => {
+      try {
+        const user = await base44.auth.me();
+        if (!active) return;
+        setCurrentUser(user);
+        await Promise.all([loadDirectMessages({ initial: true, viewerId: user.id }), loadInvitations(user.id)]);
+
+        const requestedPlayerId = searchParams.get("compose") || searchParams.get("conversation");
+        if (requestedPlayerId) {
+          const response = await base44.functions.invoke("searchMessageRecipients", { recipient_id: requestedPlayerId });
+          const player = response.data?.users?.[0];
+          if (player && active) {
+            setPlayers(current => ({ ...current, [player.id]: player }));
+            setActivePlayerId(player.id);
+            setComposerOpen(false);
+            setSearchParams({ conversation: player.id }, { replace: true });
+          }
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    initialize();
+    return () => { active = false; };
   }, []);
 
-  const loadMessages = async () => {
-    try {
-      const user = await base44.auth.me();
-      if (!user) return;
+  useEffect(() => {
+    if (!currentUser?.id) return undefined;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") loadDirectMessages();
+    }, 1500);
+    return () => window.clearInterval(interval);
+  }, [currentUser?.id]);
 
-      const [messageRows, notificationRows] = await Promise.all([
-        base44.entities.Message.filterFresh({ recipient_id: user.id }, '-created_date', 50),
-        base44.entities.Notification.filterFresh({ user_id: user.id }, '-created_date', 100).catch(() => []),
-      ]);
-      const messages = messageRows || [];
-      const invitationMessageTournamentIds = new Set(messages
-        .filter((message) => message.message_type === "tournament_invitation")
-        .map((message) => message.related_entity_id)
-        .filter(Boolean));
-      const legacyInvitations = (notificationRows || [])
-        .filter((notification) => (
-          notification.title === "Tournament invitation"
-          && !invitationMessageTournamentIds.has(notification.related_entity_id)
-        ))
-        .map((notification) => ({
-          id: `notification:${notification.id}`,
-          source_id: notification.id,
-          source_entity: "Notification",
-          sender_id: "topfragg-tournaments",
-          sender_name: "Topfragg Tournaments",
-          recipient_id: user.id,
-          subject: "You're invited to compete!",
-          content: notification.message,
-          is_read: notification.is_read,
-          action_url: notification.action_url,
-          related_entity_id: notification.related_entity_id,
-          related_entity_type: "Tournament",
-          message_type: "tournament_invitation",
-          created_date: notification.created_date,
-        }));
-      setMessages([...messages, ...legacyInvitations].sort((a, b) => (
-        new Date(b.created_date || 0) - new Date(a.created_date || 0)
-      )));
+  useEffect(() => {
+    const query = playerQuery.trim();
+    if (!composerOpen || query.length < 2) {
+      setSearchResults([]);
+      return undefined;
+    }
+    const timer = window.setTimeout(async () => {
+      setSearching(true);
+      try {
+        const response = await base44.functions.invoke("searchMessageRecipients", { query });
+        setSearchResults(response.data?.users || []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [composerOpen, playerQuery]);
+
+  const conversations = useMemo(() => {
+    if (!currentUser?.id) return [];
+    const grouped = new Map();
+    directMessages.forEach(message => {
+      const otherId = message.sender_id === currentUser.id ? message.recipient_id : message.sender_id;
+      if (!otherId) return;
+      const previous = grouped.get(otherId) || { playerId: otherId, lastMessage: message, unread: 0 };
+      previous.lastMessage = message;
+      if (message.recipient_id === currentUser.id && !message.is_read) previous.unread += 1;
+      grouped.set(otherId, previous);
+    });
+    return [...grouped.values()].sort((a, b) => (
+      new Date(b.lastMessage.created_date || 0) - new Date(a.lastMessage.created_date || 0)
+    ));
+  }, [currentUser?.id, directMessages]);
+
+  const activeMessages = useMemo(() => directMessages.filter(message => (
+    currentUser?.id && activePlayerId
+    && [message.sender_id, message.recipient_id].includes(currentUser.id)
+    && [message.sender_id, message.recipient_id].includes(activePlayerId)
+  )), [activePlayerId, currentUser?.id, directMessages]);
+  const activePlayer = players[activePlayerId] || null;
+
+  useEffect(() => {
+    if (!activePlayerId || !currentUser?.id) return;
+    const unreadIds = activeMessages
+      .filter(message => message.recipient_id === currentUser.id && !message.is_read)
+      .map(message => message.id);
+    if (!unreadIds.length) return;
+
+    setDirectMessages(current => current.map(message => (
+      unreadIds.includes(message.id) ? { ...message, is_read: true } : message
+    )));
+    base44.functions.invoke("markDirectConversationRead", { other_user_id: activePlayerId })
+      .then(() => {
+        window.dispatchEvent(new CustomEvent("topfragg:messages-updated"));
+        window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
+      })
+      .catch(() => null);
+  }, [activePlayerId, activeMessages.length, currentUser?.id]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeMessages.length, activePlayerId]);
+
+  const selectPlayer = (player) => {
+    setPlayers(current => ({ ...current, [player.id]: player }));
+    setActivePlayerId(player.id);
+    setComposerOpen(false);
+    setPlayerQuery("");
+    setSearchParams({ conversation: player.id }, { replace: true });
+  };
+
+  const sendMessage = async (event) => {
+    event.preventDefault();
+    const content = draft.trim();
+    if (!activePlayerId || !content || sending) return;
+    setSending(true);
+    try {
+      const response = await base44.functions.invoke("sendMessage", {
+        recipient_id: activePlayerId,
+        content,
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not send message");
+      setDirectMessages(current => [...current, response.data.message]);
+      setDraft("");
+      window.dispatchEvent(new CustomEvent("topfragg:messages-updated"));
     } catch (error) {
-      console.error('Failed to load messages:', error);
-      toast({ title: "Error", description: "Failed to load messages", variant: "destructive" });
+      toast({ title: "Message not sent", description: error.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
-
-  const markAsRead = async (id) => {
-    try {
-      const message = messages.find((row) => row.id === id);
-      if (message?.source_entity === "Notification") {
-        await base44.entities.Notification.update(message.source_id, { is_read: true });
-      } else {
-        await base44.entities.Message.update(id, { is_read: true });
-      }
-      setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: true } : m));
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      const unread = messages.filter(m => !m.is_read);
-      await Promise.all(unread.map((message) => (
-        message.source_entity === "Notification"
-          ? base44.entities.Notification.update(message.source_id, { is_read: true })
-          : base44.entities.Message.update(message.id, { is_read: true })
-      )));
-      setMessages(prev => prev.map(m => ({ ...m, is_read: true })));
-      toast({ title: "All marked as read", description: `${unread.length} messages marked as read` });
-    } catch (error) {
-      console.error('Failed to mark all as read:', error);
-    }
-  };
-
-  const deleteMessage = async (id) => {
-    try {
-      const message = messages.find((row) => row.id === id);
-      if (message?.source_entity === "Notification") {
-        await base44.entities.Notification.delete(message.source_id);
-      } else {
-        await base44.entities.Message.delete(id);
-      }
-      setMessages(prev => prev.filter(m => m.id !== id));
-      toast({ title: "Deleted", description: "Message deleted" });
-    } catch (error) {
-      console.error('Failed to delete:', error);
-    }
-  };
-
-  const filteredMessages = filter === "all" 
-    ? messages 
-    : filter === "unread" 
-      ? messages.filter(m => !m.is_read)
-      : messages.filter(m => m.is_read);
-
-  const unreadCount = messages.filter(m => !m.is_read).length;
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading messages...</p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-11 w-11 animate-spin rounded-full border-4 border-cyan/20 border-t-cyan" />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen py-8">
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+      <div className="mx-auto max-w-[1450px] px-4 lg:px-6">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-              <Mail className="w-8 h-8 text-cyan" />
-              Messages
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan">Private communications</p>
+            <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight">
+              <MessageSquare className="h-8 w-8 text-cyan" /> Messages
             </h1>
-            <p className="text-vapor text-sm mt-1">
-              {unreadCount > 0 ? `${unreadCount} unread message${unreadCount > 1 ? 's' : ''}` : 'Inbox zero!'}
-            </p>
+            <p className="mt-1 text-sm text-vapor">Chat privately with other TopFragg players.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={markAllAsRead}
-              disabled={unreadCount === 0}
-              className="px-4 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <Mail className="w-4 h-4" /> Mark All Read
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setComposerOpen(true)}
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-cyan px-5 text-xs font-black uppercase tracking-wider text-background transition-transform hover:-translate-y-0.5"
+          >
+            <Plus className="h-4 w-4" /> New message
+          </button>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-2 mb-6">
-          {[
-            { value: "all", label: "All", count: messages.length },
-            { value: "unread", label: "Unread", count: unreadCount },
-            { value: "read", label: "Read", count: messages.length - unreadCount }
-          ].map(tab => (
-            <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                filter === tab.value 
-                  ? "bg-cyan/10 text-cyan border border-cyan/20" 
-                  : "text-vapor hover:text-foreground border border-transparent"
-              }`}
-            >
-              {tab.label} {tab.count > 0 && `(${tab.count})`}
-            </button>
-          ))}
-        </div>
-
-        {/* Messages List */}
-        <div className="space-y-3">
-          {filteredMessages.length === 0 ? (
-            <div className="glass rounded-xl border border-white/5 p-12 text-center">
-              <Mail className="w-16 h-16 text-vapor/30 mx-auto mb-4" />
-              <h3 className="text-lg font-bold mb-2">No messages</h3>
-              <p className="text-vapor text-sm">
-                {filter === "unread" ? "You have no unread messages" : "Your inbox is empty"}
-              </p>
+        <div className="grid min-h-[680px] overflow-hidden rounded-2xl border border-white/10 bg-card lg:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="border-b border-white/10 bg-background/25 lg:border-b-0 lg:border-r">
+            <div className="border-b border-white/10 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-vapor">Conversations</p>
             </div>
-          ) : (
-            filteredMessages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`glass rounded-xl border p-5 transition-all cursor-pointer ${
-                  !message.is_read 
-                    ? "border-cyan/20 bg-cyan/5" 
-                    : "border-white/5 hover:border-white/10"
-                }`}
-                onClick={() => markAsRead(message.id)}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan/30 to-orange/30 border border-white/10 flex items-center justify-center text-sm font-bold shrink-0">
-                    {message.message_type === "tournament_invitation"
-                      ? <Trophy className="h-5 w-5 text-cyan" />
-                      : (message.sender_name || "Unknown sender").charAt(0)}
-                  </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className={`font-bold text-sm ${!message.is_read ? 'text-cyan' : 'text-foreground'}`}>
-                            {message.sender_name || "Unknown sender"}
-                          </h3>
-                          {!message.is_read && (
-                            <span className="w-2 h-2 bg-cyan rounded-full" />
-                          )}
-                        </div>
-                        <p className="text-xs text-vapor mb-1">
-                          {message.subject || 'No subject'}
-                        </p>
-                        <p className={`text-sm ${message.message_type === "tournament_invitation" ? "" : "truncate"} ${!message.is_read ? 'text-foreground/80' : 'text-vapor'}`}>
-                          {message.content}
-                        </p>
-                        {message.action_url && (
-                          <Link
-                            to={message.action_url}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              markAsRead(message.id);
-                            }}
-                            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-xs font-bold text-cyan hover:bg-cyan/20"
-                          >
-                            View Tournament <ArrowRight className="h-3.5 w-3.5" />
-                          </Link>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteMessage(message.id); }}
-                          className="p-1.5 hover:bg-red-500/10 text-vapor hover:text-red-400 rounded transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+            {invitations.length > 0 && (
+              <div className="border-b border-white/10 p-3">
+                <p className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-orange">Tournament invites</p>
+                {invitations.slice(0, 3).map(invite => (
+                  <Link
+                    key={invite.id}
+                    to={invite.action_url || "/tournaments"}
+                    className="mb-1 flex items-center gap-3 rounded-xl border border-orange/15 bg-orange/5 p-3 transition-colors hover:bg-orange/10"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange/10 text-orange"><Trophy className="h-4 w-4" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-bold">{invite.subject || "Tournament invitation"}</span>
+                      <span className="block truncate text-[10px] text-vapor">View invitation</span>
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-vapor" />
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            <div className="max-h-[580px] overflow-y-auto p-2">
+              {conversations.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <Mail className="mx-auto mb-3 h-9 w-9 text-vapor/30" />
+                  <p className="text-sm font-bold">No conversations yet</p>
+                  <button onClick={() => setComposerOpen(true)} className="mt-2 text-xs font-bold text-cyan hover:underline">Message a player</button>
+                </div>
+              ) : conversations.map(conversation => {
+                const player = players[conversation.playerId];
+                const selected = activePlayerId === conversation.playerId;
+                return (
+                  <button
+                    key={conversation.playerId}
+                    type="button"
+                    onClick={() => selectPlayer(player || { id: conversation.playerId, name: conversation.lastMessage.sender_name })}
+                    className={`mb-1 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selected ? "border-cyan/30 bg-cyan/10" : "border-transparent hover:bg-white/[0.04]"}`}
+                  >
+                    <PlayerAvatar player={player || { name: conversation.lastMessage.sender_name }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-black">{player?.name || conversation.lastMessage.sender_name}</span>
+                        <span className="text-[9px] text-vapor">{messageDate(conversation.lastMessage.created_date)}</span>
+                      </span>
+                      <span className="mt-1 flex items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate text-xs text-vapor">{conversation.lastMessage.sender_id === currentUser.id ? "You: " : ""}{conversation.lastMessage.content}</span>
+                        {conversation.unread > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan px-1.5 text-[9px] font-black text-background">{conversation.unread}</span>}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
+          <section className="flex min-h-[620px] min-w-0 flex-col">
+            {activePlayer ? (
+              <>
+                <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
+                  <PlayerAvatar player={activePlayer} size="lg" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-black">{activePlayer.name}</p>
+                    <p className="truncate text-xs text-vapor">@{activePlayer.handle || activePlayer.username || "player"}</p>
+                  </div>
+                  <Link to={`/profile/${activePlayer.username || activePlayer.id}`} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:border-cyan/25 hover:text-cyan">
+                    View profile
+                  </Link>
+                </div>
+
+                <div className="flex-1 overflow-y-auto bg-background/15 px-4 py-6 sm:px-7">
+                  {activeMessages.length === 0 && (
+                    <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
+                      <PlayerAvatar player={activePlayer} size="lg" />
+                      <h2 className="mt-4 text-xl font-black">Start a conversation</h2>
+                      <p className="mt-1 max-w-sm text-sm text-vapor">Send {activePlayer.name} a private message.</p>
                     </div>
-                    <p className="text-[10px] text-vapor/50 mt-2 font-mono">
-                      {new Date(message.created_date).toLocaleDateString()}
-                    </p>
+                  )}
+                  <div className="space-y-3">
+                    {activeMessages.map(message => {
+                      const own = message.sender_id === currentUser.id;
+                      return (
+                        <div key={message.id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
+                          <div className={`max-w-[78%] rounded-2xl px-4 py-3 ${own ? "rounded-br-md bg-cyan text-background" : "rounded-bl-md border border-white/10 bg-secondary"}`}>
+                            <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.content}</p>
+                            <p className={`mt-1 text-right text-[9px] ${own ? "text-background/60" : "text-vapor"}`}>{messageTime(message.created_date)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={chatEndRef} />
                   </div>
                 </div>
-              </motion.div>
-            ))
-          )}
+
+                <form onSubmit={sendMessage} className="border-t border-white/10 p-4">
+                  <div className="flex items-end gap-2 rounded-xl border border-white/10 bg-background/45 p-2 focus-within:border-cyan/30">
+                    <textarea
+                      value={draft}
+                      onChange={event => setDraft(event.target.value.slice(0, 1000))}
+                      onKeyDown={event => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          sendMessage(event);
+                        }
+                      }}
+                      rows={1}
+                      placeholder={`Message ${activePlayer.name}...`}
+                      className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-vapor/60"
+                    />
+                    <button disabled={!draft.trim() || sending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan text-background disabled:opacity-40">
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-2 text-right text-[9px] text-vapor">{draft.length}/1000</p>
+                </form>
+              </>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+                <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-cyan/20 bg-cyan/10"><MessageSquare className="h-9 w-9 text-cyan" /></span>
+                <h2 className="mt-5 text-2xl font-black">Your private inbox</h2>
+                <p className="mt-2 max-w-md text-sm text-vapor">Select a conversation or find a player to send your first message.</p>
+                <button onClick={() => setComposerOpen(true)} className="mt-5 rounded-xl bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background">New message</button>
+              </div>
+            )}
+          </section>
         </div>
       </div>
+
+      {composerOpen && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/75 p-4 pt-[12vh] backdrop-blur-sm" onMouseDown={() => setComposerOpen(false)}>
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl" onMouseDown={event => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/10 p-5">
+              <div>
+                <p className="text-lg font-black">New message</p>
+                <p className="text-xs text-vapor">Search for a TopFragg player</p>
+              </div>
+              <button onClick={() => setComposerOpen(false)} className="rounded-lg p-2 text-vapor hover:bg-white/5 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-5">
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-background/50 px-4 focus-within:border-cyan/30">
+                <Search className="h-4 w-4 text-vapor" />
+                <input
+                  autoFocus
+                  value={playerQuery}
+                  onChange={event => setPlayerQuery(event.target.value)}
+                  placeholder="Search username or display name..."
+                  className="h-12 flex-1 bg-transparent text-sm outline-none"
+                />
+              </div>
+              <div className="mt-3 min-h-36 max-h-80 overflow-y-auto">
+                {searching ? (
+                  <p className="py-10 text-center text-sm text-vapor">Searching...</p>
+                ) : playerQuery.trim().length < 2 ? (
+                  <div className="py-10 text-center"><User className="mx-auto mb-2 h-7 w-7 text-vapor/30" /><p className="text-sm text-vapor">Type at least 2 characters</p></div>
+                ) : searchResults.length === 0 ? (
+                  <p className="py-10 text-center text-sm text-vapor">No players found</p>
+                ) : searchResults.map(player => (
+                  <button key={player.id} onClick={() => selectPlayer(player)} className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-white/[0.05]">
+                    <PlayerAvatar player={player} />
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black">{player.name}</span><span className="block truncate text-xs text-vapor">@{player.handle || player.username || "player"}</span></span>
+                    <ArrowRight className="h-4 w-4 text-vapor" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5175,28 +5175,119 @@ async function createNotification(req) {
 }
 
 async function sendMessage(req) {
+  const recipientId = String(req.body.recipient_id || "").trim();
+  const content = String(req.body.content || req.body.message || "").trim();
+  if (!recipientId) return { success: false, error: "Choose a player first" };
+  if (recipientId === req.user.id) return { success: false, error: "You cannot message yourself" };
+  if (!content) return { success: false, error: "Message is required" };
+  if (content.length > 1000) return { success: false, error: "Message is too long" };
+
+  const recipient = await prisma.user.findUnique({ where: { id: recipientId } });
+  if (!recipient || recipient.is_banned) return { success: false, error: "Player is not available" };
+
   const message = await createEntity("Message", {
     sender_id: req.user.id,
     sender_name: nameFor(req.user),
-    recipient_id: req.body.recipient_id,
-    recipient_name: req.body.recipient_name,
-    subject: req.body.subject || "Message",
-    content: req.body.content || req.body.message || "",
+    recipient_id: recipient.id,
+    recipient_name: nameFor(recipient),
+    subject: "Direct message",
+    content,
+    message_type: "direct_message",
+    conversation_key: [req.user.id, recipient.id].sort().join(":"),
     is_read: false,
     created_date: new Date().toISOString(),
   });
-  if (req.body.recipient_id) {
-    await createEntity("Notification", {
-      user_id: req.body.recipient_id,
-      title: "New Message",
-      message: `${nameFor(req.user)} sent you a message.`,
-      type: "message",
-      is_read: false,
-      related_entity_id: message.id,
-      created_date: new Date().toISOString(),
-    });
-  }
+  await createEntity("Notification", {
+    user_id: recipient.id,
+    title: "New Message",
+    message: `${nameFor(req.user)} sent you a message.`,
+    type: "message",
+    is_read: false,
+    action_url: `/messages?conversation=${encodeURIComponent(req.user.id)}`,
+    related_entity_id: message.id,
+    related_entity_type: "Message",
+    created_date: new Date().toISOString(),
+  });
   return { success: true, message };
+}
+
+const messageUserSummary = async (user) => {
+  if (!user) return null;
+  const profile = await firstEntity("PlayerProfile", { user_id: user.id }).catch(() => null);
+  return {
+    id: user.id,
+    name: nameFor(user),
+    username: user.username || "",
+    handle: user.handle || user.username || "",
+    avatar_url: profile?.avatar_url || user.avatar_url || "",
+    role: user.role || "user",
+    is_premium: Boolean(user.is_premium),
+  };
+};
+
+async function searchMessageRecipients(req) {
+  const recipientId = String(req.body.recipient_id || "").trim();
+  const query = String(req.body.query || "").trim().slice(0, 50);
+  if (!recipientId && query.length < 2) return { success: true, users: [] };
+
+  const users = await prisma.user.findMany({
+    where: recipientId
+      ? { id: recipientId, is_banned: false }
+      : {
+        id: { not: req.user.id },
+        is_banned: false,
+        OR: [
+          { username: { contains: query, mode: "insensitive" } },
+          { handle: { contains: query, mode: "insensitive" } },
+          { display_name: { contains: query, mode: "insensitive" } },
+          { full_name: { contains: query, mode: "insensitive" } },
+        ],
+      },
+    take: recipientId ? 1 : 12,
+  });
+  const safeUsers = (await Promise.all(users.map(messageUserSummary))).filter(user => user?.id !== req.user.id);
+  return { success: true, users: safeUsers };
+}
+
+async function getDirectMessages(req) {
+  const [incoming, outgoing] = await Promise.all([
+    listEntities("Message", { recipient_id: req.user.id }, "-created_date", 500).catch(() => []),
+    listEntities("Message", { sender_id: req.user.id }, "-created_date", 500).catch(() => []),
+  ]);
+  const messages = [...incoming, ...outgoing]
+    .filter(message => message.message_type === "direct_message")
+    .filter((message, index, rows) => rows.findIndex(row => row.id === message.id) === index)
+    .sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
+  const userIds = [...new Set(messages.flatMap(message => [message.sender_id, message.recipient_id]))]
+    .filter(id => id && id !== req.user.id);
+  const users = userIds.length
+    ? await prisma.user.findMany({ where: { id: { in: userIds } } })
+    : [];
+  return {
+    success: true,
+    messages,
+    users: (await Promise.all(users.map(messageUserSummary))).filter(Boolean),
+  };
+}
+
+async function markDirectConversationRead(req) {
+  const otherUserId = String(req.body.other_user_id || "").trim();
+  if (!otherUserId) return { success: false, error: "Conversation is required" };
+  const incoming = await listEntities("Message", {
+    sender_id: otherUserId,
+    recipient_id: req.user.id,
+  }, "-created_date", 500).catch(() => []);
+  const unread = incoming.filter(message => message.message_type === "direct_message" && !message.is_read);
+  await Promise.all(unread.map(message => updateEntity("Message", message.id, { is_read: true })));
+
+  if (unread.length) {
+    const unreadIds = new Set(unread.map(message => message.id));
+    const notifications = await listEntities("Notification", { user_id: req.user.id }, "-created_date", 500).catch(() => []);
+    await Promise.all(notifications
+      .filter(notification => unreadIds.has(notification.related_entity_id) && !notification.is_read)
+      .map(notification => updateEntity("Notification", notification.id, { is_read: true })));
+  }
+  return { success: true, read_count: unread.length };
 }
 
 async function sendMatchRoomMessage(req) {
@@ -7783,6 +7874,9 @@ const handlers = {
   createNotification,
   sendNotification: createNotification,
   sendMessage,
+  searchMessageRecipients,
+  getDirectMessages,
+  markDirectConversationRead,
   sendMatchRoomMessage,
   manageTeam,
   createWager,

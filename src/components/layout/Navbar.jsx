@@ -266,6 +266,11 @@ export default function Navbar() {
   useEffect(() => {
     const handleNotificationsUpdated = (event) => {
       const detail = event.detail || {};
+      if (detail.refresh) {
+        notificationsLoadedAt.current = 0;
+        loadNotifications({ fresh: true });
+        return;
+      }
       if (Number.isFinite(detail.unreadCount)) setUnreadNotifCount(detail.unreadCount);
       if (detail.clearAll) {
         setNotifications([]);
@@ -283,6 +288,15 @@ export default function Navbar() {
 
     window.addEventListener("topfragg:notifications-updated", handleNotificationsUpdated);
     return () => window.removeEventListener("topfragg:notifications-updated", handleNotificationsUpdated);
+  }, []);
+
+  useEffect(() => {
+    const handleMessagesUpdated = () => {
+      messagesLoadedAt.current = 0;
+      loadMessages({ fresh: true });
+    };
+    window.addEventListener("topfragg:messages-updated", handleMessagesUpdated);
+    return () => window.removeEventListener("topfragg:messages-updated", handleMessagesUpdated);
   }, []);
 
   useEffect(() => {
