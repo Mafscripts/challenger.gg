@@ -420,7 +420,7 @@ export default function RankedMatchRoom() {
           <p className="text-vapor">Loading ranked match...</p>
         </div>
 
-        {match.status === "completed" && personalResult && (
+        {match?.status === "completed" && personalResult && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             <div className={`w-full max-w-md rounded-3xl border p-7 text-center shadow-2xl ${personalResult.won ? "border-green/30 bg-card" : "border-red-500/30 bg-card"}`}>
               <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${personalResult.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
@@ -638,6 +638,24 @@ export default function RankedMatchRoom() {
           )}
         </div>
       </div>
+
+      {match.status === "completed" && personalResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className={`w-full max-w-md rounded-3xl border p-7 text-center shadow-2xl ${personalResult.won ? "border-green/30 bg-card" : "border-red-500/30 bg-card"}`}>
+            <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${personalResult.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
+              <Trophy className="h-8 w-8" />
+            </div>
+            <p className={`mt-5 text-xs font-black uppercase tracking-[0.22em] ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.won ? "Victory" : "Defeat"}</p>
+            <h2 className="mt-2 text-3xl font-black">{match.confirmed_score_alpha ?? match.winner_score} - {match.confirmed_score_bravo ?? match.loser_score}</h2>
+            <div className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
+              <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your ELO change</p>
+              <p className={`mt-2 font-mono text-4xl font-black ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.delta > 0 ? "+" : ""}{personalResult.delta} ELO</p>
+              <p className="mt-2 text-xs text-vapor">{personalResult.previous_elo} → {personalResult.new_elo} ELO</p>
+            </div>
+            <button onClick={() => navigate("/ranked", { replace: true })} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to Ranked</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
