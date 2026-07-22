@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { DollarSign, Flame, Star, Trophy, TrendingUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
+import UserBadges from "@/components/ui/UserBadges";
 
 const tabs = [
   { key: "elo", label: "ELO Rankings", icon: TrendingUp },
@@ -34,7 +35,7 @@ export default function Leaderboards() {
       const [rankedRows, xpRows, userRows] = await Promise.all([
         base44.entities.RankedStats.filter({}, "-elo", 100).catch(() => []),
         base44.entities.XPStats.filter({}, "-total_xp", 100).catch(() => []),
-        base44.entities.User.filter({}, "-total_wager_earnings", 100).catch(() => []),
+        base44.entities.User.filter({}, "-total_wager_earnings", 500).catch(() => []),
       ]);
       setRankedStats(rankedRows || []);
       setXpStats(xpRows || []);
@@ -47,10 +48,16 @@ export default function Leaderboards() {
   const rows = useMemo(() => {
     const selectedRegion = region.toLowerCase();
     const regionFilter = (row) => region === "Global" || String(row.region || "").toLowerCase() === selectedRegion;
+    const userById = new Map(users.map(user => [user.id, user]));
+    const enrich = (row) => {
+      const linkedUser = userById.get(row.user_id) || userById.get(row.id) || null;
+      return linkedUser ? { ...row, ...linkedUser, id: row.id, user_id: row.user_id || linkedUser.id } : row;
+    };
 
     if (activeTab === "elo") {
       return rankedStats
         .filter(regionFilter)
+        .map(enrich)
         .map((row) => ({
           id: row.id,
           name: playerName(row),
@@ -60,12 +67,14 @@ export default function Leaderboards() {
           streak: row.win_streak || 0,
           value: Number(row.elo || 0),
           display: Number(row.elo || 0).toLocaleString(),
+          user: userById.get(row.user_id) || null,
         }));
     }
 
     if (activeTab === "xp") {
       return xpStats
         .filter(regionFilter)
+        .map(enrich)
         .map((row) => ({
           id: row.id,
           name: playerName(row),
@@ -75,6 +84,7 @@ export default function Leaderboards() {
           streak: row.win_streak || 0,
           value: Number(row.level || 1),
           display: `Lv. ${row.level || 1}`,
+          user: userById.get(row.user_id) || null,
         }));
     }
 
@@ -89,6 +99,7 @@ export default function Leaderboards() {
         streak: row.current_win_streak || 0,
         value: Number(row.tournament_wins || 0),
         display: Number(row.tournament_wins || 0).toLocaleString(),
+        user: row,
       })).sort((a, b) => b.value - a.value);
     }
 
@@ -101,6 +112,7 @@ export default function Leaderboards() {
       streak: row.current_win_streak || 0,
       value: Number(row.total_wager_earnings || 0),
       display: `$${Number(row.total_wager_earnings || 0).toLocaleString()}`,
+      user: row,
     })).sort((a, b) => b.value - a.value);
   }, [activeTab, region, rankedStats, xpStats, users]);
 
@@ -161,7 +173,10 @@ export default function Leaderboards() {
                     <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradients[place]} flex items-center justify-center text-xl font-black mb-3`}>
                       #{place}
                     </div>
-                    <Link to={`/profile/${row.slug}`} className="font-bold text-sm hover:text-cyan transition-colors mb-1">{row.name}</Link>
+                    <div className="mb-1 flex items-center justify-center gap-1.5">
+                      <Link to={`/profile/${row.slug}`} className="font-bold text-sm hover:text-cyan transition-colors">{row.name}</Link>
+                      <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" />
+                    </div>
                     <p className="text-xs text-vapor mb-1 capitalize">{row.tier}</p>
                     <p className="text-lg font-bold font-mono text-cyan">{row.display}</p>
                   </motion.div>
@@ -185,7 +200,10 @@ export default function Leaderboards() {
                     className="grid grid-cols-3 items-center gap-2 px-5 py-4 transition-colors duration-75 hover:bg-white/[0.025] md:grid-cols-7 md:gap-4"
                   >
                     <span className={`text-sm font-bold font-mono ${row.rank <= 3 ? "text-orange" : "text-vapor"}`}>#{row.rank}</span>
-                    <Link to={`/profile/${row.slug}`} className="col-span-2 text-sm font-semibold transition-colors duration-75 hover:text-cyan">{row.name}</Link>
+                    <div className="col-span-2 flex min-w-0 items-center gap-1.5">
+                      <Link to={`/profile/${row.slug}`} className="truncate text-sm font-semibold transition-colors duration-75 hover:text-cyan">{row.name}</Link>
+                      <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" className="shrink-0" />
+                    </div>
                     <span className="text-sm text-vapor hidden md:block capitalize">{row.tier}</span>
                     <span className="text-xs text-vapor hidden md:block">{row.region}</span>
                     <span className="text-sm font-mono hidden md:flex items-center gap-1">

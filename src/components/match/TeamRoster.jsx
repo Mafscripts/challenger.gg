@@ -1,5 +1,5 @@
 import React from "react";
-import { Star, Trophy, Medal, Award, Crown, Target } from "lucide-react";
+import { Trophy, Medal, Award, Crown, Target } from "lucide-react";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 
@@ -23,11 +23,6 @@ function PlayerRow({ player, teamColor }) {
             <span className="text-[7px] px-1 py-0.5 bg-yellow-400/10 text-yellow-400 rounded font-mono font-bold shrink-0">
               L{player.xp_level || 1}
             </span>
-            {player.is_premium && (
-              <span className="text-[7px] px-1 py-0.5 bg-yellow-400/10 text-yellow-400 rounded font-bold flex items-center gap-0.5 shrink-0">
-                <Star className="w-1.5 h-1.5" />
-              </span>
-            )}
           </div>
           <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
           <ActivisionIdLabel user={player} className="mt-1 max-w-full" />

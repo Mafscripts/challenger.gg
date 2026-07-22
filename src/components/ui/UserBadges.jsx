@@ -63,7 +63,11 @@ export default function UserBadges({
   tooltipPlacement = "top",
   className = "",
 }) {
-  const rows = badges || userSpecialBadges(user);
+  const suppliedBadges = Array.isArray(badges) ? badges : [];
+  const automaticBadges = userSpecialBadges(user);
+  const rows = [...suppliedBadges, ...automaticBadges].filter((badge, index, all) => (
+    badge?.type && all.findIndex(candidate => candidate?.type === badge.type) === index
+  ));
   const forcedStream = showForceStream && Boolean(user?.force_stream_required || user?.stream_override_required);
   const monitorCamRequired = showMonitorCam && Boolean(user?.monitor_cam_required || user?.required_monitor_cam || user?.moni_cam_required || user?.monitor_cam_override_required);
   if (rows.length === 0 && !forcedStream && !monitorCamRequired) return null;

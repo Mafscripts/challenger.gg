@@ -4,13 +4,20 @@ import { motion } from "framer-motion";
 import { ArrowRight, Flame } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
+import UserBadges from "@/components/ui/UserBadges";
 
 export default function FeaturedPlayers() {
   const [players, setPlayers] = useState([]);
 
   useEffect(() => {
-    base44.entities.RankedStats.filter({}, "-elo", 6)
-      .then((rows) => setPlayers(rows || []))
+    Promise.all([
+      base44.entities.RankedStats.filter({}, "-elo", 6),
+      base44.entities.User.filter({}, "-created_date", 500),
+    ])
+      .then(([rows, users]) => {
+        const usersById = new Map((users || []).map(user => [user.id, user]));
+        setPlayers((rows || []).map(player => ({ ...player, user: usersById.get(player.user_id) || null })));
+      })
       .catch(() => setPlayers([]));
   }, []);
 
@@ -53,7 +60,10 @@ export default function FeaturedPlayers() {
                       #{index + 1}
                     </div>
                     <div>
-                      <Link to={`/profile/${player.username || player.user_id || player.id || ""}`} className="font-bold hover:text-cyan transition-colors">{player.username || player.display_name || player.full_name || "Unnamed player"}</Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link to={`/profile/${player.username || player.user_id || player.id || ""}`} className="font-bold hover:text-cyan transition-colors">{player.username || player.display_name || player.full_name || "Unnamed player"}</Link>
+                        <UserBadges user={player.user} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" />
+                      </div>
                       <p className="text-xs text-vapor">{rank.name}</p>
                     </div>
                   </div>

@@ -5222,6 +5222,7 @@ const messageUserSummary = async (user) => {
     avatar_url: profile?.avatar_url || user.avatar_url || "",
     role: user.role || "user",
     is_premium: Boolean(user.is_premium),
+    premium_expires: user.premium_expires || null,
   };
 };
 

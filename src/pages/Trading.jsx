@@ -5,6 +5,7 @@ import { Check, Clock, Package, RefreshCw, Send, X } from "lucide-react";
 import RarityBadge from "@/components/ui/RarityBadge";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import UserBadges from "@/components/ui/UserBadges";
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 
@@ -28,12 +29,18 @@ export default function Trading() {
         return;
       }
 
-      const [incoming, outgoing] = await Promise.all([
+      const [incoming, outgoing, userRows] = await Promise.all([
         base44.entities.TradeOffer.filter({ recipient_id: me.id }, "-created_date", 100).catch(() => []),
         base44.entities.TradeOffer.filter({ sender_id: me.id }, "-created_date", 100).catch(() => []),
+        base44.entities.User.filter({}, "-created_date", 500).catch(() => []),
       ]);
+      const usersById = new Map((userRows || []).map(row => [row.id, row]));
       const combined = [...incoming, ...outgoing].filter((offer, index, list) => list.findIndex((item) => item.id === offer.id) === index);
-      setOffers(combined);
+      setOffers(combined.map(offer => ({
+        ...offer,
+        sender: usersById.get(offer.sender_id) || null,
+        recipient: usersById.get(offer.recipient_id) || null,
+      })));
     } finally {
       setLoading(false);
     }
@@ -121,6 +128,7 @@ function TradeList({ tab, offers, userId, busyId, onStatus }) {
       {offers.map((offer, index) => {
         const incoming = offer.recipient_id === userId;
         const partnerName = incoming ? offer.sender_name : offer.recipient_name;
+        const partner = incoming ? offer.sender : offer.recipient;
         const receiveItems = incoming ? offer.sender_items : offer.recipient_items;
         const giveItems = incoming ? offer.recipient_items : offer.sender_items;
         const receiveCredits = incoming ? offer.sender_credits_offered : offer.recipient_credits_offered;
@@ -138,7 +146,8 @@ function TradeList({ tab, offers, userId, busyId, onStatus }) {
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 text-cyan" />
                 <span className="font-semibold text-sm">
-                  Trade {incoming ? "from" : "to"} <Link to={`/profile/${partnerName || ""}`} className="text-cyan hover:underline">{partnerName || "Unknown trader"}</Link>
+                  Trade {incoming ? "from" : "to"} <Link to={`/profile/${partner?.username || partner?.id || partnerName || ""}`} className="text-cyan hover:underline">{partnerName || "Unknown trader"}</Link>
+                  <UserBadges user={partner} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" />
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-vapor">

@@ -11,7 +11,7 @@ const ranks = {
   diamond: { label: "Diamond", text: "text-cyan", icon: "/assets/ranks/diamond.png" },
   master: { label: "Master", text: "text-red-400", icon: "/assets/ranks/master.png" },
   pro: { label: "Pro", text: "text-fuchsia-400", icon: "/assets/ranks/pro.png" },
-  champion: { label: "Champion", text: "text-orange", icon: "/assets/ranks/champion.png" },
+  champion: { label: "Champion", text: "text-white", icon: "/assets/ranks/champion.png" },
 };
 
 export default function RankBadge({ rank, elo, size = "md", showLabel = true }) {

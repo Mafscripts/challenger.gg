@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import RankBadge from "@/components/ui/RankBadge";
+import UserBadges from "@/components/ui/UserBadges";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
@@ -125,6 +126,7 @@ export default function Dashboard() {
         const [
           notificationsData,
           messagesData,
+          messageUsers,
           hostedWagers,
           challengedWagers,
           hostedRanked,
@@ -133,6 +135,7 @@ export default function Dashboard() {
         ] = await Promise.all([
           base44.entities.Notification.filter({ user_id: userData.id }, "-created_date", 20).catch(() => []),
           base44.entities.Message.filter({ recipient_id: userData.id }, "-created_date", 20).catch(() => []),
+          base44.entities.User.filter({}, "-created_date", 500).catch(() => []),
           base44.entities.Wager.filter({ host_id: userData.id }, "-created_date", 20).catch(() => []),
           base44.entities.Wager.filter({ challenger_id: userData.id }, "-created_date", 20).catch(() => []),
           base44.entities.RankedMatch.filter({ host_id: userData.id }, "-created_date", 20).catch(() => []),
@@ -141,7 +144,8 @@ export default function Dashboard() {
         ]);
 
         setNotifications(notificationsData || []);
-        setMessages(messagesData || []);
+        const messageUsersById = new Map((messageUsers || []).map(row => [row.id, row]));
+        setMessages((messagesData || []).map(message => ({ ...message, sender: messageUsersById.get(message.sender_id) || null })));
         setUpcomingTournaments(tournaments || []);
 
         const combined = [...hostedWagers, ...challengedWagers, ...hostedRanked, ...challengedRanked]
@@ -296,7 +300,10 @@ export default function Dashboard() {
                   onClick={() => markMessageAsRead(message.id)}
                   className={`premium-card block w-full rounded-2xl p-3 text-left ${!message.is_read ? "border-cyan/15 bg-cyan/[0.06]" : ""}`}
                 >
-                  <p className={`truncate text-xs font-semibold ${!message.is_read ? "text-cyan" : "text-foreground"}`}>{message.sender_name || "Unknown sender"}</p>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className={`truncate text-xs font-semibold ${!message.is_read ? "text-cyan" : "text-foreground"}`}>{message.sender_name || "Unknown sender"}</span>
+                    <UserBadges user={message.sender} size="xs" iconOnly showForceStream={false} showTooltip={false} className="shrink-0" />
+                  </span>
                   <p className="mt-0.5 truncate text-[10px] text-vapor">{message.subject || "No subject"}</p>
                 </button>
               ))}

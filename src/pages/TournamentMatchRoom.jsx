@@ -234,6 +234,8 @@ function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
     badges: userRow?.badges || [],
     verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
     streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
+    is_premium: Boolean(userRow?.is_premium),
+    premium_expires: userRow?.premium_expires || null,
     force_stream_required: userRow?.force_stream_required || userRow?.stream_override_required || false,
     monitor_cam_required: userRow?.monitor_cam_required || userRow?.required_monitor_cam || userRow?.moni_cam_required || false,
     wins: Math.max(profileWins, wagerWins),

@@ -6,7 +6,7 @@ export const RANK_THRESHOLDS = [
   { name: "Diamond", tier: "diamond", min: 2400, max: 2999, color: "text-cyan" },
   { name: "Master", tier: "master", min: 3000, max: 3599, color: "text-red-400" },
   { name: "Pro", tier: "pro", min: 3600, max: 4199, color: "text-fuchsia-400" },
-  { name: "Champion", tier: "champion", min: 4200, max: Infinity, color: "text-orange" },
+  { name: "Champion", tier: "champion", min: 4200, max: Infinity, color: "text-white" },
 ];
 
 export const RANK_REWARDS = [

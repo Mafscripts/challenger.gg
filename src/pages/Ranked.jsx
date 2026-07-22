@@ -69,7 +69,7 @@ const rankCardTones = {
   diamond: { border: "border-cyan/30", wash: "from-cyan/[0.12] via-card to-card", accent: "bg-cyan", soft: "border-cyan/20 bg-cyan/[0.07]", text: "text-cyan" },
   master: { border: "border-red-500/35", wash: "from-red-600/[0.16] via-card to-card", accent: "bg-red-500", soft: "border-red-500/25 bg-red-500/[0.09]", text: "text-red-400" },
   pro: { border: "border-fuchsia-400/35", wash: "from-fuchsia-400/[0.16] via-card to-card", accent: "bg-fuchsia-400", soft: "border-fuchsia-400/25 bg-fuchsia-400/[0.09]", text: "text-fuchsia-400" },
-  champion: { border: "border-red-500/40", wash: "from-red-600/[0.18] via-orange/[0.07] to-card", accent: "bg-orange", soft: "border-orange/25 bg-red-500/[0.09]", text: "text-orange" },
+  champion: { border: "border-red-900/70", wash: "from-red-950/[0.30] via-white/[0.035] to-card", accent: "bg-gradient-to-r from-white via-slate-200 to-red-800", soft: "border-red-900/45 bg-red-950/[0.18]", text: "text-white" },
 };
 
 export default function Ranked() {

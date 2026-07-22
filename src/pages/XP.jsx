@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Award, Crown, Flame, ShoppingBag, Swords, Target, Trophy, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import UserBadges from "@/components/ui/UserBadges";
 
 const xpSources = [
   { action: "Match Win", xp: "+150", icon: Swords, color: "text-green" },
@@ -48,12 +49,14 @@ export default function XP() {
 
   const loadData = async () => {
     try {
-      const [me, xpRows] = await Promise.all([
+      const [me, xpRows, userRows] = await Promise.all([
         base44.auth.me().catch(() => null),
         base44.entities.XPStats.filter({}, "-total_xp", 100).catch(() => []),
+        base44.entities.User.filter({}, "-created_date", 500).catch(() => []),
       ]);
+      const usersById = new Map((userRows || []).map(user => [user.id, user]));
       setCurrentUser(me);
-      setStats(xpRows || []);
+      setStats((xpRows || []).map(row => ({ ...row, user: usersById.get(row.user_id) || null })));
       if (me?.id) {
         const ownRows = await base44.entities.XPStats.filter({ user_id: me.id }, "-season", 1).catch(() => []);
         setCurrentStats(ownRows[0] || null);
@@ -118,6 +121,7 @@ export default function XP() {
             <div className="flex-1 w-full">
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-2xl font-black">{currentUser?.display_name || currentUser?.username || "Your XP"}</h2>
+                <UserBadges user={currentUser} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" />
                 <span className="px-2 py-0.5 rounded bg-orange/10 text-orange text-[10px] font-mono font-bold flex items-center gap-1">
                   <Crown className="w-3 h-3" /> PRESTIGE {currentStats?.prestige || 0}
                 </span>
@@ -168,7 +172,10 @@ export default function XP() {
                     className="grid grid-cols-5 gap-4 px-5 py-4 items-center hover:bg-white/[0.02]"
                   >
                     <span className={`font-mono font-bold ${player.rank <= 3 ? "text-orange" : "text-vapor"}`}>#{player.rank}</span>
-                    <Link to={`/profile/${player.username || player.user_id || player.id || ""}`} className="col-span-2 font-semibold text-sm hover:text-cyan">{player.username || player.display_name || player.full_name || "Unnamed player"}</Link>
+                    <div className="col-span-2 flex min-w-0 items-center gap-1.5">
+                      <Link to={`/profile/${player.username || player.user_id || player.id || ""}`} className="truncate font-semibold text-sm hover:text-cyan">{player.username || player.display_name || player.full_name || "Unnamed player"}</Link>
+                      <UserBadges user={player.user} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" className="shrink-0" />
+                    </div>
                     <span className="text-sm text-vapor hidden md:block">{String(player.region || "na").toUpperCase()}</span>
                     <span className="text-sm font-mono text-cyan">Lv. {player.level || 1}</span>
                   </motion.div>

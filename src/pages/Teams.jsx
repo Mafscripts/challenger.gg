@@ -929,7 +929,7 @@ function SettingsPanel({ team, membership, members, usersById, isCaptain, busy, 
                       {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
                     </Link>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-black">{name}</p><span className={`rounded-md px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${isCaptainMember ? "bg-orange/10 text-orange" : "bg-white/5 text-vapor"}`}>{isCaptainMember ? "Captain" : "Member"}</span></div>
+                      <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-black">{name}</p><UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" /><span className={`rounded-md px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${isCaptainMember ? "bg-orange/10 text-orange" : "bg-white/5 text-vapor"}`}>{isCaptainMember ? "Captain" : "Member"}</span></div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1"><ActivisionIdLabel user={player} className="max-w-full" /><span className="text-[10px] font-black text-green">{formatMoney(playerEarnings(player))} earned</span></div>
                     </div>
                   </div>

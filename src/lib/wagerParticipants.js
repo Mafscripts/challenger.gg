@@ -38,6 +38,7 @@ export async function loadWagerParticipants(base44, wager) {
       biggest_wager_win: userRow?.biggest_wager_win || 0,
       account_created_date: userRow?.account_created_date,
       is_premium: userRow?.is_premium || false,
+      premium_expires: userRow?.premium_expires || null,
       badges: userRow?.badges || [],
       verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
       streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
