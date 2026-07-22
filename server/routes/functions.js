@@ -6281,9 +6281,10 @@ async function adminAdjustRankedElo(req) {
   if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access required" };
   const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
   if (!target) return { success: false, error: "Player not found" };
-  const delta = Number(req.body.amount);
-  if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 5000) {
-    return { success: false, error: "ELO adjustment must be a whole number between -5000 and 5000" };
+  const operation = ["set", "add", "subtract"].includes(req.body.operation) ? req.body.operation : "set";
+  const amount = Number(req.body.amount);
+  if (!Number.isInteger(amount) || amount < 0 || amount > 1_000_000 || (operation !== "set" && amount === 0)) {
+    return { success: false, error: "Enter a valid whole ELO amount between 0 and 1,000,000" };
   }
   const reason = String(req.body.reason || "").trim();
   if (reason.length < 3) return { success: false, error: "A clear reason is required" };
@@ -6291,7 +6292,11 @@ async function adminAdjustRankedElo(req) {
   const stats = await ensureRankedStats(target.id);
   const profile = await ensurePlayerProfile(target.id);
   const beforeElo = Math.max(0, Number(stats?.elo || 0));
-  const afterElo = Math.max(0, beforeElo + delta);
+  const afterElo = operation === "set"
+    ? amount
+    : operation === "add"
+      ? beforeElo + amount
+      : Math.max(0, beforeElo - amount);
   const appliedDelta = afterElo - beforeElo;
   const timestamp = nowIso();
   const updatedStats = await updateEntity("RankedStats", stats.id, {
@@ -6313,8 +6318,8 @@ async function adminAdjustRankedElo(req) {
     action_type: "ranked_elo_adjustment",
     target_user_id: target.id,
     target_username: nameFor(target),
-    description: `${appliedDelta >= 0 ? "Added" : "Removed"} ${Math.abs(appliedDelta)} ELO ${appliedDelta >= 0 ? "to" : "from"} ${nameFor(target)}: ${reason}`,
-    details: { before_elo: beforeElo, after_elo: afterElo, requested_delta: delta, applied_delta: appliedDelta, reason },
+    description: `${operation === "set" ? "Set" : appliedDelta >= 0 ? "Added" : "Removed"} Ranked ELO for ${nameFor(target)} from ${beforeElo} to ${afterElo}: ${reason}`,
+    details: { before_elo: beforeElo, after_elo: afterElo, operation, requested_amount: amount, applied_delta: appliedDelta, reason },
     created_date: timestamp,
   });
   await notifyUser(target.id, {

@@ -418,7 +418,7 @@ export default function Admin() {
   const [walletAdjustmentOpen, setWalletAdjustmentOpen] = useState(false);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
   const [rankedPlayerSearch, setRankedPlayerSearch] = useState("");
-  const [rankedAdjustment, setRankedAdjustment] = useState({ user_id: "", amount: "", reason: "" });
+  const [rankedAdjustment, setRankedAdjustment] = useState({ user_id: "", operation: "set", amount: "", reason: "" });
   const currentRole = effectiveRoleFor(currentUser);
 
   useEffect(() => {
@@ -1494,8 +1494,8 @@ export default function Admin() {
       return;
     }
     const amount = Number(rankedAdjustment.amount);
-    if (!rankedAdjustment.user_id || !Number.isInteger(amount) || amount === 0) {
-      toast({ title: "Invalid correction", description: "Select a player and enter a whole positive or negative ELO amount.", variant: "destructive" });
+    if (!rankedAdjustment.user_id || !Number.isInteger(amount) || amount < 0 || (rankedAdjustment.operation !== "set" && amount === 0)) {
+      toast({ title: "Invalid correction", description: "Select a player and enter a valid whole ELO amount.", variant: "destructive" });
       return;
     }
     if (rankedAdjustment.reason.trim().length < 3) {
@@ -1506,12 +1506,13 @@ export default function Admin() {
     try {
       const response = await base44.functions.invoke("adminAdjustRankedElo", {
         user_id: rankedAdjustment.user_id,
+        operation: rankedAdjustment.operation,
         amount,
         reason: rankedAdjustment.reason.trim(),
       });
       if (!response.data?.success) throw new Error(response.data?.error || "ELO correction failed");
       toast({ title: "ELO corrected", description: `${response.data.before_elo} → ${response.data.after_elo} ELO` });
-      setRankedAdjustment({ user_id: "", amount: "", reason: "" });
+      setRankedAdjustment({ user_id: "", operation: "set", amount: "", reason: "" });
       await loadAdminData();
     } catch (error) {
       toast({ title: "ELO correction failed", description: error.message, variant: "destructive" });
@@ -2308,31 +2309,60 @@ export default function Admin() {
                       })() : <p className="text-sm text-vapor mt-2">Select a player from the search results.</p>}
                     </div>
 
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        ["set", "Set exact"],
+                        ["add", "Add"],
+                        ["subtract", "Subtract"],
+                      ].map(([operation, label]) => (
+                        <button
+                          key={operation}
+                          type="button"
+                          onClick={() => setRankedAdjustment((current) => ({ ...current, operation }))}
+                          className={`py-2.5 rounded-lg border text-[11px] font-black ${rankedAdjustment.operation === operation ? "border-cyan/50 bg-cyan/10 text-cyan" : "border-white/10 text-vapor hover:bg-white/[0.04]"}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                     <label className="block space-y-1.5">
-                      <span className="text-[10px] uppercase tracking-wider text-vapor font-bold">Add or deduct ELO</span>
+                      <span className="text-[10px] uppercase tracking-wider text-vapor font-bold">
+                        {rankedAdjustment.operation === "set" ? "New exact ELO" : rankedAdjustment.operation === "add" ? "ELO to add" : "ELO to subtract"}
+                      </span>
                       <input
                         type="number"
                         step="1"
-                        min="-5000"
-                        max="5000"
+                        min="0"
+                        max="1000000"
                         value={rankedAdjustment.amount}
                         onChange={(event) => setRankedAdjustment((current) => ({ ...current, amount: event.target.value }))}
-                        placeholder="Example: +25 or -25"
+                        placeholder={rankedAdjustment.operation === "set" ? "Example: 1000 sets ELO to 1000" : "Example: 100"}
                         className="w-full px-3 py-3 bg-background/70 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-cyan/50"
                       />
                     </label>
                     <div className="grid grid-cols-4 gap-2">
-                      {[-100, -25, 25, 100].map((amount) => (
+                      {[25, 100, 500, 1000].map((amount) => (
                         <button
                           key={amount}
                           type="button"
                           onClick={() => setRankedAdjustment((current) => ({ ...current, amount: String(amount) }))}
-                          className={`py-2 rounded-lg border text-xs font-black ${amount < 0 ? "border-red-500/20 text-red-300 hover:bg-red-500/10" : "border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/10"}`}
+                          className="py-2 rounded-lg border border-white/10 text-xs font-black text-vapor hover:border-cyan/30 hover:text-cyan"
                         >
-                          {amount > 0 ? `+${amount}` : amount}
+                          {amount}
                         </button>
                       ))}
                     </div>
+                    {rankedAdjustment.user_id && rankedAdjustment.amount !== "" && (() => {
+                      const before = Number(rankedStatsByUserId[rankedAdjustment.user_id]?.elo || 0);
+                      const amount = Math.max(0, Number(rankedAdjustment.amount) || 0);
+                      const after = rankedAdjustment.operation === "set" ? amount : rankedAdjustment.operation === "add" ? before + amount : Math.max(0, before - amount);
+                      return (
+                        <div className="flex items-center justify-between rounded-lg border border-cyan/20 bg-cyan/[0.06] px-3 py-2.5 text-xs">
+                          <span className="text-vapor">Result before saving</span>
+                          <span className="font-mono font-black"><span className="text-vapor">{before}</span> <span className="text-cyan">-&gt; {after} ELO</span></span>
+                        </div>
+                      );
+                    })()}
                     <label className="block space-y-1.5">
                       <span className="text-[10px] uppercase tracking-wider text-vapor font-bold">Required reason</span>
                       <textarea
@@ -2355,7 +2385,7 @@ export default function Admin() {
                 </div>
               </section>
 
-              <ListSection title="Ranked Matches" rows={data.rankedMatches} empty="No ranked matches." render={(match) => (
+              <ListSection title="Ranked Matches" rows={data.rankedMatches} empty="No ranked matches." scrollable render={(match) => (
                 <RowGrid columns={[
                   ["Match", `${match.team_size || ""} ${match.game_mode_display || match.game_mode || ""}`],
                   ["Players", `${match.host_name || "Host unavailable"} vs ${match.challenger_name || "Opponent pending"}`],
@@ -3056,14 +3086,14 @@ function SummaryPanel({ title, rows }) {
   );
 }
 
-function ListSection({ title, rows, empty, render }) {
+function ListSection({ title, rows, empty, render, scrollable = false }) {
   return (
     <div>
       <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
         <h2 className="text-lg font-bold">{title}</h2>
         <span className="text-xs text-vapor">{rows.length} rows</span>
       </div>
-      <div className="divide-y divide-white/5">
+      <div className={`divide-y divide-white/5 ${scrollable ? "max-h-[640px] overflow-y-scroll overscroll-contain" : ""}`}>
         {rows.length === 0 ? <EmptyState label={empty} /> : rows.map((row) => (
           <div key={row.id}>{render(row)}</div>
         ))}
