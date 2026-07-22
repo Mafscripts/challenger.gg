@@ -344,7 +344,7 @@ export default function Tournaments() {
   const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
   const compatibleTeamsFor = (_tournament) => (
     userTeams.filter((team) => (
-      (team.team_type === "tournament" || team.team_type === "general")
+      team.team_type === "tournament"
       && team.captain_id === user?.id
     ))
   );

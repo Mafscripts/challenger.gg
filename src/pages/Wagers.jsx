@@ -28,6 +28,7 @@ export default function Wagers() {
   const [userTeams, setUserTeams] = useState([]);
   const [acceptTeamByWager, setAcceptTeamByWager] = useState({});
   const [acceptPaymentByWager, setAcceptPaymentByWager] = useState({});
+  const [cancellingWagerId, setCancellingWagerId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -170,6 +171,40 @@ export default function Wagers() {
     }
   };
 
+  const handleCancel = async (wager) => {
+    const confirmed = window.confirm("Cancel this wager? Your reserved entry fee will be returned to your wallet.");
+    if (!confirmed) return;
+
+    setCancellingWagerId(wager.id);
+    try {
+      const response = await base44.functions.invoke("refundWager", {
+        wager_id: wager.id,
+        reason: "Cancelled by host while waiting for an opponent",
+      });
+      if (!response.data?.success) {
+        toast({
+          title: "Could not cancel wager",
+          description: response.data?.error || "Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Wager cancelled",
+        description: "Your entry fee has been returned to your wallet.",
+      });
+      await loadData();
+    } catch (error) {
+      toast({
+        title: "Could not cancel wager",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCancellingWagerId(null);
+    }
+  };
+
   const filteredWagers = wagers.filter(w => {
     const entryFee = w.entry_fee ?? w.amount ?? 0;
     if (amountFilter === "$5-$10" && (entryFee < 5 || entryFee > 10)) return false;
@@ -181,7 +216,7 @@ export default function Wagers() {
   const hasActivePremium = user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires) > new Date());
   const compatibleTeamsFor = (_wager) => (
     userTeams.filter((team) => (
-      (team.team_type === "wager" || team.team_type === "general")
+      team.team_type === "wager"
       && team.captain_id === user?.id
     ))
   );
@@ -263,9 +298,19 @@ export default function Wagers() {
                     <span className={`text-xs font-semibold text-green`}>{w.status}</span>
                     <div>
                       {w.status === "open" && w.host_id === user?.id ? (
-                        <span className="inline-flex rounded border border-orange/20 bg-orange/10 px-4 py-1.5 text-xs font-bold text-orange">
-                          Waiting for Opponent
-                        </span>
+                        <div className="flex flex-col items-start gap-2">
+                          <span className="inline-flex rounded border border-orange/20 bg-orange/10 px-4 py-1.5 text-xs font-bold text-orange">
+                            Waiting for Opponent
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCancel(w)}
+                            disabled={cancellingWagerId === w.id}
+                            className="px-4 py-1.5 text-xs font-bold text-red-400 rounded border border-red-400/20 bg-red-400/10 hover:bg-red-400/20 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {cancellingWagerId === w.id ? "Cancelling..." : "Cancel Wager"}
+                          </button>
+                        </div>
                       ) : w.status === "open" && (
                         <div className="flex flex-col gap-2">
                           {rosterSize(w.team_size) > 1 && (

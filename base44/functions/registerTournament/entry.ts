@@ -33,8 +33,8 @@ async function selectedTournamentTeam(base44, teamId, captainId, requiredSize) {
     throw error;
   }
   const teamType = team.team_type || '8s';
-  if (teamType !== 'tournament' && teamType !== 'general') {
-    const error = new Error('Select a tournament team');
+  if (teamType !== 'tournament') {
+    const error = new Error('Select a dedicated tournament team. Wager and general teams cannot enter tournaments');
     error.status = 400;
     throw error;
   }

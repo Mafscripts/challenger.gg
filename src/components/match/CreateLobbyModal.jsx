@@ -71,7 +71,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const compatibleTeams = useMemo(() => (
     userTeams.filter((team) => {
       const teamType = team.team_type || "8s";
-      return (teamType === expectedTeamType || teamType === "general")
+      return teamType === expectedTeamType
         && team.captain_id === user?.id;
     })
   ), [expectedTeamType, requiredPlayers, user?.id, userTeams]);
@@ -420,7 +420,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     </select>
                     {compatibleTeams.length === 0 && (
                       <p className="text-xs text-red-400 mt-2">
-                        Create a {expectedTeamType === "8s" ? "8s" : "wager"} team first.
+                        Create a dedicated {expectedTeamType === "8s" ? "8s" : "wager"} team first. Tournament teams cannot be used here.
                       </p>
                     )}
                     {selectedTeam && selectedTeam.members.length < requiredPlayers && (

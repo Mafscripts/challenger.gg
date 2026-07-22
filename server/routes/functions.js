@@ -3071,7 +3071,9 @@ async function assertTournamentRegistrationAllowed(req, tournament, team, member
   const requiredSize = requiredRosterSize(tournament.team_size);
   if (!team) return "Select a team to register for tournaments";
   if (team.captain_id !== req.user.id) return "Only the team captain can register the team";
-  if (!teamTypeMatches(team, "tournament")) return "Select a tournament team";
+  if (normalizeTeamType(team.team_type) !== "tournament") {
+    return "Select a dedicated tournament team. Wager and general teams cannot enter tournaments";
+  }
   if (rosterLimitForTeam(team, requiredSize) !== requiredSize) return `Team roster size must match ${tournament.team_size}`;
   if ((members || []).length !== requiredSize) return `${tournament.team_size} tournaments require exactly ${requiredSize} active roster members`;
   const memberIds = (members || []).map((member) => member.user_id).filter(Boolean);
@@ -3106,6 +3108,9 @@ async function registerTournament(req) {
     exactSize: true,
     captainId: req.user.id,
   });
+  if (normalizeTeamType(team.team_type) !== "tournament") {
+    return { success: false, error: "Select a dedicated tournament team. Wager and general teams cannot enter tournaments" };
+  }
 
   const duplicate = await firstEntity("TournamentParticipant", { tournament_id: tournament.id, team_id: team.id }).catch(() => null);
   if (duplicate) return { success: false, error: "Already registered" };
@@ -5228,6 +5233,9 @@ async function createWager(req) {
     });
     hostTeam = result.team;
     hostRoster = result.roster;
+    if (matchType === "wagers" && normalizeTeamType(hostTeam.team_type) !== "wager") {
+      return { success: false, error: "Select a dedicated wager team. Tournament and general teams cannot enter wagers." };
+    }
     const rosterActivisionError = await activisionIdErrorForMembers(hostRoster);
     if (rosterActivisionError) return { success: false, error: rosterActivisionError, code: "ACTIVISION_ID_REQUIRED" };
   } else if (entryFee > 0) {
@@ -5322,6 +5330,9 @@ async function acceptWager(req) {
     });
     challengerTeam = result.team;
     challengerRoster = result.roster;
+    if ((wager.match_type || "wagers") === "wagers" && normalizeTeamType(challengerTeam.team_type) !== "wager") {
+      return { success: false, error: "Select a dedicated wager team. Tournament and general teams cannot enter wagers." };
+    }
     const rosterActivisionError = await activisionIdErrorForMembers(challengerRoster);
     if (rosterActivisionError) return { success: false, error: rosterActivisionError, code: "ACTIVISION_ID_REQUIRED" };
     if (challengerTeam.id === wager.host_team_id) {
@@ -5611,6 +5622,9 @@ async function refundWager(req) {
   }
   if (wager.status === "completed") {
     return { success: false, error: "Completed wagers cannot be refunded" };
+  }
+  if (!hasRole(req.user, "moderator") && wager.status === "open" && req.user.id !== wager.host_id) {
+    return { success: false, error: "Only the host can cancel an open wager" };
   }
 
   await refundWagerEscrow(wager, req.body.reason || "Wager refunded");
