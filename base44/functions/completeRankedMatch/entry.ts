@@ -222,6 +222,22 @@ Deno.serve(async (req) => {
     if (match.status === 'completed') return Response.json({ success: true, already_completed: true });
     if (match.status === 'cancelled') return Response.json({ error: 'Ranked match is cancelled' }, { status: 400 });
 
+    const bestOf = Math.max(1, Math.trunc(Number(match.best_of) || 1));
+    const winsNeeded = Math.floor(bestOf / 2) + 1;
+    const validFinalScore = alphaScore <= winsNeeded
+      && bravoScore <= winsNeeded
+      && ((alphaScore === winsNeeded && bravoScore < winsNeeded) || (bravoScore === winsNeeded && alphaScore < winsNeeded));
+    if (!validFinalScore) {
+      return Response.json({ error: `Invalid BO${bestOf} score. One team must reach ${winsNeeded} map ${winsNeeded === 1 ? 'win' : 'wins'}.` }, { status: 400 });
+    }
+
+    const slotsPerTeam = Math.max(1, Number.parseInt(String(match.team_size || '1v1').split('v')[0], 10) || 1);
+    const alphaRoster = Array.isArray(match.team_alpha_player_ids) ? match.team_alpha_player_ids : [match.host_id].filter(Boolean);
+    const bravoRoster = Array.isArray(match.team_bravo_player_ids) ? match.team_bravo_player_ids : [match.challenger_id].filter(Boolean);
+    if (alphaRoster.length < slotsPerTeam || bravoRoster.length < slotsPerTeam) {
+      return Response.json({ error: 'All ranked roster slots must be filled before scores can be submitted' }, { status: 400 });
+    }
+
     const isHost = user.id === match.host_id;
     const isChallenger = user.id === match.challenger_id;
     const moderator = canModerate(user.role);

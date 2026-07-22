@@ -5766,7 +5766,7 @@ async function acceptRankedMatch(req) {
   const selected = shouldReroll
     ? randomRankedMap(match.game_mode, [hostPreviousMap, challengerPreviousMap])
     : null;
-  const deadline = rosterFull ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : "";
+  const deadline = match.match_start_deadline || new Date(Date.now() + 15 * 60 * 1000).toISOString();
   const updated = await updateEntity("RankedMatch", id, {
     challenger_id: match.challenger_id || (!joinAlpha ? req.user.id : ""),
     challenger_name: match.challenger_name || (!joinAlpha ? nameFor(req.user) : ""),
@@ -5822,7 +5822,8 @@ async function completeRankedMatch(req) {
   if (!match.challenger_id) {
     return { success: false, error: "Opponent has not joined yet" };
   }
-  if (!rankedRosterIds(match, "alpha").length || !rankedRosterIds(match, "bravo").length || match.status === "open") {
+  const slotsPerTeam = rankedTeamSize(match);
+  if (rankedRosterIds(match, "alpha").length < slotsPerTeam || rankedRosterIds(match, "bravo").length < slotsPerTeam || match.status === "open") {
     return { success: false, error: "All ranked roster slots must be filled before scores can be submitted" };
   }
   const isHost = req.user.id === match.host_id;
@@ -5841,6 +5842,16 @@ async function completeRankedMatch(req) {
   }
   if (teamAlphaScore === teamBravoScore) {
     return { success: false, error: "Scores cannot be tied" };
+  }
+  const bestOf = Math.max(1, Math.trunc(Number(match.best_of) || 1));
+  const winsNeeded = Math.floor(bestOf / 2) + 1;
+  const validFinalScore = Number.isInteger(teamAlphaScore)
+    && Number.isInteger(teamBravoScore)
+    && teamAlphaScore <= winsNeeded
+    && teamBravoScore <= winsNeeded
+    && ((teamAlphaScore === winsNeeded && teamBravoScore < winsNeeded) || (teamBravoScore === winsNeeded && teamAlphaScore < winsNeeded));
+  if (!validFinalScore) {
+    return { success: false, error: `Invalid BO${bestOf} score. One team must finish on ${winsNeeded} map ${winsNeeded === 1 ? "win" : "wins"}.` };
   }
 
   let confirmedReportPatch = {};
@@ -5943,11 +5954,17 @@ async function completeRankedMatch(req) {
 async function cancelRankedMatch(req) {
   const id = req.body.ranked_match_id || req.body.id;
   const existing = await getEntity("RankedMatch", id);
-  if (req.user.id !== existing.host_id && !hasRole(req.user, "moderator")) {
+  const staff = hasRole(req.user, "moderator");
+  if (req.user.id !== existing.host_id && !staff) {
     return { success: false, error: "Only the host can cancel this ranked match" };
   }
   if (["completed", "cancelled"].includes(existing.status)) {
     return { success: false, error: "This ranked match can no longer be cancelled" };
+  }
+  const joinedOpponentCount = Math.max(0, rankedRosterIds(existing, "alpha").length + rankedRosterIds(existing, "bravo").length - 1);
+  const deadline = existing.match_start_deadline ? new Date(existing.match_start_deadline).getTime() : 0;
+  if (!staff && joinedOpponentCount > 0 && (!deadline || Date.now() < deadline)) {
+    return { success: false, error: "The host can cancel only after the 15-minute timer has expired" };
   }
   const match = await updateEntity("RankedMatch", id, {
     status: "cancelled",

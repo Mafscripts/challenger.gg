@@ -23,6 +23,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Completed matches cannot be cancelled' }, { status: 400 });
     }
 
+    const alphaRoster = Array.isArray(match.team_alpha_player_ids) ? match.team_alpha_player_ids : [match.host_id].filter(Boolean);
+    const bravoRoster = Array.isArray(match.team_bravo_player_ids) ? match.team_bravo_player_ids : [match.challenger_id].filter(Boolean);
+    const joinedOpponentCount = Math.max(0, alphaRoster.length + bravoRoster.length - 1);
+    const deadline = match.match_start_deadline ? new Date(match.match_start_deadline).getTime() : 0;
+    if (!canModerate(user.role) && joinedOpponentCount > 0 && (!deadline || Date.now() < deadline)) {
+      return Response.json({ error: 'The host can cancel only after the 15-minute timer has expired' }, { status: 400 });
+    }
+
     const now = new Date().toISOString();
     await base44.asServiceRole.entities.RankedMatch.update(id, {
       status: 'cancelled',

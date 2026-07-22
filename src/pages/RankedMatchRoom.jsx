@@ -30,6 +30,18 @@ function scoreWinner(match, scoreA, scoreB) {
   return scoreA > scoreB ? match.host_id : match.challenger_id;
 }
 
+const winsNeededFor = (match) => Math.floor(Math.max(1, Number(match?.best_of) || 1) / 2) + 1;
+const validSeriesScore = (match, scoreA, scoreB) => {
+  const winsNeeded = winsNeededFor(match);
+  return Number.isInteger(scoreA)
+    && Number.isInteger(scoreB)
+    && scoreA >= 0
+    && scoreB >= 0
+    && scoreA <= winsNeeded
+    && scoreB <= winsNeeded
+    && ((scoreA === winsNeeded && scoreB < winsNeeded) || (scoreB === winsNeeded && scoreA < winsNeeded));
+};
+
 const slotsPerRankedTeam = (match) => Math.max(1, Number.parseInt(String(match?.team_size || "1v1").split("v")[0], 10) || 1);
 const roomRosterIds = (match, side) => {
   const stored = match?.[`team_${side}_player_ids`];
@@ -132,7 +144,12 @@ export default function RankedMatchRoom() {
     user?.id && (roomRosterIds(match, "alpha").includes(user.id) || roomRosterIds(match, "bravo").includes(user.id))
   ), [user?.id, match]);
 
-  const canSubmitScore = isParticipant && match?.status === "in_progress";
+  const canSubmitScore = isParticipant && match?.status === "in_progress" && roomRosterFull(match);
+  const scoreIsValid = validSeriesScore(match, scoreA, scoreB);
+  const winsNeeded = winsNeededFor(match);
+  const isStaff = ["ceo", "super_admin", "admin", "moderator"].includes(user?.role);
+  const joinedOpponentCount = Math.max(0, roomRosterIds(match, "alpha").length + roomRosterIds(match, "bravo").length - 1);
+  const hostCancelLocked = !isStaff && joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
 
   const loadPlayer = async (userId, fallbackName) => {
     if (!userId) return null;
@@ -223,8 +240,8 @@ export default function RankedMatchRoom() {
 
   const handleReportScore = async () => {
     if (!canSubmitScore) return;
-    if (scoreA === scoreB) {
-      toast({ title: "Invalid score", description: "Scores cannot be tied.", variant: "destructive" });
+    if (!scoreIsValid) {
+      toast({ title: "Invalid score", description: `This BO${match.best_of || 1} must end when one team reaches ${winsNeeded} map ${winsNeeded === 1 ? "win" : "wins"}.`, variant: "destructive" });
       return;
     }
 
@@ -395,7 +412,8 @@ export default function RankedMatchRoom() {
                   value={scoreA}
                   disabled={!canSubmitScore}
                   min="0"
-                  onChange={(event) => setScoreA(Number(event.target.value))}
+                  max={winsNeeded}
+                  onChange={(event) => setScoreA(Math.min(winsNeeded, Math.max(0, Number(event.target.value))))}
                   className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-cyan focus:outline-none focus:border-cyan/30 disabled:opacity-60"
                 />
                 <span className="text-2xl md:text-3xl lg:text-4xl text-vapor font-bold">-</span>
@@ -404,7 +422,8 @@ export default function RankedMatchRoom() {
                   value={scoreB}
                   disabled={!canSubmitScore}
                   min="0"
-                  onChange={(event) => setScoreB(Number(event.target.value))}
+                  max={winsNeeded}
+                  onChange={(event) => setScoreB(Math.min(winsNeeded, Math.max(0, Number(event.target.value))))}
                   className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-orange focus:outline-none focus:border-orange/30 disabled:opacity-60"
                 />
               </div>
@@ -452,7 +471,7 @@ export default function RankedMatchRoom() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleReportScore}
-              disabled={!canSubmitScore || submitting}
+              disabled={!canSubmitScore || !scoreIsValid || submitting}
               className="flex-1 min-w-[200px] py-3 bg-green/10 text-green font-bold text-sm rounded-lg border border-green/20 hover:bg-green/20 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4" /> {submitting ? "Submitting..." : "Submit Score"}
@@ -485,12 +504,14 @@ export default function RankedMatchRoom() {
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            {(user?.id === match.host_id || ["ceo", "super_admin", "admin", "moderator"].includes(user?.role)) && !["completed", "cancelled"].includes(match.status) && (
+            {(user?.id === match.host_id || isStaff) && !["completed", "cancelled"].includes(match.status) && (
               <button
                 onClick={handleCancel}
-                className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider"
+                disabled={hostCancelLocked}
+                title={hostCancelLocked ? "Cancellation unlocks when the 15-minute timer expires" : "Cancel match"}
+                className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Cancel Match
+                {hostCancelLocked ? `Cancel in ${timeRemaining || "15:00"}` : "Cancel Match"}
               </button>
             )}
           </div>
@@ -506,7 +527,7 @@ export default function RankedMatchRoom() {
               }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
             </p>
           )}
-          {predictedWinnerName && canSubmitScore && (
+          {predictedWinnerName && canSubmitScore && scoreIsValid && (
             <p className="text-xs text-vapor mt-3 flex items-center gap-2">
               <Shield className="w-3.5 h-3.5 text-cyan" />
               Current score would report {predictedWinnerName} as winner.
