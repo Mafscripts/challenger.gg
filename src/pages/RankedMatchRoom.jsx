@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
@@ -142,7 +142,8 @@ function RankedResultOverlay({ match, result, onContinue }) {
   }, [newElo, previousElo, reduceMotion]);
 
   const accent = result.won ? "text-green" : "text-red-400";
-  const progressWidth = Math.max(10, Math.min(100, (displayedElo / Math.max(newElo, previousElo, 1)) * 100));
+  const displayedDelta = displayedElo - previousElo;
+  const progressWidth = Math.max(0, Math.min(100, Math.abs(displayedDelta) / Math.max(Math.abs(delta), 1) * 100));
 
   return (
     <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -160,10 +161,10 @@ function RankedResultOverlay({ match, result, onContinue }) {
         <motion.h2 initial={{ opacity: 0, scale: 1.35 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6, duration: 0.35 }} className="mt-2 text-3xl font-black">{match.confirmed_score_alpha ?? match.winner_score} - {match.confirmed_score_bravo ?? match.loser_score}</motion.h2>
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
           <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your ELO change</p>
-          <p className={`mt-2 font-mono text-4xl font-black tabular-nums ${accent}`}>{displayedElo.toLocaleString()} ELO</p>
-          <p className={`mt-1 text-sm font-black ${accent}`}>{delta > 0 ? "+" : ""}{delta} ELO</p>
+          <p className={`mt-2 font-mono text-4xl font-black tabular-nums ${accent}`}>{displayedDelta > 0 ? "+" : ""}{displayedDelta} ELO</p>
+          <p className={`mt-1 text-[10px] font-black uppercase tracking-[0.18em] ${accent}`}>{delta >= 0 ? "ELO gained" : "ELO lost"}</p>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5"><motion.div className={`h-full rounded-full ${result.won ? "bg-green" : "bg-red-500"}`} animate={{ width: `${progressWidth}%` }} transition={{ duration: 0.16 }} /></div>
-          <p className="mt-2 text-xs text-vapor">{previousElo.toLocaleString()} → {newElo.toLocaleString()} ELO</p>
+          <div className="mt-3 flex items-center justify-center gap-2 text-xs text-vapor"><span>{previousElo.toLocaleString()} ELO</span><span>→</span><span className="font-bold text-white">{newElo.toLocaleString()} ELO total</span></div>
         </motion.div>
         <AnimatePresence>
           {showContinue && <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} onClick={onContinue} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to Ranked</motion.button>}
@@ -188,6 +189,7 @@ export default function RankedMatchRoom() {
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
+  const loadedRosterSignatureRef = useRef("");
 
   useEffect(() => {
     loadRoom();
@@ -204,14 +206,16 @@ export default function RankedMatchRoom() {
           const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
           if (mapResponse?.data?.match) refreshedMatch = mapResponse.data.match;
         }
-        setMatch(refreshedMatch);
-        if (roomRosterSignature(refreshedMatch) !== roomRosterSignature(match)) {
+        const refreshedSignature = roomRosterSignature(refreshedMatch);
+        if (refreshedSignature !== loadedRosterSignatureRef.current) {
           const rosters = await loadRosterPlayers(refreshedMatch);
           if (active) {
             setAlphaPlayers(rosters.alpha);
             setBravoPlayers(rosters.bravo);
+            loadedRosterSignatureRef.current = refreshedSignature;
           }
         }
+        if (active) setMatch(refreshedMatch);
       } catch (error) {
         console.error("Failed to refresh ranked match:", error);
       }
@@ -221,7 +225,7 @@ export default function RankedMatchRoom() {
       active = false;
       clearInterval(interval);
     };
-  }, [id, roomRosterSignature(match)]);
+  }, [id]);
 
   useEffect(() => {
     const interval = setInterval(calculateTimeRemaining, 1000);
@@ -255,8 +259,8 @@ export default function RankedMatchRoom() {
     if (!userId) return null;
 
     const [userRows, statsRows] = await Promise.all([
-      base44.entities.User.get(userId).then((row) => row).catch(() => null),
-      base44.entities.RankedStats.filter({ user_id: userId }).catch(() => []),
+      base44.entities.User.getFresh(userId).then((row) => row).catch(() => null),
+      base44.entities.RankedStats.filterFresh({ user_id: userId }).catch(() => []),
     ]);
     const stats = statsRows?.[0] || {};
 
@@ -312,6 +316,7 @@ export default function RankedMatchRoom() {
       const rosters = await loadRosterPlayers(matchData);
       setAlphaPlayers(rosters.alpha);
       setBravoPlayers(rosters.bravo);
+      loadedRosterSignatureRef.current = roomRosterSignature(matchData);
     } catch (error) {
       console.error("Failed to load ranked match:", error);
       toast({ title: "Error loading match", description: error.message || "Match not found", variant: "destructive" });
