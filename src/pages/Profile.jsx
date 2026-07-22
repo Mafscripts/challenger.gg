@@ -321,7 +321,6 @@ export default function Profile() {
     : "";
   const trophyCount = profileTrophyCount(user, inventory);
   const profileTeams = teams.filter((membership) => membership.team && membership.team.is_demo !== true);
-  const primaryTeams = profileTeams.map((membership) => membership.team).slice(0, 4);
   const elo = Number(rankedStats?.elo || profile?.elo || 0);
   const nextRank = getNextRankForElo(elo);
   const rankProgress = getRankProgress(elo);
@@ -484,11 +483,6 @@ export default function Profile() {
                         Add in Settings
                       </Link>
                     )}
-                    {primaryTeams.map((team) => (
-                      <Link key={team.id} to="/teams" title={`Open ${team.name}`} className="inline-flex items-center gap-1.5 rounded-md border border-orange/20 bg-orange/[0.07] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange transition-colors hover:border-orange/35 hover:bg-orange/10">
-                        <Shield className="h-3 w-3" /> Team · {team.tag || team.name}
-                      </Link>
-                    ))}
                     {socialLinks.map((social) => (
                       social.url ? (
                         <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border border-white/5 bg-secondary/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor transition-colors hover:border-cyan/30 hover:text-cyan">
