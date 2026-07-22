@@ -5764,6 +5764,7 @@ async function createRankedMatch(req) {
     team_bravo_player_ids: [],
     team_bravo_player_names: [],
     status: "open",
+    match_start_deadline: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     created_date: new Date().toISOString(),
   });
   return { success: true, ranked_match: match, ranked_match_id: match.id };
@@ -6011,7 +6012,14 @@ async function cancelRankedMatch(req) {
     return { success: false, error: "This ranked match can no longer be cancelled" };
   }
   const joinedOpponentCount = Math.max(0, rankedRosterIds(existing, "alpha").length + rankedRosterIds(existing, "bravo").length - 1);
-  const deadline = existing.match_start_deadline ? new Date(existing.match_start_deadline).getTime() : 0;
+  const deadline = existing.match_start_deadline
+    ? new Date(existing.match_start_deadline).getTime()
+    : existing.created_date
+      ? new Date(existing.created_date).getTime() + 15 * 60 * 1000
+      : 0;
+  if (!staffOverride && joinedOpponentCount === 0 && (!deadline || Date.now() < deadline)) {
+    return { success: false, error: "The host can cancel an empty ranked lobby after the 15-minute timer" };
+  }
   if (!staffOverride && joinedOpponentCount > 0) {
     return { success: false, error: !deadline || Date.now() < deadline
       ? "A cancellation vote becomes available after the 15-minute timer"

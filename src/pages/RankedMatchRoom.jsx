@@ -233,7 +233,7 @@ export default function RankedMatchRoom() {
     const interval = setInterval(calculateTimeRemaining, 1000);
     calculateTimeRemaining();
     return () => clearInterval(interval);
-  }, [match?.match_start_deadline]);
+  }, [match?.match_start_deadline, match?.created_date]);
 
   useEffect(() => {
     if (match?.status === "cancelled") {
@@ -254,6 +254,7 @@ export default function RankedMatchRoom() {
   const scoreIsValid = validSeriesScore(match, scoreA, scoreB);
   const winsNeeded = winsNeededFor(match);
   const joinedOpponentCount = Math.max(0, roomRosterIds(match, "alpha").length + roomRosterIds(match, "bravo").length - 1);
+  const emptyLobbyCancelLocked = joinedOpponentCount === 0 && timeRemaining !== "EXPIRED";
   const cancelVoteLocked = joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
   const personalResult = match?.elo_changes?.[user?.id] || null;
   const visibleRosterPlayers = (side, loadedPlayers) => {
@@ -343,12 +344,17 @@ export default function RankedMatchRoom() {
   };
 
   const calculateTimeRemaining = () => {
-    if (!match?.match_start_deadline) {
+    const deadline = match?.match_start_deadline
+      ? new Date(match.match_start_deadline)
+      : match?.created_date
+        ? new Date(new Date(match.created_date).getTime() + 15 * 60 * 1000)
+        : null;
+    if (!deadline) {
       setTimeRemaining(null);
       return;
     }
 
-    const diff = new Date(match.match_start_deadline) - new Date();
+    const diff = deadline - new Date();
     if (diff <= 0) {
       setTimeRemaining("EXPIRED");
       return;
@@ -685,7 +691,15 @@ export default function RankedMatchRoom() {
                 Staff Cancel
               </button>
             )}
-            {isHost && !isStaff && joinedOpponentCount === 0 && !["completed", "cancelled"].includes(match.status) && <button onClick={handleCancel} className="rounded-lg border border-red-500/20 bg-red-500/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20">Cancel Open Match</button>}
+            {isHost && !isStaff && joinedOpponentCount === 0 && !["completed", "cancelled"].includes(match.status) && (
+              <button
+                onClick={handleCancel}
+                disabled={emptyLobbyCancelLocked}
+                className="rounded-lg border border-red-500/20 bg-red-500/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {emptyLobbyCancelLocked ? `Cancel in ${timeRemaining || "15:00"}` : "Cancel Empty Lobby"}
+              </button>
+            )}
             {isHost && !isStaff && joinedOpponentCount > 0 && !["completed", "cancelled"].includes(match.status) && (
               <button
                 onClick={() => handleCancelVote("request")}
