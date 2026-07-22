@@ -68,6 +68,16 @@
       ],
       "title": "Team Size"
     },
+    "play_rule": {
+      "type": "string",
+      "enum": [
+        "controller_only",
+        "mixed_pc_allowed",
+        "console_only"
+      ],
+      "default": "controller_only",
+      "title": "Input and Platform Rule"
+    },
     "best_of": {
       "type": "number",
       "default": 1,

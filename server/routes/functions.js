@@ -5267,6 +5267,8 @@ async function createWager(req) {
   const requiredSize = requiredRosterSize(req.body.team_size);
   const isTeamMatch = requiredSize > 1 && ["8s", "wagers"].includes(matchType);
   const paymentMode = paymentModeFor(req.body.payment_mode);
+  const allowedPlayRules = new Set(["controller_only", "mixed_pc_allowed", "console_only"]);
+  const playRule = allowedPlayRules.has(req.body.play_rule) ? req.body.play_rule : "controller_only";
   let hostTeam = null;
   let hostRoster = null;
 
@@ -5304,6 +5306,7 @@ async function createWager(req) {
     total_prize_pool: totalPrizePool,
     required_players_per_team: requiredSize,
     roster_locked: isTeamMatch,
+    play_rule: playRule,
     match_type: matchType,
     status: "open",
     created_date: new Date().toISOString(),

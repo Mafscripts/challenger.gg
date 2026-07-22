@@ -122,6 +122,7 @@ const detailTabs = [
 export default function Teams() {
   const [searchParams] = useSearchParams();
   const linkedTeamId = searchParams.get("team");
+  const requestedCreateType = searchParams.get("create");
   const [view, setView] = useState("my_teams");
   const [detailTab, setDetailTab] = useState("overview");
   const [currentUser, setCurrentUser] = useState(null);
@@ -146,6 +147,10 @@ export default function Teams() {
   useEffect(() => {
     loadTeams();
   }, []);
+
+  useEffect(() => {
+    if (["wager", "tournament", "8s"].includes(requestedCreateType)) setCreateOpen(true);
+  }, [requestedCreateType]);
 
   const loadTeams = async () => {
     try {
@@ -587,7 +592,7 @@ export default function Teams() {
         ) : null}
       </div>
 
-      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} onCreated={async (team) => { await loadTeams(); setSelectedTeamId(team.id); setDetailTab("overview"); setView("details"); }} />
+      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={requestedCreateType === "wager" ? "wager" : requestedCreateType === "tournament" ? "tournament" : "8s"} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={async (team) => { await loadTeams(); setSelectedTeamId(team.id); setDetailTab("overview"); setView("details"); }} />
       <InvitePlayerModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} team={selectedTeam} value={inviteIdentifier} onChange={setInviteIdentifier} onSubmit={handleInvite} busy={Boolean(busyAction)} />
     </div>
   );

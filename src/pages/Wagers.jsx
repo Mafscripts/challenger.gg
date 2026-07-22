@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Zap, Plus, DollarSign, Star, Clock3, ShieldCheck, Swords, History
+  Zap, Plus, DollarSign, Star, Clock3, ShieldCheck, Swords, History, Users, Gamepad2
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -10,6 +10,7 @@ import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import MapVetoModal from "@/components/match/MapVetoModal";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
+import { wagerPlayRule } from "@/lib/wagerRules";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -234,9 +235,14 @@ export default function Wagers() {
               <h1 className="text-3xl font-black tracking-tight md:text-4xl">Find your next match</h1>
               <p className="mt-3 max-w-2xl text-base leading-relaxed text-vapor">Post a challenge or accept an open wager. Your entry is secured until the match is completed.</p>
             </div>
-            <button onClick={() => setIsCreateModalOpen(true)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-green px-6 py-3.5 text-sm font-black uppercase tracking-wider text-background shadow-[0_10px_30px_rgba(0,255,136,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(0,255,136,0.25)]">
-              <Plus className="h-[18px] w-[18px]" /> Post a wager
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <Link to="/teams?create=wager" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-cyan/25 bg-cyan/10 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-cyan transition-colors hover:border-cyan/40 hover:bg-cyan/15">
+                <Users className="h-[18px] w-[18px]" /> Create Wager Team
+              </Link>
+              <button onClick={() => setIsCreateModalOpen(true)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-green px-6 py-3.5 text-sm font-black uppercase tracking-wider text-background shadow-[0_10px_30px_rgba(0,255,136,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(0,255,136,0.25)]">
+                <Plus className="h-[18px] w-[18px]" /> Post a wager
+              </button>
+            </div>
           </div>
           <div className="relative mt-7 grid grid-cols-2 gap-4 border-t border-white/5 pt-6 md:grid-cols-4">
             {[
@@ -288,7 +294,7 @@ export default function Wagers() {
                     <div>
                       <p className="text-base font-black">{w.host_id === user?.id ? "Your wager" : "Anonymous player"}</p>
                     </div>
-                    <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · {w.final_map_name || "Map decided by veto"}</p></div>
+                    <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · {w.final_map_name || "Map decided by veto"}</p><span className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-black uppercase tracking-wide text-vapor"><Gamepad2 className="h-3 w-3 text-cyan" /> {wagerPlayRule(w.play_rule).shortLabel}</span></div>
                     <div><p className="font-mono text-xl font-black text-green">${w.entry_fee ?? w.amount ?? 0}</p><p className="text-[11px] uppercase text-vapor">per player</p></div>
                     <span className="w-fit rounded-md border border-cyan/15 bg-cyan/5 px-3 py-1.5 font-mono text-xs font-black text-cyan">BO{w.best_of || 1}</span>
                     <div className="md:justify-self-end">

@@ -10,6 +10,7 @@ import MatchChat from "@/components/match/MatchChat";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
+import { wagerPlayRule } from "@/lib/wagerRules";
 
 const formatStatus = (value) => String(value || "open").replace(/_/g, " ");
 const formatDate = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Pending";
@@ -137,6 +138,7 @@ function MatchStatusCard({ match }) {
         </span>
       </div>
       <InfoRow label="Mode" value={match.game_mode_display || match.game_mode} />
+      <InfoRow label="Input / platform" value={wagerPlayRule(match.play_rule).shortLabel} />
       <InfoRow label="Map" value={match.final_map_name || "Map pending"} />
       <InfoRow label="Host" value={match.host_name || "Host pending"} />
       <InfoRow label="Server" value={match.server || match.server_region || match.region || "Platform lobby"} />
@@ -497,7 +499,7 @@ export default function WagersMatchRoom() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-background/25 px-6 py-4 md:px-8">
-              <div className="text-xs text-vapor">{wager.game_mode_display || wager.game_mode} · {wager.final_map_name || "Map pending"} · BO{bestOf}</div>
+              <div className="text-xs text-vapor">{wager.game_mode_display || wager.game_mode} · {wager.final_map_name || "Map pending"} · BO{bestOf} · {wagerPlayRule(wager.play_rule).shortLabel}</div>
               <Link to="/wagers" className="rounded-lg bg-cyan px-5 py-2.5 text-xs font-black uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/20">
                 Back to Wagers
               </Link>
@@ -524,7 +526,7 @@ export default function WagersMatchRoom() {
                 <span className="text-xs font-mono font-semibold uppercase tracking-wider text-green">Wager match · {matchPhaseFor(wager)}</span>
               </div>
               <h1 className="text-2xl font-black">{hostDisplayName} vs {challengerDisplayName}</h1>
-              <p className="mt-1 text-sm text-vapor">{wager.game_mode_display || wager.game_mode} · {wager.final_map_name || "Map pending"} · BO{bestOf} · ID #{wager.id?.slice(-8)}</p>
+              <p className="mt-1 text-sm text-vapor">{wager.game_mode_display || wager.game_mode} · {wager.final_map_name || "Map pending"} · BO{bestOf} · {wagerPlayRule(wager.play_rule).shortLabel} · ID #{wager.id?.slice(-8)}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="rounded-xl border border-green/20 bg-green/10 px-5 py-3 text-center">

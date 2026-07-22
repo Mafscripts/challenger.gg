@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign } from "lucide-react";
+import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
+import { WAGER_PLAY_RULES } from "@/lib/wagerRules";
 
 const gameModes = [
   { id: "snd", name: "Search & Destroy", icon: Target, description: "Best of 11 rounds", tone: "yellow" },
@@ -29,6 +30,7 @@ const choiceTones = {
 };
 
 const wagerAmounts = [5, 10, 25, 50, 100];
+const playRuleIcons = { controller_only: Gamepad2, mixed_pc_allowed: Keyboard, console_only: Monitor };
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 const teamTypeForMode = (mode) => mode === "8s" ? "8s" : "wager";
 
@@ -68,6 +70,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const [userTeams, setUserTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [paymentMode, setPaymentMode] = useState("own");
+  const [selectedPlayRule, setSelectedPlayRule] = useState("controller_only");
   const [step, setStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -141,6 +144,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             best_of: bestOf,
             team_id: selectedTeamId || undefined,
             payment_mode: paymentMode,
+            play_rule: selectedPlayRule,
             host_banned_map: hostBannedMap,
             host_banned_map_name: mapPool.find(m => m.id === hostBannedMap)?.name || "",
             final_map: autoSelectedMap?.id,
@@ -256,6 +260,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         setCustomAmount("");
         setSelectedTeamId("");
         setPaymentMode("own");
+        setSelectedPlayRule("controller_only");
         setIsCreating(false);
         onClose();
       } catch (error) {
@@ -278,6 +283,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     setCustomAmount("");
     setSelectedTeamId("");
     setPaymentMode("own");
+    setSelectedPlayRule("controller_only");
     onClose();
   };
 
@@ -475,6 +481,28 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                       )}
                     </button>
                   ))}
+                </div>
+                <div className="mb-6 border-t border-white/5 pt-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold">Input & Platform Rule</p>
+                      <p className="mt-0.5 text-xs text-vapor">Players see this rule before accepting your wager.</p>
+                    </div>
+                    <span className="rounded-md border border-orange/20 bg-orange/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-orange">Required</span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {WAGER_PLAY_RULES.map((rule) => {
+                      const Icon = playRuleIcons[rule.value];
+                      const selected = selectedPlayRule === rule.value;
+                      return (
+                        <button key={rule.value} type="button" onClick={() => setSelectedPlayRule(rule.value)} className={`rounded-xl border p-3 text-left transition-colors ${selected ? "border-green/35 bg-green/10" : "border-white/[0.07] bg-secondary/70 hover:border-white/15 hover:bg-white/[0.04]"}`}>
+                          <div className="flex items-start justify-between gap-2"><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${selected ? "bg-green/15 text-green" : "bg-background/40 text-vapor"}`}><Icon className="h-4 w-4" /></span>{selected && <Check className="h-4 w-4 text-green" />}</div>
+                          <p className={`mt-2 text-xs font-black ${selected ? "text-green" : "text-foreground"}`}>{rule.label}</p>
+                          <p className="mt-1 text-[10px] leading-4 text-vapor">{rule.description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <button
