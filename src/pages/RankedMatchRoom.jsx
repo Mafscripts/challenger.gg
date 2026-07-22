@@ -473,7 +473,7 @@ export default function RankedMatchRoom() {
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            {isParticipant && match.status !== "completed" && (
+            {(user?.id === match.host_id || ["ceo", "super_admin", "admin", "moderator"].includes(user?.role)) && !["completed", "cancelled"].includes(match.status) && (
               <button
                 onClick={handleCancel}
                 className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider"

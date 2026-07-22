@@ -15,9 +15,8 @@ Deno.serve(async (req) => {
     const match = await base44.asServiceRole.entities.RankedMatch.get(id);
     if (!match) return Response.json({ error: 'Ranked match not found' }, { status: 404 });
 
-    const participant = user.id === match.host_id || user.id === match.challenger_id;
-    if (!participant && !canModerate(user.role)) {
-      return Response.json({ error: 'Only participants or moderators can cancel this match' }, { status: 403 });
+    if (user.id !== match.host_id && !canModerate(user.role)) {
+      return Response.json({ error: 'Only the host can cancel this ranked match' }, { status: 403 });
     }
 
     if (match.status === 'completed') {
