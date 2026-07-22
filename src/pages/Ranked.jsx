@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { Award, Clock, Globe, Plus, Swords, Trophy } from "lucide-react";
+import { Award, ArrowRight, Globe, Plus, Swords, Trophy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionHero from "@/components/match/CompetitionHero";
@@ -243,14 +243,28 @@ export default function Ranked() {
           </div>
 
           <div className="space-y-6">
-            <div className="glass rounded-xl border border-white/5 p-5">
-              <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan" />
-                Match Rules
-              </h3>
-              <p className="text-xs text-vapor">
-                Both players must submit matching scores. Conflicting reports create a support ticket for staff review.
-              </p>
+            <div className="relative overflow-hidden rounded-xl border border-cyan/35 bg-gradient-to-br from-cyan/15 via-cyan/[0.06] to-background/50 p-5 shadow-lg shadow-cyan/5">
+              <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-cyan/20 blur-3xl" />
+              <div className="relative">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-cyan">
+                    <Trophy className="h-4 w-4" />
+                    CDL Rules
+                  </h3>
+                  <span className="rounded-full border border-cyan/25 bg-cyan/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan">
+                    Ranked Standard
+                  </span>
+                </div>
+                <p className="text-sm font-bold leading-relaxed text-foreground">
+                  All Ranked matches are played using the competitive CDL ruleset.
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-vapor">
+                  CDL modes, maps, settings and restrictions apply. Topfragg hosting, disconnect and dispute rules also remain active.
+                </p>
+                <Link to="/rules" className="mt-4 inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-cyan transition-colors hover:text-white">
+                  View full rules <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
 
             <div className="glass rounded-xl border border-white/5 p-5">
