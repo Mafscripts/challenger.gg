@@ -9,26 +9,26 @@ const playerName = (user) => user?.display_name || user?.full_name || user?.user
 const canModerate = (role) => ['ceo', 'super_admin', 'admin', 'moderator'].includes(role);
 
 const rewards = [
-  { key: 'bronze_iii_badge', name: 'Bronze III Badge', required_elo: 0, category: 'badge', rarity: 'common' },
-  { key: 'silver_iii_frame', name: 'Silver III Frame', required_elo: 600, category: 'frame', rarity: 'common' },
-  { key: 'gold_iii_card', name: 'Gold III Calling Card', required_elo: 1200, category: 'calling_card', rarity: 'rare' },
-  { key: 'platinum_iii_trophy', name: 'Platinum III Trophy', required_elo: 1800, category: 'trophy', rarity: 'epic' },
-  { key: 'diamond_iii_badge', name: 'Diamond III Badge', required_elo: 2400, category: 'badge', rarity: 'epic' },
-  { key: 'master_iii_frame', name: 'Master III Frame', required_elo: 3000, category: 'frame', rarity: 'legendary' },
-  { key: 'pro_iii_trophy', name: 'Pro III Trophy', required_elo: 3600, category: 'trophy', rarity: 'mythic' },
+  { key: 'bronze_iii_badge', name: 'Bronze Badge', required_elo: 0, category: 'badge', rarity: 'common' },
+  { key: 'silver_iii_frame', name: 'Silver Frame', required_elo: 600, category: 'frame', rarity: 'common' },
+  { key: 'gold_iii_card', name: 'Gold Calling Card', required_elo: 1200, category: 'calling_card', rarity: 'rare' },
+  { key: 'platinum_iii_trophy', name: 'Platinum Trophy', required_elo: 1800, category: 'trophy', rarity: 'epic' },
+  { key: 'diamond_iii_badge', name: 'Diamond Badge', required_elo: 2400, category: 'badge', rarity: 'epic' },
+  { key: 'master_iii_frame', name: 'Master Frame', required_elo: 3000, category: 'frame', rarity: 'legendary' },
+  { key: 'pro_iii_trophy', name: 'Pro Trophy', required_elo: 3600, category: 'trophy', rarity: 'mythic' },
   { key: 'champion_bundle', name: 'Champion Bundle', required_elo: 4200, category: 'ranked_reward', rarity: 'exclusive' },
 ];
 
 function calculatedRankName(elo) {
   const value = Math.max(0, Number(elo) || 0);
   const bands = [
-    ['Bronze III', 0, 199], ['Bronze II', 200, 399], ['Bronze I', 400, 599],
-    ['Silver III', 600, 799], ['Silver II', 800, 999], ['Silver I', 1000, 1199],
-    ['Gold III', 1200, 1399], ['Gold II', 1400, 1599], ['Gold I', 1600, 1799],
-    ['Platinum III', 1800, 1999], ['Platinum II', 2000, 2199], ['Platinum I', 2200, 2399],
-    ['Diamond III', 2400, 2599], ['Diamond II', 2600, 2799], ['Diamond I', 2800, 2999],
-    ['Master III', 3000, 3199], ['Master II', 3200, 3399], ['Master I', 3400, 3599],
-    ['Pro III', 3600, 3799], ['Pro II', 3800, 3999], ['Pro I', 4000, 4199],
+    ['Bronze', 0, 599],
+    ['Silver', 600, 1199],
+    ['Gold', 1200, 1799],
+    ['Platinum', 1800, 2399],
+    ['Diamond', 2400, 2999],
+    ['Master', 3000, 3599],
+    ['Pro', 3600, 4199],
   ];
   return bands.find(([, min, max]) => value >= min && value <= max)?.[0] || 'Champion';
 }

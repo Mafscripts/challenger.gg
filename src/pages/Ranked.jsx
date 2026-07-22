@@ -26,7 +26,6 @@ const modeLabels = {
 const groupedRanks = RANK_THRESHOLDS.reduce((tiers, rank) => {
   const existing = tiers.find((tier) => tier.tier === rank.tier);
   if (existing) {
-    existing.divisions.push(rank.division || "Top");
     existing.min = Math.min(existing.min, rank.min);
     existing.max = Math.max(existing.max, Number.isFinite(rank.max) ? rank.max : existing.max);
     return tiers;
@@ -36,7 +35,6 @@ const groupedRanks = RANK_THRESHOLDS.reduce((tiers, rank) => {
     {
       tier: rank.tier,
       name: rank.tier.charAt(0).toUpperCase() + rank.tier.slice(1),
-      divisions: [rank.division || "Top"],
       min: rank.min,
       max: Number.isFinite(rank.max) ? rank.max : rank.min,
       color: rank.color,
@@ -237,16 +235,16 @@ export default function Ranked() {
             <div className="glass rounded-2xl border border-white/5 overflow-hidden">
               <div className="px-5 py-4 border-b border-white/5">
                 <h3 className="font-bold text-lg">Rank Tiers</h3>
-                <p className="mt-1 text-sm text-vapor">Climb through every division and earn the Champion crest.</p>
+                <p className="mt-1 text-sm text-vapor">Climb through every rank and earn the Champion crest.</p>
               </div>
               <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
                 {groupedRanks.map((tier) => (
                   <motion.div key={tier.tier} whileHover={{ y: -4 }} className="relative overflow-hidden rounded-xl border border-white/10 bg-background/40 p-5 text-center transition-colors hover:border-cyan/25">
                     <div className="pointer-events-none absolute inset-x-8 top-3 h-24 rounded-full bg-cyan/5 blur-3xl" />
-                    <div className="relative flex justify-center"><RankBadge rank={tier.tier} division={tier.divisions[0]} size="lg" showLabel={false} /></div>
+                    <div className="relative flex justify-center"><RankBadge rank={tier.tier} size="lg" showLabel={false} /></div>
                     <div className="relative mt-2">
                       <p className={`text-lg font-black ${tier.color}`}>{tier.name}</p>
-                      <p className="mt-1 text-xs text-vapor">{tier.tier === "champion" ? "Top rank" : `Divisions ${tier.divisions.join(" · ")}`}</p>
+                      <p className="mt-1 text-xs text-vapor">{tier.tier === "champion" ? "Top rank" : "Competitive rank"}</p>
                       <span className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-xs font-bold text-vapor">
                         {rankRangeLabel(tier)}
                       </span>

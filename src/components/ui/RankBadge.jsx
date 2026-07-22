@@ -14,11 +14,11 @@ const ranks = {
   champion: { label: "Champion", text: "text-orange", icon: "/assets/ranks/champion.png" },
 };
 
-export default function RankBadge({ rank, division, elo, size = "md", showLabel = true }) {
+export default function RankBadge({ rank, elo, size = "md", showLabel = true }) {
   const calculated = elo !== undefined ? getRankForElo(elo) : null;
   const rankKey = calculated?.tier || rank || "bronze";
   const cfg = ranks[rankKey] || ranks.bronze;
-  const label = calculated?.tier ? calculated.name : `${cfg.label}${division ? ` ${division}` : ""}`;
+  const label = calculated?.tier ? calculated.name : cfg.label;
   const sizes = {
     sm: "h-12 w-12",
     md: "h-24 w-24",

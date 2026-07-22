@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
 const faqs = [
-  { q: "How does the ranking system work?", a: "Our ELO-based ranking system tracks performance across all game modes. Complete 10 placement matches to receive your initial rank, then climb through 7 tiers: Bronze, Silver, Gold, Platinum, Diamond, Master, and Champion. Each tier has 3 divisions (I, II, III). Rankings reset seasonally with placement matches." },
+  { q: "How does the ranking system work?", a: "Our ELO-based ranking system tracks performance across all game modes. Complete 10 placement matches to receive your initial rank, then climb through Bronze, Silver, Gold, Platinum, Diamond, Master, Pro, and Champion. Rankings reset seasonally with placement matches." },
   { q: "How do wagers work?", a: "Create or join wagers by selecting your match type, stake amount, and game mode. Both parties deposit funds into escrow. After the match, the winner reports the result and funds are released. Disputes are handled by our moderation team with video evidence review." },
   { q: "What is the map veto system?", a: "Before each match, maps are randomly selected from the active map pool for the chosen game mode. Each team gets one veto to ban a map they don't want to play. The final map is automatically selected from the remaining pool. This ensures fair and competitive map selection." },
   { q: "How does the marketplace work?", a: "Browse and purchase cosmetic items including knife skins, weapon skins, calling cards, badges, and more. Items range from Common to Exclusive rarity. Premium members receive reduced marketplace fees and access to exclusive drops. You can also trade items directly with other players." },

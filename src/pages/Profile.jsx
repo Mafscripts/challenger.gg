@@ -841,7 +841,7 @@ function RankProgressPanel({ rank, elo, rankProgress, rankJourneyIndex, classNam
           <div>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Current division</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Current rank</p>
                 <p className="mt-1 text-lg font-black text-cyan">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
               </div>
               <p className="font-mono text-2xl font-black tracking-tight text-white">{elo.toLocaleString()} <span className="text-[10px] tracking-[0.12em] text-vapor">ELO</span></p>
