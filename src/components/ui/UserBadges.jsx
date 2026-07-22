@@ -60,6 +60,7 @@ export default function UserBadges({
   iconOnly = false,
   streamerHref = "",
   showTooltip = true,
+  tooltipPlacement = "top",
   className = "",
 }) {
   const rows = badges || userSpecialBadges(user);
@@ -71,8 +72,12 @@ export default function UserBadges({
   const iconClass = size === "xs" ? "h-3.5 w-3.5" : "h-4 w-4";
   const iconOnlyClass = size === "xs" ? "h-5 w-5" : "h-6 w-6";
 
+  const tooltipPositionClass = tooltipPlacement === "bottom"
+    ? "left-1/2 top-full mt-2 -translate-x-1/2"
+    : "bottom-full left-1/2 mb-2 -translate-x-1/2";
+
   const tooltip = (label, description, Icon, toneClass) => (
-    <span className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 w-36 -translate-x-1/2 rounded-lg border border-white/10 bg-popover px-3 py-2 text-left opacity-0 shadow-xl transition-all group-hover/badge:visible group-hover/badge:opacity-100">
+    <span className={`pointer-events-none invisible absolute z-[70] w-36 rounded-lg border border-white/10 bg-popover px-3 py-2 text-left opacity-0 shadow-2xl transition-all group-hover/badge:visible group-hover/badge:opacity-100 ${tooltipPositionClass}`}>
       <span className={`mb-1 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider ${toneClass}`}>
         <Icon className="h-3.5 w-3.5" />
         {label}
@@ -97,7 +102,7 @@ export default function UserBadges({
             <BadgeTag
               key={badge.type}
               {...linkProps}
-              title={!showTooltip ? (badge.name || config.label) : linkProps.title}
+              title={linkProps.title}
               className={`group/badge relative inline-flex shrink-0 select-none items-center justify-center rounded-full border ${iconOnlyClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
             >
               <Icon className={iconClass} />

@@ -30,7 +30,7 @@ const navGroups = [
     eyebrow: "Competitive Rankings",
     tone: "gold",
     items: [
-      { label: "Ranked Leaderboard", description: "Top players by Ranked ELO", path: "/leaderboards", icon: Trophy, tone: "gold" },
+      { label: "Leaderboard", description: "Top players by Ranked ELO", path: "/leaderboards", icon: Trophy, tone: "gold" },
       { label: "XP Ladder", description: "Progress and account levels", path: "/xp", icon: Zap, tone: "purple" },
     ],
   },

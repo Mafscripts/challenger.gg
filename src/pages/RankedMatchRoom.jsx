@@ -69,7 +69,7 @@ function RosterPlayerCard({ player, color }) {
   const accentText = isAlpha ? "text-cyan" : "text-orange";
 
   return (
-    <div className={`relative flex min-h-[104px] flex-1 min-w-0 overflow-hidden rounded-lg border border-white/[0.07] border-l-2 bg-gradient-to-r ${accent} to-background/20 p-3`}>
+    <div className={`relative flex min-h-[104px] flex-1 min-w-0 overflow-visible rounded-lg border border-white/[0.07] border-l-2 bg-gradient-to-r ${accent} to-background/20 p-3`}>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="shrink-0 rounded-lg border border-white/[0.07] bg-background/30 p-1">
           <RankBadge rank={rank.tier} size="sm" showLabel={false} />
@@ -78,7 +78,7 @@ function RosterPlayerCard({ player, color }) {
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               <p className="truncate text-base font-black text-foreground">{player.name}</p>
-              <UserBadges user={player} size="xs" iconOnly showMonitorCam showTooltip={false} className="shrink-0" />
+              <UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
             </div>
             <span className={`shrink-0 rounded-md border border-white/[0.07] bg-background/30 px-2 py-1 font-mono text-xs font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} ELO</span>
           </div>
