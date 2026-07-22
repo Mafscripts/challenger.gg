@@ -795,15 +795,21 @@ export default function Navbar() {
                 }}
                 onMouseLeave={() => scheduleDropdownClose(() => setMessagesOpen(false))}
               >
-                <button
-                  type="button"
+                <Link
+                  to="/messages"
+                  onClick={() => {
+                    setMessagesOpen(false);
+                    setNotifOpen(false);
+                    setProfileOpen(false);
+                  }}
                   className="p-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all"
+                  aria-label="Open messages"
                 >
                   <MessageSquare className="w-4 h-4" />
                   {unreadMessagesCount > 0 && (
                     <span className="absolute top-1 right-1 w-2 h-2 bg-cyan rounded-full" />
                   )}
-                </button>
+                </Link>
 
                 {messagesOpen && (
                     <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl">
@@ -823,7 +829,11 @@ export default function Navbar() {
                           messages.map((message) => (
                             <Link
                               key={message.id}
-                              to={message.action_url || "/messages"}
+                              to={message.action_url || (
+                                message.message_type === "direct_message" && message.sender_id
+                                  ? `/messages?conversation=${encodeURIComponent(message.sender_id)}`
+                                  : "/messages"
+                              )}
                               onClick={() => { markMessageAsRead(message.id); setMessagesOpen(false); }}
                               className={`px-4 py-3 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-all ${
                                 !message.is_read ? 'bg-cyan/5' : ''

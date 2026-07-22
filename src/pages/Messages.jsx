@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
@@ -39,6 +39,7 @@ export default function Messages() {
   const [directMessages, setDirectMessages] = useState([]);
   const [players, setPlayers] = useState({});
   const [invitations, setInvitations] = useState([]);
+  const [activeInvitation, setActiveInvitation] = useState(null);
   const [activePlayerId, setActivePlayerId] = useState(searchParams.get("conversation") || "");
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -48,7 +49,12 @@ export default function Messages() {
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const chatEndRef = useRef(null);
+  const chatScrollRef = useRef(null);
   const activePlayerIdRef = useRef(activePlayerId);
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     activePlayerIdRef.current = activePlayerId;
@@ -176,15 +182,32 @@ export default function Messages() {
   }, [activePlayerId, activeMessages.length, currentUser?.id]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const chat = chatScrollRef.current;
+    if (!chat) return;
+    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
   }, [activeMessages.length, activePlayerId]);
 
   const selectPlayer = (player) => {
     setPlayers(current => ({ ...current, [player.id]: player }));
     setActivePlayerId(player.id);
+    setActiveInvitation(null);
     setComposerOpen(false);
     setPlayerQuery("");
     setSearchParams({ conversation: player.id }, { replace: true });
+  };
+
+  const selectInvitation = async (invitation) => {
+    setActiveInvitation(invitation);
+    setActivePlayerId("");
+    setSearchParams({}, { replace: true });
+    if (!invitation.is_read) {
+      setInvitations(current => current.map(item => (
+        item.id === invitation.id ? { ...item, is_read: true } : item
+      )));
+      setActiveInvitation({ ...invitation, is_read: true });
+      await base44.entities.Message.update(invitation.id, { is_read: true }).catch(() => null);
+      window.dispatchEvent(new CustomEvent("topfragg:messages-updated"));
+    }
   };
 
   const sendMessage = async (event) => {
@@ -246,18 +269,20 @@ export default function Messages() {
               <div className="border-b border-white/10 p-3">
                 <p className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-orange">Tournament invites</p>
                 {invitations.slice(0, 3).map(invite => (
-                  <Link
+                  <button
                     key={invite.id}
-                    to={invite.action_url || "/tournaments"}
-                    className="mb-1 flex items-center gap-3 rounded-xl border border-orange/15 bg-orange/5 p-3 transition-colors hover:bg-orange/10"
+                    type="button"
+                    onClick={() => selectInvitation(invite)}
+                    className={`mb-1 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${activeInvitation?.id === invite.id ? "border-orange/35 bg-orange/15" : "border-orange/15 bg-orange/5 hover:bg-orange/10"}`}
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange/10 text-orange"><Trophy className="h-4 w-4" /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-bold">{invite.subject || "Tournament invitation"}</span>
-                      <span className="block truncate text-[10px] text-vapor">View invitation</span>
+                      <span className="block truncate text-[10px] text-vapor">Read full invitation</span>
                     </span>
+                    {!invite.is_read && <span className="h-2 w-2 shrink-0 rounded-full bg-orange" />}
                     <ArrowRight className="h-3.5 w-3.5 text-vapor" />
-                  </Link>
+                  </button>
                 ))}
               </div>
             )}
@@ -297,7 +322,45 @@ export default function Messages() {
           </aside>
 
           <section className="flex min-h-[620px] min-w-0 flex-col">
-            {activePlayer ? (
+            {activeInvitation ? (
+              <div className="flex min-h-[620px] flex-1 flex-col">
+                <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-orange/25 bg-orange/10 text-orange">
+                    <Trophy className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange">Tournament invitation</p>
+                    <p className="mt-1 truncate text-base font-black">TopFragg Tournaments</p>
+                  </div>
+                  <span className="text-[10px] text-vapor">{messageDate(activeInvitation.created_date)}</span>
+                </div>
+
+                <div className="flex flex-1 items-start justify-center overflow-y-auto bg-background/15 p-5 sm:p-10">
+                  <article className="w-full max-w-3xl overflow-hidden rounded-2xl border border-orange/20 bg-card shadow-[0_24px_70px_rgba(0,0,0,.25)]">
+                    <div className="border-b border-white/10 bg-gradient-to-r from-orange/10 via-transparent to-cyan/5 p-6 sm:p-8">
+                      <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-orange">You are invited to compete</p>
+                      <h2 className="break-words text-2xl font-black leading-tight sm:text-3xl">
+                        {activeInvitation.subject || "Tournament invitation"}
+                      </h2>
+                    </div>
+                    <div className="p-6 sm:p-8">
+                      <p className="whitespace-pre-wrap break-words text-sm leading-7 text-white/75">
+                        {activeInvitation.content || "You have received an invitation to join this tournament."}
+                      </p>
+                      <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-white/10 pt-6">
+                        <Link
+                          to={activeInvitation.action_url || "/tournaments"}
+                          className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-xs font-black uppercase tracking-wider text-background transition-transform hover:-translate-y-0.5"
+                        >
+                          View tournament <ArrowRight className="h-4 w-4" />
+                        </Link>
+                        <span className="text-xs text-vapor">Received {new Date(activeInvitation.created_date).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            ) : activePlayer ? (
               <>
                 <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
                   <PlayerAvatar player={activePlayer} size="lg" />
@@ -310,7 +373,7 @@ export default function Messages() {
                   </Link>
                 </div>
 
-                <div className="flex-1 overflow-y-auto bg-background/15 px-4 py-6 sm:px-7">
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto bg-background/15 px-4 py-6 sm:px-7">
                   {activeMessages.length === 0 && (
                     <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
                       <PlayerAvatar player={activePlayer} size="lg" />
