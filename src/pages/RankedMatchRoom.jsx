@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
@@ -189,7 +189,6 @@ export default function RankedMatchRoom() {
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
-  const loadedRosterSignatureRef = useRef("");
 
   useEffect(() => {
     loadRoom();
@@ -206,15 +205,6 @@ export default function RankedMatchRoom() {
           const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
           if (mapResponse?.data?.match) refreshedMatch = mapResponse.data.match;
         }
-        const refreshedSignature = roomRosterSignature(refreshedMatch);
-        if (refreshedSignature !== loadedRosterSignatureRef.current) {
-          const rosters = await loadRosterPlayers(refreshedMatch);
-          if (active) {
-            setAlphaPlayers(rosters.alpha);
-            setBravoPlayers(rosters.bravo);
-            loadedRosterSignatureRef.current = refreshedSignature;
-          }
-        }
         if (active) setMatch(refreshedMatch);
       } catch (error) {
         console.error("Failed to refresh ranked match:", error);
@@ -226,6 +216,21 @@ export default function RankedMatchRoom() {
       clearInterval(interval);
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!match) return undefined;
+    let active = true;
+    const refreshRoster = async () => {
+      const rosters = await loadRosterPlayers(match);
+      if (!active) return;
+      setAlphaPlayers(rosters.alpha);
+      setBravoPlayers(rosters.bravo);
+    };
+    refreshRoster().catch((error) => console.error("Failed to refresh ranked roster:", error));
+    return () => {
+      active = false;
+    };
+  }, [roomRosterSignature(match)]);
 
   useEffect(() => {
     const interval = setInterval(calculateTimeRemaining, 1000);
@@ -254,6 +259,21 @@ export default function RankedMatchRoom() {
   const joinedOpponentCount = Math.max(0, roomRosterIds(match, "alpha").length + roomRosterIds(match, "bravo").length - 1);
   const cancelVoteLocked = joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
   const personalResult = match?.elo_changes?.[user?.id] || null;
+  const visibleRosterPlayers = (side, loadedPlayers) => {
+    const names = roomRosterNames(match, side);
+    return roomRosterIds(match, side).map((playerId, index) => (
+      loadedPlayers.find((player) => player.id === playerId) || {
+        id: playerId,
+        name: names[index] || "Loading player...",
+        elo: 0,
+        wins: 0,
+        losses: 0,
+        win_streak: 0,
+      }
+    ));
+  };
+  const visibleAlphaPlayers = visibleRosterPlayers("alpha", alphaPlayers);
+  const visibleBravoPlayers = visibleRosterPlayers("bravo", bravoPlayers);
 
   const loadPlayer = async (userId, fallbackName) => {
     if (!userId) return null;
@@ -316,7 +336,6 @@ export default function RankedMatchRoom() {
       const rosters = await loadRosterPlayers(matchData);
       setAlphaPlayers(rosters.alpha);
       setBravoPlayers(rosters.bravo);
-      loadedRosterSignatureRef.current = roomRosterSignature(matchData);
     } catch (error) {
       console.error("Failed to load ranked match:", error);
       toast({ title: "Error loading match", description: error.message || "Match not found", variant: "destructive" });
@@ -607,7 +626,7 @@ export default function RankedMatchRoom() {
 
         <div className="grid lg:grid-cols-12 gap-6 mb-6">
           <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} lg:col-span-3`}>
-            <PlayerPanel label="Team Alpha" color="cyan" players={alphaPlayers} slots={slotsPerRankedTeam(match)} />
+            <PlayerPanel label="Team Alpha" color="cyan" players={visibleAlphaPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
           <div className="min-w-0 lg:col-span-6">
             <MatchChat
@@ -620,7 +639,7 @@ export default function RankedMatchRoom() {
             />
           </div>
           <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} lg:col-span-3`}>
-            <PlayerPanel label="Team Bravo" color="orange" players={bravoPlayers} slots={slotsPerRankedTeam(match)} />
+            <PlayerPanel label="Team Bravo" color="orange" players={visibleBravoPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
         </div>
 
