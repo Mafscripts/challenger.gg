@@ -60,6 +60,43 @@ const roomRosterSignature = (match) => [...roomRosterIds(match, "alpha"), "|", .
 const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsPerRankedTeam(match) && roomRosterIds(match, "bravo").length >= slotsPerRankedTeam(match);
 const arenaHeightClass = (slots) => ({ 1: "h-[300px]", 2: "h-[300px]", 3: "h-[344px]", 4: "h-[388px]" }[slots] || "h-[388px]");
 
+function RosterPlayerCard({ player, color }) {
+  const rank = getRankForElo(player.elo || 0);
+  const matches = Math.max(Number(player.matches_played || 0), Number(player.wins || 0) + Number(player.losses || 0));
+  const winRate = matches > 0 ? Math.round((Number(player.wins || 0) / matches) * 100) : 0;
+  const isAlpha = color === "cyan";
+  const accent = isAlpha ? "border-l-cyan/70 from-cyan/[0.08]" : "border-l-orange/70 from-orange/[0.08]";
+  const accentText = isAlpha ? "text-cyan" : "text-orange";
+
+  return (
+    <div className={`relative flex min-h-[92px] flex-1 min-w-0 overflow-hidden rounded-lg border border-white/[0.07] border-l-2 bg-gradient-to-r ${accent} to-background/20 p-3`}>
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="shrink-0 rounded-lg border border-white/[0.07] bg-background/30 p-1">
+          <RankBadge rank={rank.tier} size="sm" showLabel={false} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-sm font-black text-foreground">{player.name}</p>
+              <UserBadges user={player} size="xs" iconOnly showMonitorCam />
+            </div>
+            <span className={`shrink-0 font-mono text-[11px] font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} ELO</span>
+          </div>
+          <div className="mt-0.5 flex items-center justify-between gap-2">
+            <ActivisionIdLabel user={player} className="min-w-0 max-w-[58%]" />
+            <span className="text-[9px] font-black uppercase tracking-wider text-vapor">{rank.name}</span>
+          </div>
+          <div className="mt-2 grid grid-cols-3 divide-x divide-white/[0.07] rounded-md border border-white/[0.06] bg-background/25 py-1.5 text-center">
+            <div><p className="text-[7px] font-black uppercase tracking-wider text-vapor/75">Record</p><p className="mt-0.5 font-mono text-[10px] font-black text-foreground">{player.wins || 0}W–{player.losses || 0}L</p></div>
+            <div><p className="text-[7px] font-black uppercase tracking-wider text-vapor/75">Win rate</p><p className={`mt-0.5 font-mono text-[10px] font-black ${accentText}`}>{winRate}%</p></div>
+            <div><p className="text-[7px] font-black uppercase tracking-wider text-vapor/75">Streak</p><p className="mt-0.5 font-mono text-[10px] font-black text-foreground">{player.win_streak || 0}</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PlayerPanel({ label, color, players = [], slots = 1 }) {
   const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
 
@@ -98,8 +135,7 @@ function PlayerPanel({ label, color, players = [], slots = 1 }) {
         {Array.from({ length: slots }, (_, index) => {
           const player = players[index];
           if (!player) return <div key={`open-${index}`} className="flex min-h-[62px] flex-1 items-center justify-center rounded-lg border border-dashed border-white/10 bg-background/15 text-[10px] font-black uppercase tracking-wider text-vapor/55">Open slot</div>;
-          const rank = getRankForElo(player.elo || 0);
-          return <div key={player.id} className="flex min-h-[62px] flex-1 min-w-0 items-center gap-3 rounded-lg border border-white/5 bg-background/25 p-2.5"><RankBadge rank={rank.tier} size="sm" showLabel={false} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{player.name}</p><UserBadges user={player} size="xs" iconOnly showMonitorCam /></div><ActivisionIdLabel user={player} className="mt-0.5 max-w-full" /><p className="mt-0.5 text-[10px] text-vapor">{rank.name} · {player.elo || 0} ELO · {player.wins || 0}W-{player.losses || 0}L</p></div></div>;
+          return <RosterPlayerCard key={player.id} player={player} color={color} />;
         })}
       </div>
     </div>

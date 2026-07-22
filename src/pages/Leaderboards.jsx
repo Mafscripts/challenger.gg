@@ -179,24 +179,20 @@ export default function Leaderboards() {
                 <span>{activeTab === "elo" ? "ELO" : activeTab === "xp" ? "Level" : activeTab === "tournaments" ? "Wins" : "Earnings"}</span>
               </div>
               <div className="divide-y divide-white/5">
-                {rankedRows.map((row, index) => (
-                  <motion.div
+                {rankedRows.map((row) => (
+                  <div
                     key={row.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.03 }}
-                    whileHover={{ backgroundColor: "rgba(255,255,255,0.02)", transition: { duration: 0.1, ease: "easeOut" } }}
-                    className="grid grid-cols-3 md:grid-cols-7 gap-2 md:gap-4 px-5 py-4 items-center"
+                    className="grid grid-cols-3 items-center gap-2 px-5 py-4 transition-colors duration-75 hover:bg-white/[0.025] md:grid-cols-7 md:gap-4"
                   >
                     <span className={`text-sm font-bold font-mono ${row.rank <= 3 ? "text-orange" : "text-vapor"}`}>#{row.rank}</span>
-                    <Link to={`/profile/${row.slug}`} className="col-span-2 font-semibold text-sm hover:text-cyan transition-colors">{row.name}</Link>
+                    <Link to={`/profile/${row.slug}`} className="col-span-2 text-sm font-semibold transition-colors duration-75 hover:text-cyan">{row.name}</Link>
                     <span className="text-sm text-vapor hidden md:block capitalize">{row.tier}</span>
                     <span className="text-xs text-vapor hidden md:block">{row.region}</span>
                     <span className="text-sm font-mono hidden md:flex items-center gap-1">
                       <Flame className={`w-3 h-3 ${row.streak >= 5 ? "text-orange" : "text-vapor"}`} /> {row.streak}
                     </span>
                     <span className="text-sm font-mono font-bold text-cyan">{row.display}</span>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </div>
