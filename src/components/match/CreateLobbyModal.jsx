@@ -158,17 +158,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             match: response.data.wager || response.data.match,
           };
         } else if (mode === "ranked") {
-          const mapPool = mapsByMode[selectedGameMode] || [];
-          const randomMap = mapPool[Math.floor(Math.random() * mapPool.length)];
-
           const response = await base44.functions.invoke('createRankedMatch', {
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
             max_players: teamSizeObj.players,
-            best_of: 1,
-            final_map: randomMap?.id,
-            final_map_name: randomMap?.name,
           });
 
           if (response.data.error) {

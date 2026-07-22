@@ -5,26 +5,27 @@ const playerName = (user) => user.display_name || user.full_name || user.usernam
 
 const mapsByMode = {
   snd: [
+    { id: 'hacienda', name: 'Hacienda' },
+    { id: 'gridlock', name: 'Gridlock' },
     { id: 'raid', name: 'Raid' },
-    { id: 'shoot_house', name: 'Shoot House' },
-    { id: 'vacant', name: 'Vacant' },
-    { id: 'nuketown', name: 'Nuketown' },
-    { id: 'hackney_yard', name: 'Hackney Yard' },
-    { id: 'gun_runner', name: 'Gun Runner' },
+    { id: 'scar', name: 'Scar' },
+    { id: 'den', name: 'Den' },
+    { id: 'sake', name: 'Sake' },
+    { id: 'fringe', name: 'Fringe' },
   ],
   overload: [
-    { id: 'gaza', name: 'Gaza' },
-    { id: 'airstrip', name: 'Airstrip' },
-    { id: 'tipperary', name: 'Tipperary' },
-    { id: 'rivet', name: 'Rivet' },
-    { id: 'khandor', name: 'Khandor' },
+    { id: 'scar', name: 'Scar' },
+    { id: 'gridlock', name: 'Gridlock' },
+    { id: 'den', name: 'Den' },
+    { id: 'exposure', name: 'Exposure' },
   ],
   hp: [
-    { id: 'terminal', name: 'Terminal' },
-    { id: 'rust', name: 'Rust' },
-    { id: 'shipment', name: 'Shipment' },
-    { id: 'crash', name: 'Crash' },
-    { id: 'backlot', name: 'Backlot' },
+    { id: 'sake', name: 'Sake' },
+    { id: 'colossus', name: 'Colossus' },
+    { id: 'den', name: 'Den' },
+    { id: 'scar', name: 'Scar' },
+    { id: 'gridlock', name: 'Gridlock' },
+    { id: 'hacienda', name: 'Hacienda' },
   ],
 };
 
@@ -43,11 +44,12 @@ Deno.serve(async (req) => {
     if (!gameMode || !teamSize) {
       return Response.json({ error: 'Missing required fields: game_mode, team_size' }, { status: 400 });
     }
+    if (!Object.prototype.hasOwnProperty.call(mapsByMode, gameMode)) {
+      return Response.json({ error: 'Invalid ranked game mode' }, { status: 400 });
+    }
 
-    const mapPool = mapsByMode[gameMode] || mapsByMode.snd;
-    const selected = body.final_map
-      ? { id: body.final_map, name: body.final_map_name || body.final_map }
-      : mapPool[Math.floor(Math.random() * mapPool.length)];
+    const mapPool = mapsByMode[gameMode];
+    const selected = mapPool[Math.floor(Math.random() * mapPool.length)];
     const now = new Date().toISOString();
     const deadline = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
@@ -59,7 +61,7 @@ Deno.serve(async (req) => {
       game_mode: gameMode,
       game_mode_display: body.game_mode_display || gameMode,
       team_size: teamSize,
-      best_of: Number(body.best_of || 1),
+      best_of: 1,
       maps: mapPool.map((map) => map.name),
       final_map_id: selected?.id || '',
       final_map_name: selected?.name || '',
