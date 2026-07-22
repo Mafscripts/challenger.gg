@@ -5955,7 +5955,9 @@ async function cancelRankedMatch(req) {
   const id = req.body.ranked_match_id || req.body.id;
   const existing = await getEntity("RankedMatch", id);
   const staff = hasRole(req.user, "moderator");
-  if (req.user.id !== existing.host_id && !staff) {
+  const participatingStaff = staff && (req.user.id === existing.host_id || req.user.id === existing.challenger_id || rankedRosterIds(existing, "alpha").includes(req.user.id) || rankedRosterIds(existing, "bravo").includes(req.user.id));
+  const staffOverride = staff && !participatingStaff;
+  if (req.user.id !== existing.host_id && !staffOverride) {
     return { success: false, error: "Only the host can cancel this ranked match" };
   }
   if (["completed", "cancelled"].includes(existing.status)) {
@@ -5963,8 +5965,10 @@ async function cancelRankedMatch(req) {
   }
   const joinedOpponentCount = Math.max(0, rankedRosterIds(existing, "alpha").length + rankedRosterIds(existing, "bravo").length - 1);
   const deadline = existing.match_start_deadline ? new Date(existing.match_start_deadline).getTime() : 0;
-  if (!staff && joinedOpponentCount > 0 && (!deadline || Date.now() < deadline)) {
-    return { success: false, error: "The host can cancel only after the 15-minute timer has expired" };
+  if (!staffOverride && joinedOpponentCount > 0) {
+    return { success: false, error: !deadline || Date.now() < deadline
+      ? "A cancellation vote becomes available after the 15-minute timer"
+      : "Cancellation requires approval from the opposing captain" };
   }
   const match = await updateEntity("RankedMatch", id, {
     status: "cancelled",
@@ -5972,6 +5976,61 @@ async function cancelRankedMatch(req) {
     cancelled_date: new Date().toISOString(),
   });
   return { success: true, match };
+}
+
+async function voteRankedCancellation(req) {
+  const id = req.body.ranked_match_id || req.body.id;
+  const action = String(req.body.action || "request").toLowerCase();
+  const match = await getEntity("RankedMatch", id);
+  if (["completed", "cancelled"].includes(match.status)) return { success: false, error: "This ranked match is already closed" };
+
+  if (action === "request") {
+    if (req.user.id !== match.host_id) return { success: false, error: "Only the host can start a cancellation vote" };
+    if (!match.challenger_id) return { success: false, error: "No opposing captain has joined yet" };
+    const deadline = match.match_start_deadline ? new Date(match.match_start_deadline).getTime() : 0;
+    if (!deadline || Date.now() < deadline) return { success: false, error: "The cancellation vote unlocks after the 15-minute timer" };
+    if (match.cancel_vote_status === "pending") return { success: true, match, already_pending: true };
+    if (match.cancel_vote_status === "rejected") return { success: false, error: "The opposing captain already rejected this cancellation vote" };
+
+    const updated = await updateEntity("RankedMatch", id, {
+      cancel_vote_status: "pending",
+      cancel_vote_requested_by: req.user.id,
+      cancel_vote_requested_by_name: nameFor(req.user),
+      cancel_vote_requested_date: nowIso(),
+    });
+    await notifyUsers([match.challenger_id], {
+      title: "Ranked cancellation vote",
+      message: `${match.host_name || "The host"} requested to cancel the match. Your approval is required.`,
+      type: "match",
+      action_url: `/ranked-match/${match.id}`,
+      related_entity_id: match.id,
+      related_entity_type: "RankedMatch",
+    });
+    return { success: true, match: updated };
+  }
+
+  if (!["approve", "reject"].includes(action)) return { success: false, error: "Invalid cancellation vote action" };
+  if (req.user.id !== match.challenger_id) return { success: false, error: "Only the opposing captain can decide this cancellation vote" };
+  if (match.cancel_vote_status !== "pending") return { success: false, error: "There is no pending cancellation vote" };
+
+  if (action === "reject") {
+    const updated = await updateEntity("RankedMatch", id, {
+      cancel_vote_status: "rejected",
+      cancel_vote_decided_by: req.user.id,
+      cancel_vote_decided_date: nowIso(),
+    });
+    return { success: true, match: updated, cancelled: false };
+  }
+
+  const updated = await updateEntity("RankedMatch", id, {
+    status: "cancelled",
+    cancel_reason: "Approved by both team captains",
+    cancel_vote_status: "approved",
+    cancel_vote_decided_by: req.user.id,
+    cancel_vote_decided_date: nowIso(),
+    cancelled_date: nowIso(),
+  });
+  return { success: true, match: updated, cancelled: true };
 }
 
 async function buyWithCredits(req) {
@@ -7458,6 +7517,7 @@ const handlers = {
   ensureRankedMatchMap,
   completeRankedMatch,
   cancelRankedMatch,
+  voteRankedCancellation,
   buyWithCredits,
   syncMarketplaceUnlocks,
   addFunds,

@@ -77,8 +77,8 @@ export default function MatchChat({
   title = "Match Chat",
   placeholder = "Type a message...",
   disabledReason = "",
-  live = false,
-  pollIntervalMs = 2000,
+  live = true,
+  pollIntervalMs = 1000,
   heightClass = "h-[600px]",
   sticky = true,
   compact = false,
@@ -145,10 +145,18 @@ export default function MatchChat({
       }
     }
 
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") loadMessages(false);
+    };
+
     initialize();
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       mounted = false;
       if (intervalId) window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [conversationId, live, pollIntervalMs]);
 

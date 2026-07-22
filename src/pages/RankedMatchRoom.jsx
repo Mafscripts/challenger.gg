@@ -90,6 +90,7 @@ export default function RankedMatchRoom() {
   const [submitting, setSubmitting] = useState(false);
   const [supporting, setSupporting] = useState(false);
   const [disputing, setDisputing] = useState(false);
+  const [cancelVoting, setCancelVoting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -149,7 +150,9 @@ export default function RankedMatchRoom() {
   const winsNeeded = winsNeededFor(match);
   const isStaff = ["ceo", "super_admin", "admin", "moderator"].includes(user?.role);
   const joinedOpponentCount = Math.max(0, roomRosterIds(match, "alpha").length + roomRosterIds(match, "bravo").length - 1);
-  const hostCancelLocked = !isStaff && joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
+  const isHost = user?.id === match?.host_id;
+  const isOpposingCaptain = user?.id === match?.challenger_id;
+  const cancelVoteLocked = joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
 
   const loadPlayer = async (userId, fallbackName) => {
     if (!userId) return null;
@@ -357,6 +360,29 @@ export default function RankedMatchRoom() {
     }
   };
 
+  const handleCancelVote = async (action) => {
+    setCancelVoting(true);
+    try {
+      const response = await base44.functions.invoke("voteRankedCancellation", {
+        ranked_match_id: match.id,
+        action,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Cancel vote failed", description: response.data?.error || "Could not update the vote.", variant: "destructive" });
+        return;
+      }
+      setMatch(response.data.match || match);
+      toast({
+        title: action === "request" ? "Cancel vote requested" : action === "approve" ? "Cancellation approved" : "Cancellation rejected",
+        description: action === "request" ? "Waiting for the opposing captain." : undefined,
+      });
+    } catch (error) {
+      toast({ title: "Cancel vote failed", description: error.message || "Could not update the vote.", variant: "destructive" });
+    } finally {
+      setCancelVoting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -504,15 +530,29 @@ export default function RankedMatchRoom() {
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            {(user?.id === match.host_id || isStaff) && !["completed", "cancelled"].includes(match.status) && (
+            {isStaff && !isParticipant && !["completed", "cancelled"].includes(match.status) && (
               <button
                 onClick={handleCancel}
-                disabled={hostCancelLocked}
-                title={hostCancelLocked ? "Cancellation unlocks when the 15-minute timer expires" : "Cancel match"}
-                className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-40"
+                className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider"
               >
-                {hostCancelLocked ? `Cancel in ${timeRemaining || "15:00"}` : "Cancel Match"}
+                Staff Cancel
               </button>
+            )}
+            {isHost && joinedOpponentCount === 0 && !["completed", "cancelled"].includes(match.status) && <button onClick={handleCancel} className="rounded-lg border border-red-500/20 bg-red-500/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20">Cancel Open Match</button>}
+            {isHost && joinedOpponentCount > 0 && !["completed", "cancelled"].includes(match.status) && (
+              <button
+                onClick={() => handleCancelVote("request")}
+                disabled={cancelVoting || cancelVoteLocked || ["pending", "rejected", "approved"].includes(match.cancel_vote_status)}
+                className="rounded-lg border border-red-500/20 bg-red-500/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {cancelVoteLocked ? `Vote in ${timeRemaining || "15:00"}` : match.cancel_vote_status === "pending" ? "Waiting for Captain" : match.cancel_vote_status === "rejected" ? "Vote Rejected" : "Request Cancel Vote"}
+              </button>
+            )}
+            {isOpposingCaptain && match.cancel_vote_status === "pending" && !["completed", "cancelled"].includes(match.status) && (
+              <div className="flex gap-2">
+                <button onClick={() => handleCancelVote("approve")} disabled={cancelVoting} className="rounded-lg border border-green/25 bg-green/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-green disabled:opacity-40">Approve Cancel</button>
+                <button onClick={() => handleCancelVote("reject")} disabled={cancelVoting} className="rounded-lg border border-white/10 bg-secondary px-5 py-3 text-xs font-black uppercase tracking-wider text-vapor disabled:opacity-40">Reject</button>
+              </div>
             )}
           </div>
           {(match.admin_request_status || match.requested_admin) && (
