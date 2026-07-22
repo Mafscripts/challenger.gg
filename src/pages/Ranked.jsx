@@ -67,9 +67,9 @@ const rankCardTones = {
   gold: { border: "border-yellow-400/30", wash: "from-yellow-400/[0.12] via-card to-card", accent: "bg-yellow-400", soft: "border-yellow-400/20 bg-yellow-400/[0.07]", text: "text-yellow-400" },
   platinum: { border: "border-teal-300/30", wash: "from-teal-300/[0.12] via-card to-card", accent: "bg-teal-300", soft: "border-teal-300/20 bg-teal-300/[0.07]", text: "text-teal-300" },
   diamond: { border: "border-cyan/30", wash: "from-cyan/[0.12] via-card to-card", accent: "bg-cyan", soft: "border-cyan/20 bg-cyan/[0.07]", text: "text-cyan" },
-  master: { border: "border-purple-400/30", wash: "from-purple-400/[0.12] via-card to-card", accent: "bg-purple-400", soft: "border-purple-400/20 bg-purple-400/[0.07]", text: "text-purple-400" },
-  pro: { border: "border-emerald-400/35", wash: "from-emerald-400/[0.16] via-card to-card", accent: "bg-emerald-400", soft: "border-emerald-400/25 bg-emerald-400/[0.09]", text: "text-emerald-400" },
-  champion: { border: "border-orange/35", wash: "from-orange/[0.14] via-card to-card", accent: "bg-orange", soft: "border-orange/20 bg-orange/[0.07]", text: "text-orange" },
+  master: { border: "border-red-500/35", wash: "from-red-600/[0.16] via-card to-card", accent: "bg-red-500", soft: "border-red-500/25 bg-red-500/[0.09]", text: "text-red-400" },
+  pro: { border: "border-fuchsia-400/35", wash: "from-fuchsia-400/[0.16] via-card to-card", accent: "bg-fuchsia-400", soft: "border-fuchsia-400/25 bg-fuchsia-400/[0.09]", text: "text-fuchsia-400" },
+  champion: { border: "border-red-500/40", wash: "from-red-600/[0.18] via-orange/[0.07] to-card", accent: "bg-orange", soft: "border-orange/25 bg-red-500/[0.09]", text: "text-orange" },
 };
 
 export default function Ranked() {

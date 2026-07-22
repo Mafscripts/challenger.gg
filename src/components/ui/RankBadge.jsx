@@ -9,8 +9,8 @@ const ranks = {
   gold: { label: "Gold", text: "text-yellow-300", icon: "/assets/ranks/gold.png" },
   platinum: { label: "Platinum", text: "text-teal-200", icon: "/assets/ranks/platinum.png" },
   diamond: { label: "Diamond", text: "text-cyan", icon: "/assets/ranks/diamond.png" },
-  master: { label: "Master", text: "text-purple-300", icon: "/assets/ranks/master.png" },
-  pro: { label: "Pro", text: "text-emerald-400", icon: "/assets/ranks/pro.png" },
+  master: { label: "Master", text: "text-red-400", icon: "/assets/ranks/master.png" },
+  pro: { label: "Pro", text: "text-fuchsia-400", icon: "/assets/ranks/pro.png" },
   champion: { label: "Champion", text: "text-orange", icon: "/assets/ranks/champion.png" },
 };
 
