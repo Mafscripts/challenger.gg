@@ -57,6 +57,7 @@ const roomRosterNames = (match, side) => {
 };
 const roomRosterSignature = (match) => [...roomRosterIds(match, "alpha"), "|", ...roomRosterIds(match, "bravo")].join(":");
 const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsPerRankedTeam(match) && roomRosterIds(match, "bravo").length >= slotsPerRankedTeam(match);
+const arenaHeightClass = (slots) => ({ 1: "h-[300px]", 2: "h-[300px]", 3: "h-[344px]", 4: "h-[388px]" }[slots] || "h-[388px]");
 
 function PlayerPanel({ label, color, players = [], slots = 1 }) {
   const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
@@ -87,17 +88,17 @@ function PlayerPanel({ label, color, players = [], slots = 1 }) {
   }
 
   return (
-    <div className={`glass rounded-xl border p-5 ${colorClass}`}>
+    <div className={`glass flex h-full flex-col rounded-xl border p-5 ${colorClass}`}>
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs font-bold uppercase tracking-wider">{label}</p>
         <span className="rounded-full border border-white/10 bg-background/30 px-2.5 py-1 text-[10px] font-black">{players.length}/{slots}</span>
       </div>
-      <div className="space-y-2">
+      <div className="flex flex-1 flex-col gap-2">
         {Array.from({ length: slots }, (_, index) => {
           const player = players[index];
-          if (!player) return <div key={`open-${index}`} className="flex h-[62px] items-center justify-center rounded-lg border border-dashed border-white/10 bg-background/15 text-[10px] font-black uppercase tracking-wider text-vapor/55">Open slot</div>;
+          if (!player) return <div key={`open-${index}`} className="flex min-h-[62px] flex-1 items-center justify-center rounded-lg border border-dashed border-white/10 bg-background/15 text-[10px] font-black uppercase tracking-wider text-vapor/55">Open slot</div>;
           const rank = getRankForElo(player.elo || 0);
-          return <div key={player.id} className="flex min-w-0 items-center gap-3 rounded-lg border border-white/5 bg-background/25 p-2.5"><RankBadge rank={rank.tier} size="sm" showLabel={false} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{player.name}</p><UserBadges user={player} size="xs" iconOnly showMonitorCam /></div><ActivisionIdLabel user={player} className="mt-0.5 max-w-full" /><p className="mt-0.5 text-[10px] text-vapor">{rank.name} · {player.elo || 0} ELO · {player.wins || 0}W-{player.losses || 0}L</p></div></div>;
+          return <div key={player.id} className="flex min-h-[62px] flex-1 min-w-0 items-center gap-3 rounded-lg border border-white/5 bg-background/25 p-2.5"><RankBadge rank={rank.tier} size="sm" showLabel={false} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{player.name}</p><UserBadges user={player} size="xs" iconOnly showMonitorCam /></div><ActivisionIdLabel user={player} className="mt-0.5 max-w-full" /><p className="mt-0.5 text-[10px] text-vapor">{rank.name} · {player.elo || 0} ELO · {player.wins || 0}W-{player.losses || 0}L</p></div></div>;
         })}
       </div>
     </div>
@@ -511,7 +512,7 @@ export default function RankedMatchRoom() {
         </div>
 
         <div className="grid lg:grid-cols-12 gap-6 mb-6">
-          <div className="lg:col-span-3">
+          <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} lg:col-span-3`}>
             <PlayerPanel label="Team Alpha" color="cyan" players={alphaPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
           <div className="min-w-0 lg:col-span-6">
@@ -521,10 +522,10 @@ export default function RankedMatchRoom() {
               accent="cyan"
               compact
               sticky={false}
-              heightClass={slotsPerRankedTeam(match) > 1 ? "h-[344px]" : "h-[300px]"}
+              heightClass={arenaHeightClass(slotsPerRankedTeam(match))}
             />
           </div>
-          <div className="lg:col-span-3">
+          <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} lg:col-span-3`}>
             <PlayerPanel label="Team Bravo" color="orange" players={bravoPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
         </div>
