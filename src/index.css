@@ -573,22 +573,27 @@
 /* Champion rank: restrained crimson energy with a metallic light sweep. */
 .champion-rank-badge {
   isolation: isolate;
-  transition: transform 260ms cubic-bezier(.2, .8, .2, 1), filter 260ms ease;
+  transition: transform 220ms cubic-bezier(.2, .8, .2, 1);
 }
 
 .champion-rank-aura {
   position: absolute;
   z-index: 0;
-  inset: 10%;
+  inset: -3%;
   border-radius: 44%;
   background:
-    conic-gradient(from 0deg, transparent 0 18%, hsl(356 82% 42% / .52) 27%, transparent 38% 61%, hsl(348 90% 28% / .62) 72%, transparent 84% 100%);
-  filter: blur(13px);
-  opacity: .6;
-  animation: champion-energy-flow 7s linear infinite, champion-aura-breathe 3.2s ease-in-out infinite;
+    conic-gradient(from 0deg, transparent 0 12%, hsl(355 95% 54% / .82) 24%, hsl(348 88% 30% / .72) 32%, transparent 43% 57%, hsl(350 96% 49% / .86) 70%, hsl(342 88% 25% / .76) 79%, transparent 90% 100%);
+  filter: blur(8px);
+  opacity: .88;
+  animation: champion-energy-flow 4.5s linear infinite, champion-aura-breathe 1.05s ease-in-out infinite;
   transform-origin: center;
   pointer-events: none;
   will-change: transform, opacity;
+}
+
+.champion-rank-core {
+  animation: champion-core-pulse 1.05s ease-in-out infinite;
+  will-change: filter;
 }
 
 .champion-rank-shine {
@@ -612,12 +617,11 @@
   inset: 16%;
   filter: blur(6px);
   opacity: .42;
-  animation: champion-compact-pulse 3.4s ease-in-out infinite;
+  animation: champion-compact-pulse 1.05s ease-in-out infinite;
 }
 
 .champion-rank-group:hover .champion-rank-badge--full {
-  transform: translateY(-4px) scale(1.025);
-  filter: drop-shadow(0 13px 22px hsl(350 78% 24% / .28));
+  transform: translateY(-4px);
 }
 
 .champion-rank-group:hover .champion-rank-aura {
@@ -629,8 +633,13 @@
 }
 
 @keyframes champion-aura-breathe {
-  0%, 100% { opacity: .44; scale: .96; }
-  50% { opacity: .72; scale: 1.05; }
+  0%, 100% { opacity: .68; scale: .98; }
+  50% { opacity: 1; scale: 1.055; }
+}
+
+@keyframes champion-core-pulse {
+  0%, 100% { filter: drop-shadow(0 12px 24px rgb(0 0 0 / .45)) drop-shadow(0 0 3px hsl(350 90% 38% / .35)); }
+  50% { filter: drop-shadow(0 12px 24px rgb(0 0 0 / .45)) drop-shadow(0 0 8px hsl(354 94% 50% / .72)) drop-shadow(0 0 17px hsl(345 84% 25% / .38)); }
 }
 
 @keyframes champion-metal-sweep {
@@ -648,6 +657,7 @@
 @media (prefers-reduced-motion: reduce) {
   .beta-glow-pulse,
   .champion-rank-aura,
+  .champion-rank-core,
   .champion-rank-shine {
     animation: none;
   }
