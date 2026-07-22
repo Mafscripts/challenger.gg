@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
@@ -120,6 +120,8 @@ const detailTabs = [
 ];
 
 export default function Teams() {
+  const [searchParams] = useSearchParams();
+  const linkedTeamId = searchParams.get("team");
   const [view, setView] = useState("my_teams");
   const [detailTab, setDetailTab] = useState("overview");
   const [currentUser, setCurrentUser] = useState(null);
@@ -181,10 +183,18 @@ export default function Teams() {
         team.is_active !== false
         && (String(team.captain_id || "") === String(userData.id) || activeMembershipTeamIds.has(String(team.id)))
       ));
-      setTeams(myTeams);
-      setSelectedTeamId((current) => (myTeams.some((team) => team.id === current) ? current : myTeams?.[0]?.id || null));
+      const linkedTeam = (teamRows || []).find((team) => team.is_active !== false && String(team.id) === String(linkedTeamId || ""));
+      const visibleTeams = linkedTeam && !myTeams.some((team) => String(team.id) === String(linkedTeam.id))
+        ? [...myTeams, linkedTeam]
+        : myTeams;
+      setTeams(visibleTeams);
+      setSelectedTeamId((current) => linkedTeam?.id || (visibleTeams.some((team) => team.id === current) ? current : visibleTeams?.[0]?.id || null));
+      if (linkedTeam) {
+        setDetailTab("overview");
+        setView("details");
+      }
 
-      const memberPairs = await Promise.all(myTeams.map(async (team) => {
+      const memberPairs = await Promise.all(visibleTeams.map(async (team) => {
         const members = await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 20).catch(() => []);
         return [team.id, (members || []).filter((member) => member.is_active !== false)];
       }));

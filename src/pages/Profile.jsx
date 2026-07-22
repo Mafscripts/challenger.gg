@@ -1016,20 +1016,47 @@ function InventoryShowcase({ items }) {
 
 function TeamsList({ teams }) {
   return (
-    <SectionCard className="p-5">
-      <SectionHeader title="Teams" />
+    <SectionCard className="p-5 sm:p-6">
+      <div className="mb-6">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan">Competitive rosters</p>
+        <h3 className="mt-1 text-xl font-black text-white">Teams</h3>
+        <p className="mt-1 text-sm text-vapor">Open a team to view its roster, results and tournaments.</p>
+      </div>
       {teams.length === 0 ? (
         <EmptyPanel icon={Users} text="No teams joined yet." />
       ) : (
-        <div className="space-y-3">
-          {teams.map((membership) => (
-            <div key={membership.id} className="grid gap-3 rounded-lg border border-white/5 bg-background/25 p-4 md:grid-cols-4 md:items-center">
-              <span className="font-bold">{membership.team.name}</span>
-              <span className="text-xs font-black uppercase tracking-wider text-cyan">{membership.team.tag || "No tag"}</span>
-              <span className="text-xs capitalize text-vapor">{membership.role || "member"}</span>
-              <span className="text-xs text-vapor md:text-right"><Calendar className="mr-1 inline h-3 w-3" /> {formatDate(membership.joined_date)}</span>
-            </div>
-          ))}
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {teams.map((membership) => {
+            const team = membership.team;
+            const initials = String(team.tag || team.name || "TF").slice(0, 3).toUpperCase();
+            const typeLabel = ({ wager: "Wager", tournament: "Tournament", "8s": "8s", general: "General" })[team.team_type] || "Team";
+            return (
+              <Link key={membership.id} to={`/teams?team=${encodeURIComponent(team.id)}`} className="group relative min-h-56 overflow-hidden rounded-2xl border border-white/10 bg-background/40 p-5 transition-all hover:-translate-y-1 hover:border-cyan/35 hover:shadow-[0_18px_45px_rgba(0,0,0,0.3)]">
+                {team.banner_url && <img src={team.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15 transition-all duration-300 group-hover:scale-105 group-hover:opacity-25" />}
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan/[0.08] via-card/85 to-orange/[0.06]" />
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan/20 bg-cyan/10 font-mono text-lg font-black text-cyan shadow-lg">
+                      {team.logo_url ? <img src={team.logo_url} alt="" className="h-full w-full object-cover" /> : initials}
+                    </div>
+                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor">{typeLabel}</span>
+                  </div>
+                  <div className="mt-5 min-w-0">
+                    <h4 className="truncate text-xl font-black text-white transition-colors group-hover:text-cyan">{team.name}</h4>
+                    <p className="mt-1 font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">{team.tag || "No tag"}</p>
+                  </div>
+                  <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-5 text-xs text-vapor">
+                    <span className="inline-flex items-center gap-1.5 capitalize"><Shield className="h-3.5 w-3.5 text-orange" /> {membership.role || "member"}</span>
+                    <span className="inline-flex items-center gap-1.5 uppercase"><Globe2 className="h-3.5 w-3.5 text-cyan" /> {team.region || "Global"}</span>
+                    <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> {formatDate(membership.joined_date)}</span>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4 text-xs font-black uppercase tracking-wider text-cyan">
+                    View team <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </SectionCard>
