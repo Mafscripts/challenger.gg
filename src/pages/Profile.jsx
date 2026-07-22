@@ -7,7 +7,6 @@ import {
   Calendar,
   Camera,
   ChevronRight,
-  Crown,
   DollarSign,
   ExternalLink,
   Flame,
@@ -192,12 +191,12 @@ function trophyOverviewFor(user, profile, inventory = [], matches = []) {
   };
 
   return [
-    { key: "gold", label: "Golds", value: counts.gold, icon: Trophy, tone: "text-yellow-400", tint: "bg-yellow-400/10" },
-    { key: "silver", label: "Silvers", value: counts.silver, icon: Medal, tone: "text-gray-300", tint: "bg-gray-300/10" },
-    { key: "bronze", label: "Bronzes", value: counts.bronze, icon: Award, tone: "text-orange", tint: "bg-orange/10" },
-    { key: "premium", label: "Premium", value: counts.premium, icon: Crown, tone: "text-purple-300", tint: "bg-purple-400/10" },
-    { key: "topfragg", label: "Topfragg", value: counts.topfragg, icon: Target, tone: "text-cyan", tint: "bg-cyan/10" },
-    { key: "hosted", label: "Hosted", value: counts.hosted, icon: Users, tone: "text-green", tint: "bg-green/10" },
+    { key: "gold", label: "Gold", value: counts.gold, image: "/assets/trophies/gold.png", tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
+    { key: "silver", label: "Silver", value: counts.silver, image: "/assets/trophies/silver.png", tone: "text-gray-200", tint: "bg-gray-200/10", border: "group-hover:border-gray-200/20" },
+    { key: "bronze", label: "Bronze", value: counts.bronze, image: "/assets/trophies/bronze.png", tone: "text-orange", tint: "bg-orange/10", border: "group-hover:border-orange/25" },
+    { key: "premium", label: "Premium", value: counts.premium, image: "/assets/trophies/premium.png", tone: "text-purple-300", tint: "bg-purple-400/10", border: "group-hover:border-purple-300/25" },
+    { key: "topfragg", label: "TopFragg", value: counts.topfragg, image: "/assets/trophies/topfragg.png", tone: "text-cyan", tint: "bg-cyan/10", border: "group-hover:border-cyan/25" },
+    { key: "hosted", label: "Hosted", value: counts.hosted, image: "/assets/trophies/hosted.png", tone: "text-green", tint: "bg-green/10", border: "group-hover:border-green/25" },
   ];
 }
 
@@ -744,20 +743,26 @@ function TrophyOverview({ trophies, items = [] }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         {trophies.map((trophy) => {
-          const Icon = trophy.icon;
           return (
             <motion.div
               key={trophy.key}
               whileHover={{ y: -5, transition: { duration: 0.1, ease: "easeOut" } }}
-              className="premium-card group relative overflow-hidden rounded-2xl p-5"
+              className={`premium-card group relative min-h-[250px] overflow-hidden rounded-2xl border border-white/[0.06] p-4 transition-colors ${trophy.border}`}
             >
-              <div className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-70 blur-3xl ${trophy.tint}`} />
-              <div className="relative">
-                <div className={`mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${trophy.tone}`}>
-                  <Icon className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
+              <div className={`pointer-events-none absolute left-1/2 top-14 h-32 w-32 -translate-x-1/2 rounded-full opacity-50 blur-3xl ${trophy.tint}`} />
+              <div className="relative flex h-full flex-col items-center text-center">
+                <div className="flex h-40 w-full items-center justify-center">
+                  <img
+                    src={trophy.image}
+                    alt={`${trophy.label} trophy`}
+                    className="h-36 w-36 object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.5)] transition-transform duration-200 group-hover:scale-[1.06]"
+                  />
                 </div>
-                <p className="font-mono text-4xl font-black leading-none tracking-tight text-white">{trophy.value}</p>
-                <p className="mt-2 truncate text-[10px] font-black uppercase tracking-[0.16em] text-vapor">{trophy.label}</p>
+                <div className="mt-auto w-full rounded-xl border border-white/[0.055] bg-black/15 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
+                  <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${trophy.tone}`}>{trophy.label}</p>
+                  <p className="mt-1 font-mono text-3xl font-black leading-none tracking-tight text-white">{trophy.value}</p>
+                  <p className="mt-1.5 text-[9px] font-bold uppercase tracking-[0.13em] text-vapor">Trophies earned</p>
+                </div>
               </div>
             </motion.div>
           );

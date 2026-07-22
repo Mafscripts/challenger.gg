@@ -382,17 +382,20 @@ function RankSummaryCard({ rank, elo }) {
     <div className="premium-card group relative min-h-48 overflow-hidden rounded-2xl p-5">
       <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-orange/10 blur-3xl" />
       <div className="relative flex h-full flex-col">
-        <div className="flex items-center gap-4">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,.05)]">
-            <RankBadge rank={rank.tier} division={rank.division} elo={elo} size="lg" />
+        <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-4">
+          <span className="flex h-28 w-[6.5rem] shrink-0 items-center justify-center rounded-2xl border border-white/5 bg-black/15 shadow-[inset_0_1px_0_rgba(255,255,255,.05)]">
+            <RankBadge rank={rank.tier} division={rank.division} elo={elo} size="md" showLabel={false} />
           </span>
           <div className="min-w-0">
             <p className="text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Current Rank</p>
-            <p className="mt-1 truncate text-lg font-black tracking-tight text-white">{rank.name}</p>
-            <p className="mt-0.5 font-mono text-sm font-black text-cyan">{formatNumber(elo)} ELO</p>
+            <p className="mt-1 truncate text-xl font-black tracking-tight text-white">{rank.name}</p>
+            <p className="mt-1 font-mono text-sm font-black text-cyan">{formatNumber(elo)} ELO</p>
+            <p className="mt-2 text-[10px] font-semibold text-vapor">
+              {rank.max === Infinity ? "Highest competitive rank" : `${formatNumber(Math.max(0, rank.max + 1 - elo))} ELO to next rank`}
+            </p>
           </div>
         </div>
-        <div className="mt-auto pt-5">
+        <div className="mt-auto pt-4">
           <div className="mb-2 flex justify-between text-[9px] font-semibold uppercase tracking-[0.12em] text-vapor">
             <span>{rank.min} ELO</span>
             <span>{rank.max === Infinity ? "Max Rank" : `${rank.max + 1} ELO`}</span>
