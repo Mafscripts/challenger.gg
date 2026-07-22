@@ -58,7 +58,7 @@ const roomRosterNames = (match, side) => {
 };
 const roomRosterSignature = (match) => [...roomRosterIds(match, "alpha"), "|", ...roomRosterIds(match, "bravo")].join(":");
 const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsPerRankedTeam(match) && roomRosterIds(match, "bravo").length >= slotsPerRankedTeam(match);
-const arenaHeightClass = (slots) => ({ 1: "h-[300px]", 2: "h-[300px]", 3: "h-[344px]", 4: "h-[388px]" }[slots] || "h-[388px]");
+const arenaHeightClass = (slots) => ({ 1: "h-[250px]", 2: "h-[320px]", 3: "h-[410px]", 4: "h-[500px]" }[slots] || "h-[500px]");
 
 function RosterPlayerCard({ player, color }) {
   const rank = getRankForElo(player.elo || 0);
@@ -69,7 +69,7 @@ function RosterPlayerCard({ player, color }) {
   const accentText = isAlpha ? "text-cyan" : "text-orange";
 
   return (
-    <div className={`relative flex min-h-[92px] flex-1 min-w-0 overflow-hidden rounded-lg border border-white/[0.07] border-l-2 bg-gradient-to-r ${accent} to-background/20 p-3`}>
+    <div className={`relative flex min-h-[104px] flex-1 min-w-0 overflow-hidden rounded-lg border border-white/[0.07] border-l-2 bg-gradient-to-r ${accent} to-background/20 p-3`}>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="shrink-0 rounded-lg border border-white/[0.07] bg-background/30 p-1">
           <RankBadge rank={rank.tier} size="sm" showLabel={false} />
@@ -77,19 +77,19 @@ function RosterPlayerCard({ player, color }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <p className="truncate text-sm font-black text-foreground">{player.name}</p>
+              <p className="truncate text-base font-black text-foreground">{player.name}</p>
               <UserBadges user={player} size="xs" iconOnly showMonitorCam />
             </div>
-            <span className={`shrink-0 font-mono text-[11px] font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} ELO</span>
+            <span className={`shrink-0 rounded-md border border-white/[0.07] bg-background/30 px-2 py-1 font-mono text-xs font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} ELO</span>
           </div>
           <div className="mt-0.5 flex items-center justify-between gap-2">
             <ActivisionIdLabel user={player} className="min-w-0 max-w-[58%]" />
-            <span className="text-[9px] font-black uppercase tracking-wider text-vapor">{rank.name}</span>
+            <span className="text-[11px] font-black uppercase tracking-wide text-vapor">{rank.name}</span>
           </div>
           <div className="mt-2 grid grid-cols-3 divide-x divide-white/[0.07] rounded-md border border-white/[0.06] bg-background/25 py-1.5 text-center">
-            <div><p className="text-[7px] font-black uppercase tracking-wider text-vapor/75">Record</p><p className="mt-0.5 font-mono text-[10px] font-black text-foreground">{player.wins || 0}W–{player.losses || 0}L</p></div>
-            <div><p className="text-[7px] font-black uppercase tracking-wider text-vapor/75">Win rate</p><p className={`mt-0.5 font-mono text-[10px] font-black ${accentText}`}>{winRate}%</p></div>
-            <div><p className="text-[7px] font-black uppercase tracking-wider text-vapor/75">Streak</p><p className="mt-0.5 font-mono text-[10px] font-black text-foreground">{player.win_streak || 0}</p></div>
+            <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Record</p><p className="mt-1 font-mono text-xs font-black text-foreground">{player.wins || 0}W–{player.losses || 0}L</p></div>
+            <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Win rate</p><p className={`mt-1 font-mono text-xs font-black ${accentText}`}>{winRate}%</p></div>
+            <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Streak</p><p className="mt-1 font-mono text-xs font-black text-foreground">{player.win_streak || 0}</p></div>
           </div>
         </div>
       </div>
@@ -99,31 +99,6 @@ function RosterPlayerCard({ player, color }) {
 
 function PlayerPanel({ label, color, players = [], slots = 1 }) {
   const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
-
-  if (slots === 1 && players[0]) {
-    const player = players[0];
-    const rank = getRankForElo(player.elo || 0);
-    return (
-      <div className={`glass flex h-[300px] flex-col rounded-xl border p-5 ${colorClass}`}>
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider">{label}</p>
-          <span className="rounded-full border border-white/10 bg-background/30 px-2.5 py-1 text-[10px] font-black">1/1</span>
-        </div>
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <RankBadge rank={rank.tier} size="md" showLabel={false} />
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <h2 className="max-w-[180px] truncate text-xl font-black">{player.name}</h2>
-            <UserBadges user={player} size="xs" iconOnly showMonitorCam />
-          </div>
-          <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
-          <p className="mt-1 text-xs text-vapor">{rank.name} · {(player.elo || 0).toLocaleString()} ELO</p>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {[{ label: "Wins", value: player.wins || 0 }, { label: "Losses", value: player.losses || 0 }, { label: "Streak", value: player.win_streak || 0 }].map((stat) => <div key={stat.label} className="rounded-lg border border-white/5 bg-background/25 px-2 py-2 text-center"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">{stat.label}</p><p className="mt-1 font-mono text-sm font-black">{stat.value}</p></div>)}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`glass flex h-full flex-col rounded-xl border p-5 ${colorClass}`}>
