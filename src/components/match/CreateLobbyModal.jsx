@@ -7,17 +7,26 @@ import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 
 const gameModes = [
-  { id: "snd", name: "Search & Destroy", icon: Target, description: "Best of 11 rounds" },
-  { id: "overload", name: "Overload", icon: Zap, description: "Capture and hold zones" },
-  { id: "hp", name: "Hardpoint", icon: Swords, description: "First to 250 score" },
+  { id: "snd", name: "Search & Destroy", icon: Target, description: "Best of 11 rounds", tone: "yellow" },
+  { id: "overload", name: "Overload", icon: Zap, description: "Capture and hold zones", tone: "purple" },
+  { id: "hp", name: "Hardpoint", icon: Swords, description: "First to 250 score", tone: "red" },
 ];
 
 const teamSizes = [
-  { id: "1v1", name: "1v1", players: 2 },
-  { id: "2v2", name: "2v2", players: 4 },
-  { id: "3v3", name: "3v3", players: 6 },
-  { id: "4v4", name: "4v4", players: 8 },
+  { id: "1v1", name: "1v1", players: 2, tone: "cyan" },
+  { id: "2v2", name: "2v2", players: 4, tone: "green" },
+  { id: "3v3", name: "3v3", players: 6, tone: "purple" },
+  { id: "4v4", name: "4v4", players: 8, tone: "orange" },
 ];
+
+const choiceTones = {
+  yellow: { card: "hover:border-yellow-400/45 hover:bg-yellow-400/[0.07]", selected: "border-yellow-400/55 bg-yellow-400/10 ring-2 ring-yellow-400/15", icon: "bg-yellow-400/15 text-yellow-400", text: "text-yellow-400", hoverText: "group-hover:text-yellow-400" },
+  red: { card: "hover:border-red-500/45 hover:bg-red-500/[0.07]", selected: "border-red-500/55 bg-red-500/10 ring-2 ring-red-500/15", icon: "bg-red-500/15 text-red-400", text: "text-red-400", hoverText: "group-hover:text-red-400" },
+  purple: { card: "hover:border-purple-400/45 hover:bg-purple-400/[0.07]", selected: "border-purple-400/55 bg-purple-400/10 ring-2 ring-purple-400/15", icon: "bg-purple-400/15 text-purple-400", text: "text-purple-400", hoverText: "group-hover:text-purple-400" },
+  cyan: { card: "hover:border-cyan/45 hover:bg-cyan/[0.07]", selected: "border-cyan/55 bg-cyan/10 ring-2 ring-cyan/15", icon: "bg-cyan/15 text-cyan", text: "text-cyan", hoverText: "group-hover:text-cyan" },
+  green: { card: "hover:border-green/45 hover:bg-green/[0.07]", selected: "border-green/55 bg-green/10 ring-2 ring-green/15", icon: "bg-green/15 text-green", text: "text-green", hoverText: "group-hover:text-green" },
+  orange: { card: "hover:border-orange/45 hover:bg-orange/[0.07]", selected: "border-orange/55 bg-orange/10 ring-2 ring-orange/15", icon: "bg-orange/15 text-orange", text: "text-orange", hoverText: "group-hover:text-orange" },
+};
 
 const wagerAmounts = [5, 10, 25, 50, 100];
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
@@ -314,26 +323,25 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   {gameModes.map((mode) => {
                     const Icon = mode.icon;
                     const isSelected = selectedGameMode === mode.id;
+                    const tone = choiceTones[mode.tone];
                     return (
                       <button
                         key={mode.id}
                         onClick={() => setSelectedGameMode(mode.id)}
-                        className={`relative transform-gpu p-4 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
+                        className={`group relative transform-gpu p-4 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
                           isSelected
-                            ? "bg-cyan/10 border-cyan/30 ring-2 ring-cyan/20"
-                            : "bg-secondary border-white/5 hover:border-white/10"
+                            ? tone.selected
+                            : `bg-secondary border-white/5 ${tone.card}`
                         }`}
                       >
-                        <div className={`w-10 h-10 rounded-lg mb-3 flex items-center justify-center ${
-                          isSelected ? "bg-cyan/20" : "bg-secondary"
-                        }`}>
-                          <Icon className={`w-5 h-5 ${isSelected ? "text-cyan" : "text-vapor"}`} />
+                        <div className={`w-10 h-10 rounded-lg mb-3 flex items-center justify-center transition-colors duration-150 ${isSelected ? tone.icon : "bg-background/40 text-vapor"}`}>
+                          <Icon className={`w-5 h-5 transition-colors duration-150 ${isSelected ? tone.text : `text-vapor ${tone.hoverText}`}`} />
                         </div>
-                        <p className={`font-semibold text-sm mb-1 ${isSelected ? "text-cyan" : ""}`}>{mode.name}</p>
+                        <p className={`font-semibold text-sm mb-1 transition-colors duration-150 ${isSelected ? tone.text : tone.hoverText}`}>{mode.name}</p>
                         <p className="text-xs text-vapor">{mode.description}</p>
                         {isSelected && (
                           <div className="absolute top-3 right-3">
-                            <Check className="w-4 h-4 text-cyan" />
+                            <Check className={`w-4 h-4 ${tone.text}`} />
                           </div>
                         )}
                       </button>
@@ -362,30 +370,31 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 <div className="grid sm:grid-cols-2 gap-4">
                   {teamSizes.map((size) => {
                     const isSelected = selectedTeamSize === size.id;
+                    const tone = choiceTones[size.tone];
                     return (
                       <button
                         key={size.id}
                         onClick={() => setSelectedTeamSize(size.id)}
-                        className={`relative transform-gpu p-5 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
+                        className={`group relative transform-gpu p-5 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
                           isSelected
-                            ? "bg-cyan/10 border-cyan/30 ring-2 ring-cyan/20"
-                            : "bg-secondary border-white/5 hover:border-white/10"
+                            ? tone.selected
+                            : `bg-secondary border-white/5 ${tone.card}`
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                            isSelected ? "bg-cyan/20" : "bg-secondary"
+                            isSelected ? tone.icon : "bg-background/40"
                           }`}>
-                            <Users className={`w-6 h-6 ${isSelected ? "text-cyan" : "text-vapor"}`} />
+                            <Users className={`w-6 h-6 transition-colors duration-150 ${isSelected ? tone.text : `text-vapor ${tone.hoverText}`}`} />
                           </div>
                           <div>
-                            <p className={`font-bold text-lg ${isSelected ? "text-cyan" : ""}`}>{size.name}</p>
+                            <p className={`font-bold text-lg transition-colors duration-150 ${isSelected ? tone.text : tone.hoverText}`}>{size.name}</p>
                             <p className="text-xs text-vapor">{size.players} players total</p>
                           </div>
                         </div>
                         {isSelected && (
                           <div className="absolute top-3 right-3">
-                            <Check className="w-4 h-4 text-cyan" />
+                            <Check className={`w-4 h-4 ${tone.text}`} />
                           </div>
                         )}
                       </button>
