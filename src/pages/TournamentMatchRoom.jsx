@@ -782,6 +782,30 @@ export default function TournamentMatchRoom() {
     }
   };
 
+  const handleAdminResetDispute = async () => {
+    const confirmed = typeof window === "undefined" || window.confirm("Reset this dispute, clear both reports, and let the teams continue?");
+    if (!confirmed) return;
+    setResolvingAdmin(true);
+    try {
+      const response = await base44.functions.invoke("adminResetMatchDispute", {
+        match_type: "tournament",
+        match_id: match.id,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Reset failed", description: response.data?.error || "Could not reset dispute.", variant: "destructive" });
+        return;
+      }
+      setScoreA(0);
+      setScoreB(0);
+      await loadRoom();
+      toast({ title: "Dispute reset", description: "The teams can continue and report again." });
+    } catch (error) {
+      toast({ title: "Reset failed", description: error.message || "Could not reset dispute.", variant: "destructive" });
+    } finally {
+      setResolvingAdmin(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -962,6 +986,15 @@ export default function TournamentMatchRoom() {
 
         {canUseMatchControls && (
         <div className="glass rounded-xl border border-white/5 p-4">
+          {isStaff && ["score_conflict", "disputed"].includes(match.status) && (
+            <button
+              onClick={handleAdminResetDispute}
+              disabled={resolvingAdmin}
+              className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-cyan transition-all hover:bg-cyan/20 disabled:opacity-50"
+            >
+              <RefreshCw className="h-4 w-4" /> Reset Dispute &amp; Continue Match
+            </button>
+          )}
           {canAdminCorrect && (
             <div className="mb-3 border-b border-white/5 pb-3">
               <div className="mb-2 flex items-center justify-between gap-3">

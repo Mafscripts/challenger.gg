@@ -4966,6 +4966,66 @@ async function adminResolveMatchRoom(req) {
   return { success: true, match: updatedMatch, result, message };
 }
 
+async function adminResetMatchDispute(req) {
+  assertStaff(req, "moderator");
+  const requestedType = String(req.body.match_type || "wager").toLowerCase();
+  const matchType = normalizeMatchType(requestedType);
+  const entityName = matchEntityFor(matchType);
+  const matchId = req.body.match_id || req.body.wager_id || req.body.ranked_match_id || req.body.tournament_match_id;
+  if (!matchId) return { success: false, error: "Match ID is required" };
+
+  const match = await getEntity(entityName, matchId);
+  if (!match) return { success: false, error: "Match not found" };
+  if (match.completed === true || ["completed", "cancelled", "closed"].includes(match.status)) {
+    return { success: false, error: "A completed or cancelled match cannot be reopened" };
+  }
+
+  const reportReset = {
+    host_reported_score_alpha: null,
+    host_reported_score_bravo: null,
+    host_reported_score_by: null,
+    host_reported_score_date: null,
+    challenger_reported_score_alpha: null,
+    challenger_reported_score_bravo: null,
+    challenger_reported_score_by: null,
+    challenger_reported_score_date: null,
+    team_a_reported_score_alpha: null,
+    team_a_reported_score_bravo: null,
+    team_a_reported_score_by: null,
+    team_a_reported_score_by_name: null,
+    team_a_reported_score_date: null,
+    team_b_reported_score_alpha: null,
+    team_b_reported_score_bravo: null,
+    team_b_reported_score_by: null,
+    team_b_reported_score_by_name: null,
+    team_b_reported_score_date: null,
+    reported_score_alpha: null,
+    reported_score_bravo: null,
+    reported_score_by: null,
+    reported_score_by_name: null,
+    reported_score_team: null,
+    reported_score_date: null,
+    confirmed_score_alpha: null,
+    confirmed_score_bravo: null,
+    confirmed_score_date: null,
+    scores_confirmed: false,
+    dispute_id: null,
+    score_conflict_date: null,
+    disputed_date: null,
+    status: "in_progress",
+    dispute_reset_by: req.user.id,
+    dispute_reset_by_name: nameFor(req.user),
+    dispute_reset_date: nowIso(),
+  };
+
+  const updated = await updateEntity(entityName, match.id, reportReset);
+  await resolveOpenMatchDisputes(match.id, "Dispute reset by staff", req.user);
+  const message = `Admin ${nameFor(req.user)} reset the dispute. Both teams can continue playing and must submit new final score reports.`;
+  await createMatchRoomSystemMessage(matchType, updated, message, req.user).catch(() => null);
+
+  return { success: true, match: updated, message };
+}
+
 async function adminCorrectTournamentMatch(req) {
   assertStaff(req, "admin");
   const action = req.body.action || req.body.decision;
@@ -5656,6 +5716,20 @@ async function acceptWager(req) {
   return { success: true, wager: startState.wager, ready: startState.ready, final_map_name: startState.wager.final_map_name };
 }
 
+async function resolveOpenMatchDisputes(matchId, resolution, resolvedBy = null) {
+  if (!matchId) return [];
+  const disputes = await listEntities("Dispute", { match_id: matchId }, "-created_date", 50).catch(() => []);
+  const openDisputes = disputes.filter((dispute) => ["pending", "under_review", "escalated"].includes(dispute.status));
+  return Promise.all(openDisputes.map((dispute) => updateEntity("Dispute", dispute.id, {
+    status: "resolved",
+    decision: resolution,
+    resolution,
+    resolved_by: resolvedBy?.id || null,
+    resolved_by_name: resolvedBy ? nameFor(resolvedBy) : "System",
+    resolved_date: nowIso(),
+  }).catch(() => null)));
+}
+
 async function submitScore(req) {
   const wager = await getEntity("Wager", req.body.wager_id);
   if (!wager || ["completed", "cancelled"].includes(wager.status)) {
@@ -5718,12 +5792,14 @@ async function submitScore(req) {
   };
 
   if (otherHasReport && !scoresMatch) {
+    const disputeMatchType = wager.match_type === "8s" ? "8s" : "wager";
+    const disputeActionUrl = disputeMatchType === "8s" ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`;
     const existingDisputes = await listEntities("Dispute", { match_id: wager.id }, "-created_date", 20).catch(() => []);
     const existingOpenDispute = existingDisputes.find((row) => !["resolved", "rejected", "closed"].includes(row.status));
     const dispute = existingOpenDispute || await createEntity("Dispute", {
       wager_id: wager.id,
       match_id: wager.id,
-      match_type: "wager",
+      match_type: disputeMatchType,
       wager_details: wager,
       match_logs: [wager, { ...wager, ...report }],
       reported_by: req.user.id,
@@ -5748,11 +5824,11 @@ async function submitScore(req) {
       title: "New dispute",
       message: `Match #${wager.id.slice(-8)} · ${wager.host_team_name || wager.host_name || "Team Alpha"} vs ${wager.challenger_team_name || wager.challenger_name || "Team Bravo"} · reports ${Number(otherAlpha)}-${Number(otherBravo)} and ${teamAlphaScore}-${teamBravoScore}.`,
       type: "dispute",
-      action_url: `/wagers-match/${wager.id}`,
+      action_url: disputeActionUrl,
       related_entity_id: dispute.id,
       related_entity_type: "Dispute",
       match_id: wager.id,
-      match_type: "wager",
+      match_type: disputeMatchType,
       host_name: wager.host_team_name || wager.host_name,
       challenger_name: wager.challenger_team_name || wager.challenger_name,
     });
@@ -5883,6 +5959,7 @@ async function completeWager(req) {
     payout_total: payoutResult.totalPot,
     winner_profit: payoutResult.winnerProfit,
   });
+  await resolveOpenMatchDisputes(wager.id, "Match result resolved", req.user);
   await notifyUsers([winnerId, loserId], {
     title: "Match completed",
     message: `${winnerName} won ${wager.game_mode_display || wager.game_mode || "the match"}.`,
@@ -5916,6 +5993,7 @@ async function refundWager(req) {
     cancelled_by_name: nameFor(req.user),
     cancelled_date: nowIso(),
   });
+  await resolveOpenMatchDisputes(wager.id, "Match cancelled and refunded", req.user);
   await notifyUsers([wager.host_id, wager.challenger_id], {
     title: "Wager refunded",
     message: `${wager.game_mode_display || wager.game_mode || "Match"} was cancelled and escrow was returned.`,
@@ -6247,6 +6325,7 @@ async function completeRankedMatch(req) {
   });
   const eloChanges = await applyRankedRosterRewards(winnerIds, loserIds);
   const completedMatch = await updateEntity("RankedMatch", match.id, { elo_changes: eloChanges });
+  await resolveOpenMatchDisputes(match.id, "Ranked match result resolved", req.user);
   await notifyUsers([...winnerIds, ...loserIds], {
     title: "Ranked match completed",
     message: `${winnerName} won. ELO and XP updated.`,
@@ -7286,6 +7365,7 @@ async function finalizeTournamentMatch(match, teamAScore, teamBScore, patch = {}
   ]);
   await applyParticipantRewards(winnerUserIds, loserUserIds);
   updated = await updateEntity("TournamentMatch", updated.id, tournamentRewardAppliedPatch(winnerUserIds, loserUserIds));
+  await resolveOpenMatchDisputes(match.id, "Tournament match result resolved");
   await notifyUsers([...winnerUserIds, ...loserUserIds], {
     title: "Tournament match completed",
     message: `${updated.winner_name} won ${teamAScore}-${teamBScore}.`,
@@ -7630,7 +7710,13 @@ async function moderateDispute(req) {
     title: "Dispute resolved",
     message: `Dispute #${dispute.id.slice(-8)} was resolved: ${String(action).replace(/_/g, " ")}.`,
     type: "match",
-    action_url: matchType === "ranked" ? `/ranked-match/${match.id}` : matchType === "tournament" ? `/tournament-match/${match.id}` : `/wagers-match/${match.id}`,
+    action_url: matchType === "ranked"
+      ? `/ranked-match/${match.id}`
+      : matchType === "tournament"
+        ? `/tournament-match/${match.id}`
+        : matchType === "8s" || match.match_type === "8s"
+          ? `/8s-match/${match.id}`
+          : `/wagers-match/${match.id}`,
     related_entity_id: dispute.id,
     related_entity_type: "Dispute",
   });
@@ -7997,6 +8083,7 @@ const handlers = {
   replyTicket,
   resolveTicket,
   adminResolveMatchRoom,
+  adminResetMatchDispute,
   adminCorrectTournamentMatch,
   reopenTicket,
   escalateTicket,

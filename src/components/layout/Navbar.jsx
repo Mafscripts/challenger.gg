@@ -328,16 +328,47 @@ export default function Navbar() {
       if (!active || document.visibilityState === "hidden") return;
       loadActiveMatches({ fresh: true });
       loadNotifications({ fresh: true, userId: authUser.id });
-      if (isStaffUser(authUser)) {
-        base44.entities.Dispute.filterFresh({}, "-created_date", 50).then((rows) => {
+      if (isStaffUser(user || authUser)) {
+        base44.entities.Dispute.filterFresh({}, "-created_date", 50).then(async (rows) => {
           if (!active) return;
           const pendingDisputes = (rows || []).filter((dispute) => ["pending", "under_review"].includes(dispute.status));
-          const nextDispute = pendingDisputes.find((dispute) => (
-            ["pending", "under_review"].includes(dispute.status)
-            && !dismissedAdminDisputes.current.has(dispute.id)
-          ));
-          pendingDisputes.forEach((dispute) => dismissedAdminDisputes.current.add(dispute.id));
-          if (!nextDispute || activeAdminDisputeId.current === nextDispute.id) return;
+          const pendingIds = new Set(pendingDisputes.map((dispute) => dispute.id));
+          if (activeAdminDisputeId.current && !pendingIds.has(activeAdminDisputeId.current)) {
+            activeAdminDisputeId.current = null;
+            setAdminDispute(null);
+          }
+
+          const matchIsClosed = async (dispute) => {
+            const matchId = dispute.match_id || dispute.wager_id || dispute.tournament_match_id;
+            if (!matchId) return true;
+            const matchType = dispute.match_type || (dispute.tournament_match_id ? "tournament" : "wager");
+            const entityName = matchType === "ranked" ? "RankedMatch" : matchType === "tournament" ? "TournamentMatch" : "Wager";
+            const match = await base44.entities[entityName].getFresh(matchId).catch(() => null);
+            return !match || match.completed === true || ["completed", "cancelled", "closed"].includes(match.status);
+          };
+
+          if (activeAdminDisputeId.current) {
+            const visibleDispute = pendingDisputes.find((dispute) => dispute.id === activeAdminDisputeId.current);
+            if (visibleDispute && await matchIsClosed(visibleDispute)) {
+              dismissedAdminDisputes.current.add(visibleDispute.id);
+              activeAdminDisputeId.current = null;
+              setAdminDispute(null);
+            } else {
+              return;
+            }
+          }
+
+          let nextDispute = null;
+          for (const dispute of pendingDisputes) {
+            if (dismissedAdminDisputes.current.has(dispute.id)) continue;
+            if (await matchIsClosed(dispute)) {
+              dismissedAdminDisputes.current.add(dispute.id);
+              continue;
+            }
+            nextDispute = dispute;
+            break;
+          }
+          if (!active || !nextDispute) return;
           activeAdminDisputeId.current = nextDispute.id;
           setAdminDispute(nextDispute);
         }).catch((error) => console.error("Failed to refresh staff disputes:", error));
@@ -356,7 +387,7 @@ export default function Navbar() {
       window.removeEventListener("focus", refreshLiveHeader);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [isAuthenticated, authUser?.id]);
+  }, [isAuthenticated, authUser?.id, user?.id, user?.role]);
 
   const loadUser = async (knownUser = null) => {
     try {
@@ -518,7 +549,13 @@ export default function Navbar() {
         const details = adminDispute.wager_details || adminDispute.match_details || {};
         const matchId = adminDispute.match_id || adminDispute.wager_id || adminDispute.tournament_match_id;
         const matchType = adminDispute.match_type || (adminDispute.tournament_match_id ? "tournament" : "wager");
-        const roomPath = matchType === "ranked" ? `/ranked-match/${matchId}` : matchType === "tournament" ? `/tournament-match/${matchId}` : `/wagers-match/${matchId}`;
+        const roomPath = matchType === "ranked"
+          ? `/ranked-match/${matchId}`
+          : matchType === "tournament"
+            ? `/tournament-match/${matchId}`
+            : matchType === "8s"
+              ? `/8s-match/${matchId}`
+              : `/wagers-match/${matchId}`;
         const teamA = details.host_team_name || details.host_name || details.team_a_name || adminDispute.reported_by_name || "Team Alpha";
         const teamB = details.challenger_team_name || details.challenger_name || details.team_b_name || adminDispute.reported_against_name || "Team Bravo";
         const dismiss = () => {

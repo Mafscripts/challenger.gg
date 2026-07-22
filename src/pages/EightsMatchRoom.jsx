@@ -169,6 +169,7 @@ export default function EightsMatchRoom() {
   const [supporting, setSupporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [disputing, setDisputing] = useState(false);
+  const [resettingDispute, setResettingDispute] = useState(false);
   const [resultDismissed, setResultDismissed] = useState(false);
   const rosterSignatureRef = useRef("");
 
@@ -351,7 +352,7 @@ export default function EightsMatchRoom() {
     setDisputing(true);
     try {
       const response = await base44.functions.invoke("createDispute", {
-        match_type: "wager",
+        match_type: "8s",
         match_id: wager.id,
         wager_id: wager.id,
         reason: "score_dispute",
@@ -372,6 +373,30 @@ export default function EightsMatchRoom() {
       toast({ title: "Dispute failed", description: error.message || "Could not create dispute.", variant: "destructive" });
     } finally {
       setDisputing(false);
+    }
+  };
+
+  const handleAdminResetDispute = async () => {
+    const confirmed = typeof window === "undefined" || window.confirm("Reset this dispute, clear both reports, and let the players continue?");
+    if (!confirmed) return;
+    setResettingDispute(true);
+    try {
+      const response = await base44.functions.invoke("adminResetMatchDispute", {
+        match_type: "8s",
+        match_id: wager.id,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Reset failed", description: response.data?.error || "Could not reset dispute.", variant: "destructive" });
+        return;
+      }
+      setScoreA(0);
+      setScoreB(0);
+      await loadWager();
+      toast({ title: "Dispute reset", description: "The 8s match can continue and both sides can report again." });
+    } catch (error) {
+      toast({ title: "Reset failed", description: error.message || "Could not reset dispute.", variant: "destructive" });
+    } finally {
+      setResettingDispute(false);
     }
   };
 
@@ -399,6 +424,7 @@ export default function EightsMatchRoom() {
   }
 
   const isParticipant = user?.id === wager.host_id || user?.id === wager.challenger_id;
+  const isStaff = ["ceo", "super_admin", "admin", "moderator"].includes(user?.role);
   const isComplete = wager.status === "completed";
   const canSubmit = isParticipant && Boolean(wager.challenger_id) && !isComplete;
   const predictedWinner = scoreA === scoreB ? null : scoreA > scoreB ? wager.host_name : wager.challenger_name;
@@ -475,6 +501,11 @@ export default function EightsMatchRoom() {
 
             <section className="glass rounded-xl border border-white/5 p-4">
               <div className="flex flex-wrap items-center gap-3">
+                {isStaff && ["score_conflict", "disputed"].includes(wager.status) && (
+                  <button onClick={handleAdminResetDispute} disabled={resettingDispute} className="w-full rounded-lg border border-cyan/25 bg-cyan/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-cyan/20 disabled:opacity-50">
+                    {resettingDispute ? "Resetting..." : "Reset Dispute & Continue Match"}
+                  </button>
+                )}
                 <button onClick={handleReportScore} disabled={!canSubmit || submitting} className="flex min-w-[220px] flex-1 items-center justify-center gap-2 rounded-lg border border-green/20 bg-green/10 py-3 text-sm font-bold uppercase tracking-wider text-green transition-all hover:bg-green/20 disabled:cursor-not-allowed disabled:opacity-50">
                   <Check className="h-4 w-4" /> {submitting ? "Submitting..." : "Submit Score Report"}
                 </button>

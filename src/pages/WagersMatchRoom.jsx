@@ -549,6 +549,30 @@ export default function WagersMatchRoom() {
     }
   };
 
+  const handleAdminResetDispute = async () => {
+    const confirmed = typeof window === "undefined" || window.confirm("Reset this dispute, clear both score reports, and let the teams continue playing?");
+    if (!confirmed) return;
+    setResolvingAdmin(true);
+    try {
+      const response = await base44.functions.invoke("adminResetMatchDispute", {
+        match_type: wager.match_type === "8s" ? "8s" : "wager",
+        match_id: wager.id,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Reset failed", description: response.data?.error || "Could not reset dispute.", variant: "destructive" });
+        return;
+      }
+      setScoreA(0);
+      setScoreB(0);
+      setWager(response.data.match || wager);
+      toast({ title: "Dispute reset", description: "Both teams can continue and submit new score reports." });
+    } catch (error) {
+      toast({ title: "Reset failed", description: error.message || "Could not reset dispute.", variant: "destructive" });
+    } finally {
+      setResolvingAdmin(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -732,6 +756,15 @@ export default function WagersMatchRoom() {
         <div className="glass rounded-xl border border-white/5 p-4">
           {canAdminResolve && (
             <div className="mb-3 grid gap-3 border-b border-white/5 pb-3 md:grid-cols-3">
+              {["score_conflict", "disputed"].includes(wager.status) && (
+                <button
+                  onClick={handleAdminResetDispute}
+                  disabled={resolvingAdmin}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-cyan transition-all hover:bg-cyan/20 disabled:opacity-50 md:col-span-3"
+                >
+                  <RefreshCw className="h-4 w-4" /> Reset Dispute &amp; Continue Match
+                </button>
+              )}
               <button
                 onClick={() => handleAdminResolve("approve_team_a")}
                 disabled={resolvingAdmin}

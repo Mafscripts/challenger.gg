@@ -194,6 +194,7 @@ export default function RankedMatchRoom() {
   const [supporting, setSupporting] = useState(false);
   const [disputing, setDisputing] = useState(false);
   const [cancelVoting, setCancelVoting] = useState(false);
+  const [resettingDispute, setResettingDispute] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -497,6 +498,30 @@ export default function RankedMatchRoom() {
     }
   };
 
+  const handleAdminResetDispute = async () => {
+    const confirmed = typeof window === "undefined" || window.confirm("Reset this dispute, clear both reports, and let the players continue?");
+    if (!confirmed) return;
+    setResettingDispute(true);
+    try {
+      const response = await base44.functions.invoke("adminResetMatchDispute", {
+        match_type: "ranked",
+        match_id: match.id,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Reset failed", description: response.data?.error || "Could not reset dispute.", variant: "destructive" });
+        return;
+      }
+      setScoreA(0);
+      setScoreB(0);
+      await loadRoom();
+      toast({ title: "Dispute reset", description: "The match is live again and both sides can report again." });
+    } catch (error) {
+      toast({ title: "Reset failed", description: error.message || "Could not reset dispute.", variant: "destructive" });
+    } finally {
+      setResettingDispute(false);
+    }
+  };
+
   const handleCancelVote = async (action) => {
     setCancelVoting(true);
     try {
@@ -661,6 +686,15 @@ export default function RankedMatchRoom() {
 
         <div className="glass rounded-xl border border-white/5 p-4 mb-6">
           <div className="flex flex-wrap items-center gap-3">
+            {isStaff && ["score_conflict", "disputed"].includes(match.status) && (
+              <button
+                onClick={handleAdminResetDispute}
+                disabled={resettingDispute}
+                className="w-full rounded-lg border border-cyan/25 bg-cyan/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-cyan transition-all hover:bg-cyan/20 disabled:opacity-50"
+              >
+                {resettingDispute ? "Resetting..." : "Reset Dispute & Continue Match"}
+              </button>
+            )}
             <button
               onClick={handleReportScore}
               disabled={!canSubmitScore || !scoreIsValid || submitting}
