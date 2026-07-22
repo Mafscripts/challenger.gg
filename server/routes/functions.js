@@ -1200,6 +1200,30 @@ async function applyMatchRewards({ winnerId, loserId, ranked = false }) {
   }
 }
 
+async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
+  const changes = {};
+  const apply = async (userId, didWin) => {
+    const before = await ensureRankedStats(userId);
+    await updateXPOutcome(userId, didWin);
+    await updateProfileOutcome(userId, didWin, didWin ? RANKED_WIN_ELO : RANKED_LOSS_ELO);
+    const after = await updateRankedOutcome(userId, didWin);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { current_win_streak: didWin ? { increment: 1 } : 0 },
+    }).catch(() => null);
+    changes[userId] = {
+      won: didWin,
+      previous_elo: Number(before?.elo || 0),
+      new_elo: Number(after?.elo || 0),
+      delta: Number(after?.elo || 0) - Number(before?.elo || 0),
+    };
+  };
+  const winners = [...new Set(winnerIds.filter(Boolean))];
+  const losers = [...new Set(loserIds.filter(Boolean))].filter((id) => !winners.includes(id));
+  await Promise.all([...winners.map((id) => apply(id, true)), ...losers.map((id) => apply(id, false))]);
+  return changes;
+}
+
 async function applyParticipantRewards(winnerIds = [], loserIds = []) {
   const uniqueWinnerIds = [...new Set(winnerIds.filter(Boolean))];
   const uniqueLoserIds = [...new Set(loserIds.filter(Boolean))].filter((id) => !uniqueWinnerIds.includes(id));
@@ -5924,8 +5948,10 @@ async function completeRankedMatch(req) {
   }
 
   const winnerId = teamAlphaScore > teamBravoScore ? match.host_id : match.challenger_id;
-  const loserId = winnerId === match.host_id ? match.challenger_id : match.host_id;
   const winnerName = winnerId === match.host_id ? match.host_name : match.challenger_name;
+  const alphaWon = teamAlphaScore > teamBravoScore;
+  const winnerIds = rankedRosterIds(match, alphaWon ? "alpha" : "bravo");
+  const loserIds = rankedRosterIds(match, alphaWon ? "bravo" : "alpha");
   await updateEntity("RankedMatch", match.id, {
     ...confirmedReportPatch,
     status: "completed",
@@ -5939,8 +5965,9 @@ async function completeRankedMatch(req) {
     confirmed_score_date: nowIso(),
     match_completed_date: new Date().toISOString(),
   });
-  await applyMatchRewards({ winnerId, loserId, ranked: true });
-  await notifyUsers([winnerId, loserId], {
+  const eloChanges = await applyRankedRosterRewards(winnerIds, loserIds);
+  const completedMatch = await updateEntity("RankedMatch", match.id, { elo_changes: eloChanges });
+  await notifyUsers([...winnerIds, ...loserIds], {
     title: "Ranked match completed",
     message: `${winnerName} won. ELO and XP updated.`,
     type: "match",
@@ -5948,7 +5975,7 @@ async function completeRankedMatch(req) {
     related_entity_id: match.id,
     related_entity_type: "RankedMatch",
   });
-  return { success: true, winner_id: winnerId, winner_name: winnerName };
+  return { success: true, winner_id: winnerId, winner_name: winnerName, elo_changes: eloChanges, match: completedMatch };
 }
 
 async function cancelRankedMatch(req) {

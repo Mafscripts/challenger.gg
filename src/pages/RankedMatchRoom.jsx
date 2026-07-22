@@ -171,14 +171,17 @@ export default function RankedMatchRoom() {
     user?.id && (roomRosterIds(match, "alpha").includes(user.id) || roomRosterIds(match, "bravo").includes(user.id))
   ), [user?.id, match]);
 
-  const canSubmitScore = isParticipant && match?.status === "in_progress" && roomRosterFull(match);
-  const scoreIsValid = validSeriesScore(match, scoreA, scoreB);
-  const winsNeeded = winsNeededFor(match);
-  const isStaff = ["ceo", "super_admin", "admin", "moderator"].includes(user?.role);
-  const joinedOpponentCount = Math.max(0, roomRosterIds(match, "alpha").length + roomRosterIds(match, "bravo").length - 1);
   const isHost = user?.id === match?.host_id;
   const isOpposingCaptain = user?.id === match?.challenger_id;
+  const isStaff = ["ceo", "super_admin", "admin", "moderator"].includes(user?.role);
+  const scoreReportOpen = ["in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report"].includes(match?.status);
+  const ownScoreSubmitted = isHost ? match?.host_reported_score_by === user?.id : isOpposingCaptain ? match?.challenger_reported_score_by === user?.id : false;
+  const canSubmitScore = (isHost || isOpposingCaptain || isStaff) && scoreReportOpen && roomRosterFull(match) && !ownScoreSubmitted;
+  const scoreIsValid = validSeriesScore(match, scoreA, scoreB);
+  const winsNeeded = winsNeededFor(match);
+  const joinedOpponentCount = Math.max(0, roomRosterIds(match, "alpha").length + roomRosterIds(match, "bravo").length - 1);
   const cancelVoteLocked = joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
+  const personalResult = match?.elo_changes?.[user?.id] || null;
 
   const loadPlayer = async (userId, fallbackName) => {
     if (!userId) return null;
@@ -297,9 +300,9 @@ export default function RankedMatchRoom() {
       if (response.data.winner_id) {
         toast({
           title: "Ranked match completed",
-          description: `${response.data.winner_name} won. ELO updated.`,
+          description: `${response.data.winner_name} won. Review your ELO result.`,
         });
-        navigate("/ranked");
+        setMatch(response.data.match || { ...match, status: "completed", elo_changes: response.data.elo_changes });
         return;
       }
 
@@ -416,6 +419,24 @@ export default function RankedMatchRoom() {
           <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
           <p className="text-vapor">Loading ranked match...</p>
         </div>
+
+        {match.status === "completed" && personalResult && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+            <div className={`w-full max-w-md rounded-3xl border p-7 text-center shadow-2xl ${personalResult.won ? "border-green/30 bg-card" : "border-red-500/30 bg-card"}`}>
+              <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${personalResult.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
+                <Trophy className="h-8 w-8" />
+              </div>
+              <p className={`mt-5 text-xs font-black uppercase tracking-[0.22em] ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.won ? "Victory" : "Defeat"}</p>
+              <h2 className="mt-2 text-3xl font-black">{match.confirmed_score_alpha ?? match.winner_score} - {match.confirmed_score_bravo ?? match.loser_score}</h2>
+              <div className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
+                <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your ELO change</p>
+                <p className={`mt-2 font-mono text-4xl font-black ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.delta > 0 ? "+" : ""}{personalResult.delta} ELO</p>
+                <p className="mt-2 text-xs text-vapor">{personalResult.previous_elo} → {personalResult.new_elo} ELO</p>
+              </div>
+              <button onClick={() => navigate("/ranked", { replace: true })} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to Ranked</button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
