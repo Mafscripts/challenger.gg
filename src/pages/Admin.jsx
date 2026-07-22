@@ -146,6 +146,26 @@ const defaultWalletAdjustmentForm = {
   amount: "",
   reason: "",
 };
+const defaultRankedStatsForm = {
+  wins: "0",
+  losses: "0",
+  win_streak: "0",
+  peak_elo: "0",
+  matches_played: "0",
+  reason: "",
+};
+const createDefaultSeasonResetForm = (seasonNumber = 2) => {
+  const start = new Date();
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 3);
+  return {
+    season_number: String(seasonNumber),
+    season_name: `Season ${seasonNumber}`,
+    start_date: toLocalDateTimeInputValue(start),
+    end_date: toLocalDateTimeInputValue(end),
+    reason: `Start of Season ${seasonNumber}`,
+  };
+};
 
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -419,6 +439,9 @@ export default function Admin() {
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
   const [rankedPlayerSearch, setRankedPlayerSearch] = useState("");
   const [rankedAdjustment, setRankedAdjustment] = useState({ user_id: "", operation: "set", amount: "", reason: "" });
+  const [rankedStatsForm, setRankedStatsForm] = useState(defaultRankedStatsForm);
+  const [seasonResetOpen, setSeasonResetOpen] = useState(false);
+  const [seasonResetForm, setSeasonResetForm] = useState(() => createDefaultSeasonResetForm());
   const currentRole = effectiveRoleFor(currentUser);
 
   useEffect(() => {
@@ -1487,6 +1510,63 @@ export default function Admin() {
     }
   };
 
+  const selectRankedPlayer = (player, stats) => {
+    setRankedAdjustment((current) => ({ ...current, user_id: player.id }));
+    setRankedStatsForm({
+      wins: String(Number(stats?.wins || 0)),
+      losses: String(Number(stats?.losses || 0)),
+      win_streak: String(Number(stats?.win_streak || 0)),
+      peak_elo: String(Number(stats?.peak_elo ?? stats?.elo ?? 0)),
+      matches_played: String(Number(stats?.matches_played || 0)),
+      reason: "",
+    });
+  };
+
+  const handleRankedStatsUpdate = async (reset = false) => {
+    if (!canManageWallets(currentRole)) {
+      toast({ title: "Not allowed", description: "Admin or higher is required.", variant: "destructive" });
+      return;
+    }
+    if (!rankedAdjustment.user_id) {
+      toast({ title: "Select a player", variant: "destructive" });
+      return;
+    }
+    const reason = rankedStatsForm.reason.trim();
+    if (reason.length < 3) {
+      toast({ title: "Reason required", description: "Explain why these Ranked stats are being changed.", variant: "destructive" });
+      return;
+    }
+    const currentElo = Number(rankedStatsByUserId[rankedAdjustment.user_id]?.elo || 0);
+    const payload = reset
+      ? { wins: 0, losses: 0, win_streak: 0, peak_elo: currentElo, matches_played: 0 }
+      : Object.fromEntries(["wins", "losses", "win_streak", "peak_elo", "matches_played"].map((field) => [field, Number(rankedStatsForm[field])]));
+    if (Object.values(payload).some((value) => !Number.isInteger(value) || value < 0)) {
+      toast({ title: "Invalid stats", description: "Every stat must be a positive whole number or zero.", variant: "destructive" });
+      return;
+    }
+    if (payload.matches_played < payload.wins + payload.losses) {
+      toast({ title: "Invalid season matches", description: "Season matches cannot be lower than wins plus losses.", variant: "destructive" });
+      return;
+    }
+    if (reset && !window.confirm("Reset this player's Ranked record, win rate, streak, peak ELO and season matches?")) return;
+    setBusyId("ranked:stats");
+    try {
+      const response = await base44.functions.invoke("adminUpdateRankedStats", {
+        user_id: rankedAdjustment.user_id,
+        ...payload,
+        reason,
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Ranked stats update failed");
+      toast({ title: reset ? "Ranked record reset" : "Ranked stats updated" });
+      setRankedStatsForm((current) => ({ ...current, ...Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, String(value)])), reason: "" }));
+      await loadAdminData();
+    } catch (error) {
+      toast({ title: "Ranked stats update failed", description: error.message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleRankedEloAdjustment = async (event) => {
     event.preventDefault();
     if (!canManageWallets(currentRole)) {
@@ -1521,19 +1601,35 @@ export default function Admin() {
     }
   };
 
-  const handleRankedSeasonReset = async () => {
+  const handleRankedSeasonReset = async (event) => {
+    event.preventDefault();
     if (!canManageRoles(currentRole)) {
       toast({ title: "Not allowed", description: "Super Admin or CEO is required for a season reset.", variant: "destructive" });
       return;
     }
-    const reason = window.prompt("Reason/name for this season reset:", "Start of new Ranked season");
-    if (reason === null || reason.trim().length < 3) return;
-    if (!window.confirm("Reset the complete Ranked ladder? Players below Platinum go to 0 ELO; Platinum and above go to 1800 ELO. Season records will reset.")) return;
+    const seasonNumber = Number(seasonResetForm.season_number);
+    if (!Number.isInteger(seasonNumber) || seasonNumber < 1 || seasonResetForm.season_name.trim().length < 2 || seasonResetForm.reason.trim().length < 3) {
+      toast({ title: "Complete the season details", description: "Enter a valid number, name and reset reason.", variant: "destructive" });
+      return;
+    }
+    if (!seasonResetForm.start_date || !seasonResetForm.end_date || new Date(seasonResetForm.end_date) <= new Date(seasonResetForm.start_date)) {
+      toast({ title: "Invalid season dates", description: "The end must be after the start.", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm(`Start ${seasonResetForm.season_name.trim()} and reset the complete Ranked ladder? Players below Platinum go to 0 ELO; Platinum and above go to 1800 ELO.`)) return;
     setBusyId("ranked:season-reset");
     try {
-      const response = await base44.functions.invoke("adminResetRankedSeason", { reason: reason.trim() });
+      const response = await base44.functions.invoke("adminResetRankedSeason", {
+        season_number: seasonNumber,
+        season_name: seasonResetForm.season_name.trim(),
+        start_date: new Date(seasonResetForm.start_date).toISOString(),
+        end_date: new Date(seasonResetForm.end_date).toISOString(),
+        reason: seasonResetForm.reason.trim(),
+      });
       if (!response.data?.success) throw new Error(response.data?.error || "Season reset failed");
-      toast({ title: "Ranked season reset", description: `${response.data.players_reset} players reset (${response.data.bronze_resets} Bronze, ${response.data.platinum_resets} Platinum).` });
+      toast({ title: `${response.data.season?.name || "Ranked season"} started`, description: `${response.data.players_reset} players reset (${response.data.bronze_resets} Bronze, ${response.data.platinum_resets} Platinum).` });
+      setSeasonResetOpen(false);
+      setSeasonResetForm(createDefaultSeasonResetForm(seasonNumber + 1));
       await loadAdminData();
     } catch (error) {
       toast({ title: "Season reset failed", description: error.message, variant: "destructive" });
@@ -2238,15 +2334,34 @@ export default function Admin() {
                   {canManageRoles(currentRole) && (
                     <button
                       type="button"
-                      onClick={handleRankedSeasonReset}
+                      onClick={() => setSeasonResetOpen((open) => !open)}
                       disabled={busyId === "ranked:season-reset"}
                       className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs font-black hover:bg-red-500/20 disabled:opacity-50"
                     >
                       {busyId === "ranked:season-reset" ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                      Reset for New Season
+                      {seasonResetOpen ? "Close Season Setup" : "Reset for New Season"}
                     </button>
                   )}
                 </div>
+
+                {seasonResetOpen && canManageRoles(currentRole) && (
+                  <form onSubmit={handleRankedSeasonReset} className="m-5 mb-0 rounded-xl border border-red-500/20 bg-red-500/[0.045] p-5">
+                    <div className="mb-4">
+                      <p className="text-sm font-black text-red-200">Start a New Ranked Season</p>
+                      <p className="mt-1 text-xs text-vapor">Set the exact season identity and dates before resetting every Ranked record.</p>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      <label className="space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Season number</span><input type="number" min="1" step="1" value={seasonResetForm.season_number} onChange={(event) => setSeasonResetForm((current) => ({ ...current, season_number: event.target.value }))} className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" /></label>
+                      <label className="space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Season name</span><input value={seasonResetForm.season_name} onChange={(event) => setSeasonResetForm((current) => ({ ...current, season_name: event.target.value }))} placeholder="Season 2" className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" /></label>
+                      <label className="space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Starts</span><input type="datetime-local" value={seasonResetForm.start_date} onChange={(event) => setSeasonResetForm((current) => ({ ...current, start_date: event.target.value }))} className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" /></label>
+                      <label className="space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Ends</span><input type="datetime-local" value={seasonResetForm.end_date} onChange={(event) => setSeasonResetForm((current) => ({ ...current, end_date: event.target.value }))} className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" /></label>
+                    </div>
+                    <div className="mt-3 flex flex-col gap-3 lg:flex-row">
+                      <input value={seasonResetForm.reason} onChange={(event) => setSeasonResetForm((current) => ({ ...current, reason: event.target.value }))} placeholder="Required reason for the audit log" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" />
+                      <button type="submit" disabled={busyId === "ranked:season-reset"} className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-500 px-5 py-2.5 text-xs font-black text-white hover:bg-red-400 disabled:opacity-50">{busyId === "ranked:season-reset" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Start Season & Reset Ladder</button>
+                    </div>
+                  </form>
+                )}
 
                 <div className="grid xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)] gap-5 p-5">
                   <div className="space-y-3">
@@ -2271,7 +2386,7 @@ export default function Admin() {
                           <button
                             key={player.id}
                             type="button"
-                            onClick={() => setRankedAdjustment((current) => ({ ...current, user_id: player.id }))}
+                            onClick={() => selectRankedPlayer(player, stats)}
                             className={`w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selected ? "border-cyan/50 bg-cyan/10" : "border-white/5 bg-background/35 hover:border-white/15 hover:bg-white/[0.04]"}`}
                           >
                             <RankBadge elo={elo} size="sm" showLabel={false} />
@@ -2381,6 +2496,35 @@ export default function Admin() {
                       {busyId === "ranked:adjust" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                       Apply ELO Correction
                     </button>
+
+                    <div className="border-t border-white/10 pt-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange">Season Record & Stats</p>
+                          <p className="mt-1 text-xs text-vapor">Set exact values or reset this player's current season record.</p>
+                        </div>
+                        <button type="button" onClick={() => handleRankedStatsUpdate(true)} disabled={busyId === "ranked:stats" || !rankedAdjustment.user_id} className="shrink-0 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-[10px] font-black text-red-300 hover:bg-red-500/20 disabled:opacity-40">Reset Record</button>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        {[
+                          ["wins", "Wins"],
+                          ["losses", "Losses"],
+                          ["win_streak", "Win streak"],
+                          ["peak_elo", "Peak ELO"],
+                          ["matches_played", "Season matches"],
+                        ].map(([field, label]) => (
+                          <label key={field} className={`space-y-1.5 ${field === "matches_played" ? "col-span-2" : ""}`}>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-vapor">{label}</span>
+                            <input type="number" min="0" step="1" max="1000000" value={rankedStatsForm[field]} onChange={(event) => setRankedStatsForm((current) => ({ ...current, [field]: event.target.value }))} disabled={!rankedAdjustment.user_id} className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-orange/50 focus:outline-none disabled:opacity-40" />
+                          </label>
+                        ))}
+                      </div>
+                      <label className="mt-3 block space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Required reason</span>
+                        <textarea value={rankedStatsForm.reason} onChange={(event) => setRankedStatsForm((current) => ({ ...current, reason: event.target.value }))} disabled={!rankedAdjustment.user_id} placeholder="Why are these season stats being corrected?" rows={2} className="w-full resize-none rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-orange/50 focus:outline-none disabled:opacity-40" />
+                      </label>
+                      <button type="button" onClick={() => handleRankedStatsUpdate(false)} disabled={busyId === "ranked:stats" || !rankedAdjustment.user_id} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange px-4 py-3 text-xs font-black text-background hover:bg-orange/90 disabled:opacity-40">{busyId === "ranked:stats" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Ranked Stats</button>
+                    </div>
                   </form>
                 </div>
               </section>

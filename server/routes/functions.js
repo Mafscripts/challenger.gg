@@ -6341,10 +6341,75 @@ async function adminAdjustRankedElo(req) {
   return { success: true, ranked_stats: updatedStats, before_elo: beforeElo, after_elo: afterElo, applied_delta: appliedDelta, action };
 }
 
+async function adminUpdateRankedStats(req) {
+  if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access required" };
+  const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
+  if (!target) return { success: false, error: "Player not found" };
+  const reason = String(req.body.reason || "").trim();
+  if (reason.length < 3) return { success: false, error: "A clear reason is required" };
+
+  const fields = ["wins", "losses", "win_streak", "peak_elo", "matches_played"];
+  const updates = {};
+  for (const field of fields) {
+    const value = Number(req.body[field]);
+    if (!Number.isInteger(value) || value < 0 || value > 1_000_000) {
+      return { success: false, error: `${field.replace(/_/g, " ")} must be a whole number between 0 and 1,000,000` };
+    }
+    updates[field] = value;
+  }
+  if (updates.matches_played < updates.wins + updates.losses) {
+    return { success: false, error: "Season matches cannot be lower than wins plus losses" };
+  }
+
+  const stats = await ensureRankedStats(target.id);
+  const before = Object.fromEntries(fields.map((field) => [field, Number(stats?.[field] || 0)]));
+  const timestamp = nowIso();
+  const updatedStats = await updateEntity("RankedStats", stats.id, { ...updates, last_admin_adjustment_date: timestamp });
+  const profile = await ensurePlayerProfile(target.id);
+  if (profile) {
+    await updateEntity("PlayerProfile", profile.id, {
+      total_wins: updates.wins,
+      total_losses: updates.losses,
+      current_win_streak: updates.win_streak,
+      peak_elo: updates.peak_elo,
+      last_active_date: timestamp,
+    });
+  }
+  const action = await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "ranked_stats_adjustment",
+    target_user_id: target.id,
+    target_username: nameFor(target),
+    description: `Updated Ranked season stats for ${nameFor(target)}: ${reason}`,
+    details: { before, after: updates, reason },
+    created_date: timestamp,
+  });
+  await notifyUser(target.id, {
+    title: "Ranked record corrected",
+    message: `Your Ranked season record was corrected by staff. Reason: ${reason}`,
+    type: "system",
+    action_url: "/ranked",
+    related_entity_id: action.id,
+    related_entity_type: "AdminAction",
+  });
+  return { success: true, ranked_stats: updatedStats, before, after: updates, action };
+}
+
 async function adminResetRankedSeason(req) {
   if (!hasRole(req.user, "super_admin")) return { success: false, error: "Super Admin or CEO access required" };
   const reason = String(req.body.reason || "New Ranked season").trim();
   if (reason.length < 3) return { success: false, error: "A reset reason is required" };
+  const seasonNumber = Number(req.body.season_number);
+  const seasonName = String(req.body.season_name || "").trim();
+  const startDate = new Date(req.body.start_date);
+  const endDate = new Date(req.body.end_date);
+  if (!Number.isInteger(seasonNumber) || seasonNumber < 1 || seasonNumber > 10_000) return { success: false, error: "Enter a valid new season number" };
+  if (seasonName.length < 2) return { success: false, error: "Enter a name for the new season" };
+  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || endDate <= startDate) {
+    return { success: false, error: "The season end date must be after its start date" };
+  }
   // A season reset must cover the complete ladder, not only the first entity page.
   const statsRows = (await prisma.rankedStats.findMany()).map(serializeRow);
   const timestamp = nowIso();
@@ -6364,7 +6429,7 @@ async function adminResetRankedSeason(req) {
       losses: 0,
       win_streak: 0,
       matches_played: 0,
-      season: Number(stats.season || 1) + 1,
+      season: seasonNumber,
       season_history: [...history.slice(-4), {
         season: Number(stats.season || 1),
         final_elo: oldElo,
@@ -6380,16 +6445,30 @@ async function adminResetRankedSeason(req) {
     if (profile) await updateEntity("PlayerProfile", profile.id, { elo: resetElo, peak_elo: resetElo });
   }));
 
+  const existingSeasons = await listEntities("Season", {}, "-season_number", 1000);
+  await Promise.all(existingSeasons.filter((season) => season.is_active).map((season) => (
+    updateEntity("Season", season.id, { is_active: false, end_date: timestamp })
+  )));
+  const season = await createEntity("Season", {
+    name: seasonName,
+    season_number: seasonNumber,
+    start_date: startDate.toISOString(),
+    end_date: endDate.toISOString(),
+    is_active: true,
+    rank_resets: true,
+    created_date: timestamp,
+  });
+
   const action = await createEntity("AdminAction", {
     admin_id: req.user.id,
     admin_name: nameFor(req.user),
     admin_role: req.user.role,
     action_type: "ranked_season_reset",
-    description: `Reset Ranked season for ${statsRows.length} players: ${reason}`,
-    details: { players_reset: statsRows.length, bronze_resets: bronzeResets, platinum_resets: platinumResets, reason, reset_date: timestamp },
+    description: `Started ${seasonName} (Season ${seasonNumber}) and reset Ranked for ${statsRows.length} players: ${reason}`,
+    details: { players_reset: statsRows.length, bronze_resets: bronzeResets, platinum_resets: platinumResets, season_id: season.id, season_name: seasonName, season_number: seasonNumber, start_date: startDate.toISOString(), end_date: endDate.toISOString(), reason, reset_date: timestamp },
     created_date: timestamp,
   });
-  return { success: true, players_reset: statsRows.length, bronze_resets: bronzeResets, platinum_resets: platinumResets, action };
+  return { success: true, players_reset: statsRows.length, bronze_resets: bronzeResets, platinum_resets: platinumResets, season, action };
 }
 
 async function forgeMoneyToCredits(req) {
@@ -7686,6 +7765,7 @@ const handlers = {
   depositToWallet: addFunds,
   adminAdjustWallet,
   adminAdjustRankedElo,
+  adminUpdateRankedStats,
   adminResetRankedSeason,
   forgeMoneyToCredits,
   createStreamerTournament,
