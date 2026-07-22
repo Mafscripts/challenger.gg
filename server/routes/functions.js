@@ -5667,7 +5667,7 @@ async function previousRankedMapFor(userId, excludeMatchId = "") {
   const previous = matches.find((row) => (
     row.id !== excludeMatchId
     && row.final_map_name
-    && (row.host_id === userId || row.challenger_id === userId)
+    && (row.host_id === userId || row.challenger_id === userId || rankedRosterIds(row, "alpha").includes(userId) || rankedRosterIds(row, "bravo").includes(userId))
   ));
   return previous?.final_map_name || "";
 }
@@ -5680,9 +5680,23 @@ async function activeRankedMatchFor(userId, excludeMatchId = "") {
   return matches.find((row) => (
     row.id !== excludeMatchId
     && ACTIVE_RANKED_STATUSES.has(row.status)
-    && (row.host_id === userId || row.challenger_id === userId)
+    && (row.host_id === userId || row.challenger_id === userId || rankedRosterIds(row, "alpha").includes(userId) || rankedRosterIds(row, "bravo").includes(userId))
   )) || null;
 }
+
+const rankedTeamSize = (match) => Math.max(1, Number.parseInt(String(match?.team_size || "1v1").split("v")[0], 10) || 1);
+const rankedRosterIds = (match, side) => {
+  const stored = match?.[`team_${side}_player_ids`];
+  if (Array.isArray(stored) && stored.length > 0) return [...new Set(stored.filter(Boolean))];
+  if (side === "alpha") return match?.host_id ? [match.host_id] : [];
+  return match?.challenger_id ? [match.challenger_id] : [];
+};
+const rankedRosterNames = (match, side) => {
+  const stored = match?.[`team_${side}_player_names`];
+  if (Array.isArray(stored) && stored.length > 0) return stored;
+  if (side === "alpha") return match?.host_name ? [match.host_name] : [];
+  return match?.challenger_name ? [match.challenger_name] : [];
+};
 
 async function createRankedMatch(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
@@ -5700,6 +5714,10 @@ async function createRankedMatch(req) {
     maps: RANKED_MAPS_BY_MODE[req.body.game_mode],
     final_map_id: "",
     final_map_name: "",
+    team_alpha_player_ids: [req.user.id],
+    team_alpha_player_names: [nameFor(req.user)],
+    team_bravo_player_ids: [],
+    team_bravo_player_names: [],
     status: "open",
     created_date: new Date().toISOString(),
   });
@@ -5713,6 +5731,13 @@ async function acceptRankedMatch(req) {
   const match = await getEntity("RankedMatch", id);
   if (match.status !== "open") return { success: false, error: "Ranked match is not open" };
   if (match.host_id === req.user.id) return { success: false, error: "You cannot accept your own ranked match" };
+  const slotsPerTeam = rankedTeamSize(match);
+  const alphaIds = rankedRosterIds(match, "alpha");
+  const bravoIds = rankedRosterIds(match, "bravo");
+  const alphaNames = rankedRosterNames(match, "alpha");
+  const bravoNames = rankedRosterNames(match, "bravo");
+  if ([...alphaIds, ...bravoIds].includes(req.user.id)) return { success: true, match, already_joined: true };
+  if (alphaIds.length >= slotsPerTeam && bravoIds.length >= slotsPerTeam) return { success: false, error: "Ranked match is full" };
   const [challengerActiveMatch, hostActiveMatch] = await Promise.all([
     activeRankedMatchFor(req.user.id, match.id),
     activeRankedMatchFor(match.host_id, match.id),
@@ -5722,22 +5747,37 @@ async function acceptRankedMatch(req) {
   const host = await userFor(match.host_id);
   const hostActivisionError = activisionIdErrorForUsers([host]);
   if (hostActivisionError) return { success: false, error: hostActivisionError, code: "ACTIVISION_ID_REQUIRED" };
+  const joinAlpha = alphaIds.length <= bravoIds.length && alphaIds.length < slotsPerTeam;
+  if (joinAlpha) {
+    alphaIds.push(req.user.id);
+    alphaNames.push(nameFor(req.user));
+  } else {
+    bravoIds.push(req.user.id);
+    bravoNames.push(nameFor(req.user));
+  }
+  const rosterFull = alphaIds.length >= slotsPerTeam && bravoIds.length >= slotsPerTeam;
   const [hostPreviousMap, challengerPreviousMap] = await Promise.all([
     previousRankedMapFor(match.host_id, match.id),
     previousRankedMapFor(req.user.id, match.id),
   ]);
-  const shouldReroll = !match.final_map_name || [hostPreviousMap, challengerPreviousMap]
+  const shouldReroll = rosterFull && (!match.final_map_name || [hostPreviousMap, challengerPreviousMap]
     .filter(Boolean)
-    .some((name) => name.toLowerCase() === String(match.final_map_name).toLowerCase());
+    .some((name) => name.toLowerCase() === String(match.final_map_name).toLowerCase()));
   const selected = shouldReroll
     ? randomRankedMap(match.game_mode, [hostPreviousMap, challengerPreviousMap])
     : null;
-  const deadline = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const deadline = rosterFull ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : "";
   const updated = await updateEntity("RankedMatch", id, {
-    challenger_id: req.user.id,
-    challenger_name: nameFor(req.user),
-    status: "in_progress",
-    match_started_date: new Date().toISOString(),
+    challenger_id: match.challenger_id || (!joinAlpha ? req.user.id : ""),
+    challenger_name: match.challenger_name || (!joinAlpha ? nameFor(req.user) : ""),
+    team_alpha_player_ids: alphaIds,
+    team_alpha_player_names: alphaNames,
+    team_bravo_player_ids: bravoIds,
+    team_bravo_player_names: bravoNames,
+    joined_players: alphaIds.length + bravoIds.length,
+    total_players: slotsPerTeam * 2,
+    status: rosterFull ? "in_progress" : "open",
+    match_started_date: rosterFull ? new Date().toISOString() : "",
     match_start_deadline: deadline,
     best_of: 1,
     ...(selected ? {
@@ -5746,7 +5786,7 @@ async function acceptRankedMatch(req) {
       final_map_name: selected.name,
     } : {}),
   });
-  return { success: true, match: updated };
+  return { success: true, match: updated, roster_full: rosterFull };
 }
 
 async function ensureRankedMatchMap(req) {
@@ -5756,7 +5796,9 @@ async function ensureRankedMatchMap(req) {
   const isParticipant = req.user.id === match.host_id || req.user.id === match.challenger_id;
   if (!isParticipant && !hasRole(req.user, "moderator")) return { success: false, error: "Forbidden" };
   if (match.final_map_name) return { success: true, match };
-  if (!match.challenger_id) return { success: true, match, waiting_for_opponent: true };
+  const slotsPerTeam = rankedTeamSize(match);
+  const rosterFull = rankedRosterIds(match, "alpha").length >= slotsPerTeam && rankedRosterIds(match, "bravo").length >= slotsPerTeam;
+  if (!rosterFull) return { success: true, match, waiting_for_opponent: true };
 
   const [hostPreviousMap, challengerPreviousMap] = await Promise.all([
     previousRankedMapFor(match.host_id, match.id),
@@ -5779,6 +5821,9 @@ async function completeRankedMatch(req) {
   }
   if (!match.challenger_id) {
     return { success: false, error: "Opponent has not joined yet" };
+  }
+  if (!rankedRosterIds(match, "alpha").length || !rankedRosterIds(match, "bravo").length || match.status === "open") {
+    return { success: false, error: "All ranked roster slots must be filled before scores can be submitted" };
   }
   const isHost = req.user.id === match.host_id;
   const isChallenger = req.user.id === match.challenger_id;

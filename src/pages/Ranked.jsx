@@ -27,7 +27,12 @@ const activeRankedStatuses = new Set(["open", "in_progress", "pending_confirmati
 const selectActiveRankedMatch = (matches, userId) => {
   const unique = [...new Map((matches || []).map((match) => [match.id, match])).values()];
   return unique
-    .filter((match) => activeRankedStatuses.has(match.status) && (match.host_id === userId || match.challenger_id === userId))
+    .filter((match) => activeRankedStatuses.has(match.status) && (
+      match.host_id === userId
+      || match.challenger_id === userId
+      || match.team_alpha_player_ids?.includes(userId)
+      || match.team_bravo_player_ids?.includes(userId)
+    ))
     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
 };
 
@@ -76,14 +81,13 @@ export default function Ranked() {
 
     const refreshOpenMatches = async () => {
       try {
-        const [matches, hosted, joined] = await Promise.all([
+        const [matches, playerMatches] = await Promise.all([
           base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
-          base44.entities.RankedMatch.filterFresh({ host_id: user.id }, "-created_date", 20),
-          base44.entities.RankedMatch.filterFresh({ challenger_id: user.id }, "-created_date", 20),
+          base44.entities.RankedMatch.filterFresh({}, "-created_date", 100),
         ]);
         if (active) {
           setRankedMatches(matches || []);
-          setActiveRankedMatch(selectActiveRankedMatch([...(hosted || []), ...(joined || [])], user.id));
+          setActiveRankedMatch(selectActiveRankedMatch(playerMatches || [], user.id));
         }
       } catch (error) {
         console.error("Failed to refresh ranked matches:", error);
@@ -263,9 +267,15 @@ export default function Ranked() {
                     <span className="text-xs font-mono text-cyan">{match.team_size}</span>
                     <span className="text-xs text-vapor">{match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}</span>
                   </div>
-                  <p className="text-sm font-bold mb-1 text-cyan">Map revealed after join</p>
+                  <p className="text-sm font-bold mb-1 text-cyan">
+                    {(() => {
+                      const slots = Math.max(1, Number.parseInt(String(match.team_size || "1v1").split("v")[0], 10) || 1) * 2;
+                      const joined = new Set([...(match.team_alpha_player_ids || [match.host_id]), ...(match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : []))].filter(Boolean)).size;
+                      return `${joined}/${slots} players · ${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`;
+                    })()}
+                  </p>
                   <p className="text-xs text-vapor mb-3">Host: {match.host_name || "Host unavailable"}</p>
-                  {match.host_id === user?.id ? (
+                  {match.host_id === user?.id || match.team_alpha_player_ids?.includes(user?.id) || match.team_bravo_player_ids?.includes(user?.id) ? (
                     <Link
                       to={`/ranked-match/${match.id}`}
                       className="block w-full py-2 bg-secondary text-center text-foreground font-bold text-xs rounded-lg hover:bg-white/10 transition-all uppercase"

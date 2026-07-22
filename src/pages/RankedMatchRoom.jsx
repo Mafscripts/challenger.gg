@@ -8,7 +8,6 @@ import {
   HelpCircle,
   RefreshCw,
   Shield,
-  Swords,
   Trophy,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -31,47 +30,38 @@ function scoreWinner(match, scoreA, scoreB) {
   return scoreA > scoreB ? match.host_id : match.challenger_id;
 }
 
-function PlayerPanel({ label, color, player, waiting }) {
-  const rank = getRankForElo(player?.elo || 0);
+const slotsPerRankedTeam = (match) => Math.max(1, Number.parseInt(String(match?.team_size || "1v1").split("v")[0], 10) || 1);
+const roomRosterIds = (match, side) => {
+  const stored = match?.[`team_${side}_player_ids`];
+  if (Array.isArray(stored) && stored.length > 0) return stored;
+  if (side === "alpha") return match?.host_id ? [match.host_id] : [];
+  return match?.challenger_id ? [match.challenger_id] : [];
+};
+const roomRosterNames = (match, side) => {
+  const stored = match?.[`team_${side}_player_names`];
+  if (Array.isArray(stored) && stored.length > 0) return stored;
+  if (side === "alpha") return match?.host_name ? [match.host_name] : [];
+  return match?.challenger_name ? [match.challenger_name] : [];
+};
+const roomRosterSignature = (match) => [...roomRosterIds(match, "alpha"), "|", ...roomRosterIds(match, "bravo")].join(":");
+const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsPerRankedTeam(match) && roomRosterIds(match, "bravo").length >= slotsPerRankedTeam(match);
+
+function PlayerPanel({ label, color, players = [], slots = 1 }) {
   const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
 
-  if (waiting || !player) {
-    return (
-      <div className={`glass rounded-xl border ${color === "cyan" ? "border-cyan/20" : "border-orange/20"} p-6`}>
-        <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${color === "cyan" ? "text-cyan" : "text-orange"}`}>{label}</p>
-        <div className="py-12 text-center">
-          <Swords className="w-8 h-8 text-vapor/40 mx-auto mb-3" />
-          <p className="text-sm text-vapor">Waiting for opponent</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={`glass rounded-xl border p-6 ${colorClass}`}>
-      <p className="text-xs font-bold uppercase tracking-wider mb-4">{label}</p>
-      <div className="flex items-center gap-4 mb-5">
-        <RankBadge rank={rank.tier} division={rank.division} />
-        <div className="min-w-0">
-          <h2 className="text-xl font-black truncate">{player.name}</h2>
-          <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
-          <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
-          <p className="text-xs text-vapor">{rank.name} - {(player.elo || 0).toLocaleString()} ELO</p>
-        </div>
+    <div className={`glass rounded-xl border p-5 ${colorClass}`}>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs font-bold uppercase tracking-wider">{label}</p>
+        <span className="rounded-full border border-white/10 bg-background/30 px-2.5 py-1 text-[10px] font-black">{players.length}/{slots}</span>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg bg-background/30 border border-white/5 p-3">
-          <p className="text-[10px] text-vapor uppercase">Wins</p>
-          <p className="text-lg font-black">{player.wins || 0}</p>
-        </div>
-        <div className="rounded-lg bg-background/30 border border-white/5 p-3">
-          <p className="text-[10px] text-vapor uppercase">Losses</p>
-          <p className="text-lg font-black">{player.losses || 0}</p>
-        </div>
-        <div className="rounded-lg bg-background/30 border border-white/5 p-3">
-          <p className="text-[10px] text-vapor uppercase">Streak</p>
-          <p className="text-lg font-black">{player.win_streak || 0}</p>
-        </div>
+      <div className="space-y-2">
+        {Array.from({ length: slots }, (_, index) => {
+          const player = players[index];
+          if (!player) return <div key={`open-${index}`} className="flex h-[62px] items-center justify-center rounded-lg border border-dashed border-white/10 bg-background/15 text-[10px] font-black uppercase tracking-wider text-vapor/55">Open slot</div>;
+          const rank = getRankForElo(player.elo || 0);
+          return <div key={player.id} className="flex min-w-0 items-center gap-3 rounded-lg border border-white/5 bg-background/25 p-2.5"><RankBadge rank={rank.tier} size="sm" showLabel={false} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{player.name}</p><UserBadges user={player} size="xs" iconOnly showMonitorCam /></div><ActivisionIdLabel user={player} className="mt-0.5 max-w-full" /><p className="mt-0.5 text-[10px] text-vapor">{rank.name} · {player.elo || 0} ELO · {player.wins || 0}W-{player.losses || 0}L</p></div></div>;
+        })}
       </div>
     </div>
   );
@@ -82,8 +72,8 @@ export default function RankedMatchRoom() {
   const navigate = useNavigate();
   const [match, setMatch] = useState(null);
   const [user, setUser] = useState(null);
-  const [hostPlayer, setHostPlayer] = useState(null);
-  const [challengerPlayer, setChallengerPlayer] = useState(null);
+  const [alphaPlayers, setAlphaPlayers] = useState([]);
+  const [bravoPlayers, setBravoPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [supporting, setSupporting] = useState(false);
@@ -103,14 +93,17 @@ export default function RankedMatchRoom() {
         const latest = await base44.entities.RankedMatch.getFresh(id);
         if (!active || !latest) return;
         let refreshedMatch = latest;
-        if (latest.challenger_id && !latest.final_map_name) {
+        if (roomRosterFull(latest) && !latest.final_map_name) {
           const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
           if (mapResponse?.data?.match) refreshedMatch = mapResponse.data.match;
         }
         setMatch(refreshedMatch);
-        if (refreshedMatch.challenger_id && refreshedMatch.challenger_id !== match?.challenger_id) {
-          const challenger = await loadPlayer(refreshedMatch.challenger_id, refreshedMatch.challenger_name);
-          if (active) setChallengerPlayer(challenger);
+        if (roomRosterSignature(refreshedMatch) !== roomRosterSignature(match)) {
+          const rosters = await loadRosterPlayers(refreshedMatch);
+          if (active) {
+            setAlphaPlayers(rosters.alpha);
+            setBravoPlayers(rosters.bravo);
+          }
         }
       } catch (error) {
         console.error("Failed to refresh ranked match:", error);
@@ -121,7 +114,7 @@ export default function RankedMatchRoom() {
       active = false;
       clearInterval(interval);
     };
-  }, [id, match?.challenger_id]);
+  }, [id, roomRosterSignature(match)]);
 
   useEffect(() => {
     const interval = setInterval(calculateTimeRemaining, 1000);
@@ -136,10 +129,10 @@ export default function RankedMatchRoom() {
   }, [match?.status, navigate]);
 
   const isParticipant = useMemo(() => (
-    user?.id && (user.id === match?.host_id || user.id === match?.challenger_id)
-  ), [user?.id, match?.host_id, match?.challenger_id]);
+    user?.id && (roomRosterIds(match, "alpha").includes(user.id) || roomRosterIds(match, "bravo").includes(user.id))
+  ), [user?.id, match]);
 
-  const canSubmitScore = isParticipant && match?.challenger_id && !["completed", "cancelled", "score_conflict"].includes(match?.status);
+  const canSubmitScore = isParticipant && match?.status === "in_progress";
 
   const loadPlayer = async (userId, fallbackName) => {
     if (!userId) return null;
@@ -168,6 +161,18 @@ export default function RankedMatchRoom() {
     };
   };
 
+  const loadRosterPlayers = async (matchData) => {
+    const alphaIds = roomRosterIds(matchData, "alpha");
+    const bravoIds = roomRosterIds(matchData, "bravo");
+    const alphaNames = roomRosterNames(matchData, "alpha");
+    const bravoNames = roomRosterNames(matchData, "bravo");
+    const [alpha, bravo] = await Promise.all([
+      Promise.all(alphaIds.map((playerId, index) => loadPlayer(playerId, alphaNames[index]))),
+      Promise.all(bravoIds.map((playerId, index) => loadPlayer(playerId, bravoNames[index]))),
+    ]);
+    return { alpha: alpha.filter(Boolean), bravo: bravo.filter(Boolean) };
+  };
+
   const loadRoom = async () => {
     try {
       setLoading(true);
@@ -177,7 +182,7 @@ export default function RankedMatchRoom() {
       ]);
       let matchData = loadedMatch;
 
-      if (!matchData.final_map_name && matchData.challenger_id) {
+      if (!matchData.final_map_name && roomRosterFull(matchData)) {
         const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
         if (mapResponse?.data?.match) matchData = mapResponse.data.match;
       }
@@ -187,13 +192,9 @@ export default function RankedMatchRoom() {
       setScoreA(matchData.reported_score_alpha || 0);
       setScoreB(matchData.reported_score_bravo || 0);
 
-      const [host, challenger] = await Promise.all([
-        loadPlayer(matchData.host_id, matchData.host_name),
-        loadPlayer(matchData.challenger_id, matchData.challenger_name),
-      ]);
-
-      setHostPlayer(host);
-      setChallengerPlayer(challenger);
+      const rosters = await loadRosterPlayers(matchData);
+      setAlphaPlayers(rosters.alpha);
+      setBravoPlayers(rosters.bravo);
     } catch (error) {
       console.error("Failed to load ranked match:", error);
       toast({ title: "Error loading match", description: error.message || "Match not found", variant: "destructive" });
@@ -437,13 +438,13 @@ export default function RankedMatchRoom() {
 
         <div className="grid lg:grid-cols-12 gap-6 mb-6">
           <div className="lg:col-span-4">
-            <PlayerPanel label="Team Alpha" color="cyan" player={hostPlayer} />
+            <PlayerPanel label="Team Alpha" color="cyan" players={alphaPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
           <div className="lg:col-span-4">
             <MapVetoVertical wager={match} ranked />
           </div>
           <div className="lg:col-span-4">
-            <PlayerPanel label="Team Bravo" color="orange" player={challengerPlayer} waiting={!match.challenger_id} />
+            <PlayerPanel label="Team Bravo" color="orange" players={bravoPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
         </div>
 
