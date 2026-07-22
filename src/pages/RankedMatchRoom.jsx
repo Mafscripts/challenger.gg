@@ -58,7 +58,7 @@ const roomRosterNames = (match, side) => {
 };
 const roomRosterSignature = (match) => [...roomRosterIds(match, "alpha"), "|", ...roomRosterIds(match, "bravo")].join(":");
 const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsPerRankedTeam(match) && roomRosterIds(match, "bravo").length >= slotsPerRankedTeam(match);
-const arenaHeightClass = (slots) => ({ 1: "h-[250px]", 2: "h-[320px]", 3: "h-[410px]", 4: "h-[500px]" }[slots] || "h-[500px]");
+const arenaHeightClass = (slots) => ({ 1: "h-[280px]", 2: "h-[350px]", 3: "h-[450px]", 4: "h-[550px]" }[slots] || "h-[550px]");
 
 function RosterPlayerCard({ player, color }) {
   const rank = getRankForElo(player.elo || 0);
@@ -686,11 +686,11 @@ export default function RankedMatchRoom() {
           <MapVetoVertical wager={match} ranked compact />
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-6 mb-6">
-          <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} lg:col-span-3`}>
+        <div className="grid xl:grid-cols-12 gap-6 mb-6">
+          <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} xl:col-span-3`}>
             <PlayerPanel label="Team Alpha" color="cyan" players={visibleAlphaPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
-          <div className="min-w-0 lg:col-span-6">
+          <div className="min-w-0 xl:col-span-6">
             <MatchChat
               conversationId={match.id}
               matchType="ranked"
@@ -700,7 +700,7 @@ export default function RankedMatchRoom() {
               heightClass={arenaHeightClass(slotsPerRankedTeam(match))}
             />
           </div>
-          <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} lg:col-span-3`}>
+          <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} xl:col-span-3`}>
             <PlayerPanel label="Team Bravo" color="orange" players={visibleBravoPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
         </div>
