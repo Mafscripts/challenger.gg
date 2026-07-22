@@ -225,8 +225,7 @@ export default function Wagers() {
   return (
     <div className="min-h-screen py-6 md:py-10">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <section className="relative mb-8 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(20,216,255,0.08),rgba(255,255,255,0.025)_45%,rgba(0,255,136,0.055))] p-6 md:p-9">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-green/10 blur-3xl" />
+        <section className="premium-panel relative mb-10 overflow-hidden rounded-[1.75rem] p-6 md:p-9">
           <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-cyan">
@@ -246,7 +245,7 @@ export default function Wagers() {
               { label: "Account", value: hasActivePremium ? "Premium" : "Standard", icon: Star, color: hasActivePremium ? "text-yellow-400" : "text-vapor" },
               { label: "Platform fee", value: hasActivePremium ? "5%" : "10%", icon: ShieldCheck, color: "text-cyan" },
             ].map(({ label, value, icon: Icon, color }) => (
-              <div key={label} className="flex items-center gap-4 rounded-xl border border-white/5 bg-black/15 px-4 py-4">
+              <div key={label} className="premium-card flex items-center gap-4 rounded-2xl px-4 py-4">
                 <div className={`flex h-11 w-11 items-center justify-center rounded-lg bg-white/[0.04] ${color}`}><Icon className="h-5 w-5" /></div>
                 <div><p className="text-[11px] font-black uppercase tracking-wider text-vapor">{label}</p><p className={`mt-1 font-mono text-lg font-black ${color}`}>{value}</p></div>
               </div>
