@@ -10,7 +10,6 @@ import {
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import UserBadges from "@/components/ui/UserBadges";
 
 const navGroups = [
   {
@@ -877,10 +876,7 @@ export default function Navbar() {
                     {profileAvatar && <img src={profileAvatar} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
                   </div>
                   <span className="hidden max-w-[110px] text-left lg:block">
-                    <span className="flex min-w-0 items-center gap-1">
-                      <span className="truncate text-xs font-black text-foreground">{accountName}</span>
-                      <UserBadges user={user} size="xs" iconOnly showForceStream={false} showTooltip={false} className="shrink-0" />
-                    </span>
+                    <span className="truncate text-xs font-black text-foreground">{accountName}</span>
                     <span className={`block text-[8px] font-black uppercase tracking-wider ${canSeeAdminLink ? "text-red-300" : "text-vapor"}`}>{canSeeAdminLink ? (user?.role || "Staff").replace("_", " ") : "Competitor"}</span>
                   </span>
                   <ChevronDown className={`w-3.5 h-3.5 text-vapor transition-transform ${profileOpen ? "rotate-180" : ""}`} />
