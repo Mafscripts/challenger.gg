@@ -5,7 +5,7 @@ export const RANK_THRESHOLDS = [
   { name: "Platinum", tier: "platinum", min: 1800, max: 2399, color: "text-teal-300" },
   { name: "Diamond", tier: "diamond", min: 2400, max: 2999, color: "text-cyan" },
   { name: "Master", tier: "master", min: 3000, max: 3599, color: "text-purple-400" },
-  { name: "Pro", tier: "pro", min: 3600, max: 4199, color: "text-blue-400" },
+  { name: "Pro", tier: "pro", min: 3600, max: 4199, color: "text-emerald-400" },
   { name: "Champion", tier: "champion", min: 4200, max: Infinity, color: "text-orange" },
 ];
 

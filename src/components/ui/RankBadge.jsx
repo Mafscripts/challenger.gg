@@ -10,7 +10,7 @@ const ranks = {
   platinum: { label: "Platinum", text: "text-teal-200", icon: "/assets/ranks/platinum.png" },
   diamond: { label: "Diamond", text: "text-cyan", icon: "/assets/ranks/diamond.png" },
   master: { label: "Master", text: "text-purple-300", icon: "/assets/ranks/master.png" },
-  pro: { label: "Pro", text: "text-blue-400", icon: "/assets/ranks/pro.png" },
+  pro: { label: "Pro", text: "text-emerald-400", icon: "/assets/ranks/pro.png" },
   champion: { label: "Champion", text: "text-orange", icon: "/assets/ranks/champion.png" },
 };
 

@@ -68,7 +68,7 @@ const rankCardTones = {
   platinum: { border: "border-teal-300/30", wash: "from-teal-300/[0.12] via-card to-card", accent: "bg-teal-300", soft: "border-teal-300/20 bg-teal-300/[0.07]", text: "text-teal-300" },
   diamond: { border: "border-cyan/30", wash: "from-cyan/[0.12] via-card to-card", accent: "bg-cyan", soft: "border-cyan/20 bg-cyan/[0.07]", text: "text-cyan" },
   master: { border: "border-purple-400/30", wash: "from-purple-400/[0.12] via-card to-card", accent: "bg-purple-400", soft: "border-purple-400/20 bg-purple-400/[0.07]", text: "text-purple-400" },
-  pro: { border: "border-blue-400/30", wash: "from-blue-400/[0.12] via-card to-card", accent: "bg-blue-400", soft: "border-blue-400/20 bg-blue-400/[0.07]", text: "text-blue-400" },
+  pro: { border: "border-emerald-400/35", wash: "from-emerald-400/[0.16] via-card to-card", accent: "bg-emerald-400", soft: "border-emerald-400/25 bg-emerald-400/[0.09]", text: "text-emerald-400" },
   champion: { border: "border-orange/35", wash: "from-orange/[0.14] via-card to-card", accent: "bg-orange", soft: "border-orange/20 bg-orange/[0.07]", text: "text-orange" },
 };
 
@@ -322,8 +322,8 @@ export default function Ranked() {
               </div>
               <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
                 {groupedRanks.map((tier) => (
-                  <motion.div key={tier.tier} whileHover={{ y: -4 }} className="relative overflow-hidden rounded-xl border border-white/10 bg-background/40 p-5 text-center transition-colors hover:border-cyan/25">
-                    <div className="pointer-events-none absolute inset-x-8 top-3 h-24 rounded-full bg-cyan/5 blur-3xl" />
+                  <motion.div key={tier.tier} whileHover={{ y: -4 }} className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-5 text-center transition-colors ${rankCardTones[tier.tier]?.border || "border-white/10"} ${rankCardTones[tier.tier]?.wash || "from-card to-card"}`}>
+                    <div className={`pointer-events-none absolute inset-x-8 top-3 h-24 rounded-full opacity-20 blur-3xl ${rankCardTones[tier.tier]?.accent || "bg-cyan"}`} />
                     <div className="relative flex justify-center"><RankBadge rank={tier.tier} size="lg" showLabel={false} /></div>
                     <div className="relative mt-2">
                       <p className={`text-lg font-black ${tier.color}`}>{tier.name}</p>
