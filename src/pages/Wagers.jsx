@@ -2,16 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Zap, Plus, DollarSign,
-  Star, TrendingUp
+  Zap, Plus, DollarSign, Star, Clock3, ShieldCheck, Swords, History
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
-import CompetitionHero from "@/components/match/CompetitionHero";
 import MapVetoModal from "@/components/match/MapVetoModal";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 
@@ -29,6 +31,7 @@ export default function Wagers() {
   const [acceptTeamByWager, setAcceptTeamByWager] = useState({});
   const [acceptPaymentByWager, setAcceptPaymentByWager] = useState({});
   const [cancellingWagerId, setCancellingWagerId] = useState(null);
+  const [wagerToCancel, setWagerToCancel] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -172,9 +175,6 @@ export default function Wagers() {
   };
 
   const handleCancel = async (wager) => {
-    const confirmed = window.confirm("Cancel this wager? Your reserved entry fee will be returned to your wallet.");
-    if (!confirmed) return;
-
     setCancellingWagerId(wager.id);
     try {
       const response = await base44.functions.invoke("refundWager", {
@@ -193,6 +193,7 @@ export default function Wagers() {
         title: "Wager cancelled",
         description: "Your entry fee has been returned to your wallet.",
       });
+      setWagerToCancel(null);
       await loadData();
     } catch (error) {
       toast({
@@ -222,62 +223,56 @@ export default function Wagers() {
   );
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <CompetitionHero
-          eyebrow="Season 1 Match Hub"
-          title="Wagers"
-          description="Put your skills on the line with a clear lobby, roster and match-room flow consistent with tournaments."
-          action={
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-green text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-green/25 transition-all uppercase tracking-wider"
-          >
-            <Plus className="w-3.5 h-3.5" /> Create Wager
-          </button>
-          }
-          stats={[
-            { label: "Active Wagers", value: wagers.length.toString(), icon: Zap, color: "text-orange" },
-            { label: "Your Balance", value: user ? `$${(user.wallet_balance || 0).toFixed(2)}` : "$0", icon: DollarSign, color: "text-green" },
-            { label: "Premium", value: hasActivePremium ? "Yes" : "No", icon: Star, color: hasActivePremium ? "text-yellow-400" : "text-vapor" },
-            { label: "Fee Rate", value: hasActivePremium ? "5%" : "10%", icon: TrendingUp, color: "text-cyan" },
-          ]}
-        />
-        <ActivisionIdNotice user={user} className="mb-6" />
-
-        {/* Tabs */}
-        <div className="flex items-center gap-4 mb-6 border-b border-white/5 pb-4">
-          {["active", "history"].map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
-                tab === t ? "bg-cyan/10 text-cyan" : "text-vapor hover:text-foreground"
-              }`}
-            >{t === "active" ? "Active Wagers" : "My History"}</button>
-          ))}
-          <div className="ml-auto flex gap-2">
-            {["All", "$5-$10", "$25-$50", "$100+"].map(a => (
-              <button
-                key={a}
-                onClick={() => setAmountFilter(a)}
-                className={`px-3 py-1.5 rounded text-xs font-semibold transition-all ${
-                  amountFilter === a ? "bg-green/10 text-green border border-green/20" : "bg-secondary text-vapor"
-                }`}
-              >{a}</button>
+    <div className="min-h-screen py-6 md:py-10">
+      <div className="max-w-[1280px] mx-auto px-4 lg:px-6">
+        <section className="relative mb-6 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(20,216,255,0.08),rgba(255,255,255,0.025)_45%,rgba(0,255,136,0.055))] p-5 md:p-7">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-green/10 blur-3xl" />
+          <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan">
+                <Swords className="h-3.5 w-3.5" /> Competitive wagers
+              </div>
+              <h1 className="text-3xl font-black tracking-tight md:text-4xl">Find your next match</h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-vapor">Post a challenge or accept an open wager. Your entry is secured until the match is completed.</p>
+            </div>
+            <button onClick={() => setIsCreateModalOpen(true)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-green px-5 py-3 text-xs font-black uppercase tracking-wider text-background shadow-[0_10px_30px_rgba(0,255,136,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(0,255,136,0.25)]">
+              <Plus className="h-4 w-4" /> Post a wager
+            </button>
+          </div>
+          <div className="relative mt-6 grid grid-cols-2 gap-3 border-t border-white/5 pt-5 md:grid-cols-4">
+            {[
+              { label: "Open now", value: wagers.length, icon: Zap, color: "text-orange" },
+              { label: "Wallet", value: user ? `$${(user.wallet_balance || 0).toFixed(2)}` : "$0.00", icon: DollarSign, color: "text-green" },
+              { label: "Account", value: hasActivePremium ? "Premium" : "Standard", icon: Star, color: hasActivePremium ? "text-yellow-400" : "text-vapor" },
+              { label: "Platform fee", value: hasActivePremium ? "5%" : "10%", icon: ShieldCheck, color: "text-cyan" },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="flex items-center gap-3 rounded-xl border border-white/5 bg-black/15 px-3.5 py-3">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] ${color}`}><Icon className="h-4 w-4" /></div>
+                <div><p className="text-[9px] font-black uppercase tracking-wider text-vapor">{label}</p><p className={`mt-0.5 font-mono text-sm font-black ${color}`}>{value}</p></div>
+              </div>
             ))}
           </div>
+        </section>
+        <ActivisionIdNotice user={user} className="mb-5" />
+
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex rounded-lg bg-black/20 p-1">
+            <button onClick={() => setTab("active")} className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-xs font-bold transition-all sm:flex-none ${tab === "active" ? "bg-cyan/10 text-cyan shadow-sm" : "text-vapor hover:text-foreground"}`}><Zap className="h-3.5 w-3.5" /> Open wagers</button>
+            <button onClick={() => setTab("history")} className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-xs font-bold transition-all sm:flex-none ${tab === "history" ? "bg-cyan/10 text-cyan shadow-sm" : "text-vapor hover:text-foreground"}`}><History className="h-3.5 w-3.5" /> My history</button>
+          </div>
+          {tab === "active" && <div className="flex gap-1 overflow-x-auto">
+            {["All", "$5-$10", "$25-$50", "$100+"].map(a => <button key={a} onClick={() => setAmountFilter(a)} className={`whitespace-nowrap rounded-md border px-3 py-2 text-[10px] font-black transition-all ${amountFilter === a ? "border-green/30 bg-green/10 text-green" : "border-transparent text-vapor hover:bg-white/5 hover:text-foreground"}`}>{a}</button>)}
+          </div>}
         </div>
 
         {tab === "active" ? (
-          <div className="glass rounded-xl border border-white/5 overflow-hidden">
-            <div className="hidden md:grid grid-cols-6 gap-4 px-5 py-3 border-b border-white/5 text-xs text-vapor uppercase tracking-wider font-semibold">
-              <span>Host</span>
-              <span>Mode</span>
-              <span>Amount</span>
-              <span>Format</span>
-              <span>Status</span>
-              <span></span>
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-card/70 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+            <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
+              <div><h2 className="text-sm font-black">Open challenges</h2><p className="mt-0.5 text-[11px] text-vapor">Choose a match that fits your team and stake.</p></div>
+              <span className="rounded-full bg-cyan/10 px-2.5 py-1 font-mono text-[10px] font-black text-cyan">{filteredWagers.length} OPEN</span>
+            </div>
+            <div className="hidden grid-cols-[1.1fr_1.6fr_.7fr_.7fr_1.5fr] gap-5 border-b border-white/5 bg-white/[0.015] px-5 py-2.5 text-[9px] font-black uppercase tracking-[0.12em] text-vapor md:grid">
+              <span>Player</span><span>Challenge</span><span>Stake</span><span>Series</span><span className="text-right">Action</span>
             </div>
             <div className="divide-y divide-white/5">
               {loading ? (
@@ -289,26 +284,23 @@ export default function Wagers() {
                   <motion.div
                     key={w.id}
                     whileHover={{ backgroundColor: "rgba(255,255,255,0.02)", transition: { duration: 0.1, ease: "easeOut" } }}
-                    className="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 px-5 py-4 items-center"
+                    className="grid gap-4 px-5 py-5 md:grid-cols-[1.1fr_1.6fr_.7fr_.7fr_1.5fr] md:items-center md:gap-5"
                   >
-                    <Link to={`/profile/${w.host_name || w.host_id || ""}`} className="font-semibold text-sm hover:text-cyan transition-colors">{w.host_name || "Host unavailable"}</Link>
-                    <span className="text-sm text-vapor">{w.team_size} {w.game_mode_display}</span>
-                    <span className="text-sm font-mono font-bold text-green">${w.entry_fee ?? w.amount ?? 0}</span>
-                    <span className="text-sm font-mono font-bold text-cyan">BO{w.best_of || 1}</span>
-                    <span className={`text-xs font-semibold text-green`}>{w.status}</span>
-                    <div>
+                    <div><Link to={`/profile/${w.host_name || w.host_id || ""}`} className="text-sm font-black hover:text-cyan">{w.host_name || "Host unavailable"}</Link>{w.host_id === user?.id && <span className="ml-2 rounded bg-cyan/10 px-1.5 py-0.5 text-[8px] font-black uppercase text-cyan">You</span>}</div>
+                    <div><p className="text-sm font-bold">{w.game_mode_display}</p><p className="mt-1 text-[10px] text-vapor">{w.team_size} · {w.final_map_name || "Map decided by veto"}</p></div>
+                    <div><p className="font-mono text-base font-black text-green">${w.entry_fee ?? w.amount ?? 0}</p><p className="text-[9px] uppercase text-vapor">per player</p></div>
+                    <span className="w-fit rounded-md border border-cyan/15 bg-cyan/5 px-2 py-1 font-mono text-[10px] font-black text-cyan">BO{w.best_of || 1}</span>
+                    <div className="md:justify-self-end">
                       {w.status === "open" && w.host_id === user?.id ? (
-                        <div className="flex flex-col items-start gap-2">
-                          <span className="inline-flex rounded border border-orange/20 bg-orange/10 px-4 py-1.5 text-xs font-bold text-orange">
-                            Waiting for Opponent
-                          </span>
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-orange"><Clock3 className="h-3.5 w-3.5" /> Awaiting opponent</span>
                           <button
                             type="button"
-                            onClick={() => handleCancel(w)}
+                            onClick={() => setWagerToCancel(w)}
                             disabled={cancellingWagerId === w.id}
-                            className="px-4 py-1.5 text-xs font-bold text-red-400 rounded border border-red-400/20 bg-red-400/10 hover:bg-red-400/20 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                            className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black text-vapor transition-all hover:border-red-400/30 hover:bg-red-400/10 hover:text-red-400 disabled:opacity-50"
                           >
-                            {cancellingWagerId === w.id ? "Cancelling..." : "Cancel Wager"}
+                            {cancellingWagerId === w.id ? "Cancelling..." : "Cancel"}
                           </button>
                         </div>
                       ) : w.status === "open" && (
@@ -340,11 +332,11 @@ export default function Wagers() {
                               </select>
                             </>
                           )}
-                          <button 
+                          <button
                             onClick={() => handleAccept(w)}
-                            className="px-4 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20 transition-all"
+                            className="rounded-lg bg-green px-5 py-2.5 text-xs font-black uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-green/20"
                           >
-                            Accept
+                            Accept wager
                           </button>
                         </div>
                       )}
@@ -407,6 +399,21 @@ export default function Wagers() {
           user={user}
           onComplete={handleVetoComplete}
         />
+
+        <AlertDialog open={Boolean(wagerToCancel)} onOpenChange={(open) => !open && !cancellingWagerId && setWagerToCancel(null)}>
+          <AlertDialogContent className="border-white/10 bg-card">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel this wager?</AlertDialogTitle>
+              <AlertDialogDescription>Your ${wagerToCancel?.entry_fee ?? wagerToCancel?.amount ?? 0} entry fee will be returned to your wallet. This cannot be undone.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={Boolean(cancellingWagerId)}>Keep wager</AlertDialogCancel>
+              <AlertDialogAction onClick={(event) => { event.preventDefault(); handleCancel(wagerToCancel); }} disabled={Boolean(cancellingWagerId)} className="bg-red-500 text-white hover:bg-red-500/90">
+                {cancellingWagerId ? "Cancelling..." : "Yes, cancel wager"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
