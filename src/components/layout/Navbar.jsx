@@ -30,8 +30,8 @@ const navGroups = [
     eyebrow: "Competitive Rankings",
     tone: "gold",
     items: [
-      { label: "Leaderboard", description: "Top players by Ranked ELO", path: "/leaderboards", icon: Trophy, tone: "gold" },
-      { label: "XP Ladder", description: "Progress and account levels", path: "/xp", icon: Zap, tone: "purple" },
+      { label: "Leaderboard", path: "/leaderboards", icon: Trophy, tone: "gold" },
+      { label: "XP Ladder", path: "/xp", icon: Zap, tone: "purple" },
     ],
   },
   {
@@ -522,7 +522,9 @@ export default function Navbar() {
                                   <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${itemTone.icon}`}><ItemIcon className="h-4 w-4" /></span>
                                   <span className="min-w-0 flex-1">
                                     <span className="block text-[13px] font-black">{item.label}</span>
-                                    <span className="mt-0.5 block truncate text-[10px] text-vapor">{item.description}</span>
+                                    {item.description && (
+                                      <span className="mt-0.5 block truncate text-[10px] text-vapor">{item.description}</span>
+                                    )}
                                   </span>
                                   <span className="text-vapor/40 transition-transform duration-100 group-hover:translate-x-0.5 group-hover:text-foreground">→</span>
                                 </Link>
