@@ -686,21 +686,21 @@ export default function Navbar() {
               {user ? (
                 <>
               {/* Wallet */}
-              <div className="hidden h-10 items-center overflow-hidden rounded-xl border border-green/25 bg-green/10 md:flex">
-                <Link to="/wallet" className="flex h-full items-center gap-2 px-3 text-green transition-colors hover:bg-green/10">
-                  <Wallet className="h-4 w-4" />
-                  <span className="font-mono text-sm font-black">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <div className="hidden h-8 items-center overflow-hidden rounded-lg border border-green/15 bg-green/[0.055] md:flex">
+                <Link to="/wallet" className="flex h-full items-center gap-1.5 px-2.5 text-green transition-colors hover:bg-green/10">
+                  <Wallet className="h-3.5 w-3.5" />
+                  <span className="font-mono text-xs font-bold">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </Link>
-                <Link to="/wallet" title="Add funds" aria-label="Add funds" className="flex h-full w-9 items-center justify-center border-l border-green/20 text-green transition-colors hover:bg-green/15 hover:text-white">
-                  <Plus className="h-4 w-4" />
+                <Link to="/wallet" title="Add funds" aria-label="Add funds" className="flex h-full w-7 items-center justify-center border-l border-green/15 text-green/80 transition-colors hover:bg-green/15 hover:text-white">
+                  <Plus className="h-3.5 w-3.5" />
                 </Link>
               </div>
 
               {/* Credits */}
-              <Link to="/marketplace" title="Marketplace credits" className="hidden h-10 items-center gap-2 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.07] px-3 text-yellow-300 transition-colors hover:border-yellow-400/35 hover:bg-yellow-400/10 md:flex">
-                <Coins className="h-4 w-4" />
-                <span className="font-mono text-sm font-black">{creditBalance.toLocaleString("en-US")}</span>
-                <span className="text-[8px] font-black uppercase tracking-wider text-yellow-200/70">Credits</span>
+              <Link to="/marketplace" title="Marketplace credits" className="hidden h-8 items-center gap-1.5 rounded-lg border border-yellow-400/15 bg-yellow-400/[0.045] px-2.5 text-yellow-300 transition-colors hover:border-yellow-400/30 hover:bg-yellow-400/[0.08] md:flex">
+                <Coins className="h-3.5 w-3.5" />
+                <span className="font-mono text-xs font-bold">{creditBalance.toLocaleString("en-US")}</span>
+                <span className="text-[7px] font-black uppercase tracking-wider text-yellow-200/60">Credits</span>
               </Link>
 
               {/* Notifications */}
