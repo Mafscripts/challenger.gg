@@ -5672,12 +5672,26 @@ async function previousRankedMapFor(userId, excludeMatchId = "") {
   return previous?.final_map_name || "";
 }
 
+const ACTIVE_RANKED_STATUSES = new Set(["open", "in_progress", "pending_confirmation", "awaiting_confirmation", "score_conflict", "disputed"]);
+
+async function activeRankedMatchFor(userId, excludeMatchId = "") {
+  if (!userId) return null;
+  const matches = await listEntities("RankedMatch", {}, "-created_date", 100);
+  return matches.find((row) => (
+    row.id !== excludeMatchId
+    && ACTIVE_RANKED_STATUSES.has(row.status)
+    && (row.host_id === userId || row.challenger_id === userId)
+  )) || null;
+}
+
 async function createRankedMatch(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   if (!Object.prototype.hasOwnProperty.call(RANKED_MAPS_BY_MODE, req.body.game_mode)) {
     return { success: false, error: "Invalid ranked game mode" };
   }
+  const activeMatch = await activeRankedMatchFor(req.user.id);
+  if (activeMatch) return { success: false, error: "You already have an active ranked match", active_match_id: activeMatch.id };
   const match = await createEntity("RankedMatch", {
     ...req.body,
     host_id: req.user.id,
@@ -5698,6 +5712,13 @@ async function acceptRankedMatch(req) {
   const id = req.body.ranked_match_id || req.body.id;
   const match = await getEntity("RankedMatch", id);
   if (match.status !== "open") return { success: false, error: "Ranked match is not open" };
+  if (match.host_id === req.user.id) return { success: false, error: "You cannot accept your own ranked match" };
+  const [challengerActiveMatch, hostActiveMatch] = await Promise.all([
+    activeRankedMatchFor(req.user.id, match.id),
+    activeRankedMatchFor(match.host_id, match.id),
+  ]);
+  if (challengerActiveMatch) return { success: false, error: "You already have an active ranked match", active_match_id: challengerActiveMatch.id };
+  if (hostActiveMatch) return { success: false, error: "The host already has another active ranked match" };
   const host = await userFor(match.host_id);
   const hostActivisionError = activisionIdErrorForUsers([host]);
   if (hostActivisionError) return { success: false, error: hostActivisionError, code: "ACTIVISION_ID_REQUIRED" };

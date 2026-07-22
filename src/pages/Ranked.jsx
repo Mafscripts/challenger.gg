@@ -22,6 +22,15 @@ const modeLabels = {
   hp: "Hardpoint",
 };
 
+const activeRankedStatuses = new Set(["open", "in_progress", "pending_confirmation", "awaiting_confirmation", "score_conflict", "disputed"]);
+
+const selectActiveRankedMatch = (matches, userId) => {
+  const unique = [...new Map((matches || []).map((match) => [match.id, match])).values()];
+  return unique
+    .filter((match) => activeRankedStatuses.has(match.status) && (match.host_id === userId || match.challenger_id === userId))
+    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
+};
+
 const groupedRanks = RANK_THRESHOLDS.reduce((tiers, rank) => {
   const existing = tiers.find((tier) => tier.tier === rank.tier);
   if (existing) {
@@ -53,6 +62,7 @@ export default function Ranked() {
   const [user, setUser] = useState(null);
   const [currentStats, setCurrentStats] = useState(null);
   const [rankedMatches, setRankedMatches] = useState([]);
+  const [activeRankedMatch, setActiveRankedMatch] = useState(null);
   const [loadingMatches, setLoadingMatches] = useState(true);
 
   useEffect(() => {
@@ -62,10 +72,19 @@ export default function Ranked() {
   useEffect(() => {
     let active = true;
 
+    if (!user?.id) return undefined;
+
     const refreshOpenMatches = async () => {
       try {
-        const matches = await base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20);
-        if (active) setRankedMatches(matches || []);
+        const [matches, hosted, joined] = await Promise.all([
+          base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
+          base44.entities.RankedMatch.filterFresh({ host_id: user.id }, "-created_date", 20),
+          base44.entities.RankedMatch.filterFresh({ challenger_id: user.id }, "-created_date", 20),
+        ]);
+        if (active) {
+          setRankedMatches(matches || []);
+          setActiveRankedMatch(selectActiveRankedMatch([...(hosted || []), ...(joined || [])], user.id));
+        }
       } catch (error) {
         console.error("Failed to refresh ranked matches:", error);
       }
@@ -85,7 +104,7 @@ export default function Ranked() {
       window.removeEventListener("focus", refreshOpenMatches);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, []);
+  }, [user?.id]);
 
   const loadRankedData = async () => {
     try {
@@ -181,12 +200,18 @@ export default function Ranked() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/25"
-              >
-                <Plus className="w-4 h-4" /> Create Ranked Match
-              </button>
+              {activeRankedMatch ? (
+                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-colors hover:bg-cyan/90">
+                  Return to Active Match <ArrowRight className="h-4 w-4" />
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/25"
+                >
+                  <Plus className="w-4 h-4" /> Create Ranked Match
+                </button>
+              )}
             </div>
           }
           stats={[
@@ -196,6 +221,22 @@ export default function Ranked() {
           ]}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
+
+        {activeRankedMatch && (
+          <div className="mb-6 flex flex-col gap-4 rounded-xl border border-cyan/25 bg-cyan/[0.055] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan/20 bg-cyan/10 text-cyan"><Swords className="h-5 w-5" /></div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan">Your Active Ranked Match</p>
+                <p className="mt-1 font-black">{activeRankedMatch.team_size} {activeRankedMatch.game_mode_display || modeLabels[activeRankedMatch.game_mode] || activeRankedMatch.game_mode}</p>
+                <p className="mt-1 text-xs text-vapor">{activeRankedMatch.status === "open" ? "Waiting for an opponent" : `${activeRankedMatch.host_name} vs ${activeRankedMatch.challenger_name || "Opponent"}`}</p>
+              </div>
+            </div>
+            <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background">
+              Open Match Room <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        )}
 
         <div className="glass rounded-xl border border-white/5 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
