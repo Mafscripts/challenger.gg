@@ -91,12 +91,17 @@ const isStreamerUser = (candidate) => {
 };
 
 const activeMatchStatuses = new Set([
+  "accepted",
+  "escrow_paid",
+  "ready",
   "in_progress",
   "awaiting_team_alpha_report",
   "awaiting_team_bravo_report",
   "awaiting_host_report",
   "awaiting_challenger_report",
+  "awaiting_completion",
   "score_conflict",
+  "disputed",
 ]);
 const activeTournamentStatuses = new Set([
   "ready",
@@ -156,7 +161,10 @@ export default function Navbar() {
   const [profileAvatar, setProfileAvatar] = useState("");
   const [matchesOpen, setMatchesOpen] = useState(false);
   const [activeMatches, setActiveMatches] = useState([]);
+  const [adminDispute, setAdminDispute] = useState(null);
   const activeMatchesLoadedAt = useRef(0);
+  const activeAdminDisputeId = useRef(null);
+  const dismissedAdminDisputes = useRef(new Set());
   const notificationsLoadedAt = useRef(0);
   const messagesLoadedAt = useRef(0);
   const dropdownCloseTimer = useRef(null);
@@ -313,6 +321,43 @@ export default function Navbar() {
     };
   }, [isAuthenticated, authUser?.id]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !authUser?.id) return undefined;
+    let active = true;
+    const refreshLiveHeader = () => {
+      if (!active || document.visibilityState === "hidden") return;
+      loadActiveMatches({ fresh: true });
+      loadNotifications({ fresh: true, userId: authUser.id });
+      if (isStaffUser(authUser)) {
+        base44.entities.Dispute.filterFresh({}, "-created_date", 50).then((rows) => {
+          if (!active) return;
+          const pendingDisputes = (rows || []).filter((dispute) => ["pending", "under_review"].includes(dispute.status));
+          const nextDispute = pendingDisputes.find((dispute) => (
+            ["pending", "under_review"].includes(dispute.status)
+            && !dismissedAdminDisputes.current.has(dispute.id)
+          ));
+          pendingDisputes.forEach((dispute) => dismissedAdminDisputes.current.add(dispute.id));
+          if (!nextDispute || activeAdminDisputeId.current === nextDispute.id) return;
+          activeAdminDisputeId.current = nextDispute.id;
+          setAdminDispute(nextDispute);
+        }).catch((error) => console.error("Failed to refresh staff disputes:", error));
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") refreshLiveHeader();
+    };
+    refreshLiveHeader();
+    const interval = window.setInterval(refreshLiveHeader, 1000);
+    window.addEventListener("focus", refreshLiveHeader);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshLiveHeader);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [isAuthenticated, authUser?.id]);
+
   const loadUser = async (knownUser = null) => {
     try {
       const userData = knownUser?.id ? knownUser : await base44.auth.me();
@@ -343,7 +388,7 @@ export default function Navbar() {
 
   const loadNotifications = async ({ fresh = false, userId = null } = {}) => {
     try {
-      if (fresh && Date.now() - notificationsLoadedAt.current < 10000) return;
+      if (fresh && Date.now() - notificationsLoadedAt.current < 900) return;
       const resolvedUserId = userId || user?.id || authUser?.id || (await base44.auth.me())?.id;
       if (!resolvedUserId) return;
       const notificationQuery = fresh
@@ -378,8 +423,8 @@ export default function Navbar() {
     }
   };
 
-  const loadActiveMatches = async () => {
-    if (Date.now() - activeMatchesLoadedAt.current < 30000) return;
+  const loadActiveMatches = async ({ fresh = false } = {}) => {
+    if (Date.now() - activeMatchesLoadedAt.current < 900) return;
     activeMatchesLoadedAt.current = Date.now();
     try {
       const user = await base44.auth.me();
@@ -392,10 +437,10 @@ export default function Navbar() {
         challengedRanked,
         tournamentParticipants,
       ] = await Promise.all([
-        base44.entities.Wager.filter({ host_id: user.id }).catch(() => []),
-        base44.entities.Wager.filter({ challenger_id: user.id }).catch(() => []),
-        base44.entities.RankedMatch.filter({ host_id: user.id }).catch(() => []),
-        base44.entities.RankedMatch.filter({ challenger_id: user.id }).catch(() => []),
+        base44.entities.Wager[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
+        base44.entities.Wager[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
+        base44.entities.RankedMatch[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
+        base44.entities.RankedMatch[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
         base44.entities.TournamentParticipant.filter({}, "-registered_date", 500).catch(() => []),
       ]);
 
@@ -469,6 +514,37 @@ export default function Navbar() {
 
   return (
     <>
+      {adminDispute && isStaffUser(user || authUser) && (() => {
+        const details = adminDispute.wager_details || adminDispute.match_details || {};
+        const matchId = adminDispute.match_id || adminDispute.wager_id || adminDispute.tournament_match_id;
+        const matchType = adminDispute.match_type || (adminDispute.tournament_match_id ? "tournament" : "wager");
+        const roomPath = matchType === "ranked" ? `/ranked-match/${matchId}` : matchType === "tournament" ? `/tournament-match/${matchId}` : `/wagers-match/${matchId}`;
+        const teamA = details.host_team_name || details.host_name || details.team_a_name || adminDispute.reported_by_name || "Team Alpha";
+        const teamB = details.challenger_team_name || details.challenger_name || details.team_b_name || adminDispute.reported_against_name || "Team Bravo";
+        const dismiss = () => {
+          dismissedAdminDisputes.current.add(adminDispute.id);
+          activeAdminDisputeId.current = null;
+          setAdminDispute(null);
+        };
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+            <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-orange/35 bg-card p-7 text-center shadow-2xl">
+              <div className="absolute inset-x-0 top-0 h-1 bg-orange" />
+              <button type="button" onClick={dismiss} className="absolute right-4 top-4 rounded-lg p-2 text-vapor transition-colors hover:bg-white/5 hover:text-white" aria-label="Close dispute alert"><X className="h-4 w-4" /></button>
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange/15 text-orange"><AlertCircle className="h-8 w-8" /></div>
+              <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-orange">New dispute</p>
+              <h2 className="mt-2 text-2xl font-black">Match #{String(matchId || adminDispute.id).slice(-8)}</h2>
+              <div className="mt-5 rounded-2xl border border-white/5 bg-background/45 p-4">
+                <p className="text-sm font-black text-cyan">{teamA}</p>
+                <p className="my-1 text-[10px] font-black uppercase tracking-wider text-vapor">versus</p>
+                <p className="text-sm font-black text-orange">{teamB}</p>
+              </div>
+              <p className="mt-4 text-xs leading-5 text-vapor">Both teams submitted conflicting scores. Review the reports and resolve the match.</p>
+              <Link to={roomPath} onClick={dismiss} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-orange px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Open match room <ExternalLink className="h-4 w-4" /></Link>
+            </div>
+          </div>
+        );
+      })()}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
         scrolled ? "glass-nav" : "bg-transparent"
       }`}>

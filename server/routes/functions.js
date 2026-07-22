@@ -1321,16 +1321,32 @@ async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
 async function applyParticipantRewards(winnerIds = [], loserIds = []) {
   const uniqueWinnerIds = [...new Set(winnerIds.filter(Boolean))];
   const uniqueLoserIds = [...new Set(loserIds.filter(Boolean))].filter((id) => !uniqueWinnerIds.includes(id));
-  await Promise.all(uniqueWinnerIds.map((userId) => Promise.all([
-    updateXPOutcome(userId, true),
-    updateProfileOutcome(userId, true, 0),
-    prisma.user.update({ where: { id: userId }, data: { current_win_streak: { increment: 1 } } }).catch(() => null),
-  ])));
-  await Promise.all(uniqueLoserIds.map((userId) => Promise.all([
-    updateXPOutcome(userId, false),
-    updateProfileOutcome(userId, false, 0),
-    prisma.user.update({ where: { id: userId }, data: { current_win_streak: 0 } }).catch(() => null),
-  ])));
+  const changes = {};
+  const apply = async (userId, didWin) => {
+    const before = await ensureXPStats(userId);
+    const after = await updateXPOutcome(userId, didWin);
+    await Promise.all([
+      updateProfileOutcome(userId, didWin, 0),
+      prisma.user.update({ where: { id: userId }, data: { current_win_streak: didWin ? { increment: 1 } : 0 } }).catch(() => null),
+    ]);
+    changes[userId] = {
+      won: didWin,
+      amount: didWin ? WIN_XP : LOSS_XP,
+      previous_level: Number(before?.level || 1),
+      previous_current_xp: Number(before?.current_xp || 0),
+      previous_total_xp: Number(before?.total_xp || 0),
+      previous_xp_to_next_level: Number(before?.xp_to_next_level || 1000),
+      new_level: Number(after?.level || before?.level || 1),
+      new_current_xp: Number(after?.current_xp || before?.current_xp || 0),
+      new_total_xp: Number(after?.total_xp || before?.total_xp || 0),
+      new_xp_to_next_level: Number(after?.xp_to_next_level || before?.xp_to_next_level || 1000),
+    };
+  };
+  await Promise.all([
+    ...uniqueWinnerIds.map((userId) => apply(userId, true)),
+    ...uniqueLoserIds.map((userId) => apply(userId, false)),
+  ]);
+  return changes;
 }
 
 async function reverseXPOutcome(userId, didWin) {
@@ -5624,6 +5640,19 @@ async function acceptWager(req) {
   });
 
   const startState = isTeamMatch ? await maybeStartWager(wager.id) : { wager: updated, ready: true };
+  const acceptedParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
+  const hostUserIds = acceptedParticipants
+    .filter((participant) => participant.team === "host")
+    .map((participant) => participant.user_id)
+    .filter(Boolean);
+  await notifyUsers(hostUserIds, {
+    title: wagerMatchType === "8s" ? "8s lobby joined" : "Wager accepted",
+    message: `${challengerTeam?.name || nameFor(req.user)} joined your ${wager.team_size || "1v1"} ${wager.game_mode_display || wager.game_mode || "match"}. Open the match room to begin.`,
+    type: wagerMatchType === "8s" ? "8s" : "wager",
+    action_url: wagerMatchType === "8s" ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`,
+    related_entity_id: wager.id,
+    related_entity_type: "Wager",
+  });
   return { success: true, wager: startState.wager, ready: startState.ready, final_map_name: startState.wager.final_map_name };
 }
 
@@ -5647,6 +5676,18 @@ async function submitScore(req) {
   }
   if (teamAlphaScore === teamBravoScore) {
     return { success: false, error: "Scores cannot be tied" };
+  }
+  const bestOf = Math.max(1, Number(wager.best_of || 1));
+  const winsNeeded = Math.floor(bestOf / 2) + 1;
+  const validSeriesScore = (
+    Number.isInteger(teamAlphaScore)
+    && Number.isInteger(teamBravoScore)
+    && teamAlphaScore <= winsNeeded
+    && teamBravoScore <= winsNeeded
+    && ((teamAlphaScore === winsNeeded && teamBravoScore < winsNeeded) || (teamBravoScore === winsNeeded && teamAlphaScore < winsNeeded))
+  );
+  if (!validSeriesScore) {
+    return { success: false, error: `This BO${bestOf} must end when one team reaches ${winsNeeded} win${winsNeeded === 1 ? "" : "s"}` };
   }
   const reportingTeam = isHost ? "host" : "challenger";
   const otherTeam = isHost ? "challenger" : "host";
@@ -5698,12 +5739,16 @@ async function submitScore(req) {
       score_conflict_date: nowIso(),
     });
     await notifyStaff({
-      title: "Score conflict",
-      message: `${wager.host_name || "Host"} vs ${wager.challenger_name || "Challenger"} needs review.`,
-      type: "match",
-      action_url: "/admin",
+      title: "New dispute",
+      message: `Match #${wager.id.slice(-8)} · ${wager.host_team_name || wager.host_name || "Team Alpha"} vs ${wager.challenger_team_name || wager.challenger_name || "Team Bravo"} · reports ${Number(otherAlpha)}-${Number(otherBravo)} and ${teamAlphaScore}-${teamBravoScore}.`,
+      type: "dispute",
+      action_url: `/wagers-match/${wager.id}`,
       related_entity_id: dispute.id,
       related_entity_type: "Dispute",
+      match_id: wager.id,
+      match_type: "wager",
+      host_name: wager.host_team_name || wager.host_name,
+      challenger_name: wager.challenger_team_name || wager.challenger_name,
     });
     return { success: true, ready_to_complete: false, status: "score_conflict", dispute };
   }
@@ -5781,6 +5826,12 @@ async function completeWager(req) {
   const winnerName = winnerId === wager.host_id ? wager.host_name : wager.challenger_name;
   const loserName = loserId === wager.host_id ? wager.host_name : wager.challenger_name;
   const entryFee = money(wager.entry_fee ?? wager.amount);
+  const matchParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
+  const winningSide = winnerId === wager.host_id ? "host" : "challenger";
+  const winnerUserIds = [...new Set(matchParticipants.filter((participant) => participant.team === winningSide).map((participant) => participant.user_id).filter(Boolean))];
+  const loserUserIds = [...new Set(matchParticipants.filter((participant) => participant.team !== winningSide).map((participant) => participant.user_id).filter(Boolean))];
+  if (winnerUserIds.length === 0 && winnerId) winnerUserIds.push(winnerId);
+  if (loserUserIds.length === 0 && loserId) loserUserIds.push(loserId);
 
   await updateEntity("Wager", wager.id, {
     status: "completed",
@@ -5803,31 +5854,23 @@ async function completeWager(req) {
   });
 
   const isPaidWager = (wager.match_type || "wagers") === "wagers" && entryFee > 0;
-  if (winnerId) {
-    const winner = await prisma.user.findUnique({ where: { id: winnerId } }).catch(() => null);
-    if (winner) {
-      await prisma.user.update({
-        where: { id: winnerId },
-        data: {
-          wager_wins: winner.wager_wins + 1,
-          biggest_wager_win: isPaidWager ? Math.max(winner.biggest_wager_win || 0, entryFee) : winner.biggest_wager_win,
-        },
-      });
-    }
-  }
-  if (loserId) {
-    const loser = await prisma.user.findUnique({ where: { id: loserId } }).catch(() => null);
-    if (loser) {
-      await prisma.user.update({
-        where: { id: loserId },
-        data: { wager_losses: loser.wager_losses + 1, current_win_streak: 0 },
-      });
-    }
-  }
+  await Promise.all(winnerUserIds.map(async (userId) => {
+    const winner = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+    if (!winner) return;
+    await prisma.user.update({ where: { id: userId }, data: {
+      wager_wins: winner.wager_wins + 1,
+      biggest_wager_win: isPaidWager ? Math.max(winner.biggest_wager_win || 0, entryFee) : winner.biggest_wager_win,
+    } });
+  }));
+  await Promise.all(loserUserIds.map(async (userId) => {
+    const loser = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+    if (!loser) return;
+    await prisma.user.update({ where: { id: userId }, data: { wager_losses: loser.wager_losses + 1, current_win_streak: 0 } });
+  }));
   const payoutResult = isPaidWager
     ? await releaseWagerEscrow(wager, winnerId)
     : { totalPot: 0, winnerProfit: 0, walletChanges: {} };
-  const xpChanges = await applyMatchRewards({ winnerId, loserId, ranked: false });
+  const xpChanges = await applyParticipantRewards(winnerUserIds, loserUserIds);
   const completedWager = await updateEntity("Wager", wager.id, {
     xp_changes: xpChanges,
     wallet_changes: payoutResult.walletChanges,

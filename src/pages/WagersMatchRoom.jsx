@@ -494,8 +494,8 @@ export default function WagersMatchRoom() {
 
   const handleAdminResolve = async (action) => {
     const teamName = action === "approve_team_a"
-      ? (wager.host_name || "Team Alpha")
-      : (wager.challenger_name || "Team Bravo");
+      ? (wager.host_team_name || wager.host_name || "Team Alpha")
+      : (wager.challenger_team_name || wager.challenger_name || "Team Bravo");
     const confirmed = typeof window === "undefined"
       ? true
       : window.confirm(`Grant win to ${teamName} and auto-loss the other team?`);
@@ -698,14 +698,14 @@ export default function WagersMatchRoom() {
                 disabled={resolvingAdmin}
                 className="flex items-center justify-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-pink-300 transition-all hover:bg-pink-400/20 disabled:opacity-50"
               >
-                <ShieldCheck className="h-4 w-4" /> Grant Team Alpha Win
+                <ShieldCheck className="h-4 w-4" /> Grant {hostDisplayName} Win
               </button>
               <button
                 onClick={() => handleAdminResolve("approve_team_b")}
                 disabled={resolvingAdmin}
                 className="flex items-center justify-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-pink-300 transition-all hover:bg-pink-400/20 disabled:opacity-50"
               >
-                <ShieldCheck className="h-4 w-4" /> Grant Team Bravo Win
+                <ShieldCheck className="h-4 w-4" /> Grant {challengerDisplayName} Win
               </button>
             </div>
           )}
