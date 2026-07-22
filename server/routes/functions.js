@@ -5307,6 +5307,12 @@ async function createWager(req) {
     required_players_per_team: requiredSize,
     roster_locked: isTeamMatch,
     play_rule: playRule,
+    maps: RANKED_MAPS_BY_MODE[req.body.game_mode] || RANKED_MAPS_BY_MODE.snd,
+    series_maps: [],
+    final_map_id: "",
+    final_map_name: "",
+    host_banned_map_id: "",
+    host_banned_map_name: "",
     match_type: matchType,
     status: "open",
     created_date: new Date().toISOString(),
@@ -5430,16 +5436,19 @@ async function acceptWager(req) {
     });
   }
 
+  const selectedMaps = randomWagerMaps(wager.game_mode, wager.best_of);
   const updated = await updateEntity("Wager", wager.id, {
     challenger_id: req.user.id,
     challenger_name: nameFor(req.user),
     challenger_team_id: challengerTeam?.id,
     challenger_team_name: challengerTeam?.name,
     challenger_payment_mode: paymentMode,
-    challenger_banned_map_id: req.body.challenger_banned_map,
-    challenger_banned_map_name: req.body.challenger_banned_map_name,
-    final_map_id: req.body.final_map || wager.final_map_id,
-    final_map_name: req.body.final_map_name || wager.final_map_name,
+    challenger_banned_map_id: "",
+    challenger_banned_map_name: "",
+    maps: RANKED_MAPS_BY_MODE[wager.game_mode] || RANKED_MAPS_BY_MODE.snd,
+    series_maps: selectedMaps.map((map) => map.name),
+    final_map_id: selectedMaps[0]?.id || "",
+    final_map_name: selectedMaps[0]?.name || "",
     status: isTeamMatch ? "accepted" : "in_progress",
     accepted_date: new Date().toISOString(),
     match_started_date: isTeamMatch ? wager.match_started_date : new Date().toISOString(),
@@ -5707,6 +5716,28 @@ function randomRankedMap(gameMode, excludedNames = []) {
   const candidates = available.length > 0 ? available : pool;
   const name = candidates[Math.floor(Math.random() * candidates.length)];
   return { pool, name, id: name.toLowerCase().replace(/\s+/g, "_") };
+}
+
+function randomWagerMaps(gameMode, bestOf = 1) {
+  const sourcePool = [...(RANKED_MAPS_BY_MODE[gameMode] || RANKED_MAPS_BY_MODE.snd)];
+  const requestedCount = Math.max(1, Number(bestOf) || 1);
+  const selected = [];
+
+  while (selected.length < requestedCount) {
+    const round = [...sourcePool];
+    for (let index = round.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [round[index], round[swapIndex]] = [round[swapIndex], round[index]];
+    }
+    if (selected.length > 0 && round.length > 1 && round[0] === selected[selected.length - 1]) {
+      [round[0], round[1]] = [round[1], round[0]];
+    }
+    for (const name of round) {
+      selected.push(name);
+      if (selected.length === requestedCount) break;
+    }
+  }
+  return selected.map((name) => ({ name, id: name.toLowerCase().replace(/\s+/g, "_") }));
 }
 
 async function previousRankedMapFor(userId, excludeMatchId = "") {

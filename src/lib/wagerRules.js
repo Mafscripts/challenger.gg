@@ -1,9 +1,9 @@
 export const WAGER_PLAY_RULES = [
   {
     value: "controller_only",
-    label: "Controller Only",
-    shortLabel: "Controller only",
-    description: "Controllers are required. Mouse and keyboard input is not allowed.",
+    label: "PC + Controller Only",
+    shortLabel: "PC + Controller only",
+    description: "PC is allowed, but every player must use a controller. Mouse and keyboard input is not allowed.",
   },
   {
     value: "mixed_pc_allowed",

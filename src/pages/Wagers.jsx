@@ -7,7 +7,6 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
-import MapVetoModal from "@/components/match/MapVetoModal";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { wagerPlayRule } from "@/lib/wagerRules";
@@ -23,8 +22,6 @@ export default function Wagers() {
   const [tab, setTab] = useState("active");
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isVetoModalOpen, setIsVetoModalOpen] = useState(false);
-  const [selectedWager, setSelectedWager] = useState(null);
   const [wagers, setWagers] = useState([]);
   const [historyWagers, setHistoryWagers] = useState([]);
   const [user, setUser] = useState(null);
@@ -132,28 +129,19 @@ export default function Wagers() {
       return;
     }
 
-    setSelectedWager(wager);
-    setIsVetoModalOpen(true);
-  };
-
-  const handleVetoComplete = async ({ challenger_banned_map, challenger_banned_map_name, final_map, final_map_name }) => {
     try {
       const response = await base44.functions.invoke('acceptWager', {
-        wager_id: selectedWager.id,
-        team_id: acceptTeamByWager[selectedWager.id] || undefined,
-        payment_mode: acceptPaymentByWager[selectedWager.id] || "own",
-        challenger_banned_map,
-        challenger_banned_map_name,
-        final_map,
-        final_map_name,
+        wager_id: wager.id,
+        team_id: selectedTeamId || undefined,
+        payment_mode: paymentMode,
       });
 
       if (response.data.success) {
         toast({
           title: "Wager accepted!",
-          description: `Map: ${response.data.final_map_name || final_map_name}`,
+          description: `System-selected map: ${response.data.final_map_name || "Open the match room"}`,
         });
-        navigate(`/wagers-match/${selectedWager.id}`);
+        navigate(`/wagers-match/${wager.id}`);
       } else {
         toast({
           title: "Failed to accept",
@@ -169,8 +157,6 @@ export default function Wagers() {
         variant: "destructive"
       });
     } finally {
-      setIsVetoModalOpen(false);
-      setSelectedWager(null);
       loadData();
     }
   };
@@ -294,7 +280,7 @@ export default function Wagers() {
                     <div>
                       <p className="text-base font-black">{w.host_id === user?.id ? "Your wager" : "Anonymous player"}</p>
                     </div>
-                    <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · {w.final_map_name || "Map decided by veto"}</p><span className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-black uppercase tracking-wide text-vapor"><Gamepad2 className="h-3 w-3 text-cyan" /> {wagerPlayRule(w.play_rule).shortLabel}</span></div>
+                    <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · Random map after acceptance</p><span className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-black uppercase tracking-wide text-vapor"><Gamepad2 className="h-3 w-3 text-cyan" /> {wagerPlayRule(w.play_rule).shortLabel}</span></div>
                     <div><p className="font-mono text-xl font-black text-green">${w.entry_fee ?? w.amount ?? 0}</p><p className="text-[11px] uppercase text-vapor">per player</p></div>
                     <span className="w-fit rounded-md border border-cyan/15 bg-cyan/5 px-3 py-1.5 font-mono text-xs font-black text-cyan">BO{w.best_of || 1}</span>
                     <div className="md:justify-self-end">
@@ -393,18 +379,6 @@ export default function Wagers() {
               toast({ title: "Wager posted", description: "The match room opens after another player accepts your wager." });
             }
           }}
-        />
-
-        {/* Map Veto Modal */}
-        <MapVetoModal
-          isOpen={isVetoModalOpen}
-          onClose={() => {
-            setIsVetoModalOpen(false);
-            setSelectedWager(null);
-          }}
-          wager={selectedWager}
-          user={user}
-          onComplete={handleVetoComplete}
         />
 
         <AlertDialog open={Boolean(wagerToCancel)} onOpenChange={(open) => !open && !cancellingWagerId && setWagerToCancel(null)}>

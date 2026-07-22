@@ -17,6 +17,10 @@ const formatDate = (value) => value ? new Date(value).toLocaleString([], { month
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const playerName = (player) => player?.full_name || player?.username || player?.user_name || "Open slot";
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const wagerMapText = (match, pendingText = "Map pending") => {
+  const seriesMaps = Array.isArray(match?.series_maps) ? match.series_maps.filter(Boolean) : [];
+  return seriesMaps.length > 0 ? seriesMaps.join(" · ") : (match?.final_map_name || pendingText);
+};
 
 const matchPhaseFor = (match) => ({
   open: "Waiting for opponent",
@@ -139,7 +143,7 @@ function MatchStatusCard({ match }) {
       </div>
       <InfoRow label="Mode" value={match.game_mode_display || match.game_mode} />
       <InfoRow label="Input / platform" value={wagerPlayRule(match.play_rule).shortLabel} />
-      <InfoRow label="Map" value={match.final_map_name || "Map pending"} />
+      <InfoRow label="Map rotation" value={wagerMapText(match)} />
       <InfoRow label="Host" value={match.host_name || "Host pending"} />
       <InfoRow label="Server" value={match.server || match.server_region || match.region || "Platform lobby"} />
       <InfoRow label="Current status" value={formatStatus(match.status)} />
@@ -499,7 +503,7 @@ export default function WagersMatchRoom() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-background/25 px-6 py-4 md:px-8">
-              <div className="text-xs text-vapor">{wager.game_mode_display || wager.game_mode} · {wager.final_map_name || "Map pending"} · BO{bestOf} · {wagerPlayRule(wager.play_rule).shortLabel}</div>
+              <div className="text-xs text-vapor">{wager.game_mode_display || wager.game_mode} · Map hidden until acceptance · BO{bestOf} · {wagerPlayRule(wager.play_rule).shortLabel}</div>
               <Link to="/wagers" className="rounded-lg bg-cyan px-5 py-2.5 text-xs font-black uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/20">
                 Back to Wagers
               </Link>
@@ -526,7 +530,7 @@ export default function WagersMatchRoom() {
                 <span className="text-xs font-mono font-semibold uppercase tracking-wider text-green">Wager match · {matchPhaseFor(wager)}</span>
               </div>
               <h1 className="text-2xl font-black">{hostDisplayName} vs {challengerDisplayName}</h1>
-              <p className="mt-1 text-sm text-vapor">{wager.game_mode_display || wager.game_mode} · {wager.final_map_name || "Map pending"} · BO{bestOf} · {wagerPlayRule(wager.play_rule).shortLabel} · ID #{wager.id?.slice(-8)}</p>
+              <p className="mt-1 text-sm text-vapor">{wager.game_mode_display || wager.game_mode} · {wagerMapText(wager)} · BO{bestOf} · {wagerPlayRule(wager.play_rule).shortLabel} · ID #{wager.id?.slice(-8)}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="rounded-xl border border-green/20 bg-green/10 px-5 py-3 text-center">

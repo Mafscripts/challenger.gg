@@ -156,6 +156,16 @@
       "type": "string",
       "title": "Map Pool ID"
     },
+    "maps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "System Map Pool"
+    },
+    "series_maps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "Randomly Selected Series Maps"
+    },
     "host_banned_map_id": {
       "type": "string",
       "title": "Host Banned Map ID"

@@ -66,7 +66,6 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const [selectedAmount, setSelectedAmount] = useState(0);
   const [customAmount, setCustomAmount] = useState("");
   const [bestOf, setBestOf] = useState(1);
-  const [hostBannedMap, setHostBannedMap] = useState(null);
   const [userTeams, setUserTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [paymentMode, setPaymentMode] = useState("own");
@@ -131,10 +130,6 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         const matchType = mode === 'ranked' ? 'ranked' : mode === 'xp' ? 'xp' : mode === '8s' ? '8s' : 'wagers';
         
         if (isWager) {
-          const mapPool = mapsByMode[selectedGameMode] || [];
-          const remainingMaps = mapPool.filter(m => m.id !== hostBannedMap);
-          const autoSelectedMap = remainingMaps[Math.floor(Math.random() * remainingMaps.length)];
-          
           const response = await base44.functions.invoke('createWager', {
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
@@ -145,10 +140,6 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             team_id: selectedTeamId || undefined,
             payment_mode: paymentMode,
             play_rule: selectedPlayRule,
-            host_banned_map: hostBannedMap,
-            host_banned_map_name: mapPool.find(m => m.id === hostBannedMap)?.name || "",
-            final_map: autoSelectedMap?.id,
-            final_map_name: autoSelectedMap?.name,
             match_type: matchType,
           });
           
@@ -164,7 +155,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           
           toast({
             title: "Wager created!",
-            description: `Created ${selectedTeamSize} ${gameModeObj.name} for $${enteredAmount}`,
+            description: `Created ${selectedTeamSize} ${gameModeObj.name} for $${enteredAmount}. The map is selected after acceptance.`,
           });
           createdResult = {
             wager_id: response.data.wager_id || response.data.id || response.data.wager?.id,
@@ -607,60 +598,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     Back
                   </button>
                   <button
-                    onClick={() => setStep(5)}
-                    disabled={!enteredAmount || enteredAmount <= 0 || paymentTotal > walletBalance}
-                    className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
-                  >
-                    Next <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Map Ban (Wagers only - Host bans 1 map) */}
-            {step === 5 && isWager && (
-              <div>
-                <h3 className="text-sm font-bold mb-2 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">5</span>
-                  Ban One Map
-                </h3>
-                <p className="text-xs text-vapor mb-4">As the host, you'll ban one map. The challenger will ban another when accepting.</p>
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  {(mapsByMode[selectedGameMode] || []).map((map) => {
-                    const isSelected = hostBannedMap === map.id;
-                    return (
-                      <button
-                        key={map.id}
-                        onClick={() => setHostBannedMap(map.id)}
-                        className={`relative transform-gpu p-3 rounded-lg border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
-                          isSelected
-                            ? "bg-red-500/10 border-red-500/30 ring-2 ring-red-500/20"
-                            : "bg-secondary border-white/5 hover:border-white/10"
-                        }`}
-                      >
-                        <p className={`font-semibold text-sm ${isSelected ? "text-red-400" : ""}`}>{map.name}</p>
-                        {isSelected && (
-                          <div className="absolute top-2 right-2">
-                            <X className="w-4 h-4 text-red-400" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-between">
-                  <button
-                    onClick={() => setStep(4)}
-                    className="px-6 py-2.5 bg-secondary text-vapor font-bold text-xs rounded-lg hover:bg-white/10 transition-all uppercase tracking-wider"
-                  >
-                    Back
-                  </button>
-                  <button
                     onClick={handleCreate}
-                    disabled={!hostBannedMap || isCreating}
+                    disabled={!enteredAmount || enteredAmount <= 0 || paymentTotal > walletBalance || isCreating}
                     className="px-6 py-2.5 bg-green text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-green/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
-                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : "Create Wager"}
+                    <Swords className="w-4 h-4" /> {isCreating ? "Posting..." : "Post Wager"}
                   </button>
                 </div>
               </div>
