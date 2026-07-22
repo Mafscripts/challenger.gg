@@ -1,12 +1,12 @@
-export async function loadWagerParticipants(base44, wager) {
-  const participantRows = await base44.entities.WagerParticipant
-    .filter({ wager_id: wager.id })
+export async function loadWagerParticipants(base44, wager, options = {}) {
+  const participantRows = options.participantRows || await base44.entities.WagerParticipant
+    [options.fresh ? "filterFresh" : "filter"]({ wager_id: wager.id })
     .catch(() => []);
 
   const hydratedPlayers = await Promise.all((participantRows || []).map(async (participant) => {
     const [userRow, inventoryRows] = await Promise.all([
-      base44.entities.User.get(participant.user_id).catch(() => null),
-      base44.entities.UserInventory.filter({ user_id: participant.user_id }, "-acquired_date", 200).catch(() => []),
+      base44.entities.User[options.fresh ? "getFresh" : "get"](participant.user_id).catch(() => null),
+      base44.entities.UserInventory[options.fresh ? "filterFresh" : "filter"]({ user_id: participant.user_id }, "-acquired_date", 200).catch(() => []),
     ]);
 
     const inventoryTrophies = (inventoryRows || []).reduce((counts, item) => {

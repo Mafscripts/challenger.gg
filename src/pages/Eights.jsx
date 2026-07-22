@@ -35,6 +35,53 @@ export default function Eights() {
     loadLobbies();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const refresh = () => refreshLobbyList({ isActive: () => active }).catch((error) => console.error("Failed to refresh 8s lobbies:", error));
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const interval = setInterval(refresh, 1000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+
+  const refreshLobbyList = async ({ isActive = () => true } = {}) => {
+    const [records, liveRecords] = await Promise.all([
+      base44.entities.Wager.filterFresh({ status: "open", entry_fee: 0, match_type: "8s" }, "-created_date", 50),
+      base44.entities.Wager.filterFresh({ status: "in_progress", entry_fee: 0, match_type: "8s" }, "-created_date", 50).catch(() => []),
+    ]);
+    const lobbiesWithParticipants = await Promise.all((records || []).map(async (wager) => {
+      const participants = await base44.entities.WagerParticipant.filterFresh({ wager_id: wager.id }).catch(() => []);
+      return { wager, participantCount: participants.length };
+    }));
+    if (!isActive()) return;
+    setLobbies(lobbiesWithParticipants.map(({ wager, participantCount }) => ({
+      id: wager.id,
+      hostId: wager.host_id,
+      host: wager.host_name || "Host unavailable",
+      teamName: wager.host_team_name || wager.host_name || "Host unavailable",
+      hostSlug: wager.host_name || wager.host_id || "",
+      mode: wager.team_size,
+      gameMode: wager.game_mode_display,
+      map: wager.final_map_name || "Map pending",
+      players: `${participantCount}/${teamCapacity[wager.team_size] || 2}`,
+      wager: null,
+      status: "Open",
+    })));
+    setStats({
+      activeLobbies: lobbiesWithParticipants.length,
+      playersQueued: lobbiesWithParticipants.reduce((total, row) => total + row.participantCount, 0),
+      matchesLive: liveRecords.length,
+    });
+  };
+
   const loadLobbies = async () => {
     try {
       setLoading(true);
@@ -55,33 +102,7 @@ export default function Eights() {
       } else {
         setUserTeams([]);
       }
-      const [records, liveRecords] = await Promise.all([
-        base44.entities.Wager.filter({ status: "open", entry_fee: 0, match_type: "8s" }, "-created_date", 50),
-        base44.entities.Wager.filter({ status: "in_progress", entry_fee: 0, match_type: "8s" }, "-created_date", 50).catch(() => []),
-      ]);
-      const lobbiesWithParticipants = await Promise.all((records || []).map(async (wager) => {
-        const participants = await base44.entities.WagerParticipant.filter({ wager_id: wager.id }).catch(() => []);
-        return { wager, participantCount: participants.length };
-      }));
-
-      setLobbies(lobbiesWithParticipants.map(({ wager, participantCount }) => ({
-        id: wager.id,
-        hostId: wager.host_id,
-        host: wager.host_name || "Host unavailable",
-        teamName: wager.host_team_name || wager.host_name || "Host unavailable",
-        hostSlug: wager.host_name || wager.host_id || "",
-        mode: wager.team_size,
-        gameMode: wager.game_mode_display,
-        map: wager.final_map_name || "Map pending",
-        players: `${participantCount}/${teamCapacity[wager.team_size] || 2}`,
-        wager: null,
-        status: "Open",
-      })));
-      setStats({
-        activeLobbies: lobbiesWithParticipants.length,
-        playersQueued: lobbiesWithParticipants.reduce((total, row) => total + row.participantCount, 0),
-        matchesLive: liveRecords.length,
-      });
+      await refreshLobbyList();
     } catch (error) {
       console.error("Failed to load 8s lobbies:", error);
       toast({ title: "Could not load lobbies", description: error.message || "Please try again.", variant: "destructive" });

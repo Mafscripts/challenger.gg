@@ -1181,8 +1181,27 @@ async function updateRankedOutcome(userId, didWin, requestedEloDelta = null) {
 }
 
 async function applyMatchRewards({ winnerId, loserId, ranked = false }) {
+  const xpChanges = {};
+  const applyXpReward = async (userId, didWin) => {
+    if (!userId) return;
+    const before = await ensureXPStats(userId);
+    const after = await updateXPOutcome(userId, didWin);
+    xpChanges[userId] = {
+      won: didWin,
+      amount: didWin ? WIN_XP : LOSS_XP,
+      previous_level: Number(before?.level || 1),
+      previous_current_xp: Number(before?.current_xp || 0),
+      previous_total_xp: Number(before?.total_xp || 0),
+      previous_xp_to_next_level: Number(before?.xp_to_next_level || 1000),
+      new_level: Number(after?.level || before?.level || 1),
+      new_current_xp: Number(after?.current_xp || before?.current_xp || 0),
+      new_total_xp: Number(after?.total_xp || before?.total_xp || 0),
+      new_xp_to_next_level: Number(after?.xp_to_next_level || before?.xp_to_next_level || 1000),
+    };
+  };
+
   if (winnerId) {
-    await updateXPOutcome(winnerId, true);
+    await applyXpReward(winnerId, true);
     await updateProfileOutcome(winnerId, true, ranked ? RANKED_WIN_ELO : 0);
     await prisma.user.update({
       where: { id: winnerId },
@@ -1190,7 +1209,7 @@ async function applyMatchRewards({ winnerId, loserId, ranked = false }) {
     }).catch(() => null);
   }
   if (loserId) {
-    await updateXPOutcome(loserId, false);
+    await applyXpReward(loserId, false);
     await updateProfileOutcome(loserId, false, ranked ? RANKED_LOSS_ELO : 0);
     await prisma.user.update({
       where: { id: loserId },
@@ -1203,6 +1222,7 @@ async function applyMatchRewards({ winnerId, loserId, ranked = false }) {
       loserId ? updateRankedOutcome(loserId, false) : Promise.resolve(null),
     ]);
   }
+  return xpChanges;
 }
 
 async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
@@ -5754,17 +5774,18 @@ async function completeWager(req) {
   if (isPaidWager) {
     await releaseWagerEscrow(wager, winnerId);
   }
-  await applyMatchRewards({ winnerId, loserId, ranked: false });
+  const xpChanges = await applyMatchRewards({ winnerId, loserId, ranked: false });
+  const completedWager = await updateEntity("Wager", wager.id, { xp_changes: xpChanges });
   await notifyUsers([winnerId, loserId], {
     title: "Match completed",
     message: `${winnerName} won ${wager.game_mode_display || wager.game_mode || "the match"}.`,
     type: "match",
-    action_url: `/wagers-match/${wager.id}`,
+    action_url: (wager.match_type || "wagers") === "8s" ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`,
     related_entity_id: wager.id,
     related_entity_type: "Wager",
   });
 
-  return { success: true, winner_id: winnerId, winner_name: winnerName };
+  return { success: true, winner_id: winnerId, winner_name: winnerName, xp_changes: xpChanges, wager: completedWager };
 }
 
 async function refundWager(req) {

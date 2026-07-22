@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
   AlertTriangle, Clock, Check, AlertCircle, Flag, Map as MapIcon,
   RefreshCw, Shield, Swords, Trophy
@@ -14,6 +15,86 @@ import { loadWagerParticipants } from "@/lib/wagerParticipants";
 
 const playerName = (player) => player?.full_name || player?.display_name || player?.username || player?.user_name || "Unknown player";
 const statusLabel = (status) => String(status || "open").replace(/_/g, " ");
+
+function EightsResultOverlay({ wager, result, onContinue }) {
+  const reduceMotion = useReducedMotion();
+  const progress = useMotionValue(0);
+  const [showContinue, setShowContinue] = useState(Boolean(reduceMotion));
+  const levelChanged = result.new_level > result.previous_level;
+  const displayedTotalXp = useTransform(progress, (value) => Math.round(
+    result.previous_total_xp + ((result.new_total_xp - result.previous_total_xp) * value)
+  ));
+  const displayedLevel = useTransform(progress, (value) => (
+    levelChanged && value >= 0.58 ? result.new_level : result.previous_level
+  ));
+  const displayedCurrentXp = useTransform(progress, (value) => {
+    if (!levelChanged) {
+      return Math.round(result.previous_current_xp + ((result.new_current_xp - result.previous_current_xp) * value));
+    }
+    if (value < 0.58) {
+      return Math.round(result.previous_current_xp + ((result.previous_xp_to_next_level - result.previous_current_xp) * (value / 0.58)));
+    }
+    return Math.round(result.new_current_xp * ((value - 0.58) / 0.42));
+  });
+  const displayedTargetXp = useTransform(progress, (value) => (
+    levelChanged && value >= 0.58 ? result.new_xp_to_next_level : result.previous_xp_to_next_level
+  ));
+  const progressScale = useTransform(progress, (value) => {
+    if (!levelChanged) {
+      const current = result.previous_current_xp + ((result.new_current_xp - result.previous_current_xp) * value);
+      return Math.max(0, Math.min(1, current / Math.max(result.new_xp_to_next_level, 1)));
+    }
+    if (value < 0.58) {
+      const current = result.previous_current_xp + ((result.previous_xp_to_next_level - result.previous_current_xp) * (value / 0.58));
+      return Math.max(0, Math.min(1, current / Math.max(result.previous_xp_to_next_level, 1)));
+    }
+    return Math.max(0, Math.min(1, (result.new_current_xp * ((value - 0.58) / 0.42)) / Math.max(result.new_xp_to_next_level, 1)));
+  });
+
+  useEffect(() => {
+    progress.set(reduceMotion ? 1 : 0);
+    if (reduceMotion) {
+      setShowContinue(true);
+      return undefined;
+    }
+    setShowContinue(false);
+    const controls = animate(progress, 1, {
+      delay: 0.7,
+      duration: 1.65,
+      ease: [0.22, 1, 0.36, 1],
+      onComplete: () => setShowContinue(true),
+    });
+    return () => controls.stop();
+  }, [progress, reduceMotion]);
+
+  const won = Boolean(result.won);
+  const alphaScore = wager.confirmed_score_alpha ?? (wager.winner_id === wager.host_id ? wager.winner_score : wager.loser_score);
+  const bravoScore = wager.confirmed_score_bravo ?? (wager.winner_id === wager.challenger_id ? wager.winner_score : wager.loser_score);
+
+  return (
+    <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <motion.div initial={{ opacity: 0, y: 30, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className={`relative w-full max-w-md overflow-hidden rounded-3xl border bg-card p-7 text-center shadow-2xl ${won ? "border-green/30" : "border-red-500/30"}`}>
+        <motion.div className={`absolute inset-x-0 top-0 h-1 origin-left ${won ? "bg-green" : "bg-red-500"}`} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.7, delay: 0.15 }} />
+        <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}><Trophy className="h-8 w-8" /></div>
+        <p className={`mt-5 text-xs font-black uppercase tracking-[0.24em] ${won ? "text-green" : "text-red-400"}`}>{won ? "Victory" : "Defeat"}</p>
+        <h2 className="mt-2 text-4xl font-black">{alphaScore ?? 0} - {bravoScore ?? 0}</h2>
+        <p className="mt-1 text-xs text-vapor">{won ? "Match won. Your XP has been added." : "Match completed. Your participation XP has been added."}</p>
+
+        <div className="mt-6 rounded-2xl border border-white/5 bg-background/45 p-5 text-left">
+          <div className="flex items-end justify-between gap-3">
+            <div><p className="text-[10px] font-black uppercase tracking-wider text-vapor">XP progress</p><p className="mt-1 text-xl font-black">Level <motion.span>{displayedLevel}</motion.span></p></div>
+            <div className="text-right"><p className={`font-mono text-2xl font-black ${won ? "text-green" : "text-cyan"}`}>+{result.amount} XP</p><p className="text-[10px] text-vapor"><motion.span>{displayedTotalXp}</motion.span> total XP</p></div>
+          </div>
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/5"><motion.div className={`h-full origin-left rounded-full ${won ? "bg-gradient-to-r from-cyan to-green" : "bg-cyan"}`} style={{ scaleX: progressScale }} /></div>
+          <div className="mt-2 flex justify-between font-mono text-[11px] text-vapor"><span><motion.span>{displayedCurrentXp}</motion.span> XP</span><span><motion.span>{displayedTargetXp}</motion.span> XP</span></div>
+          {levelChanged && <p className="mt-3 text-center text-xs font-black uppercase tracking-wider text-yellow-400">Level up · {result.previous_level} → {result.new_level}</p>}
+        </div>
+
+        <AnimatePresence>{showContinue && <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} onClick={onContinue} className="mt-6 w-full rounded-xl bg-orange px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to 8s</motion.button>}</AnimatePresence>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 function RoomTeamCard({ label, tone, name, players, score, setScore, disabled, host }) {
   const cyan = tone === "cyan";
@@ -88,11 +169,45 @@ export default function EightsMatchRoom() {
   const [supporting, setSupporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [disputing, setDisputing] = useState(false);
+  const [resultDismissed, setResultDismissed] = useState(false);
+  const rosterSignatureRef = useRef("");
 
   useEffect(() => {
     setLoading(true);
     loadUser();
     loadWager();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return undefined;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const [latest, participantRows] = await Promise.all([
+          base44.entities.Wager.getFresh(id),
+          base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 20).catch(() => []),
+        ]);
+        if (!active || !latest) return;
+        setWager(latest);
+        const rosterSignature = (participantRows || [])
+          .map((participant) => `${participant.user_id}:${participant.team}:${participant.is_captain ? 1 : 0}`)
+          .sort()
+          .join("|");
+        if (rosterSignature === rosterSignatureRef.current) return;
+        const participants = await loadWagerParticipants(base44, latest, { participantRows, fresh: true });
+        if (!active) return;
+        rosterSignatureRef.current = rosterSignature;
+        setTeamAPlayers(participants.teamAPlayers);
+        setTeamBPlayers(participants.teamBPlayers);
+      } catch (error) {
+        console.error("Failed to refresh 8s match:", error);
+      }
+    };
+    const interval = setInterval(refresh, 1000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [id]);
 
   const loadUser = async () => {
@@ -113,10 +228,17 @@ export default function EightsMatchRoom() {
 
   const loadWager = async () => {
     try {
-      const wagerData = await base44.entities.Wager.get(id);
+      const [wagerData, participantRows] = await Promise.all([
+        base44.entities.Wager.getFresh(id),
+        base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 20).catch(() => []),
+      ]);
       setWager(wagerData);
 
-      const { teamAPlayers, teamBPlayers } = await loadWagerParticipants(base44, wagerData);
+      const { teamAPlayers, teamBPlayers } = await loadWagerParticipants(base44, wagerData, { participantRows, fresh: true });
+      rosterSignatureRef.current = (participantRows || [])
+        .map((participant) => `${participant.user_id}:${participant.team}:${participant.is_captain ? 1 : 0}`)
+        .sort()
+        .join("|");
       setTeamAPlayers(teamAPlayers);
       setTeamBPlayers(teamBPlayers);
     } catch (error) {
@@ -181,7 +303,7 @@ export default function EightsMatchRoom() {
             return;
           }
           toast({ title: "Match completed!", description: `${response.data.winner_name} won ${response.data.winner_score}-${response.data.loser_score}` });
-          navigate('/8s');
+          setWager(completeResponse.data.wager || { ...wager, status: "completed", winner_id: completeResponse.data.winner_id, winner_name: completeResponse.data.winner_name, xp_changes: completeResponse.data.xp_changes });
         } else if (response.data.status === 'score_conflict') {
           toast({ title: "Score conflict", description: "Dispute opened", variant: "destructive" });
         } else {
@@ -280,10 +402,16 @@ export default function EightsMatchRoom() {
   const isComplete = wager.status === "completed";
   const canSubmit = isParticipant && Boolean(wager.challenger_id) && !isComplete;
   const predictedWinner = scoreA === scoreB ? null : scoreA > scoreB ? wager.host_name : wager.challenger_name;
+  const personalResult = wager.xp_changes?.[user?.id] || null;
+  const dismissResult = () => {
+    setResultDismissed(true);
+    navigate("/8s", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-obsidian py-6">
       <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
+        {isComplete && personalResult && !resultDismissed && <EightsResultOverlay wager={wager} result={personalResult} onContinue={dismissResult} />}
         <div className="glass rounded-xl border border-orange/20 p-6 mb-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
