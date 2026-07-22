@@ -784,16 +784,6 @@ export default function Navbar() {
               {/* Messages */}
               <div
                 className="nav-dropdown-anchor relative hidden sm:block"
-                onMouseEnter={() => {
-                  cancelDropdownClose();
-                  setMessagesOpen(true);
-                  setNavMenuOpen(null);
-                  setMatchesOpen(false);
-                  setNotifOpen(false);
-                  setProfileOpen(false);
-                  loadMessages({ fresh: true });
-                }}
-                onMouseLeave={() => scheduleDropdownClose(() => setMessagesOpen(false))}
               >
                 <Link
                   to="/messages"
@@ -802,7 +792,7 @@ export default function Navbar() {
                     setNotifOpen(false);
                     setProfileOpen(false);
                   }}
-                  className="p-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-lg text-vapor transition-colors hover:bg-secondary hover:text-foreground"
                   aria-label="Open messages"
                 >
                   <MessageSquare className="w-4 h-4" />
