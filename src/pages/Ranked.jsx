@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { Award, Clock, Globe, Plus, Swords, Trophy } from "lucide-react";
@@ -10,7 +10,6 @@ import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import {
-  RANK_REWARDS,
   RANK_THRESHOLDS,
   getNextRankForElo,
   getRankForElo,
@@ -42,7 +41,6 @@ const groupedRanks = RANK_THRESHOLDS.reduce((tiers, rank) => {
   ];
 }, []);
 
-const playerName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const rankRangeLabel = (tier) => (
   tier.tier === "champion"
     ? `${tier.min.toLocaleString()}+ ELO`
@@ -51,12 +49,10 @@ const rankRangeLabel = (tier) => (
 
 export default function Ranked() {
   const navigate = useNavigate();
-  const [region, setRegion] = useState("Global");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [currentStats, setCurrentStats] = useState(null);
   const [rankedMatches, setRankedMatches] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
   const [loadingMatches, setLoadingMatches] = useState(true);
 
   useEffect(() => {
@@ -75,7 +71,6 @@ export default function Ranked() {
       ]);
 
       setRankedMatches(matches || []);
-      setLeaderboard(statsRows || []);
       setCurrentStats((statsRows || []).find((stats) => stats.user_id === currentUser?.id) || null);
     } catch (error) {
       console.error("Failed to load ranked data:", error);
@@ -84,11 +79,6 @@ export default function Ranked() {
       setLoadingMatches(false);
     }
   };
-
-  const filteredLeaderboard = useMemo(() => {
-    if (region === "Global") return leaderboard.slice(0, 10);
-    return leaderboard.filter((row) => row.region?.toLowerCase() === region.toLowerCase()).slice(0, 10);
-  }, [leaderboard, region]);
 
   const elo = currentStats?.elo || 0;
   const rank = getRankForElo(elo);
@@ -256,61 +246,14 @@ export default function Ranked() {
           </div>
 
           <div className="space-y-6">
-            <div className="glass rounded-xl border border-white/5 overflow-hidden">
-              <div className="px-5 py-4 border-b border-white/5">
-                <h3 className="font-bold text-sm flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-cyan" />
-                  Rankings
-                </h3>
-              </div>
-              <div className="p-3 flex gap-2">
-                {["Global", "NA", "EU", "APAC"].map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => setRegion(item)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      region === item ? "bg-cyan text-background" : "bg-secondary text-vapor hover:text-foreground"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-              <div className="divide-y divide-white/5">
-                {filteredLeaderboard.length === 0 ? (
-                  <p className="px-5 py-6 text-center text-xs text-vapor">No ranked stats yet.</p>
-                ) : filteredLeaderboard.map((player, index) => (
-                  <Link key={player.id || player.user_id} to={`/profile/${player.username || player.user_id || player.id || ""}`} className="px-5 py-3 flex items-center gap-3 hover:bg-white/[0.02] transition-colors">
-                    <span className={`w-6 text-sm font-bold font-mono ${index < 3 ? "text-orange" : "text-vapor"}`}>#{index + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{player.username || playerName(player)}</p>
-                      <p className="text-[10px] text-vapor">{(player.region || "global").toUpperCase()}</p>
-                    </div>
-                    <span className="text-sm font-mono text-cyan">{(player.elo || 0).toLocaleString()}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="glass rounded-xl border border-white/5 overflow-hidden">
-              <div className="px-5 py-4 border-b border-white/5">
-                <h3 className="font-bold text-sm flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-yellow-400" />
-                  Ranked Rewards
-                </h3>
-              </div>
-              <div className="divide-y divide-white/5">
-                {RANK_REWARDS.map((reward) => (
-                  <div key={reward.key} className="px-5 py-3 flex items-center gap-3">
-                    <Award className="w-4 h-4 text-cyan" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">{reward.name}</p>
-                      <p className="text-[10px] text-vapor">{reward.required_elo.toLocaleString()} ELO</p>
-                    </div>
-                    <span className="text-[10px] text-vapor uppercase">{reward.rarity}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="glass rounded-xl border border-white/5 p-5">
+              <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-cyan" />
+                Match Rules
+              </h3>
+              <p className="text-xs text-vapor">
+                Both players must submit matching scores. Conflicting reports create a support ticket for staff review.
+              </p>
             </div>
 
             <div className="glass rounded-xl border border-white/5 p-5">
@@ -329,16 +272,6 @@ export default function Ranked() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="glass rounded-xl border border-white/5 p-5">
-              <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan" />
-                Match Rules
-              </h3>
-              <p className="text-xs text-vapor">
-                Both players must submit matching scores. Conflicting reports create a support ticket for staff review.
-              </p>
             </div>
           </div>
         </div>
