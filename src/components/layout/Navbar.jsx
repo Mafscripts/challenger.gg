@@ -3,9 +3,9 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, Bell, MessageSquare, ChevronDown, User, Crown,
   Menu, X, Gamepad2, Swords, Trophy, ShoppingBag,
-  BarChart3, Users, Newspaper, BookOpen, Zap, Target,
+  Users, Newspaper, BookOpen, Zap, Target,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, LifeBuoy
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
@@ -15,36 +15,47 @@ const navGroups = [
   {
     label: "Compete",
     icon: Swords,
+    eyebrow: "Competition Hub",
+    tone: "cyan",
     items: [
-      { label: "8s", path: "/8s", icon: Target },
-      { label: "Ranked", path: "/ranked", icon: Swords },
-      { label: "Wagers", path: "/wagers", icon: Zap },
-      { label: "Tournaments", path: "/tournaments", icon: Trophy },
+      { label: "Ranked", description: "Climb the competitive ladder", path: "/ranked", icon: Swords, tone: "cyan" },
+      { label: "Wagers", description: "Compete for real stakes", path: "/wagers", icon: Zap, tone: "green" },
+      { label: "Tournaments", description: "Enter official competitions", path: "/tournaments", icon: Trophy, tone: "orange" },
+      { label: "8s", description: "Quick competitive lobbies", path: "/8s", icon: Target, tone: "purple" },
     ],
   },
   {
-    label: "Rankings",
-    icon: BarChart3,
+    label: "Leaderboards",
+    icon: Trophy,
+    eyebrow: "Competitive Rankings",
+    tone: "gold",
     items: [
-      { label: "Ranked Leaderboard", path: "/leaderboards", icon: Trophy },
-      { label: "XP Ladder", path: "/xp", icon: Zap },
+      { label: "Ranked Leaderboard", description: "Top players by Ranked ELO", path: "/leaderboards", icon: Trophy, tone: "gold" },
+      { label: "XP Ladder", description: "Progress and account levels", path: "/xp", icon: Zap, tone: "purple" },
     ],
   },
   {
     label: "Armory",
     icon: ShoppingBag,
+    eyebrow: "Your Collection",
+    tone: "purple",
     items: [
-      { label: "Marketplace", path: "/marketplace", icon: ShoppingBag },
-      { label: "Premium", path: "/premium", icon: Crown },
+      { label: "Marketplace", description: "Discover items and cosmetics", path: "/marketplace", icon: ShoppingBag, tone: "purple" },
+      { label: "My Inventory", description: "Manage your owned items", path: "/inventory", icon: Package, tone: "cyan" },
+      { label: "Trading", description: "Trade with other players", path: "/trading", icon: Activity, tone: "green" },
+      { label: "Premium", description: "Unlock premium benefits", path: "/premium", icon: Crown, tone: "gold" },
     ],
   },
   {
     label: "Community",
     icon: Users,
+    eyebrow: "Topfragg Network",
+    tone: "blue",
     items: [
-      { label: "Teams", path: "/teams", icon: Users },
-      { label: "News", path: "/news", icon: Newspaper },
-      { label: "Rules", path: "/rules", icon: BookOpen },
+      { label: "Teams", description: "Build and manage your roster", path: "/teams", icon: Users, tone: "blue" },
+      { label: "News", description: "Latest Topfragg updates", path: "/news", icon: Newspaper, tone: "cyan" },
+      { label: "Rules", description: "Competitive rules and policies", path: "/rules", icon: BookOpen, tone: "orange" },
+      { label: "Support", description: "Get help from our staff", path: "/support", icon: LifeBuoy, tone: "red" },
     ],
   },
 ];
@@ -55,7 +66,7 @@ const mobileNavSections = [
     items: navGroups[0].items,
   },
   {
-    label: "Rankings",
+    label: "Leaderboards",
     items: navGroups[1].items,
   },
   {
@@ -97,7 +108,16 @@ const activeTournamentStatuses = new Set([
   "disputed",
 ]);
 
-const navButtonClass = "relative inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-all duration-100";
+const navButtonClass = "relative inline-flex h-10 items-center gap-2 rounded-xl border px-2.5 text-[13px] font-bold transition-colors duration-100";
+const navTone = {
+  cyan: { button: "border-cyan/25 bg-cyan/10 text-cyan", icon: "border-cyan/20 bg-cyan/10 text-cyan" },
+  gold: { button: "border-yellow-400/25 bg-yellow-400/10 text-yellow-300", icon: "border-yellow-400/20 bg-yellow-400/10 text-yellow-300" },
+  purple: { button: "border-purple-400/25 bg-purple-400/10 text-purple-300", icon: "border-purple-400/20 bg-purple-400/10 text-purple-300" },
+  blue: { button: "border-blue-400/25 bg-blue-400/10 text-blue-300", icon: "border-blue-400/20 bg-blue-400/10 text-blue-300" },
+  green: { button: "border-green/25 bg-green/10 text-green", icon: "border-green/20 bg-green/10 text-green" },
+  orange: { button: "border-orange/25 bg-orange/10 text-orange", icon: "border-orange/20 bg-orange/10 text-orange" },
+  red: { button: "border-red-400/25 bg-red-400/10 text-red-300", icon: "border-red-400/20 bg-red-400/10 text-red-300" },
+};
 
 const participantBelongsToUser = (participant, userId) => (
   participant?.captain_id === userId
@@ -157,7 +177,7 @@ export default function Navbar() {
     dropdownCloseTimer.current = window.setTimeout(() => {
       close();
       dropdownCloseTimer.current = null;
-    }, 220);
+    }, 100);
   };
 
   const closeDropdowns = () => {
@@ -422,6 +442,7 @@ export default function Navbar() {
                   const GroupIcon = group.icon;
                   const active = group.items.some((item) => location.pathname === item.path);
                   const open = navMenuOpen === group.label;
+                  const groupTone = navTone[group.tone] || navTone.cyan;
 
                   return (
                     <div
@@ -442,34 +463,45 @@ export default function Navbar() {
                         onClick={() => setNavMenuOpen(open ? null : group.label)}
                         className={`${navButtonClass} ${
                           active || open
-                            ? "bg-cyan/10 text-cyan border border-cyan/20"
-                            : "text-vapor hover:text-foreground hover:bg-white/5 border border-transparent"
+                            ? groupTone.button
+                            : "border-transparent text-vapor hover:border-white/10 hover:bg-white/5 hover:text-foreground"
                         }`}
                       >
-                        <GroupIcon className="w-3.5 h-3.5" />
+                        <span className={`flex h-7 w-7 items-center justify-center rounded-lg border ${active || open ? groupTone.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
+                          <GroupIcon className="h-3.5 w-3.5" />
+                        </span>
                         {group.label}
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
                       </button>
 
                       {open && (
-                          <div className="nav-popover nav-popover-enter absolute left-0 top-11 w-56 rounded-xl p-2">
+                          <div className="nav-popover nav-popover-enter absolute left-0 top-12 w-[310px] rounded-xl p-2.5">
+                            <div className="mb-2 border-b border-white/[0.06] px-2 pb-2.5 pt-1">
+                              <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${groupTone.icon.split(" ").at(-1)}`}>{group.eyebrow}</p>
+                              <p className="mt-1 text-[11px] text-vapor">Choose where you want to go</p>
+                            </div>
                             {group.items.map((item) => {
                               const ItemIcon = item.icon;
                               const itemActive = location.pathname === item.path;
+                              const itemTone = navTone[item.tone] || navTone.cyan;
 
                               return (
                                 <Link
                                   key={item.path}
                                   to={item.path}
                                   onClick={() => setNavMenuOpen(null)}
-                                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all ${
+                                  className={`group flex items-center gap-3 rounded-lg border px-2.5 py-2.5 transition-colors duration-100 ${
                                     itemActive
-                                      ? "bg-cyan/10 text-cyan"
-                                      : "text-vapor hover:bg-white/5 hover:text-foreground"
+                                      ? `${itemTone.button}`
+                                      : "border-transparent text-vapor hover:border-white/[0.07] hover:bg-white/[0.045] hover:text-foreground"
                                   }`}
                                 >
-                                  <ItemIcon className="w-4 h-4" />
-                                  <span className="font-medium">{item.label}</span>
+                                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${itemTone.icon}`}><ItemIcon className="h-4 w-4" /></span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block text-[13px] font-black">{item.label}</span>
+                                    <span className="mt-0.5 block truncate text-[10px] text-vapor">{item.description}</span>
+                                  </span>
+                                  <span className="text-vapor/40 transition-transform duration-100 group-hover:translate-x-0.5 group-hover:text-foreground">→</span>
                                 </Link>
                               );
                             })}
@@ -495,12 +527,12 @@ export default function Navbar() {
                   <button
                     className={`${navButtonClass} ${
                       matchesOpen
-                        ? "bg-cyan/10 text-cyan border border-cyan/20"
-                        : "text-vapor hover:text-foreground hover:bg-white/5 border border-transparent"
+                        ? "border-green/25 bg-green/10 text-green"
+                        : "border-transparent text-vapor hover:border-white/10 hover:bg-white/5 hover:text-foreground"
                     }`}
                   >
-                    <Activity className="w-3.5 h-3.5" />
-                    Matches
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-lg border ${matchesOpen ? "border-green/20 bg-green/10 text-green" : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}><Activity className="h-3.5 w-3.5" /></span>
+                    My Matches
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform ${matchesOpen ? "rotate-180" : ""}`} />
                     {activeMatches.length > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange rounded-full" />
@@ -593,12 +625,15 @@ export default function Navbar() {
               {user ? (
                 <>
               {/* Wallet */}
-              <Link to="/wallet" className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green/10 border border-green/20 hover:border-green/40 transition-all">
-                <Wallet className="w-4 h-4 text-green" />
-                <span className="text-green text-sm font-mono font-semibold">
-                  ${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </Link>
+              <div className="hidden h-10 items-center overflow-hidden rounded-xl border border-green/25 bg-green/10 md:flex">
+                <Link to="/wallet" className="flex h-full items-center gap-2 px-3 text-green transition-colors hover:bg-green/10">
+                  <Wallet className="h-4 w-4" />
+                  <span className="font-mono text-sm font-black">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </Link>
+                <Link to="/wallet" title="Add funds" aria-label="Add funds" className="flex h-full w-9 items-center justify-center border-l border-green/20 text-green transition-colors hover:bg-green/15 hover:text-white">
+                  <Plus className="h-4 w-4" />
+                </Link>
+              </div>
 
               {/* Notifications */}
               <div
@@ -754,7 +789,7 @@ export default function Navbar() {
               {canSeeAdminLink && (
                 <Link
                   to="/admin"
-                  className="hidden lg:inline-flex items-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-3 py-2 text-sm font-semibold text-pink-300 transition-all hover:border-pink-400/40 hover:text-pink-200"
+                  className="hidden h-10 items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 text-sm font-black text-red-300 transition-colors hover:border-red-400/50 hover:bg-red-500/15 hover:text-red-200 lg:inline-flex"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   Admin
@@ -776,29 +811,43 @@ export default function Navbar() {
               >
                 <button
                   type="button"
-                  className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg hover:bg-secondary transition-all"
+                  className={`flex h-10 items-center gap-2 rounded-xl border px-2 transition-colors ${profileOpen ? "border-cyan/25 bg-cyan/10" : "border-white/[0.07] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.05]"}`}
                 >
-                  <div className="w-7 h-7 rounded-md bg-gradient-to-br from-cyan/30 to-orange/30 border border-white/10 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan/30 to-orange/30 border border-white/10 flex items-center justify-center">
                     <User className="w-3.5 h-3.5" />
                   </div>
+                  <span className="hidden max-w-[110px] text-left lg:block">
+                    <span className="block truncate text-xs font-black text-foreground">{accountName}</span>
+                    <span className={`block text-[8px] font-black uppercase tracking-wider ${canSeeAdminLink ? "text-red-300" : "text-vapor"}`}>{canSeeAdminLink ? (user?.role || "Staff").replace("_", " ") : "Competitor"}</span>
+                  </span>
                   <ChevronDown className={`w-3.5 h-3.5 text-vapor transition-transform ${profileOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {profileOpen && (
-                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-72 rounded-xl p-2">
-                      <div className="px-3 py-2 border-b border-white/5 mb-1">
-                        <p className="text-sm font-semibold">{accountName}</p>
-                        <p className="text-xs text-vapor">
-                          {user?.credits ? `${user.credits.toLocaleString()} Credits` : 'Member'}
-                        </p>
+                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 rounded-xl p-2.5">
+                      <div className="mb-2 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.025] p-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 to-orange/20"><User className="h-5 w-5 text-cyan" /></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-black">{accountName}</p>
+                          <p className={`mt-0.5 text-[9px] font-black uppercase tracking-wider ${canSeeAdminLink ? "text-red-300" : "text-cyan"}`}>{canSeeAdminLink ? `${(user?.role || "Staff").replace("_", " ")} · Topfragg Staff` : "Topfragg Competitor"}</p>
+                          <Link to={profilePath} onClick={() => setProfileOpen(false)} className="mt-1 inline-block text-[10px] font-bold text-vapor hover:text-cyan">View public profile →</Link>
+                        </div>
                       </div>
                       <ProfileMenuSection
                         label="Account"
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
-                          { label: "My Teams", path: "/teams", icon: Users },
-                          ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
                           { label: "Settings", path: "/settings", icon: Settings },
+                        ]}
+                        onSelect={() => setProfileOpen(false)}
+                      />
+                      <ProfileMenuSection
+                        label="Competitive"
+                        items={[
+                          { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
+                          { label: "My Teams", path: "/teams", icon: Users },
+                          { label: "Match History", path: matchHistoryPath, icon: History },
+                          ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
                         ]}
                         onSelect={() => setProfileOpen(false)}
                       />
@@ -819,7 +868,7 @@ export default function Navbar() {
                             onClick={() => setProfileOpen(false)}
                             className="nav-menu-item flex items-center gap-3 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
                           >
-                            <ShieldCheck className="w-4 h-4 text-pink-300" />
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-400/20 bg-red-500/10"><ShieldCheck className="h-4 w-4 text-red-300" /></span>
                             Admin Console
                           </Link>
                         </div>
@@ -1013,10 +1062,11 @@ function ProfileMenuSection({ label, items, onSelect }) {
             key={item.path}
             to={item.path}
             onClick={onSelect}
-            className="nav-menu-item flex items-center gap-3 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
+            className="nav-menu-item group flex items-center gap-3 rounded-lg border border-transparent px-2.5 py-2 text-sm text-vapor transition-colors duration-100 hover:border-white/[0.06] hover:bg-white/[0.04] hover:text-foreground"
           >
-            <Icon className="w-4 h-4 text-cyan" />
-            {item.label}
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan/15 bg-cyan/[0.07] text-cyan"><Icon className="h-4 w-4" /></span>
+            <span className="font-bold">{item.label}</span>
+            <span className="ml-auto text-vapor/30 transition-transform duration-100 group-hover:translate-x-0.5 group-hover:text-vapor">→</span>
           </Link>
         );
       })}
