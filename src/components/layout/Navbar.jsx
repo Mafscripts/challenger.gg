@@ -26,8 +26,8 @@ const navGroups = [
     label: "Rankings",
     icon: BarChart3,
     items: [
+      { label: "Ranked Leaderboard", path: "/leaderboards", icon: Trophy },
       { label: "XP Ladder", path: "/xp", icon: Zap },
-      { label: "Leaderboards", path: "/leaderboards", icon: BarChart3 },
     ],
   },
   {
