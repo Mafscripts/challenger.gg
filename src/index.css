@@ -667,6 +667,13 @@
 }
 
 /* Scrollbar */
+img {
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: hsl(217.5 21.0526% 7.451%); }
 ::-webkit-scrollbar-thumb { background: hsl(220 10% 20%); border-radius: 3px; }

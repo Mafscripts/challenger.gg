@@ -152,6 +152,22 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  useEffect(() => {
+    const isProtectedImage = (target) => target instanceof Element && Boolean(target.closest('img'));
+    const blockImageContextMenu = (event) => {
+      if (isProtectedImage(event.target)) event.preventDefault();
+    };
+    const blockImageDrag = (event) => {
+      if (isProtectedImage(event.target)) event.preventDefault();
+    };
+
+    document.addEventListener('contextmenu', blockImageContextMenu, true);
+    document.addEventListener('dragstart', blockImageDrag, true);
+    return () => {
+      document.removeEventListener('contextmenu', blockImageContextMenu, true);
+      document.removeEventListener('dragstart', blockImageDrag, true);
+    };
+  }, []);
 
   return (
     <AuthProvider>
