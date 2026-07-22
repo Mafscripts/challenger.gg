@@ -21,6 +21,9 @@ const WIN_XP = 150;
 const LOSS_XP = 50;
 const RANKED_WIN_ELO = 25;
 const RANKED_LOSS_ELO = -15;
+const RANKED_ELO_SCALE = 400;
+const RANKED_MIN_CHANGE = 5;
+const RANKED_MAX_CHANGE = 40;
 const adminPremiumGrantDays = 30;
 const staffRoles = ["ceo", "super_admin", "admin", "moderator"];
 const walletAdjustmentRoles = new Set(["ceo", "super_admin"]);
@@ -1159,10 +1162,12 @@ async function updateProfileOutcome(userId, didWin, eloDelta = 0) {
   });
 }
 
-async function updateRankedOutcome(userId, didWin) {
+async function updateRankedOutcome(userId, didWin, requestedEloDelta = null) {
   const stats = await ensureRankedStats(userId);
   if (!stats) return null;
-  const eloDelta = didWin ? RANKED_WIN_ELO : RANKED_LOSS_ELO;
+  const eloDelta = Number.isFinite(requestedEloDelta)
+    ? Number(requestedEloDelta)
+    : (didWin ? RANKED_WIN_ELO : RANKED_LOSS_ELO);
   const elo = Math.max(0, Number(stats.elo || 0) + eloDelta);
   return updateEntity("RankedStats", stats.id, {
     elo,
@@ -1202,11 +1207,28 @@ async function applyMatchRewards({ winnerId, loserId, ranked = false }) {
 
 async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
   const changes = {};
+  const winners = [...new Set(winnerIds.filter(Boolean))];
+  const losers = [...new Set(loserIds.filter(Boolean))].filter((id) => !winners.includes(id));
+  const allIds = [...winners, ...losers];
+  const statsEntries = await Promise.all(allIds.map(async (userId) => [userId, await ensureRankedStats(userId)]));
+  const statsByUser = Object.fromEntries(statsEntries);
+  const averageElo = (ids) => ids.length
+    ? ids.reduce((total, userId) => total + Number(statsByUser[userId]?.elo || 0), 0) / ids.length
+    : 0;
+  const winnerAverageElo = averageElo(winners);
+  const loserAverageElo = averageElo(losers);
+  const winnerExpectedScore = 1 / (1 + (10 ** ((loserAverageElo - winnerAverageElo) / RANKED_ELO_SCALE)));
+  const loserExpectedScore = 1 - winnerExpectedScore;
+  const clampChange = (value) => Math.max(RANKED_MIN_CHANGE, Math.min(RANKED_MAX_CHANGE, Math.round(value)));
+  const winnerEloGain = clampChange(50 * (1 - winnerExpectedScore));
+  const loserEloLoss = clampChange(40 * loserExpectedScore);
+
   const apply = async (userId, didWin) => {
-    const before = await ensureRankedStats(userId);
+    const before = statsByUser[userId];
+    const requestedDelta = didWin ? winnerEloGain : -loserEloLoss;
     await updateXPOutcome(userId, didWin);
-    await updateProfileOutcome(userId, didWin, didWin ? RANKED_WIN_ELO : RANKED_LOSS_ELO);
-    const after = await updateRankedOutcome(userId, didWin);
+    await updateProfileOutcome(userId, didWin, requestedDelta);
+    const after = await updateRankedOutcome(userId, didWin, requestedDelta);
     await prisma.user.update({
       where: { id: userId },
       data: { current_win_streak: didWin ? { increment: 1 } : 0 },
@@ -1216,10 +1238,9 @@ async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
       previous_elo: Number(before?.elo || 0),
       new_elo: Number(after?.elo || 0),
       delta: Number(after?.elo || 0) - Number(before?.elo || 0),
+      opponent_team_average_elo: Math.round(didWin ? loserAverageElo : winnerAverageElo),
     };
   };
-  const winners = [...new Set(winnerIds.filter(Boolean))];
-  const losers = [...new Set(loserIds.filter(Boolean))].filter((id) => !winners.includes(id));
   await Promise.all([...winners.map((id) => apply(id, true)), ...losers.map((id) => apply(id, false))]);
   return changes;
 }
