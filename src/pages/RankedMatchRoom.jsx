@@ -102,9 +102,14 @@ export default function RankedMatchRoom() {
       try {
         const latest = await base44.entities.RankedMatch.getFresh(id);
         if (!active || !latest) return;
-        setMatch(latest);
-        if (latest.challenger_id && latest.challenger_id !== match?.challenger_id) {
-          const challenger = await loadPlayer(latest.challenger_id, latest.challenger_name);
+        let refreshedMatch = latest;
+        if (latest.challenger_id && !latest.final_map_name) {
+          const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
+          if (mapResponse?.data?.match) refreshedMatch = mapResponse.data.match;
+        }
+        setMatch(refreshedMatch);
+        if (refreshedMatch.challenger_id && refreshedMatch.challenger_id !== match?.challenger_id) {
+          const challenger = await loadPlayer(refreshedMatch.challenger_id, refreshedMatch.challenger_name);
           if (active) setChallengerPlayer(challenger);
         }
       } catch (error) {
@@ -172,7 +177,7 @@ export default function RankedMatchRoom() {
       ]);
       let matchData = loadedMatch;
 
-      if (!matchData.final_map_name) {
+      if (!matchData.final_map_name && matchData.challenger_id) {
         const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
         if (mapResponse?.data?.match) matchData = mapResponse.data.match;
       }

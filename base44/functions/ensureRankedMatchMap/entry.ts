@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
     const isStaff = ['ceo', 'super_admin', 'admin', 'moderator'].includes(user.role);
     if (!isParticipant && !isStaff) return Response.json({ error: 'Forbidden' }, { status: 403 });
     if (match.final_map_name) return Response.json({ success: true, match });
+    if (!match.challenger_id) return Response.json({ success: true, match, waiting_for_opponent: true });
 
     const pool = mapsByMode[match.game_mode] || mapsByMode.snd;
     const selected = pool[Math.floor(Math.random() * pool.length)];

@@ -5678,16 +5678,14 @@ async function createRankedMatch(req) {
   if (!Object.prototype.hasOwnProperty.call(RANKED_MAPS_BY_MODE, req.body.game_mode)) {
     return { success: false, error: "Invalid ranked game mode" };
   }
-  const previousMap = await previousRankedMapFor(req.user.id);
-  const selected = randomRankedMap(req.body.game_mode, [previousMap]);
   const match = await createEntity("RankedMatch", {
     ...req.body,
     host_id: req.user.id,
     host_name: nameFor(req.user),
     best_of: 1,
-    maps: selected.pool,
-    final_map_id: selected.id,
-    final_map_name: selected.name,
+    maps: RANKED_MAPS_BY_MODE[req.body.game_mode],
+    final_map_id: "",
+    final_map_name: "",
     status: "open",
     created_date: new Date().toISOString(),
   });
@@ -5737,6 +5735,7 @@ async function ensureRankedMatchMap(req) {
   const isParticipant = req.user.id === match.host_id || req.user.id === match.challenger_id;
   if (!isParticipant && !hasRole(req.user, "moderator")) return { success: false, error: "Forbidden" };
   if (match.final_map_name) return { success: true, match };
+  if (!match.challenger_id) return { success: true, match, waiting_for_opponent: true };
 
   const [hostPreviousMap, challengerPreviousMap] = await Promise.all([
     previousRankedMapFor(match.host_id, match.id),

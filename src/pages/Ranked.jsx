@@ -222,7 +222,7 @@ export default function Ranked() {
                     <span className="text-xs font-mono text-cyan">{match.team_size}</span>
                     <span className="text-xs text-vapor">{match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}</span>
                   </div>
-                  <p className="text-sm font-bold mb-1 text-cyan">{match.final_map_name || "Map pending"}</p>
+                  <p className="text-sm font-bold mb-1 text-cyan">Map revealed after join</p>
                   <p className="text-xs text-vapor mb-3">Host: {match.host_name || "Host unavailable"}</p>
                   {match.host_id === user?.id ? (
                     <Link

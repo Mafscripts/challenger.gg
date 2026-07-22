@@ -49,7 +49,6 @@ Deno.serve(async (req) => {
     }
 
     const mapPool = mapsByMode[gameMode];
-    const selected = mapPool[Math.floor(Math.random() * mapPool.length)];
     const now = new Date().toISOString();
     const deadline = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
@@ -63,8 +62,8 @@ Deno.serve(async (req) => {
       team_size: teamSize,
       best_of: 1,
       maps: mapPool.map((map) => map.name),
-      final_map_id: selected?.id || '',
-      final_map_name: selected?.name || '',
+      final_map_id: '',
+      final_map_name: '',
       status: 'open',
       proof_urls: [],
       match_start_deadline: deadline,
