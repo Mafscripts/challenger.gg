@@ -99,7 +99,7 @@ export default function Wagers() {
 
     const entryFee = wager.entry_fee ?? wager.amount ?? 0;
     const required = rosterSize(wager.team_size);
-    const isTeamWager = required > 1;
+    const isTeamWager = true;
     const selectedTeamId = acceptTeamByWager[wager.id];
     const paymentMode = acceptPaymentByWager[wager.id] || "own";
     const selectedTeam = compatibleTeamsFor(wager).find((team) => team.id === selectedTeamId);
@@ -298,23 +298,27 @@ export default function Wagers() {
                         </div>
                       ) : w.status === "open" && (
                         <div className="flex flex-col gap-2">
+                          <select
+                            value={acceptTeamByWager[w.id] || ""}
+                            onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [w.id]: event.target.value }))}
+                            className="px-2 py-1.5 bg-secondary text-vapor text-xs rounded border border-white/5 focus:border-cyan/30 focus:outline-none"
+                          >
+                            <option value="">Select wager team</option>
+                            {compatibleTeamsFor(w).map((team) => (
+                              <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(w.team_size)})</option>
+                            ))}
+                          </select>
+                          {compatibleTeamsFor(w).length === 0 && (
+                            <Link to="/teams?create=wager" className="text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">
+                              Create a wager team first
+                            </Link>
+                          )}
+                          {acceptTeamByWager[w.id] && compatibleTeamsFor(w).find((team) => team.id === acceptTeamByWager[w.id])?.members.length < rosterSize(w.team_size) && (
+                            <span className="text-[10px] text-orange">
+                              Needs {rosterSize(w.team_size)} active players
+                            </span>
+                          )}
                           {rosterSize(w.team_size) > 1 && (
-                            <>
-                              <select
-                                value={acceptTeamByWager[w.id] || ""}
-                                onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [w.id]: event.target.value }))}
-                                className="px-2 py-1.5 bg-secondary text-vapor text-xs rounded border border-white/5 focus:border-cyan/30 focus:outline-none"
-                              >
-                                <option value="">Select team</option>
-                                {compatibleTeamsFor(w).map((team) => (
-                                  <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(w.team_size)})</option>
-                                ))}
-                              </select>
-                              {acceptTeamByWager[w.id] && compatibleTeamsFor(w).find((team) => team.id === acceptTeamByWager[w.id])?.members.length < rosterSize(w.team_size) && (
-                                <span className="text-[10px] text-orange">
-                                  Needs {rosterSize(w.team_size)} active players
-                                </span>
-                              )}
                               <select
                                 value={acceptPaymentByWager[w.id] || "own"}
                                 onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [w.id]: event.target.value }))}
@@ -323,11 +327,11 @@ export default function Wagers() {
                                 <option value="own">Pay my own entry only</option>
                                 <option value="full_team">Pay full team entry</option>
                               </select>
-                            </>
                           )}
                           <button
                             onClick={() => handleAccept(w)}
-                            className="rounded-lg bg-green px-5 py-2.5 text-xs font-black uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-green/20"
+                            disabled={!acceptTeamByWager[w.id]}
+                            className="rounded-lg bg-green px-5 py-2.5 text-xs font-black uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-green/20 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Accept wager
                           </button>

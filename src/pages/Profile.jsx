@@ -388,6 +388,7 @@ export default function Profile() {
       });
       setProfile(nextProfile);
       setUser((current) => ({ ...current, ...nextUser }));
+      window.dispatchEvent(new CustomEvent("topfragg:profile-updated", { detail: { avatarUrl: nextProfile?.avatar_url || "" } }));
       setProfileResult({ success: true, message: "Profile saved." });
     } catch (error) {
       setProfileResult({ success: false, message: error.message || "Could not save profile." });

@@ -5,7 +5,7 @@ import {
   Menu, X, Gamepad2, Swords, Trophy, ShoppingBag,
   Users, Newspaper, BookOpen, Zap, Target,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, LifeBuoy
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, LifeBuoy, Coins
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
@@ -152,6 +152,8 @@ export default function Navbar() {
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [profileAvatar, setProfileAvatar] = useState("");
   const [matchesOpen, setMatchesOpen] = useState(false);
   const [activeMatches, setActiveMatches] = useState([]);
   const activeMatchesLoadedAt = useRef(0);
@@ -196,6 +198,8 @@ export default function Navbar() {
     setUnreadNotifCount(0);
     setUnreadMessagesCount(0);
     setWalletBalance(0);
+    setCreditBalance(0);
+    setProfileAvatar("");
     setActiveMatches([]);
   };
 
@@ -251,6 +255,15 @@ export default function Navbar() {
   }, [isAuthenticated, authUser?.id]);
 
   useEffect(() => {
+    const handleProfileUpdated = (event) => {
+      if (event.detail?.avatarUrl !== undefined) setProfileAvatar(event.detail.avatarUrl || "");
+      loadUser(authUser);
+    };
+    window.addEventListener("topfragg:profile-updated", handleProfileUpdated);
+    return () => window.removeEventListener("topfragg:profile-updated", handleProfileUpdated);
+  }, [authUser?.id]);
+
+  useEffect(() => {
     if (!isAuthenticated) return undefined;
     const loadWhenIdle = () => {
       if (document.visibilityState !== "hidden") loadActiveMatches();
@@ -270,15 +283,25 @@ export default function Navbar() {
       if (!userData) {
         setUser(null);
         setWalletBalance(0);
+        setCreditBalance(0);
+        setProfileAvatar("");
         return;
       }
-      const wallets = await base44.entities.Wallet.filter({ user_id: userData.id }, "-created_date", 1).catch(() => []);
+      const [wallets, profiles] = await Promise.all([
+        base44.entities.Wallet.filter({ user_id: userData.id }, "-created_date", 1).catch(() => []),
+        base44.entities.PlayerProfile.filter({ user_id: userData.id }, "-created_date", 1).catch(() => []),
+      ]);
+      const playerProfile = profiles[0] || null;
       setWalletBalance(Number(wallets[0]?.available_balance ?? 0));
-      setUser({ ...userData, wallet: wallets[0] || null });
+      setCreditBalance(Number(userData.credits ?? playerProfile?.credits ?? 0));
+      setProfileAvatar(playerProfile?.avatar_url || userData.avatar_url || "");
+      setUser({ ...userData, wallet: wallets[0] || null, player_profile: playerProfile });
     } catch (error) {
       console.error('Failed to load user:', error);
       setUser(null);
       setWalletBalance(0);
+      setCreditBalance(0);
+      setProfileAvatar("");
     }
   };
 
@@ -635,6 +658,13 @@ export default function Navbar() {
                 </Link>
               </div>
 
+              {/* Credits */}
+              <Link to="/marketplace" title="Marketplace credits" className="hidden h-10 items-center gap-2 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.07] px-3 text-yellow-300 transition-colors hover:border-yellow-400/35 hover:bg-yellow-400/10 md:flex">
+                <Coins className="h-4 w-4" />
+                <span className="font-mono text-sm font-black">{creditBalance.toLocaleString("en-US")}</span>
+                <span className="text-[8px] font-black uppercase tracking-wider text-yellow-200/70">Credits</span>
+              </Link>
+
               {/* Notifications */}
               <div
                 className="nav-dropdown-anchor relative"
@@ -813,8 +843,9 @@ export default function Navbar() {
                   type="button"
                   className={`flex h-10 items-center gap-2 rounded-xl border px-2 transition-colors ${profileOpen ? "border-cyan/25 bg-cyan/10" : "border-white/[0.07] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.05]"}`}
                 >
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan/30 to-orange/30 border border-white/10 flex items-center justify-center">
-                    <User className="w-3.5 h-3.5" />
+                  <div className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-gradient-to-br from-cyan/30 to-orange/30">
+                    <User className="h-3.5 w-3.5" />
+                    {profileAvatar && <img src={profileAvatar} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
                   </div>
                   <span className="hidden max-w-[110px] text-left lg:block">
                     <span className="block truncate text-xs font-black text-foreground">{accountName}</span>
@@ -826,7 +857,10 @@ export default function Navbar() {
                 {profileOpen && (
                     <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 rounded-xl p-2.5">
                       <div className="mb-2 flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.025] p-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 to-orange/20"><User className="h-5 w-5 text-cyan" /></div>
+                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 to-orange/20">
+                          <User className="h-5 w-5 text-cyan" />
+                          {profileAvatar && <img src={profileAvatar} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-black">{accountName}</p>
                           <p className={`mt-0.5 text-[9px] font-black uppercase tracking-wider ${canSeeAdminLink ? "text-red-300" : "text-cyan"}`}>{canSeeAdminLink ? `${(user?.role || "Staff").replace("_", " ")} · Topfragg Staff` : "Topfragg Competitor"}</p>
@@ -1015,6 +1049,13 @@ export default function Navbar() {
                       <span className="text-green font-mono font-semibold">
                         ${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
+                    </Link>
+                    <Link
+                      to="/marketplace"
+                      className="flex items-center gap-2 rounded-xl px-4 py-3 transition-all hover:bg-secondary"
+                    >
+                      <Coins className="h-5 w-5 text-yellow-300" />
+                      <span className="font-mono font-semibold text-yellow-300">{creditBalance.toLocaleString("en-US")} Credits</span>
                     </Link>
                     <Link
                       to="/logout"

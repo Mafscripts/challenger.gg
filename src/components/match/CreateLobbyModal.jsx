@@ -77,7 +77,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
-  const requiresTeam = requiredPlayers > 1 && (isWager || mode === "8s");
+  const requiresTeam = isWager || (requiredPlayers > 1 && mode === "8s");
   const expectedTeamType = teamTypeForMode(mode);
   const compatibleTeams = useMemo(() => (
     userTeams.filter((team) => {

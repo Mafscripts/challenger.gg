@@ -5265,7 +5265,7 @@ async function createWager(req) {
   const entryFee = money(req.body.entry_fee ?? req.body.amount);
   const matchType = req.body.match_type === "8s" ? "8s" : req.body.match_type === "xp" ? "xp" : "wagers";
   const requiredSize = requiredRosterSize(req.body.team_size);
-  const isTeamMatch = requiredSize > 1 && ["8s", "wagers"].includes(matchType);
+  const isTeamMatch = matchType === "wagers" || (matchType === "8s" && requiredSize > 1);
   const paymentMode = paymentModeFor(req.body.payment_mode);
   const allowedPlayRules = new Set(["controller_only", "mixed_pc_allowed", "console_only"]);
   const playRule = allowedPlayRules.has(req.body.play_rule) ? req.body.play_rule : "controller_only";
@@ -5362,13 +5362,17 @@ async function acceptWager(req) {
   if (wager.host_id === req.user.id) {
     return { success: false, error: "You cannot accept your own wager" };
   }
+  if ((wager.match_type || "wagers") === "wagers" && !wager.host_team_id) {
+    return { success: false, error: "This wager was posted without a wager team. The host must cancel and repost it with a dedicated wager team." };
+  }
   const existingParticipant = await firstEntity("WagerParticipant", { wager_id: wager.id, user_id: req.user.id }).catch(() => null);
   if (existingParticipant) {
     return { success: false, error: "You already joined this wager" };
   }
   const entryFee = money(wager.entry_fee ?? wager.amount);
   const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
-  const isTeamMatch = requiredSize > 1 && ["8s", "wagers"].includes(wager.match_type || "wagers");
+  const wagerMatchType = wager.match_type || "wagers";
+  const isTeamMatch = wagerMatchType === "wagers" || (wagerMatchType === "8s" && requiredSize > 1);
   const paymentMode = paymentModeFor(req.body.payment_mode);
   let challengerTeam = null;
   let challengerRoster = null;
