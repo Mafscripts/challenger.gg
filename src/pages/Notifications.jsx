@@ -9,6 +9,11 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [removingAll, setRemovingAll] = useState(false);
+
+  const syncNotificationBell = (detail) => {
+    window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail }));
+  };
 
   useEffect(() => {
     loadNotifications();
@@ -37,6 +42,8 @@ export default function Notifications() {
     try {
       await base44.entities.Notification.update(id, { is_read: true });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      const wasUnread = notifications.some(n => n.id === id && !n.is_read);
+      syncNotificationBell({ unreadCount: Math.max(0, unreadCount - (wasUnread ? 1 : 0)), readId: id });
       toast({ title: "Marked as read", description: "Notification marked as read" });
     } catch (error) {
       console.error('Failed to mark as read:', error);
@@ -48,6 +55,7 @@ export default function Notifications() {
       const unread = notifications.filter(n => !n.is_read);
       await Promise.all(unread.map(n => base44.entities.Notification.update(n.id, { is_read: true })));
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      syncNotificationBell({ unreadCount: 0, markAllRead: true });
       toast({ title: "All marked as read", description: `${unread.length} notifications marked as read` });
     } catch (error) {
       console.error('Failed to mark all as read:', error);
@@ -58,9 +66,34 @@ export default function Notifications() {
     try {
       await base44.entities.Notification.delete(id);
       setNotifications(prev => prev.filter(n => n.id !== id));
+      const removedWasUnread = notifications.some(n => n.id === id && !n.is_read);
+      syncNotificationBell({
+        unreadCount: Math.max(0, unreadCount - (removedWasUnread ? 1 : 0)),
+        removedId: id,
+      });
       toast({ title: "Deleted", description: "Notification deleted" });
     } catch (error) {
       console.error('Failed to delete:', error);
+    }
+  };
+
+  const deleteAllNotifications = async () => {
+    if (notifications.length === 0 || removingAll) return;
+    if (!window.confirm(`Remove all ${notifications.length} notifications? This cannot be undone.`)) return;
+
+    setRemovingAll(true);
+    try {
+      await Promise.all(notifications.map(notification => base44.entities.Notification.delete(notification.id)));
+      setNotifications([]);
+      setFilter("all");
+      syncNotificationBell({ unreadCount: 0, clearAll: true });
+      toast({ title: "Notifications removed", description: "All notifications have been deleted" });
+    } catch (error) {
+      console.error('Failed to remove all notifications:', error);
+      toast({ title: "Error", description: "Not all notifications could be removed", variant: "destructive" });
+      await loadNotifications();
+    } finally {
+      setRemovingAll(false);
     }
   };
 
@@ -104,6 +137,13 @@ export default function Notifications() {
               className="px-4 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <CheckCheck className="w-4 h-4" /> Mark All Read
+            </button>
+            <button
+              onClick={deleteAllNotifications}
+              disabled={notifications.length === 0 || removingAll}
+              className="px-4 py-2 bg-red-500/10 text-red-400 text-xs font-bold rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" /> {removingAll ? "Removing..." : "Remove All"}
             </button>
           </div>
         </div>

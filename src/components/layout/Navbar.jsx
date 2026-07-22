@@ -264,6 +264,28 @@ export default function Navbar() {
   }, [authUser?.id]);
 
   useEffect(() => {
+    const handleNotificationsUpdated = (event) => {
+      const detail = event.detail || {};
+      if (Number.isFinite(detail.unreadCount)) setUnreadNotifCount(detail.unreadCount);
+      if (detail.clearAll) {
+        setNotifications([]);
+      } else if (detail.markAllRead) {
+        setNotifications(prev => prev.map(notification => ({ ...notification, is_read: true })));
+      } else if (detail.readId) {
+        setNotifications(prev => prev.map(notification => (
+          notification.id === detail.readId ? { ...notification, is_read: true } : notification
+        )));
+      } else if (detail.removedId) {
+        setNotifications(prev => prev.filter(notification => notification.id !== detail.removedId));
+      }
+      notificationsLoadedAt.current = 0;
+    };
+
+    window.addEventListener("topfragg:notifications-updated", handleNotificationsUpdated);
+    return () => window.removeEventListener("topfragg:notifications-updated", handleNotificationsUpdated);
+  }, []);
+
+  useEffect(() => {
     if (!isAuthenticated) return undefined;
     const loadWhenIdle = () => {
       if (document.visibilityState !== "hidden") loadActiveMatches();
