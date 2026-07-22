@@ -550,11 +550,11 @@ export default function Navbar() {
                   <button
                     className={`${navButtonClass} ${
                       matchesOpen
-                        ? "border-green/25 bg-green/10 text-green"
+                        ? "border-white/15 bg-white/[0.07] text-white"
                         : "border-transparent text-vapor hover:border-white/10 hover:bg-white/5 hover:text-foreground"
                     }`}
                   >
-                    <span className={`flex h-7 w-7 items-center justify-center rounded-lg border ${matchesOpen ? "border-green/20 bg-green/10 text-green" : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}><Activity className="h-3.5 w-3.5" /></span>
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-lg border ${matchesOpen ? "border-slate-300/20 bg-slate-200/10 text-slate-100" : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}><Activity className="h-3.5 w-3.5" /></span>
                     My Matches
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform ${matchesOpen ? "rotate-180" : ""}`} />
                     {activeMatches.length > 0 && (
