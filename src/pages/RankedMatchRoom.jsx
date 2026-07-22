@@ -61,6 +61,31 @@ const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsP
 function PlayerPanel({ label, color, players = [], slots = 1 }) {
   const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
 
+  if (slots === 1 && players[0]) {
+    const player = players[0];
+    const rank = getRankForElo(player.elo || 0);
+    return (
+      <div className={`glass flex h-[300px] flex-col rounded-xl border p-5 ${colorClass}`}>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider">{label}</p>
+          <span className="rounded-full border border-white/10 bg-background/30 px-2.5 py-1 text-[10px] font-black">1/1</span>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <RankBadge rank={rank.tier} size="md" showLabel={false} />
+          <div className="mt-3 flex items-center justify-center gap-2">
+            <h2 className="max-w-[180px] truncate text-xl font-black">{player.name}</h2>
+            <UserBadges user={player} size="xs" iconOnly showMonitorCam />
+          </div>
+          <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
+          <p className="mt-1 text-xs text-vapor">{rank.name} · {(player.elo || 0).toLocaleString()} ELO</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[{ label: "Wins", value: player.wins || 0 }, { label: "Losses", value: player.losses || 0 }, { label: "Streak", value: player.win_streak || 0 }].map((stat) => <div key={stat.label} className="rounded-lg border border-white/5 bg-background/25 px-2 py-2 text-center"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">{stat.label}</p><p className="mt-1 font-mono text-sm font-black">{stat.value}</p></div>)}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`glass rounded-xl border p-5 ${colorClass}`}>
       <div className="mb-3 flex items-center justify-between">
@@ -496,7 +521,7 @@ export default function RankedMatchRoom() {
               accent="cyan"
               compact
               sticky={false}
-              heightClass={slotsPerRankedTeam(match) > 1 ? "h-[344px]" : "h-[220px]"}
+              heightClass={slotsPerRankedTeam(match) > 1 ? "h-[344px]" : "h-[300px]"}
             />
           </div>
           <div className="lg:col-span-3">
