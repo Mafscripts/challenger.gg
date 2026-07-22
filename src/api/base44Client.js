@@ -246,6 +246,11 @@ const entityClient = (entity) => ({
     return value;
   },
 
+  getFresh(id) {
+    requireToken();
+    return apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`, { dedupe: false });
+  },
+
   async create(payload) {
     requireToken();
     const value = await apiFetch(`/entities/${entity}`, { method: "POST", body: payload, dedupe: false });

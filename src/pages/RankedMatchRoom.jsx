@@ -100,7 +100,7 @@ export default function RankedMatchRoom() {
     let active = true;
     const refresh = async () => {
       try {
-        const latest = await base44.entities.RankedMatch.get(id);
+        const latest = await base44.entities.RankedMatch.getFresh(id);
         if (!active || !latest) return;
         setMatch(latest);
         if (latest.challenger_id && latest.challenger_id !== match?.challenger_id) {

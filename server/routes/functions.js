@@ -5646,13 +5646,33 @@ async function refundWager(req) {
   return { success: true, wager: updated };
 }
 
+const RANKED_MAPS_BY_MODE = {
+  snd: ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Fringe"],
+  hp: ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"],
+  overload: ["Scar", "Gridlock", "Den", "Exposure"],
+};
+
+function randomRankedMap(gameMode) {
+  const pool = RANKED_MAPS_BY_MODE[gameMode] || RANKED_MAPS_BY_MODE.snd;
+  const name = pool[Math.floor(Math.random() * pool.length)];
+  return { pool, name, id: name.toLowerCase().replace(/\s+/g, "_") };
+}
+
 async function createRankedMatch(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
+  if (!Object.prototype.hasOwnProperty.call(RANKED_MAPS_BY_MODE, req.body.game_mode)) {
+    return { success: false, error: "Invalid ranked game mode" };
+  }
+  const selected = randomRankedMap(req.body.game_mode);
   const match = await createEntity("RankedMatch", {
     ...req.body,
     host_id: req.user.id,
     host_name: nameFor(req.user),
+    best_of: 1,
+    maps: selected.pool,
+    final_map_id: selected.id,
+    final_map_name: selected.name,
     status: "open",
     created_date: new Date().toISOString(),
   });
@@ -5668,11 +5688,38 @@ async function acceptRankedMatch(req) {
   const host = await userFor(match.host_id);
   const hostActivisionError = activisionIdErrorForUsers([host]);
   if (hostActivisionError) return { success: false, error: hostActivisionError, code: "ACTIVISION_ID_REQUIRED" };
+  const selected = match.final_map_name ? null : randomRankedMap(match.game_mode);
+  const deadline = new Date(Date.now() + 15 * 60 * 1000).toISOString();
   const updated = await updateEntity("RankedMatch", id, {
     challenger_id: req.user.id,
     challenger_name: nameFor(req.user),
     status: "in_progress",
     match_started_date: new Date().toISOString(),
+    match_start_deadline: deadline,
+    best_of: 1,
+    ...(selected ? {
+      maps: selected.pool,
+      final_map_id: selected.id,
+      final_map_name: selected.name,
+    } : {}),
+  });
+  return { success: true, match: updated };
+}
+
+async function ensureRankedMatchMap(req) {
+  const id = req.body.ranked_match_id || req.body.match_id || req.body.id;
+  const match = await getEntity("RankedMatch", id);
+  if (!match) return { success: false, error: "Ranked match not found" };
+  const isParticipant = req.user.id === match.host_id || req.user.id === match.challenger_id;
+  if (!isParticipant && !hasRole(req.user, "moderator")) return { success: false, error: "Forbidden" };
+  if (match.final_map_name) return { success: true, match };
+
+  const selected = randomRankedMap(match.game_mode);
+  const updated = await updateEntity("RankedMatch", id, {
+    best_of: 1,
+    maps: selected.pool,
+    final_map_id: selected.id,
+    final_map_name: selected.name,
   });
   return { success: true, match: updated };
 }
@@ -7291,6 +7338,7 @@ const handlers = {
   refundWager,
   createRankedMatch,
   acceptRankedMatch,
+  ensureRankedMatchMap,
   completeRankedMatch,
   cancelRankedMatch,
   buyWithCredits,
