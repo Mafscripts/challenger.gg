@@ -2,7 +2,7 @@ import React from "react";
 import { Check, X, Target, Zap, Shield } from "lucide-react";
 import { getMapPool } from "@/lib/cdlMaps";
 
-export default function MapVetoVertical({ wager, ranked = false }) {
+export default function MapVetoVertical({ wager, ranked = false, compact = false }) {
   const maps = getMapPool(wager?.game_mode) || getMapPool("snd");
   const hostBannedMap = wager?.host_banned_map_name;
   const challengerBannedMap = wager?.challenger_banned_map_name;
@@ -11,6 +11,19 @@ export default function MapVetoVertical({ wager, ranked = false }) {
   const Icon = wager?.game_mode === "snd" ? Target : wager?.game_mode === "hp" ? Shield : Zap;
 
   if (ranked) {
+    if (compact) {
+      return (
+        <div className="glass flex flex-col gap-3 rounded-xl border border-cyan/20 px-4 py-3 sm:flex-row sm:items-center">
+          <div className="flex shrink-0 items-center gap-2">
+            <Icon className="h-4 w-4 text-cyan" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-cyan">Ranked Map</span>
+            <span className="rounded-full border border-cyan/20 bg-cyan/10 px-2 py-0.5 text-[8px] font-black uppercase text-cyan">BO1</span>
+          </div>
+          <div className="hidden h-5 w-px bg-white/10 sm:block" />
+          {finalMap ? <div className="flex flex-1 items-center justify-between gap-3"><span className="font-black text-green">{finalMap}</span><span className="text-[9px] font-black uppercase tracking-wider text-green">Randomly selected · Play map</span></div> : <span className="text-xs font-bold text-vapor">Map will be revealed when both rosters are full</span>}
+        </div>
+      );
+    }
     return (
       <div className="glass rounded-xl border border-cyan/20 p-6">
         <div className="mb-6 flex items-center gap-2">

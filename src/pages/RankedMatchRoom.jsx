@@ -481,14 +481,25 @@ export default function RankedMatchRoom() {
           </div>
         )}
 
+        <div className="mb-4">
+          <MapVetoVertical wager={match} ranked compact />
+        </div>
+
         <div className="grid lg:grid-cols-12 gap-6 mb-6">
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-3">
             <PlayerPanel label="Team Alpha" color="cyan" players={alphaPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
-          <div className="lg:col-span-4">
-            <MapVetoVertical wager={match} ranked />
+          <div className="min-w-0 lg:col-span-6">
+            <MatchChat
+              conversationId={match.id}
+              matchType="ranked"
+              accent="cyan"
+              compact
+              sticky={false}
+              heightClass={slotsPerRankedTeam(match) > 1 ? "h-[344px]" : "h-[220px]"}
+            />
           </div>
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-3">
             <PlayerPanel label="Team Bravo" color="orange" players={bravoPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
         </div>
@@ -578,10 +589,6 @@ export default function RankedMatchRoom() {
               A score has already been submitted. The opponent must submit the same score to complete the match.
             </p>
           )}
-        </div>
-
-        <div className="mb-6">
-          <MatchChat conversationId={match.id} matchType="ranked" accent="cyan" />
         </div>
       </div>
     </div>
