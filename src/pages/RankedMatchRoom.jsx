@@ -58,9 +58,14 @@ const roomRosterNames = (match, side) => {
 };
 const roomRosterSignature = (match) => [...roomRosterIds(match, "alpha"), "|", ...roomRosterIds(match, "bravo")].join(":");
 const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsPerRankedTeam(match) && roomRosterIds(match, "bravo").length >= slotsPerRankedTeam(match);
-// Each populated card needs 104px plus the panel header, padding and gaps.
-// Keep a little breathing room so the last 3v3/4v4 card never overlaps the action bar.
-const arenaHeightClass = (slots) => ({ 1: "h-[280px]", 2: "h-[350px]", 3: "h-[470px]", 4: "h-[590px]" }[slots] || "h-[590px]");
+// The roster columns and chat deliberately share this height. The larger formats
+// need enough room for every card's natural content, not only its minimum height.
+const arenaHeightClass = (slots) => ({
+  1: "h-[340px]",
+  2: "h-[430px]",
+  3: "h-[550px]",
+  4: "h-[680px]",
+}[slots] || "h-[680px]");
 
 function RosterPlayerCard({ player, color, slot, slots }) {
   const rank = getRankForElo(player.elo || 0);
@@ -76,7 +81,7 @@ function RosterPlayerCard({ player, color, slot, slots }) {
   const accentBg = isAlpha ? "bg-cyan" : "bg-orange";
 
   return (
-    <div className={`group/player relative flex min-h-[104px] min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br ${accent} to-background/70 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 ${roomy ? "flex-1" : ""}`}>
+    <div className={`group/player relative flex min-h-[124px] min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br ${accent} to-background/70 p-3.5 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 ${roomy ? "flex-1" : ""}`}>
       <div aria-hidden="true" className={`absolute -right-10 -top-12 h-32 w-32 rounded-full blur-3xl ${isAlpha ? "bg-cyan/10" : "bg-orange/10"}`} />
       <span className={`absolute right-2.5 top-2 font-mono text-[9px] font-black tracking-[0.18em] opacity-45 ${accentText}`}>{isAlpha ? "A" : "B"}{slot}</span>
       <div className={`relative flex min-w-0 flex-1 gap-3 ${roomy ? "items-center" : "items-start"}`}>
@@ -121,7 +126,7 @@ function PlayerPanel({ label, color, players = [], slots = 1 }) {
         </div>
         <span className={`rounded-full border bg-background/45 px-2.5 py-1 font-mono text-[10px] font-black ${players.length >= slots ? (isAlpha ? "border-cyan/25 text-cyan" : "border-orange/25 text-orange") : "border-white/10 text-vapor"}`}>{players.length}/{slots}</span>
       </div>
-      <div className="flex flex-1 flex-col gap-2">
+      <div className="flex flex-1 flex-col gap-3">
         {Array.from({ length: slots }, (_, index) => {
           const player = players[index];
           if (!player) return <div key={`open-${index}`} className="group/slot flex min-h-[62px] flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 bg-background/15 text-[9px] font-black uppercase tracking-[0.16em] text-vapor/45"><span className={`mr-2 h-1.5 w-1.5 rounded-full ${isAlpha ? "bg-cyan/40" : "bg-orange/40"}`} />Open slot {index + 1}</div>;
