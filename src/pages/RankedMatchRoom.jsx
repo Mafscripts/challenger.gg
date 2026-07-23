@@ -58,7 +58,9 @@ const roomRosterNames = (match, side) => {
 };
 const roomRosterSignature = (match) => [...roomRosterIds(match, "alpha"), "|", ...roomRosterIds(match, "bravo")].join(":");
 const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsPerRankedTeam(match) && roomRosterIds(match, "bravo").length >= slotsPerRankedTeam(match);
-const arenaHeightClass = (slots) => ({ 1: "h-[280px]", 2: "h-[350px]", 3: "h-[450px]", 4: "h-[550px]" }[slots] || "h-[550px]");
+// Each populated card needs 104px plus the panel header, padding and gaps.
+// Keep a little breathing room so the last 3v3/4v4 card never overlaps the action bar.
+const arenaHeightClass = (slots) => ({ 1: "h-[280px]", 2: "h-[350px]", 3: "h-[470px]", 4: "h-[590px]" }[slots] || "h-[590px]");
 
 function RosterPlayerCard({ player, color }) {
   const rank = getRankForElo(player.elo || 0);
@@ -69,7 +71,7 @@ function RosterPlayerCard({ player, color }) {
   const accentText = isAlpha ? "text-cyan" : "text-orange";
 
   return (
-    <div className={`relative flex min-h-[104px] flex-1 min-w-0 overflow-visible rounded-lg border border-white/[0.07] border-l-2 bg-gradient-to-r ${accent} to-background/20 p-3`}>
+    <div className={`relative flex min-h-[104px] min-w-0 overflow-hidden rounded-lg border border-white/[0.07] border-l-2 bg-gradient-to-r ${accent} to-background/20 p-3`}>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="shrink-0 rounded-lg border border-white/[0.07] bg-background/30 p-1">
           <RankBadge rank={rank.tier} size="sm" showLabel={false} />

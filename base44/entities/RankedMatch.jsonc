@@ -18,6 +18,34 @@
       "type": "string",
       "title": "Challenger Name"
     },
+    "team_alpha_player_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "Team Alpha Player IDs"
+    },
+    "team_alpha_player_names": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "Team Alpha Player Names"
+    },
+    "team_bravo_player_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "Team Bravo Player IDs"
+    },
+    "team_bravo_player_names": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "Team Bravo Player Names"
+    },
+    "joined_players": {
+      "type": "number",
+      "title": "Joined Players"
+    },
+    "total_players": {
+      "type": "number",
+      "title": "Total Players"
+    },
     "game_mode": {
       "type": "string",
       "enum": [

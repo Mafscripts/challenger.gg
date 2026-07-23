@@ -2638,6 +2638,20 @@ async function matchParticipantIds(matchType, match) {
       ...participants.map((participant) => participant.user_id),
     ].filter(Boolean))];
   }
+  if (matchType === "ranked") {
+    const alphaRoster = Array.isArray(match.team_alpha_player_ids)
+      ? match.team_alpha_player_ids
+      : [];
+    const bravoRoster = Array.isArray(match.team_bravo_player_ids)
+      ? match.team_bravo_player_ids
+      : [];
+    return [...new Set([
+      match.host_id,
+      match.challenger_id,
+      ...alphaRoster,
+      ...bravoRoster,
+    ].filter(Boolean))];
+  }
   return [...new Set([match.host_id, match.challenger_id].filter(Boolean))];
 }
 

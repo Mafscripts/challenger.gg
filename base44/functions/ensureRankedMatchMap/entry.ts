@@ -43,7 +43,12 @@ Deno.serve(async (req) => {
     const isStaff = ['ceo', 'super_admin', 'admin', 'moderator'].includes(user.role);
     if (!isParticipant && !isStaff) return Response.json({ error: 'Forbidden' }, { status: 403 });
     if (match.final_map_name) return Response.json({ success: true, match });
-    if (!match.challenger_id) return Response.json({ success: true, match, waiting_for_opponent: true });
+    const slotsPerTeam = Math.max(1, Number.parseInt(String(match.team_size || '1v1').split('v')[0], 10) || 1);
+    const alphaRoster = Array.isArray(match.team_alpha_player_ids) && match.team_alpha_player_ids.length > 0 ? match.team_alpha_player_ids : [match.host_id].filter(Boolean);
+    const bravoRoster = Array.isArray(match.team_bravo_player_ids) ? match.team_bravo_player_ids : [match.challenger_id].filter(Boolean);
+    if (alphaRoster.length < slotsPerTeam || bravoRoster.length < slotsPerTeam) {
+      return Response.json({ success: true, match, waiting_for_opponent: true });
+    }
 
     const pool = mapsByMode[match.game_mode] || mapsByMode.snd;
     const selected = pool[Math.floor(Math.random() * pool.length)];

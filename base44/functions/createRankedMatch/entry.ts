@@ -47,6 +47,10 @@ Deno.serve(async (req) => {
     if (!Object.prototype.hasOwnProperty.call(mapsByMode, gameMode)) {
       return Response.json({ error: 'Invalid ranked game mode' }, { status: 400 });
     }
+    const slotsPerTeam = Number.parseInt(String(teamSize).split('v')[0], 10);
+    if (![1, 2, 3, 4].includes(slotsPerTeam) || teamSize !== `${slotsPerTeam}v${slotsPerTeam}`) {
+      return Response.json({ error: 'Invalid ranked team size' }, { status: 400 });
+    }
 
     const mapPool = mapsByMode[gameMode];
     const now = new Date().toISOString();
@@ -64,6 +68,12 @@ Deno.serve(async (req) => {
       maps: mapPool.map((map) => map.name),
       final_map_id: '',
       final_map_name: '',
+      team_alpha_player_ids: [user.id],
+      team_alpha_player_names: [playerName(user)],
+      team_bravo_player_ids: [],
+      team_bravo_player_names: [],
+      joined_players: 1,
+      total_players: slotsPerTeam * 2,
       status: 'open',
       proof_urls: [],
       match_start_deadline: deadline,
