@@ -15,7 +15,6 @@ import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 const modes = ["All", "1v1", "2v2", "3v3", "4v4"];
 const gameModes = ["All", "Search & Destroy", "Hardpoint", "Overload"];
 const teamCapacity = { "1v1": 2, "2v2": 4, "3v3": 6, "4v4": 8 };
-const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 
 export default function Eights() {
   const navigate = useNavigate();
@@ -25,8 +24,6 @@ export default function Eights() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [lobbies, setLobbies] = useState([]);
-  const [userTeams, setUserTeams] = useState([]);
-  const [joinTeamByLobby, setJoinTeamByLobby] = useState({});
   const [stats, setStats] = useState({ activeLobbies: 0, playersQueued: 0, matchesLive: 0 });
   const [joiningId, setJoiningId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,21 +84,6 @@ export default function Eights() {
       setLoading(true);
       const currentUser = await base44.auth.me().catch(() => null);
       setUser(currentUser);
-      if (currentUser?.id) {
-        const memberships = await base44.entities.TeamMember.filter({ user_id: currentUser.id }, "-joined_date", 50).catch(() => []);
-        const teams = await Promise.all((memberships || [])
-          .filter((membership) => membership.is_active !== false)
-          .map(async (membership) => {
-            const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
-            const members = team ? await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 50).catch(() => []) : [];
-            return team && team.is_active !== false
-              ? { ...team, membership, members: (members || []).filter((member) => member.is_active !== false) }
-              : null;
-          }));
-        setUserTeams(teams.filter(Boolean));
-      } else {
-        setUserTeams([]);
-      }
       await refreshLobbyList();
     } catch (error) {
       console.error("Failed to load 8s lobbies:", error);
@@ -121,21 +103,10 @@ export default function Eights() {
       return;
     }
 
-    const required = rosterSize(lobby.mode);
-    const selectedTeam = compatibleTeamsFor(lobby).find((team) => team.id === joinTeamByLobby[lobby.id]);
-    if (required > 1 && !joinTeamByLobby[lobby.id]) {
-      toast({ title: "Team required", description: `Select an 8s team with ${required} active players.`, variant: "destructive" });
-      return;
-    }
-    if (required > 1 && (!selectedTeam || selectedTeam.members.length < required)) {
-      toast({ title: "Roster incomplete", description: `That team needs ${required} active players before it can join this lobby.`, variant: "destructive" });
-      return;
-    }
     setJoiningId(lobby.id);
     try {
       const response = await base44.functions.invoke("acceptWager", {
         wager_id: lobby.id,
-        team_id: joinTeamByLobby[lobby.id] || undefined,
         challenger_banned_map: null,
         challenger_banned_map_name: "",
       });
@@ -159,20 +130,13 @@ export default function Eights() {
     if (searchQuery && !l.host.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
-  const compatibleTeamsFor = (_lobby) => (
-    userTeams.filter((team) => (
-      (team.team_type === "8s" || team.team_type === "general")
-      && team.captain_id === user?.id
-    ))
-  );
-
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <CompetitionHero
           eyebrow="Season 1 Match Hub"
           title="8s Lobbies"
-          description="Find an open lobby, bring your roster, and move straight into the same competitive match-room flow used by tournaments."
+          description="Join solo, fill an open slot, and jump straight into a balanced competitive lobby. No team required."
           action={
             <button
               onClick={() => setIsCreateModalOpen(true)}
@@ -272,23 +236,6 @@ export default function Eights() {
                     </Link>
                   ) : lobby.status !== "In Progress" && lobby.players.split("/")[0] !== lobby.players.split("/")[1] && (
                     <div className="ml-3 flex flex-col gap-2">
-                      {rosterSize(lobby.mode) > 1 && (
-                        <>
-                          <select
-                            value={joinTeamByLobby[lobby.id] || ""}
-                            onChange={(event) => setJoinTeamByLobby((current) => ({ ...current, [lobby.id]: event.target.value }))}
-                            className="px-2 py-1.5 bg-secondary text-vapor text-xs rounded border border-white/5 focus:border-cyan/30 focus:outline-none"
-                          >
-                            <option value="">Select team</option>
-                            {compatibleTeamsFor(lobby).map((team) => (
-                              <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(lobby.mode)})</option>
-                            ))}
-                          </select>
-                          {joinTeamByLobby[lobby.id] && compatibleTeamsFor(lobby).find((team) => team.id === joinTeamByLobby[lobby.id])?.members.length < rosterSize(lobby.mode) && (
-                            <span className="text-[10px] text-orange">Needs {rosterSize(lobby.mode)} active players</span>
-                          )}
-                        </>
-                      )}
                       <button onClick={() => handleJoinLobby(lobby)} disabled={joiningId === lobby.id} className="px-3 py-1 bg-cyan/10 text-cyan text-xs font-bold rounded hover:bg-cyan/20 transition-all">
                         {joiningId === lobby.id ? "Joining" : "Join"}
                       </button>

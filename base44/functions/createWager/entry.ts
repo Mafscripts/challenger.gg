@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
 
     const normalizedMatchType = ['8s', 'xp', 'wagers'].includes(match_type) ? match_type : (entryFee > 0 ? 'wagers' : 'xp');
     const requiredSize = rosterSize(team_size);
-    const isTeamMatch = requiredSize > 1 && ['8s', 'wagers'].includes(normalizedMatchType);
+    const isTeamMatch = normalizedMatchType === 'wagers';
     const paymentMode = paymentModeFor(body.payment_mode);
     const teamResult = isTeamMatch
       ? await selectedTeamRoster(base44, body.team_id, user.id, teamTypeFor(normalizedMatchType), requiredSize)

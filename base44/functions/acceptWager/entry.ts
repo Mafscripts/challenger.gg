@@ -244,16 +244,27 @@ Deno.serve(async (req) => {
     if (wager.match_type === 'ranked') return Response.json({ error: 'Ranked matches must use acceptRankedMatch' }, { status: 400 });
     if (wager.status !== 'open') return Response.json({ error: 'Wager is no longer open' }, { status: 400 });
     if (user.id === wager.host_id) return Response.json({ error: 'Cannot accept your own wager' }, { status: 400 });
-    if (wager.challenger_id) return Response.json({ error: 'Wager already has a challenger' }, { status: 400 });
+    if (wager.challenger_id && wager.match_type !== '8s') return Response.json({ error: 'Wager already has a challenger' }, { status: 400 });
 
     const entryFee = toMoney(wager.entry_fee ?? wager.amount);
     const requiredSize = Number(wager.required_players_per_team || rosterSize(wager.team_size));
-    const isTeamMatch = requiredSize > 1 && ['8s', 'wagers'].includes(wager.match_type || 'wagers');
+    const isTeamMatch = (wager.match_type || 'wagers') === 'wagers';
     const paymentMode = paymentModeFor(body.payment_mode);
     const teamResult = isTeamMatch
       ? await selectedTeamRoster(base44, body.team_id, user.id, teamTypeFor(wager.match_type || 'wagers'), requiredSize)
       : { team: null, roster: null };
     const existingRows = await base44.asServiceRole.entities.WagerParticipant.filter({ wager_id: wager.id }, '-joined_date', 20).catch(() => []);
+    if (existingRows.some((participant) => participant.user_id === user.id)) {
+      return Response.json({ error: 'You already joined this lobby' }, { status: 400 });
+    }
+    const isIndividualEights = wager.match_type === '8s';
+    const playerCapacity = requiredSize * 2;
+    if (isIndividualEights && existingRows.length >= playerCapacity) {
+      return Response.json({ error: 'This 8s lobby is full' }, { status: 400 });
+    }
+    const hostCount = existingRows.filter((participant) => participant.team === 'host').length;
+    const challengerCount = existingRows.filter((participant) => participant.team === 'challenger').length;
+    const individualSide = isIndividualEights && hostCount <= challengerCount ? 'host' : 'challenger';
     const enrolledActivisionResponse = await activisionIdRequiredForUserIds(base44, existingRows.map((participant) => participant.user_id));
     if (enrolledActivisionResponse) return enrolledActivisionResponse;
     const rosterActivisionResponse = isTeamMatch
@@ -304,7 +315,7 @@ Deno.serve(async (req) => {
     } else {
       const escrow = entryFee > 0
         ? await escrowStake(base44, user.id, wager.id, entryFee, {
-          team: 'challenger',
+          team: isIndividualEights ? individualSide : 'challenger',
           opponent_id: wager.host_id,
           opponent_name: wager.host_name,
           description: `Escrow for ${wager.team_size} ${wager.game_mode_display || wager.game_mode} wager`,
@@ -315,8 +326,8 @@ Deno.serve(async (req) => {
         wager_id,
         user_id: user.id,
         user_name: playerName(user),
-        team: 'challenger',
-        is_captain: true,
+        team: isIndividualEights ? individualSide : 'challenger',
+        is_captain: isIndividualEights ? (individualSide === 'challenger' && challengerCount === 0) : true,
         entry_fee_paid: entryFee,
         payment_status: 'paid',
         paid_by: user.id,
@@ -326,26 +337,28 @@ Deno.serve(async (req) => {
       });
     }
 
+    const joinedPlayerCount = existingRows.length + 1;
+    const rosterFull = !isIndividualEights || joinedPlayerCount >= playerCapacity;
     await base44.asServiceRole.entities.Wager.update(wager_id, {
-      status: isTeamMatch ? 'accepted' : 'in_progress',
-      challenger_id: user.id,
-      challenger_name: playerName(user),
+      status: isTeamMatch ? 'accepted' : rosterFull ? 'in_progress' : 'open',
+      challenger_id: wager.challenger_id || (individualSide === 'challenger' ? user.id : ''),
+      challenger_name: wager.challenger_name || (individualSide === 'challenger' ? playerName(user) : ''),
       challenger_team_id: teamResult.team?.id || '',
       challenger_team_name: teamResult.team?.name || '',
       challenger_payment_mode: paymentMode,
       challenger_banned_map_id: challenger_banned_map || '',
       challenger_banned_map_name: challenger_banned_map_name || '',
-      final_map_id: selectedFinalMap,
-      final_map_name: selectedFinalMapName,
-      match_start_deadline: isTeamMatch ? wager.match_start_deadline : new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      match_started_date: isTeamMatch ? wager.match_started_date || '' : now,
+      final_map_id: rosterFull ? selectedFinalMap : '',
+      final_map_name: rosterFull ? selectedFinalMapName : '',
+      match_start_deadline: isTeamMatch || !rosterFull ? wager.match_start_deadline : new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      match_started_date: isTeamMatch || !rosterFull ? wager.match_started_date || '' : now,
       accepted_date: now,
       match_type: wager.match_type || (entryFee > 0 ? 'wagers' : 'xp'),
     });
 
     const startState = isTeamMatch ? await maybeStartWager(base44, wager_id) : {
       wager: await base44.asServiceRole.entities.Wager.get(wager_id),
-      ready: true,
+      ready: rosterFull,
     };
 
     return Response.json({

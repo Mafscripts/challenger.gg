@@ -5528,7 +5528,7 @@ async function createWager(req) {
   const entryFee = money(req.body.entry_fee ?? req.body.amount);
   const matchType = req.body.match_type === "8s" ? "8s" : req.body.match_type === "xp" ? "xp" : "wagers";
   const requiredSize = requiredRosterSize(req.body.team_size);
-  const isTeamMatch = matchType === "wagers" || (matchType === "8s" && requiredSize > 1);
+  const isTeamMatch = matchType === "wagers";
   const paymentMode = paymentModeFor(req.body.payment_mode);
   const allowedPlayRules = new Set(["controller_only", "mixed_pc_allowed", "console_only"]);
   const playRule = allowedPlayRules.has(req.body.play_rule) ? req.body.play_rule : "controller_only";
@@ -5635,11 +5635,19 @@ async function acceptWager(req) {
   const entryFee = money(wager.entry_fee ?? wager.amount);
   const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
   const wagerMatchType = wager.match_type || "wagers";
-  const isTeamMatch = wagerMatchType === "wagers" || (wagerMatchType === "8s" && requiredSize > 1);
+  const isTeamMatch = wagerMatchType === "wagers";
   const paymentMode = paymentModeFor(req.body.payment_mode);
   let challengerTeam = null;
   let challengerRoster = null;
   const enrolledParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
+  const isIndividualEights = wagerMatchType === "8s";
+  const playerCapacity = requiredSize * 2;
+  if (isIndividualEights && enrolledParticipants.length >= playerCapacity) {
+    return { success: false, error: "This 8s lobby is full" };
+  }
+  const hostCount = enrolledParticipants.filter((participant) => participant.team === "host").length;
+  const challengerCount = enrolledParticipants.filter((participant) => participant.team === "challenger").length;
+  const individualSide = isIndividualEights && hostCount <= challengerCount ? "host" : "challenger";
   const enrolledActivisionError = await activisionIdErrorForMembers(enrolledParticipants);
   if (enrolledActivisionError) return { success: false, error: enrolledActivisionError, code: "ACTIVISION_ID_REQUIRED" };
 
@@ -5686,14 +5694,14 @@ async function acceptWager(req) {
       userId: req.user.id,
       wagerId: wager.id,
       entryFee,
-      team: "challenger",
+      team: isIndividualEights ? individualSide : "challenger",
     });
     await createEntity("WagerParticipant", {
       wager_id: wager.id,
       user_id: req.user.id,
       user_name: nameFor(req.user),
-      team: "challenger",
-      is_captain: true,
+      team: isIndividualEights ? individualSide : "challenger",
+      is_captain: isIndividualEights ? (individualSide === "challenger" && challengerCount === 0) : true,
       entry_fee_paid: entryFee,
       payment_status: "paid",
       paid_by: req.user.id,
@@ -5703,10 +5711,12 @@ async function acceptWager(req) {
     });
   }
 
-  const selectedMaps = randomWagerMaps(wager.game_mode, wager.best_of);
+  const joinedPlayerCount = enrolledParticipants.length + 1;
+  const rosterFull = !isIndividualEights || joinedPlayerCount >= playerCapacity;
+  const selectedMaps = rosterFull ? randomWagerMaps(wager.game_mode, wager.best_of) : [];
   const updated = await updateEntity("Wager", wager.id, {
-    challenger_id: req.user.id,
-    challenger_name: nameFor(req.user),
+    challenger_id: wager.challenger_id || (individualSide === "challenger" ? req.user.id : ""),
+    challenger_name: wager.challenger_name || (individualSide === "challenger" ? nameFor(req.user) : ""),
     challenger_team_id: challengerTeam?.id,
     challenger_team_name: challengerTeam?.name,
     challenger_payment_mode: paymentMode,
@@ -5716,9 +5726,9 @@ async function acceptWager(req) {
     series_maps: selectedMaps.map((map) => map.name),
     final_map_id: selectedMaps[0]?.id || "",
     final_map_name: selectedMaps[0]?.name || "",
-    status: isTeamMatch ? "accepted" : "in_progress",
+    status: isTeamMatch ? "accepted" : rosterFull ? "in_progress" : "open",
     accepted_date: new Date().toISOString(),
-    match_started_date: isTeamMatch ? wager.match_started_date : new Date().toISOString(),
+    match_started_date: isTeamMatch || !rosterFull ? wager.match_started_date : new Date().toISOString(),
   });
 
   const startState = isTeamMatch ? await maybeStartWager(wager.id) : { wager: updated, ready: true };
