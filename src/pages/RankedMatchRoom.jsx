@@ -61,11 +61,11 @@ const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsP
 // The roster columns and chat deliberately share this height. The larger formats
 // need enough room for every card's natural content, not only its minimum height.
 const arenaHeightClass = (slots) => ({
-  1: "h-[390px]",
-  2: "h-[480px]",
-  3: "h-[600px]",
-  4: "h-[730px]",
-}[slots] || "h-[730px]");
+  1: "h-[365px]",
+  2: "h-[455px]",
+  3: "h-[575px]",
+  4: "h-[705px]",
+}[slots] || "h-[705px]");
 
 function RosterPlayerCard({ player, color, slot, slots }) {
   const rank = getRankForElo(player.elo || 0);
