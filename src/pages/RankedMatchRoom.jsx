@@ -18,7 +18,7 @@ import MatchChat from "@/components/match/MatchChat";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
-import { getRankForElo } from "@/lib/ranks";
+import { getRankForElo, getRankProgress } from "@/lib/ranks";
 
 const playerName = (user, fallback = "Unnamed player") => (
   user?.display_name || user?.full_name || user?.username || user?.email || fallback
@@ -62,32 +62,40 @@ const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsP
 // Keep a little breathing room so the last 3v3/4v4 card never overlaps the action bar.
 const arenaHeightClass = (slots) => ({ 1: "h-[280px]", 2: "h-[350px]", 3: "h-[470px]", 4: "h-[590px]" }[slots] || "h-[590px]");
 
-function RosterPlayerCard({ player, color }) {
+function RosterPlayerCard({ player, color, slot, slots }) {
   const rank = getRankForElo(player.elo || 0);
+  const rankProgress = getRankProgress(player.elo || 0);
   const matches = Math.max(Number(player.matches_played || 0), Number(player.wins || 0) + Number(player.losses || 0));
   const winRate = matches > 0 ? Math.round((Number(player.wins || 0) / matches) * 100) : 0;
   const isAlpha = color === "cyan";
-  const accent = isAlpha ? "border-l-cyan/70 from-cyan/[0.08]" : "border-l-orange/70 from-orange/[0.08]";
+  const roomy = slots <= 2;
+  const accent = isAlpha
+    ? "border-cyan/20 from-cyan/[0.14] via-cyan/[0.035] shadow-[inset_3px_0_0_hsl(var(--cyan)),0_12px_34px_rgba(0,0,0,0.18)]"
+    : "border-orange/20 from-orange/[0.14] via-orange/[0.035] shadow-[inset_3px_0_0_hsl(var(--orange)),0_12px_34px_rgba(0,0,0,0.18)]";
   const accentText = isAlpha ? "text-cyan" : "text-orange";
+  const accentBg = isAlpha ? "bg-cyan" : "bg-orange";
 
   return (
-    <div className={`relative flex min-h-[104px] min-w-0 overflow-hidden rounded-lg border border-white/[0.07] border-l-2 bg-gradient-to-r ${accent} to-background/20 p-3`}>
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="shrink-0 rounded-lg border border-white/[0.07] bg-background/30 p-1">
+    <div className={`group/player relative flex min-h-[104px] min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br ${accent} to-background/70 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 ${roomy ? "flex-1" : ""}`}>
+      <div aria-hidden="true" className={`absolute -right-10 -top-12 h-32 w-32 rounded-full blur-3xl ${isAlpha ? "bg-cyan/10" : "bg-orange/10"}`} />
+      <span className={`absolute right-2.5 top-2 font-mono text-[9px] font-black tracking-[0.18em] opacity-45 ${accentText}`}>{isAlpha ? "A" : "B"}{slot}</span>
+      <div className={`relative flex min-w-0 flex-1 gap-3 ${roomy ? "items-center" : "items-start"}`}>
+        <div className={`relative shrink-0 rounded-xl border bg-black/25 p-1.5 ${isAlpha ? "border-cyan/15" : "border-orange/15"}`}>
           <RankBadge rank={rank.tier} size="sm" showLabel={false} />
+          <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 rounded border border-black/50 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-background ${accentBg}`}>{rank.name}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 pr-7">
             <div className="flex min-w-0 items-center gap-2">
-              <p className="truncate text-base font-black text-foreground">{player.name}</p>
+              <p className={`${roomy ? "text-lg" : "text-base"} truncate font-black tracking-tight text-foreground`}>{player.name}</p>
               <UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
             </div>
-            <span className={`shrink-0 rounded-md border border-white/[0.07] bg-background/30 px-2 py-1 font-mono text-xs font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} ELO</span>
           </div>
           <div className="mt-0.5 flex items-center justify-between gap-2">
-            <ActivisionIdLabel user={player} className="min-w-0 max-w-[58%]" />
-            <span className="text-[11px] font-black uppercase tracking-wide text-vapor">{rank.name}</span>
+            <ActivisionIdLabel user={player} className="min-w-0 max-w-[55%]" />
+            <span className={`shrink-0 font-mono text-xs font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} <span className="text-[8px] tracking-wider">ELO</span></span>
           </div>
+          {roomy && <div className="mt-2 flex items-center gap-2"><div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.06]"><div className={`h-full rounded-full ${accentBg}`} style={{ width: `${rankProgress}%` }} /></div><span className="font-mono text-[8px] font-bold text-vapor">{rankProgress}%</span></div>}
           <div className="mt-2 grid grid-cols-3 divide-x divide-white/[0.07] rounded-md border border-white/[0.06] bg-background/25 py-1.5 text-center">
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Record</p><p className="mt-1 font-mono text-xs font-black text-foreground">{player.wins || 0}W–{player.losses || 0}L</p></div>
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Win rate</p><p className={`mt-1 font-mono text-xs font-black ${accentText}`}>{winRate}%</p></div>
@@ -101,18 +109,23 @@ function RosterPlayerCard({ player, color }) {
 
 function PlayerPanel({ label, color, players = [], slots = 1 }) {
   const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
+  const isAlpha = color === "cyan";
 
   return (
-    <div className={`glass flex h-full flex-col rounded-xl border p-5 ${colorClass}`}>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-wider">{label}</p>
-        <span className="rounded-full border border-white/10 bg-background/30 px-2.5 py-1 text-[10px] font-black">{players.length}/{slots}</span>
+    <div className={`glass relative flex h-full flex-col overflow-hidden rounded-2xl border p-5 ${colorClass}`}>
+      <div aria-hidden="true" className={`absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent ${isAlpha ? "via-cyan/70" : "via-orange/70"} to-transparent`} />
+      <div className="relative mb-3 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em]">{label}</p>
+          <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.18em] text-vapor">Ranked roster · {slots}v{slots}</p>
+        </div>
+        <span className={`rounded-full border bg-background/45 px-2.5 py-1 font-mono text-[10px] font-black ${players.length >= slots ? (isAlpha ? "border-cyan/25 text-cyan" : "border-orange/25 text-orange") : "border-white/10 text-vapor"}`}>{players.length}/{slots}</span>
       </div>
       <div className="flex flex-1 flex-col gap-2">
         {Array.from({ length: slots }, (_, index) => {
           const player = players[index];
-          if (!player) return <div key={`open-${index}`} className="flex min-h-[62px] flex-1 items-center justify-center rounded-lg border border-dashed border-white/10 bg-background/15 text-[10px] font-black uppercase tracking-wider text-vapor/55">Open slot</div>;
-          return <RosterPlayerCard key={player.id} player={player} color={color} />;
+          if (!player) return <div key={`open-${index}`} className="group/slot flex min-h-[62px] flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 bg-background/15 text-[9px] font-black uppercase tracking-[0.16em] text-vapor/45"><span className={`mr-2 h-1.5 w-1.5 rounded-full ${isAlpha ? "bg-cyan/40" : "bg-orange/40"}`} />Open slot {index + 1}</div>;
+          return <RosterPlayerCard key={player.id} player={player} color={color} slot={index + 1} slots={slots} />;
         })}
       </div>
     </div>
