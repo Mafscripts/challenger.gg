@@ -5,10 +5,13 @@ import {
   AlertCircle,
   Check,
   Clock,
+  Flame,
   Flag,
   HelpCircle,
+  Percent,
   RefreshCw,
   Shield,
+  Swords,
   Trophy,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -81,25 +84,32 @@ function RosterPlayerCard({ player, color, slot, slots }) {
   const accentBg = isAlpha ? "bg-cyan" : "bg-orange";
 
   return (
-    <div className={`group/player relative flex min-h-[124px] min-w-0 overflow-hidden rounded-xl border bg-[#111923]/95 ${accent} p-3.5 transition duration-200 hover:border-white/[0.14] hover:bg-[#151f2a] ${roomy ? "flex-1" : ""}`}>
+    <div className={`group/player relative flex min-h-[124px] min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br from-[#14202b] via-[#111923] to-[#0d141c] ${accent} p-3.5 transition duration-300 hover:border-white/[0.14] ${player.is_premium ? "hover:-translate-y-0.5" : ""} ${roomy ? "flex-1" : ""}`}>
+      {player.is_premium && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/4 skew-x-[-18deg] bg-gradient-to-r from-transparent via-purple-300/[0.08] to-transparent opacity-0 transition-all duration-700 group-hover/player:left-[115%] group-hover/player:opacity-100" />}
       <span className="absolute right-3 top-3 font-mono text-[8px] font-bold tracking-[0.14em] text-vapor/40">#{String(slot).padStart(2, "0")}</span>
       <div className={`relative flex min-w-0 flex-1 gap-3 ${roomy ? "items-center" : "items-start"}`}>
-        <div className="relative flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-black/25">
-          <RankBadge rank={rank.tier} size="sm" showLabel={false} />
+        <div className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-black/25">
+          <div className="scale-[1.18]"><RankBadge rank={rank.tier} size="sm" showLabel={false} /></div>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2 pr-7">
             <div className="flex min-w-0 items-center gap-2">
               <p className={`${roomy ? "text-lg" : "text-base"} truncate font-black tracking-tight text-foreground`}>{player.name}</p>
               <UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
+              <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider ${accentText} ${isAlpha ? "border-cyan/15 bg-cyan/[0.06]" : "border-orange/15 bg-orange/[0.06]"}`}>S{player.season || 1}</span>
             </div>
           </div>
           <div className="mt-1 flex items-center justify-between gap-2">
             <ActivisionIdLabel user={player} className="min-w-0 max-w-[55%]" />
-            <span className={`shrink-0 rounded-md border border-white/[0.07] bg-black/25 px-2 py-1 font-mono text-xs font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} <span className="text-[7px] tracking-wider text-vapor">ELO</span></span>
+            <div className="w-[72px] shrink-0">
+              <div className={`rounded-md border border-white/[0.07] bg-black/30 px-2.5 py-1.5 text-center font-mono text-sm font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} <span className="text-[7px] tracking-wider text-vapor">ELO</span></div>
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/[0.06]"><div className={`h-full rounded-full ${accentBg}`} style={{ width: `${rankProgress}%` }} /></div>
+              <p className="mt-0.5 text-center font-mono text-[7px] text-vapor/60">{rankProgress} / 100</p>
+            </div>
           </div>
           {roomy && <div className="mt-2 flex items-center gap-2"><span className={`text-[8px] font-black uppercase tracking-wider ${accentText}`}>{rank.name}</span><div className="h-px flex-1 overflow-hidden bg-white/[0.06]"><div className={`h-full ${accentBg}`} style={{ width: `${rankProgress}%` }} /></div></div>}
-          <div className="mt-3 grid grid-cols-3 divide-x divide-white/[0.07] border-t border-white/[0.07] pt-2 text-center">
+          <div className="mt-2 grid grid-cols-3 border-t border-white/[0.07] pt-1.5 text-vapor/55"><Swords className="mx-auto h-2.5 w-2.5" /><Percent className="mx-auto h-2.5 w-2.5" /><Flame className="mx-auto h-2.5 w-2.5" /></div>
+          <div className="mt-0.5 grid grid-cols-3 divide-x divide-white/[0.07] text-center">
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Record</p><p className="mt-1 font-mono text-xs font-black text-foreground">{player.wins || 0}W–{player.losses || 0}L</p></div>
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Win rate</p><p className={`mt-1 font-mono text-xs font-black ${accentText}`}>{winRate}%</p></div>
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Streak</p><p className="mt-1 font-mono text-xs font-black text-foreground">{player.win_streak || 0}</p></div>
@@ -344,6 +354,8 @@ export default function RankedMatchRoom() {
       win_streak: stats.win_streak || 0,
       peak_elo: stats.peak_elo || 0,
       matches_played: stats.matches_played || 0,
+      season: stats.season || userRows?.ranked_season || 1,
+      xp_level: userRows?.xp_level || userRows?.level || 1,
       badges: userRows?.badges || [],
       is_premium: Boolean(userRows?.is_premium),
       premium_expires: userRows?.premium_expires || null,
