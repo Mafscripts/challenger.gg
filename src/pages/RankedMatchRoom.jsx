@@ -75,19 +75,17 @@ function RosterPlayerCard({ player, color, slot, slots }) {
   const isAlpha = color === "cyan";
   const roomy = slots <= 2;
   const accent = isAlpha
-    ? "border-cyan/20 from-cyan/[0.14] via-cyan/[0.035] shadow-[inset_3px_0_0_hsl(var(--cyan)),0_12px_34px_rgba(0,0,0,0.18)]"
-    : "border-orange/20 from-orange/[0.14] via-orange/[0.035] shadow-[inset_3px_0_0_hsl(var(--orange)),0_12px_34px_rgba(0,0,0,0.18)]";
+    ? "border-white/[0.08] shadow-[inset_3px_0_0_hsl(var(--cyan)),0_8px_24px_rgba(0,0,0,0.16)]"
+    : "border-white/[0.08] shadow-[inset_3px_0_0_hsl(var(--orange)),0_8px_24px_rgba(0,0,0,0.16)]";
   const accentText = isAlpha ? "text-cyan" : "text-orange";
   const accentBg = isAlpha ? "bg-cyan" : "bg-orange";
 
   return (
-    <div className={`group/player relative flex min-h-[124px] min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br ${accent} to-background/70 p-3.5 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 ${roomy ? "flex-1" : ""}`}>
-      <div aria-hidden="true" className={`absolute -right-10 -top-12 h-32 w-32 rounded-full blur-3xl ${isAlpha ? "bg-cyan/10" : "bg-orange/10"}`} />
-      <span className={`absolute right-2.5 top-2 font-mono text-[9px] font-black tracking-[0.18em] opacity-45 ${accentText}`}>{isAlpha ? "A" : "B"}{slot}</span>
+    <div className={`group/player relative flex min-h-[124px] min-w-0 overflow-hidden rounded-xl border bg-[#111923]/95 ${accent} p-3.5 transition duration-200 hover:border-white/[0.14] hover:bg-[#151f2a] ${roomy ? "flex-1" : ""}`}>
+      <span className="absolute right-3 top-3 font-mono text-[8px] font-bold tracking-[0.14em] text-vapor/40">#{String(slot).padStart(2, "0")}</span>
       <div className={`relative flex min-w-0 flex-1 gap-3 ${roomy ? "items-center" : "items-start"}`}>
-        <div className={`relative shrink-0 rounded-xl border bg-black/25 p-1.5 ${isAlpha ? "border-cyan/15" : "border-orange/15"}`}>
+        <div className="relative flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-black/25">
           <RankBadge rank={rank.tier} size="sm" showLabel={false} />
-          <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 rounded border border-black/50 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-background ${accentBg}`}>{rank.name}</span>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2 pr-7">
@@ -96,12 +94,12 @@ function RosterPlayerCard({ player, color, slot, slots }) {
               <UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
             </div>
           </div>
-          <div className="mt-0.5 flex items-center justify-between gap-2">
+          <div className="mt-1 flex items-center justify-between gap-2">
             <ActivisionIdLabel user={player} className="min-w-0 max-w-[55%]" />
-            <span className={`shrink-0 font-mono text-xs font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} <span className="text-[8px] tracking-wider">ELO</span></span>
+            <span className={`shrink-0 rounded-md border border-white/[0.07] bg-black/25 px-2 py-1 font-mono text-xs font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} <span className="text-[7px] tracking-wider text-vapor">ELO</span></span>
           </div>
-          {roomy && <div className="mt-2 flex items-center gap-2"><div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.06]"><div className={`h-full rounded-full ${accentBg}`} style={{ width: `${rankProgress}%` }} /></div><span className="font-mono text-[8px] font-bold text-vapor">{rankProgress}%</span></div>}
-          <div className="mt-2 grid grid-cols-3 divide-x divide-white/[0.07] rounded-md border border-white/[0.06] bg-background/25 py-1.5 text-center">
+          {roomy && <div className="mt-2 flex items-center gap-2"><span className={`text-[8px] font-black uppercase tracking-wider ${accentText}`}>{rank.name}</span><div className="h-px flex-1 overflow-hidden bg-white/[0.06]"><div className={`h-full ${accentBg}`} style={{ width: `${rankProgress}%` }} /></div></div>}
+          <div className="mt-3 grid grid-cols-3 divide-x divide-white/[0.07] border-t border-white/[0.07] pt-2 text-center">
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Record</p><p className="mt-1 font-mono text-xs font-black text-foreground">{player.wins || 0}W–{player.losses || 0}L</p></div>
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Win rate</p><p className={`mt-1 font-mono text-xs font-black ${accentText}`}>{winRate}%</p></div>
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Streak</p><p className="mt-1 font-mono text-xs font-black text-foreground">{player.win_streak || 0}</p></div>
@@ -113,13 +111,13 @@ function RosterPlayerCard({ player, color, slot, slots }) {
 }
 
 function PlayerPanel({ label, color, players = [], slots = 1 }) {
-  const colorClass = color === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
+  const colorClass = color === "cyan" ? "text-cyan" : "text-orange";
   const isAlpha = color === "cyan";
 
   return (
-    <div className={`glass relative flex h-full flex-col overflow-hidden rounded-2xl border p-5 ${colorClass}`}>
-      <div aria-hidden="true" className={`absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent ${isAlpha ? "via-cyan/70" : "via-orange/70"} to-transparent`} />
-      <div className="relative mb-3 flex items-center justify-between">
+    <div className={`glass relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#18222d]/90 p-4 ${colorClass}`}>
+      <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-px ${isAlpha ? "bg-cyan/65" : "bg-orange/65"}`} />
+      <div className="relative mb-4 flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em]">{label}</p>
           <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.18em] text-vapor">Ranked roster · {slots}v{slots}</p>
