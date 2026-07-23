@@ -54,14 +54,14 @@ async function notifyUser(base44, userId, payload) {
 
 async function rosterChangeError(base44, team) {
   if (!team || team.is_active === false) return 'Team is not active';
-  if (team.roster_locked) return 'Roster is locked';
   const participants = await base44.asServiceRole.entities.TournamentParticipant.filter({ team_id: team.id }, '-registered_date', 100).catch(() => []);
   for (const participant of participants || []) {
-    if (participant.roster_locked) return 'Roster is locked by tournament registration';
     const tournament = await base44.asServiceRole.entities.Tournament.get(participant.tournament_id).catch(() => null);
+    if (!tournament || ['completed', 'cancelled'].includes(tournament.status)) continue;
+    if (participant.roster_locked) return 'Leave the active tournament before changing or disbanding this team';
     const registrationEnded = tournament?.registration_end && new Date(tournament.registration_end) <= new Date();
     if (registrationEnded || !['open', 'registration'].includes(tournament?.status)) {
-      return 'Roster is locked by tournament registration';
+      return 'Leave the active tournament before changing or disbanding this team';
     }
   }
   return null;

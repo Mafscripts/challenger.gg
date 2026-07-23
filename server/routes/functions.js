@@ -2761,9 +2761,13 @@ async function teamRoster(teamId, { requiredSize = 1, expectedType, exactSize = 
 async function activeTournamentLocksForTeam(teamId) {
   const participants = await listEntities("TournamentParticipant", { team_id: teamId }, "-registered_date", 100).catch(() => []);
   const checks = await Promise.all(participants.map(async (participant) => {
-    if (participant.roster_locked) return participant;
     const tournament = await getEntity("Tournament", participant.tournament_id).catch(() => null);
     if (!tournament) return null;
+    // Historical registrations must not permanently trap a team. Participant
+    // rows intentionally remain for standings, so their old lock flag alone is
+    // not enough to decide whether the current roster is still protected.
+    if (["completed", "cancelled"].includes(tournament.status)) return null;
+    if (participant.roster_locked) return participant;
     const registrationEnded = tournament.registration_end && new Date(tournament.registration_end) <= new Date();
     if (registrationEnded || !tournamentStatusesOpenForRegistration.includes(tournament.status)) return participant;
     return null;
@@ -2773,9 +2777,8 @@ async function activeTournamentLocksForTeam(teamId) {
 
 async function rosterChangeError(team) {
   if (!team || team.is_active === false) return "Team is not active";
-  if (team.roster_locked) return "Roster is locked";
   const locks = await activeTournamentLocksForTeam(team.id);
-  if (locks.length > 0) return "Roster is locked by tournament registration";
+  if (locks.length > 0) return "Leave the active tournament before changing or disbanding this team";
   return null;
 }
 
