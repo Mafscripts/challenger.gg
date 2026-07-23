@@ -84,31 +84,31 @@ function RosterPlayerCard({ player, color, slot, slots }) {
   const accentBg = isAlpha ? "bg-cyan" : "bg-orange";
 
   return (
-    <div className={`group/player relative flex min-h-[124px] min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br from-[#14202b] via-[#111923] to-[#0d141c] ${accent} p-3.5 transition duration-300 hover:border-white/[0.14] ${player.is_premium ? "hover:-translate-y-0.5" : ""} ${roomy ? "flex-1" : ""}`}>
+    <div data-testid="ranked-player-card" className={`group/player relative flex h-full min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br from-[#14202b] via-[#111923] to-[#0d141c] ${accent} transition duration-300 hover:border-white/[0.14] ${player.is_premium ? "hover:-translate-y-0.5" : ""} ${roomy ? "min-h-[124px] p-3.5" : "min-h-0 p-2.5"}`}>
       {player.is_premium && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/4 skew-x-[-18deg] bg-gradient-to-r from-transparent via-purple-300/[0.08] to-transparent opacity-0 transition-all duration-700 group-hover/player:left-[115%] group-hover/player:opacity-100" />}
       <span className="absolute right-3 top-3 font-mono text-[8px] font-bold tracking-[0.14em] text-vapor/40">#{String(slot).padStart(2, "0")}</span>
-      <div className={`relative flex min-w-0 flex-1 gap-3 ${roomy ? "items-center" : "items-start"}`}>
-        <div className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-black/25">
-          <div className="scale-[1.18]"><RankBadge rank={rank.tier} size="sm" showLabel={false} /></div>
+      <div className={`relative flex min-w-0 flex-1 ${roomy ? "items-center gap-3" : "items-start gap-2.5"}`}>
+        <div className={`relative flex shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-black/25 ${roomy ? "h-[66px] w-[66px]" : "h-[56px] w-[56px]"}`}>
+          <div className={roomy ? "scale-[1.18]" : "scale-110"}><RankBadge rank={rank.tier} size="sm" showLabel={false} /></div>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2 pr-7">
             <div className="flex min-w-0 items-center gap-2">
-              <p className={`${roomy ? "text-lg" : "text-base"} truncate font-black tracking-tight text-foreground`}>{player.name}</p>
+              <p className={`${roomy ? "text-lg" : "text-sm"} truncate font-black tracking-tight text-foreground`}>{player.name}</p>
               <UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
               <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider ${accentText} ${isAlpha ? "border-cyan/15 bg-cyan/[0.06]" : "border-orange/15 bg-orange/[0.06]"}`}>S{player.season || 1}</span>
             </div>
           </div>
           <div className="mt-1 flex items-center justify-between gap-2">
-            <ActivisionIdLabel user={player} className="min-w-0 max-w-[55%]" />
-            <div className="w-[72px] shrink-0">
-              <div className={`rounded-md border border-white/[0.07] bg-black/30 px-2.5 py-1.5 text-center font-mono text-sm font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()} <span className="text-[7px] tracking-wider text-vapor">ELO</span></div>
+            <ActivisionIdLabel user={player} className={`min-w-0 ${roomy ? "max-w-[55%]" : "max-w-[48%]"}`} />
+            <div className={`${roomy ? "w-[72px]" : "w-[62px]"} shrink-0`}>
+              <div className={`rounded-md border border-white/[0.07] bg-black/30 text-center font-mono font-black ${accentText} ${roomy ? "px-2.5 py-1.5 text-sm" : "px-1.5 py-1 text-xs"}`}>{Number(player.elo || 0).toLocaleString()} <span className="text-[7px] tracking-wider text-vapor">ELO</span></div>
               <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/[0.06]"><div className={`h-full rounded-full ${accentBg}`} style={{ width: `${rankProgress}%` }} /></div>
-              <p className="mt-0.5 text-center font-mono text-[7px] text-vapor/60">{rankProgress} / 100</p>
+              {roomy && <p className="mt-0.5 text-center font-mono text-[7px] text-vapor/60">{rankProgress} / 100</p>}
             </div>
           </div>
           {roomy && <div className="mt-2 flex items-center gap-2"><span className={`text-[8px] font-black uppercase tracking-wider ${accentText}`}>{rank.name}</span><div className="h-px flex-1 overflow-hidden bg-white/[0.06]"><div className={`h-full ${accentBg}`} style={{ width: `${rankProgress}%` }} /></div></div>}
-          <div className="mt-2 grid grid-cols-3 border-t border-white/[0.07] pt-1.5 text-vapor/55"><Swords className="mx-auto h-2.5 w-2.5" /><Percent className="mx-auto h-2.5 w-2.5" /><Flame className="mx-auto h-2.5 w-2.5" /></div>
+          <div className={`${roomy ? "mt-2" : "mt-1.5"} grid grid-cols-3 border-t border-white/[0.07] pt-1 text-vapor/55`}><Swords className="mx-auto h-2.5 w-2.5" /><Percent className="mx-auto h-2.5 w-2.5" /><Flame className="mx-auto h-2.5 w-2.5" /></div>
           <div className="mt-0.5 grid grid-cols-3 divide-x divide-white/[0.07] text-center">
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Record</p><p className="mt-1 font-mono text-xs font-black text-foreground">{player.wins || 0}W–{player.losses || 0}L</p></div>
             <div><p className="text-[9px] font-black uppercase tracking-wide text-vapor">Win rate</p><p className={`mt-1 font-mono text-xs font-black ${accentText}`}>{winRate}%</p></div>
@@ -125,7 +125,7 @@ function PlayerPanel({ label, color, players = [], slots = 1 }) {
   const isAlpha = color === "cyan";
 
   return (
-    <div className={`glass relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#18222d]/90 p-4 ${colorClass}`}>
+    <div data-testid="ranked-roster-panel" className={`glass relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#18222d]/90 p-4 ${colorClass}`}>
       <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-px ${isAlpha ? "bg-cyan/65" : "bg-orange/65"}`} />
       <div className="relative mb-4 flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div>
@@ -134,7 +134,7 @@ function PlayerPanel({ label, color, players = [], slots = 1 }) {
         </div>
         <span className={`rounded-full border bg-background/45 px-2.5 py-1 font-mono text-[10px] font-black ${players.length >= slots ? (isAlpha ? "border-cyan/25 text-cyan" : "border-orange/25 text-orange") : "border-white/10 text-vapor"}`}>{players.length}/{slots}</span>
       </div>
-      <div className="flex flex-1 flex-col gap-3">
+      <div className="grid min-h-0 flex-1 gap-3" style={{ gridTemplateRows: `repeat(${slots}, minmax(0, 1fr))` }}>
         {Array.from({ length: slots }, (_, index) => {
           const player = players[index];
           if (!player) return <div key={`open-${index}`} className="group/slot flex min-h-[62px] flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 bg-background/15 text-[9px] font-black uppercase tracking-[0.16em] text-vapor/45"><span className={`mr-2 h-1.5 w-1.5 rounded-full ${isAlpha ? "bg-cyan/40" : "bg-orange/40"}`} />Open slot {index + 1}</div>;
