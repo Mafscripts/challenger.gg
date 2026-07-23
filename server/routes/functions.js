@@ -4679,8 +4679,16 @@ async function joinMatchRoomAsAdmin(req) {
 
   const entityName = matchEntityFor(matchType);
   const match = await getEntity(entityName, req.body.match_id);
+  if (matchType === "ranked" && req.body.silent_join === true) {
+    return { success: true, match, silent_join: true };
+  }
   const ticket = await openMatchAdminTicket(match.id, req.body.ticket_id || match.admin_request_ticket_id);
   if (!ticket) {
+    // Ranked staff may observe a room without a player request. This deliberately
+    // does not change the request state or post a public system chat message.
+    if (matchType === "ranked") {
+      return { success: true, match, silent_join: true };
+    }
     return { success: false, error: "No open admin request found for this match" };
   }
 

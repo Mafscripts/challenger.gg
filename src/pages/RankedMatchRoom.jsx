@@ -291,15 +291,16 @@ export default function RankedMatchRoom() {
 
   useEffect(() => {
     if (!match?.id || !user?.id || !isStaff) return;
-    if (!match.requested_admin || !match.admin_request_ticket_id) return;
-    if (["admin_joined", "resolved", "closed"].includes(match.admin_request_status)) return;
     if (joinedAdminRooms.current.has(match.id)) return;
+    const hasOpenRequest = Boolean(match.requested_admin && match.admin_request_ticket_id)
+      && !["admin_joined", "resolved", "closed"].includes(match.admin_request_status);
 
     joinedAdminRooms.current.add(match.id);
     base44.functions.invoke("joinMatchRoomAsAdmin", {
       match_type: "ranked",
       match_id: match.id,
-      ticket_id: match.admin_request_ticket_id,
+      ...(hasOpenRequest ? { ticket_id: match.admin_request_ticket_id } : {}),
+      silent_join: !hasOpenRequest,
     }).then((response) => {
       if (response.data?.success && response.data?.match) setMatch(response.data.match);
     }).catch((error) => {
