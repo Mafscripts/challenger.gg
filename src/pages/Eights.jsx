@@ -56,10 +56,10 @@ export default function Eights() {
     ]);
     const lobbiesWithParticipants = await Promise.all((records || []).map(async (wager) => {
       const participants = await base44.entities.WagerParticipant.filterFresh({ wager_id: wager.id }).catch(() => []);
-      return { wager, participantCount: participants.length };
+      return { wager, participants, participantCount: participants.length };
     }));
     if (!isActive()) return;
-    setLobbies(lobbiesWithParticipants.map(({ wager, participantCount }) => ({
+    setLobbies(lobbiesWithParticipants.map(({ wager, participants, participantCount }) => ({
       id: wager.id,
       hostId: wager.host_id,
       host: wager.host_name || "Host unavailable",
@@ -69,6 +69,7 @@ export default function Eights() {
       gameMode: wager.game_mode_display,
       map: wager.final_map_name || "Map pending",
       players: `${participantCount}/${teamCapacity[wager.team_size] || 2}`,
+      participantUserIds: participants.map((participant) => participant.user_id).filter(Boolean),
       wager: null,
       status: "Open",
     })));
@@ -100,6 +101,13 @@ export default function Eights() {
     }
     if (!hasActivisionId(user)) {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
+      return;
+    }
+
+    // Returning players are already enrolled; opening the room should not run
+    // the join endpoint again or show an unrelated wager error.
+    if (lobby.hostId === user.id || lobby.participantUserIds?.includes(user.id)) {
+      navigate(`/8s-match/${lobby.id}`);
       return;
     }
 
@@ -237,7 +245,7 @@ export default function Eights() {
                   ) : lobby.status !== "In Progress" && lobby.players.split("/")[0] !== lobby.players.split("/")[1] && (
                     <div className="ml-3 flex flex-col gap-2">
                       <button onClick={() => handleJoinLobby(lobby)} disabled={joiningId === lobby.id} className="px-3 py-1 bg-cyan/10 text-cyan text-xs font-bold rounded hover:bg-cyan/20 transition-all">
-                        {joiningId === lobby.id ? "Joining" : "Join"}
+                        {joiningId === lobby.id ? "Joining" : lobby.hostId === user?.id || lobby.participantUserIds?.includes(user?.id) ? "Rejoin" : "Join"}
                       </button>
                     </div>
                   )}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
-  AlertTriangle, Clock, Check, AlertCircle, Flag, Map as MapIcon,
+  AlertTriangle, Clock, Check, AlertCircle, Flag, LogOut, Map as MapIcon,
   RefreshCw, Shield, Swords, Trophy
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -170,6 +170,8 @@ export default function EightsMatchRoom() {
   const [submitting, setSubmitting] = useState(false);
   const [disputing, setDisputing] = useState(false);
   const [resettingDispute, setResettingDispute] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [rosterLockRemaining, setRosterLockRemaining] = useState(null);
   const [resultDismissed, setResultDismissed] = useState(false);
   const rosterSignatureRef = useRef("");
   const joinedAdminRooms = useRef(new Set());
@@ -185,8 +187,9 @@ export default function EightsMatchRoom() {
     let active = true;
     const refresh = async () => {
       try {
+        const syncResponse = await base44.functions.invoke("syncEightsLobby", { wager_id: id }).catch(() => null);
         const [latest, participantRows] = await Promise.all([
-          base44.entities.Wager.getFresh(id),
+          syncResponse?.data?.wager ? Promise.resolve(syncResponse.data.wager) : base44.entities.Wager.getFresh(id),
           base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 20).catch(() => []),
         ]);
         if (!active || !latest) return;
@@ -227,6 +230,20 @@ export default function EightsMatchRoom() {
     const interval = setInterval(calculateTimeRemaining, 1000);
     return () => clearInterval(interval);
   }, [wager]);
+
+  useEffect(() => {
+    const updateLockCountdown = () => {
+      if (!wager?.roster_lock_deadline || wager.roster_locked) {
+        setRosterLockRemaining(null);
+        return;
+      }
+      const seconds = Math.max(0, Math.ceil((new Date(wager.roster_lock_deadline).getTime() - Date.now()) / 1000));
+      setRosterLockRemaining(seconds);
+    };
+    updateLockCountdown();
+    const interval = setInterval(updateLockCountdown, 250);
+    return () => clearInterval(interval);
+  }, [wager?.roster_lock_deadline, wager?.roster_locked]);
 
   const loadWager = async () => {
     try {
@@ -401,6 +418,24 @@ export default function EightsMatchRoom() {
     }
   };
 
+  const handleLeaveLobby = async () => {
+    setLeaving(true);
+    try {
+      const response = await base44.functions.invoke("leaveEightsLobby", { wager_id: wager.id });
+      if (!response.data?.success) {
+        toast({ title: "Cannot leave lobby", description: response.data?.error || "The roster may already be locked.", variant: "destructive" });
+        await loadWager();
+        return;
+      }
+      toast({ title: "Lobby left", description: "Your slot is open again." });
+      navigate("/8s", { replace: true });
+    } catch (error) {
+      toast({ title: "Cannot leave lobby", description: error.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setLeaving(false);
+    }
+  };
+
   useEffect(() => {
     if (!wager?.id || !user?.id || !["ceo", "super_admin", "admin", "moderator"].includes(user.role)) return;
     if (!wager.requested_admin || !wager.admin_request_ticket_id) return;
@@ -443,10 +478,13 @@ export default function EightsMatchRoom() {
     );
   }
 
-  const isParticipant = user?.id === wager.host_id || user?.id === wager.challenger_id;
+  const isParticipant = [...teamAPlayers, ...teamBPlayers].some((player) => (player.id || player.user_id) === user?.id)
+    || user?.id === wager.host_id || user?.id === wager.challenger_id;
   const isStaff = ["ceo", "super_admin", "admin", "moderator"].includes(user?.role);
   const isComplete = wager.status === "completed";
-  const canSubmit = isParticipant && Boolean(wager.challenger_id) && !isComplete;
+  const isCaptain = user?.id === wager.host_id || user?.id === wager.challenger_id;
+  const canLeave = isParticipant && !wager.roster_locked && wager.status === "open" && rosterLockRemaining !== 0;
+  const canSubmit = isCaptain && wager.status === "in_progress" && !isComplete;
   const predictedWinner = scoreA === scoreB ? null : scoreA > scoreB ? wager.host_name : wager.challenger_name;
   const personalResult = wager.xp_changes?.[user?.id] || null;
   const dismissResult = () => {
@@ -478,10 +516,26 @@ export default function EightsMatchRoom() {
                   <Clock className="h-4 w-4" /> {timeRemaining}
                 </div>
               )}
+              {canLeave && (
+                <button onClick={handleLeaveLobby} disabled={leaving} className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 transition-all hover:bg-red-500/20 disabled:opacity-50">
+                  <LogOut className="h-4 w-4" /> {leaving ? "Leaving..." : "Leave Lobby"}
+                </button>
+              )}
               <Link to="/8s" className="rounded-lg bg-secondary px-4 py-2 text-xs font-bold text-vapor transition-all hover:bg-white/10">8s Lobbies</Link>
             </div>
           </div>
         </div>
+
+        {rosterLockRemaining !== null && !wager.roster_locked && (
+          <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-orange/25 bg-orange/10 px-5 py-4">
+            <div className="flex items-center gap-3"><Clock className="h-5 w-5 text-orange" /><div><p className="text-sm font-black uppercase tracking-wider text-orange">Full lobby · roster locks in {rosterLockRemaining}s</p><p className="mt-1 text-xs text-vapor">Players may still leave until the countdown reaches zero.</p></div></div>
+            <span className="font-mono text-2xl font-black text-orange">00:{String(rosterLockRemaining).padStart(2, "0")}</span>
+          </div>
+        )}
+
+        {wager.roster_locked && !isComplete && (
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-green/20 bg-green/5 px-5 py-3 text-xs text-vapor"><Shield className="h-4 w-4 text-green" /><span><strong className="uppercase tracking-wider text-green">Roster locked</strong> · The match is live and players can no longer leave.</span></div>
+        )}
 
         {isComplete && (
           <div className="glass mb-6 flex items-center gap-3 rounded-xl border border-green/20 bg-green/5 p-5">

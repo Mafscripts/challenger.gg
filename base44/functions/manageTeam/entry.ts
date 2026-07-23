@@ -255,17 +255,28 @@ Deno.serve(async (req) => {
 
     if (action === 'leave') {
       const memberRows = await base44.asServiceRole.entities.TeamMember.filter({ team_id: team.id, user_id: user.id }, '-joined_date', 10).catch(() => []);
-      const member = (memberRows || []).find((row) => row.is_active !== false);
+      const activeMemberships = (memberRows || []).filter((row) => row.is_active !== false);
+      const member = activeMemberships[0];
       if (!member) return Response.json({ success: false, error: 'You are not on this team' }, { status: 400 });
-      const lockError = await rosterChangeError(base44, team);
-      if (lockError) return Response.json({ success: false, error: lockError }, { status: 400 });
+      const isCaptain = member.user_id === team.captain_id || member.role === 'captain';
+      // A regular member must always be able to leave, even when the roster is
+      // locked. The lock remains enforced for captain/disband operations.
+      if (isCaptain) {
+        const lockError = await rosterChangeError(base44, team);
+        if (lockError) return Response.json({ success: false, error: lockError }, { status: 400 });
+      }
       const members = await activeTeamMembers(base44, team.id);
-      if (member.user_id === team.captain_id && members.length > 1) {
+      if (isCaptain && members.length > 1) {
         return Response.json({ success: false, error: 'Disband the team before the captain leaves' }, { status: 400 });
       }
-      const updated = await base44.asServiceRole.entities.TeamMember.update(member.id, { is_active: false, left_date: nowIso() });
+      const leftDate = nowIso();
+      const updatedMemberships = await Promise.all(activeMemberships.map((membership) => base44.asServiceRole.entities.TeamMember.update(membership.id, {
+        is_active: false,
+        left_date: leftDate,
+      })));
+      const updated = updatedMemberships[0];
       let updatedTeam = team;
-      if (member.user_id === team.captain_id) {
+      if (isCaptain) {
         updatedTeam = await base44.asServiceRole.entities.Team.update(team.id, { is_active: false, disbanded_date: nowIso(), disbanded_by: user.id });
       }
       return Response.json({ success: true, member: updated, team: updatedTeam });

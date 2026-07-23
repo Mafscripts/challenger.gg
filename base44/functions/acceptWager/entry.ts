@@ -243,6 +243,10 @@ Deno.serve(async (req) => {
     if (!wager) return Response.json({ error: 'Wager not found' }, { status: 404 });
     if (wager.match_type === 'ranked') return Response.json({ error: 'Ranked matches must use acceptRankedMatch' }, { status: 400 });
     if (wager.status !== 'open') return Response.json({ error: 'Wager is no longer open' }, { status: 400 });
+    const existingRows = await base44.asServiceRole.entities.WagerParticipant.filter({ wager_id: wager.id }, '-joined_date', 20).catch(() => []);
+    if (wager.match_type === '8s' && existingRows.some((participant) => participant.user_id === user.id)) {
+      return Response.json({ success: true, wager_id, wager, rejoined: true });
+    }
     if (user.id === wager.host_id) return Response.json({ error: 'Cannot accept your own wager' }, { status: 400 });
     if (wager.challenger_id && wager.match_type !== '8s') return Response.json({ error: 'Wager already has a challenger' }, { status: 400 });
 
@@ -253,7 +257,6 @@ Deno.serve(async (req) => {
     const teamResult = isTeamMatch
       ? await selectedTeamRoster(base44, body.team_id, user.id, teamTypeFor(wager.match_type || 'wagers'), requiredSize)
       : { team: null, roster: null };
-    const existingRows = await base44.asServiceRole.entities.WagerParticipant.filter({ wager_id: wager.id }, '-joined_date', 20).catch(() => []);
     if (existingRows.some((participant) => participant.user_id === user.id)) {
       return Response.json({ error: 'You already joined this lobby' }, { status: 400 });
     }
@@ -339,8 +342,11 @@ Deno.serve(async (req) => {
 
     const joinedPlayerCount = existingRows.length + 1;
     const rosterFull = !isIndividualEights || joinedPlayerCount >= playerCapacity;
+    const rosterLockDeadline = isIndividualEights && rosterFull ? new Date(Date.now() + 30 * 1000).toISOString() : '';
     await base44.asServiceRole.entities.Wager.update(wager_id, {
-      status: isTeamMatch ? 'accepted' : rosterFull ? 'in_progress' : 'open',
+      status: isTeamMatch ? 'accepted' : isIndividualEights ? 'open' : 'in_progress',
+      roster_locked: isTeamMatch,
+      roster_lock_deadline: rosterLockDeadline,
       challenger_id: wager.challenger_id || (individualSide === 'challenger' ? user.id : ''),
       challenger_name: wager.challenger_name || (individualSide === 'challenger' ? playerName(user) : ''),
       challenger_team_id: teamResult.team?.id || '',
@@ -351,14 +357,14 @@ Deno.serve(async (req) => {
       final_map_id: rosterFull ? selectedFinalMap : '',
       final_map_name: rosterFull ? selectedFinalMapName : '',
       match_start_deadline: isTeamMatch || !rosterFull ? wager.match_start_deadline : new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      match_started_date: isTeamMatch || !rosterFull ? wager.match_started_date || '' : now,
+      match_started_date: isTeamMatch || isIndividualEights ? wager.match_started_date || '' : now,
       accepted_date: now,
       match_type: wager.match_type || (entryFee > 0 ? 'wagers' : 'xp'),
     });
 
     const startState = isTeamMatch ? await maybeStartWager(base44, wager_id) : {
       wager: await base44.asServiceRole.entities.Wager.get(wager_id),
-      ready: rosterFull,
+      ready: !isIndividualEights,
     };
 
     return Response.json({

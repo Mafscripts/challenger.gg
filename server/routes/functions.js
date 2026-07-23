@@ -3012,17 +3012,28 @@ async function manageTeam(req) {
 
   if (action === "leave") {
     const memberRows = await listEntities("TeamMember", { team_id: team.id, user_id: req.user.id }, "-joined_date", 10).catch(() => []);
-    const member = memberRows.find((row) => row.is_active !== false);
+    const activeMemberships = memberRows.filter((row) => row.is_active !== false);
+    const member = activeMemberships[0];
     if (!member) return { success: false, error: "You are not on this team" };
-    const lockError = await rosterChangeError(team);
-    if (lockError) return { success: false, error: lockError };
+    const isCaptain = member.user_id === team.captain_id || member.role === "captain";
+    // A roster lock protects captain-managed changes, but should never trap a
+    // regular player on a team they no longer want to be part of.
+    if (isCaptain) {
+      const lockError = await rosterChangeError(team);
+      if (lockError) return { success: false, error: lockError };
+    }
     const members = await activeTeamMembers(team.id);
-    if (member.user_id === team.captain_id && members.length > 1) {
+    if (isCaptain && members.length > 1) {
       return { success: false, error: "Disband the team before the captain leaves" };
     }
-    const updated = await updateEntity("TeamMember", member.id, { is_active: false, left_date: nowIso() });
+    const leftDate = nowIso();
+    const updatedMemberships = await Promise.all(activeMemberships.map((membership) => updateEntity("TeamMember", membership.id, {
+      is_active: false,
+      left_date: leftDate,
+    })));
+    const updated = updatedMemberships[0];
     let updatedTeam = team;
-    if (member.user_id === team.captain_id) {
+    if (isCaptain) {
       updatedTeam = await updateEntity("Team", team.id, { is_active: false, disbanded_date: nowIso(), disbanded_by: req.user.id });
     }
     return { success: true, member: updated, team: updatedTeam };
@@ -5622,13 +5633,16 @@ async function acceptWager(req) {
   if (!wager || wager.status !== "open") {
     return { success: false, error: "Wager is not open" };
   }
+  const existingParticipant = await firstEntity("WagerParticipant", { wager_id: wager.id, user_id: req.user.id }).catch(() => null);
+  if (existingParticipant && wager.match_type === "8s") {
+    return { success: true, wager, wager_id: wager.id, rejoined: true };
+  }
   if (wager.host_id === req.user.id) {
     return { success: false, error: "You cannot accept your own wager" };
   }
   if ((wager.match_type || "wagers") === "wagers" && !wager.host_team_id) {
     return { success: false, error: "This wager was posted without a wager team. The host must cancel and repost it with a dedicated wager team." };
   }
-  const existingParticipant = await firstEntity("WagerParticipant", { wager_id: wager.id, user_id: req.user.id }).catch(() => null);
   if (existingParticipant) {
     return { success: false, error: "You already joined this wager" };
   }
@@ -5713,6 +5727,9 @@ async function acceptWager(req) {
 
   const joinedPlayerCount = enrolledParticipants.length + 1;
   const rosterFull = !isIndividualEights || joinedPlayerCount >= playerCapacity;
+  const rosterLockDeadline = isIndividualEights && rosterFull
+    ? new Date(Date.now() + 30 * 1000).toISOString()
+    : "";
   const selectedMaps = rosterFull ? randomWagerMaps(wager.game_mode, wager.best_of) : [];
   const updated = await updateEntity("Wager", wager.id, {
     challenger_id: wager.challenger_id || (individualSide === "challenger" ? req.user.id : ""),
@@ -5726,12 +5743,14 @@ async function acceptWager(req) {
     series_maps: selectedMaps.map((map) => map.name),
     final_map_id: selectedMaps[0]?.id || "",
     final_map_name: selectedMaps[0]?.name || "",
-    status: isTeamMatch ? "accepted" : rosterFull ? "in_progress" : "open",
+    status: isTeamMatch ? "accepted" : isIndividualEights ? "open" : "in_progress",
+    roster_locked: isTeamMatch,
+    roster_lock_deadline: rosterLockDeadline,
     accepted_date: new Date().toISOString(),
-    match_started_date: isTeamMatch || !rosterFull ? wager.match_started_date : new Date().toISOString(),
+    match_started_date: isTeamMatch || isIndividualEights ? wager.match_started_date : new Date().toISOString(),
   });
 
-  const startState = isTeamMatch ? await maybeStartWager(wager.id) : { wager: updated, ready: true };
+  const startState = isTeamMatch ? await maybeStartWager(wager.id) : { wager: updated, ready: !isIndividualEights };
   const acceptedParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
   const hostUserIds = acceptedParticipants
     .filter((participant) => participant.team === "host")
@@ -5746,6 +5765,96 @@ async function acceptWager(req) {
     related_entity_type: "Wager",
   });
   return { success: true, wager: startState.wager, ready: startState.ready, final_map_name: startState.wager.final_map_name };
+}
+
+async function syncEightsLobby(req) {
+  const wager = await getEntity("Wager", req.body.wager_id || req.body.id);
+  if (!wager || wager.match_type !== "8s") return { success: false, error: "8s lobby not found" };
+  const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
+  const participant = participants.some((row) => row.user_id === req.user.id);
+  if (!participant && !hasRole(req.user, "moderator")) return { success: false, error: "Only lobby players can sync this room" };
+  if (["completed", "cancelled"].includes(wager.status)) return { success: true, wager, locked: true };
+
+  const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
+  const full = participants.length >= requiredSize * 2;
+  if (!full) {
+    if (!wager.roster_lock_deadline && !wager.roster_locked) return { success: true, wager, locked: false, full: false };
+    const reopened = await updateEntity("Wager", wager.id, {
+      status: "open",
+      roster_locked: false,
+      roster_lock_deadline: "",
+      match_started_date: "",
+      final_map_id: "",
+      final_map_name: "",
+      series_maps: [],
+    });
+    return { success: true, wager: reopened, locked: false, full: false };
+  }
+
+  if (wager.roster_locked || wager.status === "in_progress") return { success: true, wager, locked: true, full: true };
+  const deadline = wager.roster_lock_deadline ? new Date(wager.roster_lock_deadline) : null;
+  if (!deadline || Number.isNaN(deadline.getTime())) {
+    const pending = await updateEntity("Wager", wager.id, {
+      roster_lock_deadline: new Date(Date.now() + 30 * 1000).toISOString(),
+      roster_locked: false,
+      status: "open",
+    });
+    return { success: true, wager: pending, locked: false, full: true };
+  }
+  if (deadline.getTime() > Date.now()) {
+    return { success: true, wager, locked: false, full: true, seconds_remaining: Math.ceil((deadline.getTime() - Date.now()) / 1000) };
+  }
+
+  const locked = await updateEntity("Wager", wager.id, {
+    status: "in_progress",
+    roster_locked: true,
+    match_started_date: wager.match_started_date || nowIso(),
+  });
+  return { success: true, wager: locked, locked: true, full: true };
+}
+
+async function leaveEightsLobby(req) {
+  const wager = await getEntity("Wager", req.body.wager_id || req.body.id);
+  if (!wager || wager.match_type !== "8s") return { success: false, error: "8s lobby not found" };
+  const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
+  const leaving = participants.find((row) => row.user_id === req.user.id);
+  if (!leaving) return { success: false, error: "You are not in this lobby" };
+  const deadlineExpired = wager.roster_lock_deadline && new Date(wager.roster_lock_deadline).getTime() <= Date.now();
+  if (wager.roster_locked || wager.status === "in_progress" || deadlineExpired) {
+    if (deadlineExpired && !wager.roster_locked) {
+      await updateEntity("Wager", wager.id, { status: "in_progress", roster_locked: true, match_started_date: wager.match_started_date || nowIso() });
+    }
+    return { success: false, error: "The roster is locked. This match can no longer be left." };
+  }
+
+  await deleteEntity("WagerParticipant", leaving.id);
+  const remaining = participants.filter((row) => row.id !== leaving.id);
+  if (remaining.length === 0) {
+    const cancelled = await updateEntity("Wager", wager.id, { status: "cancelled", roster_locked: false, roster_lock_deadline: "", cancelled_date: nowIso() });
+    return { success: true, wager: cancelled, cancelled: true };
+  }
+
+  const balanced = remaining.map((row, index) => ({ ...row, team: index % 2 === 0 ? "host" : "challenger" }));
+  const hostCaptain = balanced.find((row) => row.team === "host") || null;
+  const challengerCaptain = balanced.find((row) => row.team === "challenger") || null;
+  await Promise.all(balanced.map((row) => updateEntity("WagerParticipant", row.id, {
+    team: row.team,
+    is_captain: row.id === hostCaptain?.id || row.id === challengerCaptain?.id,
+  }).catch(() => null)));
+  const reopened = await updateEntity("Wager", wager.id, {
+    host_id: hostCaptain?.user_id || "",
+    host_name: hostCaptain?.user_name || "",
+    challenger_id: challengerCaptain?.user_id || "",
+    challenger_name: challengerCaptain?.user_name || "",
+    status: "open",
+    roster_locked: false,
+    roster_lock_deadline: "",
+    match_started_date: "",
+    final_map_id: "",
+    final_map_name: "",
+    series_maps: [],
+  });
+  return { success: true, wager: reopened };
 }
 
 async function resolveOpenMatchDisputes(matchId, resolution, resolvedBy = null) {
@@ -8129,6 +8238,8 @@ const handlers = {
   manageTeam,
   createWager,
   acceptWager,
+  syncEightsLobby,
+  leaveEightsLobby,
   payWagerEntry,
   submitScore,
   completeWager,

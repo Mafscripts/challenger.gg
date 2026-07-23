@@ -116,6 +116,11 @@
       "default": false,
       "title": "Roster Locked"
     },
+    "roster_lock_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Roster Lock Deadline"
+    },
     "total_prize_pool": {
       "type": "number",
       "title": "Total Prize Pool"

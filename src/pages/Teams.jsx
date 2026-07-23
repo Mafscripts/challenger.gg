@@ -460,6 +460,16 @@ export default function Teams() {
     await runTeamAction({ action: "respond_invite", team_id: invite.team_id, invite_id: invite.id, decision }, decision === "accept" ? "Invite accepted" : "Invite declined");
   };
 
+  const handleLeaveTeam = async () => {
+    if (!selectedTeam) return;
+    const ok = await runTeamAction({ action: "leave", team_id: selectedTeam.id }, "Left team");
+    if (ok) {
+      setSelectedTeamId("");
+      setDetailTab("overview");
+      setView("my_teams");
+    }
+  };
+
   const handleTeamBannerFile = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -587,7 +597,7 @@ export default function Teams() {
             {detailTab === "roster" && <RosterPanel team={selectedTeam} members={selectedMembers} usersById={memberUsersById} isCaptain={isSelectedCaptain} busy={Boolean(busyAction)} onInvite={() => setInviteOpen(true)} onKick={(member) => runTeamAction({ action: "kick", team_id: selectedTeam.id, member_id: member.id }, "Player kicked")} />}
             {detailTab === "matches" && <MatchList matches={selectedMatches} limit={50} />}
             {detailTab === "tournaments" && <TournamentList entries={selectedTournamentEntries} limit={50} />}
-            {detailTab === "settings" && <SettingsPanel team={selectedTeam} membership={selectedMembership} members={selectedMembers} usersById={memberUsersById} isCaptain={isSelectedCaptain} busy={Boolean(busyAction)} nameDraft={teamNameDraft} setNameDraft={setTeamNameDraft} bannerDraft={teamBannerDraft} setBannerDraft={setTeamBannerDraft} onNameSubmit={handleUpdateTeamName} onBannerFile={handleTeamBannerFile} onBannerSave={handleUpdateTeamBanner} onInvite={() => setInviteOpen(true)} onKick={(member) => runTeamAction({ action: "kick", team_id: selectedTeam.id, member_id: member.id }, "Player kicked")} onLeave={() => runTeamAction({ action: "leave", team_id: selectedTeam.id }, "Left team")} onDisband={() => runTeamAction({ action: "disband", team_id: selectedTeam.id }, "Team disbanded")} />}
+            {detailTab === "settings" && <SettingsPanel team={selectedTeam} membership={selectedMembership} members={selectedMembers} usersById={memberUsersById} isCaptain={isSelectedCaptain} busy={Boolean(busyAction)} nameDraft={teamNameDraft} setNameDraft={setTeamNameDraft} bannerDraft={teamBannerDraft} setBannerDraft={setTeamBannerDraft} onNameSubmit={handleUpdateTeamName} onBannerFile={handleTeamBannerFile} onBannerSave={handleUpdateTeamBanner} onInvite={() => setInviteOpen(true)} onKick={(member) => runTeamAction({ action: "kick", team_id: selectedTeam.id, member_id: member.id }, "Player kicked")} onLeave={handleLeaveTeam} onDisband={() => runTeamAction({ action: "disband", team_id: selectedTeam.id }, "Team disbanded")} />}
           </>
         ) : null}
       </div>
