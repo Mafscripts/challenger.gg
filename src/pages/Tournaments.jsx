@@ -873,11 +873,11 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
     <motion.button
       type="button"
       onClick={() => onSelect(tournament.id)}
-      className={`grid w-full grid-cols-[56px_minmax(0,1fr)] gap-3 overflow-hidden rounded-lg border p-2.5 text-left transition-colors sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:items-center ${
+      className={`group grid w-full grid-cols-[72px_minmax(0,1fr)] gap-4 overflow-hidden rounded-lg border p-3.5 text-left transition-colors sm:grid-cols-[72px_minmax(0,1fr)_auto] sm:items-center ${
         selected ? "border-white/20 bg-white/[0.065]" : "border-white/[0.06] bg-background/25 hover:border-white/15 hover:bg-white/[0.035]"
       }`}
     >
-      <div className="relative h-14 w-14 overflow-hidden rounded-md border border-white/[0.07] bg-background">
+      <div className="relative h-[72px] w-[72px] overflow-hidden rounded-lg border border-white/[0.07] bg-background">
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
@@ -886,22 +886,24 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
       </div>
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="truncate text-sm font-black">{tournament.name}</h3>
+          <h3 className="truncate text-base font-black">{tournament.name}</h3>
           {joined && <span className="shrink-0 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
         </div>
-        <p className="mt-1 truncate text-[10px] text-vapor">{compactModeLabel(tournament)} · {tournament.registered_teams || 0}/{tournament.max_teams || 0} teams</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <p className="mt-1 truncate text-[11px] text-vapor">{compactModeLabel(tournament)} · {tournament.registered_teams || 0}/{tournament.max_teams || 0} teams</p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
           <span className={`rounded border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
             {statusLabels[tournament.status] || tournament.status}
           </span>
-          <span className="font-mono text-[10px] font-black text-green">{formatMoney(tournament.prize_pool)}</span>
+          <span className="font-mono text-sm font-black text-yellow-300">{formatMoney(tournament.prize_pool)} <span className="text-[9px] uppercase tracking-wider text-vapor">Prize Pool</span></span>
         </div>
       </div>
-      <div className="col-span-2 flex items-center justify-between gap-3 border-t border-white/[0.05] pt-2 sm:col-span-1 sm:block sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0 sm:text-right">
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-vapor sm:justify-end">
+      <div className="col-span-2 flex items-center justify-between gap-3 border-t border-white/[0.05] pt-3 sm:col-span-1 sm:flex sm:min-w-[108px] sm:flex-col sm:items-end sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-vapor">
           <Clock className="h-3 w-3" /> {timeUntil(tournament.start_date, now)}
         </span>
-        <span className="mt-1 hidden text-[8px] font-black uppercase tracking-wider text-vapor sm:block">View bracket</span>
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.07] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white transition-colors group-hover:border-white/25 group-hover:bg-white/10">
+          Enter <ArrowRight className="h-3 w-3" />
+        </span>
       </div>
     </motion.button>
   );
