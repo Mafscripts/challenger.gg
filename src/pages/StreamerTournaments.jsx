@@ -126,7 +126,7 @@ export default function StreamerTournaments() {
       <div className="mx-auto max-w-[1500px] px-4 lg:px-6">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-lg border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-300">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor">
               <Monitor className="h-3.5 w-3.5" /> Streamer Badge
             </div>
             <h1 className="text-3xl font-black tracking-tight">Streamer Switcheroos</h1>
@@ -140,7 +140,7 @@ export default function StreamerTournaments() {
         <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
           <section className="glass rounded-xl border border-white/5 p-5">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-blue-400/25 bg-blue-500/10 text-blue-300">
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-white/10 bg-white/[0.045] text-vapor">
                 <Plus className="h-5 w-5" />
               </div>
               <div>
@@ -253,14 +253,14 @@ export default function StreamerTournaments() {
                   <Link
                     key={tournament.id}
                     to={`/streamer-tournament/${tournament.id}`}
-                    className="glass group rounded-xl border border-white/5 p-5 transition-colors hover:border-blue-400/25 hover:bg-blue-500/[0.03]"
+                    className="glass group rounded-xl border border-white/5 p-5 transition-colors hover:border-white/15 hover:bg-white/[0.035]"
                   >
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-lg font-black">{tournament.name}</p>
                         <p className="mt-1 truncate text-xs text-vapor">Hosted by {tournament.host_name || tournament.created_by_name || "Streamer"}</p>
                       </div>
-                      <span className="shrink-0 rounded border border-blue-400/25 bg-blue-500/10 px-2 py-1 text-[10px] font-black uppercase text-blue-300">
+                      <span className="shrink-0 rounded border border-white/10 bg-white/[0.045] px-2 py-1 text-[10px] font-black uppercase text-vapor">
                         Streamer
                       </span>
                     </div>
@@ -291,7 +291,7 @@ function InfoPill({ icon: Icon, label, value }) {
   return (
     <div className="rounded-lg border border-white/5 bg-background/25 p-3">
       <div className="mb-1 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-vapor">
-        <Icon className="h-3.5 w-3.5 text-blue-300" /> {label}
+        <Icon className="h-3.5 w-3.5 text-vapor" /> {label}
       </div>
       <p className="truncate font-bold text-white">{value}</p>
     </div>

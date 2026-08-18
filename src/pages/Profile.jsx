@@ -47,14 +47,14 @@ const profileImageMaxBytes = 1.5 * 1024 * 1024;
 const verifiedNameColors = [
   { label: "Default", value: "" },
   { label: "Red", value: "#f87171" },
-  { label: "Blue", value: "#60a5fa" },
+  { label: "Silver", value: "#9ca3af" },
   { label: "Yellow", value: "#facc15" },
   { label: "Green", value: "#22c55e" },
   { label: "Purple", value: "#a78bfa" },
-  { label: "Cyan", value: "#22d3ee" },
+  { label: "Graphite", value: "#6b7280" },
   { label: "Orange", value: "#fb923c" },
   { label: "Lime", value: "#84cc16" },
-  { label: "Teal", value: "#2dd4bf" },
+  { label: "Stone", value: "#a8a29e" },
   { label: "White", value: "#f8fafc" },
 ];
 const inventoryCategoryLabels = {
@@ -436,7 +436,7 @@ export default function Profile() {
             transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
             style={{
               backgroundImage:
-                "radial-gradient(circle at 86% 6%, rgba(20,216,255,.14), transparent 28%), radial-gradient(circle at 8% 100%, rgba(255,112,0,.065), transparent 25%), linear-gradient(118deg, rgba(15,20,29,.98) 0%, rgba(24,31,41,.96) 54%, rgba(15,28,34,.95) 100%)",
+                "radial-gradient(circle at 86% 6%, rgba(210,214,220,.08), transparent 28%), radial-gradient(circle at 8% 100%, rgba(255,112,0,.055), transparent 25%), linear-gradient(118deg, rgba(17,18,21,.98) 0%, rgba(25,27,31,.96) 54%, rgba(16,18,21,.95) 100%)",
               backgroundSize: "180% 180%",
             }}
           />
@@ -446,7 +446,7 @@ export default function Profile() {
               <div className="flex flex-col gap-7 lg:flex-row lg:items-center">
                 <div className="relative mx-auto shrink-0 lg:mx-0">
                   <div className="absolute -inset-3 rounded-[2.2rem] bg-gradient-to-br from-cyan/20 via-cyan/5 to-orange/10 blur-xl" />
-                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-secondary to-background text-4xl font-black shadow-[0_24px_50px_rgba(0,0,0,0.35),0_0_0_1px_rgba(20,216,255,0.22)] sm:h-40 sm:w-40">
+                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-secondary to-background text-4xl font-black shadow-[0_24px_50px_rgba(0,0,0,0.35),0_0_0_1px_rgba(210,214,220,0.16)] sm:h-40 sm:w-40">
                     {avatarDraft || profile?.avatar_url ? (
                       <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" />
                     ) : (
@@ -496,7 +496,7 @@ export default function Profile() {
                       )
                     ))}
                     {isOwnProfile && hasStreamerBadge && (
-                      <Link to="/streamer-tournaments" className="inline-flex items-center gap-1 rounded-md border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-500/20">
+                      <Link to="/streamer-tournaments" className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor transition-colors hover:bg-white/[0.08] hover:text-foreground">
                         <Monitor className="h-3 w-3" /> Create Streamer Tournament
                       </Link>
                     )}
@@ -653,7 +653,7 @@ export default function Profile() {
               onClick={() => setTab(item)}
               className={`h-10 whitespace-nowrap rounded-xl px-5 text-[11px] font-black uppercase tracking-[0.12em] transition-all ${
                 tab === item
-                  ? "bg-cyan text-background shadow-[0_8px_24px_rgba(20,216,255,.18)]"
+                  ? "bg-cyan text-background shadow-[0_8px_24px_rgba(210,214,220,.13)]"
                   : "text-vapor hover:bg-white/[0.04] hover:text-foreground"
               }`}
             >
@@ -715,7 +715,7 @@ function ProgressBar({ value, tone = "from-cyan to-green", className = "" }) {
         initial={{ width: 0 }}
         animate={{ width: `${clampPercent(value)}%` }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className={`h-full rounded-full bg-gradient-to-r shadow-[0_0_18px_rgba(20,216,255,.25)] ${tone}`}
+        className={`h-full rounded-full bg-gradient-to-r shadow-[0_0_18px_rgba(210,214,220,.16)] ${tone}`}
       />
     </div>
   );
@@ -878,7 +878,7 @@ function RankProgressPanel({ rank, elo, rankProgress, rankJourneyIndex, classNam
           const current = step.tier === rank.tier;
           return (
             <div key={step.tier} className="relative text-center">
-              <div className={`relative z-[1] mx-auto mb-3 h-3.5 w-3.5 rounded-full ring-4 ring-background ${current ? "bg-cyan shadow-[0_0_18px_rgba(20,216,255,0.65)]" : active ? "bg-green/90" : "bg-white/15"}`} />
+              <div className={`relative z-[1] mx-auto mb-3 h-3.5 w-3.5 rounded-full ring-4 ring-background ${current ? "bg-cyan shadow-[0_0_18px_rgba(210,214,220,0.38)]" : active ? "bg-green/90" : "bg-white/15"}`} />
               <p className={`truncate text-[9px] font-black uppercase tracking-[0.08em] ${current ? "text-cyan" : active ? "text-white" : "text-vapor/70"}`}>{step.label}</p>
               <p className="mt-1 truncate text-[8px] text-vapor/60">{step.range}</p>
             </div>

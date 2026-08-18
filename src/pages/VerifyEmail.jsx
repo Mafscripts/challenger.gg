@@ -125,7 +125,7 @@ export default function VerifyEmail() {
           </div>
         </div>
 
-        <Button type="submit" disabled={loading || code.length !== 6 || !email} className="h-11 w-full bg-gradient-to-r from-cyan to-[#0EA5C7] font-black uppercase tracking-wide text-background">
+        <Button type="submit" disabled={loading || code.length !== 6 || !email} className="h-11 w-full bg-gradient-to-r from-cyan to-[#A9AFB8] font-black uppercase tracking-wide text-background">
           {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : "Verify and continue"}
         </Button>
         <button type="button" onClick={resend} disabled={resendIn > 0 || resending || !email} className="flex w-full items-center justify-center gap-2 text-xs font-bold text-vapor transition-colors hover:text-cyan disabled:cursor-not-allowed disabled:opacity-50">

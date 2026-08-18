@@ -87,7 +87,7 @@ export default function TransactionHistory({ type = "all" }) {
       case "pending":
         return "text-orange bg-orange/10 border-orange/20";
       case "processing":
-        return "text-blue-400 bg-blue-500/10 border-blue-500/20";
+        return "text-vapor bg-white/[0.045] border-white/10";
       default:
         return "text-vapor bg-secondary border-white/5";
     }

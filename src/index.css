@@ -43,6 +43,7 @@
     --sidebar-ring: 210 8% 68%;
 
     --cyan: 210 8% 74%;
+    --menu-cyan: 190 100% 54%;
     --orange: 25 100% 50%;
     --green: 152 100% 50%;
     --obsidian: 220 8% 7%;
@@ -408,24 +409,24 @@
     font-weight: 650;
   }
   .arena-sidebar-link:hover {
-    border-color: hsl(0 0% 100% / 0.065);
-    background: hsl(0 0% 100% / 0.035);
-    color: hsl(var(--foreground));
+    border-color: hsl(var(--menu-cyan) / 0.2);
+    background: hsl(var(--menu-cyan) / 0.065);
+    color: hsl(var(--menu-cyan));
   }
   .arena-sidebar-link.is-active {
     border-color: hsl(0 0% 100% / 0.09);
     background:
       linear-gradient(90deg, hsl(210 8% 72% / 0.12), hsl(210 8% 72% / 0.035));
     color: hsl(var(--foreground));
-    box-shadow: inset 2px 0 0 hsl(var(--cyan));
+    box-shadow: inset 2px 0 0 hsl(var(--menu-cyan));
   }
   .arena-sidebar-active-dot {
     width: 0.28rem;
     height: 0.28rem;
     margin-left: auto;
     border-radius: 999px;
-    background: hsl(var(--cyan));
-    box-shadow: 0 0 8px hsl(var(--cyan) / 0.35);
+    background: hsl(var(--menu-cyan));
+    box-shadow: 0 0 8px hsl(var(--menu-cyan) / 0.35);
   }
   .arena-sidebar-footer {
     display: grid;
@@ -436,6 +437,21 @@
   }
   .arena-sidebar-logout {
     color: hsl(0 58% 66% / 0.82);
+  }
+  .nav-popover :where(a, button):hover,
+  .mobile-menu-enter a:hover,
+  .topbar-actions button:hover,
+  .topbar-actions a[aria-label="Open messages"]:hover {
+    color: hsl(var(--menu-cyan)) !important;
+  }
+  .nav-popover :where(a, button):hover,
+  .mobile-menu-enter a:hover {
+    border-color: hsl(var(--menu-cyan) / 0.18) !important;
+    background-color: hsl(var(--menu-cyan) / 0.055) !important;
+  }
+  .mobile-menu-enter a[class*="bg-cyan"] {
+    color: hsl(var(--menu-cyan)) !important;
+    background-color: hsl(var(--menu-cyan) / 0.08) !important;
   }
 
   @media (min-width: 1280px) {
@@ -471,16 +487,6 @@
     .app-shell-auth main :where(.rounded-xl) {
       border-radius: 0.5rem !important;
     }
-  }
-
-  .app-shell-auth main [class*="text-blue-"] {
-    color: hsl(var(--foreground) / 0.78) !important;
-  }
-  .app-shell-auth main [class*="bg-blue-"] {
-    background-color: hsl(210 8% 72% / 0.08) !important;
-  }
-  .app-shell-auth main [class*="border-blue-"] {
-    border-color: hsl(210 8% 72% / 0.15) !important;
   }
 
   .dashboard-container {

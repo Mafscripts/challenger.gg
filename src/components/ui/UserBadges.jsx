@@ -12,7 +12,7 @@ const specialBadgeConfig = {
   streamer: {
     label: "Streamer",
     description: "Streamer badge.",
-    className: "border-blue-400/35 bg-blue-500/10 text-blue-300 shadow-[0_0_14px_rgba(96,165,250,0.18)]",
+    className: "border-white/15 bg-white/[0.055] text-vapor shadow-[0_0_14px_rgba(210,214,220,0.08)]",
     icon: Monitor,
   },
   premium: {

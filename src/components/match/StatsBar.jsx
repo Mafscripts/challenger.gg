@@ -111,7 +111,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
 
       <div className="premium-card rounded-xl p-3">
         <div className="flex items-center gap-1.5 mb-1">
-          <Users className="w-3.5 h-3.5 text-blue-400" />
+          <Users className="w-3.5 h-3.5 text-vapor" />
           <p className="text-[9px] text-vapor uppercase">Matches</p>
         </div>
         <p className="text-xs font-bold">{totalMatches}</p>

@@ -27,7 +27,7 @@ const xpMilestones = [
 const rarityStyles = {
   common: { color: "text-gray-400", border: "border-gray-400/20", bg: "bg-gray-400/10" },
   uncommon: { color: "text-green", border: "border-green/20", bg: "bg-green/10" },
-  rare: { color: "text-blue-400", border: "border-blue-400/20", bg: "bg-blue-400/10" },
+  rare: { color: "text-vapor", border: "border-white/10", bg: "bg-white/[0.045]" },
   epic: { color: "text-purple-400", border: "border-purple-400/20", bg: "bg-purple-400/10" },
   legendary: { color: "text-yellow-400", border: "border-yellow-400/20", bg: "bg-yellow-400/10" },
   mythic: { color: "text-fuchsia-400", border: "border-fuchsia-400/20", bg: "bg-fuchsia-400/10" },
@@ -112,7 +112,7 @@ export default function XP() {
           <div className="absolute top-0 right-0 w-80 h-80 bg-cyan/5 rounded-full blur-[100px]" />
           <div className="relative flex flex-col lg:flex-row items-start lg:items-center gap-6">
             <div className="relative w-28 h-28 shrink-0">
-              <div className="relative w-full h-full rounded-2xl overflow-hidden border border-cyan/20 bg-gradient-to-br from-cyan/20 to-blue-500/20 flex flex-col items-center justify-center">
+              <div className="relative w-full h-full rounded-2xl overflow-hidden border border-cyan/20 bg-gradient-to-br from-cyan/20 to-white/[0.06] flex flex-col items-center justify-center">
                 <span className="text-[10px] text-cyan font-mono font-bold uppercase tracking-wider">Level</span>
                 <span className="text-4xl font-black text-cyan font-mono">{level}</span>
               </div>
@@ -132,7 +132,7 @@ export default function XP() {
                 <span className="font-mono text-cyan font-bold">{Number(currentXp).toLocaleString()} XP</span>
               </div>
               <div className="h-3 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-cyan to-blue-400 rounded-full" style={{ width: `${progress}%` }} />
+                <div className="h-full bg-gradient-to-r from-cyan to-white/70 rounded-full" style={{ width: `${progress}%` }} />
               </div>
               <p className="text-xs text-vapor mt-2">{Number(xpToNext).toLocaleString()} XP to next level</p>
             </div>

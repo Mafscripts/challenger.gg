@@ -8,7 +8,7 @@ const rankTiers = [
   { name: "Silver", gradient: "from-gray-300 to-gray-500" },
   { name: "Gold", gradient: "from-yellow-400 to-yellow-600" },
   { name: "Platinum", gradient: "from-teal-300 to-teal-500" },
-  { name: "Diamond", gradient: "from-cyan to-blue-500" },
+  { name: "Diamond", gradient: "from-cyan to-white/70" },
   { name: "Master", gradient: "from-purple-400 to-purple-600" },
   { name: "Champion", gradient: "from-orange to-red-500" },
 ];

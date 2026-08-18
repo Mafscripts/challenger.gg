@@ -107,7 +107,7 @@ const sections = [
       "AI-powered detection monitors all matches in real-time.",
       "Confirmed cheating results in permanent ban and forfeiture of all funds.",
       "Reporting suspected cheaters is encouraged and reviewed within 48 hours.",
-      "Streamer badges are blue and verified player badges are green. Badges identify account status but do not replace dispute evidence.",
+      "Streamer badges use a silver treatment and verified player badges remain green. Badges identify account status but do not replace dispute evidence.",
     ],
   },
 ];

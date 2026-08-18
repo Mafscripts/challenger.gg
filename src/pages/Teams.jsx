@@ -630,7 +630,7 @@ function TeamBanner({ team, imageClassName = "opacity-65 transition-transform du
   }, [team.banner_url]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_78%_15%,rgba(20,216,255,.2),transparent_34%),radial-gradient(circle_at_18%_90%,rgba(255,122,0,.12),transparent_30%),linear-gradient(125deg,rgba(21,34,48,.98),rgba(12,18,27,.96))]">
+    <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_78%_15%,rgba(210,214,220,.10),transparent_34%),radial-gradient(circle_at_18%_90%,rgba(255,122,0,.10),transparent_30%),linear-gradient(125deg,rgba(25,27,31,.98),rgba(14,15,18,.96))]">
       {team.banner_url && !imageFailed && <img src={team.banner_url} alt="" onError={() => setImageFailed(true)} className={`absolute inset-0 block h-full w-full object-cover ${imageClassName}`} />}
     </div>
   );
@@ -641,7 +641,7 @@ function TeamsCommandHero({ overview, onCreate, onOpenTeam }) {
   const activeMatch = featured?.activeMatch;
   return (
     <section className="relative mb-8 overflow-hidden rounded-3xl border border-cyan/15 bg-card">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(20,216,255,.16),transparent_30%),radial-gradient(circle_at_88%_5%,rgba(255,130,0,.11),transparent_27%),linear-gradient(118deg,rgba(14,22,32,.99),rgba(18,28,39,.96)_50%,rgba(10,17,26,.99))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(210,214,220,.08),transparent_30%),radial-gradient(circle_at_88%_5%,rgba(255,130,0,.09),transparent_27%),linear-gradient(118deg,rgba(16,17,20,.99),rgba(23,25,29,.96)_50%,rgba(12,13,15,.99))]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] [background-size:38px_38px]" />
       <div className="relative grid gap-7 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-stretch">
         <div className="flex min-w-0 flex-col justify-between">
@@ -890,7 +890,7 @@ function MatchRow({ match }) {
 
 function FeaturedMatch({ match }) {
   return (
-    <Link to={match.href} className="block rounded-2xl border border-cyan/15 bg-[linear-gradient(135deg,rgba(20,216,255,.08),rgba(255,255,255,.015))] p-5 transition-colors hover:border-cyan/30">
+    <Link to={match.href} className="block rounded-2xl border border-cyan/15 bg-[linear-gradient(135deg,rgba(210,214,220,.055),rgba(255,255,255,.015))] p-5 transition-colors hover:border-cyan/30">
       <div className="flex items-center justify-between gap-3"><span className="rounded-lg bg-cyan/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan">{match.source}</span><span className="text-[10px] font-bold uppercase text-vapor">{titleCase(match.status)}</span></div>
       <p className="mt-6 text-[10px] font-black uppercase tracking-wider text-vapor">Next opponent</p><h3 className="mt-1 truncate text-2xl font-black">{match.opponent}</h3>
       <div className="mt-5 grid grid-cols-2 gap-3"><MiniMetric label="Mode" value={match.mode} /><MiniMetric label="Starts" value={formatDateTime(match.date)} /></div>

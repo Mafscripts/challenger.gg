@@ -84,7 +84,7 @@ function RosterPlayerCard({ player, color, slot, slots }) {
   const accentBg = isAlpha ? "bg-cyan" : "bg-orange";
 
   return (
-    <div data-testid="ranked-player-card" className={`group/player relative flex h-full min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br from-[#14202b] via-[#111923] to-[#0d141c] ${accent} transition duration-300 hover:border-white/[0.14] ${player.is_premium ? "hover:-translate-y-0.5" : ""} ${roomy ? "min-h-[124px] p-3.5" : "min-h-0 p-2.5"}`}>
+    <div data-testid="ranked-player-card" className={`group/player relative flex h-full min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br from-[#1B1D21] via-[#15171A] to-[#101113] ${accent} transition duration-300 hover:border-white/[0.14] ${player.is_premium ? "hover:-translate-y-0.5" : ""} ${roomy ? "min-h-[124px] p-3.5" : "min-h-0 p-2.5"}`}>
       {player.is_premium && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/4 skew-x-[-18deg] bg-gradient-to-r from-transparent via-purple-300/[0.08] to-transparent opacity-0 transition-all duration-700 group-hover/player:left-[115%] group-hover/player:opacity-100" />}
       <span className="absolute right-3 top-3 font-mono text-[8px] font-bold tracking-[0.14em] text-vapor/40">#{String(slot).padStart(2, "0")}</span>
       <div className={`relative flex min-w-0 flex-1 ${roomy ? "items-center gap-3" : "items-start gap-2.5"}`}>
@@ -125,7 +125,7 @@ function PlayerPanel({ label, color, players = [], slots = 1 }) {
   const isAlpha = color === "cyan";
 
   return (
-    <div data-testid="ranked-roster-panel" className={`glass relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#18222d]/90 p-4 ${colorClass}`}>
+    <div data-testid="ranked-roster-panel" className={`glass relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#1C1F23]/90 p-4 ${colorClass}`}>
       <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-px ${isAlpha ? "bg-cyan/65" : "bg-orange/65"}`} />
       <div className="relative mb-4 flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div>

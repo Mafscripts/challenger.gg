@@ -3,7 +3,7 @@ import { getRankForElo } from "@/lib/ranks";
 
 const ranks = {
   novice: { label: "Novice", text: "text-gray-300", icon: "/assets/ranks/bronze.png" },
-  amateur: { label: "Amateur", text: "text-blue-300", icon: "/assets/ranks/silver.png" },
+  amateur: { label: "Amateur", text: "text-vapor", icon: "/assets/ranks/silver.png" },
   bronze: { label: "Bronze", text: "text-amber-400", icon: "/assets/ranks/bronze.png" },
   silver: { label: "Silver", text: "text-gray-200", icon: "/assets/ranks/silver.png" },
   gold: { label: "Gold", text: "text-yellow-300", icon: "/assets/ranks/gold.png" },

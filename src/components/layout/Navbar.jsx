@@ -50,9 +50,9 @@ const navGroups = [
     label: "Community",
     icon: Users,
     eyebrow: "Topfragg Network",
-    tone: "blue",
+    tone: "gray",
     items: [
-      { label: "Teams", description: "Build and manage your roster", path: "/teams", icon: Users, tone: "blue" },
+      { label: "Teams", description: "Build and manage your roster", path: "/teams", icon: Users, tone: "gray" },
       { label: "News", description: "Latest Topfragg updates", path: "/news", icon: Newspaper, tone: "cyan" },
       { label: "Rules", description: "Competitive rules and policies", path: "/rules", icon: BookOpen, tone: "orange" },
       { label: "Support", description: "Get help from our staff", path: "/support", icon: LifeBuoy, tone: "red" },
@@ -118,7 +118,7 @@ const navTone = {
   cyan: { button: "border-cyan/25 bg-cyan/10 text-cyan", icon: "border-cyan/20 bg-cyan/10 text-cyan" },
   gold: { button: "border-yellow-400/25 bg-yellow-400/10 text-yellow-300", icon: "border-yellow-400/20 bg-yellow-400/10 text-yellow-300" },
   purple: { button: "border-purple-400/25 bg-purple-400/10 text-purple-300", icon: "border-purple-400/20 bg-purple-400/10 text-purple-300" },
-  blue: { button: "border-blue-400/25 bg-blue-400/10 text-blue-300", icon: "border-blue-400/20 bg-blue-400/10 text-blue-300" },
+  gray: { button: "border-white/10 bg-white/[0.055] text-foreground", icon: "border-white/10 bg-white/[0.045] text-vapor" },
   green: { button: "border-green/25 bg-green/10 text-green", icon: "border-green/20 bg-green/10 text-green" },
   orange: { button: "border-orange/25 bg-orange/10 text-orange", icon: "border-orange/20 bg-orange/10 text-orange" },
   red: { button: "border-red-400/25 bg-red-400/10 text-red-300", icon: "border-red-400/20 bg-red-400/10 text-red-300" },
@@ -1151,7 +1151,7 @@ export default function Navbar() {
                     {canSeeStreamerShortcut && (
                       <Link
                         to="/streamer-tournaments"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-blue-300 hover:bg-blue-500/10 transition-all"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:bg-white/[0.05] hover:text-foreground transition-all"
                       >
                         <Monitor className="w-5 h-5" />
                         Streamer Tournaments

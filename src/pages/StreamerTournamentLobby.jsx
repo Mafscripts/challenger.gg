@@ -607,9 +607,9 @@ export default function StreamerTournamentLobby() {
           position: relative;
           overflow: hidden;
           background:
-            radial-gradient(circle at 12% 6%, rgba(20,216,255,0.16), transparent 28%),
+            radial-gradient(circle at 12% 6%, rgba(210,214,220,0.09), transparent 28%),
             radial-gradient(circle at 82% 12%, rgba(165,108,255,0.14), transparent 28%),
-            linear-gradient(180deg, #050910 0%, #080D15 46%, #03060A 100%);
+            linear-gradient(180deg, #0B0C0E 0%, #101114 46%, #08090B 100%);
         }
         .streamer-lobby-screen::before {
           content: "";
@@ -627,17 +627,17 @@ export default function StreamerTournamentLobby() {
           position: fixed;
           inset: 0;
           pointer-events: none;
-          background: linear-gradient(120deg, transparent 0%, rgba(20,216,255,0.045) 45%, transparent 62%);
+          background: linear-gradient(120deg, transparent 0%, rgba(210,214,220,0.035) 45%, transparent 62%);
           animation: streamerSweep 7s ease-in-out infinite;
         }
         .streamer-hero,
         .streamer-panel {
           position: relative;
           overflow: hidden;
-          border: 1px solid rgba(20,216,255,0.13);
+          border: 1px solid rgba(210,214,220,0.11);
           background:
-            linear-gradient(135deg, rgba(20,216,255,0.09), rgba(255,255,255,0.035) 42%, rgba(165,108,255,0.06)),
-            rgba(8,13,21,0.76);
+            linear-gradient(135deg, rgba(210,214,220,0.065), rgba(255,255,255,0.035) 42%, rgba(165,108,255,0.045)),
+            rgba(14,15,18,0.78);
           box-shadow: 0 24px 80px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.045);
           backdrop-filter: blur(14px);
         }
@@ -653,10 +653,10 @@ export default function StreamerTournamentLobby() {
         }
         .streamer-mini-card {
           border: 1px solid rgba(255,255,255,0.07);
-          background: linear-gradient(135deg, rgba(255,255,255,0.045), rgba(20,216,255,0.045));
+          background: linear-gradient(135deg, rgba(255,255,255,0.045), rgba(210,214,220,0.035));
         }
         .streamer-title-glow {
-          text-shadow: 0 0 32px rgba(20,216,255,0.16);
+          text-shadow: 0 0 32px rgba(210,214,220,0.11);
         }
         @keyframes streamerPanelScan {
           0%, 55% { transform: translateX(-120%); }
@@ -674,7 +674,7 @@ export default function StreamerTournamentLobby() {
               <ArrowLeft className="h-3.5 w-3.5" /> Streamer Tournaments
             </Link>
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-lg border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-300">
+              <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor">
                 <Monitor className="h-3.5 w-3.5" /> Switcheroo Lobby
               </span>
               <span className="inline-flex items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan">
@@ -812,7 +812,7 @@ export default function StreamerTournamentLobby() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-cyan/20 bg-cyan/[0.06] p-4 shadow-[0_0_35px_rgba(20,216,255,0.08)]">
+                  <div className="rounded-xl border border-cyan/20 bg-cyan/[0.06] p-4 shadow-[0_0_35px_rgba(210,214,220,0.06)]">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <p className="text-[10px] font-black uppercase tracking-wider text-cyan">Draft Teams</p>
                       <Shuffle className={`h-4 w-4 text-cyan ${spinning ? "animate-spin" : ""}`} />
@@ -1194,8 +1194,8 @@ function DraftTeamsViewer({ teams, onOpenBigDraw }) {
 }
 
 const drawAccents = [
-  { hex: "#14D8FF", rgb: "20,216,255", soft: "rgba(20,216,255,0.12)" },
-  { hex: "#168BFF", rgb: "22,139,255", soft: "rgba(22,139,255,0.12)" },
+  { hex: "#D2D6DC", rgb: "210,214,220", soft: "rgba(210,214,220,0.12)" },
+  { hex: "#9CA3AF", rgb: "156,163,175", soft: "rgba(156,163,175,0.12)" },
   { hex: "#A56CFF", rgb: "165,108,255", soft: "rgba(165,108,255,0.12)" },
   { hex: "#F2B928", rgb: "242,185,40", soft: "rgba(242,185,40,0.12)" },
   { hex: "#28E38B", rgb: "40,227,139", soft: "rgba(40,227,139,0.12)" },
@@ -1316,13 +1316,13 @@ function BigDrawOverlay({ tournament, teams, spinning, canModerate, canSpin, can
   const mega = visibleTeams.length >= 17;
 
   return (
-    <div className={`switch-draw-screen fixed inset-0 z-50 overflow-hidden bg-[#03070C] text-white ${spinning ? "is-spinning" : ""}`}>
+    <div className={`switch-draw-screen fixed inset-0 z-50 overflow-hidden bg-[#090A0C] text-white ${spinning ? "is-spinning" : ""}`}>
       <style>{`
         .switch-draw-screen {
           background:
-            radial-gradient(circle at 18% 8%, rgba(20,216,255,0.14), transparent 26%),
+            radial-gradient(circle at 18% 8%, rgba(210,214,220,0.08), transparent 26%),
             radial-gradient(circle at 78% 12%, rgba(165,108,255,0.13), transparent 24%),
-            linear-gradient(180deg, #03070C 0%, #060A10 48%, #020409 100%);
+            linear-gradient(180deg, #090A0C 0%, #0F1013 48%, #07080A 100%);
         }
         .switch-draw-grid {
           background-image:
@@ -1341,7 +1341,7 @@ function BigDrawOverlay({ tournament, teams, spinning, canModerate, canSpin, can
           top: 50%;
           height: 1px;
           width: 38%;
-          background: linear-gradient(90deg, transparent, rgba(20,216,255,0.46), transparent);
+          background: linear-gradient(90deg, transparent, rgba(210,214,220,0.32), transparent);
         }
         .switch-reveal-line::before { left: 0; }
         .switch-reveal-line::after { right: 0; }
@@ -1445,7 +1445,7 @@ function BigDrawOverlay({ tournament, teams, spinning, canModerate, canSpin, can
                   type="button"
                   onClick={onSpin}
                   disabled={!canSpin}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan px-6 text-xs font-black uppercase tracking-wider text-background shadow-[0_0_28px_rgba(20,216,255,0.24)] disabled:opacity-50"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan px-6 text-xs font-black uppercase tracking-wider text-background shadow-[0_0_28px_rgba(210,214,220,0.16)] disabled:opacity-50"
                 >
                   {spinning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
                   Rerun Spin
@@ -1472,7 +1472,7 @@ function BigDrawOverlay({ tournament, teams, spinning, canModerate, canSpin, can
         </div>
 
         <div className={`switch-reveal-line shrink-0 rounded-xl border px-5 text-center font-black uppercase tracking-[0.32em] ${crowded ? "mb-3 py-2 text-xs" : "mb-7 py-4"} ${
-          spinning ? "border-cyan/35 bg-cyan/10 text-cyan animate-pulse" : "border-cyan/15 bg-white/[0.035] text-blue-200"
+          spinning ? "border-cyan/35 bg-cyan/10 text-cyan animate-pulse" : "border-white/10 bg-white/[0.035] text-vapor"
         }`}>
           {spinning ? "Spinning teams..." : `${visibleTeams.length} teams revealed`}
         </div>
@@ -1723,7 +1723,7 @@ function DetailRow({ icon: Icon, label, value }) {
   return (
     <div className="streamer-mini-card rounded-lg p-3">
       <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-vapor">
-        <Icon className="h-3.5 w-3.5 text-blue-300" /> {label}
+        <Icon className="h-3.5 w-3.5 text-vapor" /> {label}
       </div>
       <p className="truncate text-sm font-bold text-white">{value}</p>
     </div>

@@ -99,7 +99,7 @@ export default function Register() {
               placeholder="Enter username"
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
-              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
+              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(210,214,220,0.10)]"
               minLength={3}
               maxLength={20}
               pattern="[a-z0-9_]{3,20}"
@@ -118,7 +118,7 @@ export default function Register() {
               placeholder="Enter display name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
+              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(210,214,220,0.10)]"
               maxLength={60}
               required
             />
@@ -135,7 +135,7 @@ export default function Register() {
               placeholder="Enter email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
+              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(210,214,220,0.10)]"
               required
             />
           </div>
@@ -151,7 +151,7 @@ export default function Register() {
               placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
+              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(210,214,220,0.10)]"
               minLength={8}
               maxLength={72}
               required
@@ -169,7 +169,7 @@ export default function Register() {
               placeholder="Confirm password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
+              className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(210,214,220,0.10)]"
               minLength={8}
               maxLength={72}
               required
@@ -178,7 +178,7 @@ export default function Register() {
         </div>
         <Button
           type="submit"
-          className="w-full h-11 font-black uppercase tracking-wide bg-gradient-to-r from-cyan to-[#0EA5C7] text-background shadow-[0_10px_28px_rgba(20,216,255,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(20,216,255,0.22)] hover:from-[#38E0FF] hover:to-cyan"
+          className="w-full h-11 font-black uppercase tracking-wide bg-gradient-to-r from-cyan to-[#A9AFB8] text-background shadow-[0_10px_28px_rgba(210,214,220,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(210,214,220,0.16)] hover:from-[#E4E7EB] hover:to-cyan"
           disabled={loading}
         >
           {loading ? (

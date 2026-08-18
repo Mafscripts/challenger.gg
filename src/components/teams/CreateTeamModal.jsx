@@ -106,7 +106,7 @@ export default function CreateTeamModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12, ease: "easeOut" }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_center,rgba(20,216,255,0.045),rgba(0,0,0,0.88)_48%)] p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_center,rgba(210,214,220,0.035),rgba(0,0,0,0.88)_48%)] p-4"
           onClick={onClose}
         >
           <motion.form

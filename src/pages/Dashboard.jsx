@@ -532,7 +532,7 @@ function ProgressBar({ value, tone = "from-cyan to-green", className = "" }) {
   return (
     <div className={`h-2.5 overflow-hidden rounded-full bg-black/25 shadow-[inset_0_1px_3px_rgba(0,0,0,.35)] ${className}`}>
       <div
-        className={`h-full rounded-full bg-gradient-to-r shadow-[0_0_16px_rgba(20,216,255,.18)] transition-[width] duration-700 ease-out ${tone}`}
+        className={`h-full rounded-full bg-gradient-to-r shadow-[0_0_16px_rgba(210,214,220,.12)] transition-[width] duration-700 ease-out ${tone}`}
         style={{ width: `${width}%` }}
       />
     </div>

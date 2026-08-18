@@ -723,7 +723,7 @@ export default function WagersMatchRoom() {
         </header>
 
         {!isComplete && timeRemaining && (
-          <div className={`relative mb-6 overflow-hidden rounded-2xl p-[1px] ${timeRemaining === "EXPIRED" ? "bg-gradient-to-r from-orange/45 via-red-400/20 to-orange/45" : "bg-gradient-to-r from-cyan/45 via-blue-400/15 to-cyan/45"}`}>
+          <div className={`relative mb-6 overflow-hidden rounded-2xl p-[1px] ${timeRemaining === "EXPIRED" ? "bg-gradient-to-r from-orange/45 via-red-400/20 to-orange/45" : "bg-gradient-to-r from-cyan/45 via-white/10 to-cyan/45"}`}>
             <div className="rounded-[15px] bg-[linear-gradient(135deg,rgba(18,26,37,0.97),rgba(10,14,21,0.94))] px-5 py-5 sm:px-6">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-4">

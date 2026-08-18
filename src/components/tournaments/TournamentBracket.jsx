@@ -56,7 +56,7 @@ function uniqueBracketMatches(matches) {
 function statusStyle(match, isCurrent) {
   if (isCurrent) return "border-green/35 bg-green/[0.07] shadow-[0_0_0_1px_rgba(0,255,128,.08),0_18px_45px_-30px_rgba(0,255,128,.55)]";
   if (isCompleteMatch(match)) return "border-white/[0.07] bg-background/55";
-  if (["ready", "in_progress"].includes(match.status)) return "border-cyan/25 bg-cyan/[0.045] shadow-[0_18px_45px_-34px_rgba(20,216,255,.55)]";
+  if (["ready", "in_progress"].includes(match.status)) return "border-cyan/25 bg-cyan/[0.045] shadow-[0_18px_45px_-34px_rgba(210,214,220,.32)]";
   if (["disputed", "score_conflict"].includes(match.status)) return "border-orange/30 bg-orange/[0.045]";
   return "border-white/[0.06] bg-background/40";
 }
@@ -355,7 +355,7 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
                 <h3 className={`text-xs font-black uppercase tracking-[0.18em] ${lane.accent}`}>{lane.label}</h3>
               </div>
             )}
-            <div className="h-auto overflow-x-auto pb-3 [scrollbar-color:rgba(20,216,255,.25)_transparent]">
+            <div className="h-auto overflow-x-auto pb-3 [scrollbar-color:rgba(210,214,220,.25)_transparent]">
               <div className="grid min-w-max gap-6" style={{ gridTemplateColumns: `repeat(${lane.groups.length}, minmax(272px, 1fr))` }}>
           {lane.groups.map((group, groupIndex) => {
             const completedCount = group.matches.filter(isCompleteMatch).length;

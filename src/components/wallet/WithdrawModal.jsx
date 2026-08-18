@@ -153,11 +153,11 @@ export default function WithdrawModal({ isOpen, onClose, user, availableBalance 
             </div>
 
             {/* Info */}
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+            <div className="bg-white/[0.045] border border-white/10 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-blue-400 mt-0.5" />
+                <Shield className="w-5 h-5 text-vapor mt-0.5" />
                 <div>
-                  <p className="text-sm font-bold text-blue-400 mb-1">Processing Time</p>
+                  <p className="text-sm font-bold text-foreground mb-1">Processing Time</p>
                   <p className="text-xs text-vapor">
                     Withdrawals are processed within 1-3 business days. Minimum withdrawal: $10.00
                   </p>

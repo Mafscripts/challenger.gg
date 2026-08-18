@@ -361,7 +361,7 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
               const nextScore = Number(event.target.value);
               setScore(Number.isFinite(nextScore) ? Math.min(maxScore, Math.max(0, Math.trunc(nextScore))) : 0);
             }}
-            className={`h-16 w-24 rounded-lg border text-center font-mono text-3xl font-black outline-none transition-all duration-200 focus:ring-2 focus:shadow-[0_0_0_3px_rgba(20,216,255,0.10)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-28 ${scoreAccent}`}
+            className={`h-16 w-24 rounded-lg border text-center font-mono text-3xl font-black outline-none transition-all duration-200 focus:ring-2 focus:shadow-[0_0_0_3px_rgba(210,214,220,0.10)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-28 ${scoreAccent}`}
           />
         </div>
       </div>
@@ -869,7 +869,7 @@ export default function TournamentMatchRoom() {
           <div className={`relative mb-6 overflow-hidden rounded-2xl p-[1px] ${
             startWindowExpired
               ? "bg-gradient-to-r from-orange/45 via-red-400/20 to-orange/45"
-              : "bg-gradient-to-r from-cyan/45 via-blue-400/15 to-cyan/45"
+              : "bg-gradient-to-r from-cyan/45 via-white/10 to-cyan/45"
           }`}>
             <div className="relative overflow-hidden rounded-[15px] bg-[linear-gradient(135deg,rgba(18,26,37,0.97),rgba(10,14,21,0.94))] px-5 py-5 sm:px-6">
               <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
