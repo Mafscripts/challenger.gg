@@ -15,6 +15,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "seed": "node prisma/seed.js",
     "demo:tournament": "node prisma/demoTournament.js",
+    "demo:tournament:entries": "node prisma/demoTournamentEntries.js",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },
