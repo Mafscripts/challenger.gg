@@ -582,13 +582,13 @@ export default function Navbar() {
           </div>
         );
       })()}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
+      <nav className={`app-topbar fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
         scrolled ? "glass-nav" : "bg-transparent"
       }`}>
-        <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
+        <div className="app-topbar-inner max-w-[1600px] mx-auto px-4 lg:px-6">
           <div className="flex items-center justify-between h-16">
             {/* Logo + primary destination */}
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="topbar-brand flex items-center gap-3 shrink-0">
               <Link to="/" className="flex items-center gap-2" aria-label="Topfragg.gg home">
                 <TopfraggLogo markClassName="h-8 w-8" wordmarkClassName="hidden text-lg sm:inline-flex" />
               </Link>
@@ -609,7 +609,7 @@ export default function Navbar() {
 
             {/* Desktop Nav */}
             {user && (
-              <div className="hidden xl:flex flex-1 items-center justify-center gap-1 px-4">
+              <div className="topbar-primary-nav hidden xl:flex flex-1 items-center justify-center gap-1 px-4">
                 {navGroups.map((group) => {
                   const GroupIcon = group.icon;
                   const active = group.items.some((item) => location.pathname === item.path);
@@ -795,7 +795,7 @@ export default function Navbar() {
             )}
 
             {/* Right Side */}
-            <div className="flex items-center gap-2">
+            <div className="topbar-actions flex items-center gap-2">
               {user ? (
                 <>
               {/* Wallet */}

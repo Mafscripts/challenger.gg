@@ -1,8 +1,10 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
 
 const Navbar = lazy(() => import("./Navbar"));
 const Footer = lazy(() => import("./Footer"));
+const Sidebar = lazy(() => import("./Sidebar"));
 
 function DeferredFooter() {
   const [ready, setReady] = useState(false);
@@ -23,16 +25,23 @@ function DeferredFooter() {
 }
 
 export default function PageLayout() {
+  const { isAuthenticated } = useAuth();
+
   return (
-    <div className="relative min-h-screen overflow-x-clip text-foreground">
+    <div className={`relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"}`}>
       <div className="page-ambient" aria-hidden="true" />
+      {isAuthenticated && (
+        <Suspense fallback={null}>
+          <Sidebar />
+        </Suspense>
+      )}
       <Suspense fallback={<div className="fixed inset-x-0 top-0 z-50 h-16 bg-background/95" />}>
         <Navbar />
       </Suspense>
-      <main className="relative z-[1] pt-16">
+      <main className="app-content relative z-[1] pt-16">
         <Outlet />
       </main>
-      <div className="relative z-[1]">
+      <div className="app-footer-wrap relative z-[1]">
         <DeferredFooter />
       </div>
     </div>
