@@ -36,7 +36,7 @@ export default function TopfraggLogo({
       </span>
       {showWordmark && (
         <span className={`font-black leading-none tracking-normal text-white ${wordmarkClassName}`}>
-          Top<span className="text-cyan">fragg</span><span className="text-orange">.gg</span>
+          Top<span style={{ color: "#14D8FF" }}>fragg</span><span className="text-orange">.gg</span>
         </span>
       )}
     </span>
