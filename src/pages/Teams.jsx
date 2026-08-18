@@ -720,8 +720,8 @@ function TeamCard({ summary, usersById, onOpen }) {
           {team.is_demo && <span className="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-vapor backdrop-blur-md">Demo</span>}
           <span className="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-vapor backdrop-blur-md">{String(team.region || "global").toUpperCase()}</span>
         </div>
-        <div className="absolute inset-x-0 bottom-0 flex translate-y-1 justify-center">
-          <TeamLogo team={team} className="h-24 w-24 rounded-full border-2 border-blue-400/35 bg-background" textClassName="text-2xl tracking-[0.08em]" />
+        <div className="absolute inset-x-0 bottom-4 flex justify-center">
+          <TeamLogo team={team} className="h-20 w-20 rounded-2xl border-2 border-blue-400/35 bg-background/90 p-3 shadow-[0_14px_34px_rgba(0,0,0,.45)] backdrop-blur-sm" textClassName="text-xl tracking-[0.08em]" />
         </div>
       </div>
 
