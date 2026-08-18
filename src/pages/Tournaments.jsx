@@ -881,7 +881,7 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(210,214,220,0.065),transparent_55%,rgba(255,130,0,0.07))] text-vapor"><Trophy className="h-4 w-4" /></div>
+          <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(210,214,220,0.065),transparent_55%,rgba(59,130,246,0.07))] text-vapor"><Trophy className="h-4 w-4" /></div>
         )}
       </div>
       <div className="min-w-0">

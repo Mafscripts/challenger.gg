@@ -52,7 +52,7 @@ const verifiedNameColors = [
   { label: "Green", value: "#22c55e" },
   { label: "Purple", value: "#a78bfa" },
   { label: "Graphite", value: "#6b7280" },
-  { label: "Orange", value: "#fb923c" },
+  { label: "Blue", value: "#3b82f6" },
   { label: "Lime", value: "#84cc16" },
   { label: "Stone", value: "#a8a29e" },
   { label: "White", value: "#f8fafc" },

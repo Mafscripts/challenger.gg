@@ -641,7 +641,7 @@ function TeamsCommandHero({ overview, onCreate, onOpenTeam }) {
   const activeMatch = featured?.activeMatch;
   return (
     <section className="relative mb-8 overflow-hidden rounded-3xl border border-cyan/15 bg-card">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(210,214,220,.08),transparent_30%),radial-gradient(circle_at_88%_5%,rgba(255,130,0,.09),transparent_27%),linear-gradient(118deg,rgba(16,17,20,.99),rgba(23,25,29,.96)_50%,rgba(12,13,15,.99))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(210,214,220,.08),transparent_30%),radial-gradient(circle_at_88%_5%,rgba(59,130,246,.09),transparent_27%),linear-gradient(118deg,rgba(16,17,20,.99),rgba(23,25,29,.96)_50%,rgba(12,13,15,.99))]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] [background-size:38px_38px]" />
       <div className="relative grid gap-7 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-stretch">
         <div className="flex min-w-0 flex-col justify-between">
