@@ -61,10 +61,10 @@ function statusStyle(match, isCurrent) {
   return "border-white/[0.06] bg-background/40";
 }
 
-function stageName(group, maxWinnerRound, isDoubleElimination) {
-  if (group.bracket === "grand_final") return group.round > 1 ? "Grand Final Reset" : "Grand Final";
+function stageName(group, maxWinnerRound, isDoubleElimination, hasGrandFinal, grandFinalIndex = 0) {
+  if (group.bracket === "grand_final") return grandFinalIndex > 0 ? "Grand Final Reset" : "Grand Final";
   if (group.bracket === "loser") return `Lower Bracket · Round ${group.round}`;
-  const roundsBeforeFinal = maxWinnerRound - group.round;
+  const roundsBeforeFinal = maxWinnerRound - group.round + (!isDoubleElimination && hasGrandFinal ? 1 : 0);
   if (roundsBeforeFinal === 0) return isDoubleElimination ? "Winners Final" : "Final";
   if (roundsBeforeFinal === 1) return "Semifinals";
   if (roundsBeforeFinal === 2) return "Quarterfinals";
@@ -127,7 +127,7 @@ function targetForMatch(match, matches, outcome = "winner") {
 
 function compactStageName(match) {
   if (!match) return "next stage";
-  if (normalizedBracket(match) === "grand_final") return Number(match.round || 1) > 1 ? "Grand Final Reset" : "Grand Final";
+  if (normalizedBracket(match) === "grand_final") return match.grand_final_reset || match.is_reset ? "Grand Final Reset" : "Grand Final";
   if (normalizedBracket(match) === "loser") return `Lower R${match.round || 1}`;
   return `Winners R${match.round || 1}`;
 }
@@ -217,12 +217,6 @@ function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers 
       to={`/tournament-match/${match.id}`}
       className={`group relative block h-full rounded-2xl border p-3 transition-[border-color,background-color,box-shadow] duration-150 hover:border-cyan/35 hover:bg-cyan/[0.055] ${statusStyle(match, current)}`}
     >
-      {target && (
-        <span aria-hidden="true" className="pointer-events-none absolute left-full top-1/2 hidden w-6 -translate-y-1/2 items-center xl:flex">
-          <span className="h-px w-full bg-cyan/35" />
-          <span className="h-2 w-2 -translate-x-1 rotate-45 border-r border-t border-cyan/50" />
-        </span>
-      )}
       {loserTarget && normalizedBracket(match) === "winner" && (
         <span aria-hidden="true" className="pointer-events-none absolute -bottom-4 right-6 hidden h-4 border-r border-dashed border-orange/40 xl:block" />
       )}
@@ -296,7 +290,12 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
   const isDoubleElimination = (tournament?.bracket_type || tournament?.format) === "double_elimination"
     || groups.some((group) => group.bracket === "loser");
   const maxWinnerRound = Math.max(1, ...groups.filter((group) => group.bracket === "winner").map((group) => group.round));
-  const groupNames = Object.fromEntries(groups.map((group) => [group.key, stageName(group, maxWinnerRound, isDoubleElimination)]));
+  const grandFinalGroups = groups.filter((group) => group.bracket === "grand_final");
+  const hasGrandFinal = grandFinalGroups.length > 0;
+  const groupNames = Object.fromEntries(groups.map((group) => [
+    group.key,
+    stageName(group, maxWinnerRound, isDoubleElimination, hasGrandFinal, grandFinalGroups.indexOf(group)),
+  ]));
   const displayNumbers = new Map();
   groups.forEach((group) => {
     group.matches.forEach((match, index) => displayNumbers.set(String(match.id), index + 1));
@@ -315,6 +314,23 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
         { key: "grand_final", label: "Championship", accent: "text-green", groups: groups.filter((group) => group.bracket === "grand_final") },
       ].filter((lane) => lane.groups.length > 0)
     : [{ key: "winner", label: "Bracket", accent: "text-cyan", groups }];
+
+  const groupsConnect = (source, target) => {
+    if (!source || !target) return false;
+    const compatibleCount = source.matches.length === target.matches.length
+      || source.matches.length === target.matches.length * 2;
+    if (!compatibleCount) return false;
+
+    const hasExplicitRoute = source.matches.some((match) => {
+      const destination = targetForMatch(match, visibleMatches, "winner");
+      return destination
+        && normalizedBracket(destination) === target.bracket
+        && Number(destination.round || 1) === target.round;
+    });
+    const isConsecutiveRound = source.bracket === target.bracket && target.round === source.round + 1;
+    const advancesToGrandFinal = ["winner", "loser"].includes(source.bracket) && target.bracket === "grand_final";
+    return hasExplicitRoute || isConsecutiveRound || advancesToGrandFinal;
+  };
 
   return (
     <section className="space-y-6">
@@ -356,18 +372,39 @@ export default function TournamentBracket({ matches = [], currentId = null, tour
               </div>
             )}
             <div className="h-auto overflow-x-auto pb-3 [scrollbar-color:rgba(210,214,220,.25)_transparent]">
-              <div className="grid min-w-max gap-6" style={{ gridTemplateColumns: `repeat(${lane.groups.length}, minmax(272px, 1fr))` }}>
+              <div className="grid min-w-max items-stretch gap-10" style={{ gridTemplateColumns: `repeat(${lane.groups.length}, minmax(272px, 1fr))` }}>
           {lane.groups.map((group, groupIndex) => {
             const completedCount = group.matches.filter(isCompleteMatch).length;
+            const previousGroup = lane.groups[groupIndex - 1];
+            const nextGroup = lane.groups[groupIndex + 1];
+            const hasIncomingLine = groupsConnect(previousGroup, group);
+            const hasOutgoingLine = groupsConnect(group, nextGroup);
+            const hasBranchLines = hasOutgoingLine && group.matches.length === nextGroup.matches.length * 2;
             return (
-              <section key={group.key} className="flex min-w-0 flex-col">
+              <section key={group.key} className="flex h-full min-w-0 flex-col">
                 <div className="mb-4 flex items-end justify-between gap-3 rounded-xl border border-white/[0.06] bg-black/15 px-3 py-3">
                   <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Round {groupIndex + 1}</p><h3 className="mt-1 text-sm font-black text-white">{groupNames[group.key]}</h3></div>
                   <p className="text-[9px] font-bold uppercase text-vapor">{completedCount}/{group.matches.length} complete</p>
                 </div>
-                <div className="flex flex-col justify-around gap-4" style={{ minHeight: `${laneHeight}px` }}>
-                  {group.matches.map((match, matchIndex) => (
-                    <div key={match.id} className="min-h-[220px]">
+                <div
+                  className="relative grid flex-1 gap-4"
+                  style={{ minHeight: `${laneHeight}px`, gridTemplateRows: `repeat(${group.matches.length}, minmax(220px, 1fr))` }}
+                >
+                  {hasBranchLines && nextGroup.matches.map((_, pairIndex) => (
+                    <span
+                      key={`branch-${group.key}-${pairIndex}`}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-[calc(100%+20px)] z-0 w-px bg-white/25"
+                      style={{
+                        top: `${((pairIndex * 2) + 0.5) / group.matches.length * 100}%`,
+                        height: `${100 / group.matches.length}%`,
+                      }}
+                    />
+                  ))}
+                  {group.matches.map((match) => (
+                    <div key={match.id} className="relative z-10 min-h-[220px] self-center">
+                      {hasIncomingLine && <span aria-hidden="true" className="pointer-events-none absolute right-full top-1/2 h-px w-5 bg-white/25" />}
+                      {hasOutgoingLine && <span aria-hidden="true" className="pointer-events-none absolute left-full top-1/2 h-px w-5 bg-white/25" />}
                       <MatchCard match={match} matches={visibleMatches} currentId={currentId} now={now} groupNames={groupNames} displayNumbers={displayNumbers} />
                     </div>
                   ))}
