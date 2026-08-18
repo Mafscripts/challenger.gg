@@ -74,7 +74,6 @@ export default function Sidebar() {
     <aside className="arena-sidebar fixed inset-y-0 left-0 z-[60] hidden w-60 flex-col xl:flex">
       <Link to="/dashboard" className="arena-sidebar-brand" aria-label="Topfragg dashboard">
         <TopfraggLogo markClassName="h-7 w-7" wordmarkClassName="text-[15px]" />
-        <span className="arena-sidebar-build">Arena</span>
       </Link>
 
       <nav className="arena-sidebar-nav" aria-label="Primary navigation">

@@ -402,18 +402,6 @@
   .arena-sidebar-brand:hover {
     background: hsl(0 0% 100% / 0.025);
   }
-  .arena-sidebar-build {
-    margin-left: auto;
-    border: 1px solid hsl(0 0% 100% / 0.1);
-    border-radius: 0.25rem;
-    padding: 0.2rem 0.4rem;
-    color: hsl(var(--vapor) / 0.72);
-    font-size: 0.48rem;
-    font-weight: 900;
-    letter-spacing: 0.14em;
-    line-height: 1;
-    text-transform: uppercase;
-  }
   .arena-sidebar-nav {
     flex: 1;
     overflow-y: auto;
