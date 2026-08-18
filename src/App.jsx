@@ -173,7 +173,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true }}>
         <ScrollToTop />
         <AuthenticatedApp />
       </Router>

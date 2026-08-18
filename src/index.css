@@ -99,6 +99,13 @@
 }
 
 @layer base {
+  html {
+    min-height: 100%;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+    background: #0d0e10;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
@@ -111,7 +118,13 @@
     background-image:
       radial-gradient(circle at 16% -12%, hsl(210 8% 72% / 0.035), transparent 30rem),
       linear-gradient(180deg, #101114 0%, #0d0e10 46%, #0a0b0d 100%);
+    overflow-x: hidden;
     text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    min-height: 100svh;
+    isolation: isolate;
   }
 
   h1, h2, h3, h4 {
@@ -171,6 +184,31 @@
 }
 
 @layer utilities {
+  .app-content,
+  .route-stage,
+  .route-loading-frame {
+    min-height: calc(100svh - 4rem);
+  }
+  .route-stage {
+    min-width: 0;
+    overflow-x: clip;
+  }
+  .route-page-enter {
+    animation: route-page-enter 170ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+  .route-loading-frame {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, hsl(var(--background) / 0.18), transparent 14rem);
+  }
+  .route-loading-line {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 32%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, hsl(var(--menu-blue) / 0.85), transparent);
+    animation: route-loading-line 900ms ease-in-out infinite;
+  }
   .glow-cyan {
     box-shadow: 0 0 20px hsl(210 8% 72% / 0.18), 0 0 60px hsl(210 8% 72% / 0.05);
   }
@@ -714,6 +752,20 @@
 @keyframes locked-pulse {
   0%, 100% { box-shadow: 0 0 15px hsl(217 91% 60% / 0.3), 0 0 40px hsl(217 91% 60% / 0.1); }
   50% { box-shadow: 0 0 25px hsl(217 91% 60% / 0.5), 0 0 70px hsl(217 91% 60% / 0.2); }
+}
+@keyframes route-page-enter {
+  from {
+    opacity: 0.94;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes route-loading-line {
+  from { transform: translateX(-115%); }
+  to { transform: translateX(415%); }
 }
 @keyframes exclusive-glow {
   0%, 100% { box-shadow: 0 0 20px hsl(210 8% 72% / 0.22), 0 0 60px hsl(210 8% 72% / 0.08); }

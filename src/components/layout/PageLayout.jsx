@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 
 const Navbar = lazy(() => import("./Navbar"));
@@ -24,8 +24,17 @@ function DeferredFooter() {
   return <Suspense fallback={null}><Footer /></Suspense>;
 }
 
+function RouteFallback() {
+  return (
+    <div className="route-loading-frame" aria-live="polite" aria-label="Loading page">
+      <div className="route-loading-line" />
+    </div>
+  );
+}
+
 export default function PageLayout() {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
 
   return (
     <div className={`relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"}`}>
@@ -38,8 +47,12 @@ export default function PageLayout() {
       <Suspense fallback={<div className="fixed inset-x-0 top-0 z-50 h-16 bg-background/95" />}>
         <Navbar />
       </Suspense>
-      <main className="app-content relative z-[1] pt-16">
-        <Outlet />
+      <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">
+        <Suspense fallback={<RouteFallback />}>
+          <div key={location.pathname} className="route-stage route-page-enter">
+            <Outlet />
+          </div>
+        </Suspense>
       </main>
       <div className="app-footer-wrap relative z-[1]">
         <DeferredFooter />
