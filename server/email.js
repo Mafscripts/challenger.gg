@@ -120,21 +120,25 @@ export const isEmailConfigured = () => Boolean(smtpConfig());
 const buildVerificationMessage = ({ from, to, code }) => {
   const safeFrom = sanitizeHeader(from);
   const safeTo = sanitizeHeader(to);
-  const subject = "Your Challenger.gg verification code";
-  const boundary = `challenger-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const subject = "Your TopFragg verification code";
+  const boundary = `topfragg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const text = [
-    "Your Challenger.gg verification code is:",
+    "Your TopFragg verification code is:",
     "",
     code,
     "",
     "Enter this code to finish creating your account.",
+    "The code expires in 10 minutes.",
+    "If you did not create this account, you can ignore this email.",
   ].join("\r\n");
   const html = [
     "<div style=\"font-family:Arial,sans-serif;line-height:1.5;color:#111827\">",
-    "<h2>Verify your Challenger.gg account</h2>",
+    "<h2>Verify your TopFragg account</h2>",
     "<p>Your verification code is:</p>",
     `<p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p>`,
     "<p>Enter this code to finish creating your account.</p>",
+    "<p>The code expires in 10 minutes.</p>",
+    "<p>If you did not create this account, you can ignore this email.</p>",
     "</div>",
   ].join("");
 
@@ -143,7 +147,7 @@ const buildVerificationMessage = ({ from, to, code }) => {
     `To: ${safeTo}`,
     `Subject: ${subject}`,
     `Date: ${new Date().toUTCString()}`,
-    `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@challenger.gg>`,
+    `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@topfragg.gg>`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",
@@ -168,10 +172,10 @@ const buildResetPasswordMessage = ({ from, to, resetUrl }) => {
   const safeFrom = sanitizeHeader(from);
   const safeTo = sanitizeHeader(to);
   const safeResetUrl = String(resetUrl).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const subject = "Reset your Challenger.gg password";
-  const boundary = `challenger-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const subject = "Reset your TopFragg password";
+  const boundary = `topfragg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const text = [
-    "A password reset was requested for your Challenger.gg account.",
+    "A password reset was requested for your TopFragg account.",
     "",
     resetUrl,
     "",
@@ -180,7 +184,7 @@ const buildResetPasswordMessage = ({ from, to, resetUrl }) => {
   ].join("\r\n");
   const html = [
     "<div style=\"font-family:Arial,sans-serif;line-height:1.5;color:#111827\">",
-    "<h2>Reset your Challenger.gg password</h2>",
+    "<h2>Reset your TopFragg password</h2>",
     "<p>A password reset was requested for your account.</p>",
     `<p><a href="${safeResetUrl}" style="display:inline-block;padding:12px 18px;background:#06b6d4;color:#081018;text-decoration:none;border-radius:6px;font-weight:700">Reset password</a></p>`,
     "<p>This link expires in 30 minutes and can only be used once.</p>",
@@ -193,7 +197,7 @@ const buildResetPasswordMessage = ({ from, to, resetUrl }) => {
     `To: ${safeTo}`,
     `Subject: ${subject}`,
     `Date: ${new Date().toUTCString()}`,
-    `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@challenger.gg>`,
+    `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@topfragg.gg>`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",

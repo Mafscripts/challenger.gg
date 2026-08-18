@@ -65,7 +65,23 @@ export const displayNameFor = (user, fallbackEmail) => (
   cleanUsername(user?.email || fallbackEmail, "user")
 );
 
-export const publicUser = (user) => serializeRow(user);
+export const publicUser = (user) => {
+  const serialized = serializeRow(user);
+  if (!serialized) return null;
+  const sensitiveFields = [
+    "email_verification_code",
+    "email_verification_code_hash",
+    "email_verification_expires_at",
+    "email_verification_attempts",
+    "email_verification_sent_at",
+    "email_verification_resend_count",
+    "email_verification_resend_window_started_at",
+    "password_reset_token_hash",
+    "password_reset_expires_at",
+  ];
+  sensitiveFields.forEach((field) => delete serialized[field]);
+  return serialized;
+};
 
 export const signUser = (user) => jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
@@ -163,7 +179,7 @@ export const ensureUserRecords = async (user, payload = {}) => {
       role,
       admin_role: adminRole,
       is_admin: role !== "user",
-      email_verified: true,
+      email_verified: user.email_verified === true,
       metadata: {
         ...metadata,
         badges: [...roleBadges, ...preservedBadges],
@@ -262,6 +278,17 @@ export const createUserWithPassword = async ({ email, password, username: rawUse
     error.status = 400;
     throw error;
   }
+  if (normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    const error = new Error("Enter a valid email address");
+    error.status = 400;
+    throw error;
+  }
+  const passwordBytes = Buffer.byteLength(password, "utf8");
+  if (passwordBytes < 8 || passwordBytes > 72) {
+    const error = new Error("Password must be between 8 and 72 characters");
+    error.status = 400;
+    throw error;
+  }
 
   await ensureUsernameAvailable(username);
 
@@ -272,8 +299,6 @@ export const createUserWithPassword = async ({ email, password, username: rawUse
     throw error;
   }
 
-  const userCount = await prisma.user.count();
-  const role = userCount === 0 ? "ceo" : "user";
   const user = await prisma.user.create({
     data: {
       email: normalizedEmail,
@@ -281,13 +306,12 @@ export const createUserWithPassword = async ({ email, password, username: rawUse
       username,
       handle: username,
       display_name: cleanDisplayName,
-      role,
-      admin_role: role === "ceo" ? "ceo" : null,
-      is_admin: role === "ceo",
-      email_verified: true,
+      role: "user",
+      admin_role: null,
+      is_admin: false,
+      email_verified: false,
     },
   });
 
-  await ensureUserRecords(user, { username, handle: username, display_name: cleanDisplayName });
   return prisma.user.findUnique({ where: { id: user.id } });
 };

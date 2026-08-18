@@ -36,6 +36,7 @@ app.use((error, _req, res, _next) => {
   }
   res.status(status).json({
     error: message,
+    ...(error.retryAfter ? { retry_after: error.retryAfter } : {}),
     ...(status >= 500 && process.env.NODE_ENV !== "production" && error.stack ? { stack: error.stack } : {}),
   });
 });

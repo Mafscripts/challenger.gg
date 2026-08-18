@@ -13,9 +13,123 @@ import {
 } from "../auth.js";
 import { requireAuth } from "../middleware/auth.js";
 import { dataForEntity } from "../entity.js";
-import { isEmailConfigured, sendPasswordResetEmail } from "../email.js";
+import { isEmailConfigured, sendPasswordResetEmail, sendVerificationEmail } from "../email.js";
 
 const router = Router();
+const VERIFICATION_TTL_MS = 10 * 60 * 1000;
+const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+const VERIFICATION_RESEND_WINDOW_MS = 60 * 60 * 1000;
+const VERIFICATION_MAX_RESENDS_PER_WINDOW = 5;
+const VERIFICATION_MAX_ATTEMPTS = 5;
+const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
+const REGISTRATION_MAX_PER_IP = 10;
+const registrationAttempts = new Map();
+
+const verificationSecret = () => process.env.EMAIL_VERIFICATION_SECRET || process.env.JWT_SECRET || "dev-email-verification-secret";
+const verificationHash = (userId, code) => crypto
+  .createHmac("sha256", verificationSecret())
+  .update(`${userId}:${code}`)
+  .digest("hex");
+const verificationCode = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+
+const safeHashEquals = (left, right) => {
+  const leftBuffer = Buffer.from(String(left || ""), "hex");
+  const rightBuffer = Buffer.from(String(right || ""), "hex");
+  return leftBuffer.length > 0
+    && leftBuffer.length === rightBuffer.length
+    && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
+
+const consumeRegistrationAttempt = (ip) => {
+  const now = Date.now();
+  if (registrationAttempts.size > 10_000) {
+    for (const [key, value] of registrationAttempts) {
+      if (value.windowStartedAt + REGISTRATION_WINDOW_MS <= now) registrationAttempts.delete(key);
+    }
+  }
+  const current = registrationAttempts.get(ip);
+  const next = !current || current.windowStartedAt + REGISTRATION_WINDOW_MS <= now
+    ? { windowStartedAt: now, count: 1 }
+    : { ...current, count: current.count + 1 };
+  registrationAttempts.set(ip, next);
+  if (next.count > REGISTRATION_MAX_PER_IP) {
+    const error = new Error("Too many registration attempts. Please try again later.");
+    error.status = 429;
+    throw error;
+  }
+};
+
+const issueVerificationChallenge = async (user, { enforceCooldown = false } = {}) => {
+  const now = Date.now();
+  const metadata = safeUserMetadata(user.metadata);
+  const lastSentAt = Date.parse(metadata.email_verification_sent_at || "");
+  if (enforceCooldown && Number.isFinite(lastSentAt) && lastSentAt + VERIFICATION_RESEND_COOLDOWN_MS > now) {
+    const error = new Error("Please wait before requesting another verification code");
+    error.status = 429;
+    error.retryAfter = Math.ceil((lastSentAt + VERIFICATION_RESEND_COOLDOWN_MS - now) / 1000);
+    throw error;
+  }
+
+  const previousWindowStartedAt = Date.parse(metadata.email_verification_resend_window_started_at || "");
+  const inSameWindow = Number.isFinite(previousWindowStartedAt)
+    && previousWindowStartedAt + VERIFICATION_RESEND_WINDOW_MS > now;
+  const resendCount = inSameWindow ? Number(metadata.email_verification_resend_count || 0) + 1 : 1;
+  if (enforceCooldown && resendCount > VERIFICATION_MAX_RESENDS_PER_WINDOW) {
+    const error = new Error("Too many verification codes requested. Please try again later.");
+    error.status = 429;
+    throw error;
+  }
+
+  const code = verificationCode();
+  const sentAt = new Date(now).toISOString();
+  const expiresAt = new Date(now + VERIFICATION_TTL_MS).toISOString();
+  const nextMetadata = {
+    ...metadata,
+    email_verification_code_hash: verificationHash(user.id, code),
+    email_verification_expires_at: expiresAt,
+    email_verification_attempts: 0,
+    email_verification_sent_at: sentAt,
+    email_verification_resend_count: resendCount,
+    email_verification_resend_window_started_at: inSameWindow
+      ? metadata.email_verification_resend_window_started_at
+      : sentAt,
+  };
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { metadata: nextMetadata },
+  });
+
+  let delivery;
+  try {
+    delivery = await sendVerificationEmail({ to: updated.email, code });
+  } catch (cause) {
+    const error = new Error("Verification email delivery is temporarily unavailable");
+    error.status = 503;
+    error.cause = cause;
+    throw error;
+  }
+  const developmentCode = !delivery.sent && process.env.NODE_ENV !== "production" ? code : undefined;
+  if (!delivery.sent && process.env.NODE_ENV === "production") {
+    const error = new Error("Verification email delivery is temporarily unavailable");
+    error.status = 503;
+    throw error;
+  }
+  return { user: updated, delivery, developmentCode, expiresAt };
+};
+
+const clearVerificationMetadata = (metadata) => {
+  const clean = safeUserMetadata(metadata);
+  [
+    "email_verification_code",
+    "email_verification_code_hash",
+    "email_verification_expires_at",
+    "email_verification_attempts",
+    "email_verification_sent_at",
+    "email_verification_resend_count",
+    "email_verification_resend_window_started_at",
+  ].forEach((field) => delete clean[field]);
+  return clean;
+};
 
 const requestIp = (req) => {
   const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
@@ -41,13 +155,19 @@ const recordIp = async (user, req, field) => {
 
 export const registerHandler = async (req, res, next) => {
   try {
+    consumeRegistrationAttempt(requestIp(req));
+    if (!isEmailConfigured() && process.env.NODE_ENV === "production") {
+      return res.status(503).json({ error: "Email verification is not configured" });
+    }
     let user = await createUserWithPassword(req.body || {});
     user = await recordIp(user, req, "registration_ip");
-    const bootstrap = await ensureUserRecords(user);
+    const challenge = await issueVerificationChallenge(user);
     res.json({
-      access_token: signUser(bootstrap.user),
-      user: bootstrap.user,
-      email_verification_required: false,
+      email: challenge.user.email,
+      email_verification_required: true,
+      expires_in: Math.floor(VERIFICATION_TTL_MS / 1000),
+      email_sent: challenge.delivery.sent,
+      ...(challenge.developmentCode ? { development_verification_code: challenge.developmentCode } : {}),
     });
   } catch (error) {
     next(error);
@@ -66,17 +186,15 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const withIp = await recordIp(user, req, "last_login_ip");
-    const loginUser = withIp.email_verified === true
-      ? withIp
-      : await prisma.user.update({
-        where: { id: withIp.id },
-        data: dataForEntity("User", {
-          email_verified: true,
-          email_verification_code: null,
-          email_verification_sent_at: null,
-        }, withIp.metadata),
+    if (user.email_verified !== true) {
+      return res.status(403).json({
+        error: "Verify your email before logging in",
+        code: "EMAIL_VERIFICATION_REQUIRED",
+        email: user.email,
       });
+    }
+
+    const loginUser = await recordIp(user, req, "last_login_ip");
     const bootstrap = await ensureUserRecords(loginUser);
     res.json({
       access_token: signUser(loginUser),
@@ -138,15 +256,47 @@ router.post("/bootstrap", requireAuth, async (req, res, next) => {
 
 router.post("/verify-otp", async (req, res, next) => {
   try {
-    const user = await prisma.user.findUnique({ where: { email: String(req.body?.email || "").toLowerCase() } });
-    if (!user) return res.status(404).json({ error: "User not found" });
-    const verified = user.email_verified === true ? user : await prisma.user.update({
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const code = String(req.body?.code || req.body?.otp || "").trim();
+    const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
+    if (!user || !/^\d{6}$/.test(code)) {
+      return res.status(400).json({ error: "Invalid or expired verification code" });
+    }
+    if (user.email_verified === true) {
+      return res.status(400).json({ error: "Email is already verified. Please log in." });
+    }
+
+    const metadata = safeUserMetadata(user.metadata);
+    const expiresAt = Date.parse(metadata.email_verification_expires_at || "");
+    const attempts = Number(metadata.email_verification_attempts || 0);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      return res.status(400).json({ error: "Verification code expired. Request a new code." });
+    }
+    if (attempts >= VERIFICATION_MAX_ATTEMPTS) {
+      return res.status(429).json({ error: "Too many incorrect attempts. Request a new code." });
+    }
+
+    const matches = safeHashEquals(metadata.email_verification_code_hash, verificationHash(user.id, code));
+    if (!matches) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { metadata: { ...metadata, email_verification_attempts: attempts + 1 } },
+      });
+      const remainingAttempts = Math.max(0, VERIFICATION_MAX_ATTEMPTS - attempts - 1);
+      return res.status(400).json({
+        error: remainingAttempts
+          ? `Incorrect code. ${remainingAttempts} attempt${remainingAttempts === 1 ? "" : "s"} remaining.`
+          : "Too many incorrect attempts. Request a new code.",
+      });
+    }
+
+    const verified = await prisma.user.update({
       where: { id: user.id },
-      data: dataForEntity("User", { email_verified: true, email_verification_code: null }, safeUserMetadata(user.metadata)),
+      data: { email_verified: true, metadata: clearVerificationMetadata(metadata) },
     });
     const withIp = await recordIp(verified, req, "last_login_ip");
     const bootstrap = await ensureUserRecords(withIp);
-    res.json({ access_token: signUser(withIp), user: bootstrap.user, verification_disabled: true });
+    res.json({ access_token: signUser(withIp), user: bootstrap.user });
   } catch (error) {
     next(error);
   }
@@ -154,19 +304,20 @@ router.post("/verify-otp", async (req, res, next) => {
 
 router.post("/resend-otp", async (req, res, next) => {
   try {
-    const email = String(req.body?.email || "").toLowerCase();
+    const email = String(req.body?.email || "").trim().toLowerCase();
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(404).json({ error: "User not found" });
-    if (user.email_verified !== true) await prisma.user.update({
-      where: { id: user.id },
-      data: dataForEntity("User", { email_verified: true, email_verification_code: null }, safeUserMetadata(user.metadata)),
-    });
+    if (!user || user.email_verified === true) {
+      return res.json({ success: true, email_sent: true });
+    }
+    const challenge = await issueVerificationChallenge(user, { enforceCooldown: true });
     res.json({
       success: true,
-      email_sent: false,
-      verification_disabled: true,
+      email_sent: challenge.delivery.sent,
+      expires_in: Math.floor(VERIFICATION_TTL_MS / 1000),
+      ...(challenge.developmentCode ? { development_verification_code: challenge.developmentCode } : {}),
     });
   } catch (error) {
+    if (error.retryAfter) res.set("Retry-After", String(error.retryAfter));
     next(error);
   }
 });

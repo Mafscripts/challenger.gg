@@ -6,14 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, UserPlus, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
-import { bootstrapCurrentUser } from "@/lib/userBootstrap";
-import { useAuth } from "@/lib/AuthContext";
 
 const usernamePattern = /^[a-z0-9_]{3,20}$/;
 
 export default function Register() {
   const navigate = useNavigate();
-  const { checkUserAuth, completeAuth } = useAuth();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,35 +36,28 @@ export default function Register() {
       setError("Passwords do not match");
       return;
     }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
     setLoading(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      let result = await base44.auth.register({
+      const result = await base44.auth.register({
         username: normalizedUsername,
         display_name: cleanDisplayName,
         email: normalizedEmail,
         password,
       });
-      if (!result?.access_token) {
-        result = await base44.auth.loginViaEmailPassword(normalizedEmail, password);
-      }
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
-        const currentUser = await bootstrapCurrentUser({
-          email: normalizedEmail,
-          user: result?.user,
-          username: normalizedUsername,
-          display_name: cleanDisplayName,
-        }).catch(() => result?.user || null);
-        if (currentUser?.id) {
-          completeAuth(currentUser);
-        } else {
-          await checkUserAuth();
+      if (result?.email_verification_required) {
+        const verificationEmail = result.email || normalizedEmail;
+        if (typeof window !== "undefined" && result.development_verification_code) {
+          window.sessionStorage.setItem(`verification-code:${verificationEmail}`, result.development_verification_code);
         }
-        navigate("/dashboard", { replace: true });
+        navigate(`/verify-email?email=${encodeURIComponent(verificationEmail)}&fresh=1`, { replace: true });
         return;
       }
-      setError("Account created, but login did not start. Please log in.");
+      setError("Account created, but email verification did not start. Please log in and try again.");
     } catch (err) {
       setError(err.message || "Registration failed");
     } finally {
@@ -162,6 +152,8 @@ export default function Register() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
+              minLength={8}
+              maxLength={72}
               required
             />
           </div>
@@ -178,6 +170,8 @@ export default function Register() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]"
+              minLength={8}
+              maxLength={72}
               required
             />
           </div>

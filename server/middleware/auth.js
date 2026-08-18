@@ -12,6 +12,12 @@ export const requireAuth = async (req, res, next) => {
     const payload = verifyToken(token);
     let user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user) return res.status(401).json({ error: "Authentication required" });
+    if (user.email_verified !== true) {
+      return res.status(403).json({
+        error: "Email verification required",
+        code: "EMAIL_VERIFICATION_REQUIRED",
+      });
+    }
 
     const premiumExpires = user.premium_expires ? new Date(user.premium_expires) : null;
     if (user.is_premium && premiumExpires && premiumExpires <= new Date()) {

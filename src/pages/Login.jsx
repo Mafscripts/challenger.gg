@@ -32,6 +32,11 @@ export default function Login() {
       }
       navigate(result?.password_change_required ? "/change-password" : "/dashboard", { replace: true });
     } catch (err) {
+      if (err?.data?.code === "EMAIL_VERIFICATION_REQUIRED") {
+        const verificationEmail = err.data.email || email.trim().toLowerCase();
+        navigate(`/verify-email?email=${encodeURIComponent(verificationEmail)}`);
+        return;
+      }
       setError(err.message || "Invalid email or password");
     } finally {
       setLoading(false);
