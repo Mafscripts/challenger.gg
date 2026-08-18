@@ -765,7 +765,7 @@ function CompactBracketPreview({ matches = [], tournament = null }) {
                 : roundsFromFinal === 2
                   ? "Quarter Finals"
                   : `Round ${round}`;
-        map.set(key, { key, label, matches: [] });
+        map.set(key, { key, label, bracket, round, matches: [] });
       }
       map.get(key).matches.push(match);
     });
@@ -793,14 +793,42 @@ function CompactBracketPreview({ matches = [], tournament = null }) {
         </div>
       ) : (
         <div className="overflow-x-auto p-3">
-          <div className="grid min-w-max gap-3" style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(176px, 1fr))` }}>
-            {groups.map((group) => (
-              <div key={group.key} className="min-w-0">
+          <div className="grid min-w-max items-stretch gap-6" style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(184px, 1fr))` }}>
+            {groups.map((group, groupIndex) => {
+              const previousGroup = groups[groupIndex - 1];
+              const nextGroup = groups[groupIndex + 1];
+              const connects = (source, target) => Boolean(source && target && (
+                (source.bracket === target.bracket && target.round === source.round + 1)
+                || (["winner", "loser"].includes(source.bracket) && target.bracket === "grand_final")
+              ) && (
+                source.matches.length === target.matches.length
+                || source.matches.length === target.matches.length * 2
+              ));
+              const hasIncomingLine = connects(previousGroup, group);
+              const hasOutgoingLine = connects(group, nextGroup);
+              const hasBranchLines = hasOutgoingLine && group.matches.length === nextGroup.matches.length * 2;
+
+              return (
+              <div key={group.key} className="flex h-full min-w-0 flex-col">
                 <div className="mb-2 flex items-center justify-between px-1">
                   <h3 className="text-[9px] font-black uppercase tracking-wider text-vapor">{group.label}</h3>
                   <span className="text-[8px] font-bold text-vapor/70">{group.matches.length}</span>
                 </div>
-                <div className="flex min-h-[220px] flex-col justify-around gap-2">
+                <div
+                  className="relative grid min-h-[340px] flex-1 gap-2"
+                  style={{ gridTemplateRows: `repeat(${group.matches.length}, minmax(78px, 1fr))` }}
+                >
+                  {hasBranchLines && nextGroup.matches.map((_, pairIndex) => (
+                    <span
+                      key={`branch-${group.key}-${pairIndex}`}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-[calc(100%+12px)] z-0 w-px bg-white/20"
+                      style={{
+                        top: `${((pairIndex * 2) + 0.5) / group.matches.length * 100}%`,
+                        height: `${100 / group.matches.length}%`,
+                      }}
+                    />
+                  ))}
                   {group.matches.map((match) => {
                     const complete = Boolean(match.completed || match.status === "completed");
                     const teamAWin = complete && String(match.winner_id || "") === String(match.team_a_id || "");
@@ -809,8 +837,10 @@ function CompactBracketPreview({ matches = [], tournament = null }) {
                       <Link
                         key={match.id}
                         to={`/tournament-match/${match.id}`}
-                        className="block rounded-lg border border-white/[0.07] bg-background/45 p-2 transition-colors hover:border-white/20 hover:bg-white/[0.04]"
+                        className="relative z-10 flex min-h-[78px] w-full self-center flex-col justify-center rounded-lg border border-white/[0.07] bg-background/95 p-2 transition-colors hover:border-white/20 hover:bg-secondary"
                       >
+                        {hasIncomingLine && <span aria-hidden="true" className="pointer-events-none absolute right-full top-1/2 h-px w-3 bg-white/20" />}
+                        {hasOutgoingLine && <span aria-hidden="true" className="pointer-events-none absolute left-full top-1/2 h-px w-3 bg-white/20" />}
                         <p className="mb-1.5 text-[8px] font-black uppercase tracking-wider text-vapor">Match {match.match_number || "-"}</p>
                         <BracketTeamRow name={match.team_a_name} seed={match.team_a_seed} score={match.team_a_score} winner={teamAWin} complete={complete} />
                         <BracketTeamRow name={match.team_b_name} seed={match.team_b_seed} score={match.team_b_score} winner={teamBWin} complete={complete} />
@@ -819,7 +849,8 @@ function CompactBracketPreview({ matches = [], tournament = null }) {
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
