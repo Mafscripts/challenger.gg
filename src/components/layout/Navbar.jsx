@@ -832,11 +832,12 @@ export default function Navbar() {
               >
                 <button
                   type="button"
-                  className="relative p-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all"
+                  aria-label="Open notifications"
+                  className="topbar-notification-button relative rounded-lg p-2 text-red-400 transition-all hover:bg-red-500/10"
                 >
                   <Bell className="w-4 h-4" />
                   {unreadNotifCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-orange rounded-full" />
+                    <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
                   )}
                 </button>
 

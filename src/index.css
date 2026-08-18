@@ -444,6 +444,10 @@
   .topbar-actions a[aria-label="Open messages"]:hover {
     color: hsl(var(--menu-blue)) !important;
   }
+  .topbar-actions .topbar-notification-button:hover {
+    color: hsl(0 84% 68%) !important;
+    background-color: hsl(0 72% 51% / 0.1) !important;
+  }
   .nav-popover :where(a, button):hover,
   .mobile-menu-enter a:hover {
     border-color: hsl(var(--menu-blue) / 0.18) !important;
