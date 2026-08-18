@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Activity,
   Award,
   ArrowLeft,
   ArrowRight,
@@ -21,7 +20,6 @@ import {
   Search,
   Shield,
   Swords,
-  Sparkles,
   Target,
   Trash2,
   TrendingUp,
@@ -119,6 +117,13 @@ const detailTabs = [
   { id: "settings", label: "Settings", icon: Shield },
 ];
 
+const teamFilters = [
+  { id: "all", label: "All teams" },
+  { id: "ready", label: "Roster ready" },
+  { id: "in_progress", label: "In progress" },
+  { id: "needs_players", label: "Needs players" },
+];
+
 export default function Teams() {
   const [searchParams] = useSearchParams();
   const linkedTeamId = searchParams.get("team");
@@ -136,6 +141,8 @@ export default function Teams() {
   const [tournamentMatches, setTournamentMatches] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [search, setSearch] = useState("");
+  const [teamFilter, setTeamFilter] = useState("all");
+  const [teamSort, setTeamSort] = useState("recent");
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -321,12 +328,8 @@ export default function Teams() {
       winRate: wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0,
       activeMatch,
       currentTournament,
-      userRole: String(team.captain_id || "") === String(currentUser?.id || "")
-        ? "Captain"
-        : titleCase(members.find((member) => String(member.user_id) === String(currentUser?.id))?.role || "Member"),
     };
-  }), [currentUser?.id, membersByTeam, teams, tournamentById, tournamentMatches, tournamentParticipants, wagers]);
-  const summaryByTeamId = useMemo(() => Object.fromEntries(teamSummaries.map((summary) => [summary.team.id, summary])), [teamSummaries]);
+  }), [membersByTeam, teams, tournamentById, tournamentMatches, tournamentParticipants, wagers]);
   const teamOverview = useMemo(() => {
     const wins = teamSummaries.reduce((total, summary) => total + summary.wins, 0);
     const losses = teamSummaries.reduce((total, summary) => total + summary.losses, 0);
@@ -335,12 +338,31 @@ export default function Teams() {
       playerCount: teamSummaries.reduce((total, summary) => total + summary.members.length, 0),
       readyCount: teamSummaries.filter((summary) => summary.rosterReady).length,
       activeMatchCount: teamSummaries.filter((summary) => summary.activeMatch).length,
+      readiness: teamSummaries.length
+        ? Math.round(teamSummaries.reduce((total, summary) => total + summary.rosterPercent, 0) / teamSummaries.length)
+        : 0,
       winRate: wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0,
-      featuredSummary: teamSummaries
-        .filter((summary) => summary.activeMatch)
-        .sort((a, b) => Number(Boolean(b.activeMatch)) - Number(Boolean(a.activeMatch)))[0] || teamSummaries[0] || null,
     };
   }, [teamSummaries]);
+  const visibleTeamSummaries = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const visible = teamSummaries.filter((summary) => {
+      const searchable = `${summary.team.name} ${summary.team.tag || ""} ${summary.team.region || ""} ${teamTypeLabel(summary.team)}`.toLowerCase();
+      const matchesSearch = !query || searchable.includes(query);
+      const matchesFilter = teamFilter === "all"
+        || (teamFilter === "ready" && summary.rosterReady)
+        || (teamFilter === "in_progress" && Boolean(summary.activeMatch))
+        || (teamFilter === "needs_players" && !summary.rosterReady);
+      return matchesSearch && matchesFilter;
+    });
+
+    return [...visible].sort((a, b) => {
+      if (teamSort === "ranking") return Number(a.team.ranking || 9999) - Number(b.team.ranking || 9999);
+      if (teamSort === "win_rate") return b.winRate - a.winRate;
+      if (teamSort === "name") return String(a.team.name || "").localeCompare(String(b.team.name || ""));
+      return new Date(b.team.updated_date || b.team.created_date || 0) - new Date(a.team.updated_date || a.team.created_date || 0);
+    });
+  }, [search, teamFilter, teamSort, teamSummaries]);
   const selectedTournamentEntries = useMemo(() => {
     if (!selectedTeam?.id) return [];
     return tournamentParticipants
@@ -508,20 +530,7 @@ export default function Teams() {
   return (
     <div className="min-h-screen py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        {view === "my_teams" && (!loading && teams.length > 0 ? (
-          <TeamsCommandHero overview={teamOverview} onCreate={() => setCreateOpen(true)} onOpenTeam={openTeam} />
-        ) : (
-          <header className="mb-7 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Team command center</p>
-              <h1 className="text-3xl font-black tracking-tight">My Teams</h1>
-              <p className="mt-1 text-sm text-vapor">Build your roster, track results and prepare for competition.</p>
-            </div>
-            <button onClick={() => setCreateOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background transition-colors hover:bg-cyan/90">
-              <Plus className="h-3.5 w-3.5" /> Create Team
-            </button>
-          </header>
-        ))}
+        {view === "my_teams" && <TeamsCommandHero overview={teamOverview} onCreate={() => setCreateOpen(true)} />}
 
         {pendingInvites.length > 0 && (
           <section className="mb-6 rounded-2xl border border-cyan/15 bg-cyan/[0.05] p-5">
@@ -548,27 +557,47 @@ export default function Teams() {
         ) : teams.length === 0 ? (
           <EmptyState icon={Users} title="Your first roster starts here" description="Create a Solo, Duo, Trio or Squad team, then invite the players you want to compete with." action={<button onClick={() => setCreateOpen(true)} className="rounded-lg bg-cyan px-4 py-2.5 text-xs font-black uppercase text-background">Create Team</button>} />
         ) : view === "my_teams" ? (
-          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="min-w-0">
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Roster collection</p><h2 className="mt-1 text-xl font-black">Your teams</h2><p className="mt-1 text-xs text-vapor">Choose a roster to enter its command center.</p></div>
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vapor" />
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search my teams..." className="w-full rounded-xl border border-white/[0.07] bg-card/70 py-2.5 pl-10 pr-4 text-sm shadow-inner focus:border-cyan/30 focus:outline-none" />
-                </div>
+          <section className="min-w-0">
+            <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-white/[0.06] bg-card/55 p-3.5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 flex-wrap gap-1.5" role="tablist" aria-label="Filter teams">
+                {teamFilters.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setTeamFilter(filter.id)}
+                    className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${teamFilter === filter.id ? "bg-blue-500/15 text-blue-300 ring-1 ring-blue-400/25" : "text-vapor hover:bg-blue-500/10 hover:text-blue-300"}`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
               </div>
-              {filteredTeams.length === 0 ? (
-                <EmptyState icon={Search} title="No teams found" description="Try another team name, tag or region." />
-              ) : (
-                <div className="grid gap-5 lg:grid-cols-2">
-                  {filteredTeams.map((team) => (
-                    <TeamCard key={team.id} summary={summaryByTeamId[team.id]} usersById={memberUsersById} onOpen={() => openTeam(team)} />
-                  ))}
-                </div>
-              )}
+              <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                <label className="relative min-w-0 flex-1 sm:w-72">
+                  <span className="sr-only">Search teams</span>
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vapor" />
+                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search teams..." className="w-full rounded-xl border border-white/[0.08] bg-background/65 py-2.5 pl-10 pr-4 text-sm focus:border-blue-400/35 focus:outline-none" />
+                </label>
+                <label>
+                  <span className="sr-only">Sort teams</span>
+                  <select value={teamSort} onChange={(event) => setTeamSort(event.target.value)} className="h-full w-full rounded-xl border border-white/[0.08] bg-background/65 px-4 py-2.5 text-xs font-bold text-vapor focus:border-blue-400/35 focus:outline-none sm:w-44">
+                    <option value="recent">Recent</option>
+                    <option value="ranking">Ranking</option>
+                    <option value="win_rate">Win rate</option>
+                    <option value="name">Name</option>
+                  </select>
+                </label>
+              </div>
             </div>
-            <TeamsOverviewSidebar summaries={teamSummaries} onCreate={() => setCreateOpen(true)} onOpenTeam={openTeam} />
-          </div>
+            {visibleTeamSummaries.length === 0 ? (
+              <EmptyState icon={Search} title="No teams found" description="Try another filter, team name, tag or region." />
+            ) : (
+              <div className="grid gap-5 lg:grid-cols-2">
+                {visibleTeamSummaries.map((summary) => (
+                  <TeamCard key={summary.team.id} summary={summary} usersById={memberUsersById} onOpen={() => openTeam(summary.team)} />
+                ))}
+              </div>
+            )}
+          </section>
         ) : selectedTeam ? (
           <>
             <TeamHero
@@ -616,7 +645,7 @@ function TeamLogo({ team, className = "h-16 w-16", textClassName = "text-xl" }) 
   }, [team.logo_url]);
 
   return (
-    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-cyan/25 via-secondary to-orange/25 font-mono font-black shadow-[0_16px_32px_rgba(0,0,0,0.28)] ${className}`}>
+    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-blue-400/20 bg-gradient-to-br from-blue-500/25 via-secondary to-slate-500/20 font-mono font-black text-blue-200 shadow-[0_16px_32px_rgba(0,0,0,0.28)] ${className}`}>
       {team.logo_url && !imageFailed ? <img src={team.logo_url} alt="" onError={() => setImageFailed(true)} className="block h-full w-full object-cover" /> : <span className={`block max-w-full truncate px-2 ${textClassName}`}>{teamInitials(team)}</span>}
     </div>
   );
@@ -630,117 +659,158 @@ function TeamBanner({ team, imageClassName = "opacity-65 transition-transform du
   }, [team.banner_url]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_78%_15%,rgba(210,214,220,.10),transparent_34%),radial-gradient(circle_at_18%_90%,rgba(255,122,0,.10),transparent_30%),linear-gradient(125deg,rgba(25,27,31,.98),rgba(14,15,18,.96))]">
+    <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_78%_15%,rgba(59,130,246,.16),transparent_34%),radial-gradient(circle_at_18%_90%,rgba(148,163,184,.08),transparent_30%),linear-gradient(125deg,rgba(25,27,31,.98),rgba(14,15,18,.96))]">
       {team.banner_url && !imageFailed && <img src={team.banner_url} alt="" onError={() => setImageFailed(true)} className={`absolute inset-0 block h-full w-full object-cover ${imageClassName}`} />}
     </div>
   );
 }
 
-function TeamsCommandHero({ overview, onCreate, onOpenTeam }) {
-  const featured = overview.featuredSummary;
-  const activeMatch = featured?.activeMatch;
+function TeamsCommandHero({ overview, onCreate }) {
   return (
-    <section className="relative mb-8 overflow-hidden rounded-3xl border border-cyan/15 bg-card">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(210,214,220,.08),transparent_30%),radial-gradient(circle_at_88%_5%,rgba(59,130,246,.09),transparent_27%),linear-gradient(118deg,rgba(16,17,20,.99),rgba(23,25,29,.96)_50%,rgba(12,13,15,.99))]" />
-      <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] [background-size:38px_38px]" />
-      <div className="relative grid gap-7 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-stretch">
-        <div className="flex min-w-0 flex-col justify-between">
-          <div className="flex flex-col items-start justify-between gap-5 sm:flex-row">
-            <div>
-              <div className="mb-3 flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan/10 text-cyan"><Sparkles className="h-4 w-4" /></span><p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Team command center</p></div>
-              <h1 className="text-4xl font-black tracking-[-0.04em] sm:text-5xl">Your competition squads</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-vapor">Manage every roster, follow active matches and keep your teams ready for the next tournament.</p>
-            </div>
-            <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-cyan/90"><Plus className="h-3.5 w-3.5" /> Create Team</button>
+    <section className="relative mb-6 overflow-hidden rounded-3xl border border-white/[0.07] bg-card">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_88%_0%,rgba(59,130,246,.16),transparent_30%),radial-gradient(circle_at_15%_100%,rgba(148,163,184,.07),transparent_34%),linear-gradient(118deg,rgba(16,17,20,.99),rgba(23,25,29,.96)_55%,rgba(12,13,15,.99))]" />
+      <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rotate-[-18deg] rounded-[4rem] border border-blue-400/10" />
+      <div className="relative p-6 sm:p-8">
+        <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-400">Team command center</p>
+            <h1 className="mt-2 text-4xl font-black tracking-[-0.04em] sm:text-5xl">Your Teams</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-vapor">Manage your squads, track readiness and prepare every roster for the next match.</p>
           </div>
-          <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <CommandMetric label="Teams" value={overview.teamCount} detail="Active rosters" icon={Shield} tone="text-cyan" />
-            <CommandMetric label="Players" value={overview.playerCount} detail="Across teams" icon={Users} tone="text-purple-300" />
-            <CommandMetric label="Ready" value={`${overview.readyCount}/${overview.teamCount}`} detail="Full rosters" icon={CheckCircle} tone="text-green" />
-            <CommandMetric label="Win rate" value={`${overview.winRate}%`} detail={`${overview.activeMatchCount} active match${overview.activeMatchCount === 1 ? "" : "es"}`} icon={TrendingUp} tone="text-orange" />
-          </div>
+          <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-500 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-[0_12px_28px_-14px_rgba(59,130,246,.9)] transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-blue-400">
+            <Plus className="h-4 w-4" /> Create Team
+          </button>
         </div>
-        <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-background/55 p-5 shadow-inner">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange/60 to-transparent" />
-          <div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange">Competition pulse</p><h2 className="mt-1 text-lg font-black">{activeMatch ? "Match ready" : "Roster status"}</h2></div>{activeMatch ? <span className="flex items-center gap-1.5 rounded-lg border border-red-400/20 bg-red-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-red-300"><Radio className="h-3 w-3 animate-pulse" /> Live</span> : <Activity className="h-5 w-5 text-cyan" />}</div>
-          {featured ? (
-            <div className="mt-5">
-              <div className="flex items-center gap-3"><TeamLogo team={featured.team} className="h-12 w-12 rounded-xl" textClassName="text-sm" /><div className="min-w-0"><p className="truncate text-sm font-black">{featured.team.name}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">{featured.userRole} · {teamRosterFormat(featured.team.roster_size)}</p></div></div>
-              {activeMatch ? (
-                <div className="mt-5 rounded-xl border border-cyan/15 bg-cyan/[0.045] p-4"><p className="text-[9px] font-black uppercase tracking-wider text-cyan">{activeMatch.source} · {titleCase(activeMatch.status)}</p><p className="mt-2 truncate text-xl font-black">vs {activeMatch.opponent}</p><p className="mt-1 truncate text-xs text-vapor">{activeMatch.title}{activeMatch.date ? ` · ${formatDateTime(activeMatch.date)}` : ""}</p><Link to={activeMatch.href} className="mt-4 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room <ArrowRight className="h-3.5 w-3.5" /></Link></div>
-              ) : (
-                <div className="mt-5"><div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider"><span className="text-vapor">Roster readiness</span><span className={featured.rosterReady ? "text-green" : "text-orange"}>{featured.members.length}/{featured.requiredPlayers} players</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-black/30"><div className={`h-full rounded-full ${featured.rosterReady ? "bg-gradient-to-r from-cyan to-green" : "bg-gradient-to-r from-orange to-yellow-300"}`} style={{ width: `${featured.rosterPercent}%` }} /></div><button onClick={() => onOpenTeam(featured.team)} className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-cyan">Open team hub <ArrowRight className="h-3.5 w-3.5" /></button></div>
-              )}
-            </div>
-          ) : <CompactEmpty icon={Users} title="No team selected" text="Create a team to start competing." />}
+        <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <CommandMetric label="Total teams" value={overview.teamCount} detail="Active squads" icon={Shield} />
+          <CommandMetric label="Total players" value={overview.playerCount} detail="Across all teams" icon={Users} />
+          <CommandMetric label="Team readiness" value={`${overview.readiness}%`} detail={`${overview.readyCount} match ready`} icon={CheckCircle} />
+          <CommandMetric label="Win rate" value={`${overview.winRate}%`} detail={`${overview.activeMatchCount} active match${overview.activeMatchCount === 1 ? "" : "es"}`} icon={TrendingUp} />
         </div>
       </div>
     </section>
   );
 }
 
-function TeamsOverviewSidebar({ summaries, onCreate, onOpenTeam }) {
-  const activeSummaries = summaries.filter((summary) => summary.activeMatch);
-  return (
-    <aside className="space-y-5 xl:sticky xl:top-24">
-      <section className="rounded-2xl border border-white/[0.07] bg-card/75 p-5 shadow-[0_18px_45px_-34px_rgba(0,0,0,.95)]">
-        <div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Squad health</p><h2 className="mt-1 text-base font-black">Roster readiness</h2></div><Users className="h-4 w-4 text-cyan" /></div>
-        <div className="mt-5 space-y-4">
-          {summaries.map((summary) => (
-            <button key={summary.team.id} type="button" onClick={() => onOpenTeam(summary.team)} className="group block w-full text-left">
-              <div className="flex items-center gap-3"><TeamLogo team={summary.team} className="h-10 w-10 rounded-xl" textClassName="text-[10px]" /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate text-xs font-black group-hover:text-cyan">{summary.team.name}</p><span className={`text-[9px] font-black ${summary.rosterReady ? "text-green" : "text-orange"}`}>{summary.members.length}/{summary.requiredPlayers}</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background"><div className={`h-full rounded-full ${summary.rosterReady ? "bg-green" : "bg-orange"}`} style={{ width: `${summary.rosterPercent}%` }} /></div></div></div>
-            </button>
-          ))}
-        </div>
-      </section>
-      {activeSummaries.length > 0 && (
-        <section className="rounded-2xl border border-red-400/15 bg-[linear-gradient(145deg,rgba(248,113,113,.07),rgba(18,25,35,.82))] p-5">
-          <div className="flex items-center gap-2 text-red-300"><Radio className="h-4 w-4" /><p className="text-[9px] font-black uppercase tracking-[0.18em]">Active competition</p></div>
-          <div className="mt-4 space-y-3">{activeSummaries.slice(0, 3).map((summary) => <Link key={summary.team.id} to={summary.activeMatch.href} className="block rounded-xl border border-white/[0.06] bg-background/40 p-3 transition-colors hover:border-red-400/25"><p className="truncate text-xs font-black">{summary.team.name} vs {summary.activeMatch.opponent}</p><p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-vapor">{summary.activeMatch.source} · {titleCase(summary.activeMatch.status)}</p></Link>)}</div>
-        </section>
-      )}
-      <section className="rounded-2xl border border-white/[0.07] bg-card/65 p-5">
-        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Quick actions</p>
-        <div className="mt-3 grid gap-2"><button onClick={onCreate} className="flex items-center justify-between rounded-xl bg-cyan px-4 py-3 text-xs font-black uppercase tracking-wider text-background"><span className="flex items-center gap-2"><Plus className="h-3.5 w-3.5" /> New team</span><ArrowRight className="h-3.5 w-3.5" /></button><Link to="/tournaments" className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-secondary/55 px-4 py-3 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-cyan/20 hover:text-cyan"><span className="flex items-center gap-2"><Trophy className="h-3.5 w-3.5" /> Tournaments</span><ArrowRight className="h-3.5 w-3.5" /></Link></div>
-      </section>
-    </aside>
-  );
-}
-
 function TeamCard({ summary, usersById, onOpen }) {
-  const { team, members, requiredPlayers, rosterPercent, rosterReady, wins, losses, winRate, activeMatch, currentTournament, userRole } = summary;
-  const slots = [...members.slice(0, requiredPlayers), ...Array.from({ length: Math.max(0, requiredPlayers - members.length) }, () => null)].slice(0, 4);
+  const { team, members, requiredPlayers, rosterPercent, rosterReady, wins, losses, winRate, activeMatch, currentTournament } = summary;
+  const visibleSlotCount = Math.min(Math.max(requiredPlayers, members.length), 5);
+  const slots = [
+    ...members.slice(0, visibleSlotCount),
+    ...Array.from({ length: Math.max(0, visibleSlotCount - members.length) }, () => null),
+  ];
+  const status = activeMatch
+    ? { label: "In progress", icon: Radio }
+    : rosterReady
+      ? { label: "Match ready", icon: CheckCircle }
+      : { label: "Needs players", icon: UserPlus };
+  const StatusIcon = status.icon;
+
   return (
-    <button type="button" onClick={onOpen} className="group relative flex h-full min-h-[590px] w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.07] bg-card text-left transition-[transform,border-color] duration-150 hover:-translate-y-1 hover:border-cyan/25">
-      <div className="relative h-36 min-h-36 w-full shrink-0 overflow-hidden">
+    <article className="group relative flex min-h-[575px] min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.08] bg-card shadow-[0_26px_60px_-44px_rgba(0,0,0,.98)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-blue-400/30 hover:shadow-[0_30px_70px_-42px_rgba(59,130,246,.28)]">
+      <div className="relative h-48 shrink-0 overflow-hidden">
         <TeamBanner team={team} />
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/25 to-black/5" />
-        <div className="absolute left-4 top-4 flex flex-wrap gap-2"><span className="rounded-lg border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white backdrop-blur-sm">{userRole}</span>{team.is_demo && <span className="rounded-lg border border-purple-400/25 bg-purple-500/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-purple-200 backdrop-blur-sm">Demo team</span>}</div>
-        <div className="absolute right-4 top-4">{activeMatch ? <span className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/25 bg-red-500/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-red-200 backdrop-blur-sm"><Radio className="h-3 w-3 animate-pulse" /> Match ready</span> : rosterReady ? <span className="inline-flex items-center gap-1.5 rounded-lg border border-green/25 bg-green/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-green backdrop-blur-sm"><CheckCircle className="h-3 w-3" /> Roster ready</span> : null}</div>
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,12,.08),rgba(14,15,18,.2)_42%,rgba(20,21,25,.98))]" />
+        <div className="absolute left-5 top-5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-blue-300 backdrop-blur-md">
+            <StatusIcon className={`h-3.5 w-3.5 ${activeMatch ? "animate-pulse" : ""}`} /> {status.label}
+          </span>
+        </div>
+        <div className="absolute right-5 top-5 flex gap-2">
+          {team.is_demo && <span className="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-vapor backdrop-blur-md">Demo</span>}
+          <span className="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-vapor backdrop-blur-md">{String(team.region || "global").toUpperCase()}</span>
+        </div>
+        <div className="absolute inset-x-0 bottom-0 flex translate-y-1 justify-center">
+          <TeamLogo team={team} className="h-24 w-24 rounded-full border-2 border-blue-400/35 bg-background" textClassName="text-2xl tracking-[0.08em]" />
+        </div>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col px-5 pb-5 pt-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <TeamLogo team={team} className="h-14 w-14 rounded-xl" textClassName="text-sm tracking-[0.08em]" />
-          <div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">[{team.tag || "TEAM"}] · {teamRosterFormat(team.roster_size)}</p><h2 className="mt-1 truncate text-2xl font-black tracking-tight">{team.name}</h2><p className="mt-1 truncate text-xs text-vapor">Captain {team.captain_name || "Unknown"}</p></div>
-          <ArrowRight className="h-4 w-4 shrink-0 text-vapor transition-transform duration-150 group-hover:translate-x-1 group-hover:text-cyan" />
+
+      <div className="flex min-w-0 flex-1 flex-col px-5 pb-5 pt-3 sm:px-6 sm:pb-6">
+        <div className="text-center">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">[{team.tag || "TEAM"}] · {teamRosterFormat(team.roster_size)}</p>
+          <h2 className="mt-1 truncate text-2xl font-black tracking-tight">{team.name}</h2>
+          <p className="mt-1 truncate text-xs text-vapor">Captain <span className="font-bold text-blue-300">{team.captain_name || "Unknown"}</span></p>
         </div>
-        <div className="mt-4 flex min-h-7 flex-wrap content-start gap-2"><TeamPill icon={Trophy} text={teamTypeLabel(team)} /><TeamPill icon={Globe2} text={String(team.region || "global").toUpperCase()} />{currentTournament && <TeamPill icon={Activity} text={titleCase(currentTournament.tournament.status)} emphasized />}</div>
-        <div className="mt-5 rounded-2xl border border-white/[0.06] bg-background/35 p-3.5">
-          <div className="flex items-center justify-between"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Active roster</p><p className={`text-[9px] font-black uppercase ${rosterReady ? "text-green" : "text-orange"}`}>{members.length}/{requiredPlayers} players</p></div>
-          <div className="mt-3 flex items-center gap-2">{slots.map((member, index) => { const player = member ? (usersById[member.user_id] || {}) : null; const name = player?.display_name || player?.full_name || player?.username || member?.user_name || "Open slot"; return <span key={member?.id || `slot-${index}`} title={name} className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border text-[10px] font-black ${member ? "border-white/10 bg-secondary text-cyan" : "border-dashed border-white/10 bg-white/[0.02] text-vapor/40"}`}>{player?.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : member ? name.charAt(0).toUpperCase() : <Plus className="h-3.5 w-3.5" />}</span>; })}<div className="ml-1 min-w-0 flex-1"><div className="h-1.5 overflow-hidden rounded-full bg-black/30"><div className={`h-full rounded-full ${rosterReady ? "bg-gradient-to-r from-cyan to-green" : "bg-gradient-to-r from-orange to-yellow-300"}`} style={{ width: `${rosterPercent}%` }} /></div><p className="mt-1.5 truncate text-[9px] text-vapor">{rosterReady ? "Ready for competition" : `${requiredPlayers - members.length} player${requiredPlayers - members.length === 1 ? "" : "s"} needed`}</p></div></div>
+
+        <div className="mt-5 grid grid-cols-4 gap-2">
+          <TeamCardMetric label="Roster" value={`${members.length}/${requiredPlayers}`} emphasized />
+          <TeamCardMetric label="Record" value={`${wins}-${losses}`} />
+          <TeamCardMetric label="Win rate" value={`${winRate}%`} />
+          <TeamCardMetric label="Rank" value={team.ranking > 0 ? `#${team.ranking}` : "—"} />
         </div>
-        <div className="mt-3 min-h-[54px]">
-          {activeMatch ? <div className="flex min-h-[54px] items-center gap-3 rounded-xl border border-red-400/15 bg-red-500/[0.045] px-3 py-2.5"><Radio className="h-3.5 w-3.5 shrink-0 text-red-300" /><div className="min-w-0"><p className="truncate text-xs font-black">vs {activeMatch.opponent}</p><p className="mt-0.5 truncate text-[9px] font-bold uppercase tracking-wider text-vapor">{activeMatch.source} · {titleCase(activeMatch.status)}</p></div></div> : <div className="flex min-h-[54px] items-center gap-3 rounded-xl border border-white/[0.05] bg-background/20 px-3 py-2.5"><Clock className="h-3.5 w-3.5 shrink-0 text-vapor/60" /><div className="min-w-0"><p className="text-xs font-black text-vapor">No active match</p><p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-vapor/60">Schedule clear</p></div></div>}
+
+        <div className="mt-5 border-t border-white/[0.07] pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.17em] text-vapor">Active roster</p>
+            <p className="text-[9px] font-bold uppercase tracking-wider text-blue-300">{rosterReady ? "Ready" : `${Math.max(0, requiredPlayers - members.length)} open`}</p>
+          </div>
+          <div className="mt-4 flex items-start justify-center gap-3 sm:gap-4">
+            {slots.map((member, index) => {
+              const player = member ? (usersById[member.user_id] || {}) : null;
+              const name = player?.display_name || player?.full_name || player?.username || member?.user_name || "Open slot";
+              const isCaptain = member && String(member.user_id) === String(team.captain_id);
+              return (
+                <div key={member?.id || `slot-${index}`} className="min-w-0 flex-1 text-center">
+                  <div className={`relative mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border text-xs font-black sm:h-14 sm:w-14 ${member ? "border-blue-400/40 bg-secondary text-blue-200" : "border-dashed border-white/15 bg-white/[0.025] text-vapor/40"}`}>
+                    {player?.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : member ? name.charAt(0).toUpperCase() : <Plus className="h-4 w-4" />}
+                    {isCaptain && <span className="absolute left-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white"><Crown className="h-2.5 w-2.5" /></span>}
+                    {member && <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green" />}
+                  </div>
+                  <p className={`mt-2 truncate text-[10px] font-bold ${member ? "text-foreground" : "text-vapor/55"}`}>{name}</p>
+                  {isCaptain && <p className="mt-0.5 text-[8px] font-black uppercase tracking-wider text-blue-400">Captain</p>}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 h-1 overflow-hidden rounded-full bg-background">
+            <div className="h-full rounded-full bg-blue-500 transition-[width] duration-500" style={{ width: `${rosterPercent}%` }} />
+          </div>
         </div>
-        <div className="mt-auto grid grid-cols-3 gap-2 pt-4"><MiniMetric label="Record" value={`${wins}-${losses}`} /><MiniMetric label="Win rate" value={`${winRate}%`} /><MiniMetric label="Ranking" value={team.ranking > 0 ? `#${team.ranking}` : "—"} /></div>
-        <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3"><span className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan">Open command center</span><span className="text-[9px] font-bold uppercase tracking-wider text-vapor">{team.is_demo ? "Test roster" : `${teamRosterFormat(team.roster_size)} roster`}</span></div>
+
+        <div className="mt-auto pt-5">
+          {(activeMatch || currentTournament) && (
+            <div className="mb-3 flex min-w-0 items-center gap-2 rounded-xl border border-white/[0.06] bg-background/35 px-3 py-2.5">
+              {activeMatch ? <Radio className="h-3.5 w-3.5 shrink-0 text-blue-400" /> : <Trophy className="h-3.5 w-3.5 shrink-0 text-blue-400" />}
+              <p className="min-w-0 flex-1 truncate text-[10px] font-bold text-vapor">{activeMatch ? `vs ${activeMatch.opponent}` : currentTournament.tournament.name || currentTournament.tournament.title}</p>
+              <span className="shrink-0 text-[8px] font-black uppercase tracking-wider text-blue-300">{activeMatch ? titleCase(activeMatch.status) : titleCase(currentTournament.tournament.status)}</span>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2.5">
+            {activeMatch ? (
+              <Link to={activeMatch.href} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-blue-400">View Match <ArrowRight className="h-4 w-4" /></Link>
+            ) : (
+              <button type="button" onClick={onOpen} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-blue-400">Open Team <ArrowRight className="h-4 w-4" /></button>
+            )}
+            <button type="button" onClick={onOpen} className="rounded-xl border border-white/[0.09] bg-secondary/55 px-4 py-3 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-blue-400/30 hover:bg-blue-500/10 hover:text-blue-300">Manage Roster</button>
+          </div>
+        </div>
       </div>
-    </button>
+    </article>
   );
 }
 
-function CommandMetric({ label, value, detail, icon: Icon, tone }) {
-  return <div className="rounded-2xl border border-white/[0.07] bg-black/20 p-4 shadow-inner"><div className="flex items-center justify-between gap-2"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</p><Icon className={`h-4 w-4 ${tone}`} /></div><p className={`mt-3 font-mono text-2xl font-black ${tone}`}>{value}</p><p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-vapor/70">{detail}</p></div>;
+function CommandMetric({ label, value, detail, icon: Icon }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-background/45 p-4 shadow-inner sm:p-5">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 ring-1 ring-blue-400/15"><Icon className="h-5 w-5" /></span>
+        <div className="min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</p>
+          <p className="mt-1 font-mono text-2xl font-black text-white">{value}</p>
+        </div>
+      </div>
+      <p className="mt-3 text-[9px] font-bold uppercase tracking-wider text-vapor/70">{detail}</p>
+    </div>
+  );
+}
+
+function TeamCardMetric({ label, value, emphasized = false }) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-background/40 px-2 py-3 text-center">
+      <p className={`font-mono text-lg font-black ${emphasized ? "text-blue-300" : "text-white"}`}>{value}</p>
+      <p className="mt-1 text-[8px] font-black uppercase tracking-wider text-vapor/75">{label}</p>
+    </div>
+  );
 }
 
 function TeamHero({ team, teams, members, wins, losses, winRate, streak, isCaptain, onBack, onSelectTeam, onInvite, onSettings }) {
