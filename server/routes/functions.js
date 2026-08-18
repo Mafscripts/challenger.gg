@@ -4378,9 +4378,7 @@ function matchRoomTeamNames(matchType, match) {
 async function createMatchRoomSystemMessage(matchType, match, content, actor) {
   if (!match?.id || !content) return null;
   const actorRole = effectiveChatRole(actor);
-  const senderName = actor && staffRoles.includes(actorRole)
-    ? `${actorRole === "moderator" ? "Moderator" : "Admin"} ${nameFor(actor)}`
-    : actor ? nameFor(actor) : "Match Admin";
+  const senderName = actor ? nameFor(actor) : "Match Staff";
   return createEntity("ChatMessage", {
     conversation_id: match.id,
     sender_id: actor?.id || "system",
@@ -4675,7 +4673,7 @@ async function joinTicket(req) {
     }).catch(() => null);
   }
   if (match && firstJoin && ["wager", "tournament"].includes(matchType)) {
-    await createMatchRoomSystemMessage(matchType, match, `Admin ${nameFor(req.user)} has joined the match room.`, req.user);
+    await createMatchRoomSystemMessage(matchType, match, `${nameFor(req.user)} has joined the match room.`, req.user);
   }
   await notifyTicketUsers(updated, {
     title: "Admin joined",
@@ -4725,7 +4723,7 @@ async function joinMatchRoomAsAdmin(req) {
   });
 
   if (firstJoin) {
-    await createMatchRoomSystemMessage(matchType, match, `Admin ${nameFor(req.user)} has joined the match room.`, req.user);
+    await createMatchRoomSystemMessage(matchType, match, `${nameFor(req.user)} has joined the match room.`, req.user);
   }
 
   const alerts = await listEntities("AdminAlert", { ticket_id: ticket.id }, "-created_date", 20).catch(() => []);
@@ -4958,7 +4956,7 @@ async function adminResolveMatchRoom(req) {
     return result || { success: false, error: "Could not resolve match" };
   }
 
-  const message = `Admin ${nameFor(req.user)} granted ${winnerName} the win. ${loserName} received an automatic loss.`;
+  const message = `${nameFor(req.user)} granted ${winnerName} the win. ${loserName} received an automatic loss.`;
   await createMatchRoomSystemMessage(matchType, match, message, req.user);
 
   const ticket = await openMatchAdminTicket(match.id, req.body.ticket_id || match.admin_request_ticket_id);
@@ -5056,7 +5054,7 @@ async function adminResetMatchDispute(req) {
 
   const updated = await updateEntity(entityName, match.id, reportReset);
   await resolveOpenMatchDisputes(match.id, "Dispute reset by staff", req.user);
-  const message = `Admin ${nameFor(req.user)} reset the dispute. Both teams can continue playing and must submit new final score reports.`;
+  const message = `${nameFor(req.user)} reset the dispute. Both teams can continue playing and must submit new final score reports.`;
   await createMatchRoomSystemMessage(matchType, updated, message, req.user).catch(() => null);
 
   return { success: true, match: updated, message };
@@ -5108,7 +5106,7 @@ async function adminCorrectTournamentMatch(req) {
       admin_corrected_date: nowIso(),
       previous_result: previous,
     });
-    const message = `Admin ${nameFor(req.user)} reset the tournament match to 0-0.`;
+    const message = `${nameFor(req.user)} reset the tournament match to 0-0.`;
     await createMatchRoomSystemMessage("tournament", updated, message, req.user);
 
     const ticket = await openMatchAdminTicket(match.id, req.body.ticket_id || match.admin_request_ticket_id);
@@ -5230,7 +5228,7 @@ async function adminCorrectTournamentMatch(req) {
     ? await advanceTournamentWinner(updated)
     : await advanceLegacyTournamentRound(updated.tournament_id, updated.round);
 
-  const message = `Admin ${nameFor(req.user)} marked the tournament match forfeited: ${winnerName || "Winning team"} wins ${teamAScore}-${teamBScore}.`;
+  const message = `${nameFor(req.user)} marked the tournament match forfeited: ${winnerName || "Winning team"} wins ${teamAScore}-${teamBScore}.`;
   await createMatchRoomSystemMessage("tournament", updated, message, req.user);
 
   const ticket = await openMatchAdminTicket(match.id, req.body.ticket_id || match.admin_request_ticket_id);

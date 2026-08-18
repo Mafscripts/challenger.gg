@@ -293,7 +293,7 @@ function teamMonogram(name) {
 
 function BetaBadge() {
   return (
-    <span className="beta-glow-pulse inline-flex items-center gap-1 rounded-md border border-red-400/35 bg-red-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-red-400">
+    <span className="inline-flex items-center gap-1 rounded-md border border-blue-400/20 bg-blue-400/[0.07] px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-blue-300">
       <Sparkles className="h-3 w-3" /> Beta
     </span>
   );
@@ -389,9 +389,9 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
                       </div>
                     </div>
                     <div className="grid shrink-0 grid-cols-3 gap-2.5 xl:min-w-[240px]">
-                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Role</p><p className={`mt-1 text-[10px] font-black uppercase ${player.role === "captain" ? "text-green" : "text-white"}`}>{player.role === "captain" ? "Captain" : "Member"}</p></div>
+                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Role</p><p className={`mt-1 text-[10px] font-black uppercase ${player.role === "captain" ? "text-blue-300" : "text-white"}`}>{player.role === "captain" ? "Captain" : "Member"}</p></div>
                       <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Record</p><p className="mt-1 font-mono text-sm font-black text-white">{statNumber(player.wins)}-{statNumber(player.losses)}</p></div>
-                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Earned</p><p className="mt-1 font-mono text-sm font-black text-green">{moneyLabel(player.earnings)}</p></div>
+                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Earned</p><p className="mt-1 font-mono text-sm font-black text-white">{moneyLabel(player.earnings)}</p></div>
                     </div>
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-3"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor/70">Trophies</p><TrophyCounts trophies={player.trophies} /></div>
@@ -420,7 +420,7 @@ function MapSeries({ match }) {
           <p className="text-xs text-vapor mt-1">{match.game_mode || `Best of ${bestOf}`}</p>
         </div>
         <div className="text-xs text-vapor">
-          First host: <span className="font-bold text-green">{match.first_host_team_name || "TBD"}</span>
+          First host: <span className="font-bold text-blue-300">{match.first_host_team_name || "TBD"}</span>
           {match.first_host_seed ? <span className="ml-1">({seedLabel(match.first_host_seed)})</span> : null}
         </div>
       </div>
@@ -435,7 +435,7 @@ function MapSeries({ match }) {
             <p className="text-[10px] font-black uppercase tracking-wider text-cyan">Map {map.game}</p>
             <h3 className="mt-1 text-lg font-black">{map.map}</h3>
             <p className="mt-2 text-xs text-vapor">{map.mode || "Search and Destroy"}</p>
-            <p className="mt-1 text-xs text-green">
+            <p className="mt-1 text-xs text-blue-300">
               Host: {map.host_team_name || "TBD"} {map.host_seed ? `(${seedLabel(map.host_seed)})` : ""}
             </p>
           </div>
@@ -998,28 +998,28 @@ export default function TournamentMatchRoom() {
           {canAdminCorrect && (
             <div className="mb-3 border-b border-white/5 pb-3">
               <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-pink-300">Admin correction</p>
+                <p className="text-[10px] font-black uppercase tracking-wider text-blue-300">Admin correction</p>
                 <p className="text-[10px] text-vapor">Tournament only</p>
               </div>
               <div className="grid gap-3 md:grid-cols-3">
                 <button
                   onClick={() => handleAdminCorrection("reset_score")}
                   disabled={resolvingAdmin}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-orange/20 bg-orange/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-orange transition-all hover:bg-orange/20 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
                 >
                   <RefreshCw className="h-4 w-4" /> Reset 0-0
                 </button>
                 <button
                   onClick={() => handleAdminCorrection("grant_team_a")}
                   disabled={resolvingAdmin}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-pink-300 transition-all hover:bg-pink-400/20 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
                 >
                   <ShieldCheck className="h-4 w-4" /> Give Team A Win
                 </button>
                 <button
                   onClick={() => handleAdminCorrection("grant_team_b")}
                   disabled={resolvingAdmin}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-pink-300 transition-all hover:bg-pink-400/20 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
                 >
                   <ShieldCheck className="h-4 w-4" /> Give Team B Win
                 </button>
@@ -1031,14 +1031,14 @@ export default function TournamentMatchRoom() {
               <button
                 onClick={() => handleAdminResolve("approve_team_a")}
                 disabled={resolvingAdmin}
-                className="flex items-center justify-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-pink-300 transition-all hover:bg-pink-400/20 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
               >
                 <ShieldCheck className="h-4 w-4" /> Grant Team A Win
               </button>
               <button
                 onClick={() => handleAdminResolve("approve_team_b")}
                 disabled={resolvingAdmin}
-                className="flex items-center justify-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-pink-300 transition-all hover:bg-pink-400/20 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
               >
                 <ShieldCheck className="h-4 w-4" /> Grant Team B Win
               </button>
@@ -1048,7 +1048,7 @@ export default function TournamentMatchRoom() {
             <button
               onClick={handleComplete}
               disabled={!canSubmit || !scoreIsValid || submitting}
-              className="flex-1 min-w-[200px] py-3 bg-green/10 text-green font-bold text-sm rounded-lg border border-green/20 hover:bg-green/20 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 min-w-[200px] py-3 bg-blue-500/15 text-blue-300 font-bold text-sm rounded-lg border border-blue-400/25 hover:bg-blue-500/25 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4" /> {submitting ? "Submitting..." : canStaffSubmitResult ? "Submit Result" : "Submit Score Report"}
             </button>
@@ -1057,7 +1057,7 @@ export default function TournamentMatchRoom() {
                 onClick={handleRequestAdmin}
                 disabled={!isMatchParticipant || !supportWindowUnlocked || requestingAdmin}
                 title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : undefined}
-                className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/10 hover:border-blue-400/20 hover:bg-blue-400/[0.07] hover:text-blue-300 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
               >
                 <Gavel className="w-4 h-4" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
               </button>
@@ -1067,7 +1067,7 @@ export default function TournamentMatchRoom() {
                 onClick={handleCreateDispute}
                 disabled={!isMatchParticipant || !supportWindowUnlocked || disputing}
                 title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : undefined}
-                className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50"
+                className="px-6 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/10 hover:border-blue-400/20 hover:bg-blue-400/[0.07] hover:text-blue-300 transition-all uppercase tracking-wider disabled:opacity-50"
               >
                 {disputing ? "Submitting..." : "Submit Dispute"}
               </button>

@@ -2,70 +2,51 @@ import React, { useEffect, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-import TopfraggLogo from "@/components/brand/TopfraggLogo";
+
+const chatAccent = {
+  icon: "text-blue-400",
+  border: "border-blue-400/20",
+  text: "text-blue-300",
+};
 
 const accents = {
-  cyan: {
-    icon: "text-cyan",
-    border: "border-cyan/20",
-    text: "text-cyan",
-  },
-  green: {
-    icon: "text-green",
-    border: "border-green/20",
-    text: "text-green",
-  },
-  orange: {
-    icon: "text-orange",
-    border: "border-orange/20",
-    text: "text-orange",
-  },
-  purple: {
-    icon: "text-purple",
-    border: "border-purple/20",
-    text: "text-purple",
-  },
+  cyan: chatAccent,
+  green: chatAccent,
+  orange: chatAccent,
+  purple: chatAccent,
 };
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "";
-const adminRoles = new Set(["ceo", "super_admin", "admin"]);
+const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const stripStaffPrefix = (value) => String(value || "").replace(/^(admin|moderator)\s+/i, "");
 const displaySenderName = (message) => {
-  const name = message.sender_name || "Unknown sender";
-  const content = String(message.content || "");
-  if (message.system && content.includes("entered the room as admin") && !name.startsWith("Admin ")) {
-    return `Admin ${name}`;
-  }
-  return name;
+  const name = stripStaffPrefix(message.sender_name || "Unknown sender");
+  return name || "Unknown sender";
 };
-const staffKindForMessage = (message) => {
+const isStaffMessage = (message) => {
   const roles = [message.sender_role, message.sender_admin_role, message.admin_role]
     .map((role) => String(role || "").toLowerCase());
   const senderName = String(message.sender_name || "");
   const content = String(message.content || "");
-  if (roles.includes("moderator") || senderName.startsWith("Moderator ")) return "moderator";
-  if (
-    roles.some((role) => adminRoles.has(role))
-    || senderName.startsWith("Admin ")
+  return Boolean(
+    message.staff_badge
+    || roles.some((role) => staffRoles.has(role))
+    || /^(admin|moderator)\s+/i.test(senderName)
     || (message.system && content.includes("entered the room as admin"))
-    || (message.system && content.includes("has joined the match room"))
-  ) return "admin";
-  return "";
+    || (message.system && /^Admin\s+.+has joined the match room/i.test(content))
+  );
 };
+const displayMessageContent = (message, staff) => (
+  staff ? stripStaffPrefix(message.content) : message.content
+);
 
-function StaffBadge({ kind }) {
-  if (!kind) return null;
-  const isModerator = kind === "moderator";
+function StaffBadge() {
   return (
     <span
-      title={isModerator ? "Official TopFragg Moderator" : "Official TopFragg Staff"}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
-        isModerator
-          ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-300"
-          : "border-red-400/30 bg-red-500/10 text-red-300"
-      }`}
+      title="Official Topfragg staff"
+      className="inline-flex shrink-0 items-center rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-blue-300"
     >
-      <TopfraggLogo showWordmark={false} markClassName="h-3.5 w-3.5" />
-      {isModerator ? "TopFragg Mod" : "TopFragg Staff"}
+      Staff
     </span>
   );
 }
@@ -205,33 +186,23 @@ export default function MatchChat({
             <p className="text-sm text-vapor">No chat messages yet.</p>
           </div>
         ) : messages.map((message) => {
-          const staffKind = staffKindForMessage(message);
-          const isModerator = staffKind === "moderator";
-          const isAdmin = staffKind === "admin";
+          const staff = isStaffMessage(message);
           return (
             <div key={message.id} className={`rounded-lg border ${compact ? "p-2.5" : "p-3"} ${
-              isAdmin
-                ? "border-red-400/20 bg-red-500/[0.055]"
-                : isModerator
-                  ? "border-yellow-400/20 bg-yellow-400/[0.045]"
-                  : "border-white/5 bg-secondary/40"
+              staff
+                ? "border-blue-400/20 bg-blue-400/[0.045]"
+                : "border-white/5 bg-secondary/40"
             }`}>
               <div className="mb-1 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <span className={`truncate text-xs font-black ${
-                    isAdmin
-                      ? "text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.32)]"
-                      : isModerator
-                        ? "text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.24)]"
-                        : tone.text
-                  }`}>
+                  <span className={`truncate text-xs font-black ${staff ? "text-blue-300" : tone.text}`}>
                     {displaySenderName(message)}
                   </span>
-                  <StaffBadge kind={staffKind} />
+                  {staff && <StaffBadge />}
                 </div>
                 <span className="shrink-0 text-[10px] text-vapor">{formatDate(message.created_date)}</span>
               </div>
-              <p className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap ${isAdmin ? "text-red-50/85" : isModerator ? "text-yellow-50/85" : "text-foreground/80"}`}>{message.content}</p>
+              <p className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap text-foreground/80`}>{displayMessageContent(message, staff)}</p>
             </div>
           );
         })}
