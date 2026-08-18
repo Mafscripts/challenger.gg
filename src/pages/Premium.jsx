@@ -1,7 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Crown, Check, Zap, Shield, ShoppingBag, Trophy, Users, Sparkles, LockKeyhole } from "lucide-react";
+import { Check, Zap, Shield, ShoppingBag, Trophy, Users, Sparkles, LockKeyhole } from "lucide-react";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
+import PageHeader from "@/components/ui/PageHeader";
 
 const benefits = [
   { icon: Zap, title: "2x XP Boost", desc: "Double experience on all matches. Level up and prestige faster than ever." },
@@ -22,39 +23,16 @@ export default function Premium() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        {/* Hero */}
-        <div className="text-center mb-20 relative">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-96 h-96 bg-orange/10 rounded-full blur-[120px]" />
-          </div>
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="relative">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange/10 border border-orange/20 mb-6">
-              <Crown className="w-4 h-4 text-orange" />
-              <span className="text-orange text-xs font-mono font-semibold tracking-widest uppercase">Premium Membership</span>
-            </div>
-            <h1 className="text-5xl lg:text-7xl font-black tracking-tight mb-4">
-              ELEVATE YOUR
-              <br />
-              <span className="text-orange text-glow-orange">GAME</span>
-            </h1>
-            <p className="text-vapor text-lg max-w-2xl mx-auto mb-10">
-              Unlock the full Topfragg.gg experience with exclusive benefits, cosmetics, and competitive advantages that separate the good from the great.
-            </p>
-            <div className="flex items-center justify-center gap-6 mb-8">
-              <div>
-                <span className="text-6xl font-black font-mono text-orange">$9.99</span>
-                <span className="text-vapor text-lg ml-1">/mo</span>
-              </div>
-            </div>
-            <CommercePausedNotice className="mx-auto mb-6 max-w-xl text-left" />
-            <button
-              type="button"
-              disabled
-              className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-10 py-5 text-lg font-bold uppercase tracking-wider text-vapor"
-            >
-              <LockKeyhole className="w-5 h-5" /> Subscriptions Paused
-            </button>
-          </motion.div>
+        <PageHeader
+          eyebrow="Premium membership"
+          title="Elevate Your Game"
+          description="Unlock the complete Topfragg experience with exclusive benefits, cosmetics and competitive advantages."
+          className="mb-8"
+          action={<div className="text-left sm:text-right"><div><span className="font-mono text-4xl font-black text-white">$9.99</span><span className="ml-1 text-sm text-vapor">/mo</span></div><p className="mt-1 text-[9px] font-black uppercase tracking-wider text-blue-300">Premium access</p></div>}
+        />
+        <div className="mb-12 rounded-2xl border border-white/[0.07] bg-card/60 p-5 text-center">
+          <CommercePausedNotice className="mx-auto mb-5 max-w-xl text-left" />
+          <button type="button" disabled className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-8 py-4 text-sm font-bold uppercase tracking-wider text-vapor"><LockKeyhole className="h-5 w-5" /> Subscriptions Paused</button>
         </div>
 
         {/* Benefits Grid */}

@@ -6,6 +6,7 @@ import RarityBadge from "@/components/ui/RarityBadge";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
+import PageHeader from "@/components/ui/PageHeader";
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 
@@ -71,15 +72,12 @@ export default function Trading() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight">Trading</h1>
-            <p className="text-vapor text-sm mt-1">Send and receive trade offers.</p>
-          </div>
-          <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider">
-            <Send className="w-3.5 h-3.5" /> New Trade
-          </button>
-        </div>
+        <PageHeader
+          eyebrow="Player marketplace"
+          title="Trading"
+          description="Send, receive and manage trade offers with other players."
+          action={<button className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5 hover:bg-blue-400 hover:shadow-lg hover:shadow-blue-500/25"><Send className="h-3.5 w-3.5" /> New Trade</button>}
+        />
 
         <div className="flex gap-2 mb-6">
           {[

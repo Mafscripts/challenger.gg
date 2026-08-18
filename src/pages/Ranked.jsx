@@ -209,26 +209,26 @@ export default function Ranked() {
           description="Open or accept a ranked lobby, complete the map flow, and report the result from a consistent competitive match room."
           action={
             <div className="flex w-full flex-col gap-3 xl:w-[320px]">
-              <Link to="/rules" className="group rounded-xl border border-cyan/25 bg-cyan/[0.06] px-4 py-3 transition-colors hover:border-cyan/45 hover:bg-cyan/10">
+              <Link to="/rules" className="group rounded-xl border border-blue-400/25 bg-blue-500/[0.06] px-4 py-3 transition-colors hover:border-blue-400/45 hover:bg-blue-500/10">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/10 text-cyan"><Trophy className="h-4 w-4" /></div>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400"><Trophy className="h-4 w-4" /></div>
                     <div>
-                      <div className="flex items-center gap-2"><p className="text-xs font-black uppercase tracking-wider text-cyan">CDL Rules</p><span className="rounded-full border border-cyan/20 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-cyan">Required</span></div>
+                      <div className="flex items-center gap-2"><p className="text-xs font-black uppercase tracking-wider text-blue-300">CDL Rules</p><span className="rounded-full border border-blue-400/20 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-blue-300">Required</span></div>
                       <p className="mt-1 text-[10px] text-vapor">Competitive Ranked ruleset</p>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-cyan transition-transform group-hover:translate-x-0.5" />
+                  <ArrowRight className="h-4 w-4 text-blue-400 transition-transform group-hover:translate-x-0.5" />
                 </div>
               </Link>
               {activeRankedMatch ? (
-                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-colors hover:bg-cyan/90">
+                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-blue-400">
                   Return to Active Match <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-cyan/25"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white transition-all hover:bg-blue-400 hover:shadow-lg hover:shadow-blue-500/25"
                 >
                   <Plus className="w-4 h-4" /> Create Ranked Match
                 </button>

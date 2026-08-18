@@ -5,6 +5,7 @@ import AccountSection from "@/components/settings/AccountSection";
 import CreditsSection from "@/components/settings/CreditsSection";
 import DiscordSection from "@/components/settings/DiscordSection";
 import GamingIdsSection from "@/components/settings/GamingIdsSection";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function Settings() {
   const [user, setUser] = useState(null);
@@ -35,8 +36,7 @@ export default function Settings() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-3xl mx-auto px-4 lg:px-6">
-        <h1 className="text-3xl font-black tracking-tight mb-2">Settings</h1>
-        <p className="text-vapor text-sm mb-8">Manage your account and integrations</p>
+        <PageHeader eyebrow="Account control" title="Settings" description="Manage your account, gaming identities and integrations." />
         <AccountSection user={user} onUserUpdate={loadUser} />
         <CreditsSection user={user} onUserUpdate={loadUser} />
         <GamingIdsSection user={user} onUserUpdate={loadUser} />

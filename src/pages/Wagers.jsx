@@ -257,31 +257,31 @@ export default function Wagers() {
         <section className="premium-panel relative mb-10 overflow-hidden rounded-[1.75rem] p-6 md:p-9">
           <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-cyan">
+              <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-blue-400">
                 <Swords className="h-4 w-4" /> Competitive wagers
               </div>
-              <h1 className="text-3xl font-black tracking-tight md:text-4xl">Find your next match</h1>
+              <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">Find your next match</h1>
               <p className="mt-3 max-w-2xl text-base leading-relaxed text-vapor">Post a challenge or accept an open wager. Your entry is secured until the match is completed.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link to="/teams?create=wager" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-cyan/25 bg-cyan/10 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-cyan transition-colors hover:border-cyan/40 hover:bg-cyan/15">
+              <Link to="/teams?create=wager" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/10 bg-secondary px-5 py-3.5 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-blue-400/25 hover:bg-blue-500/10 hover:text-blue-300">
                 <Users className="h-[18px] w-[18px]" /> Create Wager Team
               </Link>
-              <button onClick={() => setIsCreateModalOpen(true)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-green px-6 py-3.5 text-sm font-black uppercase tracking-wider text-background shadow-[0_10px_30px_rgba(0,255,136,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(0,255,136,0.25)]">
+              <button onClick={() => setIsCreateModalOpen(true)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-500 px-6 py-3.5 text-sm font-black uppercase tracking-wider text-white shadow-[0_10px_30px_rgba(59,130,246,0.18)] transition-all hover:-translate-y-0.5 hover:bg-blue-400 hover:shadow-[0_14px_36px_rgba(59,130,246,0.26)]">
                 <Plus className="h-[18px] w-[18px]" /> Post a wager
               </button>
             </div>
           </div>
           <div className="relative mt-7 grid grid-cols-2 gap-4 border-t border-white/5 pt-6 md:grid-cols-4">
             {[
-              { label: "Open now", value: wagers.length, icon: Zap, color: "text-orange" },
-              { label: "Wallet", value: user ? `$${(user.wallet_balance || 0).toFixed(2)}` : "$0.00", icon: DollarSign, color: "text-green" },
-              { label: "Account", value: hasActivePremium ? "Premium" : "Standard", icon: Star, color: hasActivePremium ? "text-yellow-400" : "text-vapor" },
-              { label: "Platform fee", value: hasActivePremium ? "5%" : "10%", icon: ShieldCheck, color: "text-cyan" },
-            ].map(({ label, value, icon: Icon, color }) => (
+              { label: "Open now", value: wagers.length, icon: Zap },
+              { label: "Wallet", value: user ? `$${(user.wallet_balance || 0).toFixed(2)}` : "$0.00", icon: DollarSign },
+              { label: "Account", value: hasActivePremium ? "Premium" : "Standard", icon: Star },
+              { label: "Platform fee", value: hasActivePremium ? "5%" : "10%", icon: ShieldCheck },
+            ].map(({ label, value, icon: Icon }) => (
               <div key={label} className="premium-card flex items-center gap-4 rounded-2xl px-4 py-4">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-lg bg-white/[0.04] ${color}`}><Icon className="h-5 w-5" /></div>
-                <div><p className="text-[11px] font-black uppercase tracking-wider text-vapor">{label}</p><p className={`mt-1 font-mono text-lg font-black ${color}`}>{value}</p></div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400"><Icon className="h-5 w-5" /></div>
+                <div><p className="text-[11px] font-black uppercase tracking-wider text-vapor">{label}</p><p className="mt-1 font-mono text-lg font-black text-white">{value}</p></div>
               </div>
             ))}
           </div>

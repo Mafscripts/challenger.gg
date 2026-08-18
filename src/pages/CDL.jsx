@@ -1,14 +1,12 @@
 import React from "react";
 import { ExternalLink, Radio, Trophy } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function CDL() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight">CDL Live</h1>
-          <p className="text-vapor text-sm mt-1">Official Call of Duty League coverage requires a live schedule feed.</p>
-        </div>
+        <PageHeader eyebrow="Esports coverage" title="CDL Live" description="Official Call of Duty League schedules, results and live coverage." />
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 glass rounded-xl border border-white/5 p-10 text-center">

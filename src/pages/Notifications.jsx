@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Bell, CheckCheck, Trash2, AlertCircle, Info, Trophy, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import PageHeader from "@/components/ui/PageHeader";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -143,22 +144,15 @@ export default function Notifications() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1200px] mx-auto px-4 lg:px-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-              <Bell className="w-8 h-8 text-cyan" />
-              Notifications
-            </h1>
-            <p className="text-vapor text-sm mt-1">
-              {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+        <PageHeader
+          eyebrow="Your activity"
+          title="Notifications"
+          description={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}.` : "All caught up."}
+          action={<div className="flex flex-wrap items-center gap-2">
             <button
               onClick={markAllAsRead}
               disabled={unreadCount === 0}
-              className="px-4 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="flex items-center gap-2 rounded-xl border border-blue-400/25 bg-blue-500/10 px-4 py-2.5 text-xs font-bold text-blue-300 transition-all hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCheck className="w-4 h-4" /> Mark All Read
             </button>
@@ -169,8 +163,8 @@ export default function Notifications() {
             >
               <Trash2 className="w-4 h-4" /> {removingAll ? "Removing..." : "Remove All"}
             </button>
-          </div>
-        </div>
+          </div>}
+        />
 
         {/* Filter Tabs */}
         <div className="flex items-center gap-2 mb-6">

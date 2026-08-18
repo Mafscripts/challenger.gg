@@ -9,6 +9,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import TransactionHistory from "@/components/wallet/TransactionHistory";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
+import PageHeader from "@/components/ui/PageHeader";
 
 
 export default function Wallet() {
@@ -66,11 +67,7 @@ export default function Wallet() {
     <div className="min-h-screen bg-obsidian py-6">
       <div className="max-w-7xl mx-auto px-4 lg:px-6">
         
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold font-heading mb-2">Topfragg Wallet</h1>
-          <p className="text-vapor">View test funds granted by Topfragg staff</p>
-        </div>
+        <PageHeader eyebrow="Account funds" title="Topfragg Wallet" description="View your available balance, test funds and transaction history." />
 
         <CommercePausedNotice className="mb-6" />
 

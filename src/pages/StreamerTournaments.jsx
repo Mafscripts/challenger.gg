@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, Clock, Loader2, Monitor, Plus, Radio, Swords, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import PageHeader from "@/components/ui/PageHeader";
 
 const gameModeOptions = [
   { value: "bo1_snd", label: "BO1 SND" },
@@ -124,18 +125,12 @@ export default function StreamerTournaments() {
   return (
     <div className="min-h-screen py-8">
       <div className="mx-auto max-w-[1500px] px-4 lg:px-6">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor">
-              <Monitor className="h-3.5 w-3.5" /> Streamer Badge
-            </div>
-            <h1 className="text-3xl font-black tracking-tight">Streamer Switcheroos</h1>
-            <p className="mt-1 text-sm text-vapor">Public streamer-hosted lobbies with manual names, random teams, live brackets, and separate chat moderation.</p>
-          </div>
-          <Link to="/tournaments" className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/10 bg-secondary px-4 py-2 text-xs font-black uppercase tracking-wider text-vapor hover:border-cyan/25 hover:text-cyan">
-            Official Tournaments <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        <PageHeader
+          eyebrow="Streamer competition"
+          title="Streamer Switcheroos"
+          description="Public streamer-hosted lobbies with random teams, live brackets and dedicated chat moderation."
+          action={<Link to="/tournaments" className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-secondary px-4 py-2.5 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-blue-400/25 hover:text-blue-300">Official Tournaments <ArrowRight className="h-3.5 w-3.5" /></Link>}
+        />
 
         <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
           <section className="glass rounded-xl border border-white/5 p-5">

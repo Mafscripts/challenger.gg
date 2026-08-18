@@ -440,12 +440,12 @@ export default function Profile() {
               backgroundSize: "180% 180%",
             }}
           />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan/35 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-400/35 to-transparent" />
           <div className="relative grid gap-8 p-6 sm:p-8 lg:p-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-10">
             <div className="flex min-w-0 flex-col justify-between gap-9">
               <div className="flex flex-col gap-7 lg:flex-row lg:items-center">
                 <div className="relative mx-auto shrink-0 lg:mx-0">
-                  <div className="absolute -inset-3 rounded-[2.2rem] bg-gradient-to-br from-cyan/20 via-cyan/5 to-orange/10 blur-xl" />
+                  <div className="absolute -inset-3 rounded-[2.2rem] bg-gradient-to-br from-blue-500/20 via-blue-500/5 to-slate-400/10 blur-xl" />
                   <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-secondary to-background text-4xl font-black shadow-[0_24px_50px_rgba(0,0,0,0.35),0_0_0_1px_rgba(210,214,220,0.16)] sm:h-40 sm:w-40">
                     {avatarDraft || profile?.avatar_url ? (
                       <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" />
@@ -459,7 +459,7 @@ export default function Profile() {
                 </div>
 
                 <div className="min-w-0 flex-1 text-center lg:text-left">
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.24em] text-cyan/80">TopFragg competitor profile</p>
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.24em] text-blue-400">TopFragg competitor profile</p>
                   <div className="mb-3 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
                     <h1 className="max-w-full break-words pb-1 text-4xl font-black leading-[1.08] tracking-[-0.04em] text-[#eef1f7] sm:text-5xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
                       {name}

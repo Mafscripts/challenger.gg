@@ -5,6 +5,7 @@ import { DollarSign, Flame, Star, Trophy, TrendingUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
 import UserBadges from "@/components/ui/UserBadges";
+import PageHeader from "@/components/ui/PageHeader";
 
 const tabs = [
   { key: "elo", label: "ELO Rankings", icon: TrendingUp },
@@ -122,8 +123,7 @@ export default function Leaderboards() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <h1 className="text-3xl font-black tracking-tight mb-2">Leaderboards</h1>
-        <p className="text-vapor text-sm mb-8">Live rankings from ranked, XP, tournament, and wager records.</p>
+        <PageHeader eyebrow="Competitive rankings" title="Leaderboards" description="Live rankings from ranked, XP, tournament and wager records." />
 
         <div className="flex flex-wrap items-center gap-3 mb-6">
           {tabs.map((tab) => (

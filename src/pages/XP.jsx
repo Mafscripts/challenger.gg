@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Award, Crown, Flame, ShoppingBag, Swords, Target, Trophy, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import UserBadges from "@/components/ui/UserBadges";
+import PageHeader from "@/components/ui/PageHeader";
 
 const xpSources = [
   { action: "Match Win", xp: "+150", icon: Swords, color: "text-green" },
@@ -82,26 +83,19 @@ export default function XP() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight flex items-center gap-2">
-              <Zap className="w-7 h-7 text-cyan" /> XP Ladder
-            </h1>
-            <p className="text-vapor text-sm mt-1">Live XP progression across competitive modes.</p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
+        <PageHeader eyebrow="Progression ladder" title="XP Ladder" description="Track live XP progression across every competitive mode." />
+        <div className="mb-8 flex flex-wrap gap-2">
             {regions.map((item) => (
               <button
                 key={item}
                 onClick={() => setRegion(item)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  region === item ? "bg-cyan/10 text-cyan border border-cyan/20" : "bg-secondary text-vapor hover:text-foreground"
+                  region === item ? "border border-blue-400/25 bg-blue-500/10 text-blue-300" : "bg-secondary text-vapor hover:text-foreground"
                 }`}
               >
                 {item}
               </button>
             ))}
-          </div>
         </div>
 
         <motion.div

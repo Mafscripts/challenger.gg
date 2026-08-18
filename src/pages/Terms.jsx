@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { FileText, Shield, Swords, Wallet, ShoppingBag, Users, AlertTriangle } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
 
 const sections = [
   {
@@ -86,17 +87,13 @@ export default function Terms() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-5xl mx-auto px-4 lg:px-6">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan/10 border border-cyan/20 mb-6">
-            <FileText className="w-4 h-4 text-cyan" />
-            <span className="text-cyan text-xs font-mono font-semibold tracking-widest uppercase">Legal</span>
-          </div>
-          <h1 className="text-4xl font-black tracking-tight mb-4">Terms of Service</h1>
-          <p className="text-vapor max-w-2xl mx-auto">
-            These terms govern use of Topfragg.gg, including accounts, matches, wagers, teams, tournaments, marketplace activity, support, and premium features.
-          </p>
-          <p className="text-xs text-vapor/60 mt-4 font-mono">Effective June 23, 2026</p>
-        </div>
+        <PageHeader
+          eyebrow="Legal"
+          title="Terms of Service"
+          description="These terms govern Topfragg accounts, matches, wagers, teams, tournaments, marketplace activity, support and premium features."
+          className="mb-8"
+          action={<p className="font-mono text-[10px] font-black uppercase tracking-wider text-blue-300">Effective June 23, 2026</p>}
+        />
 
         <div className="glass rounded-xl border border-white/5 p-6 mb-6">
           <p className="text-sm text-vapor leading-relaxed">

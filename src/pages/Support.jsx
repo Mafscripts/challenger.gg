@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, HelpCircle, MessageSquare, Send, ShieldCheck } from "lucide-react";
+import { Crown, MessageSquare, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import PageHeader from "@/components/ui/PageHeader";
 
 const categories = [
   { value: "support", label: "General Support" },
@@ -152,16 +153,7 @@ export default function Support() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4 lg:px-6">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan/10 border border-cyan/20 mb-6">
-            <HelpCircle className="w-4 h-4 text-cyan" />
-            <span className="text-cyan text-xs font-mono font-semibold tracking-widest uppercase">Contact Support</span>
-          </div>
-          <h1 className="text-4xl font-black tracking-tight mb-4">Support Center</h1>
-          <p className="text-vapor max-w-xl mx-auto">
-            Open a ticket for account, payment, match, tournament, marketplace, or technical issues.
-          </p>
-        </div>
+        <PageHeader eyebrow="Player support" title="Support Center" description="Open a ticket for account, payment, match, tournament, marketplace or technical issues." />
 
         <div className="grid lg:grid-cols-3 gap-6">
           <motion.form

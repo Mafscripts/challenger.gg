@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, ChevronDown, BookOpen, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb } from "lucide-react";
+import { Shield, ChevronDown, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
 
 const sections = [
   {
@@ -118,14 +119,7 @@ export default function Rules() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4 lg:px-6">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan/10 border border-cyan/20 mb-6">
-            <BookOpen className="w-4 h-4 text-cyan" />
-            <span className="text-cyan text-xs font-mono font-semibold tracking-widest uppercase">Platform Guidelines</span>
-          </div>
-          <h1 className="text-4xl font-black tracking-tight mb-4">Rules & Regulations</h1>
-          <p className="text-vapor max-w-xl mx-auto">These rules ensure fair competition and a positive experience for all Topfragg.gg users. Violations may result in warnings, suspensions, or permanent bans.</p>
-        </div>
+        <PageHeader eyebrow="Competition standards" title="Rules & Regulations" description="The rules that keep every Topfragg match fair, competitive and respectful." />
 
         <div className="space-y-3">
           {sections.map((section, i) => {

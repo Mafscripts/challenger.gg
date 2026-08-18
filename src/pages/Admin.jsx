@@ -41,6 +41,7 @@ import { toast } from "@/components/ui/use-toast";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import RankBadge from "@/components/ui/RankBadge";
+import PageHeader from "@/components/ui/PageHeader";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
@@ -1665,20 +1666,18 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-obsidian py-6">
       <div className="max-w-[1800px] mx-auto px-4 lg:px-6">
-        <div className="glass rounded-xl border border-white/5 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-black text-cyan">Admin Console</h1>
-              <p className="text-xs text-vapor mt-1">Users, roles, support, matches, economy, inventory, and audit logs.</p>
-            </div>
-            <div className="flex items-center gap-3">
+        <PageHeader
+          eyebrow="Platform management"
+          title="Admin Console"
+          description="Manage users, roles, support, matches, economy, inventory and audit logs."
+          className="mb-6"
+          action={<div className="flex items-center gap-3">
               <RoleBadge role={currentRole} />
-              <button onClick={loadAdminData} className="px-4 py-2 bg-secondary text-vapor text-xs font-bold rounded-lg hover:bg-white/10">
+              <button onClick={loadAdminData} className="rounded-xl border border-white/10 bg-secondary px-4 py-2.5 text-xs font-bold text-vapor transition-colors hover:border-blue-400/25 hover:text-blue-300">
                 Refresh
               </button>
-            </div>
-          </div>
-        </div>
+          </div>}
+        />
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 mb-6">
           <StatCard icon={Users} label="Users" value={stats.totalUsers} />

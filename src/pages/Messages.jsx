@@ -14,6 +14,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
+import PageHeader from "@/components/ui/PageHeader";
 
 const initials = (name) => String(name || "Player").trim().slice(0, 1).toUpperCase();
 const messageTime = (value) => value
@@ -243,22 +244,18 @@ export default function Messages() {
   return (
     <div className="min-h-screen py-8">
       <div className="mx-auto max-w-[1450px] px-4 lg:px-6">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan">Private communications</p>
-            <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight">
-              <MessageSquare className="h-8 w-8 text-cyan" /> Messages
-            </h1>
-            <p className="mt-1 text-sm text-vapor">Chat privately with other TopFragg players.</p>
-          </div>
-          <button
+        <PageHeader
+          eyebrow="Private communications"
+          title="Messages"
+          description="Chat privately with other Topfragg players."
+          action={<button
             type="button"
             onClick={() => setComposerOpen(true)}
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-cyan px-5 text-xs font-black uppercase tracking-wider text-background transition-transform hover:-translate-y-0.5"
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-blue-500 px-5 text-xs font-black uppercase tracking-wider text-white transition-all hover:-translate-y-0.5 hover:bg-blue-400"
           >
             <Plus className="h-4 w-4" /> New message
-          </button>
-        </div>
+          </button>}
+        />
 
         <div className="grid min-h-[680px] overflow-hidden rounded-2xl border border-white/10 bg-card lg:grid-cols-[340px_minmax(0,1fr)]">
           <aside className="border-b border-white/10 bg-background/25 lg:border-b-0 lg:border-r">

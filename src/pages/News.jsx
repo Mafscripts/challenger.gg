@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Clock, Tag } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import PageHeader from "@/components/ui/PageHeader";
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 
@@ -19,8 +20,7 @@ export default function News() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <h1 className="text-3xl font-black tracking-tight mb-2">News</h1>
-        <p className="text-vapor text-sm mb-8">Platform updates, patch notes, and announcements.</p>
+        <PageHeader eyebrow="Topfragg updates" title="News" description="Platform updates, patch notes and announcements." />
 
         {loading ? (
           <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">Loading updates...</div>

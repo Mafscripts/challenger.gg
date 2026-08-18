@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Package } from "lucide-react";
 import RarityBadge from "@/components/ui/RarityBadge";
 import { base44 } from "@/api/base44Client";
+import PageHeader from "@/components/ui/PageHeader";
 
 const categoryLabels = {
   weapon_skin: "Weapon Skins",
@@ -71,20 +72,12 @@ export default function Inventory() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight">Inventory</h1>
-            <p className="text-vapor text-sm mt-1">{ownedItems.length} items owned</p>
-          </div>
-          <div className="flex gap-3">
-            <Link to="/marketplace" className="inline-flex items-center gap-2 px-4 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all">
-              Browse Marketplace
-            </Link>
-            <Link to="/trading" className="inline-flex items-center gap-2 px-4 py-2 bg-orange/10 text-orange text-xs font-bold rounded-lg border border-orange/20 hover:bg-orange/20 transition-all">
-              Trade Items
-            </Link>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Your collection"
+          title="Inventory"
+          description={`${ownedItems.length} item${ownedItems.length === 1 ? "" : "s"} owned across your account.`}
+          action={<div className="flex flex-wrap gap-2"><Link to="/marketplace" className="rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-blue-400">Browse Marketplace</Link><Link to="/trading" className="rounded-xl border border-white/10 bg-secondary px-4 py-2.5 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-blue-400/25 hover:text-blue-300">Trade Items</Link></div>}
+        />
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">

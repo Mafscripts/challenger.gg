@@ -7,6 +7,7 @@ import CreditsStore from "@/components/marketplace/CreditsStore";
 import BuyWithCreditsButton from "@/components/marketplace/BuyWithCreditsButton";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import PageHeader from "@/components/ui/PageHeader";
 
 export const toMarketItem = (item) => ({
   id: item.id,
@@ -142,15 +143,12 @@ export default function Marketplace() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight mb-2">Marketplace</h1>
-            <p className="text-vapor text-sm">Database-backed cosmetics and collectibles</p>
-          </div>
-          <button onClick={loadItems} className="px-4 py-2 bg-secondary text-vapor text-xs font-bold rounded-lg hover:bg-white/10">
-            Refresh
-          </button>
-        </div>
+        <PageHeader
+          eyebrow="Armory marketplace"
+          title="Marketplace"
+          description="Browse cosmetics and collectibles available across Topfragg."
+          action={<button onClick={loadItems} className="rounded-xl border border-white/10 bg-secondary px-4 py-2.5 text-xs font-bold text-vapor transition-colors hover:border-blue-400/25 hover:bg-blue-500/10 hover:text-blue-300">Refresh</button>}
+        />
 
         <CreditsStore />
 
