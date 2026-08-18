@@ -44,7 +44,7 @@ function StaffBadge() {
   return (
     <span
       title="Official Topfragg staff"
-      className="inline-flex shrink-0 items-center rounded border border-blue-400/25 bg-blue-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-blue-300"
+      className="inline-flex shrink-0 items-center rounded border border-red-400/25 bg-red-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-red-300"
     >
       Staff
     </span>
@@ -170,14 +170,14 @@ export default function MatchChat({
   };
 
   return (
-    <div className={`glass rounded-xl border ${tone.border} overflow-hidden flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
+    <div className={`glass overflow-hidden rounded-xl border border-white/10 flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
       <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} bg-secondary/50 border-b border-white/5 flex items-center justify-between`}>
         <h3 className="font-bold text-sm flex items-center gap-2">
           <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> {title}
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
-      <div ref={chatBodyRef} className={`flex-1 overflow-y-auto ${compact ? "p-3 space-y-2" : "p-4 space-y-3"}`}>
+      <div ref={chatBodyRef} className={`flex-1 overflow-y-auto ${compact ? "px-3" : "px-4"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
@@ -188,14 +188,10 @@ export default function MatchChat({
         ) : messages.map((message) => {
           const staff = isStaffMessage(message);
           return (
-            <div key={message.id} className={`rounded-lg border ${compact ? "p-2.5" : "p-3"} ${
-              staff
-                ? "border-blue-400/20 bg-blue-400/[0.045]"
-                : "border-white/5 bg-secondary/40"
-            }`}>
+            <div key={message.id} className={`${compact ? "py-2.5" : "py-3"} border-b border-white/[0.06] last:border-b-0`}>
               <div className="mb-1 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <span className={`truncate text-xs font-black ${staff ? "text-blue-300" : tone.text}`}>
+                  <span className="truncate text-xs font-black text-white">
                     {displaySenderName(message)}
                   </span>
                   {staff && <StaffBadge />}
