@@ -32,7 +32,7 @@ export default function Leaderboards() {
   const loadData = async () => {
     try {
       const [rankedRows, userRows] = await Promise.all([
-        base44.entities.RankedStats.filter({}, "-elo", 100).catch(() => []),
+        base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []),
         base44.entities.User.filter({}, "-total_wager_earnings", 500).catch(() => []),
       ]);
       setRankedStats(rankedRows || []);

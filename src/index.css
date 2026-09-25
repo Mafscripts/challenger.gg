@@ -302,8 +302,11 @@
     border-radius: 0.75rem;
     background: hsl(var(--secondary));
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+    gap: 0.25rem;
+    padding: 0.25rem;
   }
 
+  .topbar-primary-nav > .nav-dashboard-link,
   .topbar-primary-nav > .nav-dropdown-anchor > button {
     height: 2.5rem;
     border: 0;
@@ -311,7 +314,7 @@
     background: transparent;
     color: hsl(var(--vapor));
     box-shadow: none;
-    padding-inline: 0.8rem;
+    padding-inline: 0.75rem;
     font-size: 0.75rem;
     letter-spacing: -0.01em;
   }
@@ -323,7 +326,8 @@
   }
 
   .nav-primary-button {
-    transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1);
+    isolation: isolate;
+    transition: color 220ms ease, background-color 220ms ease, border-color 220ms ease, box-shadow 260ms ease, transform 260ms cubic-bezier(.2, .8, .2, 1);
   }
 
   .nav-dropdown-anchor[data-tone="cyan"] {
@@ -374,31 +378,72 @@
     border-radius: inherit;
     pointer-events: none;
     opacity: 0;
-    background: linear-gradient(110deg, transparent 18%, var(--nav-accent-soft) 40%, rgb(255 255 255 / 0.24) 50%, var(--nav-accent-soft) 60%, transparent 82%);
-    background-position: 145% 0;
-    background-size: 250% 100%;
+    background: linear-gradient(
+      106deg,
+      transparent 25%,
+      var(--nav-accent-soft) 38%,
+      var(--nav-accent) 47%,
+      rgb(255 255 255 / 0.78) 50%,
+      var(--nav-accent) 53%,
+      var(--nav-accent-soft) 62%,
+      transparent 75%
+    );
+    background-position: 160% 0;
+    background-size: 260% 100%;
+    background-repeat: no-repeat;
+    clip-path: inset(1px round 0.5rem);
+    mix-blend-mode: screen;
   }
 
   .nav-primary-button:hover,
   .nav-primary-button:focus-visible {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
+    box-shadow:
+      0 0 0 1px var(--nav-accent-border),
+      inset 0 1px 0 rgb(255 255 255 / 0.08),
+      0 7px 20px var(--nav-accent-soft);
   }
 
   .nav-primary-button:hover::before,
   .nav-primary-button:focus-visible::before {
-    opacity: 1;
-    animation: nav-button-shine 720ms cubic-bezier(.2, .8, .2, 1) both;
+    animation: nav-energy-trail 780ms cubic-bezier(.16, 1, .3, 1) both;
   }
 
   .nav-primary-icon {
-    transition: color 160ms ease, transform 220ms cubic-bezier(.2, .8, .2, 1);
+    transition: color 220ms ease, filter 260ms ease, transform 320ms cubic-bezier(.16, 1, .3, 1);
   }
 
   .nav-primary-button:hover .nav-primary-icon,
   .nav-primary-button:focus-visible .nav-primary-icon {
-    transform: scale(1.14) rotate(-6deg);
+    filter: drop-shadow(0 0 5px var(--nav-accent));
+    transform: translateY(-1px) scale(1.08);
   }
 
+  .nav-dashboard-icon {
+    position: relative;
+    transition: color 220ms ease, background-color 220ms ease, border-color 220ms ease, box-shadow 300ms ease, transform 320ms cubic-bezier(.16, 1, .3, 1);
+  }
+
+  .nav-dashboard-link:hover .nav-dashboard-icon,
+  .nav-dashboard-link:focus-visible .nav-dashboard-icon,
+  .nav-dashboard-link[data-active="true"] .nav-dashboard-icon {
+    border-color: hsl(var(--orange) / 0.36) !important;
+    background: hsl(var(--orange) / 0.13) !important;
+    color: hsl(var(--orange)) !important;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.12),
+      0 0 0 1px hsl(var(--orange) / 0.1),
+      0 0 16px hsl(var(--orange) / 0.2);
+    filter: none;
+    transform: translateY(-1px) scale(1.04);
+  }
+
+  .nav-dashboard-link:hover .nav-dashboard-icon svg,
+  .nav-dashboard-link:focus-visible .nav-dashboard-icon svg {
+    animation: dashboard-icon-charge 620ms cubic-bezier(.16, 1, .3, 1) both;
+  }
+
+  .topbar-primary-nav > .nav-dashboard-link::after,
   .topbar-primary-nav > .nav-dropdown-anchor > button::after {
     content: "";
     position: absolute;
@@ -407,23 +452,33 @@
     width: 0;
     height: 2px;
     border-radius: 999px;
-    background: var(--nav-accent);
+    background: linear-gradient(90deg, transparent, var(--nav-accent) 30%, #fff 50%, var(--nav-accent) 70%, transparent);
+    box-shadow: 0 0 8px var(--nav-accent);
     transform: translateX(50%);
-    transition: width 160ms cubic-bezier(.2, .8, .2, 1);
+    transition: width 280ms cubic-bezier(.16, 1, .3, 1), opacity 220ms ease;
   }
 
+  .topbar-primary-nav > .nav-dashboard-link:hover,
+  .topbar-primary-nav > .nav-dashboard-link:focus-visible,
+  .topbar-primary-nav > .nav-dashboard-link[data-active="true"],
   .topbar-primary-nav > .nav-dropdown-anchor > button:hover,
   .topbar-primary-nav > .nav-dropdown-anchor > button:focus-visible,
   .topbar-primary-nav > .nav-dropdown-anchor > button[data-active="true"] {
     color: var(--nav-accent);
     background: var(--nav-accent-soft);
-    box-shadow: 0 0 0 1px var(--nav-accent-border);
+    box-shadow:
+      0 0 0 1px var(--nav-accent-border),
+      inset 0 1px 0 rgb(255 255 255 / 0.08),
+      0 7px 20px var(--nav-accent-soft);
   }
 
+  .topbar-primary-nav > .nav-dashboard-link:hover::after,
+  .topbar-primary-nav > .nav-dashboard-link:focus-visible::after,
+  .topbar-primary-nav > .nav-dashboard-link[data-active="true"]::after,
   .topbar-primary-nav > .nav-dropdown-anchor > button:hover::after,
   .topbar-primary-nav > .nav-dropdown-anchor > button:focus-visible::after,
   .topbar-primary-nav > .nav-dropdown-anchor > button[data-active="true"]::after {
-    width: 1.1rem;
+    width: 1.45rem;
   }
 
   .nav-popover :where(a, button):hover,
@@ -999,7 +1054,7 @@
 
   @media (min-width: 1280px) {
     .app-topbar-inner {
-      max-width: 1480px;
+      max-width: 1600px;
     }
 
     .app-shell-auth .topbar-brand,
@@ -1078,9 +1133,23 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes nav-button-shine {
-  from { background-position: 145% 0; }
-  to { background-position: -145% 0; }
+@keyframes nav-energy-trail {
+  0% {
+    opacity: 0;
+    background-position: 160% 0;
+  }
+  14% { opacity: .32; }
+  45% { opacity: .72; }
+  100% {
+    opacity: 0;
+    background-position: -160% 0;
+  }
+}
+
+@keyframes dashboard-icon-charge {
+  0% { filter: drop-shadow(0 0 0 transparent); transform: scale(.92); }
+  48% { filter: drop-shadow(0 0 6px hsl(var(--orange) / 0.72)); transform: scale(1.13); }
+  100% { filter: drop-shadow(0 0 3px hsl(var(--orange) / 0.38)); transform: scale(1); }
 }
 
 @keyframes mobile-menu-in {

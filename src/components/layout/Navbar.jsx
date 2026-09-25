@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, Bell, MessageSquare, ChevronDown, User,
   Menu, X, Gamepad2, Swords, Trophy, ShoppingBag,
   Users, Zap,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
@@ -156,6 +156,19 @@ const navItemIsActive = (pathname, path) => (
   || (path === "/dashboard" && pathname.startsWith("/match-room/"))
 );
 
+const formatMessageTime = (value) => {
+  const timestamp = new Date(value || 0).getTime();
+  if (!Number.isFinite(timestamp)) return "";
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
+  if (elapsedMinutes < 1) return "Now";
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours}h`;
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  if (elapsedDays < 7) return `${elapsedDays}d`;
+  return new Date(timestamp).toLocaleDateString([], { month: "short", day: "numeric" });
+};
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -171,6 +184,17 @@ export default function Navbar() {
   const [profilePlayerSearching, setProfilePlayerSearching] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const messagePreviews = useMemo(() => {
+    const seen = new Set();
+    return messages.filter((message) => {
+      const key = message.message_type === "direct_message"
+        ? `direct:${message.sender_id || message.sender_name}`
+        : `message:${message.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 5);
+  }, [messages]);
   const [walletBalance, setWalletBalance] = useState(0);
   const [creditBalance, setCreditBalance] = useState(0);
   const [profileAvatar, setProfileAvatar] = useState("");
@@ -484,7 +508,7 @@ export default function Navbar() {
       const messageQuery = fresh
         ? base44.entities.Message.filterFresh
         : base44.entities.Message.filter;
-      const data = await messageQuery({ recipient_id: resolvedUserId }, '-created_date', 5);
+      const data = await messageQuery({ recipient_id: resolvedUserId }, '-created_date', 25);
       const rows = data || [];
       setMessages(rows);
       setUnreadMessagesCount(rows.filter(m => !m.is_read).length);
@@ -625,8 +649,8 @@ export default function Navbar() {
       <nav className={`app-topbar fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
         scrolled ? "glass-nav" : ""
       }`}>
-        <div className="app-topbar-inner mx-auto max-w-[1480px] px-4 lg:px-7">
-          <div className="flex items-center justify-between h-16">
+        <div className="app-topbar-inner mx-auto max-w-[1600px] px-4 lg:px-6">
+          <div className="flex h-16 items-center justify-between gap-5">
             {/* Logo + primary destination */}
             <div className="topbar-brand flex items-center gap-3 shrink-0">
               <Link to="/" className="flex items-center gap-2" aria-label="Topfragg.gg home">
@@ -636,18 +660,19 @@ export default function Navbar() {
 
             {/* Desktop Nav */}
             {user && (
-              <div className="topbar-primary-nav hidden xl:flex items-center justify-center gap-0.5 p-1">
+              <div className="topbar-primary-nav hidden xl:flex items-center justify-center gap-1 p-1">
                 <Link
                   to="/dashboard"
                   data-tone="orange"
+                  data-active={navItemIsActive(location.pathname, "/dashboard") ? "true" : "false"}
                   onMouseEnter={closeDropdowns}
-                  className={`${navButtonClass} ${
+                  className={`${navButtonClass} nav-dashboard-link ${
                     navItemIsActive(location.pathname, "/dashboard")
                       ? navTone.orange.button
                       : "border-transparent text-vapor hover:border-orange/20 hover:bg-orange/[0.07] hover:text-orange"
                   }`}
                 >
-                  <span className={`nav-primary-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard") ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
+                  <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard") ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
                     <Gamepad2 className="h-3.5 w-3.5" />
                   </span>
                   Dashboard
@@ -850,7 +875,7 @@ export default function Navbar() {
             )}
 
             {/* Right Side */}
-            <div className="topbar-actions flex items-center gap-2">
+            <div className="topbar-actions flex shrink-0 items-center gap-2">
               {user ? (
                 <>
               {/* Wallet */}
@@ -981,21 +1006,25 @@ export default function Navbar() {
                 </Link>
 
                 {messagesOpen && (
-                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl">
-                      <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                        <h3 className="font-bold text-sm">Messages</h3>
-                        <Link to="/messages" onClick={() => setMessagesOpen(false)} className="text-xs text-cyan hover:underline">
-                          View All
-                        </Link>
+                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-[min(390px,calc(100vw-1rem))] overflow-hidden rounded-2xl">
+                      <div className="flex items-center justify-between border-b border-white/5 bg-[linear-gradient(135deg,rgba(20,216,255,0.08),transparent_55%)] px-4 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan/20 bg-cyan/10 text-cyan"><MessageSquare className="h-4 w-4" /></span>
+                          <div>
+                            <h3 className="text-sm font-black">Messages</h3>
+                            <p className="text-[10px] text-vapor">Your latest conversations</p>
+                          </div>
+                        </div>
+                        {unreadMessagesCount > 0 && <span className="rounded-full bg-cyan px-2 py-1 font-mono text-[9px] font-black text-background">{unreadMessagesCount} new</span>}
                       </div>
-                      <div className="max-h-80 overflow-y-auto">
-                        {messages.length === 0 ? (
+                      <div className="max-h-[360px] space-y-1 overflow-y-auto p-2">
+                        {messagePreviews.length === 0 ? (
                           <div className="px-4 py-8 text-center">
                             <MessageSquare className="w-8 h-8 text-vapor/30 mx-auto mb-2" />
                             <p className="text-xs text-vapor">No messages</p>
                           </div>
                         ) : (
-                          messages.map((message) => (
+                          messagePreviews.map((message) => (
                             <Link
                               key={message.id}
                               to={message.action_url || (
@@ -1004,31 +1033,32 @@ export default function Navbar() {
                                   : "/messages"
                               )}
                               onClick={() => { markMessageAsRead(message.id); setMessagesOpen(false); }}
-                              className={`px-4 py-3 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-all ${
-                                !message.is_read ? 'bg-cyan/5' : ''
+                              className={`group block rounded-xl border px-3 py-3 transition-all ${
+                                !message.is_read ? 'border-cyan/15 bg-cyan/[0.055]' : 'border-transparent hover:border-white/[0.07] hover:bg-white/[0.035]'
                               }`}
                             >
                               <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan/30 to-orange/30 border border-white/10 flex items-center justify-center text-xs font-bold shrink-0">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-cyan/25 to-orange/20 text-sm font-black text-white shadow-sm">
                                   {(message.sender_name || "Unknown sender").charAt(0)}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-xs font-semibold truncate ${!message.is_read ? 'text-cyan' : 'text-foreground'}`}>
-                                    {message.sender_name || "Unknown sender"}
-                                  </p>
-                                  <p className="text-[10px] text-vapor truncate">{message.subject || 'No subject'}</p>
-                                  <p className="text-[9px] text-vapor/50 mt-1">
-                                    {new Date(message.created_date).toLocaleDateString()}
-                                  </p>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className={`truncate text-xs font-black ${!message.is_read ? 'text-cyan' : 'text-foreground'}`}>{message.sender_name || "Unknown sender"}</p>
+                                    <span className="shrink-0 font-mono text-[9px] text-vapor/60">{formatMessageTime(message.created_date)}</span>
+                                  </div>
+                                  <p className="mt-1 truncate text-[11px] leading-4 text-vapor">{message.content || message.subject || 'Open message'}</p>
                                 </div>
                                 {!message.is_read && (
-                                  <span className="w-2 h-2 bg-cyan rounded-full shrink-0" />
+                                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan shadow-[0_0_8px_rgba(20,216,255,0.6)]" />
                                 )}
                               </div>
                             </Link>
                           ))
                         )}
                       </div>
+                      <Link to="/messages" onClick={() => setMessagesOpen(false)} className="flex items-center justify-center gap-2 border-t border-white/5 bg-white/[0.02] px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-cyan transition-colors hover:bg-cyan/[0.06]">
+                        Open all messages <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
                 )}
               </div>

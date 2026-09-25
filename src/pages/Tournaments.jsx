@@ -53,6 +53,18 @@ const formatDate = (value) => {
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 const formatCredits = (value) => `${Number(value || 0).toLocaleString()} Credits`;
 const padCountdownUnit = (value) => String(value).padStart(2, "0");
+const countdownUntil = (value, now = Date.now()) => {
+  if (!value) return null;
+  const diff = new Date(value).getTime() - now;
+  if (!Number.isFinite(diff) || diff <= 0) return { expired: true, hours: 0, minutes: 0, seconds: 0 };
+  const totalSeconds = Math.floor(diff / 1000);
+  return {
+    expired: false,
+    hours: Math.floor(totalSeconds / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
+};
 const timeUntil = (value, now = Date.now()) => {
   if (!value) return "TBD";
   const diff = new Date(value).getTime() - now;
@@ -155,22 +167,32 @@ function FeaturedTournamentHero({ tournament, now, onSelect }) {
       {bannerUrl && <img src={bannerUrl} alt={`${tournament.name} featured banner`} className="absolute inset-0 h-full w-full object-cover" />}
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(20,22,27,.98)_0%,rgba(20,22,27,.9)_44%,rgba(20,22,27,.38)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgba(20,22,27,.86)_100%)]" />
-      <div className="relative flex min-h-[300px] max-w-3xl flex-col justify-end p-6 sm:min-h-[340px] sm:p-9 lg:p-11">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-md border border-orange/35 bg-orange/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-orange">Featured tournament</span>
-          <span className={`rounded-md border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
-            {statusLabels[tournament.status] || tournament.status}
-          </span>
+      <div className="relative flex min-h-[300px] max-w-4xl flex-col justify-end p-6 sm:min-h-[340px] sm:p-9 lg:p-11">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-md border border-orange/35 bg-orange/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-orange">Featured tournament</span>
+            <span className={`rounded-md border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
+              {statusLabels[tournament.status] || tournament.status}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl border border-green/35 bg-green/15 px-4 py-2.5 shadow-[0_0_28px_rgba(0,255,153,0.14)] backdrop-blur-md">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green text-background shadow-[0_0_18px_rgba(0,255,153,0.28)]">
+              <Trophy className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-green/80">Prize pool</p>
+              <p className="font-mono text-xl font-black leading-none text-green">{formatMoney(tournament.prize_pool)}</p>
+            </div>
+          </div>
         </div>
         <h2 className="max-w-2xl text-3xl font-black leading-none text-white sm:text-4xl lg:text-5xl">{tournament.name}</h2>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-vapor">
           {tournament.description || `${compactModeLabel(tournament)}. Enter with your roster and compete for the featured prize pool.`}
         </p>
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[440px]">
-            <CompactStat label="Prize pool" value={formatMoney(tournament.prize_pool)} />
+          <div className="grid gap-2 sm:min-w-[470px] sm:grid-cols-[130px_minmax(300px,1fr)]">
             <CompactStat label="Teams" value={`${tournament.registered_teams || 0}/${tournament.max_teams || 0}`} />
-            <CompactStat label="Starts" value={timeUntil(tournament.start_date, now)} />
+            <TournamentCountdown value={tournament.start_date} now={now} />
           </div>
           <button
             type="button"
@@ -666,9 +688,9 @@ export default function Tournaments() {
                     </div>
                   </div>
                   <div className="grid shrink-0 grid-cols-3 gap-2 text-right">
-                    <CompactStat label="Prize" value={formatMoney(selectedTournament.prize_pool)} />
+                    <CompactStat label="Prize" value={formatMoney(selectedTournament.prize_pool)} tone="green" />
                     <CompactStat label="Teams" value={`${selectedTournament.registered_teams || 0}/${selectedTournament.max_teams || 0}`} />
-                    <CompactStat label="Starts" value={timeUntil(selectedTournament.start_date, now)} />
+                    <CompactStat label="Starts in" value={timeUntil(selectedTournament.start_date, now)} tone="cyan" />
                   </div>
                 </div>
               )}
@@ -803,10 +825,60 @@ export default function Tournaments() {
   );
 }
 
-function CompactStat({ label, value }) {
+function TournamentCountdown({ value, now }) {
+  const countdown = countdownUntil(value, now);
+  if (!countdown) {
+    return <CompactStat label="Starts in" value="TBD" tone="cyan" />;
+  }
+  if (countdown.expired) {
+    return <CompactStat label="Starts" value="Schedule passed" tone="orange" />;
+  }
+
+  const units = [
+    [countdown.hours, "hrs"],
+    [countdown.minutes, "min"],
+    [countdown.seconds, "sec"],
+  ];
+
   return (
-    <div className="min-w-[72px] rounded-md border border-white/[0.06] bg-background/35 px-2.5 py-2">
-      <p className="truncate font-mono text-[11px] font-black text-white">{value}</p>
+    <div className="flex min-h-[58px] items-center gap-3 rounded-lg border border-cyan/20 bg-cyan/[0.08] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan/20 bg-cyan/10 text-cyan">
+        <Clock className="h-4 w-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="mb-1 text-[8px] font-black uppercase tracking-[0.2em] text-cyan/75">Starts in</p>
+        <div className="flex items-baseline gap-2" aria-label={`Starts in ${countdown.hours} hours, ${countdown.minutes} minutes and ${countdown.seconds} seconds`}>
+          {units.map(([unitValue, label], index) => (
+            <React.Fragment key={label}>
+              {index > 0 && <span className="font-mono text-xs font-black text-cyan/35">:</span>}
+              <span className="inline-flex items-baseline gap-1">
+                <span className="font-mono text-base font-black leading-none text-white">{padCountdownUnit(unitValue)}</span>
+                <span className="text-[7px] font-black uppercase tracking-wider text-vapor">{label}</span>
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactStat({ label, value, tone = "default" }) {
+  const valueTone = {
+    green: "text-green",
+    cyan: "text-cyan",
+    orange: "text-orange",
+    default: "text-white",
+  }[tone];
+  const surfaceTone = {
+    green: "border-green/20 bg-green/[0.07]",
+    cyan: "border-cyan/20 bg-cyan/[0.07]",
+    orange: "border-orange/20 bg-orange/[0.07]",
+    default: "border-white/[0.06] bg-background/35",
+  }[tone];
+  return (
+    <div className={`min-w-[72px] rounded-md border px-2.5 py-2 ${surfaceTone}`}>
+      <p className={`truncate font-mono text-[11px] font-black ${valueTone}`}>{value}</p>
       <p className="mt-0.5 text-[8px] font-black uppercase tracking-wider text-vapor">{label}</p>
     </div>
   );
@@ -1076,11 +1148,11 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
           <span className={`rounded border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
             {statusLabels[tournament.status] || tournament.status}
           </span>
-          <span className="font-mono text-sm font-black text-yellow-300">{formatMoney(tournament.prize_pool)} <span className="text-[9px] uppercase tracking-wider text-vapor">Prize Pool</span></span>
+          <span className="rounded-md border border-green/20 bg-green/[0.08] px-2 py-1 font-mono text-sm font-black text-green shadow-[0_0_16px_rgba(0,255,153,0.07)]">{formatMoney(tournament.prize_pool)} <span className="text-[8px] uppercase tracking-wider text-green/65">Prize Pool</span></span>
         </div>
       </div>
       <div className="col-span-2 flex items-center justify-between gap-3 border-t border-white/[0.05] pt-3 sm:col-span-1 sm:flex sm:min-w-[108px] sm:flex-col sm:items-end sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-vapor">
+        <span className="inline-flex items-center gap-1 rounded-md border border-cyan/15 bg-cyan/[0.06] px-2 py-1 font-mono text-[10px] font-black text-cyan">
           <Clock className="h-3 w-3" /> {timeUntil(tournament.start_date, now)}
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.07] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white transition-colors group-hover:border-white/25 group-hover:bg-white/10">
