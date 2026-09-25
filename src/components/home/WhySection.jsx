@@ -4,7 +4,7 @@ import { Shield, Zap, Trophy, Users, Target, Crown } from "lucide-react";
 
 const features = [
   { icon: Shield, title: "Anti-Cheat Protection", desc: "Enterprise-grade anti-cheat powered by AI detection and manual review to keep competition fair.", color: "text-cyan" },
-  { icon: Zap, title: "Fast Matchmaking", desc: "Skill-based queues help you get into 8s, ranked, or wagers without waiting around.", color: "text-orange" },
+  { icon: Zap, title: "Fast Matchmaking", desc: "Skill-based queues help you get into ranked matches, wagers, or tournaments without waiting around.", color: "text-orange" },
   { icon: Trophy, title: "Prize Pool Tournaments", desc: "Scheduled events with transparent brackets, real payouts, and seasonal championship paths.", color: "text-green" },
   { icon: Users, title: "Competitive Community", desc: "Find teammates, rivals, and lifelong gaming friends across the Call of Duty scene.", color: "text-purple-400" },
   { icon: Target, title: "ELO Ranked System", desc: "Precision-calibrated ELO system with seasonal resets, placement matches, and visible progression.", color: "text-cyan" },

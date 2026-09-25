@@ -1,0 +1,10 @@
+<RCC>
+  <qresource prefix="/qt/qml/Topfragg/">
+    <file alias="qml/Main.qml">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/qml/Main.qml</file>
+    <file alias="qml/AppButton.qml">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/qml/AppButton.qml</file>
+    <file alias="qml/GlassCard.qml">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/qml/GlassCard.qml</file>
+    <file alias="qml/NavItem.qml">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/qml/NavItem.qml</file>
+    <file alias="qml/StatCard.qml">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/qml/StatCard.qml</file>
+  </qresource>
+</RCC>
+

@@ -1,5 +1,5 @@
 import React from "react";
-import { Trophy, TrendingDown, Target, DollarSign, BookOpen, Star, Flame } from "lucide-react";
+import { Trophy, TrendingDown, Target, DollarSign, BookOpen, Flame } from "lucide-react";
 
 function TeamStat({ label, valueA, valueB, icon: Icon, color, format }) {
   const aBetter = valueA > valueB;
@@ -24,13 +24,12 @@ function TeamStat({ label, valueA, valueB, icon: Icon, color, format }) {
 export default function TeamStatsComparison({ teamAPlayers, teamBPlayers }) {
   const hasPlayers = (teamAPlayers?.length || 0) + (teamBPlayers?.length || 0) > 0;
   const calcTeamStats = (players) => {
-    if (!players || players.length === 0) return { wins: 0, losses: 0, winRate: 0, earnings: 0, matches: 0, avgLevel: 0, streak: 0 };
+    if (!players || players.length === 0) return { wins: 0, losses: 0, winRate: 0, earnings: 0, matches: 0, streak: 0 };
     
     const wins = players.reduce((sum, p) => sum + (p.wager_wins || 0), 0);
     const losses = players.reduce((sum, p) => sum + (p.wager_losses || 0), 0);
     const matches = wins + losses;
     const earnings = players.reduce((sum, p) => sum + (p.total_wager_earnings || 0), 0);
-    const avgLevel = players.reduce((sum, p) => sum + (p.xp_level || 1), 0) / players.length;
     const streak = Math.max(...players.map(p => p.current_win_streak || 0));
     
     return {
@@ -39,7 +38,6 @@ export default function TeamStatsComparison({ teamAPlayers, teamBPlayers }) {
       winRate: matches > 0 ? ((wins / matches) * 100).toFixed(1) : 0,
       earnings,
       matches,
-      avgLevel: avgLevel.toFixed(1),
       streak
     };
   };
@@ -70,7 +68,6 @@ export default function TeamStatsComparison({ teamAPlayers, teamBPlayers }) {
           <TeamStat label="Win Rate" valueA={`${statsA.winRate}%`} valueB={`${statsB.winRate}%`} icon={Target} color="cyan" />
           <TeamStat label="Earnings" valueA={statsA.earnings} valueB={statsB.earnings} icon={DollarSign} color="green" format={(v) => `$${v.toLocaleString()}`} />
           <TeamStat label="Matches" valueA={statsA.matches} valueB={statsB.matches} icon={BookOpen} color="purple-400" />
-          <TeamStat label="Avg Level" valueA={statsA.avgLevel} valueB={statsB.avgLevel} icon={Star} color="yellow-400" />
           <TeamStat label="Streak" valueA={`${statsA.streak}W`} valueB={`${statsB.streak}W`} icon={Flame} color="orange" />
         </div>
       )}

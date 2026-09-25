@@ -211,7 +211,7 @@ export default function ForgeModal({ open, onClose }) {
                       transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15, ease: "easeOut" }}
                       className="absolute top-10 left-1/2"
                     >
-                      <div className="w-1.5 h-1.5 rounded-full bg-orange shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange shadow-[0_0_6px_rgba(255,130,0,0.8)]" />
                     </motion.div>
                   ))}
 

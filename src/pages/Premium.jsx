@@ -1,11 +1,10 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Check, Zap, Shield, ShoppingBag, Trophy, Users, Sparkles, LockKeyhole } from "lucide-react";
+import { Check, Shield, ShoppingBag, Trophy, Users, Sparkles, LockKeyhole } from "lucide-react";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 import PageHeader from "@/components/ui/PageHeader";
 
 const benefits = [
-  { icon: Zap, title: "2x XP Boost", desc: "Double experience on all matches. Level up and prestige faster than ever." },
   { icon: Trophy, title: "Premium Tournaments", desc: "Access exclusive Premium-only tournaments with separate prize pools." },
   { icon: ShoppingBag, title: "Marketplace Benefits", desc: "50% reduced marketplace fees on all purchases and sales." },
   { icon: Sparkles, title: "Monthly Cosmetics", desc: "Receive an exclusive cosmetic drop every month — including Legendary+ items." },
@@ -27,7 +26,7 @@ export default function Premium() {
           eyebrow="Premium membership"
           title="Elevate Your Game"
           description="Unlock the complete Topfragg experience with exclusive benefits, cosmetics and competitive advantages."
-          className="mb-8"
+          className="dark-focus dark-media mb-8"
           action={<div className="text-left sm:text-right"><div><span className="font-mono text-4xl font-black text-white">$9.99</span><span className="ml-1 text-sm text-vapor">/mo</span></div><p className="mt-1 text-[9px] font-black uppercase tracking-wider text-blue-300">Premium access</p></div>}
         />
         <div className="mb-12 rounded-2xl border border-white/[0.07] bg-card/60 p-5 text-center">
@@ -85,8 +84,7 @@ export default function Premium() {
               <span className="text-center text-orange">Premium</span>
             </div>
             {[
-              { feature: "Play 8s, Ranked, Wagers", free: true, premium: true },
-              { feature: "2x XP Boost", free: false, premium: true },
+              { feature: "Play Ranked, Wagers, Tournaments", free: true, premium: true },
               { feature: "Premium Tournaments", free: false, premium: true },
               { feature: "Reduced Marketplace Fees", free: false, premium: true },
               { feature: "Monthly Cosmetic Drops", free: false, premium: true },

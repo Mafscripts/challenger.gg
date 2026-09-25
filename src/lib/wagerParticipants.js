@@ -33,7 +33,6 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
       wager_losses: userRow?.wager_losses || 0,
       total_wager_earnings: userRow?.total_wager_earnings || 0,
       lifetime_earnings: Math.max(Number(userRow?.lifetime_earnings || 0), Number(userRow?.total_wager_earnings || 0)),
-      xp_level: userRow?.xp_level || 1,
       current_win_streak: userRow?.current_win_streak || 0,
       biggest_wager_win: userRow?.biggest_wager_win || 0,
       account_created_date: userRow?.account_created_date,

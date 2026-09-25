@@ -92,7 +92,7 @@ export default function GamingIdsSection({ user, onUserUpdate }) {
             placeholder="PlayerName#1234567"
             className="w-full bg-secondary border border-white/5 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-cyan/30 disabled:opacity-50"
           />
-          <p className="mt-2 text-[11px] leading-5 text-vapor">Required to create or join tournaments, ranked matches, 8s, XP matches and wagers.</p>
+          <p className="mt-2 text-[11px] leading-5 text-vapor">Required to create or join tournaments, ranked matches and wagers.</p>
         </div>
 
         <div>

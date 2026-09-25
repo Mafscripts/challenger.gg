@@ -469,6 +469,57 @@ async function marketplaceItemsByIds(itemIds = []) {
   return rows.filter((item) => ids.has(String(item.id)) && item.is_active !== false && item.is_available !== false);
 }
 
+async function normalizeTournamentPlacementTrophyFields(source = {}) {
+  const hasPlacementSelection = Object.prototype.hasOwnProperty.call(source, "placement_trophy_item_ids")
+    || Object.prototype.hasOwnProperty.call(source, "placement_trophy_items");
+  if (!hasPlacementSelection) return source;
+
+  const requestedByPlacement = {};
+  const requestedIds = [];
+  for (const placement of [1, 2, 3]) {
+    const selectedIds = Array.isArray(source.placement_trophy_item_ids?.[placement])
+      ? source.placement_trophy_item_ids[placement]
+      : [];
+    const snapshotIds = Array.isArray(source.placement_trophy_items?.[placement])
+      ? source.placement_trophy_items[placement].map((item) => item?.id || item?.item_id)
+      : [];
+    requestedByPlacement[placement] = [...new Set([...selectedIds, ...snapshotIds].filter(Boolean).map(String))];
+    requestedIds.push(...requestedByPlacement[placement]);
+  }
+
+  const trophyItems = (await marketplaceItemsByIds(requestedIds))
+    .filter((item) => {
+      const searchableText = `${item.name || ""} ${item.description || ""}`.toLowerCase();
+      return String(item.category || "").toLowerCase() === "trophy"
+        && (searchableText.includes("premium") || searchableText.includes("invitational"));
+    });
+  const trophyById = new Map(trophyItems.map((item) => [String(item.id), item]));
+  const placementTrophyItemIds = {};
+  const placementTrophyItems = {};
+
+  for (const placement of [1, 2, 3]) {
+    placementTrophyItemIds[placement] = placement === 1
+      ? requestedByPlacement[placement].filter((id) => trophyById.has(id)).slice(0, 1)
+      : [];
+    placementTrophyItems[placement] = placementTrophyItemIds[placement].map((id) => {
+      const item = trophyById.get(id);
+      return {
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        rarity: item.rarity,
+        image_url: item.image_url,
+      };
+    });
+  }
+
+  return {
+    ...source,
+    placement_trophy_item_ids: placementTrophyItemIds,
+    placement_trophy_items: placementTrophyItems,
+  };
+}
+
 async function grantMarketplaceItemsToUsers(users = [], items = [], context = {}) {
   const validUsers = users.filter(Boolean);
   const validItems = items.filter(Boolean);
@@ -574,7 +625,7 @@ async function grantStandardTournamentPlacementTrophy(tournament, participantId,
 async function grantTournamentPlacementRewards(tournament, participantId, userIds = [], placement = 1) {
   if (!participantId || (userIds || []).length === 0) return { standard: [], custom: [] };
   const standard = await grantStandardTournamentPlacementTrophy(tournament, participantId, userIds, placement);
-  const customItemIds = tournamentPlacementTrophyItemIds(tournament, placement);
+  const customItemIds = placement === 1 ? tournamentPlacementTrophyItemIds(tournament, 1) : [];
   const customItems = await marketplaceItemsByIds(customItemIds);
   const users = await Promise.all([...new Set(userIds.filter(Boolean))].map((userId) => userFor(userId)));
   const custom = await grantMarketplaceItemsToUsers(users.filter(Boolean), customItems, {
@@ -4108,10 +4159,20 @@ async function leaveTournament(req) {
   return { success: true, tournament: updatedTournament, participant, refunds };
 }
 
+async function clearOtherFeaturedTournaments(featuredTournamentId) {
+  const tournaments = await listEntities("Tournament", {}, "-updated_date", 500).catch(() => []);
+  await Promise.all(tournaments
+    .filter((tournament) => tournament.id !== featuredTournamentId && tournament.is_featured === true)
+    .map((tournament) => updateEntity("Tournament", tournament.id, {
+      is_featured: false,
+      updated_date: nowIso(),
+    }).catch(() => null)));
+}
+
 async function updateTournament(req) {
   assertStaff(req, "admin");
   const previousTournament = await getEntity("Tournament", req.body.tournament_id);
-  const patch = req.body.patch || {};
+  const patch = await normalizeTournamentPlacementTrophyFields(req.body.patch || {});
   const requestedBracketType = patch.bracket_type || patch.format;
   if (
     previousTournament.bracket_generated
@@ -4131,6 +4192,9 @@ async function updateTournament(req) {
     updated_by_name: nameFor(req.user),
     updated_date: nowIso(),
   });
+  if (tournament.is_featured === true) {
+    await clearOtherFeaturedTournaments(tournament.id);
+  }
   const shouldRefreshMaps = Object.prototype.hasOwnProperty.call(patch, "map_pools")
     || Object.prototype.hasOwnProperty.call(patch, "maps")
     || Object.prototype.hasOwnProperty.call(patch, "game_mode");
@@ -4197,25 +4261,30 @@ async function updateTournament(req) {
 
 async function createTournament(req) {
   assertStaff(req, "admin");
-  const name = String(req.body.name || "").trim().slice(0, 80);
+  const tournamentBody = await normalizeTournamentPlacementTrophyFields(req.body || {});
+  const name = String(tournamentBody.name || "").trim().slice(0, 80);
   if (!name) return { success: false, error: "Tournament name is required" };
-  const invitedUserIds = [...new Set((req.body.invited_user_ids || []).filter(Boolean).map(String))];
-  const bracketType = (req.body.bracket_type || req.body.format) === "double_elimination"
+  const invitedUserIds = [...new Set((tournamentBody.invited_user_ids || []).filter(Boolean).map(String))];
+  const bracketType = (tournamentBody.bracket_type || tournamentBody.format) === "double_elimination"
     ? "double_elimination"
     : "single_elimination";
   const tournament = await createEntity("Tournament", {
-    ...req.body,
+    ...tournamentBody,
     name,
     title: name,
     format: bracketType,
     bracket_type: bracketType,
     invited_user_ids: invitedUserIds,
-    invite_only: req.body.invite_only === true || req.body.entry_type === "invitational",
+    invite_only: tournamentBody.invite_only === true || tournamentBody.entry_type === "invitational",
+    is_featured: tournamentBody.is_featured === true,
     registered_teams: 0,
     created_by: req.user.id,
     created_by_name: nameFor(req.user),
     created_date: nowIso(),
   });
+  if (tournament.is_featured === true) {
+    await clearOtherFeaturedTournaments(tournament.id);
+  }
   if (tournament.invite_only && invitedUserIds.length > 0) {
     await Promise.all(invitedUserIds.map(async (userId) => {
       const content = `You're officially invited to compete in ${tournament.name}! Assemble your team, claim your spot, and get ready to battle for the title. As the invited captain, you can join with any eligible team you lead.`;

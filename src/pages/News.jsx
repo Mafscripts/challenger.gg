@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Clock, Tag } from "lucide-react";
+import { Clock, Newspaper, Tag } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/ui/PageHeader";
 
@@ -25,7 +25,11 @@ export default function News() {
         {loading ? (
           <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">Loading updates...</div>
         ) : updates.length === 0 ? (
-          <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">No platform updates have been posted yet.</div>
+          <div className="glass rounded-xl border border-white/5 px-6 py-9 text-center">
+            <Newspaper className="mx-auto mb-3 h-9 w-9 text-vapor/35" />
+            <h2 className="text-base font-black">No updates yet</h2>
+            <p className="mx-auto mt-1 max-w-md text-sm text-vapor">Platform announcements and patch notes will appear here when they are published.</p>
+          </div>
         ) : (
           <div className="space-y-4">
             {updates.map((update, index) => (

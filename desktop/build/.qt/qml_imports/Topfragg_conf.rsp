@@ -1,0 +1,15 @@
+-rootPath
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop
+-cmake-output
+-output-file
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build/.qt/qml_imports/Topfragg_conf.cmake
+-importPath
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build
+-importPath
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build/Topfragg
+-importPath
+C:/Qt/6.11.1/mingw_64/qml
+-qrcFiles
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build/.qt/rcc/qmake_Topfragg.qrc
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build/.qt/rcc/Topfragg_raw_qml_0.qrc
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build/.qt/rcc/Topfragg_raw_res_0.qrc

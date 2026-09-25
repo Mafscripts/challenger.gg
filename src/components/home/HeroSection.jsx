@@ -13,8 +13,8 @@ export default function HeroSection() {
       <div className="absolute inset-0">
         <img
           src="https://media.base44.com/images/public/6a38e7860fd3c41494b9c695/902c6e4df_generated_5b6cee19.png"
-          alt="Tactical operator in dark environment with cyan rim lighting"
-          className="w-full h-full object-cover opacity-40"
+          alt="Competitive player preparing for a match"
+          className="h-full w-full object-cover opacity-[0.16]"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/40" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/60" />
@@ -57,7 +57,7 @@ export default function HeroSection() {
             transition={{ delay: 0.4 }}
             className="text-lg text-vapor max-w-xl mb-10 leading-relaxed"
           >
-            The premier competitive Call of Duty platform. Play 8s, climb ranked ladders,
+            The premier competitive Call of Duty platform. Play ranked, compete in wagers,
             wager on your skills, dominate tournaments, and earn your place among champions.
           </motion.p>
 

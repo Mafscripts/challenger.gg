@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { DollarSign, Flame, Star, Trophy, TrendingUp } from "lucide-react";
+import { DollarSign, Flame, Trophy, TrendingUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
 import UserBadges from "@/components/ui/UserBadges";
@@ -9,7 +9,6 @@ import PageHeader from "@/components/ui/PageHeader";
 
 const tabs = [
   { key: "elo", label: "ELO Rankings", icon: TrendingUp },
-  { key: "xp", label: "XP Level", icon: Star },
   { key: "tournaments", label: "Tournament Wins", icon: Trophy },
   { key: "wagers", label: "Wager Earnings", icon: DollarSign },
 ];
@@ -23,7 +22,6 @@ export default function Leaderboards() {
   const [activeTab, setActiveTab] = useState("elo");
   const [region, setRegion] = useState("Global");
   const [rankedStats, setRankedStats] = useState([]);
-  const [xpStats, setXpStats] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,13 +31,11 @@ export default function Leaderboards() {
 
   const loadData = async () => {
     try {
-      const [rankedRows, xpRows, userRows] = await Promise.all([
+      const [rankedRows, userRows] = await Promise.all([
         base44.entities.RankedStats.filter({}, "-elo", 100).catch(() => []),
-        base44.entities.XPStats.filter({}, "-total_xp", 100).catch(() => []),
         base44.entities.User.filter({}, "-total_wager_earnings", 500).catch(() => []),
       ]);
       setRankedStats(rankedRows || []);
-      setXpStats(xpRows || []);
       setUsers(userRows || []);
     } finally {
       setLoading(false);
@@ -72,23 +68,6 @@ export default function Leaderboards() {
         }));
     }
 
-    if (activeTab === "xp") {
-      return xpStats
-        .filter(regionFilter)
-        .map(enrich)
-        .map((row) => ({
-          id: row.id,
-          name: playerName(row),
-          slug: playerSlug(row),
-          tier: `Prestige ${row.prestige || 0}`,
-          region: (row.region || "na").toUpperCase(),
-          streak: row.win_streak || 0,
-          value: Number(row.level || 1),
-          display: `Lv. ${row.level || 1}`,
-          user: userById.get(row.user_id) || null,
-        }));
-    }
-
     const userRows = users.filter(regionFilter);
     if (activeTab === "tournaments") {
       return userRows.map((row) => ({
@@ -115,7 +94,7 @@ export default function Leaderboards() {
       display: `$${Number(row.total_wager_earnings || 0).toLocaleString()}`,
       user: row,
     })).sort((a, b) => b.value - a.value);
-  }, [activeTab, region, rankedStats, xpStats, users]);
+  }, [activeTab, region, rankedStats, users]);
 
   const rankedRows = rows.map((row, index) => ({ ...row, rank: index + 1 }));
   const podium = [rankedRows[1], rankedRows[0], rankedRows[2]].filter(Boolean);
@@ -123,7 +102,7 @@ export default function Leaderboards() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <PageHeader eyebrow="Competitive rankings" title="Leaderboards" description="Live rankings from ranked, XP, tournament and wager records." />
+        <PageHeader eyebrow="Competitive rankings" title="Leaderboards" description="Live rankings from ranked, tournament and wager records." />
 
         <div className="flex flex-wrap items-center gap-3 mb-6">
           {tabs.map((tab) => (
@@ -158,30 +137,39 @@ export default function Leaderboards() {
           <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">No leaderboard records yet.</div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-4 mb-8 max-w-2xl mx-auto">
-              {podium.map((row, index) => {
-                const place = row.rank;
-                const gradients = { 1: "from-yellow-400 to-orange", 2: "from-gray-300 to-gray-400", 3: "from-amber-600 to-amber-800" };
-                return (
-                  <motion.div
-                    key={row.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.15 }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradients[place]} flex items-center justify-center text-xl font-black mb-3`}>
-                      #{place}
-                    </div>
-                    <div className="mb-1 flex items-center justify-center gap-1.5">
-                      <Link to={`/profile/${row.slug}`} className="font-bold text-sm hover:text-cyan transition-colors">{row.name}</Link>
-                      <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" />
-                    </div>
-                    <p className="text-xs text-vapor mb-1 capitalize">{row.tier}</p>
-                    <p className="text-lg font-bold font-mono text-cyan">{row.display}</p>
-                  </motion.div>
-                );
-              })}
+            <div className="dark-focus dark-media mb-8 overflow-hidden rounded-xl p-5 sm:p-7">
+              <div className="mb-6 flex items-end justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Top competitors</p>
+                  <h2 className="mt-1 text-xl font-black">Podium</h2>
+                </div>
+                <Trophy className="h-6 w-6 text-primary" />
+              </div>
+              <div className="mx-auto grid max-w-2xl grid-cols-3 gap-3 sm:gap-6">
+                {podium.map((row, index) => {
+                  const place = row.rank;
+                  const gradients = { 1: "from-yellow-400 to-orange", 2: "from-gray-300 to-gray-400", 3: "from-amber-600 to-amber-800" };
+                  return (
+                    <motion.div
+                      key={row.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.15 }}
+                      className={`flex flex-col items-center rounded-xl border border-white/10 bg-white/[0.04] px-2 py-5 text-center ${place === 1 ? "-translate-y-2" : ""}`}
+                    >
+                      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-lg font-black text-white sm:h-14 sm:w-14 ${gradients[place]}`}>
+                        #{place}
+                      </div>
+                      <div className="mb-1 flex min-w-0 items-center justify-center gap-1.5">
+                        <Link to={`/profile/${row.slug}`} className="truncate text-xs font-bold transition-colors hover:text-primary sm:text-sm">{row.name}</Link>
+                        <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" />
+                      </div>
+                      <p className="mb-1 text-[10px] capitalize text-vapor sm:text-xs">{row.tier}</p>
+                      <p className="font-mono text-sm font-bold text-primary sm:text-lg">{row.display}</p>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="glass rounded-xl border border-white/5 overflow-hidden">
@@ -191,7 +179,7 @@ export default function Leaderboards() {
                 <span>Tier</span>
                 <span>Region</span>
                 <span>Streak</span>
-                <span>{activeTab === "elo" ? "ELO" : activeTab === "xp" ? "Level" : activeTab === "tournaments" ? "Wins" : "Earnings"}</span>
+                <span>{activeTab === "elo" ? "ELO" : activeTab === "tournaments" ? "Wins" : "Earnings"}</span>
               </div>
               <div className="divide-y divide-white/5">
                 {rankedRows.map((row) => (

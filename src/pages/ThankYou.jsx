@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle, Coins, Loader2 } from "lucide-react";
+import { CheckCircle, Coins, Loader2, ShieldAlert } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 export default function ThankYou() {
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const query = new URLSearchParams(location.search);
+  const paymentConfirmed = query.get("status") === "success" || query.get("checkout") === "success" || query.has("session_id");
 
   useEffect(() => {
     base44.auth.isAuthenticated().then(async (authed) => {
@@ -29,12 +32,16 @@ export default function ThankYou() {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: "spring" }}
-          className="w-16 h-16 rounded-full bg-green/20 flex items-center justify-center mx-auto mb-4"
+          className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${paymentConfirmed ? "bg-green/15" : "bg-orange/12"}`}
         >
-          <CheckCircle className="w-8 h-8 text-green" />
+          {paymentConfirmed ? <CheckCircle className="h-8 w-8 text-green" /> : <ShieldAlert className="h-8 w-8 text-orange" />}
         </motion.div>
-        <h1 className="text-2xl font-black mb-2">Payment Successful!</h1>
-        <p className="text-vapor text-sm mb-6">Your credits have been added to your account.</p>
+        <h1 className="mb-2 text-2xl font-black">{paymentConfirmed ? "Payment confirmed" : "Payment status unavailable"}</h1>
+        <p className="mb-6 text-sm text-vapor">
+          {paymentConfirmed
+            ? "Your confirmed balance is shown below."
+            : "No verified checkout confirmation was found. Your balance has not been presented as a successful payment."}
+        </p>
 
         {loading ? (
           <Loader2 className="w-6 h-6 text-cyan animate-spin mx-auto" />
@@ -49,10 +56,10 @@ export default function ThankYou() {
         )}
 
         <Link
-          to="/settings"
+          to="/wallet"
           className="inline-flex items-center gap-2 px-6 py-2.5 bg-cyan/10 text-cyan text-sm font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all"
         >
-          Back to Settings
+          Back to Wallet
         </Link>
       </motion.div>
     </div>

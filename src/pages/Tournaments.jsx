@@ -56,7 +56,7 @@ const padCountdownUnit = (value) => String(value).padStart(2, "0");
 const timeUntil = (value, now = Date.now()) => {
   if (!value) return "TBD";
   const diff = new Date(value).getTime() - now;
-  if (diff <= 0) return "Live now";
+  if (diff <= 0) return "Schedule passed";
   const totalSeconds = Math.floor(diff / 1000);
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
@@ -85,6 +85,7 @@ const statusTone = (status) => {
 };
 const compactModeLabel = (tournament) => `${tournament?.team_size || "1v1"} - ${modeLabels[tournament?.game_mode] || tournament?.game_mode || "Mode TBD"}`;
 const tournamentImageUrl = (tournament) => tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || "";
+const tournamentBannerUrl = (tournament) => tournament?.banner_url || tournament?.cover_image_url || tournament?.image_url || "";
 const isStreamerTournament = (tournament) => Boolean(
   tournament?.is_streamer_tournament
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
@@ -143,6 +144,47 @@ const currentMatchForUser = (matches, participantKeys, teamKeys) => {
     })[0] || null;
 };
 
+function FeaturedTournamentHero({ tournament, now, onSelect }) {
+  const bannerUrl = tournamentBannerUrl(tournament);
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="dark-media relative mb-5 min-h-[300px] overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:min-h-[340px]"
+    >
+      {bannerUrl && <img src={bannerUrl} alt={`${tournament.name} featured banner`} className="absolute inset-0 h-full w-full object-cover" />}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(20,22,27,.98)_0%,rgba(20,22,27,.9)_44%,rgba(20,22,27,.38)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgba(20,22,27,.86)_100%)]" />
+      <div className="relative flex min-h-[300px] max-w-3xl flex-col justify-end p-6 sm:min-h-[340px] sm:p-9 lg:p-11">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-md border border-orange/35 bg-orange/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-orange">Featured tournament</span>
+          <span className={`rounded-md border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
+            {statusLabels[tournament.status] || tournament.status}
+          </span>
+        </div>
+        <h2 className="max-w-2xl text-3xl font-black leading-none text-white sm:text-4xl lg:text-5xl">{tournament.name}</h2>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-vapor">
+          {tournament.description || `${compactModeLabel(tournament)}. Enter with your roster and compete for the featured prize pool.`}
+        </p>
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="grid grid-cols-3 gap-2 sm:min-w-[440px]">
+            <CompactStat label="Prize pool" value={formatMoney(tournament.prize_pool)} />
+            <CompactStat label="Teams" value={`${tournament.registered_teams || 0}/${tournament.max_teams || 0}`} />
+            <CompactStat label="Starts" value={timeUntil(tournament.start_date, now)} />
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelect(tournament.id)}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:bg-orange/90"
+          >
+            Enter <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
 export default function Tournaments() {
   const [filter, setFilter] = useState("All");
   const [user, setUser] = useState(null);
@@ -150,6 +192,7 @@ export default function Tournaments() {
   const [matchesByTournament, setMatchesByTournament] = useState({});
   const [participantsByTournament, setParticipantsByTournament] = useState({});
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
+  const [tournamentTab, setTournamentTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState(null);
   const [leavingId, setLeavingId] = useState(null);
@@ -406,6 +449,7 @@ export default function Tournaments() {
   const handleSelectTournament = (tournamentId) => {
     selectedTournamentIdRef.current = tournamentId;
     setSelectedTournamentId(tournamentId);
+    setTournamentTab("overview");
     if (!matchesByTournament[tournamentId]) {
       loadMatches(tournamentId);
     }
@@ -416,6 +460,12 @@ export default function Tournaments() {
 
   const officialTournaments = useMemo(() => tournaments.filter((tournament) => !isStreamerTournament(tournament)), [tournaments]);
   const streamerTournaments = useMemo(() => tournaments.filter(isStreamerTournament), [tournaments]);
+  const featuredTournament = useMemo(() => (
+    officialTournaments.find((tournament) => tournament.is_featured === true)
+    || officialTournaments.find((tournament) => ["open", "registration", "live", "in_progress"].includes(tournament.status))
+    || officialTournaments[0]
+    || null
+  ), [officialTournaments]);
   const filteredTournaments = useMemo(() => (
     officialTournaments.filter((tournament) => filter === "All" || statusLabels[tournament.status] === filter || tournament.status === filter)
   ), [officialTournaments, filter]);
@@ -492,6 +542,10 @@ export default function Tournaments() {
         />
 
         <ActivisionIdNotice user={user} className="mb-5" />
+
+        {featuredTournament && (
+          <FeaturedTournamentHero tournament={featuredTournament} now={now} onSelect={handleSelectTournament} />
+        )}
 
         <div className="mb-4 flex items-center gap-1.5 overflow-x-auto">
           {["All", "Open", "Registration", "In Progress", "Completed"].map((item) => (
@@ -619,7 +673,32 @@ export default function Tournaments() {
                 </div>
               )}
 
-              <div className="glass flex flex-col gap-3 rounded-xl border border-white/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              {selectedTournament && (
+                <div className="glass overflow-x-auto rounded-xl border border-border px-2">
+                  <div className="flex min-w-max items-center" role="tablist" aria-label="Tournament sections">
+                    {[
+                      ["overview", "Overview"],
+                      ["bracket", "Bracket"],
+                      ["matches", "Matches"],
+                      ["teams", "Teams"],
+                      ["rules", "Rules"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="tab"
+                        aria-selected={tournamentTab === value}
+                        onClick={() => setTournamentTab(value)}
+                        className={`relative min-h-12 px-4 text-xs font-black transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full ${tournamentTab === value ? "text-primary after:bg-primary" : "text-vapor after:bg-transparent hover:text-primary"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {tournamentTab === "overview" && <div className="glass flex flex-col gap-3 rounded-xl border border-white/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-sm font-bold">Tournament Access</h2>
                   <p className="text-[11px] text-vapor">
@@ -698,8 +777,11 @@ export default function Tournaments() {
                     </div>
                   )}
                 </div>
-              </div>
-              <CompactBracketPreview matches={selectedMatches} tournament={selectedTournament} />
+              </div>}
+              {tournamentTab === "bracket" && <CompactBracketPreview matches={selectedMatches} tournament={selectedTournament} />}
+              {tournamentTab === "matches" && <TournamentMatchesPanel matches={selectedMatches} />}
+              {tournamentTab === "teams" && <TournamentTeamsPanel participants={selectedParticipants} tournament={selectedTournament} />}
+              {tournamentTab === "rules" && <TournamentRulesPanel tournament={selectedTournament} />}
             </div>
             <RecentChampionsPanel champions={recentChampions} />
             {isAdmin && <CreateTournamentPanel />}
@@ -727,6 +809,106 @@ function CompactStat({ label, value }) {
       <p className="truncate font-mono text-[11px] font-black text-white">{value}</p>
       <p className="mt-0.5 text-[8px] font-black uppercase tracking-wider text-vapor">{label}</p>
     </div>
+  );
+}
+
+function TournamentMatchesPanel({ matches = [] }) {
+  const orderedMatches = [...matches].sort((a, b) => (
+    Number(a.round || 1) - Number(b.round || 1)
+    || Number(a.match_number || 1) - Number(b.match_number || 1)
+  ));
+
+  return (
+    <section className="glass overflow-hidden rounded-xl border border-border">
+      <div className="border-b border-border px-5 py-4">
+        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-primary">Tournament matches</p>
+        <h2 className="mt-1 text-base font-black">Match schedule and results</h2>
+      </div>
+      {orderedMatches.length ? (
+        <div className="divide-y divide-border">
+          {orderedMatches.map((match) => {
+            const complete = match.completed || match.status === "completed";
+            return (
+              <Link key={match.id} to={`/tournament-match/${match.id}`} className="group grid gap-3 px-5 py-4 transition-colors hover:bg-primary/[0.035] sm:grid-cols-[110px_minmax(0,1fr)_auto] sm:items-center">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{match.bracket === "loser" ? "Lower" : match.bracket === "grand_final" ? "Grand Final" : "Round"} {match.round || 1}</p>
+                  <p className="mt-1 text-xs font-bold text-primary">Match {match.match_number || 1}</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{match.team_a_name || "Open slot"} <span className="px-1 text-vapor">vs</span> {match.team_b_name || "Open slot"}</p>
+                  <p className="mt-1 text-[10px] text-vapor">{modeLabels[match.game_mode] || match.game_mode || "Mode TBD"} · {formatDate(match.scheduled_date || match.start_date)}</p>
+                </div>
+                <div className="flex items-center gap-3 sm:justify-end">
+                  <span className="font-mono text-sm font-black">{match.team_a_score || 0} — {match.team_b_score || 0}</span>
+                  <span className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase ${complete ? "border-green/20 bg-green/10 text-green" : "border-primary/20 bg-primary/10 text-primary"}`}>
+                    {complete ? "Final" : statusLabels[match.status] || String(match.status || "pending").replace(/_/g, " ")}
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-vapor group-hover:text-primary" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="px-5 py-12 text-center">
+          <Clock className="mx-auto h-8 w-8 text-vapor/35" />
+          <p className="mt-3 text-sm font-bold">Matches appear after the bracket is generated.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TournamentTeamsPanel({ participants = [], tournament }) {
+  const teamsVisible = tournament?.bracket_generated || ["live", "in_progress", "completed"].includes(tournament?.status);
+
+  return (
+    <section className="glass overflow-hidden rounded-xl border border-border">
+      <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-primary">Registered teams</p>
+          <h2 className="mt-1 text-base font-black">Competition field</h2>
+        </div>
+        <span className="rounded-md border border-border bg-secondary px-2.5 py-1 text-[10px] font-black text-vapor">{tournament?.registered_teams || participants.length}/{tournament?.max_teams || "—"}</span>
+      </div>
+      {!teamsVisible ? (
+        <div className="px-5 py-12 text-center">
+          <Users className="mx-auto h-8 w-8 text-vapor/35" />
+          <p className="mt-3 text-sm font-bold">Team entries stay private until the bracket is seeded.</p>
+        </div>
+      ) : participants.length ? (
+        <div className="grid gap-3 p-4 sm:grid-cols-2">
+          {participants.map((participant, index) => (
+            <article key={participant.id || index} className="flex items-center gap-3 rounded-lg border border-border bg-secondary/45 p-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-mono text-xs font-black text-primary">#{participant.seed || index + 1}</span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black">{participant.team_name || participant.player_name || `Team ${index + 1}`}</p>
+                <p className="mt-0.5 text-[10px] text-vapor">{participant.members?.length || participant.player_names?.length || 1} player roster</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="px-5 py-12 text-center"><p className="text-sm text-vapor">No teams registered yet.</p></div>
+      )}
+    </section>
+  );
+}
+
+function TournamentRulesPanel({ tournament }) {
+  const rules = tournament?.rules || tournament?.rules_text || tournament?.description;
+
+  return (
+    <section className="glass rounded-xl border border-border p-5 sm:p-6">
+      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-primary">Tournament rules</p>
+      <h2 className="mt-1 text-base font-black">Format and fair play</h2>
+      <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-vapor">
+        {rules || "This event follows the Topfragg competitive rules, match reporting process, and dispute policy."}
+      </div>
+      <Link to="/rules" className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2.5 text-xs font-black uppercase tracking-wider text-foreground hover:border-primary/30 hover:bg-primary/[0.06] hover:text-primary">
+        View Platform Rules <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
+    </section>
   );
 }
 
@@ -881,7 +1063,7 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(210,214,220,0.065),transparent_55%,rgba(59,130,246,0.07))] text-vapor"><Trophy className="h-4 w-4" /></div>
+          <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(20,216,255,0.065),transparent_55%,rgba(255,130,0,0.07))] text-vapor"><Trophy className="h-4 w-4" /></div>
         )}
       </div>
       <div className="min-w-0">

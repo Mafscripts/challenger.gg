@@ -222,13 +222,13 @@ export default function Ranked() {
                 </div>
               </Link>
               {activeRankedMatch ? (
-                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-blue-400">
+                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/15 px-6 py-3 text-sm font-bold uppercase tracking-wider text-cyan transition-colors hover:border-cyan/35 hover:bg-cyan/20">
                   Return to Active Match <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white transition-all hover:bg-blue-400 hover:shadow-lg hover:shadow-blue-500/25"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white transition-all hover:bg-blue-400 hover:shadow-lg hover:shadow-cyan/25"
                 >
                   <Plus className="w-4 h-4" /> Create Ranked Match
                 </button>

@@ -52,7 +52,8 @@ const playerEarnings = (user) => Math.max(
 );
 const formatDate = (value) => value ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "TBD";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "TBD";
-const teamTypeLabel = (team) => ({ "8s": "8s", wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "8s"] || "8s");
+const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
+const teamTypeLabel = (team) => ({ wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
 const titleCase = (value) => String(value || "pending").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const teamBannerMaxBytes = 1.5 * 1024 * 1024;
 const statNumber = (value) => {
@@ -156,7 +157,7 @@ export default function Teams() {
   }, []);
 
   useEffect(() => {
-    if (["wager", "tournament", "8s"].includes(requestedCreateType)) setCreateOpen(true);
+    if (["wager", "tournament", "general"].includes(requestedCreateType)) setCreateOpen(true);
   }, [requestedCreateType]);
 
   const loadTeams = async () => {
@@ -182,8 +183,14 @@ export default function Teams() {
         base44.entities.TournamentMatch.filter({}, "-assigned_date", 300).catch(() => []),
       ]);
 
-      setPendingInvites(invites || []);
-      setWagers(wagerRows || []);
+      const allowedTeams = (teamRows || []).filter((team) => (
+        !hiddenCompetitionTypes.has(String(team.team_type || "").toLowerCase())
+      ));
+      const allowedTeamIds = new Set(allowedTeams.map((team) => String(team.id)));
+      setPendingInvites((invites || []).filter((invite) => allowedTeamIds.has(String(invite.team_id || ""))));
+      setWagers((wagerRows || []).filter((wager) => (
+        !hiddenCompetitionTypes.has(String(wager.match_type || "").toLowerCase())
+      )));
       setTournaments(tournamentRows || []);
       setTournamentParticipants(participantRows || []);
       setTournamentMatches(matchRows || []);
@@ -191,11 +198,11 @@ export default function Teams() {
       const activeMembershipTeamIds = new Set((memberships || [])
         .filter((membership) => membership.is_active !== false)
         .map((membership) => String(membership.team_id)));
-      const myTeams = (teamRows || []).filter((team) => (
+      const myTeams = allowedTeams.filter((team) => (
         team.is_active !== false
         && (String(team.captain_id || "") === String(userData.id) || activeMembershipTeamIds.has(String(team.id)))
       ));
-      const linkedTeam = (teamRows || []).find((team) => team.is_active !== false && String(team.id) === String(linkedTeamId || ""));
+      const linkedTeam = allowedTeams.find((team) => team.is_active !== false && String(team.id) === String(linkedTeamId || ""));
       const visibleTeams = linkedTeam && !myTeams.some((team) => String(team.id) === String(linkedTeam.id))
         ? [...myTeams, linkedTeam]
         : myTeams;
@@ -287,16 +294,15 @@ export default function Teams() {
       const isHost = String(wager.host_team_id || "") === teamId;
       const isChallenger = String(wager.challenger_team_id || "") === teamId;
       if ((!isHost && !isChallenger) || ["completed", "cancelled"].includes(wager.status)) return;
-      const roomPrefix = wager.match_type === "8s" ? "8s-match" : wager.match_type === "xp" ? "xp-match" : "wagers-match";
       matchCandidates.push({
         id: wager.id,
-        source: wager.match_type === "8s" ? "8s" : wager.match_type === "xp" ? "XP" : "Wager",
+        source: "Wager",
         title: wager.game_mode_display || wager.game_mode || "Competition match",
         opponent: isHost ? (wager.challenger_team_name || wager.challenger_name || "Waiting for opponent") : (wager.host_team_name || wager.host_name || "Host"),
         status: wager.status || "pending",
         round: 0,
         date: wager.match_started_date || wager.accepted_date || wager.created_date,
-        href: `/${roomPrefix}/${wager.id}`,
+        href: `/wagers-match/${wager.id}`,
       });
     });
 
@@ -389,11 +395,10 @@ export default function Teams() {
         ownScore = won ? wager.winner_score : wager.loser_score;
         opponentScore = won ? wager.loser_score : wager.winner_score;
       }
-      const roomPrefix = wager.match_type === "8s" ? "8s-match" : wager.match_type === "xp" ? "xp-match" : "wagers-match";
       return [{
         id: `wager-${wager.id}`,
         sourceId: wager.id,
-        source: wager.match_type === "8s" ? "8s" : wager.match_type === "xp" ? "XP" : "Wager",
+        source: "Wager",
         opponent: isHost ? (wager.challenger_team_name || wager.challenger_name || "Awaiting opponent") : (wager.host_team_name || wager.host_name || "Host"),
         mode: wager.game_mode_display || wager.game_mode || "Match",
         format: wager.team_size || teamRosterFormat(selectedTeam.roster_size),
@@ -403,7 +408,7 @@ export default function Teams() {
         ownScore,
         opponentScore,
         date: wager.match_started_date || wager.accepted_date || wager.created_date,
-        href: `/${roomPrefix}/${wager.id}`,
+        href: `/wagers-match/${wager.id}`,
       }];
     });
 
@@ -565,7 +570,7 @@ export default function Teams() {
                     key={filter.id}
                     type="button"
                     onClick={() => setTeamFilter(filter.id)}
-                    className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${teamFilter === filter.id ? "bg-blue-500/15 text-blue-300 ring-1 ring-blue-400/25" : "text-vapor hover:bg-blue-500/10 hover:text-blue-300"}`}
+                    className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${teamFilter === filter.id ? "bg-blue-500/15 text-blue-300 ring-1 ring-cyan/25" : "text-vapor hover:bg-blue-500/10 hover:text-blue-300"}`}
                   >
                     {filter.label}
                   </button>
@@ -631,7 +636,7 @@ export default function Teams() {
         ) : null}
       </div>
 
-      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={requestedCreateType === "wager" ? "wager" : requestedCreateType === "tournament" ? "tournament" : "8s"} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={async (team) => { await loadTeams(); setSelectedTeamId(team.id); setDetailTab("overview"); setView("details"); }} />
+      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={requestedCreateType === "wager" ? "wager" : requestedCreateType === "tournament" ? "tournament" : "general"} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={async (team) => { await loadTeams(); setSelectedTeamId(team.id); setDetailTab("overview"); setView("details"); }} />
       <InvitePlayerModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} team={selectedTeam} value={inviteIdentifier} onChange={setInviteIdentifier} onSubmit={handleInvite} busy={Boolean(busyAction)} />
     </div>
   );
@@ -645,7 +650,7 @@ function TeamLogo({ team, className = "h-16 w-16", textClassName = "text-xl" }) 
   }, [team.logo_url]);
 
   return (
-    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-blue-400/20 bg-gradient-to-br from-blue-500/25 via-secondary to-slate-500/20 font-mono font-black text-blue-200 shadow-[0_16px_32px_rgba(0,0,0,0.28)] ${className}`}>
+    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-blue-400/20 bg-gradient-to-br from-cyan/25 via-secondary to-slate-500/20 font-mono font-black text-blue-200 shadow-[0_16px_32px_rgba(0,0,0,0.28)] ${className}`}>
       {team.logo_url && !imageFailed ? <img src={team.logo_url} alt="" onError={() => setImageFailed(true)} className="block h-full w-full object-cover" /> : <span className={`block max-w-full truncate px-2 ${textClassName}`}>{teamInitials(team)}</span>}
     </div>
   );
@@ -659,7 +664,7 @@ function TeamBanner({ team, imageClassName = "opacity-65 transition-transform du
   }, [team.banner_url]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_78%_15%,rgba(59,130,246,.16),transparent_34%),radial-gradient(circle_at_18%_90%,rgba(148,163,184,.08),transparent_30%),linear-gradient(125deg,rgba(25,27,31,.98),rgba(14,15,18,.96))]">
+    <div className="absolute inset-0 overflow-hidden bg-secondary">
       {team.banner_url && !imageFailed && <img src={team.banner_url} alt="" onError={() => setImageFailed(true)} className={`absolute inset-0 block h-full w-full object-cover ${imageClassName}`} />}
     </div>
   );
@@ -667,9 +672,8 @@ function TeamBanner({ team, imageClassName = "opacity-65 transition-transform du
 
 function TeamsCommandHero({ overview, onCreate }) {
   return (
-    <section className="relative mb-6 overflow-hidden rounded-3xl border border-white/[0.07] bg-card">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_88%_0%,rgba(59,130,246,.16),transparent_30%),radial-gradient(circle_at_15%_100%,rgba(148,163,184,.07),transparent_34%),linear-gradient(118deg,rgba(16,17,20,.99),rgba(23,25,29,.96)_55%,rgba(12,13,15,.99))]" />
-      <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rotate-[-18deg] rounded-[4rem] border border-blue-400/10" />
+    <section className="premium-panel relative mb-6 overflow-hidden rounded-xl border border-border bg-card">
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-primary" />
       <div className="relative p-6 sm:p-8">
         <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
           <div>
@@ -677,7 +681,7 @@ function TeamsCommandHero({ overview, onCreate }) {
             <h1 className="mt-2 text-4xl font-black tracking-[-0.04em] sm:text-5xl">Your Teams</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-vapor">Manage your squads, track readiness and prepare every roster for the next match.</p>
           </div>
-          <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-500 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-[0_12px_28px_-14px_rgba(59,130,246,.9)] transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-blue-400">
+          <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-xs font-black uppercase tracking-wider text-primary-foreground shadow-sm transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-primary/90">
             <Plus className="h-4 w-4" /> Create Team
           </button>
         </div>
@@ -707,8 +711,8 @@ function TeamCard({ summary, usersById, onOpen }) {
   const StatusIcon = status.icon;
 
   return (
-    <article className="group relative flex min-h-[575px] min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.08] bg-card shadow-[0_26px_60px_-44px_rgba(0,0,0,.98)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-blue-400/30 hover:shadow-[0_30px_70px_-42px_rgba(59,130,246,.28)]">
-      <div className="relative h-48 shrink-0 overflow-hidden">
+    <article className="group relative flex min-h-[575px] min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.08] bg-card shadow-[0_26px_60px_-44px_rgba(0,0,0,.98)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-blue-400/30 hover:shadow-[0_30px_70px_-42px_rgba(20,216,255,.28)]">
+      <div className="dark-media relative h-48 shrink-0 overflow-hidden">
         <TeamBanner team={team} />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,12,.08),rgba(14,15,18,.2)_42%,rgba(20,21,25,.98))]" />
         <div className="absolute left-5 top-5">
@@ -793,7 +797,7 @@ function CommandMetric({ label, value, detail, icon: Icon }) {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-background/45 p-4 shadow-inner sm:p-5">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 ring-1 ring-blue-400/15"><Icon className="h-5 w-5" /></span>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 ring-1 ring-cyan/15"><Icon className="h-5 w-5" /></span>
         <div className="min-w-0">
           <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</p>
           <p className="mt-1 font-mono text-2xl font-black text-white">{value}</p>
@@ -816,10 +820,9 @@ function TeamCardMetric({ label, value, emphasized = false }) {
 function TeamHero({ team, teams, members, wins, losses, winRate, streak, isCaptain, onBack, onSelectTeam, onInvite, onSettings }) {
   return (
     <section className="relative overflow-hidden rounded-3xl border border-cyan/15 bg-card shadow-[0_24px_60px_-38px_rgba(0,0,0,.95)]">
-      <TeamBanner team={team} imageClassName="opacity-35" />
-      <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(8,13,21,.99)_0%,rgba(8,13,21,.92)_48%,rgba(8,13,21,.62)_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(8,13,21,.72))]" />
-      <div className="relative flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] bg-black/15 px-5 py-3 sm:px-8">
+      <TeamBanner team={team} imageClassName="opacity-[0.12]" />
+      <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(255,255,255,.99)_0%,rgba(255,255,255,.96)_48%,rgba(255,255,255,.82)_100%)]" />
+      <div className="relative flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/60 px-5 py-3 sm:px-8">
         <button onClick={onBack} className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-vapor transition-colors hover:bg-white/[0.04] hover:text-cyan"><ArrowLeft className="h-3.5 w-3.5" /> All teams</button>
         <div className="flex items-center gap-3">
           <span className="hidden text-[9px] font-black uppercase tracking-[0.16em] text-vapor/70 sm:inline">Viewing team</span>
@@ -919,8 +922,7 @@ function RosterPanel({ team, members, usersById, isCaptain, busy, onInvite, onKi
               </div>
               {member.role === "captain" ? <Crown className="h-4 w-4 shrink-0 text-orange" /> : isCaptain && onKick ? <button onClick={() => onKick(member)} disabled={busy} title="Remove player" className="rounded-lg p-2 text-vapor transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"><UserMinus className="h-4 w-4" /></button> : null}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <MiniMetric label="Level" value={user.xp_level || 1} />
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
               <MiniMetric label="Wager W-L" value={`${user.wager_wins || 0}-${user.wager_losses || 0}`} />
               <MiniMetric label="Region" value={String(user.region || team.region || "-").toUpperCase()} />
               <MiniMetric label="Earnings" value={formatMoney(playerEarnings(user))} />

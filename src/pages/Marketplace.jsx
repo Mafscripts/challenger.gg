@@ -51,8 +51,6 @@ export const unlockRequirementText = (item) => {
       return requirement ? `Win ${requirement} tournament${Number(requirement) === 1 ? "" : "s"}` : "Win the required tournament";
     case "wager":
       return requirement ? `Win ${requirement} wager${Number(requirement) === 1 ? "" : "s"}` : "Win the required wagers";
-    case "eights":
-      return requirement ? `Win ${requirement} 8s match${Number(requirement) === 1 ? "" : "es"}` : "Win the required 8s matches";
     case "premium":
       return "Premium subscription required";
     default:
@@ -115,7 +113,9 @@ export default function Marketplace() {
       ]);
       setCurrentUser(syncedUser);
       setOwnedItemIds(new Set((inventory || []).map((entry) => entry.item_id).filter(Boolean)));
-      setItems(dedupeById((rows || []).map(toMarketItem).filter((item) => item.active)));
+      setItems(dedupeById((rows || []).map(toMarketItem).filter((item) => (
+        item.active && !["8s", "eights", "xp"].includes(String(item.unlockType || "").toLowerCase())
+      ))));
     } catch (error) {
       console.error("Failed to load marketplace:", error);
       toast({ title: "Marketplace unavailable", description: "Could not load marketplace items.", variant: "destructive" });

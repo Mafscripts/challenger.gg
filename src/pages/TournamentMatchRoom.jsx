@@ -325,18 +325,19 @@ function TrophyCounts({ trophies }) {
 }
 
 function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirstHost, maxScore, players = [], currentUser }) {
-  const isCyan = color === "cyan";
-  const colorClass = isCyan ? "border-cyan/20" : "border-orange/20";
-  const toneClass = isCyan ? "text-cyan" : "text-orange";
-  const tintClass = isCyan ? "bg-cyan/10 border-cyan/20" : "bg-orange/10 border-orange/20";
+  const isOrange = color === "orange";
+  const colorClass = isOrange ? "border-accent/30" : "border-cyan/30";
+  const toneClass = isOrange ? "text-accent" : "text-cyan";
+  const tintClass = isOrange ? "bg-accent/10 border-accent/30" : "bg-cyan/10 border-cyan/30";
+  const hoverToneClass = isOrange ? "hover:text-accent" : "hover:text-cyan";
   const scoreId = `${label.toLowerCase().replace(/\s+/g, "-")}-score`;
-  const scoreAccent = isCyan
-    ? "border-cyan/35 bg-cyan/10 text-cyan focus:border-cyan focus:ring-cyan/25"
-    : "border-orange/35 bg-orange/10 text-orange focus:border-cyan focus:ring-cyan/25";
+  const scoreAccent = isOrange
+    ? "border-accent/40 bg-accent/10 text-accent focus:border-accent focus:ring-accent/25 focus:shadow-[0_0_0_3px_rgba(255,106,0,0.10)]"
+    : "border-cyan/40 bg-cyan/10 text-cyan focus:border-cyan focus:ring-cyan/25 focus:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]";
 
   return (
-    <section className={`relative min-w-0 overflow-hidden rounded-2xl border bg-card/80 shadow-[0_20px_50px_-42px_rgba(0,0,0,.95)] ${colorClass}`}>
-      <div className={`absolute inset-x-0 top-0 h-px ${isCyan ? "bg-gradient-to-r from-cyan via-cyan/40 to-transparent" : "bg-gradient-to-l from-orange via-orange/40 to-transparent"}`} />
+    <section className={`dark-focus dark-media relative min-w-0 overflow-hidden rounded-2xl border shadow-[0_20px_50px_-42px_rgba(0,0,0,.95)] ${colorClass}`}>
+      <div className={`absolute inset-y-0 left-0 w-1 ${isOrange ? "bg-accent" : "bg-cyan"}`} />
       <div className="flex flex-col gap-5 border-b border-white/[0.06] p-5 sm:flex-row sm:items-center sm:p-6">
         <span className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border font-mono text-lg font-black ${tintClass} ${toneClass}`}>{teamMonogram(name)}</span>
         <div className="min-w-0 flex-1">
@@ -344,7 +345,7 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
           <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5"><h3 className="truncate text-xl font-black sm:text-2xl">{name || "Open slot"}</h3>{name && <BetaBadge />}</div>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">{players.length} confirmed player{players.length === 1 ? "" : "s"}</p>
         </div>
-        <div className="shrink-0 rounded-xl border border-white/5 bg-background/35 p-2 shadow-inner">
+        <div className="shrink-0 rounded-xl border border-white/10 bg-black/20 p-2 shadow-inner">
           <label htmlFor={scoreId} className="mb-1 block text-center text-[10px] font-black uppercase tracking-wider text-vapor">
             {disabled ? "Score" : "Enter score"}
           </label>
@@ -361,28 +362,28 @@ function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirst
               const nextScore = Number(event.target.value);
               setScore(Number.isFinite(nextScore) ? Math.min(maxScore, Math.max(0, Math.trunc(nextScore))) : 0);
             }}
-            className={`h-16 w-24 rounded-lg border text-center font-mono text-3xl font-black outline-none transition-all duration-200 focus:ring-2 focus:shadow-[0_0_0_3px_rgba(210,214,220,0.10)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-28 ${scoreAccent}`}
+            className={`h-16 w-24 rounded-lg border text-center font-mono text-3xl font-black outline-none transition-all duration-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-28 ${scoreAccent}`}
           />
         </div>
       </div>
       <div className="p-5 sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3"><p className="text-[11px] font-black uppercase tracking-[0.16em] text-vapor">Confirmed lineup</p><p className="text-[10px] font-bold uppercase tracking-wider text-vapor/60">Identity & stats</p></div>
         {players.length === 0 ? (
-          <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-white/10 bg-background/20 text-xs text-vapor">Roster unavailable</div>
+          <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] text-xs text-vapor">Roster unavailable</div>
         ) : (
           <div className="space-y-3">
             {players.map((player, index) => {
               const profileSlug = player.user_id || player.username || player.handle || player.user_name;
               const isCurrentUser = rosterPlayerMatchesUser(player, currentUser);
               return (
-                <article key={player.user_id || `${player.user_name}-${index}`} className={`rounded-xl border p-4 ${isCurrentUser ? (isCyan ? "border-cyan/25 bg-cyan/[0.055]" : "border-orange/25 bg-orange/[0.055]") : "border-white/[0.055] bg-background/30"}`}>
+                <article key={player.user_id || `${player.user_name}-${index}`} className={`rounded-xl border p-4 ${isCurrentUser ? (isOrange ? "border-accent/25 bg-accent/[0.055]" : "border-cyan/25 bg-cyan/[0.055]") : "border-white/[0.08] bg-white/[0.035]"}`}>
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
                     <div className="flex min-w-0 flex-1 items-center gap-3.5">
                       <span className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border font-mono text-sm font-black ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : String(player.user_name || "?").charAt(0).toUpperCase()}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} className="truncate text-base font-black text-white transition-colors hover:text-cyan">{player.user_name}</Link> : <span className="truncate text-base font-black text-white">{player.user_name}</span>}
-                          {isCurrentUser && <span className={`rounded px-2 py-0.5 text-[8px] font-black uppercase ${isCyan ? "bg-cyan text-background" : "bg-orange text-background"}`}>You</span>}
+                          {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} className={`truncate text-base font-black text-foreground transition-colors ${hoverToneClass}`}>{player.user_name}</Link> : <span className="truncate text-base font-black text-foreground">{player.user_name}</span>}
+                          {isCurrentUser && <span className={`rounded px-2 py-0.5 text-[8px] font-black uppercase ${isOrange ? "bg-accent text-white" : "bg-cyan text-background"}`}>You</span>}
                           <UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />
                         </div>
                         <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
@@ -411,7 +412,7 @@ function MapSeries({ match }) {
   const bestOf = Math.max(1, Number(match.best_of || match.map_sequence?.length || maps.length || 3));
 
   return (
-    <div className="glass rounded-xl border border-cyan/20 p-5 sm:p-6">
+    <div className="dark-focus dark-media rounded-xl border border-cyan/20 p-5 sm:p-6">
       <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
@@ -427,11 +428,11 @@ function MapSeries({ match }) {
 
       <div className="grid gap-4 md:grid-cols-3">
         {maps.length === 0 ? (
-          <div className="rounded-lg border border-white/5 bg-secondary/40 p-4 text-sm text-vapor md:col-span-3">
+          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 text-sm text-vapor md:col-span-3">
             Maps are being generated.
           </div>
         ) : maps.map((map) => (
-          <div key={`${map.game}-${map.game_mode || map.mode}-${map.map}`} className="rounded-xl border border-white/5 bg-secondary/40 p-5">
+          <div key={`${map.game}-${map.game_mode || map.mode}-${map.map}`} className="rounded-xl border border-white/10 bg-white/[0.04] p-5">
             <p className="text-[10px] font-black uppercase tracking-wider text-cyan">Map {map.game}</p>
             <h3 className="mt-1 text-lg font-black">{map.map}</h3>
             <p className="mt-2 text-xs text-vapor">{map.mode || "Search and Destroy"}</p>
@@ -837,7 +838,7 @@ export default function TournamentMatchRoom() {
   return (
     <div className="min-h-screen bg-obsidian py-6 sm:py-8">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
-        <div className="glass mb-6 rounded-xl border border-orange/20 p-6 sm:p-7">
+        <div className="dark-focus dark-media mb-6 rounded-xl border border-orange/20 p-6 sm:p-7">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
@@ -866,12 +867,8 @@ export default function TournamentMatchRoom() {
         </div>
 
         {!isComplete && match.team_a_id && match.team_b_id && (
-          <div className={`relative mb-6 overflow-hidden rounded-2xl p-[1px] ${
-            startWindowExpired
-              ? "bg-gradient-to-r from-orange/45 via-red-400/20 to-orange/45"
-              : "bg-gradient-to-r from-cyan/45 via-white/10 to-cyan/45"
-          }`}>
-            <div className="relative overflow-hidden rounded-[15px] bg-[linear-gradient(135deg,rgba(18,26,37,0.97),rgba(10,14,21,0.94))] px-5 py-5 sm:px-6">
+          <div className={`relative mb-6 overflow-hidden rounded-xl border ${startWindowExpired ? "border-orange/35" : "border-border"}`}>
+            <div className="relative overflow-hidden bg-card px-5 py-5 sm:px-6">
               <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-start gap-4">
                   <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
@@ -880,12 +877,10 @@ export default function TournamentMatchRoom() {
                     {startWindowExpired ? <Unlock className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
                   </span>
                   <div>
-                    <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${
-                      startWindowExpired ? "text-orange" : "text-cyan"
-                    }`}>
-                      {startWindowExpired ? "Start window expired" : "Match start window"}
-                    </p>
-                    <h2 className="mt-1 text-lg font-black text-white">
+                    {!startWindowExpired && (
+                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Match start window</p>
+                    )}
+                    <h2 className="mt-1 text-lg font-black text-foreground">
                       {startWindowExpired
                         ? "Admin support is now available"
                         : "Your match is ready — start now"}
@@ -897,7 +892,7 @@ export default function TournamentMatchRoom() {
                     )}
                   </div>
                 </div>
-                <div className="shrink-0 rounded-xl bg-black/25 px-6 py-4 text-center shadow-inner ring-1 ring-white/5">
+                <div className="shrink-0 rounded-xl border border-border bg-secondary px-6 py-4 text-center">
                   <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">
                     {hasStartDeadline ? "Time remaining" : "Waiting for schedule"}
                   </p>
@@ -954,7 +949,7 @@ export default function TournamentMatchRoom() {
         <div className="mb-6 grid gap-6 lg:grid-cols-2">
           <TeamCard
             label="Team A"
-            color="cyan"
+            color="orange"
             name={match.team_a_name}
             seed={match.team_a_seed}
             isFirstHost={match.first_host_team_id === match.team_a_id}
@@ -967,7 +962,7 @@ export default function TournamentMatchRoom() {
           />
           <TeamCard
             label="Team B"
-            color="orange"
+            color="blue"
             name={match.team_b_name}
             seed={match.team_b_seed}
             isFirstHost={match.first_host_team_id === match.team_b_id}
@@ -985,7 +980,14 @@ export default function TournamentMatchRoom() {
             <MapSeries match={match} />
 
         {canUseMatchControls && (
-        <div className="glass rounded-xl border border-white/5 p-4">
+        <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
+          <div className="mb-4 flex flex-col gap-1 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Match result</p>
+              <h2 className="mt-1 text-lg font-black">Submit the final series score</h2>
+            </div>
+            <p className="text-xs text-vapor">Opponent confirmation is required before the result is final.</p>
+          </div>
           {isStaff && ["score_conflict", "disputed"].includes(match.status) && (
             <button
               onClick={handleAdminResetDispute}
@@ -1048,7 +1050,7 @@ export default function TournamentMatchRoom() {
             <button
               onClick={handleComplete}
               disabled={!canSubmit || !scoreIsValid || submitting}
-              className="flex-1 min-w-[200px] py-3 bg-blue-500/15 text-blue-300 font-bold text-sm rounded-lg border border-blue-400/25 hover:bg-blue-500/25 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex min-w-[200px] flex-1 items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Check className="w-4 h-4" /> {submitting ? "Submitting..." : canStaffSubmitResult ? "Submit Result" : "Submit Score Report"}
             </button>

@@ -10,18 +10,14 @@ import PageLayout from '@/components/layout/PageLayout';
 // Pages are split by route so visitors only download the screen they open.
 const Home = lazy(() => import('@/pages/Home'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const Eights = lazy(() => import('@/pages/Eights'));
 const Ranked = lazy(() => import('@/pages/Ranked'));
 const Wagers = lazy(() => import('@/pages/Wagers'));
 const Tournaments = lazy(() => import('@/pages/Tournaments'));
 const StreamerTournaments = lazy(() => import('@/pages/StreamerTournaments'));
 const StreamerTournamentLobby = lazy(() => import('@/pages/StreamerTournamentLobby'));
 const TournamentMatchRoom = lazy(() => import('@/pages/TournamentMatchRoom'));
-const XP = lazy(() => import('@/pages/XP'));
 const MatchRoom = lazy(() => import('@/pages/MatchRoom'));
 const RankedMatchRoom = lazy(() => import('@/pages/RankedMatchRoom'));
-const XPMatchRoom = lazy(() => import('@/pages/XPMatchRoom'));
-const EightsMatchRoom = lazy(() => import('@/pages/EightsMatchRoom'));
 const WagersMatchRoom = lazy(() => import('@/pages/WagersMatchRoom'));
 const Leaderboards = lazy(() => import('@/pages/Leaderboards'));
 const Profile = lazy(() => import('@/pages/Profile'));
@@ -73,10 +69,10 @@ function DeferredToaster() {
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
     <div className="flex flex-col items-center gap-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-cyan to-cyan/60">
-        <span className="font-mono text-lg font-bold text-background">TF</span>
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary shadow-sm">
+        <span className="font-mono text-lg font-bold text-primary-foreground">TF</span>
       </div>
-      <div className="h-7 w-7 animate-spin rounded-full border-2 border-cyan/15 border-t-cyan" />
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary/15 border-t-primary" />
     </div>
   </div>
 );
@@ -112,18 +108,14 @@ const AuthenticatedApp = () => {
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/8s" element={<Eights />} />
           <Route path="/ranked" element={<Ranked />} />
           <Route path="/wagers" element={<Wagers />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/streamer-tournaments" element={<StreamerTournaments />} />
           <Route path="/streamer-tournament/:id" element={<StreamerTournamentLobby />} />
           <Route path="/tournament-match/:id" element={<TournamentMatchRoom />} />
-          <Route path="/xp" element={<XP />} />
           <Route path="/match-room/:id" element={<MatchRoom />} />
           <Route path="/ranked-match/:id" element={<RankedMatchRoom />} />
-          <Route path="/xp-match/:id" element={<XPMatchRoom />} />
-          <Route path="/8s-match/:id" element={<EightsMatchRoom />} />
           <Route path="/wagers-match/:id" element={<WagersMatchRoom />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/profile" element={<Profile />} />
@@ -173,7 +165,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router future={{ v7_startTransition: true }}>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ScrollToTop />
         <AuthenticatedApp />
       </Router>

@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { Crown, Check, ArrowRight } from "lucide-react";
 
 const perks = [
-  "2x XP Boost on all matches",
   "Exclusive Premium cosmetics monthly",
   "Priority matchmaking queue",
   "Custom profile frames & badges",

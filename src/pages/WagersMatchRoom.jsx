@@ -62,7 +62,7 @@ function SimpleRoster({ title, name, players, tone = "cyan", score, setScore, sc
   const color = tone === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
 
   return (
-    <section className={`glass rounded-xl border ${tone === "cyan" ? "border-cyan/20" : "border-orange/20"} overflow-hidden`}>
+    <section className={`dark-focus dark-media rounded-xl border ${tone === "cyan" ? "border-cyan/20" : "border-orange/20"} overflow-hidden`}>
       <div className={`flex items-center justify-between gap-4 border-b px-5 py-4 ${color}`}>
         <div className="min-w-0">
           <h2 className="text-xs font-black uppercase tracking-[0.16em]">{title}</h2>
@@ -76,7 +76,7 @@ function SimpleRoster({ title, name, players, tone = "cyan", score, setScore, sc
         {players.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-vapor">Waiting for roster</div>
         ) : players.map((player, index) => (
-          <div key={player.id || player.user_id || index} className="rounded-xl border border-white/5 bg-background/30 p-4">
+          <div key={player.id || player.user_id || index} className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
             <div className="flex items-start gap-3">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-black text-background ${tone === "cyan" ? "bg-cyan" : "bg-orange"}`}>
                 {playerName(player).charAt(0)}
@@ -97,14 +97,10 @@ function SimpleRoster({ title, name, players, tone = "cyan", score, setScore, sc
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid grid-cols-1 gap-2">
               <div className="rounded-lg border border-green/15 bg-green/5 px-3 py-2">
                 <p className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-vapor"><DollarSign className="h-3 w-3 text-green" /> Lifetime earnings</p>
                 <p className="mt-1 font-mono text-sm font-black text-green">{formatMoney(player.lifetime_earnings)}</p>
-              </div>
-              <div className="rounded-lg border border-white/5 bg-secondary/40 px-3 py-2">
-                <p className="text-[9px] font-black uppercase tracking-wider text-vapor">XP level</p>
-                <p className="mt-1 font-mono text-sm font-black">{player.xp_level || 1}</p>
               </div>
             </div>
 
@@ -555,7 +551,7 @@ export default function WagersMatchRoom() {
     setResolvingAdmin(true);
     try {
       const response = await base44.functions.invoke("adminResetMatchDispute", {
-        match_type: wager.match_type === "8s" ? "8s" : "wager",
+        match_type: "wager",
         match_id: wager.id,
       });
       if (!response.data?.success) {
@@ -702,7 +698,7 @@ export default function WagersMatchRoom() {
     <div className="min-h-screen bg-obsidian py-6 sm:py-8">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         {isComplete && personalMoneyResult && !resultDismissed && <WagerMoneyResultOverlay wager={wager} result={personalMoneyResult} onContinue={dismissResult} />}
-        <header className="glass mb-6 rounded-xl border border-green/20 p-6 sm:p-7">
+        <header className="dark-focus dark-media mb-6 rounded-xl border border-green/20 p-6 sm:p-7">
           <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
             <div>
               <div className="mb-2 flex items-center gap-3">
@@ -717,20 +713,20 @@ export default function WagersMatchRoom() {
                 <p className="text-[9px] font-black uppercase tracking-wider text-green">Prize pool</p>
                 <p className="mt-1 font-mono text-2xl font-black text-green">{formatMoney(prizePool)}</p>
               </div>
-              <Link to="/wagers" className="rounded-lg bg-secondary px-4 py-3 text-xs font-bold text-vapor transition-all hover:bg-white/10">Back to wagers</Link>
+              <Link to="/wagers" className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-bold text-vapor transition-all hover:border-primary/30 hover:text-primary">Back to wagers</Link>
             </div>
           </div>
         </header>
 
         {!isComplete && timeRemaining && (
           <div className={`relative mb-6 overflow-hidden rounded-2xl p-[1px] ${timeRemaining === "EXPIRED" ? "bg-gradient-to-r from-orange/45 via-red-400/20 to-orange/45" : "bg-gradient-to-r from-cyan/45 via-white/10 to-cyan/45"}`}>
-            <div className="rounded-[15px] bg-[linear-gradient(135deg,rgba(18,26,37,0.97),rgba(10,14,21,0.94))] px-5 py-5 sm:px-6">
+            <div className="rounded-[15px] bg-card px-5 py-5 sm:px-6">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-4">
                   <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${timeRemaining === "EXPIRED" ? "bg-orange/10 text-orange" : "bg-cyan/10 text-cyan"}`}><Clock className="h-5 w-5" /></span>
                   <div><p className={`text-[10px] font-black uppercase tracking-[0.22em] ${timeRemaining === "EXPIRED" ? "text-orange" : "text-cyan"}`}>Match start window</p><h2 className="mt-1 text-lg font-black">{timeRemaining === "EXPIRED" ? "Admin support is available" : "Your wager is ready — start now"}</h2><p className="mt-1 text-sm text-vapor">Enter the lobby and begin the match before the start window expires.</p></div>
                 </div>
-                <div className="rounded-xl bg-black/25 px-6 py-4 text-center ring-1 ring-white/5"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Time remaining</p><p className={`mt-1 font-mono text-3xl font-black ${timeRemaining === "EXPIRED" ? "text-orange" : "text-cyan"}`}>{timeRemaining}</p></div>
+                <div className="rounded-xl border border-border bg-secondary px-6 py-4 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Time remaining</p><p className={`mt-1 font-mono text-3xl font-black ${timeRemaining === "EXPIRED" ? "text-orange" : "text-cyan"}`}>{timeRemaining}</p></div>
               </div>
             </div>
           </div>
@@ -753,7 +749,7 @@ export default function WagersMatchRoom() {
           <div className="min-w-0 space-y-6">
             <div className="grid gap-6 md:grid-cols-2"><MatchStatusCard match={wager} /><ActivityTimeline match={wager} /></div>
 
-        <div className="glass rounded-xl border border-white/5 p-4">
+        <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
           {canAdminResolve && (
             <div className="mb-3 grid gap-3 border-b border-white/5 pb-3 md:grid-cols-3">
               {["score_conflict", "disputed"].includes(wager.status) && (

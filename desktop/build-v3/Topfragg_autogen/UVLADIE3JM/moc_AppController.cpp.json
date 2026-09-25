@@ -1,0 +1,305 @@
+{
+    "classes": [
+        {
+            "className": "AppController",
+            "final": true,
+            "lineNumber": 7,
+            "methods": [
+                {
+                    "access": "public",
+                    "index": 4,
+                    "lineNumber": 35,
+                    "name": "toggleQueue",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 5,
+                    "lineNumber": 36,
+                    "name": "leaveQueue",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 6,
+                    "lineNumber": 37,
+                    "name": "acceptReadyCheck",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 7,
+                    "lineNumber": 38,
+                    "name": "declineReadyCheck",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 8,
+                    "lineNumber": 39,
+                    "name": "enterMatch",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 9,
+                    "lineNumber": 40,
+                    "name": "resetMatchmaking",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "tournamentName",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 10,
+                    "lineNumber": 41,
+                    "name": "joinTournament",
+                    "returnType": "bool"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "amount",
+                            "type": "int"
+                        }
+                    ],
+                    "index": 11,
+                    "lineNumber": 42,
+                    "name": "addDemoCredits",
+                    "returnType": "void"
+                }
+            ],
+            "object": true,
+            "properties": [
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 0,
+                    "lineNumber": 10,
+                    "name": "queueActive",
+                    "notify": "queueActiveChanged",
+                    "override": false,
+                    "read": "queueActive",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "bool",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 1,
+                    "lineNumber": 11,
+                    "name": "queueStatus",
+                    "notify": "queueActiveChanged",
+                    "override": false,
+                    "read": "queueStatus",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 2,
+                    "lineNumber": 12,
+                    "name": "matchmakingState",
+                    "notify": "matchmakingChanged",
+                    "override": false,
+                    "read": "matchmakingState",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 3,
+                    "lineNumber": 13,
+                    "name": "queueSeconds",
+                    "notify": "matchmakingChanged",
+                    "override": false,
+                    "read": "queueSeconds",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 4,
+                    "lineNumber": 14,
+                    "name": "playersFound",
+                    "notify": "matchmakingChanged",
+                    "override": false,
+                    "read": "playersFound",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 5,
+                    "lineNumber": 15,
+                    "name": "readyPlayers",
+                    "notify": "matchmakingChanged",
+                    "override": false,
+                    "read": "readyPlayers",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 6,
+                    "lineNumber": 16,
+                    "name": "readySecondsLeft",
+                    "notify": "matchmakingChanged",
+                    "override": false,
+                    "read": "readySecondsLeft",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 7,
+                    "lineNumber": 17,
+                    "name": "matchCountdown",
+                    "notify": "matchmakingChanged",
+                    "override": false,
+                    "read": "matchCountdown",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 8,
+                    "lineNumber": 18,
+                    "name": "searchRange",
+                    "notify": "matchmakingChanged",
+                    "override": false,
+                    "read": "searchRange",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "QString",
+                    "user": false,
+                    "virtual": false
+                },
+                {
+                    "constant": false,
+                    "designable": true,
+                    "final": false,
+                    "index": 9,
+                    "lineNumber": 19,
+                    "name": "credits",
+                    "notify": "creditsChanged",
+                    "override": false,
+                    "read": "credits",
+                    "required": false,
+                    "scriptable": true,
+                    "stored": true,
+                    "type": "int",
+                    "user": false,
+                    "virtual": false
+                }
+            ],
+            "qualifiedClassName": "AppController",
+            "signals": [
+                {
+                    "access": "public",
+                    "index": 0,
+                    "lineNumber": 45,
+                    "name": "queueActiveChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 1,
+                    "lineNumber": 46,
+                    "name": "matchmakingChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "index": 2,
+                    "lineNumber": 47,
+                    "name": "creditsChanged",
+                    "returnType": "void"
+                },
+                {
+                    "access": "public",
+                    "arguments": [
+                        {
+                            "name": "title",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "message",
+                            "type": "QString"
+                        },
+                        {
+                            "name": "tone",
+                            "type": "QString"
+                        }
+                    ],
+                    "index": 3,
+                    "lineNumber": 48,
+                    "name": "toastRequested",
+                    "returnType": "void"
+                }
+            ],
+            "superClasses": [
+                {
+                    "access": "public",
+                    "name": "QObject"
+                }
+            ]
+        }
+    ],
+    "inputFile": "AppController.h",
+    "outputRevision": 69
+}

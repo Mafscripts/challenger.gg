@@ -39,7 +39,7 @@ export default function LiveMatches() {
             </div>
             <h2 className="text-4xl lg:text-5xl font-black tracking-tight">Live Matches</h2>
           </div>
-          <Link to="/8s" className="inline-flex items-center gap-2 text-cyan font-semibold text-sm hover:gap-3 transition-all">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 text-cyan font-semibold text-sm hover:gap-3 transition-all">
             All Matches <ArrowRight className="w-4 h-4" />
           </Link>
         </motion.div>

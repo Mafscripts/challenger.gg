@@ -1,0 +1,11 @@
+<RCC>
+  <qresource prefix="/qt/qml/Topfragg/">
+    <file alias="assets/topfragg-logo.svg">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/assets/topfragg-logo.svg</file>
+    <file alias="assets/topfragg-mark.svg">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/assets/topfragg-mark.svg</file>
+    <file alias="assets/trophy-gold.png">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/assets/trophy-gold.png</file>
+    <file alias="assets/trophy-silver.png">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/assets/trophy-silver.png</file>
+    <file alias="assets/trophy-bronze.png">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/assets/trophy-bronze.png</file>
+    <file alias="assets/rank-champion.png">C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/assets/rank-champion.png</file>
+  </qresource>
+</RCC>
+

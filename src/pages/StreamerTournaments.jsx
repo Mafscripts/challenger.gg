@@ -159,7 +159,7 @@ export default function StreamerTournaments() {
                   disabled={!canPost || posting}
                   maxLength={80}
                   className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/35 disabled:opacity-50"
-                  placeholder="Friday Switcheroo 8s"
+                  placeholder="Friday Switcheroo"
                 />
               </label>
               <label className="block space-y-1">

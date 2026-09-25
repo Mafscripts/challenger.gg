@@ -601,15 +601,12 @@ export default function StreamerTournamentLobby() {
   }
 
   return (
-    <div className="streamer-lobby-screen min-h-screen py-8 text-white">
+    <div className="streamer-lobby-screen min-h-screen py-8 text-foreground">
       <style>{`
         .streamer-lobby-screen {
           position: relative;
           overflow: hidden;
-          background:
-            radial-gradient(circle at 12% 6%, rgba(210,214,220,0.09), transparent 28%),
-            radial-gradient(circle at 82% 12%, rgba(165,108,255,0.14), transparent 28%),
-            linear-gradient(180deg, #0B0C0E 0%, #101114 46%, #08090B 100%);
+          background: #0b1017;
         }
         .streamer-lobby-screen::before {
           content: "";
@@ -617,46 +614,28 @@ export default function StreamerTournamentLobby() {
           inset: 0;
           pointer-events: none;
           background-image:
-            linear-gradient(rgba(255,255,255,0.026) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.026) 1px, transparent 1px);
+            linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
           background-size: 54px 54px;
           mask-image: linear-gradient(180deg, rgba(0,0,0,0.75), rgba(0,0,0,0.2));
         }
-        .streamer-lobby-screen::after {
-          content: "";
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          background: linear-gradient(120deg, transparent 0%, rgba(210,214,220,0.035) 45%, transparent 62%);
-          animation: streamerSweep 7s ease-in-out infinite;
-        }
+        .streamer-lobby-screen::after { display: none; }
         .streamer-hero,
         .streamer-panel {
           position: relative;
           overflow: hidden;
-          border: 1px solid rgba(210,214,220,0.11);
-          background:
-            linear-gradient(135deg, rgba(210,214,220,0.065), rgba(255,255,255,0.035) 42%, rgba(165,108,255,0.045)),
-            rgba(14,15,18,0.78);
-          box-shadow: 0 24px 80px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.045);
-          backdrop-filter: blur(14px);
+          border: 1px solid #303b49;
+          background: #202a35;
+          box-shadow: 0 12px 30px rgba(0,0,0,0.22);
         }
         .streamer-panel::before,
-        .streamer-hero::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background: linear-gradient(110deg, transparent, rgba(255,255,255,0.08), transparent);
-          transform: translateX(-120%);
-          animation: streamerPanelScan 6s ease-in-out infinite;
-        }
+        .streamer-hero::before { display: none; }
         .streamer-mini-card {
-          border: 1px solid rgba(255,255,255,0.07);
-          background: linear-gradient(135deg, rgba(255,255,255,0.045), rgba(210,214,220,0.035));
+          border: 1px solid #303b49;
+          background: #27313a;
         }
         .streamer-title-glow {
-          text-shadow: 0 0 32px rgba(210,214,220,0.11);
+          text-shadow: none;
         }
         @keyframes streamerPanelScan {
           0%, 55% { transform: translateX(-120%); }
@@ -1316,13 +1295,13 @@ function BigDrawOverlay({ tournament, teams, spinning, canModerate, canSpin, can
   const mega = visibleTeams.length >= 17;
 
   return (
-    <div className={`switch-draw-screen fixed inset-0 z-50 overflow-hidden bg-[#090A0C] text-white ${spinning ? "is-spinning" : ""}`}>
+    <div className={`dark-media switch-draw-screen fixed inset-0 z-50 overflow-hidden bg-[#090e14] text-white ${spinning ? "is-spinning" : ""}`}>
       <style>{`
         .switch-draw-screen {
           background:
             radial-gradient(circle at 18% 8%, rgba(210,214,220,0.08), transparent 26%),
             radial-gradient(circle at 78% 12%, rgba(165,108,255,0.13), transparent 24%),
-            linear-gradient(180deg, #090A0C 0%, #0F1013 48%, #07080A 100%);
+            linear-gradient(180deg, #0d131c 0%, #0b1017 48%, #090e14 100%);
         }
         .switch-draw-grid {
           background-image:

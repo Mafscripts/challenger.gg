@@ -105,7 +105,7 @@ export default function Login() {
         </div>
         <Button
           type="submit"
-          className="w-full h-11 font-black uppercase tracking-wide bg-gradient-to-r from-cyan to-[#A9AFB8] text-background shadow-[0_10px_28px_rgba(210,214,220,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(210,214,220,0.16)] hover:from-[#E4E7EB] hover:to-cyan"
+          className="h-11 w-full bg-primary font-black uppercase tracking-wide text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md"
           disabled={loading}
         >
           {loading ? (

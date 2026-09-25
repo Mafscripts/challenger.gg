@@ -4,7 +4,6 @@ import {
   BarChart3,
   BookOpen,
   Crosshair,
-  Gamepad2,
   History,
   LayoutDashboard,
   LogOut,
@@ -18,7 +17,6 @@ import {
   User,
   Users,
   Wallet,
-  Zap,
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { useAuth } from "@/lib/AuthContext";
@@ -32,8 +30,6 @@ const sections = [
       { label: "Ranked", path: "/ranked", icon: Crosshair },
       { label: "Wagers", path: "/wagers", icon: Swords },
       { label: "Tournaments", path: "/tournaments", icon: Trophy },
-      { label: "8s Lobbies", path: "/8s", icon: Gamepad2 },
-      { label: "XP Ladder", path: "/xp", icon: Zap },
     ],
   },
   {

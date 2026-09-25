@@ -16,7 +16,6 @@ import {
   Landmark,
   LayoutDashboard,
   Loader2,
-  Medal,
   MessageSquare,
   Plus,
   RefreshCw,
@@ -42,6 +41,7 @@ import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import RankBadge from "@/components/ui/RankBadge";
 import PageHeader from "@/components/ui/PageHeader";
+import RarityBadge from "@/components/ui/RarityBadge";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
@@ -76,7 +76,6 @@ const marketplaceUnlockTypes = [
   { value: "ranked", label: "Ranked unlock" },
   { value: "tournament", label: "Tournament unlock" },
   { value: "wager", label: "Wager unlock" },
-  { value: "eights", label: "8s unlock" },
   { value: "premium", label: "Premium only" },
 ];
 const marketplaceRequirementPlaceholder = {
@@ -84,7 +83,6 @@ const marketplaceRequirementPlaceholder = {
   ranked: "ELO amount, e.g. 1500",
   tournament: "Tournament wins, e.g. 1",
   wager: "Wager wins, e.g. 10",
-  eights: "8s wins, e.g. 25",
   premium: "Premium subscription required",
 };
 const defaultMarketplaceForm = {
@@ -105,9 +103,14 @@ const defaultMarketplaceForm = {
   is_tradeable: true,
   is_active: true,
 };
+const winnerSpecialTrophyTemplates = [
+  { key: "premium", name: "Premium Tournament Trophy", rarity: "mythic", description: "A winner-only profile trophy for premium tournaments." },
+  { key: "invitational", name: "Invitational Tournament Trophy", rarity: "exclusive", description: "A winner-only profile trophy for invitational tournaments." },
+];
 const defaultTournamentForm = {
   name: "",
   image_url: "",
+  banner_url: "",
   game_mode: "snd_hp_snd",
   team_size: "2v2",
   entry_fee: "0",
@@ -123,6 +126,7 @@ const defaultTournamentForm = {
   status: "open",
   registration_end: "",
   start_date: "",
+  is_featured: false,
   is_premium_only: false,
   invite_only: false,
   invited_user_ids: [],
@@ -185,6 +189,11 @@ const tabs = [
   { id: "inventory", label: "Inventory", icon: Boxes },
   { id: "audit", label: "Audit Logs", icon: ScrollText },
 ];
+const initialAdminTab = () => {
+  if (typeof window === "undefined") return "dashboard";
+  const requested = new URLSearchParams(window.location.search).get("tab") || window.sessionStorage.getItem("adminActiveTab");
+  return tabs.some((tab) => tab.id === requested) ? requested : "dashboard";
+};
 
 const initialData = {
   users: [],
@@ -212,6 +221,9 @@ const statusText = (value) => String(value || "unknown").replace(/_/g, " ");
 const userName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unknown";
 const closedAdminAlertStatuses = new Set(["acknowledged", "resolved", "closed"]);
 const isOpenAdminAlert = (alert) => !closedAdminAlertStatuses.has(alert?.status || "open");
+const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
+const isVisibleCompetitionRecord = (record) => !hiddenCompetitionTypes.has(String(record?.match_type || "").toLowerCase());
+const isVisibleMarketplaceItem = (item) => !hiddenCompetitionTypes.has(String(item?.unlock_type || "").toLowerCase());
 const adminAlertActionUrl = (alert, ticket) => {
   if (ticket?.action_url) return ticket.action_url;
   if (alert?.action_url) return alert.action_url;
@@ -221,8 +233,6 @@ const adminAlertActionUrl = (alert, ticket) => {
   if (matchType === "tournament") return `/tournament-match/${id}`;
   if (matchType === "wager") return `/wagers-match/${id}`;
   if (matchType === "ranked") return `/ranked-match/${id}`;
-  if (matchType === "8s" || matchType === "eights") return `/8s-match/${id}`;
-  if (matchType === "xp") return `/xp-match/${id}`;
   return "/admin";
 };
 const rolePowerFor = (role) => getRoleConfig(role || "user").power;
@@ -374,16 +384,18 @@ function StatusPill({ status }) {
   );
 }
 
-function TournamentRewardPicker({ title, description, selectedIds = [], items = [], onToggle }) {
+function TournamentRewardPicker({ title, description, selectedIds = [], items = [], onToggle, onCreate, createLabel = "Add Trophy", emptyText = "No active rewards are available yet." }) {
   return (
-    <div className="rounded-xl border border-white/5 bg-secondary/40 p-4">
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <span className="text-[10px] text-vapor uppercase font-bold">{title}</span>
-        <span className="text-[10px] text-cyan font-mono font-bold">{selectedIds.length} selected</span>
+    <div className="rounded-2xl border border-white/[0.07] bg-background/35 p-4">
+      <div className="mb-1 flex items-start justify-between gap-3">
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-white">{title}</span>
+          <p className="mt-1 text-xs leading-5 text-vapor">{description}</p>
+        </div>
+        <span className="shrink-0 rounded-md border border-cyan/15 bg-cyan/[0.06] px-2 py-1 font-mono text-[9px] font-black text-cyan">{selectedIds.length} selected</span>
       </div>
-      <p className="text-xs text-vapor mb-3">{description}</p>
       {items.length > 0 ? (
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-2">
+        <div className="mt-3 grid gap-2">
           {items.map((item) => {
             const selected = selectedIds.includes(item.id);
             return (
@@ -408,21 +420,35 @@ function TournamentRewardPicker({ title, description, selectedIds = [], items = 
                 )}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-bold">{item.name}</span>
-                  <span className="block truncate text-[10px] text-vapor capitalize">{marketplaceCategoryText(item.category)} - {item.rarity || "common"}</span>
+                  <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-vapor capitalize">
+                    {marketplaceCategoryText(item.category)}
+                    <RarityBadge rarity={item.rarity || "common"} className="px-1.5 py-0 text-[8px]" />
+                  </span>
                 </span>
               </label>
             );
           })}
         </div>
       ) : (
-        <p className="text-xs text-vapor">Create active knife, gun skin, or trophy items in Marketplace first.</p>
+        <div className="mt-3 rounded-xl border border-dashed border-white/10 bg-black/10 px-3 py-4 text-center">
+          <p className="text-xs text-vapor">{emptyText}</p>
+        </div>
+      )}
+      {onCreate && (
+        <button
+          type="button"
+          onClick={onCreate}
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/15"
+        >
+          <Plus className="h-3.5 w-3.5" /> {createLabel}
+        </button>
       )}
     </div>
   );
 }
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState(initialAdminTab);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [data, setData] = useState(initialData);
@@ -449,6 +475,25 @@ export default function Admin() {
   useEffect(() => {
     loadAdminData();
   }, []);
+
+  useEffect(() => {
+    window.sessionStorage.setItem("adminActiveTab", activeTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", activeTab);
+    window.history.replaceState({}, "", url);
+
+    if (["tournaments", "marketplace"].includes(activeTab)) {
+      const refreshMarketplaceItems = () => {
+        base44.entities.MarketplaceItem.filter({}, "-created_date", 500)
+          .then((marketplace) => setData((current) => ({ ...current, marketplace: marketplace.filter(isVisibleMarketplaceItem) })))
+          .catch((error) => console.warn("Failed to refresh marketplace items:", error));
+      };
+      refreshMarketplaceItems();
+      const refreshTimer = window.setInterval(refreshMarketplaceItems, 10000);
+      return () => window.clearInterval(refreshTimer);
+    }
+    return undefined;
+  }, [activeTab]);
 
   const safeList = async (entityName) => {
     try {
@@ -512,17 +557,17 @@ export default function Admin() {
 
       setData({
         users,
-        adminAlerts,
+        adminAlerts: adminAlerts.filter(isVisibleCompetitionRecord),
         tickets,
-        disputes,
-        wagers,
+        disputes: disputes.filter(isVisibleCompetitionRecord),
+        wagers: wagers.filter(isVisibleCompetitionRecord),
         rankedMatches,
         rankedStats,
         tournaments,
         tournamentMatches,
         wallets,
         withdrawals,
-        marketplace,
+        marketplace: marketplace.filter(isVisibleMarketplaceItem),
         inventory,
         adminActions,
         bans,
@@ -547,6 +592,10 @@ export default function Admin() {
   const walletByUserId = useMemo(() => (
     Object.fromEntries(data.wallets.map((wallet) => [wallet.user_id, wallet]))
   ), [data.wallets]);
+
+  const userById = useMemo(() => (
+    Object.fromEntries(data.users.map((user) => [user.id, user]))
+  ), [data.users]);
 
   const rankedStatsByUserId = useMemo(() => (
     Object.fromEntries(data.rankedStats.map((stats) => [stats.user_id, stats]))
@@ -586,6 +635,21 @@ export default function Admin() {
   const tournamentTrophyItems = useMemo(() => (
     tournamentRewardItems.filter((item) => item.category === "trophy")
   ), [tournamentRewardItems]);
+
+  const winnerSpecialTrophyItems = useMemo(() => (
+    tournamentTrophyItems.filter((item) => {
+      const searchableText = `${item.name || ""} ${item.description || ""}`.toLowerCase();
+      return searchableText.includes("premium") || searchableText.includes("invitational");
+    })
+  ), [tournamentTrophyItems]);
+
+  const tournamentBonusItems = useMemo(() => (
+    tournamentRewardItems.filter((item) => item.category !== "trophy")
+  ), [tournamentRewardItems]);
+
+  const hasCompleteWinnerSpecialTrophySet = useMemo(() => (
+    winnerSpecialTrophyTemplates.every((template) => winnerSpecialTrophyItems.some((item) => String(item.name || "").toLowerCase() === template.name.toLowerCase()))
+  ), [winnerSpecialTrophyItems]);
 
   const sharedIpCount = (targetUser) => {
     const ips = new Set([
@@ -1117,10 +1181,11 @@ export default function Admin() {
     const entryType = tournamentForm.entry_type || (tournamentForm.is_premium_only ? "premium" : "free");
     const rewardItemIds = [...new Set((tournamentForm.reward_item_ids || []).filter(Boolean))];
     const eliminationRewardItemIds = [...new Set((tournamentForm.elimination_reward_item_ids || []).filter(Boolean))];
+    const winnerSpecialTrophyIds = new Set(winnerSpecialTrophyItems.map((item) => item.id));
     const placementTrophyItemIds = {
-      1: [...new Set((tournamentForm.placement_trophy_item_ids?.[1] || []).filter(Boolean))],
-      2: [...new Set((tournamentForm.placement_trophy_item_ids?.[2] || []).filter(Boolean))],
-      3: [...new Set((tournamentForm.placement_trophy_item_ids?.[3] || []).filter(Boolean))],
+      1: [...new Set((tournamentForm.placement_trophy_item_ids?.[1] || []).filter((id) => winnerSpecialTrophyIds.has(id)))].slice(0, 1),
+      2: [],
+      3: [],
     };
     const marketplaceById = Object.fromEntries(data.marketplace.map((item) => [item.id, item]));
     const itemSnapshot = (ids) => ids.map((id) => marketplaceById[id]).filter(Boolean).map((item) => ({
@@ -1145,6 +1210,7 @@ export default function Admin() {
     return {
       name: tournamentForm.name.trim(),
       image_url: tournamentForm.image_url.trim(),
+      banner_url: tournamentForm.banner_url.trim(),
       game_mode: tournamentForm.game_mode,
       team_size: tournamentForm.team_size,
       entry_fee: Number(tournamentForm.entry_fee || 0),
@@ -1166,6 +1232,7 @@ export default function Admin() {
       bracket_type: tournamentForm.bracket_type,
       registration_end: tournamentForm.registration_end ? new Date(tournamentForm.registration_end).toISOString() : undefined,
       start_date: tournamentForm.start_date ? new Date(tournamentForm.start_date).toISOString() : undefined,
+      is_featured: Boolean(tournamentForm.is_featured),
       is_premium_only: entryType === "premium" || entryType === "credits_premium",
       invite_only: tournamentForm.invite_only || entryType === "invitational",
       invited_user_ids: tournamentForm.invite_only || entryType === "invitational"
@@ -1219,7 +1286,8 @@ export default function Admin() {
     setTournamentForm({
       ...defaultTournamentForm,
       name: tournament.name || "",
-      image_url: tournament.image_url || tournament.banner_url || "",
+      image_url: tournament.image_url || "",
+      banner_url: tournament.banner_url || "",
       game_mode: tournament.game_mode || "snd",
       team_size: tournament.team_size || "2v2",
       entry_fee: String(tournament.entry_fee ?? 0),
@@ -1235,15 +1303,16 @@ export default function Admin() {
       status: tournament.status || "open",
       registration_end: toLocalDateTimeInputValue(tournament.registration_end),
       start_date: toLocalDateTimeInputValue(tournament.start_date),
+      is_featured: tournament.is_featured === true,
       is_premium_only: Boolean(tournament.is_premium_only),
       invite_only: tournament.invite_only === true || tournament.entry_type === "invitational",
       invited_user_ids: tournament.invited_user_ids || [],
       reward_item_ids: tournamentRewardIds(tournament),
       elimination_reward_item_ids: tournamentEliminationRewardIds(tournament),
       placement_trophy_item_ids: {
-        1: tournamentPlacementTrophyIds(tournament, 1),
-        2: tournamentPlacementTrophyIds(tournament, 2),
-        3: tournamentPlacementTrophyIds(tournament, 3),
+        1: tournamentPlacementTrophyIds(tournament, 1).filter((id) => winnerSpecialTrophyItems.some((item) => item.id === id)).slice(0, 1),
+        2: [],
+        3: [],
       },
     });
   };
@@ -1262,20 +1331,15 @@ export default function Admin() {
     });
   };
 
-  const togglePlacementTrophyReward = (placement, itemId) => {
-    setTournamentForm((prev) => {
-      const rewardIds = new Set(prev.placement_trophy_item_ids?.[placement] || []);
-      if (rewardIds.has(itemId)) rewardIds.delete(itemId);
-      else rewardIds.add(itemId);
-      return {
-        ...prev,
-        placement_trophy_item_ids: {
-          1: placement === 1 ? [...rewardIds] : (prev.placement_trophy_item_ids?.[1] || []),
-          2: placement === 2 ? [...rewardIds] : (prev.placement_trophy_item_ids?.[2] || []),
-          3: placement === 3 ? [...rewardIds] : (prev.placement_trophy_item_ids?.[3] || []),
-        },
-      };
-    });
+  const selectWinnerSpecialTrophy = (itemId) => {
+    setTournamentForm((prev) => ({
+      ...prev,
+      placement_trophy_item_ids: {
+        1: itemId ? [itemId] : [],
+        2: [],
+        3: [],
+      },
+    }));
   };
 
   const handleTournamentAction = async (tournament, action, payload = {}) => {
@@ -1438,11 +1502,64 @@ export default function Admin() {
         description: `${editingMarketplaceId ? "Updated" : "Created"} marketplace item ${payload.name}`,
         details: { item_id: item?.id, ...payload },
       }).catch((error) => console.warn("Failed to write marketplace audit action:", error));
-      toast({ title: editingMarketplaceId ? "Marketplace item updated" : "Marketplace item created", description: `${payload.name} is saved.` });
+      setData((current) => ({
+        ...current,
+        marketplace: [item, ...current.marketplace.filter((entry) => entry.id !== item.id)],
+      }));
+
+      toast({ title: editingMarketplaceId ? "Marketplace item updated" : "Marketplace item created", description: `${payload.name} is saved and available.` });
       resetMarketplaceForm();
-      loadAdminData();
     } catch (error) {
       toast({ title: "Save failed", description: error.message || "Could not save marketplace item.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCreateWinnerSpecialTrophySet = async () => {
+    if (!canManageWallets(currentRole)) return;
+    setBusyId("marketplace:trophy-templates");
+    try {
+      const existingByName = new Map(data.marketplace.map((item) => [String(item.name || "").toLowerCase(), item]));
+      const created = [];
+      for (const template of winnerSpecialTrophyTemplates) {
+        const existing = existingByName.get(template.name.toLowerCase());
+        if (existing) {
+          if (existing.is_active === false || existing.is_available === false) {
+            const activated = await base44.entities.MarketplaceItem.update(existing.id, { is_active: true, is_available: true });
+            created.push(activated);
+          } else {
+            created.push(existing);
+          }
+          continue;
+        }
+        const item = await base44.entities.MarketplaceItem.create({
+          name: template.name,
+          description: template.description,
+          image_url: "",
+          category: "trophy",
+          rarity: template.rarity,
+          price_credits: 0,
+          price_cash: 0,
+          unlock_type: "tournament",
+          unlock_requirement: "",
+          is_limited: false,
+          is_featured: false,
+          show_in_marketplace: false,
+          is_premium_only: false,
+          is_tradeable: false,
+          is_available: true,
+          is_active: true,
+          created_date: new Date().toISOString(),
+        });
+        created.push(item);
+      }
+
+      const merged = [...created, ...data.marketplace.filter((item) => !created.some((entry) => entry.id === item.id))];
+      setData((current) => ({ ...current, marketplace: merged }));
+      toast({ title: "Winner trophies ready", description: "Premium and Invitational are now available for tournament winners." });
+    } catch (error) {
+      toast({ title: "Trophy setup failed", description: error.message || "Could not create the trophy set.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -1664,22 +1781,57 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-obsidian py-6">
-      <div className="max-w-[1800px] mx-auto px-4 lg:px-6">
+    <div className="admin-page min-h-screen py-5 lg:py-6">
+      <div className="admin-layout mx-auto max-w-[1880px] px-4 lg:px-6">
+        <aside className="admin-sidebar dark-media" aria-label="Admin sections">
+          <div className="border-b border-white/10 p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary"><Shield className="h-5 w-5" /></span>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Staff workspace</p>
+                <h2 className="mt-1 text-base font-black text-white">Admin Console</h2>
+              </div>
+            </div>
+            <div className="mt-4"><RoleBadge role={currentRole} /></div>
+          </div>
+          <div className="space-y-1 p-2.5">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                aria-current={activeTab === tab.id ? "page" : undefined}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-bold transition-colors"
+              >
+                <tab.icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <main className="min-w-0">
+          <label className="mb-4 block rounded-xl border border-[#303b49] bg-[#202a35] p-3 text-white lg:hidden">
+            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-primary">Admin section</span>
+            <select value={activeTab} onChange={(event) => setActiveTab(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[#2d3942] px-3 py-2.5 text-sm font-bold text-white">
+              {tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+            </select>
+          </label>
+
         <PageHeader
           eyebrow="Platform management"
           title="Admin Console"
           description="Manage users, roles, support, matches, economy, inventory and audit logs."
-          className="mb-6"
+          className="dark-focus dark-media mb-5"
           action={<div className="flex items-center gap-3">
               <RoleBadge role={currentRole} />
-              <button onClick={loadAdminData} className="rounded-xl border border-white/10 bg-secondary px-4 py-2.5 text-xs font-bold text-vapor transition-colors hover:border-blue-400/25 hover:text-blue-300">
+              <button onClick={loadAdminData} className="rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:border-primary/35 hover:text-primary">
                 Refresh
               </button>
           </div>}
         />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 mb-6">
+        <div className="admin-stat-grid mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-9">
           <StatCard icon={Users} label="Users" value={stats.totalUsers} />
           <StatCard icon={BellRing} label="Alerts" value={stats.openAdminAlerts} color="text-red-400" />
           <StatCard icon={Ticket} label="Open Tickets" value={stats.openTickets} color="text-orange" />
@@ -1691,21 +1843,7 @@ export default function Admin() {
           <StatCard icon={CreditCard} label="Wallet Total" value={formatMoney(stats.walletTotal)} color="text-green" />
         </div>
 
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === tab.id ? "bg-cyan/10 text-cyan" : "text-vapor hover:text-foreground"
-              }`}
-            >
-              <tab.icon className="w-4 h-4" /> {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="glass rounded-xl border border-white/5 overflow-hidden">
+        <div className="admin-workspace glass overflow-hidden rounded-xl border">
           {activeTab === "dashboard" && (
             <div className="p-6">
               <h2 className="text-lg font-bold mb-4">Operational Overview</h2>
@@ -2575,7 +2713,7 @@ export default function Admin() {
                       </button>
                     </div>
                   </div>
-                  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">Tournament name</span>
                       <input
@@ -2586,13 +2724,24 @@ export default function Admin() {
                       />
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Tournament image URL</span>
+                      <span className="text-[10px] text-vapor uppercase">Tournament thumbnail URL</span>
                       <input
                         value={tournamentForm.image_url}
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, image_url: event.target.value }))}
                         placeholder="https://example.com/tournament.png"
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       />
+                      <span className="block text-[9px] text-vapor/70">Recommended: 800 × 800 px (1:1)</span>
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Featured banner URL</span>
+                      <input
+                        value={tournamentForm.banner_url}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, banner_url: event.target.value }))}
+                        placeholder="https://example.com/tournament-banner.jpg"
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      />
+                      <span className="block text-[9px] text-vapor/70">Recommended: 1920 × 640 px (3:1)</span>
                     </label>
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">Game mode</span>
@@ -2730,97 +2879,145 @@ export default function Admin() {
                       />
                     </label>
                   </div>
-                  {tournamentForm.image_url && (
-                    <div className="mt-4 overflow-hidden rounded-xl border border-white/5 bg-secondary/40">
-                      <div className="aspect-[5/1] max-h-40 bg-background">
-                        <img src={tournamentForm.image_url} alt="" className="h-full w-full object-cover" />
-                      </div>
+                  {(tournamentForm.image_url || tournamentForm.banner_url) && (
+                    <div className="mt-4 grid gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
+                      {tournamentForm.image_url && (
+                        <div className="overflow-hidden rounded-xl border border-white/5 bg-secondary/40">
+                          <div className="aspect-square bg-background">
+                            <img src={tournamentForm.image_url} alt="Tournament thumbnail preview" className="h-full w-full object-cover" />
+                          </div>
+                          <p className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-vapor">Thumbnail · 1:1</p>
+                        </div>
+                      )}
+                      {tournamentForm.banner_url && (
+                        <div className="overflow-hidden rounded-xl border border-white/5 bg-secondary/40">
+                          <div className="aspect-[3/1] bg-background">
+                            <img src={tournamentForm.banner_url} alt="Featured tournament banner preview" className="h-full w-full object-cover" />
+                          </div>
+                          <p className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-vapor">Featured banner · 3:1</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">SND maps</span>
-                      <textarea
-                        value={tournamentForm.snd_maps}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, snd_maps: event.target.value }))}
-                        rows={5}
-                        className="w-full resize-y px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">HP maps</span>
-                      <textarea
-                        value={tournamentForm.hp_maps}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, hp_maps: event.target.value }))}
-                        rows={5}
-                        className="w-full resize-y px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Overload maps</span>
-                      <textarea
-                        value={tournamentForm.overload_maps}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, overload_maps: event.target.value }))}
-                        rows={5}
-                        className="w-full resize-y px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                  </div>
-                  <div className="mt-4 grid gap-3">
-                    <div className="rounded-xl border border-white/5 bg-secondary/40 p-4">
-                      <div className="mb-3">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-vapor">Automatic placement trophies</p>
-                        <p className="mt-1 text-xs text-vapor">Every roster member receives a permanent profile trophy when the tournament finishes.</p>
+                  <details className="mt-4 rounded-2xl border border-white/[0.07] bg-secondary/25">
+                    <summary className="cursor-pointer px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:text-white">Map pools · optional</summary>
+                    <div className="grid gap-3 border-t border-white/[0.06] p-4 md:grid-cols-3">
+                      <label className="space-y-1">
+                        <span className="text-[10px] uppercase text-vapor">SND maps</span>
+                        <textarea value={tournamentForm.snd_maps} onChange={(event) => setTournamentForm((prev) => ({ ...prev, snd_maps: event.target.value }))} rows={5} className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm focus:border-cyan/30 focus:outline-none" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-[10px] uppercase text-vapor">HP maps</span>
+                        <textarea value={tournamentForm.hp_maps} onChange={(event) => setTournamentForm((prev) => ({ ...prev, hp_maps: event.target.value }))} rows={5} className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm focus:border-cyan/30 focus:outline-none" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-[10px] uppercase text-vapor">Overload maps</span>
+                        <textarea value={tournamentForm.overload_maps} onChange={(event) => setTournamentForm((prev) => ({ ...prev, overload_maps: event.target.value }))} rows={5} className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm focus:border-cyan/30 focus:outline-none" />
+                      </label>
+                    </div>
+                  </details>
+
+                  <section id="tournament-trophy-rewards" className="mt-5 scroll-mt-28 rounded-2xl border border-blue-400/15 bg-[linear-gradient(145deg,rgba(20,216,255,.055),rgba(255,255,255,.018))] p-5">
+                    <div className="flex flex-col gap-4 border-b border-white/[0.07] pb-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-300">Step 2 · Trophy rewards</p>
+                        <h3 className="mt-1 text-lg font-black text-white">Automatic podium trophies + one winner bonus</h3>
+                        <p className="mt-1 max-w-2xl text-xs leading-5 text-vapor">Gold, Silver, and Bronze are always awarded automatically. Optionally give the winner one extra Premium or Invitational profile trophy.</p>
                       </div>
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        <div className="flex items-center gap-3 rounded-lg border border-yellow-400/15 bg-yellow-400/[0.04] px-3 py-3">
-                          <Trophy className="h-5 w-5 text-yellow-400" />
-                          <div><p className="text-xs font-black text-yellow-300">#1 Gold</p><p className="text-[10px] text-vapor">Tournament champion</p></div>
-                        </div>
-                        <div className="flex items-center gap-3 rounded-lg border border-slate-300/15 bg-slate-300/[0.04] px-3 py-3">
-                          <Medal className="h-5 w-5 text-slate-300" />
-                          <div><p className="text-xs font-black text-slate-200">#2 Silver</p><p className="text-[10px] text-vapor">Final runner-up</p></div>
-                        </div>
-                        <div className="flex items-center gap-3 rounded-lg border border-amber-600/20 bg-amber-600/[0.05] px-3 py-3">
-                          <Award className="h-5 w-5 text-amber-600" />
-                          <div><p className="text-xs font-black text-amber-500">#3 Bronze</p><p className="text-[10px] text-vapor">Semifinalist</p></div>
-                        </div>
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <button type="button" onClick={() => { setActiveTab("marketplace"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-secondary px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:text-white">
+                          <ShoppingBag className="h-3.5 w-3.5" /> All Marketplace Items
+                        </button>
+                        {!hasCompleteWinnerSpecialTrophySet && (
+                          <button type="button" onClick={handleCreateWinnerSpecialTrophySet} disabled={busyId === "marketplace:trophy-templates"} className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-400 disabled:opacity-50">
+                            {busyId === "marketplace:trophy-templates" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Create Winner Trophies
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div>
-                      <div className="mb-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-cyan">Extra custom trophies by placement</p>
-                        <p className="mt-1 text-xs text-vapor">Optional trophy items are awarded together with Gold, Silver, or Bronze.</p>
+
+                    <div className="mt-5">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white">Automatic placement trophies</p>
+                          <p className="mt-1 text-[10px] text-vapor">Always awarded to every player on the finishing roster. No admin setup required.</p>
+                        </div>
+                        <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-300">Always on</span>
                       </div>
-                      <div className="grid gap-3 xl:grid-cols-3">
-                        {[1, 2, 3].map((placement) => (
-                          <TournamentRewardPicker
-                            key={placement}
-                            title={`#${placement} extra trophies`}
-                            description={placement === 3 ? "Granted to the semifinal loser roster(s)." : `Granted to every player finishing #${placement}.`}
-                            selectedIds={tournamentForm.placement_trophy_item_ids?.[placement] || []}
-                            items={tournamentTrophyItems}
-                            onToggle={(itemId) => togglePlacementTrophyReward(placement, itemId)}
-                          />
+                      <div className="grid gap-3 md:grid-cols-3">
+                        {[
+                          { place: "#1", trophy: "Gold", role: "Champion", color: "border-yellow-400/25 bg-yellow-400/[0.06] text-yellow-300" },
+                          { place: "#2", trophy: "Silver", role: "Runner-up", color: "border-slate-300/20 bg-slate-300/[0.05] text-slate-200" },
+                          { place: "#3", trophy: "Bronze", role: "Semifinalist", color: "border-orange-400/20 bg-orange-400/[0.05] text-orange-300" },
+                        ].map((reward) => (
+                          <div key={reward.place} className={`flex items-center gap-3 rounded-xl border p-3 ${reward.color}`}>
+                            <Trophy className="h-5 w-5 shrink-0" />
+                            <div>
+                              <p className="text-xs font-black text-white">{reward.place} · {reward.trophy}</p>
+                              <p className="mt-0.5 text-[10px] opacity-80">{reward.role} profile trophy</p>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
-                    <TournamentRewardPicker
-                      title="Champion reward items"
-                      description="Optional bonus knife, gun skin, or trophy rewards granted to the winning roster."
-                      selectedIds={tournamentForm.reward_item_ids || []}
-                      items={tournamentRewardItems}
-                      onToggle={(itemId) => toggleTournamentReward("reward_item_ids", itemId)}
-                    />
-                    <TournamentRewardPicker
-                      title="Elimination unlock items"
-                      description="Optional invitational rewards granted to registered rosters when they lose and are eliminated."
-                      selectedIds={tournamentForm.elimination_reward_item_ids || []}
-                      items={tournamentRewardItems}
-                      onToggle={(itemId) => toggleTournamentReward("elimination_reward_item_ids", itemId)}
-                    />
-                  </div>
+
+                    <div className="mt-5 rounded-2xl border border-white/[0.08] bg-background/30 p-4">
+                      <div className="mb-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Winner-only bonus trophy</p>
+                        <p className="mt-1 text-xs text-vapor">Optional. Every player on the champion roster receives this trophy in addition to Gold.</p>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <button
+                          type="button"
+                          onClick={() => selectWinnerSpecialTrophy(null)}
+                          className={`rounded-xl border p-4 text-left transition ${!(tournamentForm.placement_trophy_item_ids?.[1]?.[0]) ? "border-blue-400/50 bg-blue-400/10 ring-1 ring-cyan/20" : "border-white/[0.07] bg-secondary/40 hover:border-white/15"}`}
+                        >
+                          <p className="text-xs font-black text-white">No extra trophy</p>
+                          <p className="mt-1 text-[10px] leading-4 text-vapor">Winner receives the automatic Gold trophy only.</p>
+                        </button>
+                        {winnerSpecialTrophyItems.map((item) => {
+                          const selected = tournamentForm.placement_trophy_item_ids?.[1]?.[0] === item.id;
+                          const kind = `${item.name || ""} ${item.description || ""}`.toLowerCase().includes("premium") ? "Premium" : "Invitational";
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => selectWinnerSpecialTrophy(item.id)}
+                              className={`rounded-xl border p-4 text-left transition ${selected ? "border-blue-400/50 bg-blue-400/10 ring-1 ring-cyan/20" : "border-white/[0.07] bg-secondary/40 hover:border-white/15"}`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Award className={kind === "Premium" ? "h-4 w-4 text-fuchsia-300" : "h-4 w-4 text-cyan"} />
+                                  <p className="text-xs font-black text-white">{kind}</p>
+                                </div>
+                                {selected && <span className="rounded-full bg-blue-400/15 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-blue-200">Selected</span>}
+                              </div>
+                              <p className="mt-2 text-[10px] leading-4 text-vapor">{item.name}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <details className="mt-4 rounded-xl border border-white/[0.07] bg-background/20">
+                      <summary className="cursor-pointer px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-vapor hover:text-white">Optional bonus and elimination rewards</summary>
+                      <div className="grid gap-3 border-t border-white/[0.06] p-4 lg:grid-cols-2">
+                        <TournamentRewardPicker title="Champion bonus items" description="Optional knife or weapon skin for the winning roster." selectedIds={tournamentForm.reward_item_ids || []} items={tournamentBonusItems} onToggle={(itemId) => toggleTournamentReward("reward_item_ids", itemId)} />
+                        <TournamentRewardPicker title="Elimination unlock items" description="Optional non-trophy items granted to registered rosters when they are eliminated." selectedIds={tournamentForm.elimination_reward_item_ids || []} items={tournamentBonusItems} onToggle={(itemId) => toggleTournamentReward("elimination_reward_item_ids", itemId)} />
+                      </div>
+                    </details>
+                  </section>
                   <label className="inline-flex items-center gap-2 mt-4 text-xs text-vapor">
+                    <input
+                      type="checkbox"
+                      checked={tournamentForm.is_featured}
+                      onChange={(event) => setTournamentForm((prev) => ({ ...prev, is_featured: event.target.checked }))}
+                      className="accent-blue-500"
+                    />
+                    Featured tournament
+                    <span className="text-[10px] text-vapor/70">(replaces the current featured event)</span>
+                  </label>
+                  <label className="ml-5 inline-flex items-center gap-2 mt-4 text-xs text-vapor">
                     <input
                       type="checkbox"
                       checked={tournamentForm.is_premium_only}
@@ -2898,17 +3095,19 @@ export default function Admin() {
                     ["Teams", `${tournament.registered_teams || 0}/${tournament.max_teams}`],
                     ["Format", (tournament.bracket_type || tournament.format) === "double_elimination" ? "Double Elimination · Lower Bracket" : "Single Elimination"],
                     ["Prize", tournamentPrizeSummary(tournament)],
+                    ["Featured", tournament.is_featured ? <span className="rounded-md border border-blue-400/25 bg-blue-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-blue-300">Featured</span> : "No"],
                     ["Image", tournament.image_url ? (
                       <img src={tournament.image_url} alt="" className="h-10 w-16 rounded object-cover bg-background" />
                     ) : "None"],
                     ["Entry", `${(tournament.entry_type || (tournament.is_premium_only ? "premium" : "free")).replace(/_/g, " ")}${Number(tournament.entry_fee || 0) > 0 ? ` - ${tournament.entry_fee} credits` : ""}`],
                     ["Rewards", (
                       <div className="space-y-1">
-                        <p><span className="text-yellow-400">#1 Gold</span><span className="text-vapor"> · Extra:</span> {tournamentPlacementTrophySummary(tournament, data.marketplace, 1)}</p>
-                        <p><span className="text-slate-300">#2 Silver</span><span className="text-vapor"> · Extra:</span> {tournamentPlacementTrophySummary(tournament, data.marketplace, 2)}</p>
-                        <p><span className="text-amber-600">#3 Bronze</span><span className="text-vapor"> · Extra:</span> {tournamentPlacementTrophySummary(tournament, data.marketplace, 3)}</p>
-                        <p><span className="text-vapor">Champion bonus:</span> {tournamentRewardSummary(tournament, data.marketplace)}</p>
-                        <p><span className="text-vapor">Eliminated:</span> {tournamentRewardSummary(tournament, data.marketplace, "elimination_reward_item_ids", "elimination_reward_items")}</p>
+                        <p><span className="text-yellow-400">#1 Gold</span><span className="text-vapor"> · automatic</span></p>
+                        <p><span className="text-slate-300">#2 Silver</span><span className="text-vapor"> · automatic</span></p>
+                        <p><span className="text-amber-600">#3 Bronze</span><span className="text-vapor"> · automatic</span></p>
+                        <p><span className="text-vapor">Special winner trophy:</span> {tournamentPlacementTrophySummary(tournament, data.marketplace, 1)}</p>
+                        <p><span className="text-vapor">Champion bonus items:</span> {tournamentRewardSummary(tournament, data.marketplace)}</p>
+                        <p><span className="text-vapor">Elimination items:</span> {tournamentRewardSummary(tournament, data.marketplace, "elimination_reward_item_ids", "elimination_reward_items")}</p>
                       </div>
                     )],
                     ["Bracket", hasMatches ? ((tournament.bracket_type || tournament.format) === "double_elimination" ? "Winners + Lower + Grand Final" : "Generated") : (
@@ -2958,23 +3157,24 @@ export default function Admin() {
           )}
 
           {activeTab === "wallets" && (
-            <ListSection title="Wallets" rows={data.wallets} empty="No wallets." render={(wallet) => (
-              <RowGrid columns={[
-                ["User", wallet.user_id],
+            <ListSection title="Wallets" rows={data.wallets} empty="No wallets." render={(wallet) => {
+              const owner = userById[wallet.user_id];
+              return <RowGrid columns={[
+                ["User", <div><p className="font-bold">{owner ? userName(owner) : "Unknown user"}</p><p className="mt-0.5 text-xs text-vapor">{owner?.email || wallet.user_id}</p></div>],
                 ["Available", formatMoney(wallet.available_balance)],
                 ["Pending", formatMoney(wallet.pending_balance)],
                 ["Escrow", formatMoney(wallet.escrow_balance)],
                 ["Withdrawable", formatMoney(wallet.withdrawable_balance)],
                 ["Earned", formatMoney(wallet.total_earnings)],
-              ]} />
-            )} />
+              ]} />;
+            }} />
           )}
 
           {activeTab === "withdrawals" && (
             <ListSection title="Withdrawals" rows={data.withdrawals} empty="No withdrawals." render={(withdrawal) => (
               <div className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <RowGrid compact columns={[
-                  ["User", withdrawal.user_id],
+                  ["User", userById[withdrawal.user_id] ? userName(userById[withdrawal.user_id]) : withdrawal.user_id],
                   ["Amount", formatMoney(withdrawal.amount)],
                   ["Method", withdrawal.payment_method],
                   ["Status", <StatusPill status={withdrawal.status} />],
@@ -2996,8 +3196,9 @@ export default function Admin() {
                 <form onSubmit={handleSubmitMarketplaceItem} className="p-5 border-b border-white/5">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
-                      <h2 className="text-lg font-bold">{editingMarketplaceId ? "Edit Marketplace Item" : "Create Marketplace Item"}</h2>
-                      <p className="text-xs text-vapor">Set how this item unlocks and whether it is currently visible in the marketplace.</p>
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Marketplace management</p>
+                      <h2 className="mt-1 text-lg font-black">{editingMarketplaceId ? "Edit Marketplace Item" : "Create Marketplace Item"}</h2>
+                      <p className="mt-1 text-xs text-vapor">Create, price, activate, and manage every item available across the platform.</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {editingMarketplaceId && (
@@ -3191,7 +3392,7 @@ export default function Admin() {
           {activeTab === "inventory" && (
             <ListSection title="Inventory" rows={data.inventory} empty="No inventory rows." render={(item) => (
               <RowGrid columns={[
-                ["Owner", item.user_id],
+                ["Owner", userById[item.user_id] ? userName(userById[item.user_id]) : item.user_id],
                 ["Item", item.item_name],
                 ["Category", item.item_category],
                 ["Rarity", item.item_rarity],
@@ -3202,7 +3403,7 @@ export default function Admin() {
           )}
 
           {activeTab === "audit" && (
-            <ListSection title="Audit Logs" rows={auditRows} empty="No audit logs." render={(row) => (
+            <ListSection title="Audit Logs" rows={auditRows} empty="No audit logs." scrollable render={(row) => (
               <RowGrid columns={[
                 ["Type", row.type],
                 ["Action", row.action],
@@ -3214,6 +3415,7 @@ export default function Admin() {
             )} />
           )}
         </div>
+        </main>
       </div>
     </div>
   );

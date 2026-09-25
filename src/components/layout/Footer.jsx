@@ -6,7 +6,6 @@ import TopfraggLogo from "@/components/brand/TopfraggLogo";
 const footerLinks = {
   Platform: [
     { label: "Dashboard", path: "/dashboard" },
-    { label: "8s", path: "/8s" },
     { label: "Ranked", path: "/ranked" },
     { label: "Wagers", path: "/wagers" },
     { label: "Tournaments", path: "/tournaments" },
@@ -34,7 +33,7 @@ const footerLinks = {
 
 export default function Footer() {
   return (
-    <footer className="mt-16 bg-gradient-to-b from-transparent to-black/15">
+    <footer className="mt-16 border-t border-border bg-[#0d131c]">
       <div className="mx-auto max-w-[1560px] px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-5 lg:gap-14">
           {/* Brand */}
@@ -46,13 +45,13 @@ export default function Footer() {
               The premier competitive Call of Duty platform. Play. Compete. Win.
             </p>
             <div className="flex items-center gap-3">
-              <a href="https://x.com/TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on X" className="rounded-xl bg-white/[0.035] p-2.5 text-vapor shadow-[inset_0_1px_0_rgba(255,255,255,.03)] transition-all hover:-translate-y-0.5 hover:bg-cyan/10 hover:text-cyan">
+              <a href="https://x.com/TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on X" className="rounded-lg border border-border bg-secondary p-2.5 text-vapor transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary">
                 <Twitter className="w-4 h-4" />
               </a>
-              <a href="https://www.youtube.com/@TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on YouTube" className="rounded-xl bg-white/[0.035] p-2.5 text-vapor shadow-[inset_0_1px_0_rgba(255,255,255,.03)] transition-all hover:-translate-y-0.5 hover:bg-cyan/10 hover:text-cyan">
+              <a href="https://www.youtube.com/@TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on YouTube" className="rounded-lg border border-border bg-secondary p-2.5 text-vapor transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary">
                 <Youtube className="w-4 h-4" />
               </a>
-              <a href="https://discord.gg/topfragg" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg Discord" className="rounded-xl bg-white/[0.035] p-2.5 text-vapor shadow-[inset_0_1px_0_rgba(255,255,255,.03)] transition-all hover:-translate-y-0.5 hover:bg-cyan/10 hover:text-cyan">
+              <a href="https://discord.gg/topfragg" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg Discord" className="rounded-lg border border-border bg-secondary p-2.5 text-vapor transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary">
                 <MessageCircle className="w-4 h-4" />
               </a>
             </div>
@@ -64,7 +63,7 @@ export default function Footer() {
               <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <Link to={link.path} className="text-sm text-vapor hover:text-cyan transition-colors">
+                    <Link to={link.path} className="text-sm text-vapor transition-colors hover:text-primary">
                       {link.label}
                     </Link>
                   </li>
@@ -74,9 +73,9 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-white/[0.04] pt-8 sm:flex-row">
+        <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
           <p className="text-xs text-vapor">
-            (c) 2026 Topfragg.gg - All rights reserved. Not affiliated with Activision or Call of Duty.
+            © 2026 Topfragg.gg — All rights reserved. Not affiliated with Activision or Call of Duty.
           </p>
           <p className="text-xs text-vapor/50 font-mono">v2.0.0-alpha</p>
         </div>

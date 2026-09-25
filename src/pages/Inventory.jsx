@@ -102,8 +102,10 @@ export default function Inventory() {
 
         {/* Items Grid */}
         {filtered.length === 0 ? (
-          <div className="glass rounded-xl border border-white/5 py-16 text-center">
-            <p className="text-sm text-vapor">No inventory items found.</p>
+          <div className="glass rounded-xl border border-white/5 px-6 py-10 text-center">
+            <Package className="mx-auto mb-3 h-9 w-9 text-vapor/35" />
+            <h2 className="text-base font-black">No inventory items</h2>
+            <p className="mt-1 text-sm text-vapor">Collected cosmetics and rewards will appear here.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">

@@ -32,7 +32,6 @@ const choiceTones = {
 const wagerAmounts = [5, 10, 25, 50, 100];
 const playRuleIcons = { controller_only: Gamepad2, mixed_pc_allowed: Keyboard, console_only: Monitor };
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
-const teamTypeForMode = (mode) => mode === "8s" ? "8s" : "wager";
 
 const mapsByMode = {
   snd: [
@@ -78,10 +77,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
   const requiresTeam = isWager;
-  const expectedTeamType = teamTypeForMode(mode);
+  const expectedTeamType = "wager";
   const compatibleTeams = useMemo(() => (
     userTeams.filter((team) => {
-      const teamType = team.team_type || "8s";
+      const teamType = team.team_type || "general";
       return teamType === expectedTeamType
         && team.captain_id === user?.id;
     })
@@ -127,7 +126,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         const teamSizeObj = teamSizes.find(ts => ts.id === selectedTeamSize);
         let createdResult = {};
         
-        const matchType = mode === 'ranked' ? 'ranked' : mode === 'xp' ? 'xp' : mode === '8s' ? '8s' : 'wagers';
+        const matchType = mode === 'ranked' ? 'ranked' : 'wagers';
         
         if (isWager) {
           const response = await base44.functions.invoke('createWager', {
@@ -401,7 +400,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 {requiresTeam && (
                   <div className="mt-5 rounded-xl border border-white/5 bg-secondary/40 p-4">
                     <label className="text-xs text-vapor mb-2 block uppercase tracking-wider">
-                      Select {expectedTeamType === "8s" ? "8s" : "wager"} team
+                      Select wager team
                     </label>
                     <select
                       value={selectedTeamId}
@@ -417,7 +416,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     </select>
                     {compatibleTeams.length === 0 && (
                       <p className="text-xs text-red-400 mt-2">
-                        Create a dedicated {expectedTeamType === "8s" ? "8s" : "wager"} team first. Tournament teams cannot be used here.
+                        Create a dedicated wager team first. Tournament teams cannot be used here.
                       </p>
                     )}
                     {selectedTeam && selectedTeam.members.length < requiredPlayers && (

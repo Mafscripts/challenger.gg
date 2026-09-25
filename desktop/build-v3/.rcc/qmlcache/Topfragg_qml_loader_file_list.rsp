@@ -1,0 +1,11 @@
+--resource
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build-v3/.qt/rcc/qmake_Topfragg.qrc
+--resource
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build-v3/.qt/rcc/Topfragg_raw_qml_0.qrc
+--resource
+C:/Users/livao/OneDrive/Documents/peak-rival-arena/desktop/build-v3/.qt/rcc/Topfragg_raw_res_0.qrc
+/qt/qml/Topfragg/qml/Main.qml
+/qt/qml/Topfragg/qml/AppButton.qml
+/qt/qml/Topfragg/qml/GlassCard.qml
+/qt/qml/Topfragg/qml/NavItem.qml
+/qt/qml/Topfragg/qml/StatCard.qml

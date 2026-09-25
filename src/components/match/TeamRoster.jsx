@@ -19,11 +19,6 @@ function PlayerRow({ player, teamColor }) {
           <p className={`text-[10px] font-bold ${teamColor === 'cyan' ? 'text-cyan' : 'text-orange'} truncate`}>
             {name}
           </p>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[7px] px-1 py-0.5 bg-yellow-400/10 text-yellow-400 rounded font-mono font-bold shrink-0">
-              L{player.xp_level || 1}
-            </span>
-          </div>
           <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
           <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
         </div>

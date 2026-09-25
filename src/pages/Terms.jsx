@@ -20,10 +20,10 @@ const sections = [
     icon: Swords,
     title: "Competitive Play",
     body: [
-      "Players must follow the posted Rules and match-specific instructions for ranked matches, XP matches, wagers, teams, and tournaments.",
+      "Players must follow the posted Rules and match-specific instructions for ranked matches, wagers, teams, and tournaments.",
       "Match scores, evidence, roster eligibility, check-in timing, map vetoes, no-shows, disconnects, and disputes may be reviewed by staff.",
       "Cheating, boosting, exploiting, match fixing, account sharing, harassment, or intentional disruption may result in forfeits, penalties, suspensions, or bans.",
-      "Leaderboard ratings, ELO, XP, tournament placement, and records may be adjusted when staff corrects abuse, bugs, fraud, or incorrectly reported outcomes.",
+      "Leaderboard ratings, ELO, tournament placement, and records may be adjusted when staff corrects abuse, bugs, fraud, or incorrectly reported outcomes.",
     ],
   },
   {

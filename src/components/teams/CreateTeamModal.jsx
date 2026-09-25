@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -10,7 +11,7 @@ const emptyTeamForm = (teamType, rosterSize) => ({
   name: "",
   tag: "",
   region: "na",
-  team_type: teamType || "8s",
+  team_type: teamType || "general",
   roster_size: normalizeTeamRosterSize(rosterSize),
   banner_url: "",
 });
@@ -30,7 +31,7 @@ export default function CreateTeamModal({
   onClose,
   onCreated,
   user,
-  defaultTeamType = "8s",
+  defaultTeamType = "general",
   defaultRosterSize = 4,
   lockTeamType = false,
   title = "Create Team",
@@ -43,6 +44,15 @@ export default function CreateTeamModal({
     if (!isOpen) return;
     setTeamForm(emptyTeamForm(defaultTeamType, defaultRosterSize));
   }, [defaultRosterSize, defaultTeamType, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   const handleBannerFile = async (event) => {
     const file = event.target.files?.[0];
@@ -98,7 +108,9 @@ export default function CreateTeamModal({
     }
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -106,8 +118,10 @@ export default function CreateTeamModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12, ease: "easeOut" }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_center,rgba(210,214,220,0.035),rgba(0,0,0,0.88)_48%)] p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-[radial-gradient(circle_at_center,rgba(210,214,220,0.035),rgba(0,0,0,0.88)_48%)] p-4"
           onClick={onClose}
+          role="dialog"
+          aria-modal="true"
         >
           <motion.form
             initial={{ opacity: 0, y: 12, scale: 0.985 }}
@@ -117,9 +131,9 @@ export default function CreateTeamModal({
             style={{ willChange: "transform, opacity" }}
             onSubmit={handleSubmit}
             onClick={(event) => event.stopPropagation()}
-            className="max-h-[calc(100vh-2rem)] w-full max-w-lg transform-gpu overflow-y-auto rounded-2xl border border-white/10 bg-card shadow-[0_24px_70px_rgba(0,0,0,0.5)]"
+            className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg transform-gpu flex-col overflow-hidden rounded-2xl border border-white/10 bg-card shadow-[0_24px_70px_rgba(0,0,0,0.5)]"
           >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-card px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-white/5 bg-card px-6 py-4">
           <div>
             <h2 className="text-xl font-black">{title}</h2>
             <p className="mt-0.5 text-xs text-vapor">{description}</p>
@@ -129,7 +143,7 @@ export default function CreateTeamModal({
           </button>
         </div>
 
-        <div className="space-y-4 p-6">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-6">
           <label className="block">
             <span className="mb-2 block text-xs uppercase tracking-wider text-vapor">Team Name</span>
             <input value={teamForm.name} onChange={(event) => setTeamForm((current) => ({ ...current, name: event.target.value }))} maxLength={40} required className="w-full rounded-lg border border-white/5 bg-secondary px-4 py-3 text-sm focus:border-cyan/30 focus:outline-none" placeholder="Team name" />
@@ -141,6 +155,7 @@ export default function CreateTeamModal({
           <label className="block">
             <span className="mb-2 block text-xs uppercase tracking-wider text-vapor">Team Banner URL</span>
             <input value={teamForm.banner_url} onChange={(event) => setTeamForm((current) => ({ ...current, banner_url: event.target.value }))} className="w-full rounded-lg border border-white/5 bg-secondary px-4 py-3 text-sm focus:border-cyan/30 focus:outline-none" placeholder="https://i.imgur.com/team-banner.png" />
+            <span className="mt-2 block text-[10px] text-vapor/70">Recommended: 1600 × 600 px (8:3), up to 1.5 MB</span>
           </label>
           <label className="block">
             <span className="mb-2 block text-xs uppercase tracking-wider text-vapor">Upload Team Banner</span>
@@ -156,7 +171,7 @@ export default function CreateTeamModal({
             <label className="block">
               <span className="mb-2 block text-xs uppercase tracking-wider text-vapor">Team Type</span>
               <select value={teamForm.team_type} disabled={lockTeamType} onChange={(event) => setTeamForm((current) => ({ ...current, team_type: event.target.value }))} className="w-full rounded-lg border border-white/5 bg-secondary px-4 py-3 text-sm focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70">
-                <option value="8s">8s</option><option value="wager">Wager</option><option value="tournament">Tournament</option><option value="general">General</option>
+                <option value="wager">Wager</option><option value="tournament">Tournament</option><option value="general">General</option>
               </select>
             </label>
             <label className="block">
@@ -168,13 +183,14 @@ export default function CreateTeamModal({
           </div>
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-3 border-t border-white/5 bg-card px-6 py-4">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-white/5 bg-card px-6 py-4">
           <button type="button" onClick={onClose} className="rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-vapor transition-colors hover:bg-white/10">Cancel</button>
           <button type="submit" disabled={creating} className="rounded-lg bg-cyan px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-background transition-colors hover:bg-cyan/90 disabled:opacity-50">{creating ? "Creating..." : "Create Team"}</button>
         </div>
           </motion.form>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { Trophy, TrendingUp, Flame, DollarSign, Star, Users, Shield } from "lucide-react";
+import { Trophy, TrendingUp, Flame, DollarSign, Users, Shield } from "lucide-react";
 
 export default function StatsBar({ teamAPlayers, teamBPlayers }) {
   if (!teamAPlayers || teamAPlayers.length === 0) return null;
@@ -25,10 +25,6 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
     (p.biggest_wager_win || 0) > (max.biggest_wager_win || 0) ? p : max
   );
   
-  const topXP = allPlayers.reduce((max, p) => 
-    (p.xp_level || 0) > (max.xp_level || 0) ? p : max
-  );
-  
   const totalMatches = allPlayers.reduce((sum, p) => 
     sum + (p.wager_wins || 0) + (p.wager_losses || 0), 0
   );
@@ -45,7 +41,7 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
   const teamBWinRate = safeTeamB.length > 0 ? ((teamBWins / (teamBWins + teamBLosses || 1)) * 100).toFixed(1) : '0';
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
       <div className="premium-card rounded-xl p-3">
         <div className="flex items-center gap-1.5 mb-1">
           <Trophy className="w-3.5 h-3.5 text-yellow-400" />
@@ -98,15 +94,6 @@ export default function StatsBar({ teamAPlayers, teamBPlayers }) {
         </div>
         <p className="text-xs font-bold text-orange">${teamBEarnings.toLocaleString()}</p>
         <p className="text-[9px] text-orange/70">{teamBWinRate}% WR</p>
-      </div>
-
-      <div className="premium-card rounded-xl p-3">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Star className="w-3.5 h-3.5 text-yellow-400" />
-          <p className="text-[9px] text-vapor uppercase">Top Level</p>
-        </div>
-        <p className="text-xs font-bold truncate">{topXP.full_name || topXP.username || topXP.user_name || "Player"}</p>
-        <p className="text-xs font-bold text-yellow-400">LVL {topXP.xp_level}</p>
       </div>
 
       <div className="premium-card rounded-xl p-3">

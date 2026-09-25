@@ -24,7 +24,6 @@ import {
   Target,
   Trophy,
   Users,
-  Zap,
 } from "lucide-react";
 import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
@@ -43,6 +42,7 @@ const statNumber = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
+const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
 const profileImageMaxBytes = 1.5 * 1024 * 1024;
 const verifiedNameColors = [
   { label: "Default", value: "" },
@@ -209,7 +209,6 @@ export default function Profile() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [rankedStats, setRankedStats] = useState(null);
-  const [xpStats, setXpStats] = useState(null);
   const [wallet, setWallet] = useState(null);
   const [inventory, setInventory] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -254,7 +253,6 @@ export default function Profile() {
       const [
         profileRows,
         rankedRows,
-        xpRows,
         walletRows,
         inventoryRows,
         teamMemberRows,
@@ -265,7 +263,6 @@ export default function Profile() {
       ] = await Promise.all([
         base44.entities.PlayerProfile.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
         base44.entities.RankedStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
-        base44.entities.XPStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
         base44.entities.Wallet.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
         base44.entities.UserInventory.filter({ user_id: userRow.id }, "-acquired_date", 200).catch(() => []),
         base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
@@ -281,7 +278,6 @@ export default function Profile() {
       setBioDraft(loadedProfile?.bio || "");
       setNameColorDraft(userRow?.display_name_color || "");
       setRankedStats(rankedRows[0] || null);
-      setXpStats(xpRows[0] || null);
       setWallet(walletRows[0] || null);
       setInventory(inventoryRows || []);
 
@@ -289,9 +285,12 @@ export default function Profile() {
         const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
         return { ...membership, team };
       }));
-      setTeams(loadedTeams.filter((row) => row.team));
+      setTeams(loadedTeams.filter((row) => (
+        row.team && !hiddenCompetitionTypes.has(String(row.team.team_type || "").toLowerCase())
+      )));
 
       const combinedMatches = [...hostedWagers, ...challengedWagers, ...hostedRanked, ...challengedRanked]
+        .filter((match) => !hiddenCompetitionTypes.has(String(match.match_type || "").toLowerCase()))
         .filter((match, index, list) => list.findIndex((item) => item.id === match.id) === index)
         .sort((a, b) => new Date(b.match_completed_date || b.completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.completed_date || a.created_date || 0))
         .slice(0, 8);
@@ -324,10 +323,6 @@ export default function Profile() {
   const elo = Number(rankedStats?.elo || profile?.elo || 0);
   const nextRank = getNextRankForElo(elo);
   const rankProgress = getRankProgress(elo);
-  const xpLevel = Number(xpStats?.level || user?.xp_level || profile?.level || 1);
-  const currentXp = Number(xpStats?.current_xp ?? user?.current_xp ?? profile?.current_xp ?? 0);
-  const xpToNextLevel = Number(xpStats?.xp_to_next_level || profile?.xp_to_next_level || 1000);
-  const xpProgress = clampPercent(Math.round((currentXp / Math.max(1, xpToNextLevel)) * 100));
   const currentStreak = Number(rankedStats?.win_streak || user?.current_win_streak || 0);
   const earnedMoney = Math.max(
     statNumber(wallet?.total_earnings),
@@ -440,13 +435,12 @@ export default function Profile() {
               backgroundSize: "180% 180%",
             }}
           />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-blue-400/35 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan/35 to-transparent" />
           <div className="relative grid gap-8 p-6 sm:p-8 lg:p-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-10">
             <div className="flex min-w-0 flex-col justify-between gap-9">
               <div className="flex flex-col gap-7 lg:flex-row lg:items-center">
                 <div className="relative mx-auto shrink-0 lg:mx-0">
-                  <div className="absolute -inset-3 rounded-[2.2rem] bg-gradient-to-br from-blue-500/20 via-blue-500/5 to-slate-400/10 blur-xl" />
-                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-secondary to-background text-4xl font-black shadow-[0_24px_50px_rgba(0,0,0,0.35),0_0_0_1px_rgba(210,214,220,0.16)] sm:h-40 sm:w-40">
+                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-[1.8rem] border border-border bg-secondary text-4xl font-black shadow-sm sm:h-40 sm:w-40">
                     {avatarDraft || profile?.avatar_url ? (
                       <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" />
                     ) : (
@@ -454,14 +448,14 @@ export default function Profile() {
                     )}
                   </div>
                   <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl bg-card shadow-[0_8px_20px_rgba(0,0,0,.35)]">
-                    <span className="h-3 w-3 rounded-full bg-green shadow-[0_0_14px_rgba(0,255,128,0.55)]" />
+                    <span className="h-3 w-3 rounded-full bg-green" />
                   </span>
                 </div>
 
                 <div className="min-w-0 flex-1 text-center lg:text-left">
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.24em] text-blue-400">TopFragg competitor profile</p>
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.24em] text-primary">TopFragg competitor profile</p>
                   <div className="mb-3 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
-                    <h1 className="max-w-full break-words pb-1 text-4xl font-black leading-[1.08] tracking-[-0.04em] text-[#eef1f7] sm:text-5xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
+                    <h1 className="max-w-full break-words pb-1 text-4xl font-black leading-[1.08] tracking-[-0.04em] text-foreground sm:text-5xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
                       {name}
                     </h1>
                     <RoleBadge role={user.role || "user"} />
@@ -470,7 +464,7 @@ export default function Profile() {
                   <p className="mb-4 text-sm font-medium text-vapor">
                     @{user.handle || profile?.handle || user.username || "player"} <span className="px-2 text-white/20">/</span> {region} <span className="px-2 text-white/20">/</span> Joined {joinedDate}
                   </p>
-                  <p className="mx-auto mb-5 max-w-2xl text-sm leading-6 text-white/60 lg:mx-0">
+                  <p className="mx-auto mb-5 max-w-2xl text-sm leading-6 text-vapor lg:mx-0">
                     {profile?.bio || "Competitive player building a legacy on TopFragg."}
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
@@ -562,16 +556,6 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="premium-card rounded-2xl p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-cyan" />
-                    <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Level {xpLevel}</span>
-                  </div>
-                  <span className="font-mono text-xs text-white">{currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP</span>
-                </div>
-                <ProgressBar value={xpProgress} tone="from-cyan to-green" />
-              </div>
             </div>
           </div>
 
@@ -1046,7 +1030,7 @@ function TeamsList({ teams }) {
           {teams.map((membership) => {
             const team = membership.team;
             const initials = String(team.tag || team.name || "TF").slice(0, 3).toUpperCase();
-            const typeLabel = ({ wager: "Wager", tournament: "Tournament", "8s": "8s", general: "General" })[team.team_type] || "Team";
+            const typeLabel = ({ wager: "Wager", tournament: "Tournament", general: "General" })[team.team_type] || "Team";
             return (
               <Link key={membership.id} to={`/teams?team=${encodeURIComponent(team.id)}`} className="group relative min-h-56 overflow-hidden rounded-2xl border border-white/10 bg-background/40 p-5 transition-all hover:-translate-y-1 hover:border-cyan/35 hover:shadow-[0_18px_45px_rgba(0,0,0,0.3)]">
                 {team.banner_url && <img src={team.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15 transition-all duration-300 group-hover:scale-105 group-hover:opacity-25" />}

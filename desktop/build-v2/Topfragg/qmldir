@@ -1,0 +1,10 @@
+module Topfragg
+typeinfo Topfragg.qmltypes
+prefer :/qt/qml/Topfragg/
+Main 1.0 qml/Main.qml
+AppButton 1.0 qml/AppButton.qml
+GlassCard 1.0 qml/GlassCard.qml
+NavItem 1.0 qml/NavItem.qml
+StatCard 1.0 qml/StatCard.qml
+depends QtQuick
+

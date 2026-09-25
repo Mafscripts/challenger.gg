@@ -76,7 +76,7 @@ export default function Trading() {
           eyebrow="Player marketplace"
           title="Trading"
           description="Send, receive and manage trade offers with other players."
-          action={<button className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5 hover:bg-blue-400 hover:shadow-lg hover:shadow-blue-500/25"><Send className="h-3.5 w-3.5" /> New Trade</button>}
+          action={<button className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5 hover:bg-blue-400 hover:shadow-lg hover:shadow-cyan/25"><Send className="h-3.5 w-3.5" /> New Trade</button>}
         />
 
         <div className="flex gap-2 mb-6">
@@ -118,7 +118,7 @@ export default function Trading() {
 
 function TradeList({ tab, offers, userId, busyId, onStatus }) {
   if (offers.length === 0) {
-    return <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">No {tab} trade offers.</div>;
+    return <div className="glass rounded-xl border border-white/5 px-6 py-9 text-center"><Package className="mx-auto mb-3 h-9 w-9 text-vapor/35" /><h2 className="text-base font-black">No {tab} trades</h2><p className="mt-1 text-sm text-vapor">Trade offers will appear here when they are available.</p></div>;
   }
 
   return (

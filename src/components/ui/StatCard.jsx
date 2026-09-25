@@ -22,7 +22,7 @@ export default function StatCard({ icon: Icon, label, value, accent = "cyan", cl
           {Icon && <Icon className="w-4 h-4" />}
         </div>
       </div>
-      <p className="relative mb-1 font-mono text-3xl font-black tracking-tight text-white">{value}</p>
+      <p className="relative mb-1 font-mono text-3xl font-black tracking-tight text-foreground">{value}</p>
       <p className="relative text-[10px] font-bold uppercase tracking-[0.16em] text-vapor">{label}</p>
     </motion.div>
   );

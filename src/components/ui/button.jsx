@@ -5,19 +5,19 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-100 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-[0_10px_28px_rgba(210,214,220,.12)] hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_14px_34px_rgba(210,214,220,.18)]",
+          "bg-primary text-primary-foreground shadow-sm hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md",
         destructive:
           "bg-destructive text-destructive-foreground shadow-[0_10px_28px_rgba(239,68,68,.12)] hover:-translate-y-0.5 hover:bg-destructive/90",
         outline:
-          "border border-white/[0.07] bg-white/[0.025] shadow-[inset_0_1px_0_rgba(255,255,255,.025)] hover:-translate-y-0.5 hover:border-cyan/20 hover:bg-cyan/[0.06] hover:text-cyan",
+          "border border-border bg-card text-foreground shadow-sm hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/[0.07] hover:text-primary",
         secondary:
-          "bg-secondary/80 text-secondary-foreground shadow-[0_10px_26px_rgba(0,0,0,.12)] hover:-translate-y-0.5 hover:bg-secondary",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+          "border border-border bg-secondary text-secondary-foreground shadow-sm hover:-translate-y-0.5 hover:border-border/80 hover:bg-muted",
+        ghost: "hover:bg-primary/[0.06] hover:text-primary",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
