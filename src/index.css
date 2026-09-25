@@ -120,12 +120,17 @@
   }
 
   button:focus-visible,
-  a:focus-visible,
+  a:focus-visible {
+    outline: 2px solid hsl(var(--ring) / 0.58);
+    outline-offset: 2px;
+  }
+
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    outline: 2px solid hsl(var(--ring) / 0.58);
-    outline-offset: 2px;
+    outline: none;
+    border-color: hsl(var(--ring) / 0.45);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 0 0 1px hsl(var(--ring) / 0.1);
   }
 
   input,
@@ -311,6 +316,89 @@
     letter-spacing: -0.01em;
   }
 
+  .topbar-primary-nav {
+    --nav-accent: hsl(var(--cyan));
+    --nav-accent-soft: hsl(var(--cyan) / 0.09);
+    --nav-accent-border: hsl(var(--cyan) / 0.24);
+  }
+
+  .nav-primary-button {
+    transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1);
+  }
+
+  .nav-dropdown-anchor[data-tone="cyan"] {
+    --nav-accent: hsl(var(--cyan));
+    --nav-accent-soft: hsl(var(--cyan) / 0.09);
+    --nav-accent-border: hsl(var(--cyan) / 0.24);
+  }
+
+  .nav-primary-button[data-tone="orange"],
+  .nav-dropdown-anchor[data-tone="orange"] {
+    --nav-accent: hsl(var(--orange));
+    --nav-accent-soft: hsl(var(--orange) / 0.09);
+    --nav-accent-border: hsl(var(--orange) / 0.25);
+  }
+
+  .nav-primary-button[data-tone="green"],
+  .nav-dropdown-anchor[data-tone="green"] {
+    --nav-accent: hsl(var(--green));
+    --nav-accent-soft: hsl(var(--green) / 0.085);
+    --nav-accent-border: hsl(var(--green) / 0.23);
+  }
+
+  .nav-primary-button[data-tone="gold"],
+  .nav-dropdown-anchor[data-tone="gold"] {
+    --nav-accent: #facc15;
+    --nav-accent-soft: rgb(250 204 21 / 0.085);
+    --nav-accent-border: rgb(250 204 21 / 0.24);
+  }
+
+  .nav-primary-button[data-tone="purple"],
+  .nav-dropdown-anchor[data-tone="purple"] {
+    --nav-accent: #c084fc;
+    --nav-accent-soft: rgb(192 132 252 / 0.085);
+    --nav-accent-border: rgb(192 132 252 / 0.24);
+  }
+
+  .nav-primary-button[data-tone="red"],
+  .nav-dropdown-anchor[data-tone="red"] {
+    --nav-accent: #f87171;
+    --nav-accent-soft: rgb(248 113 113 / 0.085);
+    --nav-accent-border: rgb(248 113 113 / 0.24);
+  }
+
+  .nav-primary-button::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(110deg, transparent 18%, var(--nav-accent-soft) 40%, rgb(255 255 255 / 0.24) 50%, var(--nav-accent-soft) 60%, transparent 82%);
+    background-position: 145% 0;
+    background-size: 250% 100%;
+  }
+
+  .nav-primary-button:hover,
+  .nav-primary-button:focus-visible {
+    transform: translateY(-2px);
+  }
+
+  .nav-primary-button:hover::before,
+  .nav-primary-button:focus-visible::before {
+    opacity: 1;
+    animation: nav-button-shine 720ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+
+  .nav-primary-icon {
+    transition: color 160ms ease, transform 220ms cubic-bezier(.2, .8, .2, 1);
+  }
+
+  .nav-primary-button:hover .nav-primary-icon,
+  .nav-primary-button:focus-visible .nav-primary-icon {
+    transform: scale(1.14) rotate(-6deg);
+  }
+
   .topbar-primary-nav > .nav-dropdown-anchor > button::after {
     content: "";
     position: absolute;
@@ -319,40 +407,34 @@
     width: 0;
     height: 2px;
     border-radius: 999px;
-    background: hsl(var(--cyan));
+    background: var(--nav-accent);
     transform: translateX(50%);
     transition: width 160ms cubic-bezier(.2, .8, .2, 1);
   }
 
   .topbar-primary-nav > .nav-dropdown-anchor > button:hover,
   .topbar-primary-nav > .nav-dropdown-anchor > button:focus-visible,
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-cyan"],
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-orange"],
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-green"],
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-yellow"],
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-white"] {
-    color: hsl(var(--cyan));
-    background: hsl(var(--surface-panel));
-    box-shadow: 0 0 0 1px hsl(var(--cyan) / 0.18);
+  .topbar-primary-nav > .nav-dropdown-anchor > button[data-active="true"] {
+    color: var(--nav-accent);
+    background: var(--nav-accent-soft);
+    box-shadow: 0 0 0 1px var(--nav-accent-border);
   }
 
   .topbar-primary-nav > .nav-dropdown-anchor > button:hover::after,
   .topbar-primary-nav > .nav-dropdown-anchor > button:focus-visible::after,
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-cyan"]::after,
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-orange"]::after,
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-green"]::after,
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-yellow"]::after,
-  .topbar-primary-nav > .nav-dropdown-anchor > button[class*="text-white"]::after {
+  .topbar-primary-nav > .nav-dropdown-anchor > button[data-active="true"]::after {
     width: 1.1rem;
-  }
-
-  .topbar-primary-nav > .nav-dropdown-anchor > button > span:first-child {
-    display: none;
   }
 
   .nav-popover :where(a, button):hover,
   .mobile-menu-enter a:hover {
     color: hsl(var(--cyan)) !important;
+  }
+
+  .topbar-primary-nav .nav-dropdown-anchor[data-tone] .nav-popover :where(a, button):hover {
+    color: var(--nav-accent) !important;
+    border-color: var(--nav-accent-border) !important;
+    background-color: var(--nav-accent-soft) !important;
   }
 
   .nav-popover :where(a, button):hover,
@@ -459,8 +541,8 @@
   }
 
   .topbar-avatar {
-    border-color: hsl(var(--cyan) / 0.35);
-    background: hsl(var(--cyan) / 0.1);
+    border: 0;
+    background: transparent;
     color: hsl(var(--cyan));
   }
 
@@ -994,6 +1076,11 @@
 @keyframes nav-popover-in {
   from { opacity: 0; transform: translateY(7px) scale(.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes nav-button-shine {
+  from { background-position: 145% 0; }
+  to { background-position: -145% 0; }
 }
 
 @keyframes mobile-menu-in {

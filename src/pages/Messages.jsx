@@ -50,6 +50,7 @@ export default function Messages() {
   const [playerQuery, setPlayerQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const requestedPlayerId = searchParams.get("compose") || searchParams.get("conversation") || "";
   const chatEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const activePlayerIdRef = useRef(activePlayerId);
@@ -95,17 +96,6 @@ export default function Messages() {
         setCurrentUser(user);
         await Promise.all([loadDirectMessages({ initial: true, viewerId: user.id }), loadInvitations(user.id)]);
 
-        const requestedPlayerId = searchParams.get("compose") || searchParams.get("conversation");
-        if (requestedPlayerId) {
-          const response = await base44.functions.invoke("searchMessageRecipients", { recipient_id: requestedPlayerId });
-          const player = response.data?.users?.[0];
-          if (player && active) {
-            setPlayers(current => ({ ...current, [player.id]: player }));
-            setActivePlayerId(player.id);
-            setComposerOpen(false);
-            setSearchParams({ conversation: player.id }, { replace: true });
-          }
-        }
       } finally {
         if (active) setLoading(false);
       }
@@ -113,6 +103,25 @@ export default function Messages() {
     initialize();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!currentUser?.id || !requestedPlayerId || (
+      activePlayerIdRef.current === requestedPlayerId && players[requestedPlayerId]
+    )) return undefined;
+    let active = true;
+    base44.functions.invoke("searchMessageRecipients", { recipient_id: requestedPlayerId })
+      .then((response) => {
+        const player = response.data?.users?.[0];
+        if (!active || !player) return;
+        setPlayers(current => ({ ...current, [player.id]: player }));
+        setActivePlayerId(player.id);
+        setActiveInvitation(null);
+        setComposerOpen(false);
+        if (searchParams.has("compose")) setSearchParams({ conversation: player.id }, { replace: true });
+      })
+      .catch(() => null);
+    return () => { active = false; };
+  }, [currentUser?.id, players, requestedPlayerId]);
 
   useEffect(() => {
     if (!currentUser?.id) return undefined;
@@ -257,7 +266,7 @@ export default function Messages() {
           </button>}
         />
 
-        <div className="grid min-h-[680px] overflow-hidden rounded-2xl border border-white/10 bg-card lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid overflow-hidden rounded-2xl border border-white/10 bg-card lg:h-[calc(100dvh-13rem)] lg:min-h-[560px] lg:max-h-[760px] lg:grid-cols-[340px_minmax(0,1fr)]">
           <aside className="border-b border-white/10 bg-background/25 lg:border-b-0 lg:border-r">
             <div className="border-b border-white/10 p-4">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-vapor">Conversations</p>
@@ -322,7 +331,7 @@ export default function Messages() {
             </div>
           </aside>
 
-          <section className="flex min-h-[620px] min-w-0 flex-col">
+          <section className="flex h-[620px] min-h-0 min-w-0 flex-col lg:h-auto">
             {activeInvitation ? (
               <div className="flex min-h-[620px] flex-1 flex-col">
                 <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
@@ -377,7 +386,7 @@ export default function Messages() {
                   </Link>
                 </div>
 
-                <div ref={chatScrollRef} className="flex-1 overflow-y-auto bg-background/15 px-4 py-6 sm:px-7">
+                <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background/15 px-4 py-6 sm:px-7">
                   {activeMessages.length === 0 && (
                     <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
                       <PlayerAvatar player={activePlayer} size="lg" />

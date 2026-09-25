@@ -33,6 +33,7 @@ import { base44 } from "@/api/base44Client";
 import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { activisionIdFor } from "@/lib/activision";
+import { normalizeImageSource, prepareImageFile } from "@/lib/images";
 
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
@@ -43,7 +44,6 @@ const statNumber = (value) => {
 };
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
-const profileImageMaxBytes = 1.5 * 1024 * 1024;
 const verifiedNameColors = [
   { label: "Default", value: "" },
   { label: "Red", value: "#f87171" },
@@ -137,16 +137,6 @@ const inventoryBorderClass = (item) => {
   if (rarity === "epic") return "border-purple-400/20";
   return "border-white/5 hover:border-white/10";
 };
-
-const fileToDataUrl = (file) => new Promise((resolve, reject) => {
-  if (!file) return resolve("");
-  if (!file.type.startsWith("image/")) return reject(new Error("Choose an image file."));
-  if (file.size > profileImageMaxBytes) return reject(new Error("Image must be 1.5MB or smaller."));
-  const reader = new FileReader();
-  reader.onload = () => resolve(String(reader.result || ""));
-  reader.onerror = () => reject(new Error("Could not read image file."));
-  reader.readAsDataURL(file);
-});
 
 const profileTrophyCount = (user, inventory = []) => (
   Number(user?.trophies || 0)
@@ -353,7 +343,7 @@ export default function Profile() {
     if (!file) return;
     setProfileResult(null);
     try {
-      setAvatarDraft(await fileToDataUrl(file));
+      setAvatarDraft(await prepareImageFile(file));
     } catch (error) {
       setProfileResult({ success: false, message: error.message || "Could not load image." });
     } finally {
@@ -367,12 +357,13 @@ export default function Profile() {
     setProfileResult(null);
     try {
       let nextProfile = profile;
+      const normalizedAvatar = normalizeImageSource(avatarDraft);
       const profilePatch = {
         user_id: user.id,
         display_name: user.display_name || user.full_name || user.username || user.email,
         username: user.username,
         handle: user.handle || user.username,
-        avatar_url: avatarDraft.trim(),
+        avatar_url: normalizedAvatar,
         bio: bioDraft.trim().slice(0, 500),
       };
       if (profile?.id) nextProfile = await base44.entities.PlayerProfile.update(profile.id, profilePatch);
@@ -572,6 +563,13 @@ export default function Profile() {
                     <input
                       value={avatarDraft}
                       onChange={(event) => setAvatarDraft(event.target.value)}
+                      onBlur={() => {
+                        try {
+                          setAvatarDraft(normalizeImageSource(avatarDraft));
+                        } catch {
+                          // Validation is shown when the profile is saved.
+                        }
+                      }}
                       placeholder="https://i.imgur.com/example.png"
                       className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
                     />
@@ -584,6 +582,7 @@ export default function Profile() {
                       onChange={handleAvatarFile}
                       className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
                     />
+                    <span className="block text-[9px] text-vapor">JPG, PNG, GIF, or WebP up to 8MB. Large files are optimized automatically.</span>
                   </label>
                   {isVerifiedPlayer && (
                     <label className="space-y-1">

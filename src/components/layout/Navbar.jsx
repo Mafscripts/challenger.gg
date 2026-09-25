@@ -5,7 +5,7 @@ import {
   Menu, X, Gamepad2, Swords, Trophy, ShoppingBag,
   Users, Zap,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
@@ -16,28 +16,28 @@ const navGroups = [
     label: "Tournaments",
     icon: Trophy,
     eyebrow: "Tournament center",
-    tone: "orange",
+    tone: "red",
     items: [
-      { label: "Tournaments", description: "Enter official competitions", path: "/tournaments", icon: Trophy, tone: "orange" },
-      { label: "Streamer Tournaments", description: "Community-hosted competition", path: "/streamer-tournaments", icon: Monitor, tone: "orange" },
+      { label: "Tournaments", description: "Enter official competitions", path: "/tournaments", icon: Trophy, tone: "red" },
+      { label: "Streamer Tournaments", description: "Community-hosted competition", path: "/streamer-tournaments", icon: Monitor, tone: "red" },
     ],
   },
   {
     label: "Wagers",
     icon: Zap,
     eyebrow: "Competitive stakes",
-    tone: "orange",
+    tone: "green",
     items: [
-      { label: "Open Wagers", description: "Post or accept a challenge", path: "/wagers", icon: Zap, tone: "orange" },
+      { label: "Open Wagers", description: "Post or accept a challenge", path: "/wagers", icon: Zap, tone: "green" },
     ],
   },
   {
     label: "Rankings",
     icon: Trophy,
     eyebrow: "Competitive rankings",
-    tone: "orange",
+    tone: "gold",
     items: [
-      { label: "Leaderboards", description: "Compare the best competitors", path: "/leaderboards", icon: Trophy, tone: "orange" },
+      { label: "Leaderboards", description: "Compare the best competitors", path: "/leaderboards", icon: Trophy, tone: "gold" },
     ],
   },
   {
@@ -50,6 +50,17 @@ const navGroups = [
     ],
   },
 ];
+
+const rankedNavGroup = {
+  label: "Ranked",
+  icon: Swords,
+  eyebrow: "Ranked competition",
+  tone: "cyan",
+  items: [
+    { label: "Ranked Arena", description: "Queue for competitive matchmaking", path: "/ranked", icon: Swords, tone: "cyan" },
+    { label: "Ranked Leaderboard", description: "See the complete ranked ladder", path: "/leaderboards", icon: Trophy, tone: "cyan" },
+  ],
+};
 
 const mobileNavSections = [
   {
@@ -105,7 +116,7 @@ const activeTournamentStatuses = new Set([
 ]);
 const hiddenMatchTypes = new Set(["8s", "eights", "xp"]);
 
-const navButtonClass = "relative inline-flex h-10 items-center gap-2 rounded-xl border px-2.5 text-[13px] font-bold transition-colors duration-100";
+const navButtonClass = "nav-primary-button relative inline-flex h-10 items-center gap-2 rounded-xl border px-2.5 text-[13px] font-bold";
 const navTone = {
   cyan: { button: "border-cyan/25 bg-cyan/10 text-cyan", icon: "border-cyan/20 bg-cyan/10 text-cyan" },
   gold: { button: "border-yellow-400/25 bg-yellow-400/10 text-yellow-300", icon: "border-yellow-400/20 bg-yellow-400/10 text-yellow-300" },
@@ -155,6 +166,9 @@ export default function Navbar() {
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [profilePlayerQuery, setProfilePlayerQuery] = useState("");
+  const [profilePlayerResults, setProfilePlayerResults] = useState([]);
+  const [profilePlayerSearching, setProfilePlayerSearching] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -228,6 +242,28 @@ export default function Navbar() {
       if (animationFrame) window.cancelAnimationFrame(animationFrame);
     };
   }, []);
+
+  useEffect(() => {
+    const query = profilePlayerQuery.trim();
+    if (!profileOpen || query.length < 2) {
+      setProfilePlayerResults([]);
+      setProfilePlayerSearching(false);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setProfilePlayerSearching(true);
+      try {
+        const response = await base44.functions.invoke("searchMessageRecipients", { query });
+        setProfilePlayerResults(response.data?.users || []);
+      } catch {
+        setProfilePlayerResults([]);
+      } finally {
+        setProfilePlayerSearching(false);
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [profileOpen, profilePlayerQuery]);
 
   useEffect(() => () => {
     if (dropdownCloseTimer.current) window.clearTimeout(dropdownCloseTimer.current);
@@ -603,6 +639,7 @@ export default function Navbar() {
               <div className="topbar-primary-nav hidden xl:flex items-center justify-center gap-0.5 p-1">
                 <Link
                   to="/dashboard"
+                  data-tone="orange"
                   onMouseEnter={closeDropdowns}
                   className={`${navButtonClass} ${
                     navItemIsActive(location.pathname, "/dashboard")
@@ -610,34 +647,23 @@ export default function Navbar() {
                       : "border-transparent text-vapor hover:border-orange/20 hover:bg-orange/[0.07] hover:text-orange"
                   }`}
                 >
-                  <span className={`flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard") ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
+                  <span className={`nav-primary-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard") ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
                     <Gamepad2 className="h-3.5 w-3.5" />
                   </span>
                   Dashboard
                 </Link>
-                <Link
-                  to="/ranked"
-                  onMouseEnter={closeDropdowns}
-                  className={`${navButtonClass} ${
-                    navItemIsActive(location.pathname, "/ranked")
-                      ? navTone.cyan.button
-                      : "border-transparent text-vapor hover:border-cyan/20 hover:bg-cyan/[0.07] hover:text-cyan"
-                  }`}
-                >
-                  <span className={`flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/ranked") ? navTone.cyan.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
-                    <Swords className="h-3.5 w-3.5" />
-                  </span>
-                  Ranked
-                </Link>
-                {navGroups.map((group) => {
+                {[rankedNavGroup, ...navGroups.filter((group) => group.label !== "Teams")].map((group) => {
                   const GroupIcon = group.icon;
-                  const active = group.items.some((item) => navItemIsActive(location.pathname, item.path));
+                  const active = group.label === "Ranked"
+                    ? navItemIsActive(location.pathname, "/ranked")
+                    : group.items.some((item) => navItemIsActive(location.pathname, item.path));
                   const open = navMenuOpen === group.label;
                   const groupTone = navTone[group.tone] || navTone.cyan;
 
                   return (
                     <div
                       key={group.label}
+                      data-tone={group.tone}
                       className="nav-dropdown-anchor relative"
                       onMouseEnter={() => {
                         cancelDropdownClose();
@@ -651,16 +677,19 @@ export default function Navbar() {
                     >
                       <button
                         type="button"
-                        onClick={() => setNavMenuOpen(open ? null : group.label)}
+                        data-active={active || open ? "true" : "false"}
+                        aria-expanded={open}
+                        onClick={() => {
+                          cancelDropdownClose();
+                          setNavMenuOpen(group.label);
+                        }}
                         className={`${navButtonClass} ${
                           active || open
                             ? groupTone.button
                             : "border-transparent text-vapor hover:border-white/10 hover:bg-white/5 hover:text-foreground"
                         }`}
                       >
-                        <span className={`flex h-7 w-7 items-center justify-center rounded-lg border ${active || open ? groupTone.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
-                          <GroupIcon className="h-3.5 w-3.5" />
-                        </span>
+                        <GroupIcon className={`nav-primary-icon h-4 w-4 shrink-0 ${active || open ? groupTone.icon.split(" ").at(-1) : "text-vapor"}`} />
                         {group.label}
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
                       </button>
@@ -705,6 +734,7 @@ export default function Navbar() {
                 })}
 
                 <div
+                  data-tone="purple"
                   className="nav-dropdown-anchor relative"
                   onMouseEnter={() => {
                     cancelDropdownClose();
@@ -718,13 +748,21 @@ export default function Navbar() {
                   onMouseLeave={() => scheduleDropdownClose(() => setMatchesOpen(false))}
                 >
                   <button
+                    type="button"
+                    data-active={matchesOpen ? "true" : "false"}
+                    aria-expanded={matchesOpen}
+                    onClick={() => {
+                      cancelDropdownClose();
+                      setMatchesOpen(true);
+                      loadActiveMatches();
+                    }}
                     className={`${navButtonClass} ${
                       matchesOpen
-                        ? "border-white/15 bg-white/[0.07] text-white"
+                        ? "border-purple-400/25 bg-purple-400/10 text-purple-300"
                         : "border-transparent text-vapor hover:border-white/10 hover:bg-white/5 hover:text-foreground"
                     }`}
                   >
-                    <span className={`flex h-7 w-7 items-center justify-center rounded-lg border ${matchesOpen ? "border-slate-300/20 bg-slate-200/10 text-slate-100" : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}><Activity className="h-3.5 w-3.5" /></span>
+                    <Activity className={`nav-primary-icon h-4 w-4 shrink-0 ${matchesOpen ? "text-purple-300" : "text-vapor"}`} />
                     My Matches
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform ${matchesOpen ? "rotate-180" : ""}`} />
                     {activeMatches.length > 0 && (
@@ -742,7 +780,7 @@ export default function Navbar() {
                             onClick={() => setMatchesOpen(false)}
                             className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
                           >
-                            <Activity className="w-4 h-4 text-cyan" />
+                            <Activity className="w-4 h-4 text-purple-300" />
                             Active Matches
                           </Link>
                           <Link
@@ -750,7 +788,7 @@ export default function Navbar() {
                             onClick={() => setMatchesOpen(false)}
                             className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
                           >
-                            <History className="w-4 h-4 text-cyan" />
+                            <History className="w-4 h-4 text-purple-300" />
                             Match History
                           </Link>
                         </div>
@@ -915,6 +953,16 @@ export default function Navbar() {
               {/* Messages */}
               <div
                 className="nav-dropdown-anchor relative hidden sm:block"
+                onMouseEnter={() => {
+                  cancelDropdownClose();
+                  setMessagesOpen(true);
+                  setNavMenuOpen(null);
+                  setMatchesOpen(false);
+                  setNotifOpen(false);
+                  setProfileOpen(false);
+                  loadMessages({ fresh: true });
+                }}
+                onMouseLeave={() => scheduleDropdownClose(() => setMessagesOpen(false))}
               >
                 <Link
                   to="/messages"
@@ -1000,9 +1048,21 @@ export default function Navbar() {
               >
                 <button
                   type="button"
+                  onClick={() => {
+                    cancelDropdownClose();
+                    setProfileOpen(true);
+                    setNavMenuOpen(null);
+                    setMatchesOpen(false);
+                    setNotifOpen(false);
+                    setMessagesOpen(false);
+                  }}
+                  onFocus={() => {
+                    cancelDropdownClose();
+                    setProfileOpen(true);
+                  }}
                   className={`topbar-profile flex h-10 items-center gap-2 rounded-xl border px-2 transition-colors ${profileOpen ? "is-open" : ""}`}
                 >
-                  <div className="topbar-avatar relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg border">
+                  <div className="topbar-avatar relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full">
                     <User className="h-3.5 w-3.5" />
                     {profileAvatar && <img src={profileAvatar} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
                   </div>
@@ -1014,7 +1074,46 @@ export default function Navbar() {
                 </button>
 
                 {profileOpen && (
-                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 rounded-xl p-2.5">
+                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 max-h-[calc(100dvh-5rem)] w-80 overflow-y-auto rounded-xl p-2.5">
+                      <div className="border-b border-white/5 px-1 pb-2">
+                        <div className="flex items-center gap-2 px-2">
+                          <Search className="h-4 w-4 shrink-0 text-vapor" />
+                          <input
+                            value={profilePlayerQuery}
+                            onChange={(event) => setProfilePlayerQuery(event.target.value)}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            placeholder="Search players..."
+                            className="h-10 min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-vapor/60"
+                          />
+                        </div>
+                        {profilePlayerQuery.trim().length >= 2 && (
+                          <div className="max-h-56 overflow-y-auto border-t border-white/5 pt-1">
+                            {profilePlayerSearching ? (
+                              <p className="px-3 py-5 text-center text-xs text-vapor">Searching...</p>
+                            ) : profilePlayerResults.length === 0 ? (
+                              <p className="px-3 py-5 text-center text-xs text-vapor">No players found</p>
+                            ) : profilePlayerResults.map((player) => (
+                              <Link
+                                key={player.id}
+                                to={`/profile/${player.username || player.id}`}
+                                onClick={() => {
+                                  setProfileOpen(false);
+                                  setProfilePlayerQuery("");
+                                }}
+                                className="flex items-center gap-3 rounded-lg px-3 py-2 text-vapor transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                              >
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-cyan">
+                                  {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4" />}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-bold">{player.name}</span>
+                                  <span className="block truncate text-[10px] text-vapor">@{player.handle || player.username || "player"}</span>
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <ProfileMenuSection
                         label="Account"
                         items={[
@@ -1051,7 +1150,7 @@ export default function Navbar() {
                             onClick={() => setProfileOpen(false)}
                             className="nav-menu-item flex items-center gap-3 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
                           >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-400/20 bg-red-500/10"><ShieldCheck className="h-4 w-4 text-red-300" /></span>
+                            <ShieldCheck className="h-4 w-4 shrink-0 text-red-300" />
                             Admin Panel
                           </Link>
                         </div>
@@ -1264,7 +1363,7 @@ function ProfileMenuSection({ label, items, onSelect }) {
             onClick={onSelect}
             className="nav-menu-item group flex items-center gap-3 rounded-lg border border-transparent px-2.5 py-2 text-sm text-vapor transition-colors duration-100 hover:border-white/[0.06] hover:bg-white/[0.04] hover:text-foreground"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan/15 bg-cyan/[0.07] text-cyan"><Icon className="h-4 w-4" /></span>
+            <Icon className="h-4 w-4 shrink-0 text-cyan" />
             <span className="font-bold">{item.label}</span>
             <span className="ml-auto text-vapor/30 transition-transform duration-100 group-hover:translate-x-0.5 group-hover:text-vapor">→</span>
           </Link>
