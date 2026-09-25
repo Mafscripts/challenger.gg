@@ -380,16 +380,16 @@
     opacity: 0;
     background: linear-gradient(
       106deg,
-      transparent 25%,
-      var(--nav-accent-soft) 38%,
-      var(--nav-accent) 47%,
-      rgb(255 255 255 / 0.78) 50%,
-      var(--nav-accent) 53%,
-      var(--nav-accent-soft) 62%,
-      transparent 75%
+      transparent 18%,
+      var(--nav-accent-soft) 34%,
+      var(--nav-accent-border) 44%,
+      rgb(255 255 255 / 0.28) 50%,
+      var(--nav-accent-border) 56%,
+      var(--nav-accent-soft) 66%,
+      transparent 82%
     );
-    background-position: 160% 0;
-    background-size: 260% 100%;
+    background-position: 125% 0;
+    background-size: 220% 100%;
     background-repeat: no-repeat;
     clip-path: inset(1px round 0.5rem);
     mix-blend-mode: screen;
@@ -406,7 +406,7 @@
 
   .nav-primary-button:hover::before,
   .nav-primary-button:focus-visible::before {
-    animation: nav-energy-trail 780ms cubic-bezier(.16, 1, .3, 1) both;
+    animation: nav-energy-trail 1250ms cubic-bezier(.22, .61, .36, 1) both;
   }
 
   .nav-primary-icon {
@@ -440,7 +440,7 @@
 
   .nav-dashboard-link:hover .nav-dashboard-icon svg,
   .nav-dashboard-link:focus-visible .nav-dashboard-icon svg {
-    animation: dashboard-icon-charge 620ms cubic-bezier(.16, 1, .3, 1) both;
+    animation: dashboard-icon-charge 820ms cubic-bezier(.22, .61, .36, 1) both;
   }
 
   .topbar-primary-nav > .nav-dashboard-link::after,
@@ -1136,13 +1136,14 @@
 @keyframes nav-energy-trail {
   0% {
     opacity: 0;
-    background-position: 160% 0;
+    background-position: 125% 0;
   }
-  14% { opacity: .32; }
-  45% { opacity: .72; }
+  20% { opacity: .22; }
+  48% { opacity: .52; }
+  72% { opacity: .38; }
   100% {
     opacity: 0;
-    background-position: -160% 0;
+    background-position: -125% 0;
   }
 }
 
