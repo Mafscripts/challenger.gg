@@ -22,6 +22,7 @@ const sections = [
     icon: Swords,
     rules: [
       "No Stretch Defuse.",
+      "Kill cams must be on!",
       "If you have ever been console restricted, you are required to play on console in all Topfragg tournaments.",
       "Maps are selected via the official veto system. Manual map selection is not permitted.",
       "Each team receives one map veto per match.",

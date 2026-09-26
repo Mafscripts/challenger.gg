@@ -5,6 +5,7 @@ import { wagerPlayRule } from "@/lib/wagerRules";
 
 const commonRules = [
   "No Stretch Defuse.",
+  "Kill cams must be on!",
   "Use the official map veto and play the maps shown in this room.",
   "Report the final result within 10 minutes and keep video evidence for disputes.",
   "Intentional disconnects or leaving an active match result in a forfeit.",

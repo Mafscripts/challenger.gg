@@ -35,8 +35,7 @@ const money = (value) => {
 };
 const roundedMoney = (value) => Math.round(money(value) * 100) / 100;
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
-const staffJoinNameFor = (user) => user?.username || user?.handle || nameFor(user);
-const staffJoinMessageFor = (user) => `${staffJoinNameFor(user)} (Staff) has joined the match room.`;
+const staffJoinMessageFor = (user) => `${nameFor(user)} (admin) has joined the match room.`;
 const activisionIdFor = (user) => String(user?.activision_id || user?.metadata?.activision_id || "").trim();
 const activisionSettingsMessage = "Add your Activision ID in Settings > Gaming IDs before joining competitive matches.";
 const cleanName = (value) => String(value || "").trim().toLowerCase();
