@@ -7,6 +7,27 @@ import { hasRole, rolePower } from "../roles.js";
 import { knownUserIpAddresses } from "../ban-enforcement.js";
 
 const router = Router();
+const tournamentMutationTails = new Map();
+
+async function withTournamentMutationLock(key, operation) {
+  const lockKey = String(key);
+  const previous = tournamentMutationTails.get(lockKey) || Promise.resolve();
+  let release;
+  const current = new Promise((resolve) => {
+    release = resolve;
+  });
+  tournamentMutationTails.set(lockKey, current);
+
+  await previous.catch(() => null);
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (tournamentMutationTails.get(lockKey) === current) {
+      tournamentMutationTails.delete(lockKey);
+    }
+  }
+}
 
 const money = (value) => {
   const amount = Number(value);
@@ -2111,18 +2132,26 @@ async function sendTournamentOutcomeToRoute(match, outcome = "winner") {
   const entry = tournamentOutcomeEntry(match, outcome);
   if (!target || !entry) return null;
 
-  const patch = {
-    [`${route.slot}_id`]: entry.id,
-    [`${route.slot}_name`]: entry.name,
-    [`${route.slot}_source_match_id`]: match.id,
-    [`${route.slot}_source_outcome`]: outcome,
-    [`${route.slot}_seed`]: entry.seed || null,
-    [`${route.slot}_participant_id`]: entry.participant_id || null,
-  };
-  await prepareTournamentMatchWhenReady(target, patch);
-  const updatedTarget = await updateEntity("TournamentMatch", target.id, patch);
-  if (patch.status === "ready" && target.status !== "ready") await notifyTournamentMatchAssigned(updatedTarget);
-  return updatedTarget;
+  return withTournamentMutationLock(`route:${target.id}`, async () => {
+    // Two source matches can finish at almost the same time. Always reload the
+    // target inside a per-target lock so one winner cannot overwrite the other
+    // slot or leave a fully populated match stuck in "pending".
+    const currentTarget = await getEntity("TournamentMatch", target.id);
+    const patch = {
+      [`${route.slot}_id`]: entry.id,
+      [`${route.slot}_name`]: entry.name,
+      [`${route.slot}_source_match_id`]: match.id,
+      [`${route.slot}_source_outcome`]: outcome,
+      [`${route.slot}_seed`]: entry.seed || null,
+      [`${route.slot}_participant_id`]: entry.participant_id || null,
+    };
+    await prepareTournamentMatchWhenReady(currentTarget, patch);
+    const updatedTarget = await updateEntity("TournamentMatch", currentTarget.id, patch);
+    if (patch.status === "ready" && currentTarget.status !== "ready") {
+      await notifyTournamentMatchAssigned(updatedTarget);
+    }
+    return updatedTarget;
+  });
 }
 
 async function createDoubleEliminationReset(match, tournament) {
@@ -7613,8 +7642,8 @@ async function finalizeTournamentMatch(match, teamAScore, teamBScore, patch = {}
   return { success: true, match: updated, elimination, ...advancement };
 }
 
-async function completeTournamentMatch(req) {
-  const match = await getEntity("TournamentMatch", req.body.tournament_match_id);
+async function completeTournamentMatchUnlocked(req, matchId) {
+  const match = await getEntity("TournamentMatch", matchId);
   if (!match || match.status === "completed" || match.completed) {
     return { success: false, error: "Match is already completed" };
   }
@@ -7697,6 +7726,19 @@ async function completeTournamentMatch(req) {
     match: updated,
     message: "Score submitted. Waiting for the other team to confirm.",
   };
+}
+
+async function completeTournamentMatch(req) {
+  const matchId = req.body.tournament_match_id || req.body.match_id;
+  if (!matchId) return { success: false, error: "Tournament match id is required" };
+
+  // Reporting includes a read/compare/write sequence. Serializing that whole
+  // sequence prevents simultaneous team reports from both seeing an empty
+  // opponent report and leaving matching scores unfinalized.
+  return withTournamentMutationLock(
+    `report:${matchId}`,
+    () => completeTournamentMatchUnlocked(req, matchId),
+  );
 }
 
 async function createDispute(req) {
