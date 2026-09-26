@@ -115,6 +115,43 @@ const activeTournamentStatuses = new Set([
   "disputed",
 ]);
 const hiddenMatchTypes = new Set(["8s", "eights", "xp"]);
+let disputeAlertAudioContext = null;
+
+const unlockDisputeAlertAudio = async () => {
+  if (typeof window === "undefined") return false;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return false;
+  disputeAlertAudioContext ||= new AudioContextClass();
+  if (disputeAlertAudioContext.state === "suspended") {
+    await disputeAlertAudioContext.resume().catch(() => null);
+  }
+  return disputeAlertAudioContext.state === "running";
+};
+
+const playDisputeAlertSound = async () => {
+  if (!await unlockDisputeAlertAudio()) return false;
+  const context = disputeAlertAudioContext;
+  const startTime = context.currentTime + 0.02;
+  [
+    { frequency: 880, offset: 0 },
+    { frequency: 660, offset: 0.3 },
+  ].forEach(({ frequency, offset }) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const toneStart = startTime + offset;
+    const toneEnd = toneStart + 0.22;
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency, toneStart);
+    gain.gain.setValueAtTime(0.0001, toneStart);
+    gain.gain.exponentialRampToValueAtTime(0.07, toneStart + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, toneEnd);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(toneStart);
+    oscillator.stop(toneEnd);
+  });
+  return true;
+};
 
 const navButtonClass = "nav-primary-button relative inline-flex h-10 items-center gap-2 rounded-xl border px-2.5 text-[13px] font-bold";
 const navTone = {
@@ -207,7 +244,38 @@ export default function Navbar() {
   const activeMatchesLoadedAt = useRef(0);
   const activeAdminDisputeId = useRef(null);
   const dismissedAdminDisputes = useRef(new Set());
+  const soundedAdminDisputes = useRef(new Set());
+  const pendingAdminDisputeSoundId = useRef(null);
   const notificationsLoadedAt = useRef(0);
+
+  useEffect(() => {
+    const unlockAndPlayPendingDispute = async () => {
+      if (!await unlockDisputeAlertAudio()) return;
+      const disputeId = pendingAdminDisputeSoundId.current;
+      if (!disputeId || soundedAdminDisputes.current.has(disputeId)) return;
+      if (await playDisputeAlertSound()) {
+        soundedAdminDisputes.current.add(disputeId);
+        pendingAdminDisputeSoundId.current = null;
+      }
+    };
+    window.addEventListener("pointerdown", unlockAndPlayPendingDispute);
+    window.addEventListener("keydown", unlockAndPlayPendingDispute);
+    return () => {
+      window.removeEventListener("pointerdown", unlockAndPlayPendingDispute);
+      window.removeEventListener("keydown", unlockAndPlayPendingDispute);
+    };
+  }, []);
+
+  useEffect(() => {
+    const disputeId = adminDispute?.id;
+    if (!disputeId || soundedAdminDisputes.current.has(disputeId)) return;
+    pendingAdminDisputeSoundId.current = disputeId;
+    playDisputeAlertSound().then((played) => {
+      if (!played || pendingAdminDisputeSoundId.current !== disputeId) return;
+      soundedAdminDisputes.current.add(disputeId);
+      pendingAdminDisputeSoundId.current = null;
+    });
+  }, [adminDispute?.id]);
   const messagesLoadedAt = useRef(0);
   const dropdownCloseTimer = useRef(null);
   const location = useLocation();
@@ -257,6 +325,8 @@ export default function Navbar() {
     setAdminDispute(null);
     activeAdminDisputeId.current = null;
     dismissedAdminDisputes.current.clear();
+    soundedAdminDisputes.current.clear();
+    pendingAdminDisputeSoundId.current = null;
   };
 
   useEffect(() => {
@@ -446,7 +516,7 @@ export default function Navbar() {
         base44.entities.Dispute.filterFresh({}, "-created_date", 50).then(async (rows) => {
           if (!active) return;
           const pendingDisputes = (rows || []).filter((dispute) => (
-            ["pending", "under_review"].includes(dispute.status)
+            ["pending", "under_review", "escalated"].includes(dispute.status)
             && !hiddenMatchTypes.has(String(dispute.match_type || "").toLowerCase())
           ));
           const pendingIds = new Set(pendingDisputes.map((dispute) => dispute.id));
@@ -1033,10 +1103,12 @@ export default function Navbar() {
                               <div className="flex items-start gap-3">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                   notification.type === 'system' ? 'bg-cyan/10' :
+                                  notification.type === 'dispute' ? 'bg-orange/10' :
                                   notification.type === 'match' ? 'bg-orange/10' :
                                   notification.type === 'tournament' ? 'bg-purple/10' : 'bg-secondary'
                                 }`}>
                                   {notification.type === 'system' ? <Info className="w-4 h-4 text-cyan" /> :
+                                   notification.type === 'dispute' ? <AlertCircle className="w-4 h-4 text-orange" /> :
                                    notification.type === 'match' ? <Trophy className="w-4 h-4 text-orange" /> :
                                    notification.type === 'tournament' ? <Star className="w-4 h-4 text-purple-400" /> :
                                    <AlertCircle className="w-4 h-4 text-vapor" />}

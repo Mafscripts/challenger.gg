@@ -214,6 +214,7 @@ export default function Notifications() {
                   {/* Icon */}
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
                     notification.type === 'system' ? 'bg-cyan/10' :
+                    notification.type === 'dispute' ? 'bg-orange/10' :
                     notification.type === 'match' ? 'bg-orange/10' :
                     notification.type === 'tournament' ? 'bg-purple/10' :
                     notification.type === 'challenge' ? 'bg-red-500/10' :
@@ -221,6 +222,7 @@ export default function Notifications() {
                     'bg-secondary'
                   }`}>
                     {notification.type === 'system' ? <Info className="w-6 h-6 text-cyan" /> :
+                     notification.type === 'dispute' ? <AlertCircle className="w-6 h-6 text-orange" /> :
                      notification.type === 'match' ? <Trophy className="w-6 h-6 text-orange" /> :
                      notification.type === 'tournament' ? <Star className="w-6 h-6 text-purple-400" /> :
                      notification.type === 'challenge' ? <AlertCircle className="w-6 h-6 text-red-400" /> :

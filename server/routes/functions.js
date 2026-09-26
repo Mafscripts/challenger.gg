@@ -6551,7 +6551,7 @@ async function completeRankedMatch(req) {
       await notifyStaff({
         title: "Ranked score conflict",
         message: `${match.host_name || "Host"} vs ${match.challenger_name || "Challenger"} needs review.`,
-        type: "match",
+        type: "dispute",
         action_url: "/admin",
         related_entity_id: dispute.id,
         related_entity_type: "Dispute",
@@ -7592,7 +7592,7 @@ async function createTournamentScoreConflict({ req, match, report, reportingSide
   await notifyStaff({
     title: "Tournament score conflict",
     message: `${match.team_a_name || "Team A"} vs ${match.team_b_name || "Team B"} needs review.`,
-    type: "match",
+    type: "dispute",
     action_url: `/tournament-match/${match.id}`,
     related_entity_id: dispute.id,
     related_entity_type: "Dispute",
@@ -7795,7 +7795,7 @@ async function createDispute(req) {
       await notifyStaff({
         title: "Dispute escalated",
         message: `${nameFor(req.user)} requested premium review for ${matchType} dispute #${existingOpenDispute.id.slice(-8)}.`,
-        type: "match",
+        type: "dispute",
         action_url: "/admin",
         related_entity_id: existingOpenDispute.id,
         related_entity_type: "Dispute",
@@ -7843,7 +7843,7 @@ async function createDispute(req) {
   await notifyStaff({
     title: "New dispute",
     message: `${nameFor(req.user)} opened a ${matchType} dispute.`,
-    type: "match",
+    type: "dispute",
     action_url: "/admin",
     related_entity_id: dispute.id,
     related_entity_type: "Dispute",
