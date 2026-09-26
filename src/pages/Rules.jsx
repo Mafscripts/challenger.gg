@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, ChevronDown, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb } from "lucide-react";
+import { Shield, ChevronDown, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
+
+const killCamRule = "Kill cams must remain enabled for the duration of every match.";
 
 const sections = [
   {
@@ -22,7 +24,7 @@ const sections = [
     icon: Swords,
     rules: [
       "No Stretch Defuse.",
-      "Kill cams must be on!",
+      killCamRule,
       "If you have ever been console restricted, you are required to play on console in all Topfragg tournaments.",
       "Maps are selected via the official veto system. Manual map selection is not permitted.",
       "Each team receives one map veto per match.",
@@ -153,12 +155,19 @@ export default function Rules() {
                     >
                       <div className="px-5 pb-5 pl-16">
                         <ol className="space-y-3">
-                          {section.rules.map((rule, j) => (
-                            <li key={j} className="text-sm text-vapor leading-relaxed flex gap-3">
-                              <span className="text-cyan font-mono text-xs mt-0.5 shrink-0">{j + 1}.</span>
-                              {rule}
-                            </li>
-                          ))}
+                          {section.rules.map((rule, j) => {
+                            const isKillCamRule = rule === killCamRule;
+                            return (
+                              <li
+                                key={j}
+                                className={`flex gap-3 text-sm leading-relaxed ${isKillCamRule ? "-ml-3 rounded-lg border border-cyan/25 bg-cyan/[0.07] px-3 py-2 text-white" : "text-vapor"}`}
+                              >
+                                <span className="mt-0.5 shrink-0 font-mono text-xs text-cyan">{j + 1}.</span>
+                                {isKillCamRule && <Camera className="mt-0.5 h-4 w-4 shrink-0 text-cyan" />}
+                                <span>{rule}</span>
+                              </li>
+                            );
+                          })}
                         </ol>
                       </div>
                     </motion.div>

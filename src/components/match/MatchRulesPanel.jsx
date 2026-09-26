@@ -1,11 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, ExternalLink, ShieldCheck } from "lucide-react";
+import { BookOpen, Camera, ExternalLink, ShieldCheck } from "lucide-react";
 import { wagerPlayRule } from "@/lib/wagerRules";
+
+const killCamRule = "Kill cams must remain enabled for the duration of every match.";
 
 const commonRules = [
   "No Stretch Defuse.",
-  "Kill cams must be on!",
+  killCamRule,
   "Use the official map veto and play the maps shown in this room.",
   "Report the final result within 10 minutes and keep video evidence for disputes.",
   "Intentional disconnects or leaving an active match result in a forfeit.",
@@ -53,12 +55,19 @@ export default function MatchRulesPanel({ matchType = "wager", gameMode, playRul
         </Link>
       </div>
       <div className="mt-4 grid gap-2 md:grid-cols-2">
-        {rules.map((rule) => (
-          <div key={rule} className="flex items-start gap-2 rounded-lg border border-white/5 bg-background/30 px-3 py-2.5 text-xs leading-5 text-vapor">
-            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan" />
-            <span>{rule}</span>
-          </div>
-        ))}
+        {rules.map((rule) => {
+          const isKillCamRule = rule === killCamRule;
+          const RuleIcon = isKillCamRule ? Camera : ShieldCheck;
+          return (
+            <div
+              key={rule}
+              className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs leading-5 ${isKillCamRule ? "border-cyan/30 bg-cyan/[0.08] text-white" : "border-white/5 bg-background/30 text-vapor"}`}
+            >
+              <RuleIcon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${isKillCamRule ? "text-cyan" : "text-cyan/80"}`} />
+              <span>{rule}</span>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
