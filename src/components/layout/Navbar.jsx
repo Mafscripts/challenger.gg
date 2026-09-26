@@ -286,6 +286,22 @@ export default function Navbar() {
   const canSeeStreamerShortcut = isStreamerUser(user || authUser);
   const matchHistoryPath = profilePath;
 
+  useEffect(() => {
+    if (!isStaffUser(user || authUser)) return;
+    const disputeNotification = notifications.find((notification) => (
+      notification.type === "dispute" && !notification.is_read
+    ));
+    if (!disputeNotification) return;
+    const disputeId = disputeNotification.related_entity_id || disputeNotification.id;
+    if (soundedAdminDisputes.current.has(disputeId)) return;
+    pendingAdminDisputeSoundId.current = disputeId;
+    playDisputeAlertSound().then((played) => {
+      if (!played || pendingAdminDisputeSoundId.current !== disputeId) return;
+      soundedAdminDisputes.current.add(disputeId);
+      pendingAdminDisputeSoundId.current = null;
+    });
+  }, [authUser, notifications, user]);
+
   const cancelDropdownClose = () => {
     if (!dropdownCloseTimer.current) return;
     window.clearTimeout(dropdownCloseTimer.current);
