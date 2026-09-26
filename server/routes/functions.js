@@ -14,6 +14,8 @@ const money = (value) => {
 };
 const roundedMoney = (value) => Math.round(money(value) * 100) / 100;
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
+const staffJoinNameFor = (user) => user?.username || user?.handle || nameFor(user);
+const staffJoinMessageFor = (user) => `${staffJoinNameFor(user)} (Staff) has joined the match room.`;
 const activisionIdFor = (user) => String(user?.activision_id || user?.metadata?.activision_id || "").trim();
 const activisionSettingsMessage = "Add your Activision ID in Settings > Gaming IDs before joining competitive matches.";
 const cleanName = (value) => String(value || "").trim().toLowerCase();
@@ -4723,12 +4725,15 @@ async function joinTicket(req) {
   const matchType = normalizeMatchType(ticket.match_type);
   const entityName = matchEntityFor(matchType);
   const match = ticket.match_id ? await getEntity(entityName, ticket.match_id).catch(() => null) : null;
-  const firstJoin = !ticket.assigned_admin_id;
+  const joinedStaffIds = new Set([...(ticket.joined_staff_ids || []), ticket.assigned_admin_id].filter(Boolean));
+  const firstJoinForStaff = !joinedStaffIds.has(req.user.id);
+  joinedStaffIds.add(req.user.id);
   const updated = await updateEntity("Ticket", ticket.id, {
     status: "admin_joined",
     assigned_admin_id: req.user.id,
     assigned_admin_name: nameFor(req.user),
-    assigned_admin_role: req.user.role,
+    assigned_admin_role: effectiveChatRole(req.user),
+    joined_staff_ids: [...joinedStaffIds],
     joined_date: nowIso(),
     updated_date: nowIso(),
   });
@@ -4737,14 +4742,17 @@ async function joinTicket(req) {
       admin_request_status: "admin_joined",
       assigned_admin_id: req.user.id,
       assigned_admin_name: nameFor(req.user),
+      joined_staff_ids: [...joinedStaffIds],
       admin_request_ticket_id: ticket.id,
       requested_admin: true,
       admin_request_updated_date: nowIso(),
     }).catch(() => null);
   }
-  if (match && firstJoin && ["wager", "tournament"].includes(matchType)) {
-    await createMatchRoomSystemMessage(matchType, match, `${nameFor(req.user)} has joined the match room.`, req.user);
+  if (match && firstJoinForStaff && ["wager", "tournament", "ranked"].includes(matchType)) {
+    await createMatchRoomSystemMessage(matchType, match, staffJoinMessageFor(req.user), req.user);
   }
+  const alerts = await listEntities("AdminAlert", { ticket_id: ticket.id }, "-created_date", 20).catch(() => []);
+  await Promise.all(alerts.map((alert) => updateEntity("AdminAlert", alert.id, { status: "acknowledged" }).catch(() => null)));
   await notifyTicketUsers(updated, {
     title: "Admin joined",
     message: `${nameFor(req.user)} joined your ticket.`,
@@ -4774,12 +4782,15 @@ async function joinMatchRoomAsAdmin(req) {
     return { success: false, error: "No open admin request found for this match" };
   }
 
-  const firstJoin = !ticket.assigned_admin_id;
+  const joinedStaffIds = new Set([...(ticket.joined_staff_ids || []), ticket.assigned_admin_id].filter(Boolean));
+  const firstJoinForStaff = !joinedStaffIds.has(req.user.id);
+  joinedStaffIds.add(req.user.id);
   const updatedTicket = await updateEntity("Ticket", ticket.id, {
     status: "admin_joined",
     assigned_admin_id: req.user.id,
     assigned_admin_name: nameFor(req.user),
-    assigned_admin_role: req.user.role,
+    assigned_admin_role: effectiveChatRole(req.user),
+    joined_staff_ids: [...joinedStaffIds],
     joined_date: ticket.joined_date || nowIso(),
     updated_date: nowIso(),
   });
@@ -4787,13 +4798,14 @@ async function joinMatchRoomAsAdmin(req) {
     admin_request_status: "admin_joined",
     assigned_admin_id: req.user.id,
     assigned_admin_name: nameFor(req.user),
+    joined_staff_ids: [...joinedStaffIds],
     admin_request_ticket_id: ticket.id,
     requested_admin: true,
     admin_request_updated_date: nowIso(),
   });
 
-  if (firstJoin) {
-    await createMatchRoomSystemMessage(matchType, match, `${nameFor(req.user)} has joined the match room.`, req.user);
+  if (firstJoinForStaff) {
+    await createMatchRoomSystemMessage(matchType, match, staffJoinMessageFor(req.user), req.user);
   }
 
   const alerts = await listEntities("AdminAlert", { ticket_id: ticket.id }, "-created_date", 20).catch(() => []);

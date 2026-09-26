@@ -8,16 +8,17 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
+import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import { wagerPlayRule } from "@/lib/wagerRules";
+import { isStaffUser } from "@/lib/roles";
 
 const formatStatus = (value) => String(value || "open").replace(/_/g, " ");
 const formatDate = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Pending";
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const playerName = (player) => player?.full_name || player?.username || player?.user_name || "Open slot";
-const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const wagerMapText = (match, pendingText = "Map pending") => {
   const seriesMaps = Array.isArray(match?.series_maps) ? match.series_maps.filter(Boolean) : [];
   return seriesMaps.length > 0 ? seriesMaps.join(" · ") : (match?.final_map_name || pendingText);
@@ -288,7 +289,7 @@ export default function WagersMatchRoom() {
   }, [wager]);
 
   useEffect(() => {
-    if (!wager?.id || !user?.id || !staffRoles.has(user.role)) return;
+    if (!wager?.id || !user?.id || !isStaffUser(user)) return;
     if (!wager.requested_admin || !wager.admin_request_ticket_id) return;
     if (["admin_joined", "resolved", "closed"].includes(wager.admin_request_status)) return;
     if (joinedAdminRooms.current.has(wager.id)) return;
@@ -305,7 +306,7 @@ export default function WagersMatchRoom() {
     }).catch((error) => {
       console.error("Failed to join wager room as admin:", error);
     });
-  }, [wager?.id, wager?.requested_admin, wager?.admin_request_status, wager?.admin_request_ticket_id, user?.id, user?.role]);
+  }, [wager?.id, wager?.requested_admin, wager?.admin_request_status, wager?.admin_request_ticket_id, user]);
 
   const loadWager = async () => {
     try {
@@ -596,7 +597,7 @@ export default function WagersMatchRoom() {
   const bestOf = wager.best_of || 1;
   const currentParticipant = [...teamAPlayers, ...teamBPlayers].find((player) => player.user_id === user?.id);
   const needsPayment = currentParticipant?.payment_status === "pending";
-  const isStaff = staffRoles.has(user?.role);
+  const isStaff = isStaffUser(user);
   const canAdminResolve = isStaff && wager.status !== "completed" && wager.status !== "cancelled" && Boolean(wager.challenger_id);
   const isWaitingForOpponent = !wager.challenger_id || wager.status === "open";
   const canUseMatchRoom = Boolean(wager.challenger_id) && wager.status !== "open";
@@ -748,6 +749,7 @@ export default function WagersMatchRoom() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
           <div className="min-w-0 space-y-6">
             <div className="grid gap-6 md:grid-cols-2"><MatchStatusCard match={wager} /><ActivityTimeline match={wager} /></div>
+            <MatchRulesPanel matchType="wager" gameMode={wager.game_mode} playRule={wager.play_rule} />
 
         <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
           {canAdminResolve && (

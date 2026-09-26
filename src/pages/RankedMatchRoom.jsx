@@ -18,10 +18,12 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchChat from "@/components/match/MatchChat";
+import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import { getRankForElo, getRankProgress } from "@/lib/ranks";
+import { isStaffUser } from "@/lib/roles";
 
 const playerName = (user, fallback = "Unnamed player") => (
   user?.display_name || user?.full_name || user?.username || user?.email || fallback
@@ -288,7 +290,7 @@ export default function RankedMatchRoom() {
 
   const isHost = user?.id === match?.host_id;
   const isOpposingCaptain = user?.id === match?.challenger_id;
-  const isStaff = ["ceo", "super_admin", "admin", "moderator"].includes(user?.role);
+  const isStaff = isStaffUser(user);
   const scoreReportOpen = ["in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report"].includes(match?.status);
   const ownScoreSubmitted = isHost ? match?.host_reported_score_by === user?.id : isOpposingCaptain ? match?.challenger_reported_score_by === user?.id : false;
   const canSubmitScore = (isHost || isOpposingCaptain || isStaff) && scoreReportOpen && roomRosterFull(match) && !ownScoreSubmitted;
@@ -733,6 +735,10 @@ export default function RankedMatchRoom() {
           <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} xl:col-span-3`}>
             <PlayerPanel label="Team Bravo" color="orange" players={visibleBravoPlayers} slots={slotsPerRankedTeam(match)} />
           </div>
+        </div>
+
+        <div className="mb-6">
+          <MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} />
         </div>
 
         <div className="dark-focus dark-media mb-6 rounded-xl border border-white/10 p-5 sm:p-6">

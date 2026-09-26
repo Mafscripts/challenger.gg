@@ -17,6 +17,16 @@ export const hasRolePower = (role, minimumRole) => {
   return getRoleConfig(role).power >= getRoleConfig(minimumRole).power;
 };
 
+export const effectiveRoleForUser = (user) => (
+  [user?.role, user?.admin_role, user?.is_admin ? "admin" : null]
+    .filter(Boolean)
+    .reduce((best, role) => (
+      getRoleConfig(role).power > getRoleConfig(best).power ? normalizeRole(role) : best
+    ), "user")
+);
+
+export const isStaffUser = (user) => hasRolePower(effectiveRoleForUser(user), "moderator");
+
 export const canAccessAdminPanel = (role) => hasRolePower(role, "moderator");
 
 export const canManageWallets = (role) => hasRolePower(role, "admin");

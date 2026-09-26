@@ -200,7 +200,10 @@ export default function Navbar() {
   const [profileAvatar, setProfileAvatar] = useState("");
   const [matchesOpen, setMatchesOpen] = useState(false);
   const [activeMatches, setActiveMatches] = useState([]);
+  const [adminRequest, setAdminRequest] = useState(null);
   const [adminDispute, setAdminDispute] = useState(null);
+  const activeAdminRequestId = useRef(null);
+  const dismissedAdminRequests = useRef(new Set());
   const activeMatchesLoadedAt = useRef(0);
   const activeAdminDisputeId = useRef(null);
   const dismissedAdminDisputes = useRef(new Set());
@@ -248,6 +251,12 @@ export default function Navbar() {
     setCreditBalance(0);
     setProfileAvatar("");
     setActiveMatches([]);
+    setAdminRequest(null);
+    activeAdminRequestId.current = null;
+    dismissedAdminRequests.current.clear();
+    setAdminDispute(null);
+    activeAdminDisputeId.current = null;
+    dismissedAdminDisputes.current.clear();
   };
 
   useEffect(() => {
@@ -390,6 +399,50 @@ export default function Navbar() {
       loadActiveMatches({ fresh: true });
       loadNotifications({ fresh: true, userId: authUser.id });
       if (isStaffUser(user || authUser)) {
+        base44.entities.AdminAlert.filterFresh({ status: "open" }, "-created_date", 50).then(async (rows) => {
+          if (!active) return;
+          const openRequests = (rows || []).filter((alert) => (
+            alert.status === "open"
+            && alert.match_id
+            && !hiddenMatchTypes.has(String(alert.match_type || "").toLowerCase())
+          ));
+
+          const requestIsInactive = async (alert) => {
+            const matchType = String(alert.match_type || "wager").toLowerCase();
+            const entityName = matchType === "ranked" ? "RankedMatch" : matchType === "tournament" ? "TournamentMatch" : "Wager";
+            const match = await base44.entities[entityName].getFresh(alert.match_id).catch(() => null);
+            return !match
+              || match.completed === true
+              || ["completed", "cancelled", "closed"].includes(match.status)
+              || ["admin_joined", "resolved", "closed"].includes(match.admin_request_status);
+          };
+
+          if (activeAdminRequestId.current) {
+            const visibleRequest = openRequests.find((alert) => alert.id === activeAdminRequestId.current);
+            if (!visibleRequest || await requestIsInactive(visibleRequest)) {
+              if (visibleRequest) dismissedAdminRequests.current.add(visibleRequest.id);
+              activeAdminRequestId.current = null;
+              setAdminRequest(null);
+            } else {
+              return;
+            }
+          }
+
+          let nextRequest = null;
+          for (const request of openRequests) {
+            if (dismissedAdminRequests.current.has(request.id)) continue;
+            if (await requestIsInactive(request)) {
+              dismissedAdminRequests.current.add(request.id);
+              continue;
+            }
+            nextRequest = request;
+            break;
+          }
+          if (!active || !nextRequest) return;
+          activeAdminRequestId.current = nextRequest.id;
+          setAdminRequest(nextRequest);
+        }).catch((error) => console.error("Failed to refresh admin requests:", error));
+
         base44.entities.Dispute.filterFresh({}, "-created_date", 50).then(async (rows) => {
           if (!active) return;
           const pendingDisputes = (rows || []).filter((dispute) => (
@@ -451,7 +504,7 @@ export default function Navbar() {
       window.removeEventListener("focus", refreshLiveHeader);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [isAuthenticated, authUser?.id, user?.id, user?.role]);
+  }, [isAuthenticated, authUser?.id, user?.id, user?.role, user?.admin_role, user?.is_admin]);
 
   const loadUser = async (knownUser = null) => {
     try {
@@ -611,7 +664,39 @@ export default function Navbar() {
 
   return (
     <>
-      {adminDispute && isStaffUser(user || authUser) && (() => {
+      {adminRequest && isStaffUser(user || authUser) && (() => {
+        const matchId = adminRequest.match_id || adminRequest.related_entity_id;
+        const matchType = String(adminRequest.match_type || "wager").toLowerCase();
+        const roomPath = adminRequest.action_url || (matchType === "ranked"
+          ? `/ranked-match/${matchId}`
+          : matchType === "tournament"
+            ? `/tournament-match/${matchId}`
+            : `/wagers-match/${matchId}`);
+        const dismiss = () => {
+          dismissedAdminRequests.current.add(adminRequest.id);
+          activeAdminRequestId.current = null;
+          setAdminRequest(null);
+        };
+        return (
+          <div className="fixed inset-0 z-[101] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+            <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-red-400/35 bg-card p-7 text-center shadow-2xl">
+              <div className="absolute inset-x-0 top-0 h-1 bg-red-400" />
+              <button type="button" onClick={dismiss} className="absolute right-4 top-4 rounded-lg p-2 text-vapor transition-colors hover:bg-white/5 hover:text-white" aria-label="Close admin request"><X className="h-4 w-4" /></button>
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15 text-red-400"><ShieldCheck className="h-8 w-8" /></div>
+              <p className="mt-5 text-xs font-black uppercase tracking-[0.24em] text-red-400">Admin requested</p>
+              <h2 className="mt-2 text-2xl font-black">{String(matchType).replace(/_/g, " ")} match #{String(matchId || adminRequest.id).slice(-8)}</h2>
+              <div className="mt-5 rounded-2xl border border-white/5 bg-background/45 p-4">
+                <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Requested by</p>
+                <p className="mt-1 text-base font-black text-cyan">{adminRequest.requested_by_name || adminRequest.username || "Player"}</p>
+                {adminRequest.message && <p className="mt-3 text-xs leading-5 text-vapor">{adminRequest.message}</p>}
+              </div>
+              <p className="mt-4 text-xs leading-5 text-vapor">A player needs staff in this match room. Opening the room will register your staff join.</p>
+              <Link to={roomPath} onClick={dismiss} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-red-400 px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Join match room <ExternalLink className="h-4 w-4" /></Link>
+            </div>
+          </div>
+        );
+      })()}
+      {!adminRequest && adminDispute && isStaffUser(user || authUser) && (() => {
         const details = adminDispute.wager_details || adminDispute.match_details || {};
         const matchId = adminDispute.match_id || adminDispute.wager_id || adminDispute.tournament_match_id;
         const matchType = adminDispute.match_type || (adminDispute.tournament_match_id ? "tournament" : "wager");

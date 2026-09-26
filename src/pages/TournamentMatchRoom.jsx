@@ -21,9 +21,11 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
+import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import TournamentBracket from "@/components/tournaments/TournamentBracket";
+import { effectiveRoleForUser, isStaffUser } from "@/lib/roles";
 
 const bracketLabels = {
   winner: "Winner Bracket",
@@ -32,7 +34,6 @@ const bracketLabels = {
 };
 
 const statusLabel = (value) => String(value || "pending").replace(/_/g, " ");
-const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const adminCorrectionRoles = new Set(["ceo", "super_admin", "admin"]);
 const defaultMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const seedLabel = (seed) => seed ? `#${seed}` : "#-";
@@ -486,7 +487,7 @@ export default function TournamentMatchRoom() {
   // Treating that state as complete produced the misleading "Winner:" / 0-0
   // banner and also hid all score controls after an admin reset.
   const isComplete = Boolean(match?.winner_id && (match?.completed || match?.status === "completed"));
-  const isStaff = staffRoles.has(user?.role);
+  const isStaff = isStaffUser(user);
   const isMatchParticipant = useMemo(() => {
     if (!user?.id) return false;
     return [...teamAPlayers, ...teamBPlayers].some((player) => rosterPlayerMatchesUser(player, user));
@@ -523,7 +524,7 @@ export default function TournamentMatchRoom() {
   }, [match?.start_deadline, isComplete]);
 
   useEffect(() => {
-    if (!match?.id || !user?.id || !staffRoles.has(user.role)) return;
+    if (!match?.id || !user?.id || !isStaffUser(user)) return;
     if (!match.requested_admin || !match.admin_request_ticket_id) return;
     if (["admin_joined", "resolved", "closed"].includes(match.admin_request_status)) return;
     if (joinedAdminRooms.current.has(match.id)) return;
@@ -540,7 +541,7 @@ export default function TournamentMatchRoom() {
     }).catch((error) => {
       console.error("Failed to join tournament room as admin:", error);
     });
-  }, [match?.id, match?.requested_admin, match?.admin_request_status, match?.admin_request_ticket_id, user?.id, user?.role]);
+  }, [match?.id, match?.requested_admin, match?.admin_request_status, match?.admin_request_ticket_id, user]);
 
   const loadRoom = async () => {
     try {
@@ -831,7 +832,7 @@ export default function TournamentMatchRoom() {
   }
 
   const predictedWinner = scoreIsValid ? (scoreA > scoreB ? match.team_a_name : match.team_b_name) : null;
-  const canAdminCorrect = adminCorrectionRoles.has(user?.role) && match?.team_a_id && match?.team_b_id;
+  const canAdminCorrect = adminCorrectionRoles.has(effectiveRoleForUser(user)) && match?.team_a_id && match?.team_b_id;
   const canAdminResolve = isStaff && canSubmit && !canAdminCorrect;
   const isStreamerMatch = isStreamerTournament(tournament);
 
@@ -978,6 +979,13 @@ export default function TournamentMatchRoom() {
         <div className={`grid gap-6 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_460px]" : ""}`}>
           <div className="min-w-0 space-y-6">
             <MapSeries match={match} />
+
+            <MatchRulesPanel
+              matchType="tournament"
+              gameMode={match.game_mode_display || match.game_mode}
+              playRule=""
+              customRules={tournament?.rules || tournament?.rules_text || ""}
+            />
 
         {canUseMatchControls && (
         <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">

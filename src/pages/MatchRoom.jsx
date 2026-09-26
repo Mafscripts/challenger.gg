@@ -7,6 +7,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
+import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
@@ -397,6 +398,10 @@ export default function MatchRoom() {
             <MatchChat conversationId={wager.id} matchType="wager" accent="cyan" />
           </div>
         </main>
+
+        <div className="mt-5">
+          <MatchRulesPanel matchType="wager" gameMode={wager.game_mode_display || wager.game_mode} playRule={wager.play_rule} />
+        </div>
 
         <div className="glass mt-5 rounded-xl border border-white/5 p-4">
           <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
