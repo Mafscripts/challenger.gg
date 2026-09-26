@@ -63,6 +63,26 @@ const participantIdentityValues = (participant) => {
 };
 
 const router = Router();
+const sensitiveIpFields = new Set([
+  "ip",
+  "ip_address",
+  "ip_addresses",
+  "registration_ip",
+  "last_login_ip",
+  "ip_history",
+]);
+
+const redactIpData = (value) => {
+  if (Array.isArray(value)) return value.map(redactIpData);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !sensitiveIpFields.has(key))
+      .map(([key, nestedValue]) => [key, redactIpData(nestedValue)]),
+  );
+};
+
+const protectIpVisibility = (req, value) => hasRole(req.user, "admin") ? value : redactIpData(value);
 
 const parseFilter = (value) => {
   if (!value) return {};
@@ -201,18 +221,18 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
       req.query.limit
     );
     if (req.params.entity === "TournamentParticipant") {
-      return res.json(await visibleTournamentParticipants(req, rows, filter));
+      return res.json(protectIpVisibility(req, await visibleTournamentParticipants(req, rows, filter)));
     }
     if (req.params.entity === "TournamentMatch") {
-      return res.json(await visibleTournamentMatches(req, rows, filter));
+      return res.json(protectIpVisibility(req, await visibleTournamentMatches(req, rows, filter)));
     }
     if (req.params.entity === "Wager") {
-      return res.json(await visibleWagers(req, rows));
+      return res.json(protectIpVisibility(req, await visibleWagers(req, rows)));
     }
     if (req.params.entity === "ChatMessage") {
-      return res.json(await visibleChatMessages(req, rows));
+      return res.json(protectIpVisibility(req, await visibleChatMessages(req, rows)));
     }
-    res.json(rows);
+    res.json(protectIpVisibility(req, rows));
   } catch (error) {
     next(error);
   }
@@ -230,7 +250,7 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
     if (req.params.entity === "ChatMessage" && row.match_type === "tournament" && !await canViewTournamentChat(req, row.conversation_id)) {
       return res.status(403).json({ error: "Only tournament match participants can view this chat" });
     }
-    res.json(row);
+    res.json(protectIpVisibility(req, row));
   } catch (error) {
     next(error);
   }
@@ -247,7 +267,7 @@ router.post("/:entity", requireAuth, async (req, res, next) => {
     if (adminManagedEntities.has(req.params.entity) && !["AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Admin access required" });
     }
-    res.json(await createEntity(req.params.entity, req.body || {}));
+    res.json(protectIpVisibility(req, await createEntity(req.params.entity, req.body || {})));
   } catch (error) {
     next(error);
   }
@@ -273,7 +293,7 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
       }
       if (req.params.id !== req.user.id && !hasRole(req.user, "moderator")) return res.status(403).json({ error: "Cannot update another user" });
     }
-    res.json(await updateEntity(req.params.entity, req.params.id, req.body || {}));
+    res.json(protectIpVisibility(req, await updateEntity(req.params.entity, req.params.id, req.body || {})));
   } catch (error) {
     next(error);
   }

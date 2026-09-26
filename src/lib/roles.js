@@ -21,4 +21,6 @@ export const canAccessAdminPanel = (role) => hasRolePower(role, "moderator");
 
 export const canManageWallets = (role) => hasRolePower(role, "admin");
 
+export const canViewUserIps = (role) => hasRolePower(role, "admin");
+
 export const canManageRoles = (role) => hasRolePower(role, "super_admin");

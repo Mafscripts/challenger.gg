@@ -8191,6 +8191,9 @@ async function moderateUser(req) {
   }
 
   const action = req.body.action || "warning";
+  if (action === "ip_ban" && !hasRole(req.user, "admin")) {
+    return { success: false, error: "Admin or higher is required for IP bans" };
+  }
   const reason = req.body.reason || "Moderation action";
   const expiresDate = action === "temporary_ban" || action === "suspension" ? banExpiration(req.body.duration || "24h") : null;
   const targetIps = action === "ip_ban" ? knownUserIpAddresses(target) : [];
@@ -8278,7 +8281,7 @@ async function moderateUser(req) {
     created_date: nowIso(),
   }).catch(() => null);
 
-  return { success: true, user };
+  return { success: true, user: publicUser(user) };
 }
 
 async function changeDisplayName(req) {

@@ -7,6 +7,7 @@ import {
   BellRing,
   Boxes,
   CheckCheck,
+  CircleAlert,
   ClipboardList,
   Crown,
   CreditCard,
@@ -42,7 +43,7 @@ import UserBadges from "@/components/ui/UserBadges";
 import RankBadge from "@/components/ui/RankBadge";
 import PageHeader from "@/components/ui/PageHeader";
 import RarityBadge from "@/components/ui/RarityBadge";
-import { canAccessAdminPanel, canManageRoles, canManageWallets, getRoleConfig } from "@/lib/roles";
+import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
@@ -254,7 +255,13 @@ const hasActivePremium = (user) => {
   const expiresAt = new Date(user.premium_expires).getTime();
   return Number.isFinite(expiresAt) && expiresAt > Date.now();
 };
-const ipHistoryText = (user) => (user?.ip_history || []).slice(-3).map((entry) => entry.ip).join(", ") || user?.last_login_ip || user?.registration_ip || "N/A";
+const ipComparisonKey = (value) => String(value || "").trim().toLowerCase().replace(/^::ffff:/, "");
+const knownIpAddresses = (user) => [...new Map([
+  user?.last_login_ip,
+  user?.registration_ip,
+  ...((user?.ip_history || []).slice().reverse().map((entry) => entry?.ip)),
+].filter(Boolean).map((ip) => [ipComparisonKey(ip), ip])).values()];
+const ipHistoryText = (user) => knownIpAddresses(user).join(", ") || "N/A";
 const marketplacePlacementText = (item) => [
   item.is_featured === true ? "Featured" : null,
   item.show_in_marketplace !== false ? "Grid" : null,
@@ -584,10 +591,11 @@ export default function Admin() {
 
   const filteredUsers = useMemo(() => (
     data.users.filter((user) => {
-      const haystack = `${userName(user)} ${user.email || ""} ${user.role || ""}`.toLowerCase();
+      const visibleIps = canViewUserIps(currentRole) ? knownIpAddresses(user).join(" ") : "";
+      const haystack = `${userName(user)} ${user.email || ""} ${user.role || ""} ${visibleIps}`.toLowerCase();
       return haystack.includes(searchQuery.toLowerCase());
     })
-  ), [data.users, searchQuery]);
+  ), [currentRole, data.users, searchQuery]);
 
   const walletByUserId = useMemo(() => (
     Object.fromEntries(data.wallets.map((wallet) => [wallet.user_id, wallet]))
@@ -652,17 +660,20 @@ export default function Admin() {
   ), [winnerSpecialTrophyItems]);
 
   const sharedIpCount = (targetUser) => {
-    const ips = new Set([
-      targetUser.registration_ip,
-      targetUser.last_login_ip,
-      ...((targetUser.ip_history || []).map((entry) => entry.ip)),
-    ].filter(Boolean));
+    if (!canViewUserIps(currentRole)) return 0;
+    const ips = new Set(knownIpAddresses(targetUser).map(ipComparisonKey));
     if (ips.size === 0) return 0;
-    return data.users.filter((user) => user.id !== targetUser.id && [
-      user.registration_ip,
-      user.last_login_ip,
-      ...((user.ip_history || []).map((entry) => entry.ip)),
-    ].some((ip) => ips.has(ip))).length;
+    return data.users.filter((user) => (
+      user.id !== targetUser.id && knownIpAddresses(user).some((ip) => ips.has(ipComparisonKey(ip)))
+    )).length;
+  };
+
+  const sharedIpAccountNames = (targetUser) => {
+    if (!canViewUserIps(currentRole)) return [];
+    const ips = new Set(knownIpAddresses(targetUser).map(ipComparisonKey));
+    return data.users
+      .filter((user) => user.id !== targetUser.id && knownIpAddresses(user).some((ip) => ips.has(ipComparisonKey(ip))))
+      .map(userName);
   };
 
   const auditRows = useMemo(() => ([
@@ -1971,7 +1982,7 @@ export default function Admin() {
                       <th className="text-left py-3 px-4">Badges</th>
                       <th className="text-left py-3 px-4">Status</th>
                       <th className="text-left py-3 px-4">Wallet</th>
-                      <th className="text-left py-3 px-4">IP History</th>
+                      {canViewUserIps(currentRole) && <th className="text-left py-3 px-4">IP Addresses</th>}
                       <th className="text-left py-3 px-4">Joined</th>
                       <th className="text-right py-3 px-4">Actions</th>
                     </tr>
@@ -1980,7 +1991,17 @@ export default function Admin() {
                     {filteredUsers.map((user) => (
                       <tr key={user.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                         <td className="py-3 px-4">
-                          <p className="font-semibold text-sm">{userName(user)}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-sm">{userName(user)}</p>
+                            {canViewUserIps(currentRole) && sharedIpCount(user) > 0 && (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-red-400"
+                                title={`Possible multi-account: shared IP with ${sharedIpAccountNames(user).join(", ")}`}
+                              >
+                                <CircleAlert className="h-3.5 w-3.5" /> Multi account
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-vapor">{user.email}</p>
                         </td>
                         <td className="py-3 px-4"><RoleBadge role={user.role || "user"} /></td>
@@ -2049,10 +2070,17 @@ export default function Admin() {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-sm font-mono">{formatMoney(walletByUserId[user.id]?.available_balance ?? 0)}</td>
-                        <td className="py-3 px-4 text-xs text-vapor" title={ipHistoryText(user)}>
-                          <span>{Math.max(1, Array.isArray(user.ip_history) ? user.ip_history.length : 0)} known</span>
-                          {sharedIpCount(user) > 0 && <span className="ml-2 rounded bg-orange/10 px-1.5 py-0.5 font-bold text-orange">{sharedIpCount(user)} shared</span>}
-                        </td>
+                        {canViewUserIps(currentRole) && (
+                          <td className="py-3 px-4 text-xs text-vapor" title={ipHistoryText(user)}>
+                            {knownIpAddresses(user).length > 0 ? (
+                              <div className="space-y-1 font-mono">
+                                {knownIpAddresses(user).slice(0, 3).map((ip) => <div key={ip}>{ip}</div>)}
+                                {knownIpAddresses(user).length > 3 && <div className="font-sans text-[10px] text-cyan">+{knownIpAddresses(user).length - 3} more</div>}
+                                {sharedIpCount(user) > 0 && <div className="font-sans font-bold text-red-400">! shared by {sharedIpCount(user)} account(s)</div>}
+                              </div>
+                            ) : <span>N/A</span>}
+                          </td>
+                        )}
                         <td className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap justify-end gap-2">
@@ -2103,7 +2131,7 @@ export default function Admin() {
                             <button onClick={() => handleModerateUser(user, "temporary_ban", "30d")} className="text-xs text-red-400 hover:underline">30d Ban</button>
                             <button onClick={() => handleModerateUser(user, "ban", "permanent")} className="text-xs text-red-400 hover:underline">Permanent Ban</button>
                             <button onClick={() => handleModerateUser(user, "email_ban")} className="text-xs text-red-400 hover:underline">Email Ban</button>
-                            <button onClick={() => handleModerateUser(user, "ip_ban")} className="text-xs font-bold text-red-500 hover:underline">IP Ban</button>
+                            {canViewUserIps(currentRole) && <button onClick={() => handleModerateUser(user, "ip_ban")} className="text-xs font-bold text-red-500 hover:underline">IP Ban</button>}
                             {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="text-xs text-green hover:underline">Unban</button>}
                               </div>
                             )}

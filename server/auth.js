@@ -78,6 +78,9 @@ export const publicUser = (user) => {
     "email_verification_resend_window_started_at",
     "password_reset_token_hash",
     "password_reset_expires_at",
+    "registration_ip",
+    "last_login_ip",
+    "ip_history",
   ];
   sensitiveFields.forEach((field) => delete serialized[field]);
   return serialized;
