@@ -9,7 +9,7 @@ export default function ActivisionIdLabel({ user, className = "", showMissing = 
   return (
     <span className={`inline-flex min-w-0 items-center gap-1 text-[10px] font-semibold tracking-wide ${activisionId ? "activision-id" : "text-orange/80"} ${className}`}>
       <Gamepad2 className="h-3 w-3 shrink-0" />
-      <span className="shrink-0 uppercase">ACTI</span>
+      <span className="shrink-0">Activision ID</span>
       <span className="truncate normal-case">{activisionId || "Not set"}</span>
     </span>
   );

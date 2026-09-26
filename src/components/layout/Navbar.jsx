@@ -249,6 +249,7 @@ export default function Navbar() {
   const soundedAdminDisputes = useRef(new Set());
   const pendingAdminDisputeSoundId = useRef(null);
   const notificationsLoadedAt = useRef(0);
+  const primaryNavRef = useRef(null);
 
   useEffect(() => {
     const unlockAndPlayPendingStaffAlert = async () => {
@@ -355,6 +356,23 @@ export default function Navbar() {
     setNotifOpen(false);
     setMessagesOpen(false);
     setProfileOpen(false);
+  };
+
+  const movePrimaryNavIndicator = (event) => {
+    const nav = primaryNavRef.current;
+    const item = event.target.closest("[data-nav-item]");
+    if (!nav || !item || !nav.contains(item)) return;
+
+    const navRect = nav.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    nav.style.setProperty("--nav-hover-x", `${itemRect.left - navRect.left}px`);
+    nav.style.setProperty("--nav-hover-width", `${itemRect.width}px`);
+    nav.style.setProperty("--nav-pointer-x", `${event.clientX - navRect.left}px`);
+    nav.dataset.hovering = "true";
+  };
+
+  const hidePrimaryNavIndicator = () => {
+    if (primaryNavRef.current) primaryNavRef.current.dataset.hovering = "false";
   };
 
   const clearUserState = () => {
@@ -851,9 +869,10 @@ export default function Navbar() {
           </div>
         );
       })()}
-      <nav className={`app-topbar fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
-        scrolled ? "glass-nav" : ""
-      }`}>
+      <nav
+        data-scrolled={scrolled ? "true" : "false"}
+        className={`app-topbar fixed top-0 left-0 right-0 z-50 ${scrolled ? "glass-nav" : ""}`}
+      >
         <div className="app-topbar-inner mx-auto max-w-[1600px] px-4 lg:px-6">
           <div className="flex h-16 items-center justify-between gap-5">
             {/* Logo + primary destination */}
@@ -865,9 +884,17 @@ export default function Navbar() {
 
             {/* Desktop Nav */}
             {user && (
-              <div className="topbar-primary-nav hidden xl:flex items-center justify-center gap-1 p-1">
+              <div
+                ref={primaryNavRef}
+                className="topbar-primary-nav hidden xl:flex items-center justify-center gap-1 p-1"
+                onPointerMove={movePrimaryNavIndicator}
+                onPointerLeave={hidePrimaryNavIndicator}
+              >
+                <span className="nav-cursor-glow" aria-hidden="true" />
+                <span className="nav-hover-indicator" aria-hidden="true" />
                 <Link
                   to="/dashboard"
+                  data-nav-item
                   data-tone="orange"
                   data-active={navItemIsActive(location.pathname, "/dashboard") ? "true" : "false"}
                   onMouseEnter={closeDropdowns}
@@ -907,6 +934,7 @@ export default function Navbar() {
                     >
                       <button
                         type="button"
+                        data-nav-item
                         data-active={active || open ? "true" : "false"}
                         aria-expanded={open}
                         onClick={() => {
@@ -979,6 +1007,7 @@ export default function Navbar() {
                 >
                   <button
                     type="button"
+                    data-nav-item
                     data-active={matchesOpen ? "true" : "false"}
                     aria-expanded={matchesOpen}
                     onClick={() => {
@@ -1373,6 +1402,14 @@ export default function Navbar() {
                         onSelect={() => setProfileOpen(false)}
                       />
                       <ProfileMenuSection
+                        label="Community"
+                        items={[
+                          { label: "Find Players Chat", path: "/find-players", icon: MessageSquare },
+                          { label: "Rules", path: "/rules", icon: ShieldCheck },
+                        ]}
+                        onSelect={() => setProfileOpen(false)}
+                      />
+                      <ProfileMenuSection
                         label="Collection"
                         items={[
                           { label: "Marketplace", path: "/marketplace", icon: ShoppingBag },
@@ -1430,6 +1467,9 @@ export default function Navbar() {
               {/* Mobile Toggle */}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
+                type="button"
+                aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+                aria-expanded={mobileOpen}
                 className={`${user ? "xl:hidden" : "hidden"} p-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all`}
               >
                 {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -1537,6 +1577,20 @@ export default function Navbar() {
                     >
                       <Users className="w-5 h-5" />
                       My Teams
+                    </Link>
+                    <Link
+                      to="/find-players"
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                      Find Players Chat
+                    </Link>
+                    <Link
+                      to="/rules"
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
+                    >
+                      <ShieldCheck className="w-5 h-5" />
+                      Rules
                     </Link>
                     <Link
                       to="/wallet"

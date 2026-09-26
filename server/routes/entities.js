@@ -213,6 +213,9 @@ const visibleWagers = async (req, rows) => {
 
 router.get("/:entity", requireAuth, async (req, res, next) => {
   try {
+    if (["Ban", "AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
+      return res.status(403).json({ error: "Moderator access required" });
+    }
     const filter = parseFilter(req.query.filter);
     const rows = await listEntities(
       req.params.entity,
@@ -240,6 +243,9 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
 
 router.get("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
+    if (["Ban", "AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
+      return res.status(403).json({ error: "Moderator access required" });
+    }
     const row = await getEntity(req.params.entity, req.params.id);
     if (req.params.entity === "TournamentMatch" && !await canViewTournamentMatch(req, row)) {
       return res.status(403).json({ error: "Tournament match is not available" });
@@ -258,6 +264,9 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
 
 router.post("/:entity", requireAuth, async (req, res, next) => {
   try {
+    if (req.params.entity === "ChatMessage") {
+      return res.status(403).json({ error: "Use the protected chat message action" });
+    }
     if (req.params.entity === "Tournament" && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Admin or higher is required to create tournaments" });
     }
@@ -275,6 +284,9 @@ router.post("/:entity", requireAuth, async (req, res, next) => {
 
 router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
+    if (req.params.entity === "ChatMessage") {
+      return res.status(403).json({ error: "Chat messages cannot be edited directly" });
+    }
     if (["AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Moderator access required" });
     }
@@ -301,6 +313,9 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
 
 router.delete("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
+    if (req.params.entity === "ChatMessage") {
+      return res.status(403).json({ error: "Use a protected moderation action" });
+    }
     if (adminManagedEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Admin access required" });
     }

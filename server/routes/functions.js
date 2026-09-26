@@ -5,6 +5,7 @@ import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, seria
 import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
 import { hasRole, rolePower } from "../roles.js";
 import { knownUserIpAddresses } from "../ban-enforcement.js";
+import { containsBlockedLanguage } from "../profanity-filter.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -53,6 +54,10 @@ const RANKED_MIN_CHANGE = 5;
 const RANKED_MAX_CHANGE = 40;
 const adminPremiumGrantDays = 30;
 const staffRoles = ["ceo", "super_admin", "admin", "moderator"];
+const findPlayersRoomId = "find-players";
+const findPlayersChatScope = "find_players_chat";
+const findPlayersRateLimits = new Map();
+const findPlayersAdminPingLimits = new Map();
 const walletAdjustmentRoles = new Set(["ceo", "super_admin"]);
 const walletAdjustmentTypes = new Set(["credits", "money"]);
 const publicCommerceEnabled = String(process.env.PUBLIC_COMMERCE_ENABLED || "").toLowerCase() === "true";
@@ -5550,6 +5555,260 @@ async function searchMessageRecipients(req) {
   return { success: true, users: safeUsers };
 }
 
+const chatBanIsActive = (ban) => {
+  if (!ban || ban.status !== "active") return false;
+  if (!ban.expires_date) return true;
+  const expiresAt = new Date(ban.expires_date).getTime();
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+};
+
+const publicChatBan = (ban) => ban ? ({
+  id: ban.id,
+  user_id: ban.user_id,
+  target_username: ban.target_username || "Player",
+  reason: ban.reason || "Community chat rules violation",
+  moderation_action: ban.moderation_action || (ban.expires_date ? "timeout" : "ban"),
+  duration: ban.duration || null,
+  expires_date: ban.expires_date || null,
+  created_date: ban.created_date,
+  moderator_name: ban.moderator_name || "Staff",
+}) : null;
+
+async function activeFindPlayersChatBan(userId) {
+  const bans = await listEntities("Ban", {
+    user_id: userId,
+    scope: findPlayersChatScope,
+    status: "active",
+  }, "-created_date", 50).catch(() => []);
+  const active = bans.find(chatBanIsActive) || null;
+  const expired = bans.filter((ban) => !chatBanIsActive(ban));
+  if (expired.length) {
+    await Promise.all(expired.map((ban) => updateEntity("Ban", ban.id, {
+      status: "expired",
+      expired_date: nowIso(),
+    }).catch(() => null)));
+  }
+  return active;
+}
+
+const findPlayersChatRateLimited = (userId) => {
+  const now = Date.now();
+  const recent = (findPlayersRateLimits.get(userId) || []).filter((timestamp) => now - timestamp < 10_000);
+  if (recent.length >= 5) {
+    findPlayersRateLimits.set(userId, recent);
+    return true;
+  }
+  recent.push(now);
+  findPlayersRateLimits.set(userId, recent);
+  return false;
+};
+
+const findPlayersAdminPingRateLimited = (userId) => {
+  const previousPing = findPlayersAdminPingLimits.get(userId) || 0;
+  if (Date.now() - previousPing < 60_000) return true;
+  findPlayersAdminPingLimits.set(userId, Date.now());
+  return false;
+};
+
+async function getFindPlayersChat(req) {
+  const [latestMessages, currentBan] = await Promise.all([
+    listEntities("ChatMessage", {
+      conversation_id: findPlayersRoomId,
+      match_type: "find_players",
+    }, "-created_date", 120).catch(() => []),
+    activeFindPlayersChatBan(req.user.id),
+  ]);
+  const messages = latestMessages.slice().reverse();
+  const latestByUser = new Map();
+  [...messages].reverse().forEach((message) => {
+    if (!message.sender_id || latestByUser.has(message.sender_id)) return;
+    latestByUser.set(message.sender_id, {
+      id: message.sender_id,
+      name: message.sender_name || "Player",
+      username: message.sender_username || "",
+      avatar_url: message.sender_avatar_url || "",
+      role: message.sender_role || "user",
+      last_seen: message.created_date,
+    });
+  });
+
+  let activeBans = [];
+  if (hasRole(req.user, "moderator")) {
+    const bans = await listEntities("Ban", {
+      scope: findPlayersChatScope,
+      status: "active",
+    }, "-created_date", 100).catch(() => []);
+    activeBans = bans.filter(chatBanIsActive).map(publicChatBan);
+  }
+
+  return {
+    success: true,
+    room_id: findPlayersRoomId,
+    messages,
+    participants: [...latestByUser.values()].slice(0, 24),
+    ban: publicChatBan(currentBan),
+    active_bans: activeBans,
+    can_moderate: hasRole(req.user, "moderator"),
+  };
+}
+
+async function sendFindPlayersMessage(req) {
+  const content = String(req.body.content || req.body.message || "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!content) return { success: false, error: "Message is required" };
+  if (content.length > 400) return { success: false, error: "Message is too long" };
+
+  const ban = await activeFindPlayersChatBan(req.user.id);
+  if (ban) {
+    return { success: false, error: "You are banned from the Find Players chat", ban: publicChatBan(ban) };
+  }
+  if (containsBlockedLanguage(content)) {
+    return {
+      success: false,
+      error: "Message blocked by the community language filter",
+      code: "CHAT_LANGUAGE_BLOCKED",
+    };
+  }
+  if (findPlayersChatRateLimited(req.user.id)) {
+    return { success: false, error: "Slow down and wait a few seconds before sending another message" };
+  }
+  const pingsAdmin = /(^|\s)@(admin|staff)\b/i.test(content);
+  if (pingsAdmin && findPlayersAdminPingRateLimited(req.user.id)) {
+    return { success: false, error: "Please wait one minute before pinging staff again" };
+  }
+
+  const profile = await firstEntity("PlayerProfile", { user_id: req.user.id }).catch(() => null);
+  const message = await createEntity("ChatMessage", {
+    conversation_id: findPlayersRoomId,
+    sender_id: req.user.id,
+    sender_name: nameFor(req.user),
+    sender_username: req.user.username || req.user.handle || "",
+    sender_avatar_url: profile?.avatar_url || req.user.avatar_url || "",
+    sender_role: effectiveChatRole(req.user),
+    content,
+    is_read: false,
+    match_type: "find_players",
+    room_kind: "community",
+    created_date: nowIso(),
+  });
+  if (pingsAdmin) {
+    const staff = await usersWithStaffRole();
+    await notifyUsers(staff.map((user) => user.id).filter((id) => id !== req.user.id), {
+      title: "Admin ping in Find Players Chat",
+      message: `${nameFor(req.user)} requested staff assistance: ${content.slice(0, 180)}`,
+      type: "chat_mention",
+      action_url: "/find-players",
+      related_entity_id: message.id,
+      related_entity_type: "ChatMessage",
+    });
+  }
+  return { success: true, message, admin_pinged: pingsAdmin };
+}
+
+const findPlayersBanExpiry = (duration) => {
+  const durations = {
+    "10m": 10 * 60 * 1000,
+    "1h": 60 * 60 * 1000,
+    "24h": 24 * 60 * 60 * 1000,
+    "7d": 7 * 24 * 60 * 60 * 1000,
+    "30d": 30 * 24 * 60 * 60 * 1000,
+  };
+  const milliseconds = durations[duration];
+  return milliseconds ? new Date(Date.now() + milliseconds).toISOString() : null;
+};
+
+async function moderateFindPlayersChatUser(req) {
+  assertStaff(req, "moderator");
+  const action = String(req.body.action || "ban").toLowerCase();
+  const targetUserId = String(req.body.user_id || "").trim();
+  if (!targetUserId) return { success: false, error: "Select a player first" };
+
+  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!target) return { success: false, error: "Player not found" };
+  if (target.id === req.user.id) return { success: false, error: "You cannot moderate yourself" };
+  const actorRole = effectiveChatRole(req.user);
+  const targetRole = effectiveChatRole(target);
+  if (!canModerateUser(actorRole, targetRole)) {
+    const error = new Error("You cannot moderate a staff member with an equal or higher role");
+    error.status = 403;
+    throw error;
+  }
+
+  const existing = await listEntities("Ban", {
+    user_id: target.id,
+    scope: findPlayersChatScope,
+    status: "active",
+  }, "-created_date", 50).catch(() => []);
+
+  if (action === "unban") {
+    await Promise.all(existing.map((ban) => updateEntity("Ban", ban.id, {
+      status: "revoked",
+      revoked_date: nowIso(),
+      revoked_by: req.user.id,
+    })));
+    await createEntity("AdminAction", {
+      admin_id: req.user.id,
+      admin_name: nameFor(req.user),
+      admin_role: actorRole,
+      action_type: "find_players_chat_unban",
+      target_user_id: target.id,
+      target_username: nameFor(target),
+      description: "Find Players chat ban removed",
+      created_date: nowIso(),
+    }).catch(() => null);
+    return { success: true, action: "unban" };
+  }
+
+  const isTimeout = action === "timeout";
+  const duration = isTimeout && ["10m", "1h", "24h", "7d", "30d"].includes(req.body.duration)
+    ? req.body.duration
+    : isTimeout ? "1h" : "permanent";
+  const reason = String(req.body.reason || "Community chat rules violation").trim().slice(0, 160)
+    || "Community chat rules violation";
+  await Promise.all(existing.map((ban) => updateEntity("Ban", ban.id, {
+    status: "replaced",
+    replaced_date: nowIso(),
+    replaced_by: req.user.id,
+  })));
+  const createdBan = await createEntity("Ban", {
+    user_id: target.id,
+    target_username: nameFor(target),
+    scope: findPlayersChatScope,
+    status: "active",
+    reason,
+    moderation_action: isTimeout ? "timeout" : "ban",
+    duration,
+    expires_date: findPlayersBanExpiry(duration),
+    moderator_id: req.user.id,
+    moderator_name: nameFor(req.user),
+    created_date: nowIso(),
+  });
+
+  if (req.body.remove_messages !== false) {
+    const messages = await listEntities("ChatMessage", {
+      conversation_id: findPlayersRoomId,
+      match_type: "find_players",
+      sender_id: target.id,
+    }, "-created_date", 500).catch(() => []);
+    await Promise.all(messages.map((message) => deleteEntity("ChatMessage", message.id).catch(() => null)));
+  }
+
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: actorRole,
+    action_type: isTimeout ? "find_players_chat_timeout" : "find_players_chat_ban",
+    target_user_id: target.id,
+    target_username: nameFor(target),
+    description: reason,
+    details: { duration, scope: findPlayersChatScope },
+    created_date: nowIso(),
+  }).catch(() => null);
+  return { success: true, action: isTimeout ? "timeout" : "ban", ban: publicChatBan(createdBan) };
+}
+
 async function getDirectMessages(req) {
   const [incoming, outgoing] = await Promise.all([
     listEntities("Message", { recipient_id: req.user.id }, "-created_date", 500).catch(() => []),
@@ -8369,6 +8628,9 @@ const handlers = {
   sendNotification: createNotification,
   sendMessage,
   searchMessageRecipients,
+  getFindPlayersChat,
+  sendFindPlayersMessage,
+  moderateFindPlayersChatUser,
   getDirectMessages,
   markDirectConversationRead,
   sendMatchRoomMessage,

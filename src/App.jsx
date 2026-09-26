@@ -37,6 +37,7 @@ const ThankYou = lazy(() => import('@/pages/ThankYou'));
 const Admin = lazy(() => import('@/pages/Admin'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
 const Messages = lazy(() => import('@/pages/Messages'));
+const FindPlayersChat = lazy(() => import('@/pages/FindPlayersChat'));
 const Wallet = lazy(() => import('@/pages/Wallet'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
@@ -105,6 +106,7 @@ const AuthenticatedApp = () => {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/rules" element={<Rules />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/change-password" element={<ChangePassword />} />
@@ -128,13 +130,13 @@ const AuthenticatedApp = () => {
           <Route path="/premium" element={<Premium />} />
           <Route path="/cdl" element={<CDL />} />
           <Route path="/news" element={<News />} />
-          <Route path="/rules" element={<Rules />} />
           <Route path="/support" element={<Support />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/thank-you" element={<ThankYou />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/messages" element={<Messages />} />
+          <Route path="/find-players" element={<FindPlayersChat />} />
           <Route path="/wallet" element={<Wallet />} />
         </Route>
         </Route>

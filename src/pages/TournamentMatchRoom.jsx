@@ -96,12 +96,20 @@ const formatCountdown = (seconds) => {
 };
 
 const trophySlots = [
-  { key: "gold", label: "Gold trophies", icon: Trophy, className: "text-yellow-400" },
-  { key: "silver", label: "Silver trophies", icon: Medal, className: "text-gray-300" },
-  { key: "bronze", label: "Bronze trophies", icon: Award, className: "text-amber-600" },
-  { key: "invitational", label: "Invitational trophies", icon: Swords, className: "text-cyan" },
-  { key: "premium", label: "Premium trophies", icon: Crown, className: "text-purple-300" },
+  { key: "gold", label: "Gold trophies", icon: Trophy, className: "border-yellow-400/20 bg-yellow-400/[0.08] text-yellow-300 hover:border-yellow-400/45 hover:bg-yellow-400/[0.14] hover:shadow-[0_0_16px_rgba(250,204,21,.12)]" },
+  { key: "silver", label: "Silver trophies", icon: Medal, className: "border-slate-300/20 bg-slate-300/[0.07] text-slate-200 hover:border-slate-200/40 hover:bg-slate-200/[0.12] hover:shadow-[0_0_16px_rgba(203,213,225,.1)]" },
+  { key: "bronze", label: "Bronze trophies", icon: Award, className: "border-amber-600/25 bg-amber-600/[0.09] text-amber-500 hover:border-amber-500/45 hover:bg-amber-500/[0.14] hover:shadow-[0_0_16px_rgba(217,119,6,.12)]" },
+  { key: "invitational", label: "Invitational trophies", icon: Swords, className: "border-cyan/20 bg-cyan/[0.07] text-cyan hover:border-cyan/40 hover:bg-cyan/[0.12] hover:shadow-[0_0_16px_rgba(20,216,255,.12)]" },
+  { key: "premium", label: "Premium trophies", icon: Crown, className: "border-purple-300/20 bg-purple-300/[0.07] text-purple-300 hover:border-purple-300/40 hover:bg-purple-300/[0.12] hover:shadow-[0_0_16px_rgba(216,180,254,.12)]" },
 ];
+
+const tournamentRankFor = (goldTrophies) => {
+  const gold = statNumber(goldTrophies);
+  if (gold > 5) return { label: "Pro", className: "border-yellow-300/30 bg-yellow-300/[0.1] text-yellow-300" };
+  if (gold === 5) return { label: "Semi Pro", className: "border-cyan/25 bg-cyan/[0.08] text-cyan" };
+  if (gold >= 3) return { label: "Amateur", className: "border-amber-500/25 bg-amber-500/[0.08] text-amber-400" };
+  return { label: "Newb", className: "border-white/[0.09] bg-white/[0.04] text-vapor" };
+};
 
 const participantIds = (participant) => [
   participant?.id,
@@ -304,99 +312,165 @@ function TrophyCounts({ trophies }) {
   const counts = trophies || emptyTrophyCounts();
   return (
     <div className="flex flex-wrap justify-end gap-1.5 overflow-visible">
-      {trophySlots.map(({ key, label, icon: Icon, className }) => (
-        <span
-          key={key}
-          aria-label={`${label}: ${statNumber(counts[key])}`}
-          className={`group relative inline-flex min-w-[30px] cursor-default select-none items-center justify-center gap-1 rounded-md bg-background/50 px-2 py-1.5 text-[11px] font-black ${className}`}
-        >
-          <Icon className="h-3.5 w-3.5" />
-          {statNumber(counts[key])}
-          <span className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-2 w-36 -translate-x-1/2 rounded-lg border border-white/10 bg-popover px-3 py-2 text-left opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100">
-            <span className={`mb-1 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider ${className}`}>
-              <Icon className="h-3.5 w-3.5" />
-              {label}
+      {trophySlots.map(({ key, label, icon: Icon, className }) => {
+        const count = statNumber(counts[key]);
+        return (
+          <span
+            key={key}
+            aria-label={`${label}: ${count}`}
+            className={`group/trophy relative inline-flex h-8 min-w-9 cursor-default select-none items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-black transition-all duration-200 hover:-translate-y-0.5 ${count === 0 ? "opacity-60" : "shadow-[inset_0_1px_0_rgba(255,255,255,.06)]"} ${className}`}
+          >
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-current/10">
+              <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
             </span>
-            <span className="block text-lg font-black leading-none text-white">{statNumber(counts[key])}</span>
+            <span className={count === 0 ? "text-vapor/65" : "text-white"}>{count}</span>
+            <span className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] left-1/2 z-[70] flex -translate-x-1/2 translate-y-1 items-center gap-2 whitespace-nowrap rounded-lg border border-white/[0.12] bg-[#111821] px-2.5 py-2 text-[10px] font-bold text-white opacity-0 shadow-[0_14px_36px_rgba(0,0,0,.65)] transition-all duration-150 group-hover/trophy:visible group-hover/trophy:translate-y-0 group-hover/trophy:opacity-100">
+              <span className="text-vapor">{label}</span>
+              <span className="font-mono text-white">{count}</span>
+            </span>
           </span>
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function TeamCard({ label, name, color, score, setScore, disabled, seed, isFirstHost, maxScore, players = [], currentUser }) {
-  const isOrange = color === "orange";
-  const colorClass = isOrange ? "border-accent/30" : "border-cyan/30";
-  const toneClass = isOrange ? "text-accent" : "text-cyan";
-  const tintClass = isOrange ? "bg-accent/10 border-accent/30" : "bg-cyan/10 border-cyan/30";
-  const hoverToneClass = isOrange ? "hover:text-accent" : "hover:text-cyan";
-  const scoreId = `${label.toLowerCase().replace(/\s+/g, "-")}-score`;
-  const scoreAccent = isOrange
-    ? "border-accent/40 bg-accent/10 text-accent focus:border-accent focus:ring-accent/25 focus:shadow-[0_0_0_3px_rgba(255,106,0,0.10)]"
-    : "border-cyan/40 bg-cyan/10 text-cyan focus:border-cyan focus:ring-cyan/25 focus:shadow-[0_0_0_3px_rgba(20,216,255,0.10)]";
+function TournamentRankBadge({ goldTrophies }) {
+  const gold = statNumber(goldTrophies);
+  const rank = tournamentRankFor(gold);
 
   return (
-    <section className={`dark-focus dark-media relative min-w-0 overflow-hidden rounded-2xl border shadow-[0_20px_50px_-42px_rgba(0,0,0,.95)] ${colorClass}`}>
-      <div className={`absolute inset-y-0 left-0 w-1 ${isOrange ? "bg-accent" : "bg-cyan"}`} />
-      <div className="flex flex-col gap-5 border-b border-white/[0.06] p-5 sm:flex-row sm:items-center sm:p-6">
-        <span className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border font-mono text-lg font-black ${tintClass} ${toneClass}`}>{teamMonogram(name)}</span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2"><p className={`text-[9px] font-black uppercase tracking-[0.18em] ${toneClass}`}>{label} roster</p><span className="rounded-md border border-white/[0.06] bg-background/40 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-vapor">Seed {seedLabel(seed)}</span>{isFirstHost && <span className={`rounded-md border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${tintClass} ${toneClass}`}>Hosts map 1</span>}</div>
-          <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5"><h3 className="truncate text-xl font-black sm:text-2xl">{name || "Open slot"}</h3>{name && <BetaBadge />}</div>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">{players.length} confirmed player{players.length === 1 ? "" : "s"}</p>
-        </div>
-        <div className="shrink-0 rounded-xl border border-white/10 bg-black/20 p-2 shadow-inner">
-          <label htmlFor={scoreId} className="mb-1 block text-center text-[10px] font-black uppercase tracking-wider text-vapor">
-            {disabled ? "Score" : "Enter score"}
-          </label>
+    <span
+      title={`${gold} gold ${gold === 1 ? "trophy" : "trophies"}`}
+      aria-label={`Tournament rank: ${rank.label}. ${gold} gold ${gold === 1 ? "trophy" : "trophies"}.`}
+      className={`inline-flex shrink-0 cursor-default select-none items-center gap-1 rounded-md border px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${rank.className}`}
+    >
+      <Trophy className="h-2.5 w-2.5" strokeWidth={2.5} />
+      {rank.label}
+    </span>
+  );
+}
+
+function MatchupScore({ scoreA, scoreB, setScoreA, setScoreB, disabled, maxScore, teamAName, teamBName }) {
+  const updateScore = (setter) => (event) => {
+    const nextScore = Number(event.target.value);
+    setter(Number.isFinite(nextScore) ? Math.min(maxScore, Math.max(0, Math.trunc(nextScore))) : 0);
+  };
+
+  const scoreField = ({ id, label, name, score, setter, tone }) => (
+    <div className="min-w-0 text-center">
+      <p className={`truncate text-[8px] font-black uppercase tracking-[0.16em] ${tone}`} title={name || "Waiting for opponent"}>
+        {name ? teamMonogram(name) : "Waiting"}
+      </p>
+      {name ? (
+        <label className="mt-1 block">
+          <span className="sr-only">{label}</span>
           <input
-            id={scoreId}
-            aria-label={`${label} final score`}
+            id={id}
+            aria-label={label}
             type="number"
             min="0"
             max={maxScore}
             step="1"
             value={score}
-            disabled={disabled || !name}
-            onChange={(event) => {
-              const nextScore = Number(event.target.value);
-              setScore(Number.isFinite(nextScore) ? Math.min(maxScore, Math.max(0, Math.trunc(nextScore))) : 0);
-            }}
-            className={`h-16 w-24 rounded-lg border text-center font-mono text-3xl font-black outline-none transition-all duration-200 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-28 ${scoreAccent}`}
+            disabled={disabled}
+            onChange={updateScore(setter)}
+            className={`h-16 w-full appearance-none bg-transparent text-center text-5xl font-black tabular-nums outline-none transition-all duration-200 [font-family:inherit] focus:scale-105 disabled:cursor-default disabled:opacity-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${tone}`}
           />
+        </label>
+      ) : (
+        <div className="mt-1 flex h-16 items-center justify-center text-4xl font-black text-vapor/25" aria-label={`${label}: waiting for opponent`}>
+          &mdash;
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="relative z-10 flex items-center justify-center px-4 py-7 lg:px-2 lg:py-10">
+      <div className="relative w-full max-w-[250px] overflow-hidden rounded-2xl border border-white/[0.11] bg-gradient-to-b from-white/[0.055] to-black/15 p-4 text-center shadow-[0_20px_55px_-24px_rgba(0,0,0,.95)]">
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 flex h-px">
+          <span className="w-1/2 bg-gradient-to-r from-transparent to-accent/70" />
+          <span className="w-1/2 bg-gradient-to-r from-cyan/70 to-transparent" />
+        </div>
+        <div className="flex items-center justify-center gap-2 text-vapor/70">
+          <Swords className="h-3 w-3" strokeWidth={2.5} />
+          <p className="text-[9px] font-black uppercase tracking-[0.22em]">{disabled ? "Match score" : "Enter score"}</p>
+        </div>
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-1">
+          {scoreField({ id: "team-a-score", label: "Team A final score", name: teamAName, score: scoreA, setter: setScoreA, tone: "text-accent" })}
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.08] bg-black/20 text-[8px] font-black uppercase tracking-wider text-vapor/50">vs</span>
+          {scoreField({ id: "team-b-score", label: "Team B final score", name: teamBName, score: scoreB, setter: setScoreB, tone: "text-cyan" })}
+        </div>
+        <div className="mt-3 flex items-center justify-center">
+          <span className="rounded-full border border-white/[0.08] bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">
+            First to {maxScore}
+          </span>
         </div>
       </div>
-      <div className="p-5 sm:p-6">
-        <div className="mb-4 flex items-center justify-between gap-3"><p className="text-[11px] font-black uppercase tracking-[0.16em] text-vapor">Confirmed lineup</p><p className="text-[10px] font-bold uppercase tracking-wider text-vapor/60">Identity & stats</p></div>
+    </div>
+  );
+}
+
+function TeamCard({ label, name, color, seed, isFirstHost, players = [] }) {
+  const isOrange = color === "orange";
+  const toneClass = isOrange ? "text-accent" : "text-cyan";
+  const tintClass = isOrange ? "bg-accent/10 border-accent/30" : "bg-cyan/10 border-cyan/30";
+  const hoverToneClass = isOrange ? "hover:text-accent" : "hover:text-cyan";
+
+  return (
+    <section className="relative min-w-0 px-4 py-5 sm:p-6">
+      <div className={`absolute inset-x-6 top-0 h-px ${isOrange ? "bg-gradient-to-r from-transparent via-accent/65 to-transparent" : "bg-gradient-to-r from-transparent via-cyan/65 to-transparent"}`} />
+      <div className="flex items-center gap-4 border-b border-white/[0.06] pb-5">
+        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-mono text-base font-black shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${tintClass} ${toneClass}`}>{teamMonogram(name)}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2"><p className={`text-[9px] font-black uppercase tracking-[0.18em] ${toneClass}`}>{label} roster</p><span className="rounded-md border border-white/[0.06] bg-background/40 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-vapor">Seed {seedLabel(seed)}</span>{isFirstHost && <span className={`rounded-md border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${tintClass} ${toneClass}`}>Hosts map 1</span>}</div>
+          <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5"><h3 className="truncate text-lg font-black sm:text-xl">{name || "Open slot"}</h3>{name && <BetaBadge />}</div>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">{players.length} confirmed player{players.length === 1 ? "" : "s"}</p>
+        </div>
+      </div>
+      <div className="pt-5">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-vapor">Confirmed lineup</p><p className="text-[9px] font-bold uppercase tracking-wider text-vapor/45">Performance</p></div>
         {players.length === 0 ? (
           <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] text-xs text-vapor">Roster unavailable</div>
         ) : (
-          <div className="space-y-3">
+          <div className="divide-y divide-white/[0.06]">
             {players.map((player, index) => {
               const profileSlug = player.user_id || player.username || player.handle || player.user_name;
-              const isCurrentUser = rosterPlayerMatchesUser(player, currentUser);
+              const displayName = playerName(player);
               return (
-                <article key={player.user_id || `${player.user_name}-${index}`} className={`rounded-xl border p-4 ${isCurrentUser ? (isOrange ? "border-accent/25 bg-accent/[0.055]" : "border-cyan/25 bg-cyan/[0.055]") : "border-white/[0.08] bg-white/[0.035]"}`}>
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
-                      <span className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border font-mono text-sm font-black ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : String(player.user_name || "?").charAt(0).toUpperCase()}</span>
+                <article key={player.user_id || `${displayName}-${index}`} className="group/player relative overflow-visible rounded-lg px-1 py-3.5 transition-colors duration-200 hover:z-20 hover:bg-white/[0.025] sm:px-2">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                    <div className="flex w-full min-w-0 flex-none items-center gap-3 xl:flex-1">
+                      <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border font-mono text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} className={`truncate text-base font-black text-foreground transition-colors ${hoverToneClass}`}>{player.user_name}</Link> : <span className="truncate text-base font-black text-foreground">{player.user_name}</span>}
-                          {isCurrentUser && <span className={`rounded px-2 py-0.5 text-[8px] font-black uppercase ${isOrange ? "bg-accent text-white" : "bg-cyan text-background"}`}>You</span>}
+                          {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} className={`truncate text-base font-black text-foreground transition-colors ${hoverToneClass}`}>{displayName}</Link> : <span className="truncate text-base font-black text-foreground">{displayName}</span>}
+                          <TournamentRankBadge goldTrophies={player.trophies?.gold} />
                           <UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />
                         </div>
                         <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
                       </div>
                     </div>
-                    <div className="grid shrink-0 grid-cols-3 gap-2.5 xl:min-w-[240px]">
-                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Role</p><p className={`mt-1 text-[10px] font-black uppercase ${player.role === "captain" ? "text-blue-300" : "text-white"}`}>{player.role === "captain" ? "Captain" : "Member"}</p></div>
-                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Record</p><p className="mt-1 font-mono text-sm font-black text-white">{statNumber(player.wins)}-{statNumber(player.losses)}</p></div>
-                      <div className="rounded-lg border border-white/[0.05] bg-black/15 px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Earned</p><p className="mt-1 font-mono text-sm font-black text-white">{moneyLabel(player.earnings)}</p></div>
+                    <div className="grid w-full shrink-0 grid-cols-3 divide-x divide-white/[0.06] rounded-lg bg-black/15 xl:w-[270px]">
+                      <div className="min-w-0 px-2.5 py-2">
+                        <p className="text-[8px] font-black uppercase tracking-[0.14em] text-vapor/75">Role</p>
+                        <p className={`mt-1 flex items-center gap-1 text-[9px] font-black uppercase ${player.role === "captain" ? "text-cyan" : "text-vapor"}`}>
+                          {player.role === "captain" ? <Crown className="h-3 w-3 shrink-0" /> : <Shield className="h-3 w-3 shrink-0" />}
+                          <span className="truncate">{player.role === "captain" ? "Captain" : "Member"}</span>
+                        </p>
+                      </div>
+                      <div className="px-3 py-2">
+                        <p className="text-[8px] font-black uppercase tracking-[0.14em] text-vapor/75">Record</p>
+                        <p className="mt-1 flex items-baseline gap-1.5 font-mono text-sm font-black"><span className="text-white">{statNumber(player.wins)}W</span><span className="text-vapor/35">/</span><span className="text-vapor">{statNumber(player.losses)}L</span></p>
+                      </div>
+                      <div className="bg-green/[0.04] px-3 py-2">
+                        <p className="text-[8px] font-black uppercase tracking-[0.14em] text-green/70">Earned</p>
+                        <p className="mt-1 font-mono text-sm font-black text-green">{moneyLabel(player.earnings)}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-3"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor/70">Trophies</p><TrophyCounts trophies={player.trophies} /></div>
+                  <div className="mt-3 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-2.5"><p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/50">Trophies</p><TrophyCounts trophies={player.trophies} /></div>
                 </article>
               );
             })}
@@ -947,34 +1021,37 @@ export default function TournamentMatchRoom() {
           </div>
         )}
 
-        <div className="mb-6 grid gap-6 lg:grid-cols-2">
-          <TeamCard
-            label="Team A"
-            color="orange"
-            name={match.team_a_name}
-            seed={match.team_a_seed}
-            isFirstHost={match.first_host_team_id === match.team_a_id}
-            score={scoreA}
-            setScore={setScoreA}
-            disabled={!canSubmit}
-            maxScore={winsNeeded}
-            players={teamAPlayers}
-            currentUser={user}
-          />
-          <TeamCard
-            label="Team B"
-            color="blue"
-            name={match.team_b_name}
-            seed={match.team_b_seed}
-            isFirstHost={match.first_host_team_id === match.team_b_id}
-            score={scoreB}
-            setScore={setScoreB}
-            disabled={!canSubmit}
-            maxScore={winsNeeded}
-            players={teamBPlayers}
-            currentUser={user}
-          />
-        </div>
+        <section className="dark-focus dark-media relative mb-6 overflow-visible rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-accent/40 via-white/10 to-cyan/40" />
+          <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_220px_minmax(0,1fr)]">
+            <TeamCard
+              label="Team A"
+              color="orange"
+              name={match.team_a_name}
+              seed={match.team_a_seed}
+              isFirstHost={match.first_host_team_id === match.team_a_id}
+              players={teamAPlayers}
+            />
+            <MatchupScore
+              scoreA={scoreA}
+              scoreB={scoreB}
+              setScoreA={setScoreA}
+              setScoreB={setScoreB}
+              disabled={!canSubmit}
+              maxScore={winsNeeded}
+              teamAName={match.team_a_name}
+              teamBName={match.team_b_name}
+            />
+            <TeamCard
+              label="Team B"
+              color="blue"
+              name={match.team_b_name}
+              seed={match.team_b_seed}
+              isFirstHost={match.first_host_team_id === match.team_b_id}
+              players={teamBPlayers}
+            />
+          </div>
+        </section>
 
         <div className={`grid gap-6 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_460px]" : ""}`}>
           <div className="min-w-0 space-y-6">

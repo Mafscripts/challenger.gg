@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, ChevronDown, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera } from "lucide-react";
+import { Shield, ChevronDown, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera, MessageCircle } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 
 const killCamRule = "Kill cams must remain enabled for the duration of every match.";
@@ -17,6 +17,19 @@ const sections = [
       "All disputes must be submitted within 15 minutes of match completion.",
       "Video evidence is required for all dispute submissions.",
       "Platform decisions on disputes are final after review.",
+    ],
+  },
+  {
+    title: "Find Players Chat Rules",
+    icon: MessageCircle,
+    rules: [
+      "Use the room to find teammates, substitutes, opponents, or practice partners.",
+      "Include useful details such as game mode, region, team size, and availability.",
+      "Profanity, hate speech, harassment, threats, sexual content, and targeted abuse are prohibited.",
+      "Do not spam repeated messages, advertisements, referral links, or unrelated content.",
+      "Never share passwords, payment information, private addresses, or other sensitive personal information.",
+      "Moderators, admins, super admins, and the CEO may remove messages and issue temporary or permanent chat bans.",
+      "Attempting to bypass the multilingual language filter may result in a chat ban.",
     ],
   },
   {
