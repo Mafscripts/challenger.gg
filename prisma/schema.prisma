@@ -148,6 +148,8 @@ model Ban {
   created_date DateTime @default(now())
   updated_date DateTime @updatedAt
   metadata     Json     @default("{}")
+
+  @@index([metadata], type: Gin)
 }
 
 model Wallet {

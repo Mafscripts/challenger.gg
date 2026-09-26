@@ -14,6 +14,7 @@ import {
 import { requireAuth } from "../middleware/auth.js";
 import { dataForEntity } from "../entity.js";
 import { isEmailConfigured, sendPasswordResetEmail, sendVerificationEmail } from "../email.js";
+import { evaluateAccess, requestIpAddress } from "../ban-enforcement.js";
 
 const router = Router();
 const VERIFICATION_TTL_MS = 10 * 60 * 1000;
@@ -131,13 +132,8 @@ const clearVerificationMetadata = (metadata) => {
   return clean;
 };
 
-const requestIp = (req) => {
-  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
-  return forwarded || req.ip || req.socket?.remoteAddress || "unknown";
-};
-
 const recordIp = async (user, req, field) => {
-  const ip = requestIp(req);
+  const ip = requestIpAddress(req) || "unknown";
   const metadata = safeUserMetadata(user.metadata);
   const ipHistory = Array.isArray(metadata.ip_history) ? metadata.ip_history : [];
   const nextHistory = [
@@ -155,7 +151,11 @@ const recordIp = async (user, req, field) => {
 
 export const registerHandler = async (req, res, next) => {
   try {
-    consumeRegistrationAttempt(requestIp(req));
+    const access = await evaluateAccess({ req });
+    if (access.blocked) {
+      return res.status(access.status).json({ error: access.message, code: access.code });
+    }
+    consumeRegistrationAttempt(access.ip || "unknown");
     if (!isEmailConfigured() && process.env.NODE_ENV === "production") {
       return res.status(503).json({ error: "Email verification is not configured" });
     }
@@ -194,7 +194,12 @@ router.post("/login", async (req, res, next) => {
       });
     }
 
-    const loginUser = await recordIp(user, req, "last_login_ip");
+    const access = await evaluateAccess({ req, user });
+    if (access.blocked) {
+      return res.status(access.status).json({ error: access.message, code: access.code });
+    }
+
+    const loginUser = await recordIp(access.user, req, "last_login_ip");
     const bootstrap = await ensureUserRecords(loginUser);
     res.json({
       access_token: signUser(loginUser),
@@ -261,6 +266,10 @@ router.post("/verify-otp", async (req, res, next) => {
     const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
     if (!user || !/^\d{6}$/.test(code)) {
       return res.status(400).json({ error: "Invalid or expired verification code" });
+    }
+    const access = await evaluateAccess({ req, user });
+    if (access.blocked) {
+      return res.status(access.status).json({ error: access.message, code: access.code });
     }
     if (user.email_verified === true) {
       return res.status(400).json({ error: "Email is already verified. Please log in." });

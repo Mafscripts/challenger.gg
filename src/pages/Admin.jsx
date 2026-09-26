@@ -930,6 +930,13 @@ export default function Admin() {
       toast({ title: "Not allowed", description: "Moderator or higher is required.", variant: "destructive" });
       return;
     }
+    if (action === "ip_ban") {
+      const sharedAccounts = sharedIpCount(targetUser);
+      const warning = sharedAccounts > 0
+        ? `This permanently blocks all known IP addresses for ${userName(targetUser)}. ${sharedAccounts} other account(s) share one of those addresses and may also be blocked. Continue?`
+        : `This permanently blocks all known IP addresses for ${userName(targetUser)}. Continue?`;
+      if (!window.confirm(warning)) return;
+    }
     const reason = typeof window !== "undefined" ? window.prompt(`Reason for ${action.replace(/_/g, " ")}:`, "") : "";
     if (reason === null) return;
 
@@ -2096,6 +2103,7 @@ export default function Admin() {
                             <button onClick={() => handleModerateUser(user, "temporary_ban", "30d")} className="text-xs text-red-400 hover:underline">30d Ban</button>
                             <button onClick={() => handleModerateUser(user, "ban", "permanent")} className="text-xs text-red-400 hover:underline">Permanent Ban</button>
                             <button onClick={() => handleModerateUser(user, "email_ban")} className="text-xs text-red-400 hover:underline">Email Ban</button>
+                            <button onClick={() => handleModerateUser(user, "ip_ban")} className="text-xs font-bold text-red-500 hover:underline">IP Ban</button>
                             {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="text-xs text-green hover:underline">Unban</button>}
                               </div>
                             )}

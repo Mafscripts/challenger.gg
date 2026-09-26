@@ -1,7 +1,7 @@
 import { prisma } from "../prisma.js";
 import { publicUser, verifyToken } from "../auth.js";
 import { hasRole } from "../roles.js";
-import { listEntities } from "../entity.js";
+import { evaluateAccess } from "../ban-enforcement.js";
 
 export const requireAuth = async (req, res, next) => {
   try {
@@ -27,34 +27,11 @@ export const requireAuth = async (req, res, next) => {
       });
     }
 
-    const activeBans = await listEntities("Ban", { status: "active" }, "-created_date", 500).catch(() => []);
-    const blockingBan = activeBans.find((ban) => {
-      const expires = ban.expires_date ? new Date(ban.expires_date) : null;
-      if (expires && expires <= new Date()) return false;
-      const scope = ban.scope || [];
-      return scope.includes("email") && ban.email && ban.email === user.email;
-    });
-    if (blockingBan) return res.status(401).json({ error: "Authentication required" });
-
-    const suspendedUntil = user.metadata?.suspended_until ? new Date(user.metadata.suspended_until) : null;
-    const banExpires = user.metadata?.ban_expires ? new Date(user.metadata.ban_expires) : null;
-    if (suspendedUntil && suspendedUntil > new Date()) {
-      return res.status(403).json({ error: "Account is temporarily suspended" });
+    const access = await evaluateAccess({ req, user });
+    if (access.blocked) {
+      return res.status(access.status).json({ error: access.message, code: access.code });
     }
-    if (user.is_banned) {
-      if (banExpires && banExpires <= new Date()) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            is_banned: false,
-            ban_reason: null,
-            metadata: { ...(user.metadata || {}), ban_expires: null },
-          },
-        });
-      } else {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-    }
+    user = access.user;
 
     req.user = publicUser(user);
     req.userRow = user;

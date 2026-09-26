@@ -28,6 +28,10 @@ VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
 
 Run the app: `npm run dev`
 
+**Reverse proxy and IP bans**
+
+When the API runs behind a reverse proxy, set `TRUST_PROXY` to the number of trusted proxy hops (commonly `1`). Leave it unset when the API is exposed directly. Correct proxy configuration is required for reliable IP logging and IP-ban enforcement.
+
 **Publish your changes**
 
 Open [Base44.com](http://Base44.com) and click on Publish.

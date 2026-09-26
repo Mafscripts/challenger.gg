@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
 import { hasRole, rolePower } from "../roles.js";
+import { knownUserIpAddresses } from "../ban-enforcement.js";
 
 const router = Router();
 
@@ -8190,11 +8191,12 @@ async function moderateUser(req) {
   }
 
   const action = req.body.action || "warning";
-  if (action === "ip_ban") {
-    return { success: false, error: "IP bans are currently disabled" };
-  }
   const reason = req.body.reason || "Moderation action";
   const expiresDate = action === "temporary_ban" || action === "suspension" ? banExpiration(req.body.duration || "24h") : null;
+  const targetIps = action === "ip_ban" ? knownUserIpAddresses(target) : [];
+  if (action === "ip_ban" && targetIps.length === 0) {
+    return { success: false, error: "No known IP address is stored for this user" };
+  }
   const metadata = {
     ...(target.metadata || {}),
     moderation_history: [
@@ -8206,32 +8208,34 @@ async function moderateUser(req) {
         moderator_name: nameFor(req.user),
         date: nowIso(),
         expires_date: expiresDate,
+        ...(targetIps.length > 0 ? { ip_addresses: targetIps } : {}),
       },
     ],
     suspended_until: action === "suspension" ? expiresDate : (action === "remove_ban" ? null : (target.metadata || {}).suspended_until),
     ban_expires: ["temporary_ban", "email_ban"].includes(action) ? expiresDate : (action === "remove_ban" ? null : (target.metadata || {}).ban_expires),
   };
 
-  if (["ban", "temporary_ban", "email_ban"].includes(action)) {
-    await createEntity("Ban", {
+  if (["ban", "temporary_ban", "email_ban", "ip_ban"].includes(action)) {
+    const banIps = action === "ip_ban" ? targetIps : [null];
+    await Promise.all(banIps.map((ip) => createEntity("Ban", {
       user_id: target.id,
       username: nameFor(target),
       banned_by: req.user.id,
       banned_by_name: nameFor(req.user),
       banned_by_role: req.user.role,
       reason,
-      ban_type: action === "ban" || !expiresDate ? "permanent" : "temporary",
+      ban_type: ["ban", "ip_ban"].includes(action) || !expiresDate ? "permanent" : "temporary",
       duration_days: expiresDate ? Math.ceil((new Date(expiresDate) - new Date()) / 86400000) : undefined,
       expires_date: expiresDate,
       scope: [action.replace("_ban", "")],
-      ip: target.metadata?.last_login_ip || target.metadata?.registration_ip || target.last_login_ip || target.registration_ip,
-      email: target.email,
+      ip: ip || target.metadata?.last_login_ip || target.metadata?.registration_ip || target.last_login_ip || target.registration_ip,
+      email: String(target.email || "").toLowerCase(),
       status: "active",
       created_date: nowIso(),
-    }).catch(() => null);
+    })));
   }
   if (action === "remove_ban") {
-    const bans = await listEntities("Ban", { user_id: target.id }, "-created_date", 100).catch(() => []);
+    const bans = await listEntities("Ban", { user_id: target.id }, "-created_date", 500).catch(() => []);
     await Promise.all(bans
       .filter((ban) => ban.status === "active")
       .map((ban) => updateEntity("Ban", ban.id, {
@@ -8242,7 +8246,7 @@ async function moderateUser(req) {
       }).catch(() => null)));
   }
 
-  const shouldBan = ["ban", "temporary_ban", "email_ban"].includes(action);
+  const shouldBan = ["ban", "temporary_ban", "email_ban", "ip_ban"].includes(action);
   const shouldRemoveBan = action === "remove_ban";
   const user = await prisma.user.update({
     where: { id: target.id },
@@ -8270,7 +8274,7 @@ async function moderateUser(req) {
     target_user_id: target.id,
     target_username: nameFor(target),
     description: reason,
-    details: { expires_date: expiresDate },
+    details: { expires_date: expiresDate, ...(targetIps.length > 0 ? { ip_addresses: targetIps } : {}) },
     created_date: nowIso(),
   }).catch(() => null);
 

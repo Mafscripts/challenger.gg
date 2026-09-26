@@ -54,6 +54,14 @@
       },
       "title": "Ban Scope"
     },
+    "ip": {
+      "type": "string",
+      "title": "IP Address"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email Address"
+    },
     "status": {
       "type": "string",
       "enum": [

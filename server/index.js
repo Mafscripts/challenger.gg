@@ -9,6 +9,15 @@ import { disconnectPrisma } from "./prisma.js";
 const app = express();
 const port = Number(process.env.PORT || 4000);
 
+const configuredTrustProxy = String(process.env.TRUST_PROXY || "").trim();
+if (configuredTrustProxy) {
+  const numericTrustProxy = Number(configuredTrustProxy);
+  app.set(
+    "trust proxy",
+    configuredTrustProxy === "true" ? true : (Number.isInteger(numericTrustProxy) ? numericTrustProxy : configuredTrustProxy),
+  );
+}
+
 app.use(cors({
   origin: process.env.CORS_ORIGIN || true,
   credentials: true,
