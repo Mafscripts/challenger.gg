@@ -241,6 +241,8 @@ export default function Navbar() {
   const [adminDispute, setAdminDispute] = useState(null);
   const activeAdminRequestId = useRef(null);
   const dismissedAdminRequests = useRef(new Set());
+  const soundedAdminRequests = useRef(new Set());
+  const pendingAdminRequestSoundId = useRef(null);
   const activeMatchesLoadedAt = useRef(0);
   const activeAdminDisputeId = useRef(null);
   const dismissedAdminDisputes = useRef(new Set());
@@ -249,8 +251,13 @@ export default function Navbar() {
   const notificationsLoadedAt = useRef(0);
 
   useEffect(() => {
-    const unlockAndPlayPendingDispute = async () => {
+    const unlockAndPlayPendingStaffAlert = async () => {
       if (!await unlockDisputeAlertAudio()) return;
+      const requestId = pendingAdminRequestSoundId.current;
+      if (requestId && !soundedAdminRequests.current.has(requestId) && await playDisputeAlertSound()) {
+        soundedAdminRequests.current.add(requestId);
+        pendingAdminRequestSoundId.current = null;
+      }
       const disputeId = pendingAdminDisputeSoundId.current;
       if (!disputeId || soundedAdminDisputes.current.has(disputeId)) return;
       if (await playDisputeAlertSound()) {
@@ -258,17 +265,28 @@ export default function Navbar() {
         pendingAdminDisputeSoundId.current = null;
       }
     };
-    window.addEventListener("pointerdown", unlockAndPlayPendingDispute);
-    window.addEventListener("keydown", unlockAndPlayPendingDispute);
+    window.addEventListener("pointerdown", unlockAndPlayPendingStaffAlert);
+    window.addEventListener("keydown", unlockAndPlayPendingStaffAlert);
     return () => {
-      window.removeEventListener("pointerdown", unlockAndPlayPendingDispute);
-      window.removeEventListener("keydown", unlockAndPlayPendingDispute);
+      window.removeEventListener("pointerdown", unlockAndPlayPendingStaffAlert);
+      window.removeEventListener("keydown", unlockAndPlayPendingStaffAlert);
     };
   }, []);
 
   useEffect(() => {
+    const requestId = adminRequest?.id;
+    if (!requestId || soundedAdminRequests.current.has(requestId) || pendingAdminRequestSoundId.current === requestId) return;
+    pendingAdminRequestSoundId.current = requestId;
+    playDisputeAlertSound().then((played) => {
+      if (!played || pendingAdminRequestSoundId.current !== requestId) return;
+      soundedAdminRequests.current.add(requestId);
+      pendingAdminRequestSoundId.current = null;
+    });
+  }, [adminRequest?.id]);
+
+  useEffect(() => {
     const disputeId = adminDispute?.id;
-    if (!disputeId || soundedAdminDisputes.current.has(disputeId)) return;
+    if (!disputeId || soundedAdminDisputes.current.has(disputeId) || pendingAdminDisputeSoundId.current === disputeId) return;
     pendingAdminDisputeSoundId.current = disputeId;
     playDisputeAlertSound().then((played) => {
       if (!played || pendingAdminDisputeSoundId.current !== disputeId) return;
@@ -288,12 +306,26 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!isStaffUser(user || authUser)) return;
+    const adminRequestNotification = notifications.find((notification) => (
+      notification.type === "admin_request" && !notification.is_read
+    ));
+    if (adminRequestNotification) {
+      const requestId = adminRequestNotification.admin_alert_id || adminRequestNotification.related_entity_id || adminRequestNotification.id;
+      if (!soundedAdminRequests.current.has(requestId) && pendingAdminRequestSoundId.current !== requestId) {
+        pendingAdminRequestSoundId.current = requestId;
+        playDisputeAlertSound().then((played) => {
+          if (!played || pendingAdminRequestSoundId.current !== requestId) return;
+          soundedAdminRequests.current.add(requestId);
+          pendingAdminRequestSoundId.current = null;
+        });
+      }
+    }
     const disputeNotification = notifications.find((notification) => (
       notification.type === "dispute" && !notification.is_read
     ));
     if (!disputeNotification) return;
     const disputeId = disputeNotification.related_entity_id || disputeNotification.id;
-    if (soundedAdminDisputes.current.has(disputeId)) return;
+    if (soundedAdminDisputes.current.has(disputeId) || pendingAdminDisputeSoundId.current === disputeId) return;
     pendingAdminDisputeSoundId.current = disputeId;
     playDisputeAlertSound().then((played) => {
       if (!played || pendingAdminDisputeSoundId.current !== disputeId) return;
@@ -338,6 +370,8 @@ export default function Navbar() {
     setAdminRequest(null);
     activeAdminRequestId.current = null;
     dismissedAdminRequests.current.clear();
+    soundedAdminRequests.current.clear();
+    pendingAdminRequestSoundId.current = null;
     setAdminDispute(null);
     activeAdminDisputeId.current = null;
     dismissedAdminDisputes.current.clear();
@@ -1119,11 +1153,13 @@ export default function Navbar() {
                               <div className="flex items-start gap-3">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                   notification.type === 'system' ? 'bg-cyan/10' :
+                                  notification.type === 'admin_request' ? 'bg-red-500/10' :
                                   notification.type === 'dispute' ? 'bg-orange/10' :
                                   notification.type === 'match' ? 'bg-orange/10' :
                                   notification.type === 'tournament' ? 'bg-purple/10' : 'bg-secondary'
                                 }`}>
                                   {notification.type === 'system' ? <Info className="w-4 h-4 text-cyan" /> :
+                                   notification.type === 'admin_request' ? <ShieldCheck className="w-4 h-4 text-red-400" /> :
                                    notification.type === 'dispute' ? <AlertCircle className="w-4 h-4 text-orange" /> :
                                    notification.type === 'match' ? <Trophy className="w-4 h-4 text-orange" /> :
                                    notification.type === 'tournament' ? <Star className="w-4 h-4 text-purple-400" /> :

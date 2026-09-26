@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Bell, CheckCheck, Trash2, AlertCircle, Info, Trophy, Star } from "lucide-react";
+import { Bell, CheckCheck, Trash2, AlertCircle, Info, Trophy, Star, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/ui/PageHeader";
@@ -214,6 +214,7 @@ export default function Notifications() {
                   {/* Icon */}
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
                     notification.type === 'system' ? 'bg-cyan/10' :
+                    notification.type === 'admin_request' ? 'bg-red-500/10' :
                     notification.type === 'dispute' ? 'bg-orange/10' :
                     notification.type === 'match' ? 'bg-orange/10' :
                     notification.type === 'tournament' ? 'bg-purple/10' :
@@ -222,6 +223,7 @@ export default function Notifications() {
                     'bg-secondary'
                   }`}>
                     {notification.type === 'system' ? <Info className="w-6 h-6 text-cyan" /> :
+                     notification.type === 'admin_request' ? <ShieldCheck className="w-6 h-6 text-red-400" /> :
                      notification.type === 'dispute' ? <AlertCircle className="w-6 h-6 text-orange" /> :
                      notification.type === 'match' ? <Trophy className="w-6 h-6 text-orange" /> :
                      notification.type === 'tournament' ? <Star className="w-6 h-6 text-purple-400" /> :
