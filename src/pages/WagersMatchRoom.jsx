@@ -70,7 +70,7 @@ function SimpleRoster({ title, name, players, tone = "cyan", score, setScore, sc
           {name && <p className="mt-1 truncate text-xl font-black text-white">{name}</p>}
         </div>
         {score !== undefined && (
-          <input type="number" min="0" max={maxScore} value={score} disabled={scoreDisabled} onChange={(event) => setScore(Number(event.target.value))} className={`h-16 w-20 rounded-xl border bg-background/50 text-center font-mono text-4xl font-black outline-none disabled:cursor-not-allowed disabled:opacity-60 ${tone === "cyan" ? "border-cyan/25 text-cyan focus:border-cyan/50" : "border-orange/25 text-orange focus:border-orange/50"}`} />
+          <input type="number" min="0" max={maxScore} value={score} disabled={scoreDisabled} onChange={(event) => setScore(event.target.value === "" ? "" : Number(event.target.value))} onBlur={() => score === "" && setScore(0)} className={`h-16 w-20 rounded-xl border bg-background/50 text-center font-mono text-4xl font-black outline-none disabled:cursor-not-allowed disabled:opacity-60 ${tone === "cyan" ? "border-cyan/25 text-cyan focus:border-cyan/50" : "border-orange/25 text-orange focus:border-orange/50"}`} />
         )}
       </div>
       <div className="space-y-3 p-3">
@@ -350,7 +350,9 @@ export default function WagersMatchRoom() {
   };
 
   const handleReportScore = async () => {
-    if (scoreA === scoreB) {
+    const submittedScoreA = Number(scoreA || 0);
+    const submittedScoreB = Number(scoreB || 0);
+    if (submittedScoreA === submittedScoreB) {
       toast({ title: "Invalid score", description: "Scores cannot be tied", variant: "destructive" });
       return;
     }
@@ -364,8 +366,8 @@ export default function WagersMatchRoom() {
       const response = await base44.functions.invoke('submitScore', { 
         wager_id: wager.id, 
         team: team, 
-        team_alpha_score: scoreA,
-        team_bravo_score: scoreB,
+        team_alpha_score: submittedScoreA,
+        team_bravo_score: submittedScoreB,
         proof_urls: []
       });
       
@@ -374,8 +376,8 @@ export default function WagersMatchRoom() {
           const completeResponse = await base44.functions.invoke('completeWager', {
             wager_id: wager.id,
             winner_id: response.data.winner_id,
-            team_alpha_score: scoreA,
-            team_bravo_score: scoreB,
+            team_alpha_score: submittedScoreA,
+            team_bravo_score: submittedScoreB,
             proof_urls: []
           });
           if (!completeResponse.data.success) {

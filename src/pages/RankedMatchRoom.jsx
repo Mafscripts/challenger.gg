@@ -672,7 +672,8 @@ export default function RankedMatchRoom() {
                   disabled={!canSubmitScore}
                   min="0"
                   max={winsNeeded}
-                  onChange={(event) => setScoreA(Math.min(winsNeeded, Math.max(0, Number(event.target.value))))}
+                  onChange={(event) => setScoreA(event.target.value === "" ? "" : Math.min(winsNeeded, Math.max(0, Number(event.target.value))))}
+                  onBlur={() => scoreA === "" && setScoreA(0)}
                   className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-cyan focus:outline-none focus:border-cyan/30 disabled:opacity-60"
                 />
                 <span className="text-2xl md:text-3xl lg:text-4xl text-vapor font-bold">-</span>
@@ -682,7 +683,8 @@ export default function RankedMatchRoom() {
                   disabled={!canSubmitScore}
                   min="0"
                   max={winsNeeded}
-                  onChange={(event) => setScoreB(Math.min(winsNeeded, Math.max(0, Number(event.target.value))))}
+                  onChange={(event) => setScoreB(event.target.value === "" ? "" : Math.min(winsNeeded, Math.max(0, Number(event.target.value))))}
+                  onBlur={() => scoreB === "" && setScoreB(0)}
                   className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-orange focus:outline-none focus:border-orange/30 disabled:opacity-60"
                 />
               </div>

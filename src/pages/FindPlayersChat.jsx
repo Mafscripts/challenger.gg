@@ -412,9 +412,13 @@ export default function FindPlayersChat() {
           </section>
 
           <aside className="space-y-5">
-            <section className="rounded-2xl border border-white/[0.09] bg-[#111821] p-4">
-              <div className="mb-3 flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-black"><Users className="h-4 w-4 text-cyan" /> Recent players</h2><span className="text-[10px] font-bold text-vapor">{participants.length}</span></div>
-              <div className="max-h-[310px] space-y-1 overflow-y-auto pr-1">
+            <section className="flex max-h-[380px] min-h-0 flex-col self-start overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821]">
+              <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4"><h2 className="flex items-center gap-2 text-sm font-black"><Users className="h-4 w-4 text-cyan" /> Recent players</h2><span className="text-[10px] font-bold text-vapor">{participants.length}</span></div>
+              <div
+                className="min-h-0 flex-1 space-y-1 overflow-y-scroll px-2 pb-3 pr-3"
+                style={{ scrollbarGutter: "stable", overscrollBehavior: "contain" }}
+                aria-label="Recent players list"
+              >
                 {participants.length === 0 ? <p className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-xs text-vapor">No recent players yet.</p> : participants.map((player) => {
                   const isCurrentPlayer = String(player.id) === String(currentUser?.id);
                   return (

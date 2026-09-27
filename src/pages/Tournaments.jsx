@@ -7,9 +7,7 @@ import {
   Loader2,
   LogOut,
   Medal,
-  Monitor,
   Plus,
-  Radio,
   Trophy,
   Users,
 } from "lucide-react";
@@ -103,14 +101,35 @@ const isStreamerTournament = (tournament) => Boolean(
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
   || ["streamer", "streamer_tournament"].includes(String(tournament?.source || "").toLowerCase())
 );
-const isStreamerUser = (user) => {
-  const badges = Array.isArray(user?.badges) ? user.badges : [];
-  return Boolean(user?.streamer_badge || user?.is_streamer || badges.some((badge) => badge?.type === "streamer"));
+const tournamentEntryType = (tournament) => String(
+  tournament?.entry_type
+  || (tournament?.is_premium_only ? "premium" : (Number(tournament?.entry_fee || 0) > 0 ? "credits" : "free")),
+).toLowerCase();
+const tournamentEntryInfo = (tournament) => {
+  const entryType = tournamentEntryType(tournament);
+  const entryFee = Number(tournament?.entry_fee || 0);
+  if (entryType === "invitational" || tournament?.invite_only) {
+    return { label: "Invite only", tone: "border-orange/25 bg-orange/10 text-orange" };
+  }
+  if (entryType === "credits_premium") {
+    return { label: entryFee > 0 ? `${formatCredits(entryFee)} + Premium` : "Premium entry", tone: "border-purple-400/25 bg-purple-400/10 text-purple-300" };
+  }
+  if (entryType === "premium") {
+    return { label: "Premium entry", tone: "border-purple-400/25 bg-purple-400/10 text-purple-300" };
+  }
+  if (entryType === "credits" && entryFee > 0) {
+    return { label: formatCredits(entryFee), tone: "border-yellow-400/25 bg-yellow-400/10 text-yellow-300" };
+  }
+  return { label: "Free entry", tone: "border-cyan/25 bg-cyan/10 text-cyan" };
 };
 const isFreeTournament = (tournament) => {
-  const entryType = tournament?.entry_type || (tournament?.is_premium_only ? "premium" : (Number(tournament?.entry_fee || 0) > 0 ? "credits" : "free"));
-  return ["free", "invitational"].includes(entryType) || Number(tournament?.entry_fee || 0) <= 0;
+  const entryType = tournamentEntryType(tournament);
+  return entryType === "free";
 };
+const requiresTournamentCredits = (tournament) => (
+  ["credits", "credits_premium"].includes(tournamentEntryType(tournament))
+  && Number(tournament?.entry_fee || 0) > 0
+);
 const isCompletedTournamentMatch = (match) => Boolean(match?.completed || match?.status === "completed");
 const tournamentMatchStatusPriority = (status) => ({
   in_progress: 7,
@@ -158,52 +177,80 @@ const currentMatchForUser = (matches, participantKeys, teamKeys) => {
 
 function FeaturedTournamentHero({ tournament, now, onSelect }) {
   const bannerUrl = tournamentBannerUrl(tournament);
+  const entryInfo = tournamentEntryInfo(tournament);
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="dark-media relative mb-5 min-h-[300px] overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:min-h-[340px]"
+      className="tournaments-featured-hero dark-media group relative mb-6 min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_28px_80px_-42px_rgba(0,0,0,.9)]"
     >
       {bannerUrl && <img src={bannerUrl} alt={`${tournament.name} featured banner`} className="absolute inset-0 h-full w-full object-cover" />}
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(20,22,27,.98)_0%,rgba(20,22,27,.9)_44%,rgba(20,22,27,.38)_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgba(20,22,27,.86)_100%)]" />
-      <div className="relative flex min-h-[300px] max-w-4xl flex-col justify-end p-6 sm:min-h-[340px] sm:p-9 lg:p-11">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,15,22,.98)_0%,rgba(11,15,22,.92)_48%,rgba(11,15,22,.5)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_10%,rgba(255,130,0,.12),transparent_34%),linear-gradient(180deg,transparent_30%,rgba(8,12,18,.88)_100%)]" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-orange/70 via-cyan/30 to-transparent" />
+      <div className="relative grid min-h-[360px] lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="flex min-w-0 flex-col justify-end p-6 sm:p-9 lg:p-12 xl:p-14">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md border border-orange/35 bg-orange/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-orange">Featured tournament</span>
             <span className={`rounded-md border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
               {statusLabels[tournament.status] || tournament.status}
             </span>
+            <TournamentEntryBadge tournament={tournament} />
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-green/35 bg-green/15 px-4 py-2.5 shadow-[0_0_28px_rgba(0,255,153,0.14)] backdrop-blur-md">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green text-background shadow-[0_0_18px_rgba(0,255,153,0.28)]">
-              <Trophy className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-green/80">Prize pool</p>
-              <p className="font-mono text-xl font-black leading-none text-green">{formatMoney(tournament.prize_pool)}</p>
-            </div>
-          </div>
+          <h2 className="mt-6 max-w-3xl text-4xl font-black leading-[.92] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">{tournament.name}</h2>
+          <p className="mt-5 max-w-2xl text-[15px] leading-7 text-vapor">
+            {tournament.description || `${compactModeLabel(tournament)}. Enter with your roster and compete for the featured prize pool.`}
+          </p>
         </div>
-        <h2 className="max-w-2xl text-3xl font-black leading-none text-white sm:text-4xl lg:text-5xl">{tournament.name}</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-vapor">
-          {tournament.description || `${compactModeLabel(tournament)}. Enter with your roster and compete for the featured prize pool.`}
-        </p>
-        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="grid gap-2 sm:min-w-[470px] sm:grid-cols-[130px_minmax(300px,1fr)]">
-            <CompactStat label="Teams" value={`${tournament.registered_teams || 0}/${tournament.max_teams || 0}`} />
-            <TournamentCountdown value={tournament.start_date} now={now} />
+
+        <aside className="relative flex flex-col justify-between border-t border-white/[0.08] bg-background/65 p-6 backdrop-blur-md lg:border-l lg:border-t-0 lg:p-7">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-vapor">Tournament overview</p>
+            <div className="mt-4 rounded-xl border border-green/25 bg-[linear-gradient(145deg,rgba(0,255,153,.13),rgba(0,255,153,.035))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_16px_40px_rgba(0,0,0,.18)]">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green text-background shadow-[0_0_24px_rgba(0,255,153,.24)]">
+                  <Trophy className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-green/75">Prize pool</p>
+                  <p className="mt-1 font-mono text-2xl font-black leading-none text-green">{formatMoney(tournament.prize_pool)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-white/[0.07] bg-white/[0.035] p-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Entry</p>
+                <p className={`mt-2 text-[10px] font-black uppercase ${entryInfo.tone.split(" ").at(-1)}`}>{entryInfo.label}</p>
+              </div>
+              <div className="rounded-lg border border-white/[0.07] bg-white/[0.035] p-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Format</p>
+                <p className="mt-2 text-[10px] font-black uppercase text-white">{tournament.team_size || "1v1"}</p>
+              </div>
+            </div>
+            <div className="mt-2 grid grid-cols-[84px_minmax(0,1fr)] gap-2">
+              <CompactStat label="Teams" value={`${tournament.registered_teams || 0}/${tournament.max_teams || 0}`} />
+              <TournamentCountdown value={tournament.start_date} now={now} />
+            </div>
           </div>
           <button
             type="button"
             onClick={() => onSelect(tournament.id)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:bg-orange/90"
+            className="mt-5 inline-flex w-full shrink-0 items-center justify-between rounded-xl bg-orange px-5 py-3.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_rgba(255,130,0,.16)] transition-all hover:-translate-y-0.5 hover:bg-orange/90 hover:shadow-[0_14px_34px_rgba(255,130,0,.24)]"
           >
-            Enter <ArrowRight className="h-4 w-4" />
+            View tournament <ArrowRight className="h-4 w-4" />
           </button>
-        </div>
+        </aside>
       </div>
     </motion.section>
+  );
+}
+
+function TournamentEntryBadge({ tournament, className = "" }) {
+  const entryInfo = tournamentEntryInfo(tournament);
+  return (
+    <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${entryInfo.tone} ${className}`}>
+      {entryInfo.label}
+    </span>
   );
 }
 
@@ -481,7 +528,6 @@ export default function Tournaments() {
   };
 
   const officialTournaments = useMemo(() => tournaments.filter((tournament) => !isStreamerTournament(tournament)), [tournaments]);
-  const streamerTournaments = useMemo(() => tournaments.filter(isStreamerTournament), [tournaments]);
   const featuredTournament = useMemo(() => (
     officialTournaments.find((tournament) => tournament.is_featured === true)
     || officialTournaments.find((tournament) => ["open", "registration", "live", "in_progress"].includes(tournament.status))
@@ -511,7 +557,6 @@ export default function Tournaments() {
   };
   const isStaff = staffRoles.has(user?.role);
   const isAdmin = adminRoles.has(user?.role);
-  const canPostStreamerTournament = isStreamerUser(user);
   const participantIncludesCurrentUser = (participant) => (
     participant.captain_id === user?.id
     || participant.user_id === user?.id
@@ -547,9 +592,10 @@ export default function Tournaments() {
   }
 
   return (
-    <div className="min-h-screen py-6">
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
+    <div className="tournaments-page min-h-screen py-6">
+      <div className="tournaments-container mx-auto max-w-[1760px] px-4 lg:px-7">
         <PageHeader
+          className="tournaments-page-header"
           eyebrow="Tournament center"
           title="Tournaments"
           description="Choose an event, enter with your team and follow every bracket."
@@ -560,6 +606,11 @@ export default function Tournaments() {
             <button type="button" onClick={() => openTournamentTeamCreator()} className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:bg-blue-400">
               <Plus className="h-3.5 w-3.5" /> Create Tournament Team
             </button>
+            {isAdmin && (
+              <Link to="/admin" className="inline-flex items-center gap-2 rounded-xl border border-orange/25 bg-orange/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15">
+                <Trophy className="h-3.5 w-3.5" /> Create Tournament
+              </Link>
+            )}
           </div>}
         />
 
@@ -569,18 +620,26 @@ export default function Tournaments() {
           <FeaturedTournamentHero tournament={featuredTournament} now={now} onSelect={handleSelectTournament} />
         )}
 
-        <div className="mb-4 flex items-center gap-1.5 overflow-x-auto">
-          {["All", "Open", "Registration", "In Progress", "Completed"].map((item) => (
-            <button
-              key={item}
-              onClick={() => setFilter(item)}
-              className={`rounded-md border px-3 py-1.5 text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${
-                filter === item ? "border-white/20 bg-white/10 text-white" : "border-white/5 bg-secondary text-vapor hover:border-white/15 hover:text-white"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
+        <div className="tournaments-toolbar mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-card/55 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="px-1">
+            <p className="text-sm font-black text-white">Browse tournaments</p>
+            <p className="mt-0.5 text-[11px] text-vapor">{filteredTournaments.length} official event{filteredTournaments.length === 1 ? "" : "s"} available</p>
+          </div>
+          <div className="tournaments-filter-group flex items-center gap-1 overflow-x-auto rounded-lg border border-white/[0.055] bg-background/35 p-1">
+            {["All", "Open", "Registration", "In Progress", "Completed"].map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={filter === item}
+                onClick={() => setFilter(item)}
+                className={`whitespace-nowrap rounded-md px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-all ${
+                  filter === item ? "bg-white/[0.09] text-white shadow-sm" : "text-vapor hover:bg-white/[0.04] hover:text-white"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
         </div>
 
         {liveTournaments.map((tournament) => {
@@ -605,7 +664,7 @@ export default function Tournaments() {
               key={tournament.id}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="glass relative mb-2 flex flex-col items-start justify-between gap-3 overflow-hidden rounded-lg border border-red-500/20 px-4 py-3 sm:flex-row sm:items-center"
+              className="tournament-live-strip glass relative mb-3 flex flex-col items-start justify-between gap-3 overflow-hidden rounded-xl border border-red-500/20 px-5 py-3.5 sm:flex-row sm:items-center"
             >
               <div className="absolute top-0 left-0 w-60 h-60 bg-red-500/5 rounded-full blur-[80px]" />
               <div className="relative flex items-center gap-3">
@@ -635,13 +694,16 @@ export default function Tournaments() {
           );
         })}
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-12">
-          <section className="glass rounded-xl border border-white/[0.07] p-3 xl:col-span-5">
-            <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/[0.06] px-1 pb-3">
-              <h2 className="text-sm font-black uppercase tracking-wider">Tournaments</h2>
-              <span className="text-xs text-vapor">{filteredTournaments.length} showing</span>
+        <div className="tournaments-main-grid mt-4 grid gap-5 xl:grid-cols-12">
+          <section className="tournaments-list-panel rounded-xl border border-white/[0.07] bg-card/45 p-3 xl:col-span-5">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1 pb-2">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Official competition</p>
+                <h2 className="mt-1 text-lg font-black">Tournament schedule</h2>
+              </div>
+              <span className="rounded-full bg-white/[0.055] px-2.5 py-1 text-[10px] font-bold text-vapor">{filteredTournaments.length}</span>
             </div>
-            <div className="space-y-2 xl:max-h-[720px] xl:overflow-y-auto xl:pr-1">
+            <div className="space-y-2 xl:max-h-[780px] xl:overflow-y-auto xl:pr-1">
               {filteredTournaments.length === 0 ? (
                 <div className="rounded-lg border border-white/5 px-5 py-10 text-center">
                   <Trophy className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
@@ -658,17 +720,14 @@ export default function Tournaments() {
                 />
               ))}
             </div>
-            <div className="mt-4">
-              <StreamerTournamentPanel tournaments={streamerTournaments} canPost={canPostStreamerTournament} />
-            </div>
           </section>
 
-          <div className="space-y-4 xl:col-span-7">
+          <div className="tournaments-detail-rail space-y-4 self-start xl:col-span-7 xl:sticky xl:top-20">
             <div id="tournament-bracket-preview" className="scroll-mt-24 space-y-5">
               {selectedTournament && (
-                <div className="glass flex flex-col gap-3 rounded-xl border border-white/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-background">
+                <div className="tournament-detail-header glass flex flex-col gap-5 rounded-xl border border-white/[0.07] p-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-background">
                       {tournamentImageUrl(selectedTournament) ? (
                         <img src={tournamentImageUrl(selectedTournament)} alt="" className="h-full w-full object-cover" />
                       ) : (
@@ -677,18 +736,19 @@ export default function Tournaments() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate text-lg font-black">{selectedTournament.name}</h2>
+                        <h2 className="truncate text-xl font-black tracking-[-0.02em] sm:text-2xl">{selectedTournament.name}</h2>
                         <span className={`rounded border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${statusTone(selectedTournament.status)}`}>
                           {statusLabels[selectedTournament.status] || selectedTournament.status}
                         </span>
                       </div>
-                      <p className="mt-1 text-[11px] text-vapor">
+                      <p className="mt-1.5 text-xs text-vapor">
                         {compactModeLabel(selectedTournament)} · {formatDate(selectedTournament.start_date)}
                       </p>
                     </div>
                   </div>
-                  <div className="grid shrink-0 grid-cols-3 gap-2 text-right">
+                  <div className="tournament-detail-stats grid shrink-0 grid-cols-2 gap-2 text-right sm:grid-cols-4">
                     <CompactStat label="Prize" value={formatMoney(selectedTournament.prize_pool)} tone="green" />
+                    <CompactStat label="Entry" value={tournamentEntryInfo(selectedTournament).label} tone={isFreeTournament(selectedTournament) ? "cyan" : "default"} />
                     <CompactStat label="Teams" value={`${selectedTournament.registered_teams || 0}/${selectedTournament.max_teams || 0}`} />
                     <CompactStat label="Starts in" value={timeUntil(selectedTournament.start_date, now)} tone="cyan" />
                   </div>
@@ -696,7 +756,7 @@ export default function Tournaments() {
               )}
 
               {selectedTournament && (
-                <div className="glass overflow-x-auto rounded-xl border border-border px-2">
+                <div className="tournament-detail-tabs overflow-x-auto rounded-xl border border-white/[0.06] bg-card/45 px-2">
                   <div className="flex min-w-max items-center" role="tablist" aria-label="Tournament sections">
                     {[
                       ["overview", "Overview"],
@@ -711,7 +771,7 @@ export default function Tournaments() {
                         role="tab"
                         aria-selected={tournamentTab === value}
                         onClick={() => setTournamentTab(value)}
-                        className={`relative min-h-12 px-4 text-xs font-black transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full ${tournamentTab === value ? "text-primary after:bg-primary" : "text-vapor after:bg-transparent hover:text-primary"}`}
+                        className={`relative min-h-12 px-4 text-xs font-black transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full ${tournamentTab === value ? "text-primary after:bg-primary" : "text-vapor after:bg-transparent hover:text-white"}`}
                       >
                         {label}
                       </button>
@@ -720,13 +780,15 @@ export default function Tournaments() {
                 </div>
               )}
 
-              {tournamentTab === "overview" && <div className="glass flex flex-col gap-3 rounded-xl border border-white/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              {tournamentTab === "overview" && <div className="tournament-access-panel flex flex-col gap-4 rounded-xl border border-white/[0.06] bg-card/45 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-sm font-bold">Tournament Access</h2>
-                  <p className="text-[11px] text-vapor">
+                    <h2 className="text-sm font-black">Tournament access</h2>
+                    <p className="mt-1 max-w-xl text-xs leading-5 text-vapor">
                     {selectedTournament?.invite_only || selectedTournament?.entry_type === "invitational"
                       ? "Invite-only tournament. Registered teams remain private."
-                      : "Join with an eligible tournament team. Registered teams remain private."}
+                      : isFreeTournament(selectedTournament)
+                        ? "Free entry. Join with an eligible tournament team; no credits are required."
+                        : `${tournamentEntryInfo(selectedTournament).label}. Join with an eligible tournament team.`}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
@@ -778,7 +840,7 @@ export default function Tournaments() {
                           Needs exactly {rosterSize(selectedTournament.team_size)} active players
                         </span>
                       )}
-                      {!isFreeTournament(selectedTournament) && (
+                      {requiresTournamentCredits(selectedTournament) && (
                         <select
                           value={paymentModeByTournament[selectedTournament.id] || "own"}
                           onChange={(event) => setPaymentModeByTournament((current) => ({ ...current, [selectedTournament.id]: event.target.value }))}
@@ -800,15 +862,15 @@ export default function Tournaments() {
                   )}
                 </div>
               </div>}
+              <RecentChampionsPanel champions={recentChampions} />
               {tournamentTab === "bracket" && <CompactBracketPreview matches={selectedMatches} tournament={selectedTournament} />}
               {tournamentTab === "matches" && <TournamentMatchesPanel matches={selectedMatches} />}
               {tournamentTab === "teams" && <TournamentTeamsPanel participants={selectedParticipants} tournament={selectedTournament} />}
               {tournamentTab === "rules" && <TournamentRulesPanel tournament={selectedTournament} />}
             </div>
-            <RecentChampionsPanel champions={recentChampions} />
-            {isAdmin && <CreateTournamentPanel />}
           </div>
         </div>
+
         <CreateTeamModal
           isOpen={teamCreator.open}
           onClose={() => setTeamCreator((current) => ({ ...current, open: false }))}
@@ -841,19 +903,18 @@ function TournamentCountdown({ value, now }) {
   ];
 
   return (
-    <div className="flex min-h-[58px] items-center gap-3 rounded-lg border border-cyan/20 bg-cyan/[0.08] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan/20 bg-cyan/10 text-cyan">
-        <Clock className="h-4 w-4" />
-      </div>
-      <div className="min-w-0">
-        <p className="mb-1 text-[8px] font-black uppercase tracking-[0.2em] text-cyan/75">Starts in</p>
-        <div className="flex items-baseline gap-2" aria-label={`Starts in ${countdown.hours} hours, ${countdown.minutes} minutes and ${countdown.seconds} seconds`}>
+    <div className="flex min-h-[58px] min-w-0 items-center rounded-lg border border-cyan/20 bg-cyan/[0.08] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="min-w-0 flex-1">
+        <p className="mb-1.5 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan/75">
+          <Clock className="h-3 w-3 shrink-0" /> Starts in
+        </p>
+        <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-baseline gap-x-1" aria-label={`Starts in ${countdown.hours} hours, ${countdown.minutes} minutes and ${countdown.seconds} seconds`}>
           {units.map(([unitValue, label], index) => (
             <React.Fragment key={label}>
-              {index > 0 && <span className="font-mono text-xs font-black text-cyan/35">:</span>}
-              <span className="inline-flex items-baseline gap-1">
-                <span className="font-mono text-base font-black leading-none text-white">{padCountdownUnit(unitValue)}</span>
-                <span className="text-[7px] font-black uppercase tracking-wider text-vapor">{label}</span>
+              {index > 0 && <span className="font-mono text-[10px] font-black text-cyan/35">:</span>}
+              <span className="inline-flex min-w-0 items-baseline justify-center gap-0.5">
+                <span className="font-mono text-sm font-black leading-none text-white">{padCountdownUnit(unitValue)}</span>
+                <span className="text-[6px] font-black uppercase tracking-wide text-vapor">{label}</span>
               </span>
             </React.Fragment>
           ))}
@@ -1123,15 +1184,16 @@ function BracketTeamRow({ name, seed, score, winner, complete }) {
 
 function TournamentCard({ tournament, selected, joined, onSelect, now }) {
   const imageUrl = tournamentImageUrl(tournament);
+  const entryInfo = tournamentEntryInfo(tournament);
   return (
     <motion.button
       type="button"
       onClick={() => onSelect(tournament.id)}
-      className={`group grid w-full grid-cols-[72px_minmax(0,1fr)] gap-4 overflow-hidden rounded-lg border p-3.5 text-left transition-colors sm:grid-cols-[72px_minmax(0,1fr)_auto] sm:items-center ${
-        selected ? "border-white/20 bg-white/[0.065]" : "border-white/[0.06] bg-background/25 hover:border-white/15 hover:bg-white/[0.035]"
+      className={`tournament-list-card group relative grid w-full grid-cols-[64px_minmax(0,1fr)] gap-4 overflow-hidden rounded-xl border p-3.5 text-left transition-all sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center ${
+        selected ? "is-selected border-cyan/25 bg-cyan/[0.055]" : "border-white/[0.055] bg-background/20 hover:border-white/15 hover:bg-white/[0.03]"
       }`}
     >
-      <div className="relative h-[72px] w-[72px] overflow-hidden rounded-lg border border-white/[0.07] bg-background">
+      <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-white/[0.07] bg-background">
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
@@ -1139,103 +1201,52 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
         )}
       </div>
       <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <h3 className="truncate text-base font-black">{tournament.name}</h3>
-          {joined && <span className="shrink-0 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
+        <div className="flex min-w-0 items-center gap-2.5">
+          <h3 className="truncate text-[15px] font-black tracking-[-0.01em]">{tournament.name}</h3>
+          {joined && <span className="shrink-0 rounded-full bg-green/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
         </div>
-        <p className="mt-1 truncate text-[11px] text-vapor">{compactModeLabel(tournament)} · {tournament.registered_teams || 0}/{tournament.max_teams || 0} teams</p>
-        <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-          <span className={`rounded border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
+        <p className="mt-1.5 truncate text-[11px] leading-5 text-vapor">{compactModeLabel(tournament)} · {tournament.registered_teams || 0}/{tournament.max_teams || 0} teams</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className={`text-[8px] font-black uppercase tracking-[0.14em] ${statusTone(tournament.status).split(" ").at(-1)}`}>
             {statusLabels[tournament.status] || tournament.status}
           </span>
-          <span className="rounded-md border border-green/20 bg-green/[0.08] px-2 py-1 font-mono text-sm font-black text-green shadow-[0_0_16px_rgba(0,255,153,0.07)]">{formatMoney(tournament.prize_pool)} <span className="text-[8px] uppercase tracking-wider text-green/65">Prize Pool</span></span>
+          <span className={`text-[8px] font-black uppercase tracking-[0.14em] ${entryInfo.tone.split(" ").at(-1)}`}>{entryInfo.label}</span>
         </div>
       </div>
-      <div className="col-span-2 flex items-center justify-between gap-3 border-t border-white/[0.05] pt-3 sm:col-span-1 sm:flex sm:min-w-[108px] sm:flex-col sm:items-end sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-        <span className="inline-flex items-center gap-1 rounded-md border border-cyan/15 bg-cyan/[0.06] px-2 py-1 font-mono text-[10px] font-black text-cyan">
+      <div className="col-span-2 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-3 sm:col-span-1 sm:min-w-[132px] sm:flex-col sm:items-end sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+        <div className="text-left sm:text-right">
+          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/70">Prize pool</p>
+          <p className="mt-1 font-mono text-base font-black text-green">{formatMoney(tournament.prize_pool)}</p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 font-mono text-[9px] font-black text-cyan">
           <Clock className="h-3 w-3" /> {timeUntil(tournament.start_date, now)}
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.07] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white transition-colors group-hover:border-white/25 group-hover:bg-white/10">
-          Enter <ArrowRight className="h-3 w-3" />
-        </span>
+        <ArrowRight className="hidden h-4 w-4 text-vapor transition-transform group-hover:translate-x-1 group-hover:text-white sm:block" />
       </div>
     </motion.button>
   );
 }
 
-function StreamerTournamentPanel({ tournaments, canPost }) {
-  const visible = [...tournaments]
-    .sort((a, b) => new Date(b.created_date || b.start_date || 0) - new Date(a.created_date || a.start_date || 0))
-    .slice(0, 3);
-
-  return (
-    <section className="glass rounded-xl border border-white/10 p-5">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-vapor">
-            <Monitor className="h-3.5 w-3.5" /> Streamer Badge
-          </div>
-          <h2 className="text-sm font-black uppercase tracking-wider">Streamer Tournaments</h2>
-          <p className="mt-1 text-xs text-vapor">Visible to everyone. Streamer accounts can post their own lobby.</p>
-        </div>
-        <Link
-          to="/streamer-tournaments"
-          className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:bg-white/[0.08] hover:text-foreground"
-        >
-          {canPost ? "Post Lobby" : "Browse Lobbies"} <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-
-      {!canPost && (
-        <div className="mb-4 rounded-lg border border-white/5 bg-background/25 px-4 py-3 text-xs text-vapor">
-          Streamer badge required to post. Everyone can open streamer lobbies and view the chat.
-        </div>
-      )}
-
-      {visible.length === 0 ? (
-        <div className="rounded-lg border border-white/5 bg-background/25 px-5 py-8 text-center">
-          <Radio className="mx-auto mb-3 h-9 w-9 text-vapor/30" />
-          <p className="text-sm text-vapor">No streamer lobbies posted yet.</p>
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {visible.map((tournament) => (
-            <Link
-              key={tournament.id}
-              to={`/streamer-tournament/${tournament.id}`}
-              className="grid gap-3 rounded-lg border border-white/5 bg-background/25 p-4 transition-colors hover:border-white/15 hover:bg-white/[0.035] sm:grid-cols-[1fr_auto] sm:items-center"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-black">{tournament.name}</p>
-                <p className="mt-1 truncate text-xs text-vapor">
-                  {tournament.host_name || tournament.created_by_name || "Streamer"} / {compactModeLabel(tournament)}
-                </p>
-              </div>
-              <span className="inline-flex w-fit items-center gap-2 rounded border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan">
-                Open Lobby <ArrowRight className="h-3 w-3" />
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 function RecentChampionsPanel({ champions }) {
   return (
-    <section className="glass rounded-xl border border-white/5 p-5 lg:col-span-8">
+    <section className="tournaments-champions-panel h-full rounded-xl border border-white/[0.07] bg-card/45 p-6">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-black uppercase tracking-wider">Recent Champions</h2>
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-300">Hall of victory</p>
+          <h2 className="mt-1 text-lg font-black tracking-[-0.02em]">Recent champions</h2>
+        </div>
         <span className="text-[10px] font-black uppercase tracking-wider text-cyan">View All Champions</span>
       </div>
       {champions.length === 0 ? (
-        <div className="rounded-lg border border-white/5 bg-background/25 px-5 py-8 text-center">
-          <Medal className="mx-auto mb-3 h-10 w-10 text-vapor/30" />
-          <p className="text-sm text-vapor">No champions crowned yet.</p>
+        <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-white/[0.08] bg-background/15 px-5 py-8 text-center">
+          <div>
+            <Medal className="mx-auto mb-3 h-9 w-9 text-vapor/25" />
+            <p className="text-sm font-bold text-vapor">The podium is still open</p>
+            <p className="mt-1 text-xs text-vapor/70">Completed tournaments will appear here.</p>
+          </div>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           {champions.map((tournament) => (
             <div key={tournament.id} className="rounded-lg border border-white/5 bg-background/25 p-4">
               <div className="mb-3 flex items-center gap-3">
@@ -1254,28 +1265,6 @@ function RecentChampionsPanel({ champions }) {
           ))}
         </div>
       )}
-    </section>
-  );
-}
-
-function CreateTournamentPanel() {
-  return (
-    <section className="glass relative overflow-hidden rounded-xl border border-white/5 p-5 lg:col-span-4">
-      <div className="pointer-events-none absolute right-4 top-4 opacity-10">
-        <Trophy className="h-24 w-24" />
-      </div>
-      <div className="relative">
-        <h2 className="text-sm font-black uppercase tracking-wider">Create Tournament</h2>
-        <p className="mt-2 max-w-sm text-sm text-vapor">
-          Organize your own tournament and bring the competition to Topfragg.gg.
-        </p>
-        <Link
-          to="/admin"
-          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-2 text-xs font-black uppercase tracking-wider text-background"
-        >
-          Create Tournament <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
     </section>
   );
 }

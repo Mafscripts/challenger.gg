@@ -871,14 +871,14 @@ export default function Navbar() {
       })()}
       <nav
         data-scrolled={scrolled ? "true" : "false"}
-        className={`app-topbar fixed top-0 left-0 right-0 z-50 ${scrolled ? "glass-nav" : ""}`}
+        className={`app-topbar app-topbar-v2 fixed top-0 left-0 right-0 z-50 ${scrolled ? "glass-nav" : ""}`}
       >
-        <div className="app-topbar-inner mx-auto max-w-[1600px] px-4 lg:px-6">
-          <div className="flex h-16 items-center justify-between gap-5">
+        <div className="app-topbar-inner mx-auto max-w-[1720px] px-3 lg:px-5">
+          <div className="topbar-shell flex h-14 items-center justify-between gap-4 px-2.5 lg:px-3.5">
             {/* Logo + primary destination */}
             <div className="topbar-brand flex items-center gap-3 shrink-0">
-              <Link to="/" className="flex items-center gap-2" aria-label="Topfragg.gg home">
-                <TopfraggLogo markClassName="h-8 w-8" wordmarkClassName="hidden text-lg sm:inline-flex" />
+              <Link to="/" className="topbar-brand-link flex items-center gap-2.5" aria-label="Topfragg.gg home">
+                <TopfraggLogo className="topbar-logo" markClassName="topbar-logo-mark h-9 w-9" wordmarkClassName="hidden text-[17px] sm:inline-flex" />
               </Link>
             </div>
 
@@ -1113,10 +1113,13 @@ export default function Navbar() {
               {user ? (
                 <>
               {/* Wallet */}
-              <div className="topbar-balance topbar-wallet hidden h-9 items-center overflow-hidden md:flex">
-                <Link to="/wallet" className="topbar-balance-main flex h-full items-center gap-2 px-3 transition-colors">
-                  <Wallet className="h-3.5 w-3.5" />
-                  <span className="font-mono text-xs font-bold">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <div className="topbar-balance topbar-wallet hidden h-10 items-center overflow-hidden md:flex">
+                <Link to="/wallet" className="topbar-balance-main flex h-full items-center gap-2.5 px-2.5 transition-colors">
+                  <span className="topbar-balance-icon"><Wallet className="h-3.5 w-3.5" /></span>
+                  <span className="topbar-balance-copy">
+                    <span className="topbar-balance-kicker">Balance</span>
+                    <span className="font-mono text-[11px] font-black">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </span>
                 </Link>
                 <Link to="/wallet" title="Add funds" aria-label="Add funds" className="topbar-balance-add flex h-full w-8 items-center justify-center transition-colors">
                   <Plus className="h-3.5 w-3.5" />
@@ -1124,11 +1127,18 @@ export default function Navbar() {
               </div>
 
               {/* Credits */}
-              <Link to="/marketplace" title="Marketplace credits" className="topbar-balance topbar-credits hidden h-9 items-center gap-2 px-3 transition-colors md:flex">
-                <Coins className="h-3.5 w-3.5" />
-                <span className="font-mono text-xs font-bold">{creditBalance.toLocaleString("en-US")}</span>
-                <span className="topbar-balance-label text-[8px] font-black uppercase tracking-[0.12em]">Credits</span>
-              </Link>
+              <div className="topbar-balance topbar-credits hidden h-10 items-center overflow-hidden md:flex">
+                <Link to="/marketplace" title="Marketplace credits" className="topbar-balance-main flex h-full items-center gap-2.5 px-2.5 transition-colors">
+                  <span className="topbar-balance-icon"><Coins className="h-3.5 w-3.5" /></span>
+                  <span className="topbar-balance-copy">
+                    <span className="topbar-balance-kicker">Credits</span>
+                    <span className="font-mono text-[11px] font-black">{creditBalance.toLocaleString("en-US")}</span>
+                  </span>
+                </Link>
+                <Link to="/marketplace" title="Get credits" aria-label="Get credits" className="topbar-balance-add flex h-full w-8 items-center justify-center transition-colors">
+                  <Plus className="h-3.5 w-3.5" />
+                </Link>
+              </div>
 
               {/* Notifications */}
               <div
@@ -1147,7 +1157,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   aria-label="Open notifications"
-                  className="topbar-icon-button topbar-notification-button relative flex h-9 w-9 items-center justify-center rounded-lg text-vapor transition-all"
+                  className="topbar-icon-button topbar-notification-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-all"
                 >
                   <Bell className="w-4 h-4" />
                   {unreadNotifCount > 0 && (
@@ -1234,7 +1244,7 @@ export default function Navbar() {
                     setNotifOpen(false);
                     setProfileOpen(false);
                   }}
-                  className="topbar-icon-button relative flex h-9 w-9 items-center justify-center rounded-lg text-vapor transition-colors"
+                  className="topbar-icon-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-colors"
                   aria-label="Open messages"
                 >
                   <MessageSquare className="w-4 h-4" />
@@ -1328,9 +1338,9 @@ export default function Navbar() {
                     cancelDropdownClose();
                     setProfileOpen(true);
                   }}
-                  className={`topbar-profile flex h-10 items-center gap-2 rounded-xl border px-2 transition-colors ${profileOpen ? "is-open" : ""}`}
+                  className={`topbar-profile flex h-11 items-center gap-2.5 rounded-xl border py-1 pl-1 pr-2 transition-colors ${profileOpen ? "is-open" : ""}`}
                 >
-                  <div className="topbar-avatar relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full">
+                  <div className="topbar-avatar relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg">
                     <User className="h-3.5 w-3.5" />
                     {profileAvatar && <img src={profileAvatar} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
                   </div>

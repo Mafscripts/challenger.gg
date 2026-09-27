@@ -1665,16 +1665,41 @@ function mapPoolForGameMode(gameMode, pools) {
 }
 
 function tournamentMapSeriesFor(gameMode, mapPools = {}) {
-  const key = String(gameMode || "").toLowerCase();
-  const definition = tournamentSeriesDefinitions[key] || tournamentSeriesDefinitions.snd;
+  const rawMode = String(gameMode || "").trim().slice(0, 80);
+  const key = rawMode.toLowerCase();
+  const presetDefinition = tournamentSeriesDefinitions[key];
   const pools = {
     snd: normalizeMapPool(mapPools.snd, tournamentSndMapPool),
     hp: normalizeMapPool(mapPools.hp, tournamentHpMapPool),
     overload: normalizeMapPool(mapPools.overload, tournamentOverloadMapPool),
   };
+  const customBestOf = Math.max(1, Math.min(15, Number(
+    key.match(/\b(?:bo|best[\s-]*of)\s*(\d{1,2})\b/i)?.[1] || defaultTournamentBestOf
+  )));
+  const customTokens = key
+    .replace(/\b(?:bo|best[\s-]*of)\s*\d{1,2}\b/gi, "")
+    .split(/[\/,|>+]+/)
+    .map((token) => token.trim())
+    .map((token) => {
+      if (["hp", "hardpoint"].includes(token)) return { game_mode: "hp", mode: "Hardpoint" };
+      if (token === "overload") return { game_mode: "overload", mode: "Overload" };
+      if (["snd", "search and destroy", "search & destroy"].includes(token)) return { game_mode: "snd", mode: "Search and Destroy" };
+      return null;
+    })
+    .filter(Boolean);
+  const customGames = customTokens.length > 1
+    ? customTokens
+    : Array.from(
+      { length: customBestOf },
+      () => customTokens[0] || { game_mode: "snd", mode: "Search and Destroy" }
+    );
+  const definition = presetDefinition || {
+    label: rawMode || tournamentSeriesDefinitions.snd.label,
+    games: customGames,
+  };
 
   return {
-    key: tournamentSeriesDefinitions[key] ? key : "snd",
+    key: presetDefinition ? key : (rawMode || "snd"),
     label: definition.label,
     bestOf: definition.games.length,
     games: definition.games.map((game) => ({
@@ -4213,6 +4238,9 @@ async function updateTournament(req) {
   assertStaff(req, "admin");
   const previousTournament = await getEntity("Tournament", req.body.tournament_id);
   const patch = await normalizeTournamentPlacementTrophyFields(req.body.patch || {});
+  if (Object.prototype.hasOwnProperty.call(patch, "game_mode")) {
+    patch.game_mode = String(patch.game_mode || "").trim().slice(0, 80) || "snd_hp_snd";
+  }
   const requestedBracketType = patch.bracket_type || patch.format;
   if (
     previousTournament.bracket_generated
@@ -4312,6 +4340,7 @@ async function createTournament(req) {
     ...tournamentBody,
     name,
     title: name,
+    game_mode: String(tournamentBody.game_mode || "").trim().slice(0, 80) || "snd_hp_snd",
     format: bracketType,
     bracket_type: bracketType,
     invited_user_ids: invitedUserIds,

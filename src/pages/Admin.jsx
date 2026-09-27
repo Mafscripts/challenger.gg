@@ -64,6 +64,17 @@ const tournamentGameModeOptions = [
   { value: "bo3_hp_overload_snd", label: "BO3 HP / Overload / SND" },
   { value: "bo5_hp_overload_snd_hp_snd", label: "BO5 HP / Overload / SND / HP / SND" },
 ];
+const tournamentGameModeLabel = (value) => (
+  tournamentGameModeOptions.find((option) => option.value === value)?.label || String(value || "")
+);
+const tournamentGameModeValue = (value) => {
+  const cleaned = String(value || "").trim();
+  const preset = tournamentGameModeOptions.find((option) => (
+    option.value.toLowerCase() === cleaned.toLowerCase()
+    || option.label.toLowerCase() === cleaned.toLowerCase()
+  ));
+  return (preset?.value || cleaned).slice(0, 80);
+};
 const tournamentTeamSizeOptions = Array.from({ length: 8 }, (_, index) => `${index + 1}v${index + 1}`);
 const userBadgeOptions = [
   { value: "none", label: "No special badge", types: [] },
@@ -112,7 +123,7 @@ const defaultTournamentForm = {
   name: "",
   image_url: "",
   banner_url: "",
-  game_mode: "snd_hp_snd",
+  game_mode: tournamentGameModeLabel("snd_hp_snd"),
   team_size: "2v2",
   entry_fee: "0",
   entry_type: "free",
@@ -1229,7 +1240,7 @@ export default function Admin() {
       name: tournamentForm.name.trim(),
       image_url: tournamentForm.image_url.trim(),
       banner_url: tournamentForm.banner_url.trim(),
-      game_mode: tournamentForm.game_mode,
+      game_mode: tournamentGameModeValue(tournamentForm.game_mode),
       team_size: tournamentForm.team_size,
       entry_fee: Number(tournamentForm.entry_fee || 0),
       entry_type: entryType,
@@ -1278,6 +1289,11 @@ export default function Admin() {
       return;
     }
 
+    if (!tournamentForm.game_mode.trim()) {
+      toast({ title: "Game mode required", description: "Choose a suggestion or enter a custom game mode.", variant: "destructive" });
+      return;
+    }
+
     setBusyId("tournament:create");
     try {
       const payload = tournamentPayload();
@@ -1306,7 +1322,7 @@ export default function Admin() {
       name: tournament.name || "",
       image_url: tournament.image_url || "",
       banner_url: tournament.banner_url || "",
-      game_mode: tournament.game_mode || "snd",
+      game_mode: tournamentGameModeLabel(tournament.game_mode || "snd"),
       team_size: tournament.team_size || "2v2",
       entry_fee: String(tournament.entry_fee ?? 0),
       entry_type: tournament.entry_type || (tournament.is_premium_only ? "premium" : (Number(tournament.entry_fee || 0) > 0 ? "credits" : "free")),
@@ -2781,15 +2797,21 @@ export default function Admin() {
                     </label>
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">Game mode</span>
-                      <select
+                      <input
+                        list="admin-tournament-game-modes"
                         value={tournamentForm.game_mode}
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode: event.target.value }))}
+                        placeholder="Select or type a custom mode"
+                        maxLength={80}
+                        required
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      >
+                      />
+                      <datalist id="admin-tournament-game-modes">
                         {tournamentGameModeOptions.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
+                          <option key={option.value} value={option.label} />
                         ))}
-                      </select>
+                      </datalist>
+                      <span className="block text-[9px] text-vapor/70">Choose a suggestion or type your own, for example “Best of 5”.</span>
                     </label>
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">Team size</span>

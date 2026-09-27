@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Camera, ExternalLink, ShieldCheck } from "lucide-react";
+import { BookOpen, Camera, ChevronDown, ExternalLink, ShieldCheck } from "lucide-react";
 import { wagerPlayRule } from "@/lib/wagerRules";
 
 const killCamRule = "Kill cams must remain enabled for the duration of every match.";
@@ -38,37 +38,67 @@ const rulesFor = ({ matchType, gameMode, playRule, customRules }) => {
   return [...new Set(rules)].slice(0, 8);
 };
 
-export default function MatchRulesPanel({ matchType = "wager", gameMode, playRule = "", customRules = "" }) {
+export default function MatchRulesPanel({
+  matchType = "wager",
+  gameMode,
+  playRule = "",
+  customRules = "",
+  collapsible = false,
+  defaultOpen = true,
+}) {
   const rules = rulesFor({ matchType, gameMode, playRule, customRules });
+  const [open, setOpen] = useState(defaultOpen);
+  const isOpen = !collapsible || open;
+
+  const heading = (
+    <div className="text-left">
+      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Competitive standards</p>
+      <h2 className="mt-1 flex items-center gap-2 text-lg font-black">
+        <BookOpen className="h-4 w-4 text-cyan" /> Match Rules
+      </h2>
+    </div>
+  );
 
   return (
     <section className="dark-focus dark-media rounded-xl border border-cyan/20 p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-4">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Competitive standards</p>
-          <h2 className="mt-1 flex items-center gap-2 text-lg font-black">
-            <BookOpen className="h-4 w-4 text-cyan" /> Match Rules
-          </h2>
+      <div className={`flex items-center justify-between gap-4 ${isOpen ? "border-b border-white/5 pb-4" : ""}`}>
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            className="group flex min-w-0 flex-1 items-center justify-between gap-4 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan/60"
+          >
+            {heading}
+            <span className="inline-flex shrink-0 items-center gap-2 text-[10px] font-black uppercase tracking-wider text-vapor transition-colors group-hover:text-cyan">
+              {open ? "Hide" : "Show"}
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+            </span>
+          </button>
+        ) : heading}
+        {isOpen && (
+          <Link to="/rules" className="inline-flex shrink-0 items-center gap-1 text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">
+            All rules <ExternalLink className="h-3 w-3" />
+          </Link>
+        )}
+      </div>
+      {isOpen && (
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
+          {rules.map((rule) => {
+            const isKillCamRule = rule === killCamRule;
+            const RuleIcon = isKillCamRule ? Camera : ShieldCheck;
+            return (
+              <div
+                key={rule}
+                className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs leading-5 ${isKillCamRule ? "border-cyan/30 bg-cyan/[0.08] text-white" : "border-white/5 bg-background/30 text-vapor"}`}
+              >
+                <RuleIcon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${isKillCamRule ? "text-cyan" : "text-cyan/80"}`} />
+                <span>{rule}</span>
+              </div>
+            );
+          })}
         </div>
-        <Link to="/rules" className="inline-flex shrink-0 items-center gap-1 text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">
-          All rules <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
-      <div className="mt-4 grid gap-2 md:grid-cols-2">
-        {rules.map((rule) => {
-          const isKillCamRule = rule === killCamRule;
-          const RuleIcon = isKillCamRule ? Camera : ShieldCheck;
-          return (
-            <div
-              key={rule}
-              className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs leading-5 ${isKillCamRule ? "border-cyan/30 bg-cyan/[0.08] text-white" : "border-white/5 bg-background/30 text-vapor"}`}
-            >
-              <RuleIcon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${isKillCamRule ? "text-cyan" : "text-cyan/80"}`} />
-              <span>{rule}</span>
-            </div>
-          );
-        })}
-      </div>
+      )}
     </section>
   );
 }

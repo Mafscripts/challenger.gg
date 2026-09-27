@@ -194,7 +194,9 @@ export default function MatchRoom() {
   };
 
   const handleReportScore = async () => {
-    if (scoreA === scoreB) {
+    const submittedScoreA = Number(scoreA || 0);
+    const submittedScoreB = Number(scoreB || 0);
+    if (submittedScoreA === submittedScoreB) {
       toast({ title: "Invalid score", description: "Scores cannot be tied", variant: "destructive" });
       return;
     }
@@ -205,8 +207,8 @@ export default function MatchRoom() {
       const response = await base44.functions.invoke('submitScore', {
         wager_id: wager.id,
         team,
-        team_alpha_score: scoreA,
-        team_bravo_score: scoreB,
+        team_alpha_score: submittedScoreA,
+        team_bravo_score: submittedScoreB,
         proof_urls: []
       });
       if (response.data.success) {
@@ -214,8 +216,8 @@ export default function MatchRoom() {
           const completeResponse = await base44.functions.invoke('completeWager', {
             wager_id: wager.id,
             winner_id: response.data.winner_id,
-            team_alpha_score: scoreA,
-            team_bravo_score: scoreB,
+            team_alpha_score: submittedScoreA,
+            team_bravo_score: submittedScoreB,
             proof_urls: []
           });
           if (!completeResponse.data.success) {
@@ -351,7 +353,8 @@ export default function MatchRoom() {
                 type="number"
                 min="0"
                 value={scoreA}
-                onChange={(event) => setScoreA(Number(event.target.value))}
+                onChange={(event) => setScoreA(event.target.value === "" ? "" : Number(event.target.value))}
+                onBlur={() => scoreA === "" && setScoreA(0)}
                 className="h-20 w-20 rounded-lg border border-cyan/20 bg-secondary text-center font-mono text-5xl font-black text-cyan focus:border-cyan/40 focus:outline-none"
               />
               <span className="text-3xl font-black text-vapor">:</span>
@@ -359,7 +362,8 @@ export default function MatchRoom() {
                 type="number"
                 min="0"
                 value={scoreB}
-                onChange={(event) => setScoreB(Number(event.target.value))}
+                onChange={(event) => setScoreB(event.target.value === "" ? "" : Number(event.target.value))}
+                onBlur={() => scoreB === "" && setScoreB(0)}
                 className="h-20 w-20 rounded-lg border border-orange/20 bg-secondary text-center font-mono text-5xl font-black text-orange focus:border-orange/40 focus:outline-none"
               />
             </div>

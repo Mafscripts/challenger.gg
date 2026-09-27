@@ -63,6 +63,7 @@ export default function MatchChat({
   heightClass = "h-[600px]",
   sticky = true,
   compact = false,
+  inputActions = null,
 }) {
   const [messages, setMessages] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -203,7 +204,12 @@ export default function MatchChat({
           );
         })}
       </div>
-      <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} border-t border-white/5 bg-secondary/30 flex items-center gap-2`}>
+      {inputActions && (
+        <div className={`${compact ? "px-2.5 pt-2.5" : "px-3 pt-3"} border-t border-white/5 bg-secondary/30`}>
+          {inputActions}
+        </div>
+      )}
+      <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} ${inputActions ? "pt-2" : "border-t border-white/5"} bg-secondary/30 flex items-center gap-2`}>
         <input
           ref={inputRef}
           value={messageText}
