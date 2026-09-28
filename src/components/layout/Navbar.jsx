@@ -633,7 +633,7 @@ export default function Navbar() {
       if (document.visibilityState === "visible") refreshLiveHeader();
     };
     refreshLiveHeader();
-    const interval = window.setInterval(refreshLiveHeader, 1000);
+    const interval = window.setInterval(refreshLiveHeader, 15000);
     window.addEventListener("focus", refreshLiveHeader);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
@@ -674,7 +674,7 @@ export default function Navbar() {
 
   const loadNotifications = async ({ fresh = false, userId = null } = {}) => {
     try {
-      if (fresh && Date.now() - notificationsLoadedAt.current < 900) return;
+      if (fresh && Date.now() - notificationsLoadedAt.current < 12000) return;
       const resolvedUserId = userId || user?.id || authUser?.id || (await base44.auth.me())?.id;
       if (!resolvedUserId) return;
       const notificationQuery = fresh
@@ -710,7 +710,7 @@ export default function Navbar() {
   };
 
   const loadActiveMatches = async ({ fresh = false } = {}) => {
-    if (Date.now() - activeMatchesLoadedAt.current < 900) return;
+    if (Date.now() - activeMatchesLoadedAt.current < 12000) return;
     activeMatchesLoadedAt.current = Date.now();
     try {
       const user = await base44.auth.me();

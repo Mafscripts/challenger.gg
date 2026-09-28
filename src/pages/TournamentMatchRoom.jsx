@@ -41,14 +41,14 @@ const defaultMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "
 const seedLabel = (seed) => seed ? `#${seed}` : "#-";
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const tournamentMapImages = {
-  colossus: "/assets/maps/colossus.png",
-  colosses: "/assets/maps/colossus.png",
-  den: "/assets/maps/den.png",
-  raid: "/assets/maps/raid.png",
-  fringe: "/assets/maps/fringe.png",
-  scar: "/assets/maps/scar.png",
-  gridlock: "/assets/maps/gridlock.png",
-  hacienda: "/assets/maps/hacienda.png",
+  colossus: "/assets/maps/colossus.jpg",
+  colosses: "/assets/maps/colossus.jpg",
+  den: "/assets/maps/den.jpg",
+  raid: "/assets/maps/raid.jpg",
+  fringe: "/assets/maps/fringe.jpg",
+  scar: "/assets/maps/scar.jpg",
+  gridlock: "/assets/maps/gridlock.jpg",
+  hacienda: "/assets/maps/hacienda.jpg",
 };
 const tournamentMapImage = (name) => tournamentMapImages[cleanKey(name).replace(/[^a-z0-9]/g, "")] || null;
 const isStreamerTournament = (tournament) => Boolean(
@@ -581,6 +581,7 @@ function MapSeries({ match }) {
                   src={image}
                   alt=""
                   loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
                 />
               ) : null}

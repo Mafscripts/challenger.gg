@@ -246,7 +246,10 @@ export default function WagersMatchRoom() {
   useEffect(() => {
     if (!id) return undefined;
     let active = true;
+    let refreshing = false;
     const refresh = async () => {
+      if (refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
       try {
         const [latest, participantRows] = await Promise.all([
           base44.entities.Wager.getFresh(id),
@@ -263,9 +266,11 @@ export default function WagersMatchRoom() {
         setTeamBPlayers(participants.teamBPlayers);
       } catch (error) {
         console.error("Failed to refresh wager match:", error);
+      } finally {
+        refreshing = false;
       }
     };
-    const interval = setInterval(refresh, 1000);
+    const interval = setInterval(refresh, 3000);
     return () => {
       active = false;
       clearInterval(interval);

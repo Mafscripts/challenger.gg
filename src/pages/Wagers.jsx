@@ -38,7 +38,10 @@ export default function Wagers() {
 
   useEffect(() => {
     let active = true;
+    let refreshing = false;
     const refresh = async () => {
+      if (refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
       try {
         const wagerList = await base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 50);
         if (!active) return;
@@ -62,12 +65,14 @@ export default function Wagers() {
         }
       } catch (error) {
         console.error("Failed to refresh wagers:", error);
+      } finally {
+        refreshing = false;
       }
     };
     const handleVisibility = () => {
       if (document.visibilityState === "visible") refresh();
     };
-    const interval = setInterval(refresh, 1000);
+    const interval = setInterval(refresh, 5000);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {

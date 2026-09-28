@@ -88,11 +88,14 @@ export default function Ranked() {
 
   useEffect(() => {
     let active = true;
+    let refreshing = false;
     let leaderboardRefreshTick = 0;
 
     if (!user?.id) return undefined;
 
     const refreshOpenMatches = async () => {
+      if (refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
       try {
         const [matches, playerMatches, playerStats] = await Promise.all([
           base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
@@ -116,6 +119,8 @@ export default function Ranked() {
         }
       } catch (error) {
         console.error("Failed to refresh ranked matches:", error);
+      } finally {
+        refreshing = false;
       }
     };
 
@@ -123,7 +128,7 @@ export default function Ranked() {
       if (document.visibilityState === "visible") refreshOpenMatches();
     };
 
-    const interval = setInterval(refreshOpenMatches, 1000);
+    const interval = setInterval(refreshOpenMatches, 5000);
     window.addEventListener("focus", refreshOpenMatches);
     document.addEventListener("visibilitychange", handleVisibility);
 

@@ -236,7 +236,10 @@ export default function RankedMatchRoom() {
 
   useEffect(() => {
     let active = true;
+    let refreshing = false;
     const refresh = async () => {
+      if (refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
       try {
         const latest = await base44.entities.RankedMatch.getFresh(id);
         if (!active || !latest) return;
@@ -248,9 +251,11 @@ export default function RankedMatchRoom() {
         if (active) setMatch(refreshedMatch);
       } catch (error) {
         console.error("Failed to refresh ranked match:", error);
+      } finally {
+        refreshing = false;
       }
     };
-    const interval = setInterval(refresh, 1000);
+    const interval = setInterval(refresh, 3000);
     return () => {
       active = false;
       clearInterval(interval);

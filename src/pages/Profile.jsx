@@ -182,12 +182,12 @@ function trophyOverviewFor(user, profile, inventory = [], matches = []) {
   };
 
   return [
-    { key: "gold", label: "Gold", value: counts.gold, image: "/assets/trophies/gold.png", tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
-    { key: "silver", label: "Silver", value: counts.silver, image: "/assets/trophies/silver.png", tone: "text-gray-200", tint: "bg-gray-200/10", border: "group-hover:border-gray-200/20" },
-    { key: "bronze", label: "Bronze", value: counts.bronze, image: "/assets/trophies/bronze.png", tone: "text-orange", tint: "bg-orange/10", border: "group-hover:border-orange/25" },
-    { key: "premium", label: "Premium", value: counts.premium, image: "/assets/trophies/premium.png", tone: "text-purple-300", tint: "bg-purple-400/10", border: "group-hover:border-purple-300/25" },
-    { key: "topfragg", label: "TopFragg", value: counts.topfragg, image: "/assets/trophies/topfragg.png", tone: "text-cyan", tint: "bg-cyan/10", border: "group-hover:border-cyan/25" },
-    { key: "hosted", label: "Hosted", value: counts.hosted, image: "/assets/trophies/hosted.png", tone: "text-green", tint: "bg-green/10", border: "group-hover:border-green/25" },
+    { key: "gold", label: "Gold", value: counts.gold, image: "/assets/trophies/compact/gold.png", tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
+    { key: "silver", label: "Silver", value: counts.silver, image: "/assets/trophies/compact/silver.png", tone: "text-gray-200", tint: "bg-gray-200/10", border: "group-hover:border-gray-200/20" },
+    { key: "bronze", label: "Bronze", value: counts.bronze, image: "/assets/trophies/compact/bronze.png", tone: "text-orange", tint: "bg-orange/10", border: "group-hover:border-orange/25" },
+    { key: "premium", label: "Premium", value: counts.premium, image: "/assets/trophies/compact/premium.png", tone: "text-purple-300", tint: "bg-purple-400/10", border: "group-hover:border-purple-300/25" },
+    { key: "topfragg", label: "TopFragg", value: counts.topfragg, image: "/assets/trophies/compact/topfragg.png", tone: "text-cyan", tint: "bg-cyan/10", border: "group-hover:border-cyan/25" },
+    { key: "hosted", label: "Hosted", value: counts.hosted, image: "/assets/trophies/compact/hosted.png", tone: "text-green", tint: "bg-green/10", border: "group-hover:border-green/25" },
   ];
 }
 
@@ -750,6 +750,8 @@ function TrophyOverview({ trophies, items = [] }) {
                   <img
                     src={trophy.image}
                     alt={`${trophy.label} trophy`}
+                    loading="lazy"
+                    decoding="async"
                     className="h-36 w-36 object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.5)] transition-transform duration-200 group-hover:scale-[1.06]"
                   />
                 </div>
