@@ -1397,7 +1397,7 @@ export default function Navbar() {
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
                           { label: "My Matches", path: matchHistoryPath, icon: History },
-                          { label: "My Team", path: "/teams", icon: Users },
+                          { label: "My Teams", path: "/teams", icon: Users },
                           { label: "Wallet", path: "/wallet", icon: Wallet },
                           { label: "Settings", path: "/settings", icon: Settings },
                         ]}
