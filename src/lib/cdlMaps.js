@@ -9,7 +9,7 @@ export const MAP_IMAGES = {
   den: "/assets/maps/den.jpg",
   colossus: "/assets/maps/colossus.jpg",
   colosses: "/assets/maps/colossus.jpg",
-  sake: "https://media.base44.com/images/public/6a38e7860fd3c41494b9c695/map_sake.jpg",
+  sake: "/assets/maps/sake.png",
   exposure: "https://media.base44.com/images/public/6a38e7860fd3c41494b9c695/map_exposure.jpg",
 };
 

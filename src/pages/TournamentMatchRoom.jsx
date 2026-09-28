@@ -49,6 +49,7 @@ const tournamentMapImages = {
   scar: "/assets/maps/scar.jpg",
   gridlock: "/assets/maps/gridlock.jpg",
   hacienda: "/assets/maps/hacienda.jpg",
+  sake: "/assets/maps/sake.png",
 };
 const tournamentMapImage = (name) => tournamentMapImages[cleanKey(name).replace(/[^a-z0-9]/g, "")] || null;
 const isStreamerTournament = (tournament) => Boolean(

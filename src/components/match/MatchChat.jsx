@@ -217,10 +217,11 @@ export default function MatchChat({
           const teamSide = !staff && teamAIds.has(senderId) ? "a" : (!staff && teamBIds.has(senderId) ? "b" : null);
           const teamTone = teamSide === "a" ? teamStyles[teamAColor] : teamSide === "b" ? teamStyles[teamBColor] : null;
           const isOwnMessage = String(currentUser?.id || "") === senderId;
+          const isTeamB = teamSide === "b";
           return (
             <div
               key={message.id}
-              className={`${compact ? "px-3 py-2.5" : "px-3.5 py-3"} rounded-xl border transition-colors ${
+              className={`${compact ? "px-3 py-2.5" : "px-3.5 py-3"} w-fit min-w-[58%] max-w-[92%] rounded-xl border transition-colors ${isTeamB ? "ml-auto rounded-tr-sm" : "mr-auto rounded-tl-sm"} ${
                 staff
                   ? "border-violet-400/20 bg-violet-400/[0.055]"
                   : teamTone
@@ -228,8 +229,8 @@ export default function MatchChat({
                     : "border-white/[0.07] bg-white/[0.025]"
               } ${isOwnMessage ? "ring-1 ring-inset ring-white/[0.035]" : ""}`}
             >
-              <div className="mb-1 flex items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <div className={`mb-1 flex items-center justify-between gap-3 ${isTeamB ? "flex-row-reverse" : ""}`}>
+                <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "flex-row-reverse" : ""}`}>
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${staff ? "bg-violet-300 shadow-[0_0_10px_rgb(196,181,253)]" : teamTone?.dot || "bg-vapor/40"}`} />
                   <span className={`truncate text-xs font-black ${staff ? "text-violet-200" : teamTone?.name || "text-white"}`}>
                     {displaySenderName(message)}
@@ -243,7 +244,7 @@ export default function MatchChat({
                 </div>
                 <span className="shrink-0 text-[10px] text-vapor">{formatDate(message.created_date)}</span>
               </div>
-              <p className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap leading-relaxed text-foreground/85`}>{displayMessageContent(message, staff)}</p>
+              <p className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap leading-relaxed text-foreground/85 ${isTeamB ? "text-right" : "text-left"}`}>{displayMessageContent(message, staff)}</p>
             </div>
           );
         })}
