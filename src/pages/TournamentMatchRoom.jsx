@@ -596,7 +596,12 @@ function MapSeries({ match }) {
                 </div>
 
                 <div>
-                  <h3 className="truncate text-lg font-black text-white drop-shadow-[0_2px_5px_rgba(0,0,0,0.95)]" title={map.map}>{map.map}</h3>
+                  <h3
+                    className="inline-block max-w-full truncate rounded-md border border-white/10 bg-[#080c12]/85 px-2 py-1 text-lg font-black leading-none text-white shadow-lg backdrop-blur-sm"
+                    title={map.map}
+                  >
+                    {map.map}
+                  </h3>
                   <p className="mt-1.5 inline-flex max-w-full items-center rounded-md border border-white/10 bg-[#080c12]/80 px-2 py-1 text-[9px] text-white/75 backdrop-blur-sm">
                     <span>Host</span>
                     <strong className="ml-1.5 truncate text-cyan">{map.host_team_name || "TBD"}</strong>
