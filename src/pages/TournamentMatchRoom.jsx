@@ -15,7 +15,6 @@ import {
   RefreshCw,
   Shield,
   ShieldCheck,
-  Sparkles,
   Swords,
   Trophy,
   Unlock,
@@ -41,6 +40,17 @@ const adminCorrectionRoles = new Set(["ceo", "super_admin", "admin"]);
 const defaultMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const seedLabel = (seed) => seed ? `#${seed}` : "#-";
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
+const tournamentMapImages = {
+  colossus: "/assets/maps/colossus.png",
+  colosses: "/assets/maps/colossus.png",
+  den: "/assets/maps/den.png",
+  raid: "/assets/maps/raid.png",
+  fringe: "/assets/maps/fringe.png",
+  scar: "/assets/maps/scar.png",
+  gridlock: "/assets/maps/gridlock.png",
+  hacienda: "/assets/maps/hacienda.png",
+};
+const tournamentMapImage = (name) => tournamentMapImages[cleanKey(name).replace(/[^a-z0-9]/g, "")] || null;
 const isStreamerTournament = (tournament) => Boolean(
   tournament?.is_streamer_tournament
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
@@ -303,14 +313,6 @@ function teamMonogram(name) {
   return String(words[0] || "--").slice(0, 2).toUpperCase();
 }
 
-function BetaBadge() {
-  return (
-    <span className="beta-glow-pulse inline-flex items-center gap-1 rounded-md border border-red-400/35 bg-red-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-red-400">
-      <Sparkles className="h-3 w-3" /> Beta
-    </span>
-  );
-}
-
 function TrophyCounts({ trophies }) {
   const counts = trophies || emptyTrophyCounts();
   return (
@@ -426,11 +428,6 @@ function MatchupScore({
           <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.08] bg-black/20 text-[8px] font-black uppercase tracking-wider text-vapor/50">vs</span>
           {scoreField({ id: "team-b-score", label: "Team B final score", name: teamBName, score: scoreB, setter: setScoreB, tone: "text-cyan" })}
         </div>
-        <div className="mt-3 flex items-center justify-center">
-          <span className="rounded-full border border-white/[0.08] bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">
-            First to {maxScore}
-          </span>
-        </div>
         {!disabled && (
           <>
             <button
@@ -478,7 +475,6 @@ function TeamCard({ label, name, color, seed, isFirstHost, players = [], isCompl
           </div>
           <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5">
             <h3 className="truncate text-xl font-black sm:text-2xl">{name || "Open slot"}</h3>
-            {name && <BetaBadge />}
             {isWinner && <span className="inline-flex items-center gap-1 rounded-md border border-green/25 bg-green/[0.09] px-2 py-1 text-[8px] font-black uppercase tracking-wider text-green"><Trophy className="h-3 w-3" /> Winner</span>}
           </div>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">{players.length} confirmed player{players.length === 1 ? "" : "s"}</p>
@@ -572,25 +568,45 @@ function MapSeries({ match }) {
           <div className="rounded-lg border border-white/[0.06] bg-black/15 p-4 text-sm text-vapor sm:col-span-3">
             Maps are being generated.
           </div>
-        ) : maps.map((map) => (
-          <article key={`${map.game}-${map.game_mode || map.mode}-${map.map}`} className="overflow-hidden rounded-lg border border-white/[0.06] bg-black/15">
-            <div className="px-3 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-cyan">Map {map.game}</p>
-                <span className="max-w-[60%] truncate rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-vapor">
-                  {map.mode || "Search and Destroy"}
-                </span>
+        ) : maps.map((map) => {
+          const image = tournamentMapImage(map.map);
+
+          return (
+            <article
+              key={`${map.game}-${map.game_mode || map.mode}-${map.map}`}
+              className="group relative isolate min-h-[156px] overflow-hidden rounded-xl border border-white/[0.1] bg-black/25 shadow-[0_12px_28px_rgba(0,0,0,0.2)]"
+            >
+              {image ? (
+                <img
+                  src={image}
+                  alt=""
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#070b11] via-[#070b11]/45 to-[#070b11]/60" />
+              <div className="relative flex min-h-[156px] flex-col justify-between p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="rounded-md border border-cyan/25 bg-[#07121b]/85 px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-cyan backdrop-blur-sm">
+                    Map {map.game}
+                  </p>
+                  <span className="max-w-[68%] truncate rounded-md border border-white/15 bg-[#080c12]/80 px-2 py-1 text-[7px] font-black uppercase tracking-wider text-white/85 backdrop-blur-sm">
+                    {map.mode || "Search and Destroy"}
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="truncate text-lg font-black text-white drop-shadow-[0_2px_5px_rgba(0,0,0,0.95)]" title={map.map}>{map.map}</h3>
+                  <p className="mt-1.5 inline-flex max-w-full items-center rounded-md border border-white/10 bg-[#080c12]/80 px-2 py-1 text-[9px] text-white/75 backdrop-blur-sm">
+                    <span>Host</span>
+                    <strong className="ml-1.5 truncate text-cyan">{map.host_team_name || "TBD"}</strong>
+                    {map.host_seed ? <span className="ml-1 text-white/60">{seedLabel(map.host_seed)}</span> : null}
+                  </p>
+                </div>
               </div>
-              <h3 className="mt-2 truncate text-base font-black text-white" title={map.map}>{map.map}</h3>
-            </div>
-            <div className="border-t border-white/[0.05] bg-white/[0.025] px-3 py-2">
-              <p className="truncate text-[9px] text-vapor">
-                Host <strong className="ml-1 text-cyan">{map.host_team_name || "TBD"}</strong>
-                {map.host_seed ? <span className="ml-1 text-vapor">{seedLabel(map.host_seed)}</span> : null}
-              </p>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
 
       <div className="mt-4 border-t border-white/[0.06] pt-3">
@@ -1228,7 +1244,7 @@ export default function TournamentMatchRoom() {
             <div className="dark-focus dark-media relative z-10 w-full max-w-md rounded-2xl border border-white/[0.1] bg-[#111821] p-5 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:p-6">
               <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] pb-4">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">BO{bestOf} · First to {winsNeeded}</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">BO{bestOf}</p>
                   <h2 id="submit-score-title" className="mt-1 text-lg font-black">Submit final score</h2>
                   <p className="mt-1 text-xs text-vapor">Valid scores: {seriesScoreExamples(match)}. Your opponent must confirm the same result.</p>
                 </div>
