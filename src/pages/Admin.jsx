@@ -713,7 +713,7 @@ export default function Admin() {
     openTickets: data.tickets.filter((ticket) => !["resolved", "closed"].includes(ticket.status)).length,
     pendingDisputes: data.disputes.filter((dispute) => ["pending", "under_review"].includes(dispute.status)).length,
     activeWagers: data.wagers.filter((wager) => ["open", "in_progress", "ready", "score_conflict"].includes(wager.status)).length,
-    activeRanked: data.rankedMatches.filter((match) => ["open", "in_progress", "score_conflict"].includes(match.status)).length,
+    activeRanked: data.rankedMatches.filter((match) => ["open", "ready_check", "ready", "in_progress", "score_conflict"].includes(match.status)).length,
     activeTournaments: data.tournaments.filter((tournament) => ["live", "in_progress", "registration", "open"].includes(tournament.status)).length,
     openAdminAlerts: data.adminAlerts.filter(isOpenAdminAlert).length,
     pendingWithdrawals: data.withdrawals.filter((withdrawal) => withdrawal.status === "pending").length,

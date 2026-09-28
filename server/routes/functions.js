@@ -6,6 +6,7 @@ import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
 import { hasRole, rolePower } from "../roles.js";
 import { knownUserIpAddresses } from "../ban-enforcement.js";
 import { containsBlockedLanguage } from "../profanity-filter.js";
+import { issueRankedVoiceToken } from "../ranked-voice.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -6566,7 +6567,7 @@ async function previousRankedMapFor(userId, excludeMatchId = "") {
   return previous?.final_map_name || "";
 }
 
-const ACTIVE_RANKED_STATUSES = new Set(["open", "in_progress", "pending_confirmation", "awaiting_confirmation", "score_conflict", "disputed"]);
+const ACTIVE_RANKED_STATUSES = new Set(["open", "ready_check", "ready", "in_progress", "pending_confirmation", "awaiting_confirmation", "score_conflict", "disputed"]);
 
 async function activeRankedMatchFor(userId, excludeMatchId = "") {
   if (!userId) return null;
@@ -6835,8 +6836,10 @@ async function acceptRankedMatch(req) {
     team_bravo_party_team_ids: bravoPartyTeamIds,
     joined_players: alphaIds.length + bravoIds.length,
     total_players: slotsPerTeam * 2,
-    status: rosterFull ? "in_progress" : "open",
-    match_started_date: rosterFull ? new Date().toISOString() : "",
+    status: rosterFull ? "ready_check" : "open",
+    ready_player_ids: rosterFull ? [] : (Array.isArray(match.ready_player_ids) ? match.ready_player_ids : []),
+    all_players_ready_date: "",
+    match_started_date: "",
     match_start_deadline: deadline,
     best_of: 1,
     ...(selected ? {
@@ -6846,6 +6849,57 @@ async function acceptRankedMatch(req) {
     } : {}),
   });
   return { success: true, match: updated, roster_full: rosterFull };
+}
+
+async function readyUpRankedMatch(req) {
+  const id = req.body.ranked_match_id || req.body.match_id || req.body.id;
+  const match = await getEntity("RankedMatch", id);
+  const participantIds = [...rankedRosterIds(match, "alpha"), ...rankedRosterIds(match, "bravo")];
+  if (!participantIds.includes(req.user.id)) return { success: false, error: "Only ranked match players can ready up" };
+  if (!["ready_check", "ready"].includes(match.status)) {
+    return { success: false, error: match.status === "in_progress" ? "The match is already live" : "The ready check is not active" };
+  }
+  const slotsPerTeam = rankedTeamSize(match);
+  if (rankedRosterIds(match, "alpha").length < slotsPerTeam || rankedRosterIds(match, "bravo").length < slotsPerTeam) {
+    return { success: false, error: "The ranked lobby is not full" };
+  }
+
+  const readyIds = [...new Set([...(Array.isArray(match.ready_player_ids) ? match.ready_player_ids : []), req.user.id])];
+  const everyoneReady = participantIds.every((userId) => readyIds.includes(userId));
+  const updated = await updateEntity("RankedMatch", id, {
+    ready_player_ids: readyIds,
+    ready_player_count: readyIds.length,
+    status: everyoneReady ? "ready" : "ready_check",
+    ...(everyoneReady ? { all_players_ready_date: nowIso() } : {}),
+  });
+  return { success: true, match: updated, everyone_ready: everyoneReady };
+}
+
+async function startRankedMatch(req) {
+  const id = req.body.ranked_match_id || req.body.match_id || req.body.id;
+  const match = await getEntity("RankedMatch", id);
+  const participantIds = [...rankedRosterIds(match, "alpha"), ...rankedRosterIds(match, "bravo")];
+  if (!participantIds.includes(req.user.id)) return { success: false, error: "Only ranked match players can start the match" };
+  if (match.status === "in_progress") return { success: true, match, already_live: true };
+  if (match.status !== "ready") return { success: false, error: "Every player must ready up first" };
+  if (req.user.id !== match.host_id && !hasRole(req.user, "moderator")) {
+    return { success: false, error: "The lobby host starts the ranked match" };
+  }
+  if (!participantIds.every((userId) => (match.ready_player_ids || []).includes(userId))) {
+    return { success: false, error: "Every player must ready up first" };
+  }
+  const updated = await updateEntity("RankedMatch", id, {
+    status: "in_progress",
+    match_started_date: nowIso(),
+  });
+  return { success: true, match: updated };
+}
+
+async function createRankedVoiceSession(req) {
+  const matchId = req.body.ranked_match_id || req.body.match_id || req.body.id;
+  if (!matchId) return { success: false, error: "Ranked match is required" };
+  const session = await issueRankedVoiceToken(req.user.id, matchId);
+  return { success: true, ...session };
 }
 
 async function ensureRankedMatchMap(req) {
@@ -8828,6 +8882,9 @@ const handlers = {
   refundWager,
   createRankedMatch,
   acceptRankedMatch,
+  readyUpRankedMatch,
+  startRankedMatch,
+  createRankedVoiceSession,
   ensureRankedMatchMap,
   completeRankedMatch,
   cancelRankedMatch,

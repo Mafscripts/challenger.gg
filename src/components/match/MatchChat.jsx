@@ -193,13 +193,13 @@ export default function MatchChat({
 
   return (
     <div className={`glass overflow-hidden rounded-xl border border-white/10 flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
-      <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} bg-secondary/50 border-b border-white/5 flex items-center justify-between`}>
+      <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} shrink-0 bg-secondary/50 border-b border-white/5 flex items-center justify-between`}>
         <h3 className="font-bold text-sm flex items-center gap-2">
           <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> {title}
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
-      <div ref={chatBodyRef} className={`flex-1 overflow-y-auto ${compact ? "p-3" : "p-4"}`}>
+      <div ref={chatBodyRef} className={`min-h-0 flex-1 overflow-y-auto ${compact ? "p-3" : "p-4"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
@@ -264,24 +264,26 @@ export default function MatchChat({
         })}
       </div>
       {inputActions && (
-        <div className={`${compact ? "px-2.5 pt-2.5" : "px-3 pt-3"} border-t border-white/5 bg-secondary/30`}>
+        <div className={`${compact ? "px-2.5 pt-2.5" : "px-3 pt-3"} shrink-0 border-t border-white/5 bg-secondary/30`}>
           {inputActions}
         </div>
       )}
-      <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} ${inputActions ? "pt-2" : "border-t border-white/5"} bg-secondary/30 flex items-center gap-2`}>
+      <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} ${inputActions ? "pt-2" : "border-t border-white/5"} shrink-0 bg-secondary/30 flex items-center gap-2`}>
+        <label htmlFor={`match-chat-${conversationId}`} className="sr-only">Write a chat message</label>
         <input
+          id={`match-chat-${conversationId}`}
           ref={inputRef}
           value={messageText}
           onChange={(event) => setMessageText(event.target.value)}
           maxLength={500}
           placeholder={disabledReason || placeholder}
           disabled={!currentUser || sending || Boolean(disabledReason)}
-          className="flex-1 px-3 py-2 bg-background/60 border border-white/5 rounded-lg text-sm focus:outline-none focus:border-cyan/30 disabled:opacity-50"
+          className="min-w-0 flex-1 rounded-lg border border-cyan/20 bg-background/80 px-3 py-2.5 text-sm text-white placeholder:text-vapor/65 shadow-inner focus:outline-none focus:border-cyan/60 focus:ring-2 focus:ring-cyan/10 disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={!messageText.trim() || !currentUser || sending || Boolean(disabledReason)}
-          className={`p-2 rounded-lg bg-secondary border ${tone.border} ${tone.text} hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`shrink-0 rounded-lg border bg-cyan/10 p-2.5 ${tone.border} ${tone.text} transition-all hover:bg-cyan/20 disabled:cursor-not-allowed disabled:opacity-40`}
           title="Send message"
         >
           <Send className="w-4 h-4" />

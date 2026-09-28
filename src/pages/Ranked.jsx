@@ -22,7 +22,7 @@ const modeLabels = {
   hp: "Hardpoint",
 };
 
-const activeRankedStatuses = new Set(["open", "in_progress", "pending_confirmation", "awaiting_confirmation", "score_conflict", "disputed"]);
+const activeRankedStatuses = new Set(["open", "ready_check", "ready", "in_progress", "pending_confirmation", "awaiting_confirmation", "score_conflict", "disputed"]);
 
 const selectActiveRankedMatch = (matches, userId) => {
   const unique = [...new Map((matches || []).map((match) => [match.id, match])).values()];

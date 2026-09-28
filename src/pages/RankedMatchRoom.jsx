@@ -22,6 +22,7 @@ import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchChat from "@/components/match/MatchChat";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
+import RankedVoicePanel from "@/components/match/RankedVoicePanel";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
@@ -32,7 +33,7 @@ const playerName = (user, fallback = "Unnamed player") => (
   user?.display_name || user?.full_name || user?.username || user?.email || fallback
 );
 
-const formatStatus = (status) => String(status || "open").replace(/_/g, " ");
+const formatStatus = (status) => status === "in_progress" ? "LIVE" : String(status || "open").replace(/_/g, " ");
 
 const winsNeededFor = (match) => Math.floor(Math.max(1, Number(match?.best_of) || 1) / 2) + 1;
 const validSeriesScore = (match, scoreA, scoreB) => {
@@ -65,6 +66,12 @@ const arenaHeightClass = (slots) => ({
   1: "h-[320px]",
   2: "h-[460px]",
   3: "h-[540px]",
+  4: "h-[720px]",
+}[slots] || "h-[720px]");
+const communicationHeightClass = (slots) => ({
+  1: "h-[540px]",
+  2: "h-[540px]",
+  3: "h-[600px]",
   4: "h-[720px]",
 }[slots] || "h-[720px]");
 
@@ -306,6 +313,8 @@ export default function RankedMatchRoom() {
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
+  const [readying, setReadying] = useState(false);
+  const [startingMatch, setStartingMatch] = useState(false);
 
   useEffect(() => {
     loadRoom();
@@ -388,6 +397,10 @@ export default function RankedMatchRoom() {
   const cancelVoteCount = cancelVoteUserIds.length || Number(match?.cancel_vote_count || 0);
   const currentUserVotedCancel = Boolean(user?.id && cancelVoteUserIds.includes(user.id));
   const personalResult = match?.elo_changes?.[user?.id] || null;
+  const readyPlayerIds = Array.isArray(match?.ready_player_ids) ? match.ready_player_ids : [];
+  const currentUserReady = Boolean(user?.id && readyPlayerIds.includes(user.id));
+  const rankedParticipantIds = [...roomRosterIds(match, "alpha"), ...roomRosterIds(match, "bravo")];
+  const everyoneReady = rankedParticipantIds.length > 0 && rankedParticipantIds.every((playerId) => readyPlayerIds.includes(playerId));
 
   useEffect(() => {
     if (!match?.id || !user?.id || !isStaff) return;
@@ -566,6 +579,45 @@ export default function RankedMatchRoom() {
       toast({ title: "Error", description: error.message || "Failed to report score.", variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReadyUp = async () => {
+    if (!isParticipant || currentUserReady || readying) return;
+    setReadying(true);
+    try {
+      const response = await base44.functions.invoke("readyUpRankedMatch", { ranked_match_id: match.id });
+      if (!response.data?.success) {
+        toast({ title: "Ready check failed", description: response.data?.error || "Could not ready up.", variant: "destructive" });
+        return;
+      }
+      setMatch(response.data.match);
+      toast({
+        title: response.data.everyone_ready ? "Everyone is ready" : "You are ready",
+        description: response.data.everyone_ready ? "Global Voice is now open. The host can start the match." : "Waiting for the remaining players.",
+      });
+    } catch (error) {
+      toast({ title: "Ready check failed", description: error.message || "Could not ready up.", variant: "destructive" });
+    } finally {
+      setReadying(false);
+    }
+  };
+
+  const handleStartMatch = async () => {
+    if (!isHost || !everyoneReady || startingMatch) return;
+    setStartingMatch(true);
+    try {
+      const response = await base44.functions.invoke("startRankedMatch", { ranked_match_id: match.id });
+      if (!response.data?.success) {
+        toast({ title: "Could not start match", description: response.data?.error || "The match is not ready.", variant: "destructive" });
+        return;
+      }
+      setMatch(response.data.match);
+      toast({ title: "Match is live", description: "Voice has been split into private team channels." });
+    } catch (error) {
+      toast({ title: "Could not start match", description: error.message || "The match is not ready.", variant: "destructive" });
+    } finally {
+      setStartingMatch(false);
     }
   };
 
@@ -748,6 +800,13 @@ export default function RankedMatchRoom() {
               <p className="mt-1 text-[10px] font-mono text-vapor">Map {match.final_map_name || "pending"} · ID #{match.id?.slice(-8)}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {isParticipant && match.status === "ready_check" ? (
+                <button type="button" onClick={handleReadyUp} disabled={currentUserReady || readying} className="inline-flex items-center justify-center gap-2 rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background hover:bg-green/90 disabled:cursor-default disabled:opacity-55"><Check className="h-4 w-4" /> {currentUserReady ? `Ready · ${readyPlayerIds.length}/${rankedParticipantIds.length}` : readying ? "Readying..." : `Ready Up · ${readyPlayerIds.length}/${rankedParticipantIds.length}`}</button>
+              ) : null}
+              {isParticipant && match.status === "ready" && isHost ? (
+                <button type="button" onClick={handleStartMatch} disabled={!everyoneReady || startingMatch} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90 disabled:opacity-45"><Swords className="h-4 w-4" /> {startingMatch ? "Starting..." : "Start Match"}</button>
+              ) : null}
+              {isParticipant && match.status === "ready" && !isHost ? <span className="rounded-lg border border-green/20 bg-green/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-green">Ready · waiting for host</span> : null}
               {canSubmitScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
               {timeRemaining ? <div className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs font-black ${timeRemaining === "EXPIRED" ? "border-orange/25 bg-orange/10 text-orange" : "border-cyan/20 bg-cyan/10 text-cyan"}`}><Clock className="h-4 w-4" /> {timeRemaining}</div> : null}
               <Link to="/ranked" className="rounded-lg border border-white/[0.08] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor hover:text-white">Ranked</Link>
@@ -755,12 +814,13 @@ export default function RankedMatchRoom() {
           </div>
           <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_360px_minmax(0,1fr)] xl:p-5">
             <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} order-1`}><PlayerPanel label="Team Alpha" teamName={match.host_name} color="cyan" players={visibleAlphaPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} /></div>
-            <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} order-3 flex min-h-0 flex-col gap-2 xl:order-2`}>
+            <div className={`${communicationHeightClass(slotsPerRankedTeam(match))} order-3 flex min-h-0 flex-col gap-2 xl:order-2`}>
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-3 py-2">
                 <span className="truncate text-right text-[9px] font-black uppercase tracking-wider text-cyan">{match.host_name || "Team Alpha"}</span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-card text-[8px] font-black uppercase text-vapor">VS</span>
                 <span className="truncate text-[9px] font-black uppercase tracking-wider text-orange">{match.challenger_name || "Team Bravo"}</span>
               </div>
+              <RankedVoicePanel match={match} user={user} isParticipant={isParticipant} />
               <MatchChat
                 conversationId={match.id}
                 matchType="ranked"
@@ -769,10 +829,14 @@ export default function RankedMatchRoom() {
                 teamBPlayerIds={visibleBravoPlayers}
                 compact
                 sticky={false}
-                heightClass="min-h-0 flex-1"
+                heightClass="min-h-[250px] flex-1"
                 inputActions={(
-                  <div>
-                    <div className="grid grid-cols-2 gap-2">
+                  <details className="group">
+                    <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2 text-[8px] font-black uppercase tracking-wider text-vapor hover:text-white [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2"><Gavel className="h-3 w-3 text-blue-300" /> Match support</span>
+                      <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
                       <button type="button" onClick={() => handleSupportTicket("I need support for this ranked match.")} disabled={!isParticipant || supporting} className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 hover:bg-blue-400/15 disabled:opacity-40">
                         <Gavel className="h-3.5 w-3.5" /> {supporting ? "Requesting..." : "Request admin"}
                       </button>
@@ -782,10 +846,9 @@ export default function RankedMatchRoom() {
                       <button type="button" onClick={() => handleSupportTicket("Opponent no-show report.")} disabled={!isParticipant || supporting} className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-secondary/60 px-2 py-2 text-[8px] font-black uppercase tracking-wider text-vapor hover:text-white disabled:opacity-40">
                         <Flag className="h-3 w-3" /> Report no show
                       </button>
+                      {(match.admin_request_status || match.requested_admin) && <p className="col-span-2 mt-1 text-center text-[8px] font-bold text-blue-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", waiting_for_user: "Waiting for you", escalated: "Escalated", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
                     </div>
-
-                    {(match.admin_request_status || match.requested_admin) && <p className="mt-2 text-center text-[8px] font-bold text-blue-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", waiting_for_user: "Waiting for you", escalated: "Escalated", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
-                  </div>
+                  </details>
                 )}
               />
             </div>

@@ -5,6 +5,7 @@ import authRoutes, { registerHandler } from "./routes/auth.js";
 import entityRoutes from "./routes/entities.js";
 import functionRoutes from "./routes/functions.js";
 import { disconnectPrisma } from "./prisma.js";
+import { attachRankedVoiceServer } from "./ranked-voice.js";
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -53,6 +54,7 @@ app.use((error, _req, res, _next) => {
 const server = app.listen(port, () => {
   console.log(`API listening on http://localhost:${port}`);
 });
+attachRankedVoiceServer(server);
 
 const shutdown = async () => {
   server.close(async () => {
