@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   AlertCircle,
   Award,
@@ -741,7 +741,6 @@ function MatchStateBar({ match, onRefresh, onOpenBracket, adminTools = null }) {
 
 export default function TournamentMatchRoom() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [match, setMatch] = useState(null);
   const [tournament, setTournament] = useState(null);
   const [bracketMatches, setBracketMatches] = useState([]);
@@ -752,6 +751,7 @@ export default function TournamentMatchRoom() {
   const [disputing, setDisputing] = useState(false);
   const [resolvingAdmin, setResolvingAdmin] = useState(false);
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
+  const [championResult, setChampionResult] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [clockNow, setClockNow] = useState(Date.now());
@@ -902,14 +902,36 @@ export default function TournamentMatchRoom() {
           await loadRoom();
           return;
         }
+
+        const completedMatch = response.data.match || match;
+        const tournamentFinished = Boolean(
+          response.data.tournament_completed
+          || (
+            cleanKey(match.bracket) === "grand_final"
+            && completedMatch?.completed
+            && !response.data.advanced_to
+            && !response.data.loser_sent_to
+            && !response.data.grand_final_reset
+          )
+        );
+
+        if (tournamentFinished) {
+          await loadRoom();
+          setChampionResult({
+            winnerName: completedMatch.winner_name || predictedWinner || "Tournament winner",
+            tournamentName: response.data.tournament?.name || tournament?.name || "the tournament",
+            teamAName: completedMatch.team_a_name || match.team_a_name || "Team A",
+            teamBName: completedMatch.team_b_name || match.team_b_name || "Team B",
+            teamAScore: completedMatch.team_a_score ?? scoreA,
+            teamBScore: completedMatch.team_b_score ?? scoreB,
+          });
+          return;
+        }
+
         toast({
           title: "Tournament match completed",
           description: response.data.advanced_to ? "Winner advanced automatically." : "Tournament result recorded.",
         });
-        if (!response.data.advanced_to && !response.data.loser_sent_to) {
-          navigate("/tournaments");
-          return;
-        }
         await loadRoom();
       } else {
         toast({ title: "Completion failed", description: response.data?.error || "Could not complete match.", variant: "destructive" });
@@ -1274,6 +1296,48 @@ export default function TournamentMatchRoom() {
                 predictedWinner={predictedWinner}
                 staffSubmission={canStaffSubmitResult}
               />
+            </div>
+          </div>
+        )}
+
+        {championResult && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 px-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="champion-title">
+            <button type="button" className="absolute inset-0 cursor-default" onClick={() => setChampionResult(null)} aria-label="Close congratulations dialog" />
+            <div className="dark-focus dark-media relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-green/25 bg-[#111821] p-6 text-center shadow-[0_35px_120px_rgba(0,0,0,.85)] sm:p-8">
+              <div aria-hidden="true" className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-green/80 to-transparent" />
+              <button type="button" onClick={() => setChampionResult(null)} className="absolute right-4 top-4 rounded-lg border border-white/[0.08] bg-black/20 p-2 text-vapor transition-colors hover:text-white" aria-label="Close">
+                <X className="h-4 w-4" />
+              </button>
+
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-green/25 bg-green/10 text-green shadow-[0_0_40px_rgba(52,211,153,.16)]">
+                <Trophy className="h-8 w-8" />
+              </div>
+              <p className="mt-5 text-[9px] font-black uppercase tracking-[0.24em] text-green">Tournament completed</p>
+              <h2 id="champion-title" className="mt-2 text-2xl font-black text-white sm:text-3xl">Congratulations!</h2>
+              <p className="mt-2 text-sm text-vapor">
+                <strong className="text-white">{championResult.winnerName}</strong> are the champions of {championResult.tournamentName}.
+              </p>
+
+              <div className="mx-auto mt-6 grid max-w-sm grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[9px] font-black uppercase tracking-wider text-orange">{championResult.teamAName}</p>
+                  <p className="mt-1 font-mono text-3xl font-black text-white">{championResult.teamAScore}</p>
+                </div>
+                <span className="rounded-full border border-white/[0.08] bg-[#111821] px-2 py-1 text-[8px] font-black uppercase text-vapor">Final</span>
+                <div className="min-w-0">
+                  <p className="truncate text-[9px] font-black uppercase tracking-wider text-cyan">{championResult.teamBName}</p>
+                  <p className="mt-1 font-mono text-3xl font-black text-white">{championResult.teamBScore}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                <button type="button" onClick={() => setChampionResult(null)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-green px-4 py-3 text-[10px] font-black uppercase tracking-wider text-black transition-colors hover:bg-green/90">
+                  <Award className="h-4 w-4" /> Stay in match room
+                </button>
+                <button type="button" onClick={() => { setChampionResult(null); handleOpenBracket(); }} className="inline-flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/20">
+                  <LayoutGrid className="h-4 w-4" /> View final bracket
+                </button>
+              </div>
             </div>
           </div>
         )}
