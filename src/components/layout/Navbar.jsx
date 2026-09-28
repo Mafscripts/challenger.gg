@@ -1397,7 +1397,7 @@ export default function Navbar() {
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
                           { label: "My Matches", path: matchHistoryPath, icon: History },
-                          { label: "My Teams", path: "/teams", icon: Users },
+                          { label: "Teams", path: "/teams", icon: Users },
                           { label: "Wallet", path: "/wallet", icon: Wallet },
                           { label: "Settings", path: "/settings", icon: Settings },
                         ]}
@@ -1586,7 +1586,7 @@ export default function Navbar() {
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
                     >
                       <Users className="w-5 h-5" />
-                      My Teams
+                      Teams
                     </Link>
                     <Link
                       to="/find-players"
