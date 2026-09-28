@@ -26,7 +26,21 @@ VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
 VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
 ```
 
-Run the app: `npm run dev`
+Prepare the local PostgreSQL schema once:
+
+```bash
+npm run prisma:deploy
+```
+
+Run the app and local API together:
+
+```bash
+npm run dev
+```
+
+The website runs on `http://localhost:5173` and the API (including the local
+database connection) runs on `http://localhost:4000`. Use `npm run dev:web`
+only when you intentionally want to run the website without the local API.
 
 **Reverse proxy and IP bans**
 

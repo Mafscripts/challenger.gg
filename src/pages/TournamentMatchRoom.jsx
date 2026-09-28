@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Award,
   Check,
+  ChevronDown,
   Clock3,
   Crown,
   Flag,
@@ -577,7 +578,55 @@ function BracketPreview({ matches, currentId, tournament }) {
   return <TournamentBracket matches={matches} currentId={currentId} tournament={tournament} />;
 }
 
-function MatchStateBar({ match, onRefresh }) {
+function AdminTools({ match, canAdminCorrect, canAdminResolve, resolving, onResetDispute, onCorrection, onResolve }) {
+  const hasDisputeAction = ["score_conflict", "disputed"].includes(match.status);
+  if (!hasDisputeAction && !canAdminCorrect && !canAdminResolve) return null;
+
+  const actionClass = "flex w-full items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/15 disabled:opacity-50";
+
+  return (
+    <details className="group mt-4 border-t border-white/[0.06] pt-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-blue-400/15 bg-blue-400/[0.05] px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/10 [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2"><Gavel className="h-3.5 w-3.5" /> Admin tools</span>
+        <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-2 grid gap-2">
+        {hasDisputeAction && (
+          <button type="button" onClick={onResetDispute} disabled={resolving} className={actionClass}>
+            <RefreshCw className="h-3.5 w-3.5" /> Reset dispute
+          </button>
+        )}
+        {canAdminCorrect && (
+          <>
+            <button type="button" onClick={() => onCorrection("reset_score")} disabled={resolving} className={actionClass}>
+              <RefreshCw className="h-3.5 w-3.5" /> Reset 0-0
+            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => onCorrection("grant_team_a")} disabled={resolving} className={actionClass}>
+                <ShieldCheck className="h-3.5 w-3.5" /> Team A win
+              </button>
+              <button type="button" onClick={() => onCorrection("grant_team_b")} disabled={resolving} className={actionClass}>
+                <ShieldCheck className="h-3.5 w-3.5" /> Team B win
+              </button>
+            </div>
+          </>
+        )}
+        {canAdminResolve && (
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => onResolve("approve_team_a")} disabled={resolving} className={actionClass}>
+              <ShieldCheck className="h-3.5 w-3.5" /> Approve A
+            </button>
+            <button type="button" onClick={() => onResolve("approve_team_b")} disabled={resolving} className={actionClass}>
+              <ShieldCheck className="h-3.5 w-3.5" /> Approve B
+            </button>
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function MatchStateBar({ match, onRefresh, adminTools = null }) {
   const items = [
     { label: "Status", value: statusLabel(match.status), valueClass: "capitalize text-cyan" },
     { label: "Bracket", value: bracketLabels[match.bracket] || match.bracket || "Tournament" },
@@ -587,41 +636,49 @@ function MatchStateBar({ match, onRefresh }) {
   ];
 
   return (
-    <section className="dark-focus dark-media mb-6 rounded-xl border border-white/[0.09] px-4 py-4 sm:px-5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="min-w-0 flex-1">
-          <h2 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
-            <Shield className="h-4 w-4 text-orange" /> Match State
-          </h2>
-          <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-            {items.map((item) => (
-              <div key={item.label} className="rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2">
-                <dt className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">{item.label}</dt>
-                <dd className={`mt-1 truncate text-xs font-bold ${item.valueClass || "text-white"}`} title={item.value}>
-                  {item.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
+    <section className="dark-focus dark-media h-full rounded-xl border border-white/[0.09] p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
+          <Shield className="h-4 w-4 text-orange" /> Match State
+        </h2>
+        <div className="flex items-center gap-2">
           <a
             href="#tournament-bracket"
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/20 xl:flex-none"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-cyan/25 bg-cyan/10 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/20"
           >
-            <LayoutGrid className="h-4 w-4" /> View bracket
+            <LayoutGrid className="h-3.5 w-3.5" /> Bracket
           </a>
           <button
             type="button"
             onClick={onRefresh}
-            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-secondary/50 p-3 text-vapor transition-colors hover:bg-secondary hover:text-white"
+            className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-secondary/50 p-2 text-vapor transition-colors hover:bg-secondary hover:text-white"
             title="Refresh match"
             aria-label="Refresh match"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
+      <dl className="mt-4 grid grid-cols-2 gap-2">
+        {items.map((item) => (
+          <div key={item.label} className={`rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2 ${item.label === "Admin" ? "col-span-2" : ""}`}>
+            <dt className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">{item.label}</dt>
+            <dd className={`mt-1 truncate text-[11px] font-bold ${item.valueClass || "text-white"}`} title={item.value}>
+              {item.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <div className="mt-4 border-t border-white/[0.06] pt-3">
+        <p className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-vapor">
+          <Swords className="h-3.5 w-3.5 text-cyan" /> Advancement
+        </p>
+        <div className="space-y-1.5 text-[11px]">
+          <div className="flex items-center justify-between gap-3"><span className="text-vapor">Winner</span><span className="truncate font-mono text-cyan">{match.next_match_id ? `#${match.next_match_id.slice(-8)}` : "Tournament result"}</span></div>
+          <div className="flex items-center justify-between gap-3"><span className="text-vapor">Loser</span><span className="truncate font-mono text-orange">{match.loser_match_id ? `#${match.loser_match_id.slice(-8)}` : "Elimination"}</span></div>
+        </div>
+      </div>
+      {adminTools}
     </section>
   );
 }
@@ -1151,11 +1208,26 @@ export default function TournamentMatchRoom() {
           </div>
         </section>
 
-        <MatchStateBar match={match} onRefresh={loadRoom} />
-
         <div className={`grid gap-6 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_460px]" : ""}`}>
           <div className="min-w-0 space-y-6">
-            <MapSeries match={match} />
+            <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(285px,0.8fr)]">
+              <MapSeries match={match} />
+              <MatchStateBar
+                match={match}
+                onRefresh={loadRoom}
+                adminTools={isStaff ? (
+                  <AdminTools
+                    match={match}
+                    canAdminCorrect={canAdminCorrect}
+                    canAdminResolve={canAdminResolve}
+                    resolving={resolvingAdmin}
+                    onResetDispute={handleAdminResetDispute}
+                    onCorrection={handleAdminCorrection}
+                    onResolve={handleAdminResolve}
+                  />
+                ) : null}
+              />
+            </div>
 
             <MatchRulesPanel
               matchType="tournament"
@@ -1165,93 +1237,6 @@ export default function TournamentMatchRoom() {
               collapsible
               defaultOpen={false}
             />
-
-        {isStaff && (["score_conflict", "disputed"].includes(match.status) || canAdminCorrect || canAdminResolve) && (
-        <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
-          <div className="mb-4 flex flex-col gap-1 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-300">Staff tools</p>
-              <h2 className="mt-1 text-lg font-black">Admin match controls</h2>
-            </div>
-            <p className="text-xs text-vapor">Tournament-only corrections and dispute resolution.</p>
-          </div>
-          {isStaff && ["score_conflict", "disputed"].includes(match.status) && (
-            <button
-              onClick={handleAdminResetDispute}
-              disabled={resolvingAdmin}
-              className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-cyan transition-all hover:bg-cyan/20 disabled:opacity-50"
-            >
-              <RefreshCw className="h-4 w-4" /> Reset Dispute &amp; Continue Match
-            </button>
-          )}
-          {canAdminCorrect && (
-            <div className="mb-3 border-b border-white/5 pb-3">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-blue-300">Admin correction</p>
-                <p className="text-[10px] text-vapor">Tournament only</p>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                <button
-                  onClick={() => handleAdminCorrection("reset_score")}
-                  disabled={resolvingAdmin}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
-                >
-                  <RefreshCw className="h-4 w-4" /> Reset 0-0
-                </button>
-                <button
-                  onClick={() => handleAdminCorrection("grant_team_a")}
-                  disabled={resolvingAdmin}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
-                >
-                  <ShieldCheck className="h-4 w-4" /> Give Team A Win
-                </button>
-                <button
-                  onClick={() => handleAdminCorrection("grant_team_b")}
-                  disabled={resolvingAdmin}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
-                >
-                  <ShieldCheck className="h-4 w-4" /> Give Team B Win
-                </button>
-              </div>
-            </div>
-          )}
-          {canAdminResolve && (
-            <div className="mb-3 grid gap-3 border-b border-white/5 pb-3 md:grid-cols-2">
-              <button
-                onClick={() => handleAdminResolve("approve_team_a")}
-                disabled={resolvingAdmin}
-                className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
-              >
-                <ShieldCheck className="h-4 w-4" /> Grant Team A Win
-              </button>
-              <button
-                onClick={() => handleAdminResolve("approve_team_b")}
-                disabled={resolvingAdmin}
-                className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-5 py-3 text-xs font-bold uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:opacity-50"
-              >
-                <ShieldCheck className="h-4 w-4" /> Grant Team B Win
-              </button>
-            </div>
-          )}
-        </div>
-        )}
-
-        <div className="glass rounded-xl border border-white/5 p-5">
-            <h2 className="font-bold text-sm mb-3 flex items-center gap-2">
-              <Swords className="w-4 h-4 text-cyan" />
-              Advancement
-            </h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between gap-3">
-                <span className="text-vapor">Winner advances to</span>
-                <span className="font-mono text-cyan">{match.next_match_id ? `#${match.next_match_id.slice(-8)}` : "Tournament result"}</span>
-              </div>
-              <div className="flex justify-between gap-3">
-                <span className="text-vapor">Loser moves to</span>
-                <span className="font-mono text-orange">{match.loser_match_id ? `#${match.loser_match_id.slice(-8)}` : "Elimination"}</span>
-              </div>
-            </div>
-        </div>
           </div>
           {canChat && (
             <aside className="min-w-0">
