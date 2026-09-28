@@ -16,7 +16,11 @@ const accents = {
   purple: chatAccent,
 };
 
-const formatDate = (value) => value ? new Date(value).toLocaleString() : "";
+const formatDate = (value) => value ? new Date(value).toLocaleTimeString([], {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+}) : "";
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const stripStaffPrefix = (value) => String(value || "").replace(/^(admin|moderator)\s+/i, "");
 const displaySenderName = (message) => {
@@ -99,6 +103,11 @@ export default function MatchChat({
   const tone = accents[accent] || accents.cyan;
   const teamAIds = useMemo(() => new Set(teamAPlayerIds.map(playerIdentifier).filter(Boolean)), [teamAPlayerIds]);
   const teamBIds = useMemo(() => new Set(teamBPlayerIds.map(playerIdentifier).filter(Boolean)), [teamBPlayerIds]);
+  const playersById = useMemo(() => new Map(
+    [...teamAPlayerIds, ...teamBPlayerIds]
+      .map((player) => [playerIdentifier(player), player])
+      .filter(([id]) => id),
+  ), [teamAPlayerIds, teamBPlayerIds]);
 
   const scrollChatToBottom = (behavior = "smooth") => {
     window.requestAnimationFrame(() => {
@@ -218,6 +227,9 @@ export default function MatchChat({
           const teamTone = teamSide === "a" ? teamStyles[teamAColor] : teamSide === "b" ? teamStyles[teamBColor] : null;
           const isOwnMessage = String(currentUser?.id || "") === senderId;
           const isTeamB = teamSide === "b";
+          const senderName = displaySenderName(message);
+          const senderPlayer = playersById.get(senderId);
+          const senderAvatar = message.sender_avatar_url || senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "") || "";
           return (
             <div
               key={message.id}
@@ -225,9 +237,12 @@ export default function MatchChat({
             >
               <div className={`mb-1 flex items-center justify-between gap-3 ${isTeamB ? "flex-row-reverse" : ""}`}>
                 <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "flex-row-reverse" : ""}`}>
+                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-black/30 text-[9px] font-black ${staff ? "border-violet-400/30 text-violet-200" : teamTone?.border || "border-white/10 text-white"}`}>
+                    {senderAvatar ? <img src={senderAvatar} alt="" className="h-full w-full object-cover" /> : senderName.charAt(0).toUpperCase()}
+                  </span>
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${staff ? "bg-violet-300 shadow-[0_0_10px_rgb(196,181,253)]" : teamTone?.dot || "bg-vapor/40"}`} />
                   <span className={`truncate text-xs font-black ${staff ? "text-violet-200" : teamTone?.name || "text-white"}`}>
-                    {displaySenderName(message)}
+                    {senderName}
                   </span>
                   {staff && <AdminBadge />}
                   {teamSide && (

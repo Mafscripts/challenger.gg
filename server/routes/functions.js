@@ -5887,6 +5887,8 @@ async function sendMatchRoomMessage(req) {
   if (!matchId) return { success: false, error: matchType === "streamer_tournament" ? "Tournament id is required" : "Match id is required" };
   if (!content) return { success: false, error: "Message is required" };
   if (content.length > 500) return { success: false, error: "Message is too long" };
+  const senderProfile = await firstEntity("PlayerProfile", { user_id: req.user.id }).catch(() => null);
+  const senderAvatarUrl = senderProfile?.avatar_url || req.user.avatar_url || "";
 
   if (matchType === "streamer_tournament") {
     const tournament = await getEntity("Tournament", matchId);
@@ -5901,6 +5903,7 @@ async function sendMatchRoomMessage(req) {
       conversation_id: tournament.id,
       sender_id: req.user.id,
       sender_name: nameFor(req.user),
+      sender_avatar_url: senderAvatarUrl,
       sender_role: effectiveChatRole(req.user),
       recipient_id: tournament.id,
       recipient_name: "Streamer tournament lobby",
@@ -5927,6 +5930,7 @@ async function sendMatchRoomMessage(req) {
     conversation_id: match.id,
     sender_id: req.user.id,
     sender_name: nameFor(req.user),
+    sender_avatar_url: senderAvatarUrl,
     sender_role: effectiveChatRole(req.user),
     recipient_id: match.id,
     recipient_name: "Match room",

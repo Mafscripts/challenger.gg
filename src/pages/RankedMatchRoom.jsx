@@ -437,6 +437,7 @@ export default function RankedMatchRoom() {
     return {
       id: userId,
       name: playerName(userRows, fallbackName),
+      avatar_url: userRows?.avatar_url || "",
       activision_id: userRows?.activision_id || "",
       elo: stats.elo || 0,
       wins: stats.wins || 0,
