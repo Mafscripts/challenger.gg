@@ -62,25 +62,25 @@ export default function MatchRulesPanel({
   return (
     <section className="dark-focus dark-media rounded-xl border border-cyan/20 p-5 sm:p-6">
       <div className={`flex items-center justify-between gap-4 ${isOpen ? "border-b border-white/5 pb-4" : ""}`}>
-        {collapsible ? (
-          <button
-            type="button"
-            onClick={() => setOpen((value) => !value)}
-            aria-expanded={open}
-            className="group flex min-w-0 flex-1 items-center justify-between gap-4 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan/60"
-          >
-            {heading}
-            <span className="inline-flex shrink-0 items-center gap-2 text-[10px] font-black uppercase tracking-wider text-vapor transition-colors group-hover:text-cyan">
+        {heading}
+        <div className="flex shrink-0 items-center gap-4">
+          {isOpen && (
+            <Link to="/rules" className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">
+              All rules <ExternalLink className="h-3 w-3" />
+            </Link>
+          )}
+          {collapsible && (
+            <button
+              type="button"
+              onClick={() => setOpen((value) => !value)}
+              aria-expanded={open}
+              className="group inline-flex items-center gap-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-vapor transition-colors hover:text-cyan focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan/60"
+            >
               {open ? "Hide" : "Show"}
               <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-            </span>
-          </button>
-        ) : heading}
-        {isOpen && (
-          <Link to="/rules" className="inline-flex shrink-0 items-center gap-1 text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">
-            All rules <ExternalLink className="h-3 w-3" />
-          </Link>
-        )}
+            </button>
+          )}
+        </div>
       </div>
       {isOpen && (
         <div className="mt-4 grid gap-2 md:grid-cols-2">
