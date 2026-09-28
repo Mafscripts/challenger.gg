@@ -1,6 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 
+const VOICE_DEVICE_STORAGE_KEY = "topfragg-ranked-voice-device";
+
+const storedVoiceDevice = () => {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(VOICE_DEVICE_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+};
+
+const rememberVoiceDevice = (deviceId) => {
+  if (typeof window === "undefined") return;
+  try {
+    if (deviceId) window.localStorage.setItem(VOICE_DEVICE_STORAGE_KEY, deviceId);
+    else window.localStorage.removeItem(VOICE_DEVICE_STORAGE_KEY);
+  } catch {
+    // Voice selection still works when browser storage is unavailable.
+  }
+};
+
 const CONNECTED_STATUSES = new Set([
   "open",
   "ready_check",
@@ -42,12 +63,13 @@ const rtcConfig = () => {
 };
 
 export default function useRankedVoice({ matchId, matchStatus, userId, enabled }) {
+  const initialDeviceId = storedVoiceDevice();
   const [connectionState, setConnectionState] = useState("idle");
   const [stage, setStage] = useState("waiting");
   const [channel, setChannel] = useState("Waiting for all players");
   const [participants, setParticipants] = useState([]);
   const [devices, setDevices] = useState([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState("");
+  const [selectedDeviceId, setSelectedDeviceId] = useState(initialDeviceId);
   const [muted, setMuted] = useState(false);
   const [deafened, setDeafened] = useState(false);
   const [error, setError] = useState("");
@@ -64,7 +86,7 @@ export default function useRankedVoice({ matchId, matchStatus, userId, enabled }
   const speakingRef = useRef(false);
   const mutedRef = useRef(false);
   const deafenedRef = useRef(false);
-  const selectedDeviceRef = useRef("");
+  const selectedDeviceRef = useRef(initialDeviceId);
   const mountedRef = useRef(true);
   const desiredConnectionRef = useRef(false);
 
@@ -122,9 +144,12 @@ export default function useRankedVoice({ matchId, matchStatus, userId, enabled }
     const inputs = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === "audioinput");
     if (!mountedRef.current) return;
     setDevices(inputs);
-    if (!selectedDeviceRef.current && inputs[0]) {
-      selectedDeviceRef.current = inputs[0].deviceId;
-      setSelectedDeviceId(inputs[0].deviceId);
+    const selectedStillExists = inputs.some((device) => device.deviceId === selectedDeviceRef.current);
+    if (!selectedStillExists) {
+      const nextDeviceId = inputs[0]?.deviceId || "";
+      selectedDeviceRef.current = nextDeviceId;
+      setSelectedDeviceId(nextDeviceId);
+      rememberVoiceDevice(nextDeviceId);
     }
   }, []);
 
@@ -356,6 +381,7 @@ export default function useRankedVoice({ matchId, matchStatus, userId, enabled }
   const selectDevice = useCallback(async (deviceId) => {
     selectedDeviceRef.current = deviceId;
     setSelectedDeviceId(deviceId);
+    rememberVoiceDevice(deviceId);
     setError("");
     try {
       await ensureLocalStream(deviceId);
@@ -389,6 +415,7 @@ export default function useRankedVoice({ matchId, matchStatus, userId, enabled }
     deafened,
     error,
     autoplayBlocked,
+    microphoneSupported: typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia),
     toggleMute,
     toggleDeafen,
     selectDevice,

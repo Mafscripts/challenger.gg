@@ -74,7 +74,7 @@ export default function RankedVoicePanel({ match, user, isParticipant }) {
             {voice.devices.map((device, index) => <option key={device.deviceId || `microphone-${index}`} value={device.deviceId}>{device.label || `Microphone ${index + 1}`}</option>)}
           </select>
         </label>
-        <button type="button" onClick={voice.prepareMicrophone} disabled={!connected} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-cyan/20 bg-cyan/[0.07] px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15 disabled:opacity-40" title="Allow microphone access and refresh devices">
+        <button type="button" onClick={voice.prepareMicrophone} disabled={!voice.microphoneSupported} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-cyan/20 bg-cyan/[0.07] px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15 disabled:opacity-40" title="Allow microphone access and refresh devices">
           <Mic className="h-3 w-3" /> Detect
         </button>
       </div>
