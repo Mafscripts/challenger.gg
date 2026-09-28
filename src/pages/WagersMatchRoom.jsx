@@ -3,12 +3,13 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
   AlertTriangle, Clock, Check,
-  AlertCircle, Award, Crown, DollarSign, Flag, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy
+  AlertCircle, Award, Crown, DollarSign, Flag, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy, X
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchChat from "@/components/match/MatchChat";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
+import MatchMapSeries from "@/components/match/MatchMapSeries";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
@@ -59,7 +60,7 @@ function InfoRow({ label, value }) {
   );
 }
 
-function SimpleRoster({ title, name, players, tone = "cyan", score, setScore, scoreDisabled = true, maxScore }) {
+function SimpleRoster({ title, name, players, tone = "cyan", score, isComplete = false, isWinner = false }) {
   const color = tone === "cyan" ? "text-cyan border-cyan/20 bg-cyan/5" : "text-orange border-orange/20 bg-orange/5";
 
   return (
@@ -69,9 +70,10 @@ function SimpleRoster({ title, name, players, tone = "cyan", score, setScore, sc
           <h2 className="text-xs font-black uppercase tracking-[0.16em]">{title}</h2>
           {name && <p className="mt-1 truncate text-xl font-black text-white">{name}</p>}
         </div>
-        {score !== undefined && (
-          <input type="number" min="0" max={maxScore} value={score} disabled={scoreDisabled} onChange={(event) => setScore(event.target.value === "" ? "" : Number(event.target.value))} onBlur={() => score === "" && setScore(0)} className={`h-16 w-20 rounded-xl border bg-background/50 text-center font-mono text-4xl font-black outline-none disabled:cursor-not-allowed disabled:opacity-60 ${tone === "cyan" ? "border-cyan/25 text-cyan focus:border-cyan/50" : "border-orange/25 text-orange focus:border-orange/50"}`} />
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {isWinner ? <span className="inline-flex items-center gap-1 rounded-md border border-green/25 bg-green/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-green"><Trophy className="h-3 w-3" /> Winner</span> : null}
+          {isComplete && score !== undefined ? <div className={`min-w-16 rounded-xl border bg-black/20 px-3 py-2 text-center ${isWinner ? "border-green/25" : "border-white/10"}`}><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Final score</p><p className={`mt-1 font-mono text-2xl font-black ${isWinner ? "text-green" : tone === "cyan" ? "text-cyan" : "text-orange"}`}>{score}</p></div> : null}
+        </div>
       </div>
       <div className="space-y-3 p-3">
         {players.length === 0 ? (
@@ -236,6 +238,7 @@ export default function WagersMatchRoom() {
   const joinedAdminRooms = useRef(new Set());
   const rosterSignatureRef = useRef("");
   const [resultDismissed, setResultDismissed] = useState(false);
+  const [scoreModalOpen, setScoreModalOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -377,6 +380,7 @@ export default function WagersMatchRoom() {
       });
       
       if (response.data.success) {
+        setScoreModalOpen(false);
         if (response.data.ready_to_complete) {
           const completeResponse = await base44.functions.invoke('completeWager', {
             wager_id: wager.id,
@@ -696,6 +700,8 @@ export default function WagersMatchRoom() {
   const hostDisplayName = wager.host_team_name || wager.host_name || "Team Alpha";
   const challengerDisplayName = wager.challenger_team_name || wager.challenger_name || "Team Bravo";
   const isComplete = wager.status === "completed";
+  const hostWinner = isComplete && String(wager.winner_id || "") === String(wager.host_id || "");
+  const challengerWinner = isComplete && String(wager.winner_id || "") === String(wager.challenger_id || "");
   const personalMoneyResult = wager.wallet_changes?.[user?.id] || null;
   const dismissResult = () => {
     setResultDismissed(true);
@@ -706,7 +712,9 @@ export default function WagersMatchRoom() {
     <div className="min-h-screen bg-obsidian py-6 sm:py-8">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         {isComplete && personalMoneyResult && !resultDismissed && <WagerMoneyResultOverlay wager={wager} result={personalMoneyResult} onContinue={dismissResult} />}
-        <header className="dark-focus dark-media mb-6 rounded-xl border border-green/20 p-6 sm:p-7">
+        <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/50 via-white/10 to-orange/50" />
+          <div className="p-5 sm:p-6">
           <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
             <div>
               <div className="mb-2 flex items-center gap-3">
@@ -717,6 +725,7 @@ export default function WagersMatchRoom() {
               <p className="mt-1 text-sm text-vapor">{wager.game_mode_display || wager.game_mode} · {wagerMapText(wager)} · BO{bestOf} · {wagerPlayRule(wager.play_rule).shortLabel} · ID #{wager.id?.slice(-8)}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {canReportScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
               <div className="rounded-xl border border-green/20 bg-green/10 px-5 py-3 text-center">
                 <p className="text-[9px] font-black uppercase tracking-wider text-green">Prize pool</p>
                 <p className="mt-1 font-mono text-2xl font-black text-green">{formatMoney(prizePool)}</p>
@@ -724,7 +733,12 @@ export default function WagersMatchRoom() {
               <Link to="/wagers" className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-bold text-vapor transition-all hover:border-primary/30 hover:text-primary">Back to wagers</Link>
             </div>
           </div>
-        </header>
+          </div>
+          <div className="grid gap-4 border-t border-white/[0.06] p-4 lg:grid-cols-2 lg:p-5">
+            <SimpleRoster title="Team Alpha" name={hostDisplayName} players={teamAPlayers} tone="cyan" score={wager.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={hostWinner} />
+            <SimpleRoster title="Team Bravo" name={challengerDisplayName} players={teamBPlayers} tone="orange" score={wager.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={challengerWinner} />
+          </div>
+        </section>
 
         {!isComplete && timeRemaining && (
           <div className={`relative mb-6 overflow-hidden rounded-2xl p-[1px] ${timeRemaining === "EXPIRED" ? "bg-gradient-to-r from-orange/45 via-red-400/20 to-orange/45" : "bg-gradient-to-r from-cyan/45 via-white/10 to-cyan/45"}`}>
@@ -748,15 +762,14 @@ export default function WagersMatchRoom() {
           <div className="mb-3 flex items-center gap-3 rounded-lg border border-cyan/20 bg-cyan/5 px-4 py-3 text-xs text-vapor"><Flag className="h-4 w-4 shrink-0 text-cyan" /><p><span className="font-black uppercase tracking-wider text-cyan">BO{bestOf} · First to {winsNeeded}</span><span className="ml-2">Both sides must submit the same final score before the result is confirmed.</span></p></div>
         )}
 
-        <div className="mb-6 grid gap-6 lg:grid-cols-2">
-          <SimpleRoster title="Team Alpha" name={hostDisplayName} players={teamAPlayers} tone="cyan" score={scoreA} setScore={setScoreA} scoreDisabled={!canReportScore} maxScore={winsNeeded} />
-          <SimpleRoster title="Team Bravo" name={challengerDisplayName} players={teamBPlayers} tone="orange" score={scoreB} setScore={setScoreB} scoreDisabled={!canReportScore} maxScore={winsNeeded} />
-        </div>
-
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
           <div className="min-w-0 space-y-6">
-            <div className="grid gap-6 md:grid-cols-2"><MatchStatusCard match={wager} /><ActivityTimeline match={wager} /></div>
-            <MatchRulesPanel matchType="wager" gameMode={wager.game_mode} playRule={wager.play_rule} />
+            <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(285px,0.8fr)]">
+              <MatchMapSeries maps={Array.isArray(wager.series_maps) && wager.series_maps.length ? wager.series_maps : (wager.final_map_name ? [wager.final_map_name] : [])} mode={wager.game_mode_display || wager.game_mode} host={wager.host_name || hostDisplayName} bestOf={bestOf} compact />
+              <MatchStatusCard match={wager} />
+            </div>
+            <ActivityTimeline match={wager} />
+            <MatchRulesPanel matchType="wager" gameMode={wager.game_mode} playRule={wager.play_rule} collapsible defaultOpen={false} />
 
         <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
           {canAdminResolve && (

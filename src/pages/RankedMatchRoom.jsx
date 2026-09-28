@@ -13,6 +13,7 @@ import {
   Shield,
   Swords,
   Trophy,
+  X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -122,19 +123,27 @@ function RosterPlayerCard({ player, color, slot, slots }) {
   );
 }
 
-function PlayerPanel({ label, color, players = [], slots = 1 }) {
+function PlayerPanel({ label, teamName, color, players = [], slots = 1, score, isComplete = false, isWinner = false }) {
   const colorClass = color === "cyan" ? "text-cyan" : "text-orange";
   const isAlpha = color === "cyan";
+  const accentText = isAlpha ? "text-cyan" : "text-orange";
 
   return (
     <div data-testid="ranked-roster-panel" className={`glass relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-card p-4 ${colorClass}`}>
       <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-px ${isAlpha ? "bg-cyan/65" : "bg-orange/65"}`} />
-      <div className="relative mb-4 flex items-center justify-between border-b border-white/[0.06] pb-3">
+      <div className="relative mb-4 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em]">{label}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <p className="truncate text-lg font-black text-white">{teamName || label}</p>
+            {isWinner ? <span className="inline-flex items-center gap-1 rounded-md border border-green/25 bg-green/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-green"><Trophy className="h-3 w-3" /> Winner</span> : null}
+          </div>
           <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.18em] text-vapor">Ranked roster · {slots}v{slots}</p>
         </div>
-        <span className={`rounded-full border bg-background/45 px-2.5 py-1 font-mono text-[10px] font-black ${players.length >= slots ? (isAlpha ? "border-cyan/25 text-cyan" : "border-orange/25 text-orange") : "border-white/10 text-vapor"}`}>{players.length}/{slots}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className={`rounded-full border bg-background/45 px-2.5 py-1 font-mono text-[10px] font-black ${players.length >= slots ? (isAlpha ? "border-cyan/25 text-cyan" : "border-orange/25 text-orange") : "border-white/10 text-vapor"}`}>{players.length}/{slots}</span>
+          {isComplete ? <div className={`min-w-16 rounded-xl border bg-black/20 px-3 py-2 text-center ${isWinner ? "border-green/25" : "border-white/10"}`}><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Final score</p><p className={`mt-1 font-mono text-2xl font-black ${isWinner ? "text-green" : accentText}`}>{score ?? 0}</p></div> : null}
+        </div>
       </div>
       <div className="grid min-h-0 flex-1 gap-3" style={{ gridTemplateRows: `repeat(${slots}, minmax(0, 1fr))` }}>
         {Array.from({ length: slots }, (_, index) => {
@@ -229,6 +238,7 @@ export default function RankedMatchRoom() {
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
+  const [scoreModalOpen, setScoreModalOpen] = useState(false);
 
   useEffect(() => {
     loadRoom();
@@ -458,6 +468,8 @@ export default function RankedMatchRoom() {
         return;
       }
 
+      setScoreModalOpen(false);
+
       if (response.data.status === "score_conflict") {
         toast({ title: "Score conflict", description: "A support ticket was opened for staff review.", variant: "destructive" });
         await loadRoom();
@@ -646,70 +658,32 @@ export default function RankedMatchRoom() {
 
   const predictedWinnerId = scoreWinner(match, scoreA, scoreB);
   const predictedWinnerName = predictedWinnerId === match.host_id ? match.host_name : match.challenger_name;
+  const isComplete = match.status === "completed";
+  const alphaWinner = isComplete && String(match.winner_id || "") === String(match.host_id || "");
+  const bravoWinner = isComplete && String(match.winner_id || "") === String(match.challenger_id || "");
 
   return (
     <div className="min-h-screen bg-obsidian py-6">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="dark-focus dark-media mb-6 rounded-xl border border-cyan/20 p-6">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div className="w-full lg:w-auto">
-              <div className="flex items-center gap-3 mb-2">
-                <span className={`w-3 h-3 rounded-full ${match.status === "completed" ? "bg-green" : "bg-cyan animate-pulse"}`} />
-                <span className="text-xs font-mono font-semibold text-cyan uppercase tracking-wider">
-                  Ranked Match - {formatStatus(match.status)}
-                </span>
-              </div>
-              <p className="text-sm text-vapor font-mono">
-                {match.team_size} {match.game_mode_display || match.game_mode} - {match.final_map_name || "Map pending"}
-              </p>
-              <p className="text-[10px] text-vapor font-mono mt-1">Match ID: #{match.id?.slice(-8)}</p>
+        <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/55 via-white/10 to-orange/55" />
+          <div className="flex flex-col gap-4 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan"><Swords className="h-4 w-4" /> Ranked match · {formatStatus(match.status)}</p>
+              <h1 className="mt-1.5 text-lg font-black">{match.team_size} {match.game_mode_display || match.game_mode}</h1>
+              <p className="mt-1 text-[10px] font-mono text-vapor">Map {match.final_map_name || "pending"} · ID #{match.id?.slice(-8)}</p>
             </div>
-
-            <div className="flex-1 flex items-center justify-center gap-4 md:gap-6 lg:gap-8">
-              <div className="text-center">
-                <p className="text-lg md:text-xl lg:text-2xl font-black text-cyan mb-1">TEAM ALPHA</p>
-                <p className="text-xs text-vapor">{match.host_name}</p>
-              </div>
-              <div className="flex items-center gap-2 md:gap-3 lg:gap-4">
-                <input
-                  type="number"
-                  value={scoreA}
-                  disabled={!canSubmitScore}
-                  min="0"
-                  max={winsNeeded}
-                  onChange={(event) => setScoreA(event.target.value === "" ? "" : Math.min(winsNeeded, Math.max(0, Number(event.target.value))))}
-                  onBlur={() => scoreA === "" && setScoreA(0)}
-                  className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-cyan focus:outline-none focus:border-cyan/30 disabled:opacity-60"
-                />
-                <span className="text-2xl md:text-3xl lg:text-4xl text-vapor font-bold">-</span>
-                <input
-                  type="number"
-                  value={scoreB}
-                  disabled={!canSubmitScore}
-                  min="0"
-                  max={winsNeeded}
-                  onChange={(event) => setScoreB(event.target.value === "" ? "" : Math.min(winsNeeded, Math.max(0, Number(event.target.value))))}
-                  onBlur={() => scoreB === "" && setScoreB(0)}
-                  className="w-14 md:w-16 lg:w-20 text-center bg-secondary border border-white/5 rounded-lg py-2 md:py-3 lg:py-4 text-3xl md:text-4xl lg:text-5xl font-black font-mono text-orange focus:outline-none focus:border-orange/30 disabled:opacity-60"
-                />
-              </div>
-              <div className="text-center">
-                <p className="text-lg md:text-xl lg:text-2xl font-black text-orange mb-1">TEAM BRAVO</p>
-                <p className="text-xs text-vapor">{match.challenger_name || "Opponent pending"}</p>
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {canSubmitScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
+              {timeRemaining ? <div className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs font-black ${timeRemaining === "EXPIRED" ? "border-orange/25 bg-orange/10 text-orange" : "border-cyan/20 bg-cyan/10 text-cyan"}`}><Clock className="h-4 w-4" /> {timeRemaining}</div> : null}
+              <Link to="/ranked" className="rounded-lg border border-white/[0.08] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor hover:text-white">Ranked</Link>
             </div>
-
-            {timeRemaining && (
-              <div className={`px-3 md:px-4 py-2 md:py-3 rounded-lg font-mono font-bold text-sm flex flex-col items-center ${
-                timeRemaining === "EXPIRED" ? "bg-red-500/20 text-red-400" : "bg-cyan/10 text-cyan"
-              }`}>
-                <Clock className="w-3 h-3 md:w-4 md:h-4 mb-1" />
-                <span>{timeRemaining}</span>
-                <span className="text-[8px] md:text-[9px] uppercase">Deadline</span>
-              </div>
-            )}
           </div>
-        </div>
+          <div className="grid gap-4 p-4 lg:grid-cols-2 lg:p-5">
+            <div className={arenaHeightClass(slotsPerRankedTeam(match))}><PlayerPanel label="Team Alpha" teamName={match.host_name} color="cyan" players={visibleAlphaPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} /></div>
+            <div className={arenaHeightClass(slotsPerRankedTeam(match))}><PlayerPanel label="Team Bravo" teamName={match.challenger_name || "Opponent pending"} color="orange" players={visibleBravoPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} /></div>
+          </div>
+        </section>
 
         {match.status === "completed" && (
           <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex items-center gap-3">
@@ -721,31 +695,14 @@ export default function RankedMatchRoom() {
           </div>
         )}
 
-        <div className="mb-4">
-          <MapVetoVertical wager={match} ranked compact />
-        </div>
-
-        <div className="grid xl:grid-cols-12 gap-6 mb-6">
-          <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} xl:col-span-3`}>
-            <PlayerPanel label="Team Alpha" color="cyan" players={visibleAlphaPlayers} slots={slotsPerRankedTeam(match)} />
+        <div className="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
+          <div className="min-w-0 space-y-6">
+            <MapVetoVertical wager={match} ranked compact />
+            <MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} />
           </div>
-          <div className="min-w-0 xl:col-span-6">
-            <MatchChat
-              conversationId={match.id}
-              matchType="ranked"
-              accent="cyan"
-              compact
-              sticky={false}
-              heightClass={arenaHeightClass(slotsPerRankedTeam(match))}
-            />
-          </div>
-          <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} xl:col-span-3`}>
-            <PlayerPanel label="Team Bravo" color="orange" players={visibleBravoPlayers} slots={slotsPerRankedTeam(match)} />
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} />
+          <aside className="min-w-0">
+            <MatchChat conversationId={match.id} matchType="ranked" accent="cyan" compact sticky={false} heightClass="h-[440px] xl:h-[520px]" />
+          </aside>
         </div>
 
         <div className="dark-focus dark-media mb-6 rounded-xl border border-white/10 p-5 sm:p-6">
@@ -759,13 +716,6 @@ export default function RankedMatchRoom() {
                 {resettingDispute ? "Resetting..." : "Reset Dispute & Continue Match"}
               </button>
             )}
-            <button
-              onClick={handleReportScore}
-              disabled={!canSubmitScore || !scoreIsValid || submitting}
-              className="flex-1 min-w-[200px] py-3 bg-green/10 text-green font-bold text-sm rounded-lg border border-green/20 hover:bg-green/20 transition-all uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Check className="w-4 h-4" /> {submitting ? "Submitting..." : "Submit Score"}
-            </button>
             <button
               onClick={() => handleSupportTicket("I need support for this ranked match.")}
               disabled={supporting}
@@ -852,6 +802,25 @@ export default function RankedMatchRoom() {
           )}
         </div>
       </div>
+
+      {scoreModalOpen && canSubmitScore && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="ranked-score-title">
+          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setScoreModalOpen(false)} aria-label="Close score dialog" />
+          <div className="dark-focus dark-media relative z-10 w-full max-w-md rounded-2xl border border-white/[0.1] bg-[#111821] p-5 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:p-6">
+            <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] pb-4">
+              <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">BO{match.best_of || 1}</p><h2 id="ranked-score-title" className="mt-1 text-lg font-black">Submit final score</h2><p className="mt-1 text-xs text-vapor">Both teams must submit the same result.</p></div>
+              <button type="button" onClick={() => setScoreModalOpen(false)} className="rounded-lg border border-white/[0.08] bg-black/20 p-2 text-vapor hover:text-white" aria-label="Close"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+              <label className="min-w-0 text-center"><span className="block truncate text-[9px] font-black uppercase tracking-wider text-cyan">{match.host_name || "Team Alpha"}</span><input type="number" value={scoreA} min="0" max={winsNeeded} onChange={(event) => setScoreA(event.target.value === "" ? "" : Math.min(winsNeeded, Math.max(0, Number(event.target.value))))} onBlur={() => scoreA === "" && setScoreA(0)} className="mt-2 w-full rounded-xl border border-cyan/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-cyan outline-none focus:border-cyan/50" /></label>
+              <span className="mb-4 rounded-full border border-white/10 bg-black/25 px-2 py-1 text-[8px] font-black uppercase text-vapor">VS</span>
+              <label className="min-w-0 text-center"><span className="block truncate text-[9px] font-black uppercase tracking-wider text-orange">{match.challenger_name || "Team Bravo"}</span><input type="number" value={scoreB} min="0" max={winsNeeded} onChange={(event) => setScoreB(event.target.value === "" ? "" : Math.min(winsNeeded, Math.max(0, Number(event.target.value))))} onBlur={() => scoreB === "" && setScoreB(0)} className="mt-2 w-full rounded-xl border border-orange/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-orange outline-none focus:border-orange/50" /></label>
+            </div>
+            <button type="button" onClick={handleReportScore} disabled={!scoreIsValid || submitting} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-xs font-black uppercase tracking-wider text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"><Check className="h-4 w-4" /> {submitting ? "Submitting..." : "Submit result"}</button>
+            {!scoreIsValid ? <p className="mt-2 text-center text-[9px] text-orange">One team must reach {winsNeeded} map {winsNeeded === 1 ? "win" : "wins"}.</p> : null}
+          </div>
+        </div>
+      )}
 
       {match.status === "completed" && personalResult && (
         <RankedResultOverlay match={match} result={personalResult} onContinue={() => navigate("/ranked", { replace: true })} />

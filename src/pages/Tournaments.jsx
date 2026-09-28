@@ -93,6 +93,19 @@ const statusTone = (status) => {
   if (status === "cancelled") return "text-red-300 border-red-500/20 bg-red-500/10";
   return "text-vapor border-white/5 bg-secondary";
 };
+const tournamentSchedulePriority = (status) => ({
+  live: 5,
+  in_progress: 5,
+  open: 4,
+  registration: 4,
+  closed: 3,
+  completed: 2,
+  cancelled: 1,
+  draft: 0,
+}[status] ?? 0);
+const tournamentScheduleDate = (tournament) => new Date(
+  tournament?.created_date || tournament?.updated_date || tournament?.start_date || 0,
+).getTime();
 const compactModeLabel = (tournament) => `${tournament?.team_size || "1v1"} - ${modeLabels[tournament?.game_mode] || tournament?.game_mode || "Mode TBD"}`;
 const tournamentImageUrl = (tournament) => tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || "";
 const tournamentBannerUrl = (tournament) => tournament?.banner_url || tournament?.cover_image_url || tournament?.image_url || "";
@@ -178,6 +191,9 @@ const currentMatchForUser = (matches, participantKeys, teamKeys) => {
 function FeaturedTournamentHero({ tournament, now, onSelect }) {
   const bannerUrl = tournamentBannerUrl(tournament);
   const entryInfo = tournamentEntryInfo(tournament);
+  const actionLabel = ["open", "registration"].includes(tournament.status)
+    ? "Enter tournament"
+    : "View tournament";
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
@@ -237,7 +253,7 @@ function FeaturedTournamentHero({ tournament, now, onSelect }) {
             onClick={() => onSelect(tournament.id)}
             className="mt-5 inline-flex w-full shrink-0 items-center justify-between rounded-xl bg-orange px-5 py-3.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_rgba(255,130,0,.16)] transition-all hover:-translate-y-0.5 hover:bg-orange/90 hover:shadow-[0_14px_34px_rgba(255,130,0,.24)]"
           >
-            View tournament <ArrowRight className="h-4 w-4" />
+            {actionLabel} <ArrowRight className="h-4 w-4" />
           </button>
         </aside>
       </div>
@@ -537,6 +553,14 @@ export default function Tournaments() {
   const filteredTournaments = useMemo(() => (
     officialTournaments.filter((tournament) => filter === "All" || statusLabels[tournament.status] === filter || tournament.status === filter)
   ), [officialTournaments, filter]);
+  const visibleScheduleTournaments = useMemo(() => (
+    [...filteredTournaments]
+      .sort((a, b) => {
+        const priorityDifference = tournamentSchedulePriority(b.status) - tournamentSchedulePriority(a.status);
+        return priorityDifference || tournamentScheduleDate(b) - tournamentScheduleDate(a);
+      })
+      .slice(0, 10)
+  ), [filteredTournaments]);
   const liveTournaments = officialTournaments.filter((tournament) => ["live", "in_progress"].includes(tournament.status));
   const selectedTournament = officialTournaments.find((tournament) => tournament.id === selectedTournamentId);
   const selectedMatches = matchesByTournament[selectedTournamentId] || [];
@@ -701,15 +725,15 @@ export default function Tournaments() {
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Official competition</p>
                 <h2 className="mt-1 text-lg font-black">Tournament schedule</h2>
               </div>
-              <span className="rounded-full bg-white/[0.055] px-2.5 py-1 text-[10px] font-bold text-vapor">{filteredTournaments.length}</span>
+              <span className="rounded-full bg-white/[0.055] px-2.5 py-1 text-[10px] font-bold text-vapor">{visibleScheduleTournaments.length}</span>
             </div>
             <div className="space-y-2 xl:max-h-[780px] xl:overflow-y-auto xl:pr-1">
-              {filteredTournaments.length === 0 ? (
+              {visibleScheduleTournaments.length === 0 ? (
                 <div className="rounded-lg border border-white/5 px-5 py-10 text-center">
                   <Trophy className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
                   <p className="text-sm text-vapor">No tournaments found.</p>
                 </div>
-              ) : filteredTournaments.map((tournament) => (
+              ) : visibleScheduleTournaments.map((tournament) => (
                 <TournamentCard
                   key={tournament.id}
                   tournament={tournament}
