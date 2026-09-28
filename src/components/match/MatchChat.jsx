@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, Shield } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -43,17 +43,6 @@ const isStaffMessage = (message) => {
 const displayMessageContent = (message, staff) => (
   staff ? stripStaffPrefix(message.content) : message.content
 );
-
-function AdminBadge() {
-  return (
-    <span
-      title="Official Topfragg admin"
-      className="inline-flex shrink-0 items-center rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.08)]"
-    >
-      Admin
-    </span>
-  );
-}
 
 const playerIdentifier = (player) => String(player?.user_id || player?.id || player || "");
 
@@ -220,7 +209,7 @@ export default function MatchChat({
             <MessageSquare className="w-8 h-8 text-vapor/30 mb-3" />
             <p className="text-sm text-vapor">No chat messages yet.</p>
           </div>
-        ) : messages.map((message) => {
+        ) : messages.map((message, messageIndex) => {
           const staff = isStaffMessage(message);
           const senderId = String(message.sender_id || "");
           const teamSide = !staff && teamAIds.has(senderId) ? "a" : (!staff && teamBIds.has(senderId) ? "b" : null);
@@ -230,30 +219,47 @@ export default function MatchChat({
           const senderName = displaySenderName(message);
           const senderPlayer = playersById.get(senderId);
           const senderAvatar = message.sender_avatar_url || senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "") || "";
+          const previousMessage = messages[messageIndex - 1];
+          const groupedWithPrevious = Boolean(
+            previousMessage
+            && String(previousMessage.sender_id || "") === senderId
+            && isStaffMessage(previousMessage) === staff
+            && new Date(message.created_date).getTime() - new Date(previousMessage.created_date).getTime() < 5 * 60 * 1000
+          );
+          const avatar = groupedWithPrevious ? (
+            <span className="w-10 shrink-0" aria-hidden="true" />
+          ) : staff ? (
+            <span className="flex w-10 shrink-0 flex-col items-center justify-center gap-1 text-center">
+              <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-red-400/35 bg-red-500/10 text-red-300 shadow-[0_0_12px_rgba(248,113,113,0.12)]">
+                <Shield className="h-[17px] w-[17px] fill-red-500/15" />
+              </span>
+              <span className="block w-full text-center text-[7px] font-black uppercase leading-none tracking-[0.08em] text-red-300">Admin</span>
+            </span>
+          ) : (
+            <span className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-black/30 text-[9px] font-black ${teamTone?.border || "border-white/10 text-white"}`}>
+              {senderAvatar ? <img src={senderAvatar} alt="" className="h-full w-full object-cover" /> : senderName.charAt(0).toUpperCase()}
+            </span>
+          );
           return (
             <div
               key={message.id}
-              className={`${compact ? "px-1 py-2.5" : "px-1 py-3"} w-fit min-w-[58%] max-w-[92%] border-b border-white/[0.06] ${isTeamB ? "ml-auto" : "mr-auto"} ${isOwnMessage ? "border-white/[0.1]" : ""}`}
+              className={`flex w-full items-end gap-2 ${isTeamB ? "justify-end" : "justify-start"} ${groupedWithPrevious ? "mt-1" : "mt-3"}`}
             >
-              <div className={`mb-1 flex items-center justify-between gap-3 ${isTeamB ? "flex-row-reverse" : ""}`}>
-                <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "flex-row-reverse" : ""}`}>
-                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-black/30 text-[9px] font-black ${staff ? "border-violet-400/30 text-violet-200" : teamTone?.border || "border-white/10 text-white"}`}>
-                    {senderAvatar ? <img src={senderAvatar} alt="" className="h-full w-full object-cover" /> : senderName.charAt(0).toUpperCase()}
-                  </span>
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${staff ? "bg-violet-300 shadow-[0_0_10px_rgb(196,181,253)]" : teamTone?.dot || "bg-vapor/40"}`} />
-                  <span className={`truncate text-xs font-black ${staff ? "text-violet-200" : teamTone?.name || "text-white"}`}>
-                    {senderName}
-                  </span>
-                  {staff && <AdminBadge />}
-                  {teamSide && (
-                    <span className={`rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider ${teamTone.badge}`}>
-                      Team {teamSide.toUpperCase()}
-                    </span>
-                  )}
+              {!isTeamB && avatar}
+              <div className="min-w-0 max-w-[82%]">
+                {!groupedWithPrevious && (
+                  <div className={`mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "justify-end" : "justify-start"}`}>
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${staff ? "bg-red-400 shadow-[0_0_10px_rgb(248,113,113)]" : teamTone?.dot || "bg-vapor/40"}`} />
+                    <span className={`truncate text-[13px] font-black ${staff ? "text-red-200" : teamTone?.name || "text-white"}`}>{senderName}</span>
+                    {teamSide && <span className={`rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider ${teamTone.badge}`}>Team {teamSide.toUpperCase()}</span>}
+                    <span className="text-[10px] text-vapor/75">- {formatDate(message.created_date)}</span>
+                  </div>
+                )}
+                <div className={`w-fit max-w-full rounded-xl border border-white/[0.07] bg-white/[0.045] px-3 py-2 shadow-sm ${isTeamB ? "ml-auto rounded-br-sm" : "mr-auto rounded-bl-sm"} ${isOwnMessage ? "border-white/[0.11]" : ""}`}>
+                  <p className={`${compact ? "text-[13px]" : "text-[15px]"} whitespace-pre-wrap break-words leading-relaxed text-foreground/85 ${isTeamB ? "text-right" : "text-left"}`}>{displayMessageContent(message, staff)}</p>
                 </div>
-                <span className="shrink-0 text-[10px] text-vapor">{formatDate(message.created_date)}</span>
               </div>
-              <p className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap leading-relaxed text-foreground/85 ${isTeamB ? "text-right" : "text-left"}`}>{displayMessageContent(message, staff)}</p>
+              {isTeamB && avatar}
             </div>
           );
         })}
