@@ -52,14 +52,12 @@ const teamStyles = {
     background: "bg-cyan/[0.055]",
     name: "text-cyan",
     dot: "bg-cyan shadow-[0_0_10px_hsl(var(--cyan))]",
-    badge: "border-cyan/20 bg-cyan/[0.08] text-cyan",
   },
   orange: {
     border: "border-orange/20",
     background: "bg-orange/[0.055]",
     name: "text-orange",
     dot: "bg-orange shadow-[0_0_10px_hsl(var(--orange))]",
-    badge: "border-orange/20 bg-orange/[0.08] text-orange",
   },
 };
 
@@ -253,7 +251,6 @@ export default function MatchChat({
                   <div className={`mb-1 flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "justify-end" : "justify-start"}`}>
                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${staff ? "bg-red-400 shadow-[0_0_10px_rgb(248,113,113)]" : teamTone?.dot || "bg-vapor/40"}`} />
                     <span className={`truncate text-[13px] font-black ${staff ? "text-red-200" : teamTone?.name || "text-white"}`}>{senderName}</span>
-                    {teamSide && <span className={`rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider ${teamTone.badge}`}>Team {teamSide.toUpperCase()}</span>}
                     <span className="text-[9px] font-medium text-vapor/65">• {formatDate(message.created_date)}</span>
                   </div>
                 )}
