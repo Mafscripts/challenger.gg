@@ -29,6 +29,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import MatchChat from "@/components/match/MatchChat";
 import { toast } from "@/components/ui/use-toast";
+import { getMapImage } from "@/lib/cdlMaps";
 
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const defaultStreamerMapPools = {
@@ -1688,12 +1689,20 @@ function MapPills({ maps, compact = false, fallback = defaultStreamerMaps }) {
     return <p className="text-xs font-bold text-vapor">Maps pending</p>;
   }
   return (
-    <div className="flex flex-wrap gap-2">
-      {visibleMaps.map((map, index) => (
-        <span key={`${map}-${index}`} className={`rounded-md border border-cyan/15 bg-cyan/10 font-bold text-cyan ${compact ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-xs"}`}>
-          {map}
-        </span>
-      ))}
+    <div className={`grid gap-2 ${compact ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"}`}>
+      {visibleMaps.map((map, index) => {
+        const image = getMapImage(map);
+        return (
+          <div key={`${map}-${index}`} className={`group relative overflow-hidden rounded-lg border border-white/10 bg-secondary ${compact ? "h-14" : "h-24"}`}>
+            {image ? <img src={image} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /> : null}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/65 to-black/20" />
+            <div className="absolute inset-x-0 bottom-0 p-2">
+              {!compact && <p className="mb-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan">Map {index + 1}</p>}
+              <p className={`${compact ? "text-[10px]" : "text-sm"} truncate font-black text-white drop-shadow-md`}>{map}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

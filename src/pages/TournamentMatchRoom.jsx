@@ -1380,6 +1380,10 @@ export default function TournamentMatchRoom() {
                 conversationId={match.id}
                 matchType="tournament"
                 accent="orange"
+                teamAPlayerIds={teamAPlayers}
+                teamBPlayerIds={teamBPlayers}
+                teamAColor="orange"
+                teamBColor="cyan"
                 live
                 compact
                 sticky={false}

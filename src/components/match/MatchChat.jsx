@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -40,16 +40,35 @@ const displayMessageContent = (message, staff) => (
   staff ? stripStaffPrefix(message.content) : message.content
 );
 
-function StaffBadge() {
+function AdminBadge() {
   return (
     <span
-      title="Official Topfragg staff"
-      className="inline-flex shrink-0 items-center rounded border border-red-400/25 bg-red-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-red-300"
+      title="Official Topfragg admin"
+      className="inline-flex shrink-0 items-center rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.08)]"
     >
-      Staff
+      Admin
     </span>
   );
 }
+
+const playerIdentifier = (player) => String(player?.user_id || player?.id || player || "");
+
+const teamStyles = {
+  cyan: {
+    border: "border-cyan/20",
+    background: "bg-cyan/[0.055]",
+    name: "text-cyan",
+    dot: "bg-cyan shadow-[0_0_10px_hsl(var(--cyan))]",
+    badge: "border-cyan/20 bg-cyan/[0.08] text-cyan",
+  },
+  orange: {
+    border: "border-orange/20",
+    background: "bg-orange/[0.055]",
+    name: "text-orange",
+    dot: "bg-orange shadow-[0_0_10px_hsl(var(--orange))]",
+    badge: "border-orange/20 bg-orange/[0.08] text-orange",
+  },
+};
 
 export default function MatchChat({
   conversationId,
@@ -64,6 +83,10 @@ export default function MatchChat({
   sticky = true,
   compact = false,
   inputActions = null,
+  teamAPlayerIds = [],
+  teamBPlayerIds = [],
+  teamAColor = "cyan",
+  teamBColor = "orange",
 }) {
   const [messages, setMessages] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -74,6 +97,8 @@ export default function MatchChat({
   const inputRef = useRef(null);
   const previousMessageCountRef = useRef(0);
   const tone = accents[accent] || accents.cyan;
+  const teamAIds = useMemo(() => new Set(teamAPlayerIds.map(playerIdentifier).filter(Boolean)), [teamAPlayerIds]);
+  const teamBIds = useMemo(() => new Set(teamBPlayerIds.map(playerIdentifier).filter(Boolean)), [teamBPlayerIds]);
 
   const scrollChatToBottom = (behavior = "smooth") => {
     window.requestAnimationFrame(() => {
@@ -178,7 +203,7 @@ export default function MatchChat({
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
-      <div ref={chatBodyRef} className={`flex-1 overflow-y-auto ${compact ? "px-3" : "px-4"}`}>
+      <div ref={chatBodyRef} className={`flex-1 overflow-y-auto ${compact ? "space-y-2 p-3" : "space-y-2.5 p-4"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
@@ -188,18 +213,37 @@ export default function MatchChat({
           </div>
         ) : messages.map((message) => {
           const staff = isStaffMessage(message);
+          const senderId = String(message.sender_id || "");
+          const teamSide = !staff && teamAIds.has(senderId) ? "a" : (!staff && teamBIds.has(senderId) ? "b" : null);
+          const teamTone = teamSide === "a" ? teamStyles[teamAColor] : teamSide === "b" ? teamStyles[teamBColor] : null;
+          const isOwnMessage = String(currentUser?.id || "") === senderId;
           return (
-            <div key={message.id} className={`${compact ? "py-2.5" : "py-3"} border-b border-white/[0.06] last:border-b-0`}>
+            <div
+              key={message.id}
+              className={`${compact ? "px-3 py-2.5" : "px-3.5 py-3"} rounded-xl border transition-colors ${
+                staff
+                  ? "border-violet-400/20 bg-violet-400/[0.055]"
+                  : teamTone
+                    ? `${teamTone.border} ${teamTone.background}`
+                    : "border-white/[0.07] bg-white/[0.025]"
+              } ${isOwnMessage ? "ring-1 ring-inset ring-white/[0.035]" : ""}`}
+            >
               <div className="mb-1 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <span className="truncate text-xs font-black text-white">
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${staff ? "bg-violet-300 shadow-[0_0_10px_rgb(196,181,253)]" : teamTone?.dot || "bg-vapor/40"}`} />
+                  <span className={`truncate text-xs font-black ${staff ? "text-violet-200" : teamTone?.name || "text-white"}`}>
                     {displaySenderName(message)}
                   </span>
-                  {staff && <StaffBadge />}
+                  {staff && <AdminBadge />}
+                  {teamSide && (
+                    <span className={`rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider ${teamTone.badge}`}>
+                      Team {teamSide.toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <span className="shrink-0 text-[10px] text-vapor">{formatDate(message.created_date)}</span>
               </div>
-              <p className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap text-foreground/80`}>{displayMessageContent(message, staff)}</p>
+              <p className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap leading-relaxed text-foreground/85`}>{displayMessageContent(message, staff)}</p>
             </div>
           );
         })}

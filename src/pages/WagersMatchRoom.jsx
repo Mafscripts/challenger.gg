@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
   AlertTriangle, Clock, Check,
-  AlertCircle, Award, Crown, DollarSign, Flag, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy, X
+  AlertCircle, Award, Crown, DollarSign, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy, X
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -758,10 +758,6 @@ export default function WagersMatchRoom() {
           <div className="glass mb-6 flex items-center gap-3 rounded-xl border border-green/20 bg-green/5 p-5"><Trophy className="h-5 w-5 text-green" /><div><p className="font-bold text-green">Winner: {wager.winner_name || "Match completed"}</p><p className="text-xs text-vapor">Final score {wager.winner_score ?? scoreA}-{wager.loser_score ?? scoreB}</p></div></div>
         )}
 
-        {!isComplete && (
-          <div className="mb-3 flex items-center gap-3 rounded-lg border border-cyan/20 bg-cyan/5 px-4 py-3 text-xs text-vapor"><Flag className="h-4 w-4 shrink-0 text-cyan" /><p><span className="font-black uppercase tracking-wider text-cyan">BO{bestOf} · First to {winsNeeded}</span><span className="ml-2">Both sides must submit the same final score before the result is confirmed.</span></p></div>
-        )}
-
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
           <div className="min-w-0 space-y-6">
             <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(285px,0.8fr)]">
@@ -807,13 +803,6 @@ export default function WagersMatchRoom() {
             </div>
           )}
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={handleReportScore}
-              disabled={!canReportScore || submitting}
-              className="flex min-w-[220px] flex-1 items-center justify-center gap-2 rounded-lg border border-green/20 bg-green/10 px-6 py-3 text-sm font-black uppercase tracking-wider text-green transition-all hover:bg-green/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Check className="h-4 w-4" /> {submitting ? "Submitting..." : currentTeamHasReported ? "Score Submitted" : "Submit Score"}
-            </button>
             {needsPayment && (
               <button
                 onClick={handlePayEntry}
@@ -860,9 +849,44 @@ export default function WagersMatchRoom() {
         </div>
             <button onClick={loadWager} className="inline-flex items-center gap-2 rounded-lg border border-white/5 bg-secondary/50 px-4 py-3 text-sm font-bold text-vapor hover:bg-secondary"><RefreshCw className="h-4 w-4" /> Refresh room</button>
           </div>
-          <aside className="min-w-0"><MatchChat conversationId={wager.id} matchType="wager" accent="cyan" live compact sticky={false} heightClass="h-[440px] xl:h-[620px]" /></aside>
+          <aside className="min-w-0"><MatchChat conversationId={wager.id} matchType="wager" accent="cyan" teamAPlayerIds={teamAPlayers} teamBPlayerIds={teamBPlayers} live compact sticky={false} heightClass="h-[440px] xl:h-[620px]" /></aside>
         </div>
       </div>
+
+      {scoreModalOpen && canReportScore && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setScoreModalOpen(false)}>
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between border-b border-white/[0.07] p-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan">BO{bestOf} wager match</p>
+                <h2 className="mt-2 text-xl font-black">Submit final score</h2>
+                <p className="mt-1 text-xs leading-relaxed text-vapor">Your opponent must submit the same result before it is confirmed.</p>
+              </div>
+              <button type="button" onClick={() => setScoreModalOpen(false)} className="rounded-lg border border-white/10 bg-secondary p-2 text-vapor transition-colors hover:text-white" aria-label="Close score form">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-4">
+                <label className="text-center">
+                  <span className="mb-2 block truncate text-[10px] font-black uppercase tracking-wider text-orange">{hostDisplayName}</span>
+                  <input type="number" min="0" max={winsNeeded} value={scoreA} onChange={(event) => setScoreA(Math.max(0, Math.min(winsNeeded, Number(event.target.value) || 0)))} className="w-full rounded-lg border border-orange/20 bg-secondary px-3 py-3 text-center font-mono text-3xl font-black text-orange outline-none focus:border-orange/60" />
+                </label>
+                <span className="mt-5 rounded-full border border-white/10 bg-card px-2 py-1 text-[10px] font-black uppercase text-vapor">vs</span>
+                <label className="text-center">
+                  <span className="mb-2 block truncate text-[10px] font-black uppercase tracking-wider text-cyan">{challengerDisplayName}</span>
+                  <input type="number" min="0" max={winsNeeded} value={scoreB} onChange={(event) => setScoreB(Math.max(0, Math.min(winsNeeded, Number(event.target.value) || 0)))} className="w-full rounded-lg border border-cyan/20 bg-secondary px-3 py-3 text-center font-mono text-3xl font-black text-cyan outline-none focus:border-cyan/60" />
+                </label>
+              </div>
+              <button type="button" onClick={handleReportScore} disabled={submitting || scoreA === scoreB} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-black transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
+                <Check className="h-4 w-4" /> {submitting ? "Submitting..." : "Submit result"}
+              </button>
+              {scoreA === scoreB && <p className="mt-3 text-center text-xs text-orange">A final score cannot be tied.</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

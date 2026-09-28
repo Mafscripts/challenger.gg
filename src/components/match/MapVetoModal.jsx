@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Shield, Target, Zap } from "lucide-react";
+import { getMapImage } from "@/lib/cdlMaps";
 
 const mapsByMode = {
   snd: [
@@ -137,8 +138,10 @@ export default function MapVetoModal({ isOpen, onClose, wager, user, onComplete 
                   >
                     <div className="aspect-video relative">
                       <img
-                        src={map.img}
+                        src={getMapImage(map.name) || map.img}
                         alt={map.name}
+                        loading="lazy"
+                        decoding="async"
                         className={`w-full h-full object-cover ${isBanned ? "grayscale" : ""}`}
                       />
                       

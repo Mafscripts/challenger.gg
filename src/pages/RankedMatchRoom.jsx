@@ -3,16 +3,18 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
   AlertCircle,
+  ChevronDown,
   Check,
   Clock,
   Flame,
   Flag,
-  HelpCircle,
+  Gavel,
   Percent,
   RefreshCw,
-  Shield,
   Swords,
+  Ticket,
   Trophy,
+  Users,
   X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -31,11 +33,6 @@ const playerName = (user, fallback = "Unnamed player") => (
 );
 
 const formatStatus = (status) => String(status || "open").replace(/_/g, " ");
-
-function scoreWinner(match, scoreA, scoreB) {
-  if (scoreA === scoreB) return null;
-  return scoreA > scoreB ? match.host_id : match.challenger_id;
-}
 
 const winsNeededFor = (match) => Math.floor(Math.max(1, Number(match?.best_of) || 1) / 2) + 1;
 const validSeriesScore = (match, scoreA, scoreB) => {
@@ -64,14 +61,12 @@ const roomRosterNames = (match, side) => {
 };
 const roomRosterSignature = (match) => [...roomRosterIds(match, "alpha"), "|", ...roomRosterIds(match, "bravo")].join(":");
 const roomRosterFull = (match) => roomRosterIds(match, "alpha").length >= slotsPerRankedTeam(match) && roomRosterIds(match, "bravo").length >= slotsPerRankedTeam(match);
-// The roster columns and chat deliberately share this height. The larger formats
-// need enough room for every card's natural content, not only its minimum height.
 const arenaHeightClass = (slots) => ({
-  1: "h-[365px]",
-  2: "h-[455px]",
-  3: "h-[575px]",
-  4: "h-[705px]",
-}[slots] || "h-[705px]");
+  1: "h-[320px]",
+  2: "h-[460px]",
+  3: "h-[540px]",
+  4: "h-[720px]",
+}[slots] || "h-[720px]");
 
 function RosterPlayerCard({ player, color, slot, slots }) {
   const rank = getRankForElo(player.elo || 0);
@@ -79,20 +74,66 @@ function RosterPlayerCard({ player, color, slot, slots }) {
   const matches = Math.max(Number(player.matches_played || 0), Number(player.wins || 0) + Number(player.losses || 0));
   const winRate = matches > 0 ? Math.round((Number(player.wins || 0) / matches) * 100) : 0;
   const isAlpha = color === "cyan";
-  const roomy = slots <= 2;
+  // The wide 1v1 presentation needs a full row. In 2v2 it became too tall for
+  // the available half-row and clipped the player name and match statistics.
+  const roomy = slots === 1;
   const accent = isAlpha
     ? "border-white/[0.08] shadow-[inset_3px_0_0_hsl(var(--cyan)),0_8px_24px_rgba(0,0,0,0.16)]"
     : "border-white/[0.08] shadow-[inset_3px_0_0_hsl(var(--orange)),0_8px_24px_rgba(0,0,0,0.16)]";
   const accentText = isAlpha ? "text-cyan" : "text-orange";
   const accentBg = isAlpha ? "bg-cyan" : "bg-orange";
 
+  if (!roomy) {
+    return (
+      <div data-testid="ranked-player-card" className={`group/player relative flex h-full min-h-[140px] flex-col justify-between overflow-hidden rounded-xl border bg-gradient-to-br from-[#283440] via-[#202b36] to-[#151d27] p-3 ${accent} transition duration-300 hover:border-white/[0.16] ${player.is_premium ? "hover:-translate-y-0.5" : ""}`}>
+        {player.is_premium && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/4 skew-x-[-18deg] bg-gradient-to-r from-transparent via-purple-300/[0.08] to-transparent opacity-0 transition-all duration-700 group-hover/player:left-[115%] group-hover/player:opacity-100" />}
+        <div className="relative flex min-w-0 items-center gap-2.5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-black/25 shadow-inner">
+            <div><RankBadge rank={rank.tier} size="sm" showLabel={false} /></div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <p className="truncate text-base font-black tracking-tight text-white">{player.name}</p>
+              <UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
+              <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[6px] font-black uppercase tracking-wider ${accentText} ${isAlpha ? "border-cyan/15 bg-cyan/[0.06]" : "border-orange/15 bg-orange/[0.06]"}`}>S{player.season || 1}</span>
+            </div>
+            <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
+            <div className="mt-1 flex items-center gap-2">
+              <span className={`text-[7px] font-black uppercase tracking-wider ${accentText}`}>{rank.name}</span>
+              <div className="h-0.5 min-w-8 flex-1 overflow-hidden rounded-full bg-white/[0.07]"><div className={`h-full rounded-full ${accentBg}`} style={{ width: `${rankProgress}%` }} /></div>
+            </div>
+          </div>
+          <div className={`min-w-[66px] shrink-0 rounded-lg border bg-black/25 px-2.5 py-2 text-center ${isAlpha ? "border-cyan/15" : "border-orange/15"}`}>
+            <p className={`font-mono text-base font-black ${accentText}`}>{Number(player.elo || 0).toLocaleString()}</p>
+            <p className="text-[7px] font-black uppercase tracking-[0.14em] text-vapor/70">Elo</p>
+          </div>
+        </div>
+
+        <div className="relative mt-2.5 grid grid-cols-3 overflow-hidden rounded-lg border border-white/[0.08] bg-black/25">
+          <div className="px-2 py-1.5 text-center">
+            <p className="text-[8px] font-black uppercase tracking-[0.13em] text-vapor">Record</p>
+            <p className="mt-1 font-mono text-xs font-black text-white">{player.wins || 0}W <span className="text-vapor/45">/</span> {player.losses || 0}L</p>
+          </div>
+          <div className="border-x border-white/[0.08] px-2 py-1.5 text-center">
+            <p className="text-[8px] font-black uppercase tracking-[0.13em] text-vapor">Win rate</p>
+            <p className={`mt-1 font-mono text-xs font-black ${accentText}`}>{winRate}%</p>
+          </div>
+          <div className="px-2 py-1.5 text-center">
+            <p className="text-[8px] font-black uppercase tracking-[0.13em] text-vapor">Streak</p>
+            <p className="mt-1 font-mono text-xs font-black text-white">{player.win_streak || 0}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div data-testid="ranked-player-card" className={`group/player relative flex h-full min-w-0 overflow-hidden rounded-xl border bg-gradient-to-br from-[#25303c] via-[#202a35] to-[#151e28] ${accent} transition duration-300 hover:border-white/[0.14] ${player.is_premium ? "hover:-translate-y-0.5" : ""} ${roomy ? "min-h-[124px] p-3.5" : "min-h-0 p-2.5"}`}>
+    <div data-testid="ranked-player-card" className={`group/player relative flex h-full min-w-0 overflow-hidden rounded-lg border bg-gradient-to-br from-[#25303c] via-[#202a35] to-[#151e28] ${accent} transition duration-300 hover:border-white/[0.14] ${player.is_premium ? "hover:-translate-y-0.5" : ""} ${roomy ? "min-h-[108px] p-3" : "min-h-0 p-2"}`}>
       {player.is_premium && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/4 skew-x-[-18deg] bg-gradient-to-r from-transparent via-purple-300/[0.08] to-transparent opacity-0 transition-all duration-700 group-hover/player:left-[115%] group-hover/player:opacity-100" />}
       <span className="absolute right-3 top-3 font-mono text-[8px] font-bold tracking-[0.14em] text-vapor/40">#{String(slot).padStart(2, "0")}</span>
       <div className={`relative flex min-w-0 flex-1 ${roomy ? "items-center gap-3" : "items-start gap-2.5"}`}>
-        <div className={`relative flex shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-black/25 ${roomy ? "h-[66px] w-[66px]" : "h-[56px] w-[56px]"}`}>
-          <div className={roomy ? "scale-[1.18]" : "scale-110"}><RankBadge rank={rank.tier} size="sm" showLabel={false} /></div>
+        <div className={`relative flex shrink-0 items-center justify-center rounded-lg border border-white/[0.07] bg-black/25 ${roomy ? "h-[58px] w-[58px]" : "h-11 w-11"}`}>
+          <div className={roomy ? "scale-110" : "scale-95"}><RankBadge rank={rank.tier} size="sm" showLabel={false} /></div>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2 pr-7">
@@ -129,9 +170,9 @@ function PlayerPanel({ label, teamName, color, players = [], slots = 1, score, i
   const accentText = isAlpha ? "text-cyan" : "text-orange";
 
   return (
-    <div data-testid="ranked-roster-panel" className={`glass relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-card p-4 ${colorClass}`}>
+    <div data-testid="ranked-roster-panel" className={`glass relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-card p-3 ${colorClass}`}>
       <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-px ${isAlpha ? "bg-cyan/65" : "bg-orange/65"}`} />
-      <div className="relative mb-4 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
+      <div className="relative mb-3 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-2.5">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em]">{label}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -145,14 +186,40 @@ function PlayerPanel({ label, teamName, color, players = [], slots = 1, score, i
           {isComplete ? <div className={`min-w-16 rounded-xl border bg-black/20 px-3 py-2 text-center ${isWinner ? "border-green/25" : "border-white/10"}`}><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Final score</p><p className={`mt-1 font-mono text-2xl font-black ${isWinner ? "text-green" : accentText}`}>{score ?? 0}</p></div> : null}
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 gap-3" style={{ gridTemplateRows: `repeat(${slots}, minmax(0, 1fr))` }}>
+      <div className="grid min-h-0 flex-1 gap-2.5" style={{ gridTemplateRows: `repeat(${slots}, minmax(${slots >= 3 ? "140px" : "0px"}, 1fr))` }}>
         {Array.from({ length: slots }, (_, index) => {
           const player = players[index];
-          if (!player) return <div key={`open-${index}`} className="group/slot flex min-h-[62px] flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 bg-background/15 text-[9px] font-black uppercase tracking-[0.16em] text-vapor/45"><span className={`mr-2 h-1.5 w-1.5 rounded-full ${isAlpha ? "bg-cyan/40" : "bg-orange/40"}`} />Open slot {index + 1}</div>;
+          if (!player) return <div key={`open-${index}`} className="group/slot flex min-h-[48px] flex-1 items-center justify-center rounded-lg border border-dashed border-white/10 bg-background/15 text-[8px] font-black uppercase tracking-[0.16em] text-vapor/45"><span className={`mr-2 h-1.5 w-1.5 rounded-full ${isAlpha ? "bg-cyan/40" : "bg-orange/40"}`} />Open slot {index + 1}</div>;
           return <RosterPlayerCard key={player.id} player={player} color={color} slot={index + 1} slots={slots} />;
         })}
       </div>
     </div>
+  );
+}
+
+function RankedAdminTools({ match, busy, onResetDispute, onCancel, onRefresh }) {
+  return (
+    <details className="group rounded-xl border border-white/[0.08] bg-card p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/15 [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2"><Gavel className="h-3.5 w-3.5" /> Admin tools</span>
+        <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-2 grid gap-2 rounded-lg border border-white/[0.06] bg-black/15 p-2">
+        {["score_conflict", "disputed"].includes(match.status) && (
+          <button type="button" onClick={onResetDispute} disabled={busy} className="flex items-center justify-center gap-2 rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15 disabled:opacity-40">
+            <RefreshCw className="h-3.5 w-3.5" /> Reset dispute
+          </button>
+        )}
+        <button type="button" onClick={onRefresh} className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-secondary/60 px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-vapor hover:text-white">
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh room
+        </button>
+        {!['completed', 'cancelled'].includes(match.status) && (
+          <button type="button" onClick={onCancel} className="flex items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-400 hover:bg-red-500/20">
+            <Flag className="h-3.5 w-3.5" /> Staff cancel
+          </button>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -314,6 +381,12 @@ export default function RankedMatchRoom() {
   const joinedOpponentCount = Math.max(0, roomRosterIds(match, "alpha").length + roomRosterIds(match, "bravo").length - 1);
   const emptyLobbyCancelLocked = joinedOpponentCount === 0 && timeRemaining !== "EXPIRED";
   const cancelVoteLocked = joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
+  const cancelVoteUserIds = Array.isArray(match?.cancel_vote_user_ids)
+    ? match.cancel_vote_user_ids
+    : match?.cancel_vote_requested_by ? [match.cancel_vote_requested_by] : [];
+  const cancelVoteRequired = Number(match?.cancel_vote_required || Math.min(5, slotsPerRankedTeam(match) * 2));
+  const cancelVoteCount = cancelVoteUserIds.length || Number(match?.cancel_vote_count || 0);
+  const currentUserVotedCancel = Boolean(user?.id && cancelVoteUserIds.includes(user.id));
   const personalResult = match?.elo_changes?.[user?.id] || null;
 
   useEffect(() => {
@@ -604,9 +677,11 @@ export default function RankedMatchRoom() {
         return;
       }
       setMatch(response.data.match || match);
+      const voteCount = Number(response.data.vote_count ?? response.data.match?.cancel_vote_count ?? 0);
+      const requiredVotes = Number(response.data.required_votes ?? response.data.match?.cancel_vote_required ?? cancelVoteRequired);
       toast({
-        title: action === "request" ? "Cancel vote requested" : action === "approve" ? "Cancellation approved" : "Cancellation rejected",
-        description: action === "request" ? "Waiting for the opposing captain." : undefined,
+        title: response.data.cancelled ? "Ranked match cancelled" : ["reject", "withdraw"].includes(action) ? "Vote withdrawn" : "Cancellation vote counted",
+        description: response.data.cancelled ? `${requiredVotes} players agreed to cancel.` : `${voteCount} of ${requiredVotes} players agreed.`,
       });
     } catch (error) {
       toast({ title: "Cancel vote failed", description: error.message || "Could not update the vote.", variant: "destructive" });
@@ -656,15 +731,13 @@ export default function RankedMatchRoom() {
     );
   }
 
-  const predictedWinnerId = scoreWinner(match, scoreA, scoreB);
-  const predictedWinnerName = predictedWinnerId === match.host_id ? match.host_name : match.challenger_name;
   const isComplete = match.status === "completed";
   const alphaWinner = isComplete && String(match.winner_id || "") === String(match.host_id || "");
   const bravoWinner = isComplete && String(match.winner_id || "") === String(match.challenger_id || "");
 
   return (
     <div className="min-h-screen bg-obsidian py-6">
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
+      <div className="max-w-[1740px] mx-auto px-4 lg:px-6">
         <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/55 via-white/10 to-orange/55" />
           <div className="flex flex-col gap-4 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -679,9 +752,43 @@ export default function RankedMatchRoom() {
               <Link to="/ranked" className="rounded-lg border border-white/[0.08] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor hover:text-white">Ranked</Link>
             </div>
           </div>
-          <div className="grid gap-4 p-4 lg:grid-cols-2 lg:p-5">
-            <div className={arenaHeightClass(slotsPerRankedTeam(match))}><PlayerPanel label="Team Alpha" teamName={match.host_name} color="cyan" players={visibleAlphaPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} /></div>
-            <div className={arenaHeightClass(slotsPerRankedTeam(match))}><PlayerPanel label="Team Bravo" teamName={match.challenger_name || "Opponent pending"} color="orange" players={visibleBravoPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} /></div>
+          <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_360px_minmax(0,1fr)] xl:p-5">
+            <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} order-1`}><PlayerPanel label="Team Alpha" teamName={match.host_name} color="cyan" players={visibleAlphaPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} /></div>
+            <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} order-3 flex min-h-0 flex-col gap-2 xl:order-2`}>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-3 py-2">
+                <span className="truncate text-right text-[9px] font-black uppercase tracking-wider text-cyan">{match.host_name || "Team Alpha"}</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-card text-[8px] font-black uppercase text-vapor">VS</span>
+                <span className="truncate text-[9px] font-black uppercase tracking-wider text-orange">{match.challenger_name || "Team Bravo"}</span>
+              </div>
+              <MatchChat
+                conversationId={match.id}
+                matchType="ranked"
+                accent="cyan"
+                teamAPlayerIds={visibleAlphaPlayers}
+                teamBPlayerIds={visibleBravoPlayers}
+                compact
+                sticky={false}
+                heightClass="min-h-0 flex-1"
+                inputActions={(
+                  <div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => handleSupportTicket("I need support for this ranked match.")} disabled={!isParticipant || supporting} className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 hover:bg-blue-400/15 disabled:opacity-40">
+                        <Gavel className="h-3.5 w-3.5" /> {supporting ? "Requesting..." : "Request admin"}
+                      </button>
+                      <button type="button" onClick={handleCreateDispute} disabled={!isParticipant || disputing} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
+                        <Ticket className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Submit ticket"}
+                      </button>
+                      <button type="button" onClick={() => handleSupportTicket("Opponent no-show report.")} disabled={!isParticipant || supporting} className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-secondary/60 px-2 py-2 text-[8px] font-black uppercase tracking-wider text-vapor hover:text-white disabled:opacity-40">
+                        <Flag className="h-3 w-3" /> Report no show
+                      </button>
+                    </div>
+
+                    {(match.admin_request_status || match.requested_admin) && <p className="mt-2 text-center text-[8px] font-bold text-blue-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", waiting_for_user: "Waiting for you", escalated: "Escalated", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
+                  </div>
+                )}
+              />
+            </div>
+            <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} order-2 xl:order-3`}><PlayerPanel label="Team Bravo" teamName={match.challenger_name || "Opponent pending"} color="orange" players={visibleBravoPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} /></div>
           </div>
         </section>
 
@@ -695,112 +802,40 @@ export default function RankedMatchRoom() {
           </div>
         )}
 
-        <div className="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
-          <div className="min-w-0 space-y-6">
-            <MapVetoVertical wager={match} ranked compact />
+        <div className="mb-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
+          <MapVetoVertical wager={match} ranked compact />
+          <div className="space-y-4">
             <MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} />
+
+            {isParticipant && !["completed", "cancelled"].includes(match.status) && (
+              <section className="rounded-xl border border-red-500/15 bg-card p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-red-300"><Users className="h-4 w-4" /> Vote to cancel</p>
+                    <p className="mt-1 text-xs leading-5 text-vapor">The match is cancelled only when enough players agree.</p>
+                  </div>
+                  <span className="shrink-0 rounded-lg border border-red-500/15 bg-red-500/[0.07] px-3 py-2 font-mono text-xs font-black text-red-300">{cancelVoteCount}/{cancelVoteRequired}</span>
+                </div>
+                <div className="my-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-red-400 transition-all" style={{ width: `${Math.min(100, (cancelVoteCount / Math.max(cancelVoteRequired, 1)) * 100)}%` }} /></div>
+                {joinedOpponentCount === 0 && isHost ? (
+                  <button type="button" onClick={handleCancel} disabled={emptyLobbyCancelLocked} className="w-full rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40">
+                    {emptyLobbyCancelLocked ? `Available in ${timeRemaining || "15:00"}` : "Cancel empty lobby"}
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => handleCancelVote(currentUserVotedCancel ? "withdraw" : match.cancel_vote_status === "pending" ? "approve" : "request")} disabled={cancelVoting || cancelVoteLocked} className="w-full rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40">
+                    {cancelVoteLocked ? `Voting opens in ${timeRemaining || "15:00"}` : cancelVoting ? "Updating..." : currentUserVotedCancel ? "Withdraw my vote" : "Vote to cancel"}
+                  </button>
+                )}
+              </section>
+            )}
+
+            {isStaff && <RankedAdminTools match={match} busy={resettingDispute} onResetDispute={handleAdminResetDispute} onCancel={handleCancel} onRefresh={loadRoom} />}
           </div>
-          <aside className="min-w-0">
-            <MatchChat conversationId={match.id} matchType="ranked" accent="cyan" compact sticky={false} heightClass="h-[440px] xl:h-[520px]" />
-          </aside>
         </div>
 
-        <div className="dark-focus dark-media mb-6 rounded-xl border border-white/10 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center gap-3">
-            {isStaff && ["score_conflict", "disputed"].includes(match.status) && (
-              <button
-                onClick={handleAdminResetDispute}
-                disabled={resettingDispute}
-                className="w-full rounded-lg border border-cyan/25 bg-cyan/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-cyan transition-all hover:bg-cyan/20 disabled:opacity-50"
-              >
-                {resettingDispute ? "Resetting..." : "Reset Dispute & Continue Match"}
-              </button>
-            )}
-            <button
-              onClick={() => handleSupportTicket("I need support for this ranked match.")}
-              disabled={supporting}
-              className="px-6 py-3 bg-cyan/10 text-cyan font-bold text-sm rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
-            >
-              <HelpCircle className="w-4 h-4" /> {supporting ? "Requesting..." : "Request Admin"}
-            </button>
-            <button
-              onClick={handleCreateDispute}
-              disabled={disputing || !isParticipant}
-              className="px-6 py-3 bg-orange/10 text-orange font-bold text-sm rounded-lg border border-orange/20 hover:bg-orange/20 transition-all uppercase tracking-wider disabled:opacity-50"
-            >
-              {disputing ? "Submitting..." : "Submit Dispute"}
-            </button>
-            <button
-              onClick={() => handleSupportTicket("Opponent no-show report.")}
-              disabled={supporting || !isParticipant}
-              className="px-6 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/5 hover:bg-secondary transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
-            >
-              <Flag className="w-4 h-4" /> Report No Show
-            </button>
-            <button
-              onClick={loadRoom}
-              className="px-4 py-3 bg-secondary/50 text-vapor font-bold text-sm rounded-lg border border-white/5 hover:bg-secondary transition-all"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            {isStaff && !["completed", "cancelled"].includes(match.status) && (
-              <button
-                onClick={handleCancel}
-                className="px-6 py-3 bg-red-500/10 text-red-400 font-bold text-sm rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider"
-              >
-                Staff Cancel
-              </button>
-            )}
-            {isHost && !isStaff && joinedOpponentCount === 0 && !["completed", "cancelled"].includes(match.status) && (
-              <button
-                onClick={handleCancel}
-                disabled={emptyLobbyCancelLocked}
-                className="rounded-lg border border-red-500/20 bg-red-500/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {emptyLobbyCancelLocked ? `Cancel in ${timeRemaining || "15:00"}` : "Cancel Empty Lobby"}
-              </button>
-            )}
-            {isHost && !isStaff && joinedOpponentCount > 0 && !["completed", "cancelled"].includes(match.status) && (
-              <button
-                onClick={() => handleCancelVote("request")}
-                disabled={cancelVoting || cancelVoteLocked || ["pending", "rejected", "approved"].includes(match.cancel_vote_status)}
-                className="rounded-lg border border-red-500/20 bg-red-500/10 px-6 py-3 text-sm font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {cancelVoteLocked ? `Vote in ${timeRemaining || "15:00"}` : match.cancel_vote_status === "pending" ? "Waiting for Captain" : match.cancel_vote_status === "rejected" ? "Vote Rejected" : "Request Cancel Vote"}
-              </button>
-            )}
-            {isOpposingCaptain && match.cancel_vote_status === "pending" && !["completed", "cancelled"].includes(match.status) && (
-              <div className="flex gap-2">
-                <button onClick={() => handleCancelVote("approve")} disabled={cancelVoting} className="rounded-lg border border-green/25 bg-green/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-green disabled:opacity-40">Approve Cancel</button>
-                <button onClick={() => handleCancelVote("reject")} disabled={cancelVoting} className="rounded-lg border border-white/10 bg-secondary px-5 py-3 text-xs font-black uppercase tracking-wider text-vapor disabled:opacity-40">Reject</button>
-              </div>
-            )}
-          </div>
-          {(match.admin_request_status || match.requested_admin) && (
-            <p className="text-xs text-vapor mt-3">
-              Admin request: {{
-                waiting_for_admin: "Waiting for admin",
-                admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined",
-                waiting_for_user: "Waiting for user",
-                escalated: "Escalated",
-                resolved: "Resolved",
-                closed: "Closed",
-              }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
-            </p>
-          )}
-          {predictedWinnerName && canSubmitScore && scoreIsValid && (
-            <p className="text-xs text-vapor mt-3 flex items-center gap-2">
-              <Shield className="w-3.5 h-3.5 text-cyan" />
-              Current score would report {predictedWinnerName} as winner.
-            </p>
-          )}
-          {match.reported_score_by && !["completed", "score_conflict"].includes(match.status) && (
-            <p className="text-xs text-yellow-400 mt-3">
-              A score has already been submitted. The opponent must submit the same score to complete the match.
-            </p>
-          )}
-        </div>
+        {match.reported_score_by && !["completed", "score_conflict"].includes(match.status) && (
+          <p className="mb-6 rounded-lg border border-yellow-400/15 bg-yellow-400/[0.05] px-4 py-3 text-center text-xs text-yellow-300">A score has been submitted. The opponent must submit the same score to complete the match.</p>
+        )}
       </div>
 
       {scoreModalOpen && canSubmitScore && (
