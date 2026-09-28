@@ -531,45 +531,59 @@ function MapSeries({ match }) {
   const bestOf = Math.max(1, Number(match.best_of || match.map_sequence?.length || maps.length || 3));
 
   return (
-    <div className="dark-focus dark-media rounded-xl border border-cyan/20 p-5 sm:p-6">
-      <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
-            <MapIcon className="h-4 w-4 text-cyan" /> BO{bestOf} Map Series
-          </h2>
-          <p className="text-xs text-vapor mt-1">{match.game_mode || `Best of ${bestOf}`}</p>
-        </div>
-        <div className="text-xs text-vapor">
-          First host: <span className="font-bold text-blue-300">{match.first_host_team_name || "TBD"}</span>
-          {match.first_host_seed ? <span className="ml-1">({seedLabel(match.first_host_seed)})</span> : null}
+    <section className="dark-focus dark-media h-full rounded-xl border border-white/[0.09] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
+          <MapIcon className="h-4 w-4 text-cyan" /> Map Series
+        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2 text-[9px] font-black uppercase tracking-wider text-cyan">
+            BO{bestOf} · {match.game_mode || `Best of ${bestOf}`}
+          </span>
+          <span className="rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2 text-[9px] font-bold text-vapor">
+            First host <strong className="ml-1 text-white">{match.first_host_team_name || "TBD"}</strong>
+            {match.first_host_seed ? <span className="ml-1 text-cyan">{seedLabel(match.first_host_seed)}</span> : null}
+          </span>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {maps.length === 0 ? (
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 text-sm text-vapor md:col-span-3">
+          <div className="rounded-lg border border-white/[0.06] bg-black/15 p-4 text-sm text-vapor sm:col-span-3">
             Maps are being generated.
           </div>
         ) : maps.map((map) => (
-          <div key={`${map.game}-${map.game_mode || map.mode}-${map.map}`} className="rounded-xl border border-white/10 bg-white/[0.04] p-5">
-            <p className="text-[10px] font-black uppercase tracking-wider text-cyan">Map {map.game}</p>
-            <h3 className="mt-1 text-lg font-black">{map.map}</h3>
-            <p className="mt-2 text-xs text-vapor">{map.mode || "Search and Destroy"}</p>
-            <p className="mt-1 text-xs text-blue-300">
-              Host: {map.host_team_name || "TBD"} {map.host_seed ? `(${seedLabel(map.host_seed)})` : ""}
-            </p>
-          </div>
+          <article key={`${map.game}-${map.game_mode || map.mode}-${map.map}`} className="overflow-hidden rounded-lg border border-white/[0.06] bg-black/15">
+            <div className="px-3 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-cyan">Map {map.game}</p>
+                <span className="max-w-[60%] truncate rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider text-vapor">
+                  {map.mode || "Search and Destroy"}
+                </span>
+              </div>
+              <h3 className="mt-2 truncate text-base font-black text-white" title={map.map}>{map.map}</h3>
+            </div>
+            <div className="border-t border-white/[0.05] bg-white/[0.025] px-3 py-2">
+              <p className="truncate text-[9px] text-vapor">
+                Host <strong className="ml-1 text-cyan">{map.host_team_name || "TBD"}</strong>
+                {map.host_seed ? <span className="ml-1 text-vapor">{seedLabel(map.host_seed)}</span> : null}
+              </p>
+            </div>
+          </article>
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {pool.map((map) => (
-          <span key={map} className="rounded-md border border-white/5 bg-background/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-vapor">
-            {map}
-          </span>
-        ))}
+      <div className="mt-4 border-t border-white/[0.06] pt-3">
+        <p className="mb-2 text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">Available map pool</p>
+        <div className="flex flex-wrap gap-1.5">
+          {pool.map((map) => (
+            <span key={map} className="rounded-md border border-white/[0.06] bg-black/15 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-vapor">
+              {map}
+            </span>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
