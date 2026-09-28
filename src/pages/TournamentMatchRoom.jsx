@@ -19,6 +19,7 @@ import {
   Swords,
   Trophy,
   Unlock,
+  X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -320,7 +321,7 @@ function TrophyCounts({ trophies }) {
           <span
             key={key}
             aria-label={`${label}: ${count}`}
-            className={`group/trophy relative inline-flex h-8 min-w-9 cursor-default select-none items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-black transition-all duration-200 hover:-translate-y-0.5 ${count === 0 ? "opacity-60" : "shadow-[inset_0_1px_0_rgba(255,255,255,.06)]"} ${className}`}
+            className={`group/trophy relative inline-flex h-8 min-w-10 cursor-default select-none items-center justify-center gap-1.5 rounded-md border px-2 text-[11px] font-black transition-all duration-200 hover:-translate-y-0.5 ${count === 0 ? "opacity-70" : "ring-1 ring-current/10 shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_5px_18px_-10px_currentColor]"} ${className}`}
           >
             <span className="flex h-4 w-4 items-center justify-center rounded-full bg-current/10">
               <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
@@ -465,34 +466,42 @@ function TeamCard({ label, name, color, seed, isFirstHost, players = [], isCompl
   return (
     <section className="relative min-w-0 px-4 py-5 sm:p-6">
       <div className={`absolute inset-x-6 top-0 h-px ${isOrange ? "bg-gradient-to-r from-transparent via-accent/65 to-transparent" : "bg-gradient-to-r from-transparent via-cyan/65 to-transparent"}`} />
-      <div className="flex items-center gap-4 border-b border-white/[0.06] pb-5">
+      <div className="flex items-center gap-4 border-b border-white/[0.06] pb-4">
         <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-mono text-base font-black shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${tintClass} ${toneClass}`}>{teamMonogram(name)}</span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2"><p className={`text-[9px] font-black uppercase tracking-[0.18em] ${toneClass}`}>{label} roster</p><span className="rounded-md border border-white/[0.06] bg-background/40 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-vapor">Seed {seedLabel(seed)}</span>{isFirstHost && <span className={`rounded-md border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${tintClass} ${toneClass}`}>Hosts map 1</span>}</div>
-          <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5"><h3 className="truncate text-lg font-black sm:text-xl">{name || "Open slot"}</h3>{name && <BetaBadge />}</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={`text-[9px] font-black uppercase tracking-[0.18em] ${toneClass}`}>{label} roster</p>
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <span className="rounded-md border border-white/[0.06] bg-background/40 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-vapor">Seed {seedLabel(seed)}</span>
+              {isFirstHost && <span className={`rounded-md border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${tintClass} ${toneClass}`}>Hosts map 1</span>}
+            </div>
+          </div>
+          <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5">
+            <h3 className="truncate text-xl font-black sm:text-2xl">{name || "Open slot"}</h3>
+            {name && <BetaBadge />}
+            {isWinner && <span className="inline-flex items-center gap-1 rounded-md border border-green/25 bg-green/[0.09] px-2 py-1 text-[8px] font-black uppercase tracking-wider text-green"><Trophy className="h-3 w-3" /> Winner</span>}
+          </div>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">{players.length} confirmed player{players.length === 1 ? "" : "s"}</p>
         </div>
         {isComplete && name && (
-          <div className={`shrink-0 rounded-xl border px-4 py-2.5 text-center ${isWinner ? "border-green/25 bg-green/[0.08]" : "border-white/[0.07] bg-black/15"}`}>
-            <p className={`flex items-center justify-center gap-1 text-[8px] font-black uppercase tracking-[0.16em] ${isWinner ? "text-green" : "text-vapor"}`}>
-              {isWinner && <Trophy className="h-3 w-3" />} {isWinner ? "Winner" : "Final score"}
-            </p>
-            <p className={`mt-1 font-mono text-2xl font-black tabular-nums ${isWinner ? "text-green" : toneClass}`}>{finalScore ?? 0}</p>
+          <div className="w-[100px] shrink-0 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-2.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
+            <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Final score</p>
+            <p className={`mt-1 font-mono text-2xl font-black tabular-nums ${toneClass}`}>{finalScore ?? 0}</p>
           </div>
         )}
       </div>
-      <div className="pt-5">
-        <div className="mb-2 flex items-center justify-between gap-3 px-1"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-vapor">Confirmed lineup</p><p className="text-[9px] font-bold uppercase tracking-wider text-vapor/45">Performance</p></div>
+      <div className="pt-4">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-white/70">Confirmed lineup</p><p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">Performance</p></div>
         {players.length === 0 ? (
           <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] text-xs text-vapor">Roster unavailable</div>
         ) : (
-          <div className="divide-y divide-white/[0.06]">
+          <div className="space-y-2">
             {players.map((player, index) => {
               const profileSlug = player.user_id || player.username || player.handle || player.user_name;
               const displayName = playerName(player);
               return (
-                <article key={player.user_id || `${displayName}-${index}`} className="group/player relative overflow-visible rounded-lg px-1 py-3.5 transition-colors duration-200 hover:z-20 hover:bg-white/[0.025] sm:px-2">
-                  <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                <article key={player.user_id || `${displayName}-${index}`} className="group/player relative overflow-visible rounded-xl border border-white/[0.065] bg-white/[0.025] p-3 transition-all duration-200 hover:z-20 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                  <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center">
                     <div className="flex w-full min-w-0 flex-none items-center gap-3 xl:flex-1">
                       <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border font-mono text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}</span>
                       <div className="min-w-0 flex-1">
@@ -504,7 +513,7 @@ function TeamCard({ label, name, color, seed, isFirstHost, players = [], isCompl
                         <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
                       </div>
                     </div>
-                    <div className="grid w-full shrink-0 grid-cols-3 divide-x divide-white/[0.06] rounded-lg bg-black/15 xl:w-[270px]">
+                    <div className="grid w-full shrink-0 grid-cols-3 divide-x divide-white/[0.06] overflow-hidden rounded-lg border border-white/[0.04] bg-black/20 xl:w-[270px]">
                       <div className="min-w-0 px-2.5 py-2">
                         <p className="text-[8px] font-black uppercase tracking-[0.14em] text-vapor/75">Role</p>
                         <p className={`mt-1 flex items-center gap-1 text-[9px] font-black uppercase ${player.role === "captain" ? "text-cyan" : "text-vapor"}`}>
@@ -522,7 +531,10 @@ function TeamCard({ label, name, color, seed, isFirstHost, players = [], isCompl
                       </div>
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-2.5"><p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/50">Trophies</p><TrophyCounts trophies={player.trophies} /></div>
+                  <div className="mt-2.5 flex items-center justify-between gap-4 rounded-lg border border-white/[0.045] bg-black/15 px-2.5 py-2">
+                    <p className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/65"><Trophy className="h-3 w-3 text-yellow-300" /> Trophies</p>
+                    <TrophyCounts trophies={player.trophies} />
+                  </div>
                 </article>
               );
             })}
@@ -718,6 +730,7 @@ export default function TournamentMatchRoom() {
   const [requestingAdmin, setRequestingAdmin] = useState(false);
   const [disputing, setDisputing] = useState(false);
   const [resolvingAdmin, setResolvingAdmin] = useState(false);
+  const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [clockNow, setClockNow] = useState(Date.now());
@@ -858,6 +871,7 @@ export default function TournamentMatchRoom() {
       });
 
       if (response.data?.success) {
+        setScoreModalOpen(false);
         if (response.data.ready_to_complete === false) {
           toast({
             title: response.data.status === "score_conflict" ? "Score conflict opened" : "Score report submitted",
@@ -1139,16 +1153,6 @@ export default function TournamentMatchRoom() {
           </div>
         )}
 
-        {canSubmit && !isComplete && (
-          <div className="mb-3 flex items-center gap-3 rounded-lg border border-cyan/20 bg-cyan/5 px-4 py-3 text-xs text-vapor">
-            <Flag className="h-4 w-4 shrink-0 text-cyan" />
-            <p>
-              <span className="font-black uppercase tracking-wider text-cyan">BO{bestOf} · First to {winsNeeded}</span>
-              <span className="ml-2">Valid final scores: {seriesScoreExamples(match)}. Both teams must report the same result.</span>
-            </p>
-          </div>
-        )}
-
         {!isComplete && ["awaiting_team_a_report", "awaiting_team_b_report"].includes(match.status) && (
           <div className="mb-3 rounded-lg border border-orange/20 bg-orange/5 px-4 py-3 text-xs text-vapor">
             <span className="font-black uppercase tracking-wider text-orange">Waiting on confirmation</span>
@@ -1178,6 +1182,11 @@ export default function TournamentMatchRoom() {
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {canSubmit && (
+                <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 sm:flex-none">
+                  <Check className="h-4 w-4" /> Submit score
+                </button>
+              )}
               <button type="button" onClick={handleOpenBracket} className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/20 sm:flex-none">
                 <LayoutGrid className="h-4 w-4" /> Bracket
               </button>
@@ -1186,7 +1195,8 @@ export default function TournamentMatchRoom() {
               </Link>
             </div>
           </div>
-          <div className={`grid min-w-0 ${isComplete ? "lg:grid-cols-2" : "lg:grid-cols-[minmax(0,1fr)_220px_minmax(0,1fr)]"}`}>
+          <div className="relative grid min-w-0 lg:grid-cols-2 lg:divide-x lg:divide-white/[0.06]">
+            <span className="absolute left-1/2 top-5 z-20 hidden h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-[#111821] text-[8px] font-black uppercase text-vapor/60 lg:flex">vs</span>
             <TeamCard
               label="Team A"
               color="orange"
@@ -1198,25 +1208,6 @@ export default function TournamentMatchRoom() {
               isWinner={isTeamAWinner}
               finalScore={match.team_a_score || 0}
             />
-            {!isComplete && (
-              <MatchupScore
-                scoreA={scoreA}
-                scoreB={scoreB}
-                setScoreA={setScoreA}
-                setScoreB={setScoreB}
-                disabled={!canSubmit}
-                maxScore={winsNeeded}
-                teamAName={match.team_a_name}
-                teamBName={match.team_b_name}
-                onSubmit={handleComplete}
-                submitting={submitting}
-                scoreIsValid={scoreIsValid}
-                validationMessage={scoreValidationError}
-                validScoreExamples={seriesScoreExamples(match)}
-                predictedWinner={predictedWinner}
-                staffSubmission={canStaffSubmitResult}
-              />
-            )}
             <TeamCard
               label="Team B"
               color="blue"
@@ -1230,6 +1221,41 @@ export default function TournamentMatchRoom() {
             />
           </div>
         </section>
+
+        {scoreModalOpen && canSubmit && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="submit-score-title">
+            <button type="button" className="absolute inset-0 cursor-default" onClick={() => setScoreModalOpen(false)} aria-label="Close score dialog" />
+            <div className="dark-focus dark-media relative z-10 w-full max-w-md rounded-2xl border border-white/[0.1] bg-[#111821] p-5 shadow-[0_30px_100px_rgba(0,0,0,.75)] sm:p-6">
+              <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] pb-4">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">BO{bestOf} · First to {winsNeeded}</p>
+                  <h2 id="submit-score-title" className="mt-1 text-lg font-black">Submit final score</h2>
+                  <p className="mt-1 text-xs text-vapor">Valid scores: {seriesScoreExamples(match)}. Your opponent must confirm the same result.</p>
+                </div>
+                <button type="button" onClick={() => setScoreModalOpen(false)} className="rounded-lg border border-white/[0.08] bg-black/20 p-2 text-vapor transition-colors hover:text-white" aria-label="Close">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <MatchupScore
+                scoreA={scoreA}
+                scoreB={scoreB}
+                setScoreA={setScoreA}
+                setScoreB={setScoreB}
+                disabled={false}
+                maxScore={winsNeeded}
+                teamAName={match.team_a_name}
+                teamBName={match.team_b_name}
+                onSubmit={handleComplete}
+                submitting={submitting}
+                scoreIsValid={scoreIsValid}
+                validationMessage={scoreValidationError}
+                validScoreExamples={seriesScoreExamples(match)}
+                predictedWinner={predictedWinner}
+                staffSubmission={canStaffSubmitResult}
+              />
+            </div>
+          </div>
+        )}
 
         <div className={`grid gap-6 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_460px]" : ""}`}>
           <div className="min-w-0 space-y-6">
