@@ -221,13 +221,7 @@ export default function MatchChat({
           return (
             <div
               key={message.id}
-              className={`${compact ? "px-3 py-2.5" : "px-3.5 py-3"} w-fit min-w-[58%] max-w-[92%] rounded-xl border transition-colors ${isTeamB ? "ml-auto rounded-tr-sm" : "mr-auto rounded-tl-sm"} ${
-                staff
-                  ? "border-violet-400/20 bg-violet-400/[0.055]"
-                  : teamTone
-                    ? `${teamTone.border} ${teamTone.background}`
-                    : "border-white/[0.07] bg-white/[0.025]"
-              } ${isOwnMessage ? "ring-1 ring-inset ring-white/[0.035]" : ""}`}
+              className={`${compact ? "px-1 py-2.5" : "px-1 py-3"} w-fit min-w-[58%] max-w-[92%] border-b border-white/[0.06] ${isTeamB ? "ml-auto" : "mr-auto"} ${isOwnMessage ? "border-white/[0.1]" : ""}`}
             >
               <div className={`mb-1 flex items-center justify-between gap-3 ${isTeamB ? "flex-row-reverse" : ""}`}>
                 <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "flex-row-reverse" : ""}`}>
