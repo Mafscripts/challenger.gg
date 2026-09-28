@@ -53,7 +53,7 @@ const playerEarnings = (user) => Math.max(
 const formatDate = (value) => value ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "TBD";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "TBD";
 const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
-const teamTypeLabel = (team) => ({ wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
+const teamTypeLabel = (team) => ({ ranked: "Ranked", wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
 const titleCase = (value) => String(value || "pending").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const teamBannerMaxBytes = 1.5 * 1024 * 1024;
 const statNumber = (value) => {
@@ -157,7 +157,7 @@ export default function Teams() {
   }, []);
 
   useEffect(() => {
-    if (["wager", "tournament", "general"].includes(requestedCreateType)) setCreateOpen(true);
+    if (["ranked", "wager", "tournament", "general"].includes(requestedCreateType)) setCreateOpen(true);
   }, [requestedCreateType]);
 
   const loadTeams = async () => {
@@ -473,10 +473,11 @@ export default function Teams() {
     }
   };
 
-  const handleInvite = async (event) => {
+  const handleInvite = async (event, selectedUserId = "") => {
     event.preventDefault();
-    if (!selectedTeam || !inviteIdentifier.trim()) return;
-    const ok = await runTeamAction({ action: "invite", team_id: selectedTeam.id, identifier: inviteIdentifier.trim() }, "Invite sent");
+    const identifier = selectedUserId || inviteIdentifier.trim();
+    if (!selectedTeam || !identifier) return;
+    const ok = await runTeamAction({ action: "invite", team_id: selectedTeam.id, identifier }, "Invite sent");
     if (ok) {
       setInviteIdentifier("");
       setInviteOpen(false);
@@ -533,7 +534,7 @@ export default function Teams() {
   };
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="min-h-screen py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         {view === "my_teams" && <TeamsCommandHero overview={teamOverview} onCreate={() => setCreateOpen(true)} />}
 
@@ -563,14 +564,14 @@ export default function Teams() {
           <EmptyState icon={Users} title="Your first roster starts here" description="Create a Solo, Duo, Trio or Squad team, then invite the players you want to compete with." action={<button onClick={() => setCreateOpen(true)} className="rounded-lg bg-cyan px-4 py-2.5 text-xs font-black uppercase text-background">Create Team</button>} />
         ) : view === "my_teams" ? (
           <section className="min-w-0">
-            <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-white/[0.06] bg-card/55 p-3.5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-card/55 p-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-wrap gap-1.5" role="tablist" aria-label="Filter teams">
                 {teamFilters.map((filter) => (
                   <button
                     key={filter.id}
                     type="button"
                     onClick={() => setTeamFilter(filter.id)}
-                    className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${teamFilter === filter.id ? "bg-blue-500/15 text-blue-300 ring-1 ring-cyan/25" : "text-vapor hover:bg-blue-500/10 hover:text-blue-300"}`}
+                    className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${teamFilter === filter.id ? "bg-cyan/10 text-cyan ring-1 ring-cyan/25" : "text-vapor hover:bg-cyan/[0.06] hover:text-cyan"}`}
                   >
                     {filter.label}
                   </button>
@@ -580,11 +581,11 @@ export default function Teams() {
                 <label className="relative min-w-0 flex-1 sm:w-72">
                   <span className="sr-only">Search teams</span>
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-vapor" />
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search teams..." className="w-full rounded-xl border border-white/[0.08] bg-background/65 py-2.5 pl-10 pr-4 text-sm focus:border-blue-400/35 focus:outline-none" />
+                  <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search teams..." className="w-full rounded-lg border border-white/[0.08] bg-background/65 py-2 pl-10 pr-4 text-xs focus:border-cyan/35 focus:outline-none" />
                 </label>
                 <label>
                   <span className="sr-only">Sort teams</span>
-                  <select value={teamSort} onChange={(event) => setTeamSort(event.target.value)} className="h-full w-full rounded-xl border border-white/[0.08] bg-background/65 px-4 py-2.5 text-xs font-bold text-vapor focus:border-blue-400/35 focus:outline-none sm:w-44">
+                  <select value={teamSort} onChange={(event) => setTeamSort(event.target.value)} className="h-full w-full rounded-lg border border-white/[0.08] bg-background/65 px-3 py-2 text-xs font-bold text-vapor focus:border-cyan/35 focus:outline-none sm:w-40">
                     <option value="recent">Recent</option>
                     <option value="ranking">Ranking</option>
                     <option value="win_rate">Win rate</option>
@@ -596,7 +597,7 @@ export default function Teams() {
             {visibleTeamSummaries.length === 0 ? (
               <EmptyState icon={Search} title="No teams found" description="Try another filter, team name, tag or region." />
             ) : (
-              <div className="grid gap-5 lg:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
                 {visibleTeamSummaries.map((summary) => (
                   <TeamCard key={summary.team.id} summary={summary} usersById={memberUsersById} onOpen={() => openTeam(summary.team)} />
                 ))}
@@ -636,7 +637,7 @@ export default function Teams() {
         ) : null}
       </div>
 
-      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={requestedCreateType === "wager" ? "wager" : requestedCreateType === "tournament" ? "tournament" : "general"} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={async (team) => { await loadTeams(); setSelectedTeamId(team.id); setDetailTab("overview"); setView("details"); }} />
+      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedCreateType === "ranked" ? 2 : 4} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={async (team) => { await loadTeams(); setSelectedTeamId(team.id); setDetailTab("overview"); setView("details"); }} />
       <InvitePlayerModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} team={selectedTeam} value={inviteIdentifier} onChange={setInviteIdentifier} onSubmit={handleInvite} busy={Boolean(busyAction)} />
     </div>
   );
@@ -650,7 +651,7 @@ function TeamLogo({ team, className = "h-16 w-16", textClassName = "text-xl" }) 
   }, [team.logo_url]);
 
   return (
-    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-blue-400/20 bg-gradient-to-br from-cyan/25 via-secondary to-slate-500/20 font-mono font-black text-blue-200 shadow-[0_16px_32px_rgba(0,0,0,0.28)] ${className}`}>
+    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 via-secondary to-slate-500/15 font-mono font-black text-cyan shadow-[0_12px_28px_rgba(0,0,0,0.24)] ${className}`}>
       {team.logo_url && !imageFailed ? <img src={team.logo_url} alt="" onError={() => setImageFailed(true)} className="block h-full w-full object-cover" /> : <span className={`block max-w-full truncate px-2 ${textClassName}`}>{teamInitials(team)}</span>}
     </div>
   );
@@ -672,20 +673,20 @@ function TeamBanner({ team, imageClassName = "opacity-65 transition-transform du
 
 function TeamsCommandHero({ overview, onCreate }) {
   return (
-    <section className="premium-panel relative mb-6 overflow-hidden rounded-xl border border-border bg-card">
+    <section className="premium-panel relative mb-4 overflow-hidden rounded-xl border border-border bg-card">
       <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-primary" />
-      <div className="relative p-6 sm:p-8">
-        <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+      <div className="relative p-4 sm:p-5">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-400">Team command center</p>
-            <h1 className="mt-2 text-4xl font-black tracking-[-0.04em] sm:text-5xl">Your Teams</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-vapor">Manage your squads, track readiness and prepare every roster for the next match.</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Team command center</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Your Teams</h1>
+            <p className="mt-1 text-xs text-vapor">Manage squads, roster readiness and upcoming matches.</p>
           </div>
-          <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-xs font-black uppercase tracking-wider text-primary-foreground shadow-sm transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-primary/90">
-            <Plus className="h-4 w-4" /> Create Team
+          <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90">
+            <Plus className="h-3.5 w-3.5" /> Create Team
           </button>
         </div>
-        <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
           <CommandMetric label="Total teams" value={overview.teamCount} detail="Active squads" icon={Shield} />
           <CommandMetric label="Total players" value={overview.playerCount} detail="Across all teams" icon={Users} />
           <CommandMetric label="Team readiness" value={`${overview.readiness}%`} detail={`${overview.readyCount} match ready`} icon={CheckCircle} />
@@ -711,81 +712,81 @@ function TeamCard({ summary, usersById, onOpen }) {
   const StatusIcon = status.icon;
 
   return (
-    <article className="group relative flex min-h-[575px] min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.08] bg-card shadow-[0_26px_60px_-44px_rgba(0,0,0,.98)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-blue-400/30 hover:shadow-[0_30px_70px_-42px_rgba(20,216,255,.28)]">
-      <div className="dark-media relative h-48 shrink-0 overflow-hidden">
+    <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-card shadow-[0_18px_40px_-34px_rgba(0,0,0,.95)] transition-colors duration-200 hover:border-cyan/30">
+      <div className="dark-media relative h-24 shrink-0 overflow-hidden">
         <TeamBanner team={team} />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,12,.08),rgba(14,15,18,.2)_42%,rgba(20,21,25,.98))]" />
-        <div className="absolute left-5 top-5">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-blue-300 backdrop-blur-md">
-            <StatusIcon className={`h-3.5 w-3.5 ${activeMatch ? "animate-pulse" : ""}`} /> {status.label}
+        <div className="absolute left-3 top-3">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-cyan/25 bg-background/75 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-cyan backdrop-blur-md">
+            <StatusIcon className={`h-3 w-3 ${activeMatch ? "animate-pulse" : ""}`} /> {status.label}
           </span>
         </div>
-        <div className="absolute right-5 top-5 flex gap-2">
-          {team.is_demo && <span className="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-vapor backdrop-blur-md">Demo</span>}
-          <span className="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-vapor backdrop-blur-md">{String(team.region || "global").toUpperCase()}</span>
+        <div className="absolute right-3 top-3 flex gap-1.5">
+          {team.is_demo && <span className="rounded-md border border-white/10 bg-black/45 px-2 py-1 text-[8px] font-black uppercase text-vapor backdrop-blur-md">Demo</span>}
+          <span className="rounded-md border border-white/10 bg-black/45 px-2 py-1 text-[8px] font-black uppercase text-vapor backdrop-blur-md">{String(team.region || "global").toUpperCase()}</span>
         </div>
-        <div className="absolute inset-x-0 bottom-4 flex justify-center">
-          <TeamLogo team={team} className="h-20 w-20 rounded-2xl border-2 border-blue-400/35 bg-background/90 p-3 shadow-[0_14px_34px_rgba(0,0,0,.45)] backdrop-blur-sm" textClassName="text-xl tracking-[0.08em]" />
+        <div className="absolute inset-x-0 -bottom-px flex justify-center">
+          <TeamLogo team={team} className="h-12 w-12 rounded-t-xl rounded-b-none border border-cyan/30 bg-background/90 p-1.5 shadow-lg backdrop-blur-sm" textClassName="text-sm tracking-[0.08em]" />
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col px-5 pb-5 pt-3 sm:px-6 sm:pb-6">
+      <div className="flex min-w-0 flex-1 flex-col p-4 pt-3">
         <div className="text-center">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">[{team.tag || "TEAM"}] · {teamRosterFormat(team.roster_size)}</p>
-          <h2 className="mt-1 truncate text-2xl font-black tracking-tight">{team.name}</h2>
-          <p className="mt-1 truncate text-xs text-vapor">Captain <span className="font-bold text-blue-300">{team.captain_name || "Unknown"}</span></p>
+          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan">[{team.tag || "TEAM"}] · {teamRosterFormat(team.roster_size)}</p>
+          <h2 className="mt-1 truncate text-lg font-black tracking-tight">{team.name}</h2>
+          <p className="truncate text-[10px] text-vapor">Captain <span className="font-bold text-cyan">{team.captain_name || "Unknown"}</span></p>
         </div>
 
-        <div className="mt-5 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-4 gap-1.5">
           <TeamCardMetric label="Roster" value={`${members.length}/${requiredPlayers}`} emphasized />
           <TeamCardMetric label="Record" value={`${wins}-${losses}`} />
           <TeamCardMetric label="Win rate" value={`${winRate}%`} />
           <TeamCardMetric label="Rank" value={team.ranking > 0 ? `#${team.ranking}` : "—"} />
         </div>
 
-        <div className="mt-5 border-t border-white/[0.07] pt-4">
+        <div className="mt-3 border-t border-white/[0.07] pt-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-[9px] font-black uppercase tracking-[0.17em] text-vapor">Active roster</p>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-blue-300">{rosterReady ? "Ready" : `${Math.max(0, requiredPlayers - members.length)} open`}</p>
+            <p className="text-[8px] font-bold uppercase tracking-wider text-cyan">{rosterReady ? "Ready" : `${Math.max(0, requiredPlayers - members.length)} open`}</p>
           </div>
-          <div className="mt-4 flex items-start justify-center gap-3 sm:gap-4">
+          <div className="mt-3 flex items-start justify-center gap-2">
             {slots.map((member, index) => {
               const player = member ? (usersById[member.user_id] || {}) : null;
               const name = player?.display_name || player?.full_name || player?.username || member?.user_name || "Open slot";
               const isCaptain = member && String(member.user_id) === String(team.captain_id);
               return (
                 <div key={member?.id || `slot-${index}`} className="min-w-0 flex-1 text-center">
-                  <div className={`relative mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border text-xs font-black sm:h-14 sm:w-14 ${member ? "border-blue-400/40 bg-secondary text-blue-200" : "border-dashed border-white/15 bg-white/[0.025] text-vapor/40"}`}>
+                  <div className={`relative mx-auto flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border text-[10px] font-black ${member ? "border-cyan/40 bg-secondary text-cyan" : "border-dashed border-white/15 bg-white/[0.025] text-vapor/40"}`}>
                     {player?.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : member ? name.charAt(0).toUpperCase() : <Plus className="h-4 w-4" />}
-                    {isCaptain && <span className="absolute left-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-white"><Crown className="h-2.5 w-2.5" /></span>}
-                    {member && <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green" />}
+                    {isCaptain && <span className="absolute left-0 top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cyan text-background"><Crown className="h-2 w-2" /></span>}
+                    {member && <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-green" />}
                   </div>
-                  <p className={`mt-2 truncate text-[10px] font-bold ${member ? "text-foreground" : "text-vapor/55"}`}>{name}</p>
-                  {isCaptain && <p className="mt-0.5 text-[8px] font-black uppercase tracking-wider text-blue-400">Captain</p>}
+                  <p className={`mt-1 truncate text-[9px] font-bold ${member ? "text-foreground" : "text-vapor/55"}`}>{name}</p>
+                  {isCaptain && <p className="text-[7px] font-black uppercase tracking-wider text-cyan">Captain</p>}
                 </div>
               );
             })}
           </div>
-          <div className="mt-4 h-1 overflow-hidden rounded-full bg-background">
-            <div className="h-full rounded-full bg-blue-500 transition-[width] duration-500" style={{ width: `${rosterPercent}%` }} />
+          <div className="mt-3 h-0.5 overflow-hidden rounded-full bg-background">
+            <div className="h-full rounded-full bg-cyan transition-[width] duration-500" style={{ width: `${rosterPercent}%` }} />
           </div>
         </div>
 
-        <div className="mt-auto pt-5">
+        <div className="mt-auto pt-3">
           {(activeMatch || currentTournament) && (
-            <div className="mb-3 flex min-w-0 items-center gap-2 rounded-xl border border-white/[0.06] bg-background/35 px-3 py-2.5">
-              {activeMatch ? <Radio className="h-3.5 w-3.5 shrink-0 text-blue-400" /> : <Trophy className="h-3.5 w-3.5 shrink-0 text-blue-400" />}
+            <div className="mb-2 flex min-w-0 items-center gap-2 rounded-lg border border-white/[0.06] bg-background/35 px-3 py-2">
+              {activeMatch ? <Radio className="h-3 w-3 shrink-0 text-cyan" /> : <Trophy className="h-3 w-3 shrink-0 text-cyan" />}
               <p className="min-w-0 flex-1 truncate text-[10px] font-bold text-vapor">{activeMatch ? `vs ${activeMatch.opponent}` : currentTournament.tournament.name || currentTournament.tournament.title}</p>
-              <span className="shrink-0 text-[8px] font-black uppercase tracking-wider text-blue-300">{activeMatch ? titleCase(activeMatch.status) : titleCase(currentTournament.tournament.status)}</span>
+              <span className="shrink-0 text-[8px] font-black uppercase tracking-wider text-cyan">{activeMatch ? titleCase(activeMatch.status) : titleCase(currentTournament.tournament.status)}</span>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
             {activeMatch ? (
-              <Link to={activeMatch.href} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-blue-400">View Match <ArrowRight className="h-4 w-4" /></Link>
+              <Link to={activeMatch.href} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan/15 px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan ring-1 ring-cyan/25 transition-colors hover:bg-cyan/20">View Match <ArrowRight className="h-3.5 w-3.5" /></Link>
             ) : (
-              <button type="button" onClick={onOpen} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-blue-400">Open Team <ArrowRight className="h-4 w-4" /></button>
+              <button type="button" onClick={onOpen} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan/15 px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan ring-1 ring-cyan/25 transition-colors hover:bg-cyan/20">Open Team <ArrowRight className="h-3.5 w-3.5" /></button>
             )}
-            <button type="button" onClick={onOpen} className="rounded-xl border border-white/[0.09] bg-secondary/55 px-4 py-3 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-blue-400/30 hover:bg-blue-500/10 hover:text-blue-300">Manage Roster</button>
+            <button type="button" onClick={onOpen} className="rounded-lg border border-white/[0.09] bg-secondary/55 px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-vapor transition-colors hover:border-cyan/30 hover:bg-cyan/10 hover:text-cyan">Manage Roster</button>
           </div>
         </div>
       </div>
@@ -795,24 +796,24 @@ function TeamCard({ summary, usersById, onOpen }) {
 
 function CommandMetric({ label, value, detail, icon: Icon }) {
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-background/45 p-4 shadow-inner sm:p-5">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 ring-1 ring-cyan/15"><Icon className="h-5 w-5" /></span>
+    <div className="rounded-lg border border-white/[0.07] bg-background/45 p-3">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan/10 text-cyan ring-1 ring-cyan/15"><Icon className="h-4 w-4" /></span>
         <div className="min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</p>
-          <p className="mt-1 font-mono text-2xl font-black text-white">{value}</p>
+          <p className="text-[8px] font-black uppercase tracking-[0.14em] text-vapor">{label}</p>
+          <p className="font-mono text-lg font-black text-white">{value}</p>
         </div>
       </div>
-      <p className="mt-3 text-[9px] font-bold uppercase tracking-wider text-vapor/70">{detail}</p>
+      <p className="mt-1.5 text-[7px] font-bold uppercase tracking-wider text-vapor/60">{detail}</p>
     </div>
   );
 }
 
 function TeamCardMetric({ label, value, emphasized = false }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-background/40 px-2 py-3 text-center">
-      <p className={`font-mono text-lg font-black ${emphasized ? "text-blue-300" : "text-white"}`}>{value}</p>
-      <p className="mt-1 text-[8px] font-black uppercase tracking-wider text-vapor/75">{label}</p>
+    <div className="rounded-lg border border-white/[0.06] bg-background/40 px-1.5 py-2 text-center">
+      <p className={`font-mono text-sm font-black ${emphasized ? "text-cyan" : "text-white"}`}>{value}</p>
+      <p className="mt-0.5 text-[7px] font-black uppercase tracking-wider text-vapor/70">{label}</p>
     </div>
   );
 }
@@ -821,7 +822,7 @@ function TeamHero({ team, teams, members, wins, losses, winRate, streak, isCapta
   return (
     <section className="relative overflow-hidden rounded-3xl border border-cyan/15 bg-card shadow-[0_24px_60px_-38px_rgba(0,0,0,.95)]">
       <TeamBanner team={team} imageClassName="opacity-[0.12]" />
-      <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(255,255,255,.99)_0%,rgba(255,255,255,.96)_48%,rgba(255,255,255,.82)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(8,13,19,.97)_0%,rgba(15,23,32,.94)_52%,rgba(9,16,23,.86)_100%)]" />
       <div className="relative flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/60 px-5 py-3 sm:px-8">
         <button onClick={onBack} className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-vapor transition-colors hover:bg-white/[0.04] hover:text-cyan"><ArrowLeft className="h-3.5 w-3.5" /> All teams</button>
         <div className="flex items-center gap-3">
@@ -847,7 +848,6 @@ function TeamHero({ team, teams, members, wins, losses, winRate, streak, isCapta
               <TeamPill icon={Trophy} text={teamTypeLabel(team)} />
               <TeamPill icon={Globe2} text={String(team.region || "global").toUpperCase()} />
               <TeamPill icon={Users} text={`${members.length}/${normalizeTeamRosterSize(team.roster_size)} ready`} />
-              {team.roster_locked && <TeamPill icon={Lock} text="Roster locked" tone="orange" />}
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
               {isCaptain && members.length < normalizeTeamRosterSize(team.roster_size) && <button onClick={onInvite} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-2.5 text-xs font-black uppercase tracking-wider text-background"><UserPlus className="h-3.5 w-3.5" /> Invite Player</button>}
@@ -983,7 +983,6 @@ function TournamentList({ entries, limit = 10, embedded = false }) {
 function SettingsPanel({ team, membership, members, usersById, isCaptain, busy, nameDraft, setNameDraft, bannerDraft, setBannerDraft, onNameSubmit, onBannerFile, onBannerSave, onInvite, onKick, onLeave, onDisband }) {
   const rosterLimit = normalizeTeamRosterSize(team.roster_size);
   const rosterFull = members.length >= rosterLimit;
-  const rosterLocked = Boolean(team.roster_locked);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -992,13 +991,6 @@ function SettingsPanel({ team, membership, members, usersById, isCaptain, busy, 
       </Panel>
       <div className="space-y-6">
         <Panel title="Roster management" eyebrow={`${teamRosterFormat(team.roster_size)} team`}>
-          {rosterLocked && (
-            <div className="mb-4 flex items-start gap-3 rounded-xl border border-orange/20 bg-orange/[0.06] p-4">
-              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-orange" />
-              <div><p className="text-xs font-black text-orange">Roster changes are locked</p><p className="mt-1 text-[11px] leading-5 text-vapor">This team is registered in an active tournament. Invites and removals unlock when the tournament roster is released.</p></div>
-            </div>
-          )}
-
           <div className="space-y-2">
             {members.map((member) => {
               const player = usersById[member.user_id] || {};
@@ -1016,7 +1008,7 @@ function SettingsPanel({ team, membership, members, usersById, isCaptain, busy, 
                     </div>
                   </div>
                   {isCaptain && !isCaptainMember && (
-                    <button type="button" onClick={() => onKick(member)} disabled={busy || rosterLocked} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-red-400/15 bg-red-500/[0.06] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-red-300 transition-colors hover:border-red-400/30 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-35"><UserMinus className="h-3.5 w-3.5" /> Kick</button>
+                    <button type="button" onClick={() => onKick(member)} disabled={busy} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-red-400/15 bg-red-500/[0.06] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-red-300 transition-colors hover:border-red-400/30 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-35"><UserMinus className="h-3.5 w-3.5" /> Kick</button>
                   )}
                 </div>
               );
@@ -1024,21 +1016,78 @@ function SettingsPanel({ team, membership, members, usersById, isCaptain, busy, 
           </div>
 
           {isCaptain ? (
-            <button type="button" onClick={onInvite} disabled={busy || rosterLocked || rosterFull} className="mt-4 flex w-full items-center justify-between rounded-xl border border-cyan/15 bg-cyan/[0.05] p-4 text-left transition-colors hover:border-cyan/30 disabled:cursor-not-allowed disabled:opacity-40">
+            <button type="button" onClick={onInvite} disabled={busy || rosterFull} className="mt-4 flex w-full items-center justify-between rounded-xl border border-cyan/15 bg-cyan/[0.05] p-4 text-left transition-colors hover:border-cyan/30 disabled:cursor-not-allowed disabled:opacity-40">
               <span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan/10 text-cyan"><UserPlus className="h-4 w-4" /></span><span className="min-w-0"><span className="block text-sm font-black">{rosterFull ? "Roster is full" : "Invite a player"}</span><span className="mt-1 block truncate text-xs text-vapor">{rosterFull ? `${members.length}/${rosterLimit} player slots are filled.` : "Search by username, email or user ID."}</span></span></span><ArrowRight className="h-4 w-4 shrink-0 text-cyan" />
             </button>
           ) : <p className="mt-4 text-sm text-vapor">Your role: <span className="font-bold capitalize text-white">{membership?.role || "member"}</span></p>}
+
+          <div className="mt-5 border-t border-red-400/10 pt-5">
+            <p className="text-[9px] font-black uppercase tracking-wider text-red-300">Danger zone</p>
+            <p className="mt-1.5 text-[11px] leading-5 text-vapor">Leaving or disbanding permanently removes access to this roster.</p>
+            <div className="mt-3">
+              {!isCaptain && <button onClick={onLeave} disabled={busy} className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-secondary px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-vapor disabled:opacity-40"><LogOut className="h-3.5 w-3.5" /> Leave Team</button>}
+              {isCaptain && <button onClick={onDisband} disabled={busy} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/[0.07] px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300 transition-colors hover:bg-red-500/12 disabled:cursor-not-allowed disabled:opacity-35"><Trash2 className="h-3.5 w-3.5" /> Disband Team</button>}
+            </div>
+          </div>
         </Panel>
         <Panel title="Team information" eyebrow="Roster identity"><div className="grid grid-cols-2 gap-3"><MiniMetric label="Team ID" value={String(team.id).slice(0, 8)} /><MiniMetric label="Created" value={formatDate(team.created_date)} /><MiniMetric label="Region" value={String(team.region || "-").toUpperCase()} /><MiniMetric label="Format" value={teamRosterFormat(team.roster_size)} /></div></Panel>
-        <section className="rounded-2xl border border-red-500/10 bg-red-500/[0.025] p-5"><p className="text-[10px] font-black uppercase tracking-wider text-red-300">Danger zone</p><p className="mt-2 text-xs leading-5 text-vapor">Leaving or disbanding removes access to this roster. Tournament-locked rosters cannot be changed.</p><div className="mt-4 flex flex-wrap gap-2">{!isCaptain && <button onClick={onLeave} disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-black text-vapor disabled:opacity-40"><LogOut className="h-3.5 w-3.5" /> Leave Team</button>}{isCaptain && <button onClick={onDisband} disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 px-4 py-2.5 text-xs font-black text-red-400 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /> Disband Team</button>}</div></section>
       </div>
     </div>
   );
 }
 
 function InvitePlayerModal({ isOpen, onClose, team, value, onChange, onSubmit, busy }) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSuggestions([]);
+      setSelectedPlayer(null);
+      setSearching(false);
+      return undefined;
+    }
+    const query = value.trim();
+    if (selectedPlayer || query.length < 2) {
+      setSuggestions([]);
+      setSearching(false);
+      return undefined;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setSearching(true);
+      const response = await base44.functions.invoke("searchMessageRecipients", { query }).catch(() => null);
+      if (!active) return;
+      setSuggestions(response?.data?.users || []);
+      setSearching(false);
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [isOpen, selectedPlayer, value]);
+
+  const handleInputChange = (event) => {
+    setSelectedPlayer(null);
+    onChange(event.target.value);
+  };
+
+  const selectPlayer = (player) => {
+    setSelectedPlayer(player);
+    setSuggestions([]);
+    onChange(player.name || player.username || player.handle || player.id);
+  };
+
+  const closeModal = () => {
+    setSuggestions([]);
+    setSelectedPlayer(null);
+    onClose();
+  };
+
   return (
-    <AnimatePresence>{isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={onClose}><motion.form initial={{ opacity: 0, y: 10, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.99 }} transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }} onSubmit={onSubmit} onClick={(event) => event.stopPropagation()} className="w-full max-w-md transform-gpu rounded-2xl border border-white/10 bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,.5)]"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan">Roster invite</p><h2 className="mt-1 text-xl font-black">Invite to {team?.name}</h2><p className="mt-1 text-xs text-vapor">The player receives an invitation they can accept from My Teams.</p></div><button type="button" onClick={onClose} className="rounded-lg p-2 text-vapor hover:bg-white/5"><X className="h-4 w-4" /></button></div><label className="mt-6 block"><FieldLabel>Username, email or user ID</FieldLabel><input autoFocus value={value} onChange={(event) => onChange(event.target.value)} placeholder="Find a TopFragg player" className="mt-2 w-full rounded-xl border border-white/5 bg-secondary px-4 py-3 text-sm focus:border-cyan/30 focus:outline-none" /></label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-lg bg-secondary px-4 py-2.5 text-xs font-black text-vapor">Cancel</button><button disabled={busy || !value.trim()} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-2.5 text-xs font-black text-background disabled:opacity-40"><UserPlus className="h-3.5 w-3.5" /> Send Invite</button></div></motion.form></motion.div>}</AnimatePresence>
+    <AnimatePresence>{isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={closeModal}><motion.form initial={{ opacity: 0, y: 10, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.99 }} transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }} onSubmit={(event) => onSubmit(event, selectedPlayer?.id || "")} onClick={(event) => event.stopPropagation()} className="w-full max-w-md transform-gpu rounded-2xl border border-white/10 bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,.5)]"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan">Roster invite</p><h2 className="mt-1 text-xl font-black">Invite to {team?.name}</h2><p className="mt-1 text-xs text-vapor">Search the player database and select the correct teammate.</p></div><button type="button" onClick={closeModal} className="rounded-lg p-2 text-vapor hover:bg-white/5"><X className="h-4 w-4" /></button></div><label className="relative mt-6 block"><FieldLabel>Player name or username</FieldLabel><div className={`mt-2 flex items-center rounded-xl border bg-secondary focus-within:border-cyan/30 ${selectedPlayer ? "border-cyan/25" : "border-white/5"}`}><Search className="ml-3 h-4 w-4 shrink-0 text-vapor" /><input autoFocus value={value} onChange={handleInputChange} placeholder="Start typing a full name..." className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm focus:outline-none" />{searching && <span className="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" />}{selectedPlayer && <CheckCircle className="mr-3 h-4 w-4 text-cyan" />}</div>{suggestions.length > 0 && <div className="absolute inset-x-0 top-full z-10 mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-[#151e28] p-1.5 shadow-2xl">{suggestions.map((player) => <button key={player.id} type="button" onClick={() => selectPlayer(player)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-cyan/[0.07]"><span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-cyan/20 bg-background font-mono text-xs font-black text-cyan">{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : String(player.name || player.username || "?").charAt(0).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-white">{player.name || player.username || "Player"}</span><span className="mt-0.5 block truncate text-[10px] text-vapor">{player.username ? `@${player.username}` : player.handle ? `@${player.handle}` : "TopFragg player"}</span></span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-cyan" /></button>)}</div>}</label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={closeModal} className="rounded-lg bg-secondary px-4 py-2.5 text-xs font-black text-vapor">Cancel</button><button disabled={busy || !selectedPlayer} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-2.5 text-xs font-black text-background disabled:opacity-40"><UserPlus className="h-3.5 w-3.5" /> Send Invite</button></div></motion.form></motion.div>}</AnimatePresence>
   );
 }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -73,20 +74,26 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const [isCreating, setIsCreating] = useState(false);
 
   const isWager = mode === "wager";
+  const isRanked = mode === "ranked";
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
   const requiresTeam = isWager;
-  const expectedTeamType = "wager";
+  const supportsRankedParty = isRanked && requiredPlayers > 1;
+  const expectedTeamType = isWager ? "wager" : "ranked";
   const compatibleTeams = useMemo(() => (
     userTeams.filter((team) => {
       const teamType = team.team_type || "general";
-      return teamType === expectedTeamType
-        && team.captain_id === user?.id;
+      const rosterLimit = Number(team.roster_size || team.members.length || 1);
+      if (teamType !== expectedTeamType || team.captain_id !== user?.id) return false;
+      if (isRanked) return rosterLimit >= 2 && rosterLimit <= requiredPlayers && team.members.length === rosterLimit;
+      return true;
     })
-  ), [expectedTeamType, requiredPlayers, user?.id, userTeams]);
+  ), [expectedTeamType, isRanked, requiredPlayers, user?.id, userTeams]);
   const selectedTeam = compatibleTeams.find((team) => team.id === selectedTeamId);
-  const selectedTeamIsEligible = !requiresTeam || Boolean(selectedTeam && selectedTeam.members.length >= requiredPlayers);
+  const selectedTeamIsEligible = requiresTeam
+    ? Boolean(selectedTeam && selectedTeam.members.length >= requiredPlayers)
+    : !selectedTeamId || Boolean(selectedTeam);
   const paymentTotal = isWager && requiresTeam && paymentMode === "full_team"
     ? enteredAmount * requiredPlayers
     : enteredAmount;
@@ -166,6 +173,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
             max_players: teamSizeObj.players,
+            team_id: selectedTeamId || undefined,
           });
 
           if (response.data.error) {
@@ -370,7 +378,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     return (
                       <button
                         key={size.id}
-                        onClick={() => setSelectedTeamSize(size.id)}
+                        onClick={() => { setSelectedTeamSize(size.id); setSelectedTeamId(""); }}
                         className={`group relative transform-gpu p-5 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
                           isSelected
                             ? tone.selected
@@ -397,29 +405,37 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     );
                   })}
                 </div>
-                {requiresTeam && (
+                {(requiresTeam || supportsRankedParty) && (
                   <div className="mt-5 rounded-xl border border-white/5 bg-secondary/40 p-4">
                     <label className="text-xs text-vapor mb-2 block uppercase tracking-wider">
-                      Select wager team
+                      {isRanked ? "Ranked party (optional)" : "Select wager team"}
                     </label>
                     <select
                       value={selectedTeamId}
                       onChange={(event) => setSelectedTeamId(event.target.value)}
                       className="w-full px-4 py-3 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                     >
-                      <option value="">Select team</option>
+                      <option value="">{isRanked ? "Join as a solo player" : "Select team"}</option>
                       {compatibleTeams.map((team) => (
                         <option key={team.id} value={team.id}>
-                          {team.name} ({team.members.length}/{requiredPlayers})
+                          {team.name} ({team.members.length}-player party)
                         </option>
                       ))}
                     </select>
                     {compatibleTeams.length === 0 && (
-                      <p className="text-xs text-red-400 mt-2">
-                        Create a dedicated wager team first. Tournament teams cannot be used here.
-                      </p>
+                      isRanked ? (
+                        <p className="mt-2 text-xs text-vapor">No complete Ranked Team fits this mode yet.</p>
+                      ) : (
+                        <p className="text-xs text-red-400 mt-2">Create a dedicated wager team first. Tournament teams cannot be used here.</p>
+                      )
                     )}
-                    {selectedTeam && selectedTeam.members.length < requiredPlayers && (
+                    {isRanked && (
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/5 pt-3">
+                        <p className="text-[10px] leading-4 text-vapor">Parties stay together. Duo pairs with duo; trio leaves one solo slot.</p>
+                        <Link to="/teams?create=ranked" className="shrink-0 text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">Create team</Link>
+                      </div>
+                    )}
+                    {!isRanked && selectedTeam && selectedTeam.members.length < requiredPlayers && (
                       <p className="text-xs text-orange mt-2">
                         {selectedTeam.name} has {selectedTeam.members.length}/{requiredPlayers} active players. Invite teammates from Teams before creating this lobby.
                       </p>
@@ -435,7 +451,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   </button>
                   <button
                     onClick={() => setStep(3)}
-                    disabled={!selectedTeamSize || (requiresTeam && !selectedTeamIsEligible)}
+                    disabled={!selectedTeamSize || !selectedTeamIsEligible}
                     className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
                     Next <ChevronRight className="w-4 h-4" />
@@ -624,9 +640,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     </div>
                   </div>
                   <p className="text-xs text-green font-bold">FREE TO PLAY</p>
-                  {requiresTeam && (
+                  {selectedTeam && (
                     <p className="text-xs text-vapor mt-2">
-                      Team: {selectedTeam?.name || "Selected roster"}
+                      Ranked party: {selectedTeam.name} ({selectedTeam.members.length} players)
                     </p>
                   )}
                 </div>

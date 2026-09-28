@@ -2803,7 +2803,7 @@ async function hydrateTeamMemberIdentities(members = []) {
 function normalizeTeamType(value) {
   const type = String(value || "8s").toLowerCase();
   if (type === "eights") return "8s";
-  if (["8s", "wager", "tournament", "general"].includes(type)) return type;
+  if (["8s", "wager", "tournament", "ranked", "general"].includes(type)) return type;
   return "8s";
 }
 
@@ -2872,30 +2872,6 @@ async function teamRoster(teamId, { requiredSize = 1, expectedType, exactSize = 
     throw error;
   }
   return { team, members, roster: members.slice(0, requiredSize) };
-}
-
-async function activeTournamentLocksForTeam(teamId) {
-  const participants = await listEntities("TournamentParticipant", { team_id: teamId }, "-registered_date", 100).catch(() => []);
-  const checks = await Promise.all(participants.map(async (participant) => {
-    const tournament = await getEntity("Tournament", participant.tournament_id).catch(() => null);
-    if (!tournament) return null;
-    // Historical registrations must not permanently trap a team. Participant
-    // rows intentionally remain for standings, so their old lock flag alone is
-    // not enough to decide whether the current roster is still protected.
-    if (["completed", "cancelled"].includes(tournament.status)) return null;
-    if (participant.roster_locked) return participant;
-    const registrationEnded = tournament.registration_end && new Date(tournament.registration_end) <= new Date();
-    if (registrationEnded || !tournamentStatusesOpenForRegistration.includes(tournament.status)) return participant;
-    return null;
-  }));
-  return checks.filter(Boolean);
-}
-
-async function rosterChangeError(team) {
-  if (!team || team.is_active === false) return "Team is not active";
-  const locks = await activeTournamentLocksForTeam(team.id);
-  if (locks.length > 0) return "Leave the active tournament before changing or disbanding this team";
-  return null;
 }
 
 async function findUserForTeamInvite(identifier) {
@@ -3030,8 +3006,6 @@ async function manageTeam(req) {
 
   if (action === "invite") {
     if (team.captain_id !== req.user.id) return { success: false, error: "Only the team captain can invite players" };
-    const lockError = await rosterChangeError(team);
-    if (lockError) return { success: false, error: lockError };
     const members = await activeTeamMembers(team.id);
     if (members.length >= rosterLimitForTeam(team)) return { success: false, error: "Team roster is full" };
 
@@ -3087,8 +3061,6 @@ async function manageTeam(req) {
       const declined = await updateEntity("TeamInvite", invite.id, { status: "declined", responded_date: nowIso() });
       return { success: true, invite: declined };
     }
-    const lockError = await rosterChangeError(inviteTeam);
-    if (lockError) return { success: false, error: lockError };
     const members = await activeTeamMembers(inviteTeam.id);
     if (members.length >= rosterLimitForTeam(inviteTeam)) return { success: false, error: "Team roster is full" };
     if (normalizeTeamType(inviteTeam.team_type) === "8s") {
@@ -3112,8 +3084,6 @@ async function manageTeam(req) {
 
   if (action === "kick") {
     if (team.captain_id !== req.user.id) return { success: false, error: "Only the team captain can kick players" };
-    const lockError = await rosterChangeError(team);
-    if (lockError) return { success: false, error: lockError };
     const member = await getEntity("TeamMember", req.body.member_id || "").catch(() => null);
     if (!member || member.team_id !== team.id || member.is_active === false) return { success: false, error: "Member not found" };
     if (member.user_id === team.captain_id || member.role === "captain") return { success: false, error: "Disband the team to remove the captain" };
@@ -3135,12 +3105,6 @@ async function manageTeam(req) {
     const member = activeMemberships[0];
     if (!member) return { success: false, error: "You are not on this team" };
     const isCaptain = member.user_id === team.captain_id || member.role === "captain";
-    // A roster lock protects captain-managed changes, but should never trap a
-    // regular player on a team they no longer want to be part of.
-    if (isCaptain) {
-      const lockError = await rosterChangeError(team);
-      if (lockError) return { success: false, error: lockError };
-    }
     const members = await activeTeamMembers(team.id);
     if (isCaptain && members.length > 1) {
       return { success: false, error: "Disband the team before the captain leaves" };
@@ -3160,8 +3124,6 @@ async function manageTeam(req) {
 
   if (action === "disband") {
     if (team.captain_id !== req.user.id) return { success: false, error: "Only the team captain can disband the team" };
-    const lockError = await rosterChangeError(team);
-    if (lockError) return { success: false, error: lockError };
     const members = await activeTeamMembers(team.id);
     await Promise.all(members.map((member) => updateEntity("TeamMember", member.id, {
       is_active: false,
@@ -6630,26 +6592,169 @@ const rankedRosterNames = (match, side) => {
   return match?.challenger_name ? [match.challenger_name] : [];
 };
 
+const rankedPartySizes = (match, side) => {
+  const stored = match?.[`team_${side}_party_sizes`];
+  if (Array.isArray(stored) && stored.length > 0) {
+    return stored.map(Number).filter((size) => Number.isInteger(size) && size > 0);
+  }
+  return rankedRosterIds(match, side).map(() => 1);
+};
+
+const rankedValidPartyCompositions = (slots) => {
+  const compositions = [Array.from({ length: slots }, () => 1), [slots]];
+  if (slots > 2) compositions.push([slots - 1, 1]);
+  if (slots === 4) compositions.push([2, 2]);
+  return compositions.map((composition) => composition.sort((a, b) => a - b));
+};
+
+const rankedPartyCompositionCanFit = (existingSizes, partySize, slots) => {
+  const proposed = [...existingSizes, partySize].sort((a, b) => a - b);
+  if (proposed.reduce((total, size) => total + size, 0) > slots) return false;
+  return rankedValidPartyCompositions(slots).some((composition) => {
+    const available = [...composition];
+    return proposed.every((size) => {
+      const index = available.indexOf(size);
+      if (index < 0) return false;
+      available.splice(index, 1);
+      return true;
+    });
+  });
+};
+
+async function rankedPartyFor(req, teamId, slotsPerTeam) {
+  if (!teamId) {
+    const activisionError = activisionIdErrorForUsers([req.userRow || req.user]);
+    if (activisionError) {
+      const error = new Error(activisionError);
+      error.status = 400;
+      throw error;
+    }
+    const activeMatch = await activeRankedMatchFor(req.user.id);
+    if (activeMatch) {
+      const error = new Error("You already have an active ranked match");
+      error.status = 400;
+      throw error;
+    }
+    return {
+      team: null,
+      size: 1,
+      ids: [req.user.id],
+      names: [nameFor(req.user)],
+      users: [req.userRow || req.user],
+    };
+  }
+
+  const team = await getEntity("Team", teamId).catch(() => null);
+  if (!team || team.is_active === false) {
+    const error = new Error("Select an active ranked team");
+    error.status = 400;
+    throw error;
+  }
+  if (normalizeTeamType(team.team_type) !== "ranked") {
+    const error = new Error("Only dedicated ranked teams can join as a party");
+    error.status = 400;
+    throw error;
+  }
+  if (String(team.captain_id || "") !== String(req.user.id)) {
+    const error = new Error("Only the team captain can queue this ranked party");
+    error.status = 403;
+    throw error;
+  }
+
+  const size = Math.trunc(rosterLimitForTeam(team, 2));
+  if (size < 2 || size > 4 || size > slotsPerTeam) {
+    const error = new Error(`This ranked team does not fit a ${slotsPerTeam}v${slotsPerTeam} match`);
+    error.status = 400;
+    throw error;
+  }
+  const members = orderedRoster(await activeTeamMembers(team.id), team.captain_id);
+  if (members.length !== size) {
+    const error = new Error(`${team.name} must have exactly ${size} active players before queueing`);
+    error.status = 400;
+    throw error;
+  }
+  const users = await Promise.all(members.map((member) => userFor(member.user_id)));
+  const activisionError = activisionIdErrorForUsers(users);
+  if (activisionError) {
+    const error = new Error(activisionError);
+    error.status = 400;
+    throw error;
+  }
+  const activeMatches = await Promise.all(members.map((member) => activeRankedMatchFor(member.user_id)));
+  const busyIndex = activeMatches.findIndex(Boolean);
+  if (busyIndex >= 0) {
+    const error = new Error(`${members[busyIndex].user_name || "A teammate"} already has an active ranked match`);
+    error.status = 400;
+    throw error;
+  }
+  return {
+    team,
+    size,
+    ids: members.map((member) => member.user_id),
+    names: members.map((member, index) => member.user_name || nameFor(users[index])),
+    users,
+  };
+}
+
+const rankedJoinSide = (match, partySize, slotsPerTeam) => {
+  const sides = ["alpha", "bravo"].map((side) => {
+    const ids = rankedRosterIds(match, side);
+    const parties = rankedPartySizes(match, side);
+    return {
+      side,
+      ids,
+      parties,
+      remaining: slotsPerTeam - ids.length,
+      canFit: rankedPartyCompositionCanFit(parties, partySize, slotsPerTeam),
+    };
+  }).filter((candidate) => candidate.canFit && candidate.remaining >= partySize);
+  if (sides.length === 0) return "";
+
+  if (partySize === 1) {
+    const complement = sides.find((candidate) => candidate.parties.some((size) => size > 1) && candidate.remaining === 1);
+    if (complement) return complement.side;
+    return sides.sort((a, b) => a.ids.length - b.ids.length)[0].side;
+  }
+
+  const partial = sides
+    .filter((candidate) => candidate.ids.length > 0)
+    .sort((a, b) => (a.remaining - partySize) - (b.remaining - partySize))[0];
+  return partial?.side || sides[0].side;
+};
+
 async function createRankedMatch(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   if (!Object.prototype.hasOwnProperty.call(RANKED_MAPS_BY_MODE, req.body.game_mode)) {
     return { success: false, error: "Invalid ranked game mode" };
   }
-  const activeMatch = await activeRankedMatchFor(req.user.id);
-  if (activeMatch) return { success: false, error: "You already have an active ranked match", active_match_id: activeMatch.id };
+  const slotsPerTeam = Math.max(1, Number.parseInt(String(req.body.team_size || "1v1").split("v")[0], 10) || 1);
+  let party;
+  try {
+    party = await rankedPartyFor(req, req.body.team_id, slotsPerTeam);
+  } catch (error) {
+    return { success: false, error: error.message || "Could not queue ranked team" };
+  }
   const match = await createEntity("RankedMatch", {
     ...req.body,
     host_id: req.user.id,
-    host_name: nameFor(req.user),
+    host_name: party.team?.name || nameFor(req.user),
+    host_party_team_id: party.team?.id || "",
+    host_party_size: party.size,
     best_of: 1,
     maps: RANKED_MAPS_BY_MODE[req.body.game_mode],
     final_map_id: "",
     final_map_name: "",
-    team_alpha_player_ids: [req.user.id],
-    team_alpha_player_names: [nameFor(req.user)],
+    team_alpha_player_ids: party.ids,
+    team_alpha_player_names: party.names,
+    team_alpha_party_sizes: [party.size],
+    team_alpha_party_team_ids: [party.team?.id || ""],
     team_bravo_player_ids: [],
     team_bravo_player_names: [],
+    team_bravo_party_sizes: [],
+    team_bravo_party_team_ids: [],
+    joined_players: party.size,
+    total_players: slotsPerTeam * 2,
     status: "open",
     match_start_deadline: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     created_date: new Date().toISOString(),
@@ -6658,8 +6763,6 @@ async function createRankedMatch(req) {
 }
 
 async function acceptRankedMatch(req) {
-  const activisionError = activisionIdErrorForUsers([req.userRow]);
-  if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const id = req.body.ranked_match_id || req.body.id;
   const match = await getEntity("RankedMatch", id);
   if (match.status !== "open") return { success: false, error: "Ranked match is not open" };
@@ -6671,22 +6774,39 @@ async function acceptRankedMatch(req) {
   const bravoNames = rankedRosterNames(match, "bravo");
   if ([...alphaIds, ...bravoIds].includes(req.user.id)) return { success: true, match, already_joined: true };
   if (alphaIds.length >= slotsPerTeam && bravoIds.length >= slotsPerTeam) return { success: false, error: "Ranked match is full" };
-  const [challengerActiveMatch, hostActiveMatch] = await Promise.all([
-    activeRankedMatchFor(req.user.id, match.id),
-    activeRankedMatchFor(match.host_id, match.id),
-  ]);
-  if (challengerActiveMatch) return { success: false, error: "You already have an active ranked match", active_match_id: challengerActiveMatch.id };
+  let party;
+  try {
+    party = await rankedPartyFor(req, req.body.team_id, slotsPerTeam);
+  } catch (error) {
+    return { success: false, error: error.message || "Could not join with this ranked team" };
+  }
+  if (party.ids.some((userId) => [...alphaIds, ...bravoIds].includes(userId))) {
+    return { success: false, error: "A member of this party is already in the match" };
+  }
+  const hostActiveMatch = await activeRankedMatchFor(match.host_id, match.id);
   if (hostActiveMatch) return { success: false, error: "The host already has another active ranked match" };
   const host = await userFor(match.host_id);
   const hostActivisionError = activisionIdErrorForUsers([host]);
   if (hostActivisionError) return { success: false, error: hostActivisionError, code: "ACTIVISION_ID_REQUIRED" };
-  const joinAlpha = alphaIds.length <= bravoIds.length && alphaIds.length < slotsPerTeam;
+  const joinSide = rankedJoinSide(match, party.size, slotsPerTeam);
+  if (!joinSide) {
+    return { success: false, error: party.size === 2 ? "This lobby now requires another duo" : `A ${party.size}-player party no longer fits this lobby` };
+  }
+  const joinAlpha = joinSide === "alpha";
+  const alphaPartySizes = rankedPartySizes(match, "alpha");
+  const bravoPartySizes = rankedPartySizes(match, "bravo");
+  const alphaPartyTeamIds = Array.isArray(match.team_alpha_party_team_ids) ? [...match.team_alpha_party_team_ids] : alphaPartySizes.map(() => "");
+  const bravoPartyTeamIds = Array.isArray(match.team_bravo_party_team_ids) ? [...match.team_bravo_party_team_ids] : bravoPartySizes.map(() => "");
   if (joinAlpha) {
-    alphaIds.push(req.user.id);
-    alphaNames.push(nameFor(req.user));
+    alphaIds.push(...party.ids);
+    alphaNames.push(...party.names);
+    alphaPartySizes.push(party.size);
+    alphaPartyTeamIds.push(party.team?.id || "");
   } else {
-    bravoIds.push(req.user.id);
-    bravoNames.push(nameFor(req.user));
+    bravoIds.push(...party.ids);
+    bravoNames.push(...party.names);
+    bravoPartySizes.push(party.size);
+    bravoPartyTeamIds.push(party.team?.id || "");
   }
   const rosterFull = alphaIds.length >= slotsPerTeam && bravoIds.length >= slotsPerTeam;
   const [hostPreviousMap, challengerPreviousMap] = await Promise.all([
@@ -6702,11 +6822,17 @@ async function acceptRankedMatch(req) {
   const deadline = match.match_start_deadline || new Date(Date.now() + 15 * 60 * 1000).toISOString();
   const updated = await updateEntity("RankedMatch", id, {
     challenger_id: match.challenger_id || (!joinAlpha ? req.user.id : ""),
-    challenger_name: match.challenger_name || (!joinAlpha ? nameFor(req.user) : ""),
+    challenger_name: match.challenger_name || (!joinAlpha ? (party.team?.name || nameFor(req.user)) : ""),
+    challenger_party_team_id: match.challenger_party_team_id || (!joinAlpha ? (party.team?.id || "") : ""),
+    challenger_party_size: match.challenger_party_size || (!joinAlpha ? party.size : 0),
     team_alpha_player_ids: alphaIds,
     team_alpha_player_names: alphaNames,
+    team_alpha_party_sizes: alphaPartySizes,
+    team_alpha_party_team_ids: alphaPartyTeamIds,
     team_bravo_player_ids: bravoIds,
     team_bravo_player_names: bravoNames,
+    team_bravo_party_sizes: bravoPartySizes,
+    team_bravo_party_team_ids: bravoPartyTeamIds,
     joined_players: alphaIds.length + bravoIds.length,
     total_players: slotsPerTeam * 2,
     status: rosterFull ? "in_progress" : "open",
@@ -6726,7 +6852,7 @@ async function ensureRankedMatchMap(req) {
   const id = req.body.ranked_match_id || req.body.match_id || req.body.id;
   const match = await getEntity("RankedMatch", id);
   if (!match) return { success: false, error: "Ranked match not found" };
-  const isParticipant = req.user.id === match.host_id || req.user.id === match.challenger_id;
+  const isParticipant = rankedRosterIds(match, "alpha").includes(req.user.id) || rankedRosterIds(match, "bravo").includes(req.user.id);
   if (!isParticipant && !hasRole(req.user, "moderator")) return { success: false, error: "Forbidden" };
   if (match.final_map_name) return { success: true, match };
   const slotsPerTeam = rankedTeamSize(match);

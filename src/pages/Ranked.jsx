@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { Award, ArrowRight, Flame, Globe, Medal, Plus, Swords, Trophy } from "lucide-react";
+import { Award, ArrowRight, Flame, Globe, Medal, Plus, Swords, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionHero from "@/components/match/CompetitionHero";
@@ -34,6 +34,16 @@ const selectActiveRankedMatch = (matches, userId) => {
       || match.team_bravo_player_ids?.includes(userId)
     ))
     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
+};
+
+const loadCaptainRankedTeams = async (userId) => {
+  if (!userId) return [];
+  const teams = await base44.entities.Team.filterFresh({ captain_id: userId }, "-created_date", 30).catch(() => []);
+  const rankedTeams = (teams || []).filter((team) => team.is_active !== false && team.team_type === "ranked");
+  return Promise.all(rankedTeams.map(async (team) => {
+    const members = await base44.entities.TeamMember.filterFresh({ team_id: team.id }, "-joined_date", 10).catch(() => []);
+    return { ...team, members: (members || []).filter((member) => member.is_active !== false) };
+  }));
 };
 
 const groupedRanks = RANK_THRESHOLDS.reduce((tiers, rank) => {
@@ -81,6 +91,8 @@ export default function Ranked() {
   const [activeRankedMatch, setActiveRankedMatch] = useState(null);
   const [leaderboardPosition, setLeaderboardPosition] = useState(null);
   const [loadingMatches, setLoadingMatches] = useState(true);
+  const [rankedTeams, setRankedTeams] = useState([]);
+  const [selectedPartyByMatch, setSelectedPartyByMatch] = useState({});
 
   useEffect(() => {
     loadRankedData();
@@ -146,13 +158,15 @@ export default function Ranked() {
       const currentUser = await base44.auth.me().catch(() => null);
       setUser(currentUser);
 
-      const [matches, statsRows] = await Promise.all([
+      const [matches, statsRows, captainTeams] = await Promise.all([
         base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
         base44.entities.RankedStats.filterFresh({}, "-elo", 500),
+        loadCaptainRankedTeams(currentUser?.id),
       ]);
 
       setRankedMatches(matches || []);
       setCurrentStats((statsRows || []).find((stats) => stats.user_id === currentUser?.id) || null);
+      setRankedTeams(captainTeams || []);
       const position = (statsRows || []).findIndex((stats) => stats.user_id === currentUser?.id);
       setLeaderboardPosition(position >= 0 ? position + 1 : null);
     } catch (error) {
@@ -182,6 +196,7 @@ export default function Ranked() {
     try {
       const response = await base44.functions.invoke("acceptRankedMatch", {
         ranked_match_id: match.id,
+        team_id: selectedPartyByMatch[match.id] || undefined,
       });
 
       if (response.data?.success) {
@@ -304,12 +319,36 @@ export default function Ranked() {
                       Open Room
                     </Link>
                   ) : (
-                    <button
-                      onClick={() => handleAcceptMatch(match)}
-                      className="w-full py-2 bg-cyan text-background font-bold text-xs rounded-lg hover:bg-cyan/90 transition-all uppercase"
-                    >
-                      Accept
-                    </button>
+                    <div className="space-y-2">
+                      {Number.parseInt(String(match.team_size || "1v1"), 10) > 1 && (
+                        <div className="rounded-lg border border-white/[0.06] bg-background/35 p-2.5">
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-vapor"><Users className="h-3 w-3" /> Join with</span>
+                            <Link to="/teams?create=ranked" className="text-[9px] font-black uppercase tracking-wider text-cyan hover:underline">Create team</Link>
+                          </div>
+                          <select
+                            value={selectedPartyByMatch[match.id] || ""}
+                            onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))}
+                            className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none"
+                          >
+                            <option value="">Solo player</option>
+                            {rankedTeams
+                              .filter((team) => {
+                                const partySize = Number(team.roster_size || team.members.length || 0);
+                                const matchSize = Number.parseInt(String(match.team_size || "1v1"), 10) || 1;
+                                return partySize >= 2 && partySize <= matchSize && team.members.length === partySize;
+                              })
+                              .map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player party)</option>)}
+                          </select>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleAcceptMatch(match)}
+                        className="w-full py-2 bg-cyan text-background font-bold text-xs rounded-lg hover:bg-cyan/90 transition-all uppercase"
+                      >
+                        {selectedPartyByMatch[match.id] ? "Join with team" : "Join solo"}
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
