@@ -20,7 +20,7 @@ const formatDate = (value) => value ? new Date(value).toLocaleTimeString([], {
   hour: "numeric",
   minute: "2-digit",
   hour12: true,
-}) : "";
+}).toUpperCase() : "";
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const stripStaffPrefix = (value) => String(value || "").replace(/^(admin|moderator)\s+/i, "");
 const displaySenderName = (message) => {
@@ -201,7 +201,7 @@ export default function MatchChat({
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
-      <div ref={chatBodyRef} className={`flex-1 overflow-y-auto ${compact ? "space-y-2 p-3" : "space-y-2.5 p-4"}`}>
+      <div ref={chatBodyRef} className={`flex-1 overflow-y-auto ${compact ? "p-3" : "p-4"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
@@ -227,36 +227,38 @@ export default function MatchChat({
             && new Date(message.created_date).getTime() - new Date(previousMessage.created_date).getTime() < 5 * 60 * 1000
           );
           const avatar = groupedWithPrevious ? (
-            <span className="w-10 shrink-0" aria-hidden="true" />
+            <span className="w-9 shrink-0" aria-hidden="true" />
           ) : staff ? (
-            <span className="flex w-10 shrink-0 flex-col items-center justify-center gap-1 text-center">
+            <span className="flex w-9 shrink-0 flex-col items-center justify-center gap-1 text-center">
               <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-red-400/35 bg-red-500/10 text-red-300 shadow-[0_0_12px_rgba(248,113,113,0.12)]">
                 <Shield className="h-[17px] w-[17px] fill-red-500/15" />
               </span>
               <span className="block w-full text-center text-[7px] font-black uppercase leading-none tracking-[0.08em] text-red-300">Admin</span>
             </span>
           ) : (
-            <span className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-black/30 text-[9px] font-black ${teamTone?.border || "border-white/10 text-white"}`}>
-              {senderAvatar ? <img src={senderAvatar} alt="" className="h-full w-full object-cover" /> : senderName.charAt(0).toUpperCase()}
+            <span className="flex w-9 shrink-0 justify-center">
+              <span className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-black/30 text-[10px] font-black ${teamTone?.border || "border-white/10 text-white"}`}>
+                {senderAvatar ? <img src={senderAvatar} alt="" className="h-full w-full object-cover" /> : senderName.charAt(0).toUpperCase()}
+              </span>
             </span>
           );
           return (
             <div
               key={message.id}
-              className={`flex w-full items-end gap-2 ${isTeamB ? "justify-end" : "justify-start"} ${groupedWithPrevious ? "mt-1" : "mt-3"}`}
+              className={`flex w-full items-end gap-2 ${isTeamB ? "justify-end" : "justify-start"} ${messageIndex === 0 ? "mt-0" : groupedWithPrevious ? "mt-1.5" : "mt-4"}`}
             >
               {!isTeamB && avatar}
-              <div className="min-w-0 max-w-[82%]">
+              <div className="min-w-0 max-w-[84%]">
                 {!groupedWithPrevious && (
-                  <div className={`mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "justify-end" : "justify-start"}`}>
+                  <div className={`mb-1 flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "justify-end" : "justify-start"}`}>
                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${staff ? "bg-red-400 shadow-[0_0_10px_rgb(248,113,113)]" : teamTone?.dot || "bg-vapor/40"}`} />
                     <span className={`truncate text-[13px] font-black ${staff ? "text-red-200" : teamTone?.name || "text-white"}`}>{senderName}</span>
                     {teamSide && <span className={`rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider ${teamTone.badge}`}>Team {teamSide.toUpperCase()}</span>}
-                    <span className="text-[10px] text-vapor/75">- {formatDate(message.created_date)}</span>
+                    <span className="text-[9px] font-medium text-vapor/65">• {formatDate(message.created_date)}</span>
                   </div>
                 )}
-                <div className={`w-fit max-w-full rounded-xl border border-white/[0.07] bg-white/[0.045] px-3 py-2 shadow-sm ${isTeamB ? "ml-auto rounded-br-sm" : "mr-auto rounded-bl-sm"} ${isOwnMessage ? "border-white/[0.11]" : ""}`}>
-                  <p className={`${compact ? "text-[13px]" : "text-[15px]"} whitespace-pre-wrap break-words leading-relaxed text-foreground/85 ${isTeamB ? "text-right" : "text-left"}`}>{displayMessageContent(message, staff)}</p>
+                <div className={`w-fit max-w-full rounded-lg border border-white/[0.07] bg-white/[0.045] px-3 py-2 shadow-sm ${isTeamB ? "ml-auto rounded-br-sm" : "mr-auto rounded-bl-sm"} ${isOwnMessage ? "border-white/[0.11] bg-white/[0.06]" : ""}`}>
+                  <p className={`${compact ? "text-[13px]" : "text-[15px]"} whitespace-pre-wrap break-words text-left leading-relaxed text-foreground/90`}>{displayMessageContent(message, staff)}</p>
                 </div>
               </div>
               {isTeamB && avatar}
