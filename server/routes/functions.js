@@ -2799,7 +2799,7 @@ async function matchParticipantIds(matchType, match) {
     ]);
     return [...new Set([...teamAUserIds, ...teamBUserIds].filter(Boolean))];
   }
-  if (matchType === "wager") {
+  if (matchType === "wager" || matchType === "8s") {
     const participants = await listEntities("WagerParticipant", { wager_id: match.id }, "-joined_date", 100).catch(() => []);
     return [...new Set([
       match.host_id,
@@ -5209,6 +5209,15 @@ async function adminResetMatchDispute(req) {
     confirmed_score_bravo: null,
     confirmed_score_date: null,
     scores_confirmed: false,
+    eights_score_vote_alpha: null,
+    eights_score_vote_bravo: null,
+    eights_score_vote_user_ids: [],
+    eights_score_vote_count: 0,
+    eights_score_vote_required: null,
+    eights_score_vote_status: null,
+    eights_score_vote_started_by: null,
+    eights_score_vote_started_by_name: null,
+    eights_score_vote_started_date: null,
     dispute_id: null,
     score_conflict_date: null,
     disputed_date: null,
@@ -6401,7 +6410,7 @@ async function resolveOpenMatchDisputes(matchId, resolution, resolvedBy = null) 
   }).catch(() => null)));
 }
 
-async function submitScore(req) {
+async function submitScoreUnlocked(req) {
   const wager = await getEntity("Wager", req.body.wager_id);
   if (!wager || ["completed", "cancelled"].includes(wager.status)) {
     return { success: false, error: "Match is already closed" };
@@ -6409,9 +6418,13 @@ async function submitScore(req) {
   if (!wager.challenger_id) {
     return { success: false, error: "Opponent has not joined yet" };
   }
+  const isEights = wager.match_type === "8s";
   const isHost = req.user.id === wager.host_id;
   const isChallenger = req.user.id === wager.challenger_id;
-  if (!isHost && !isChallenger) {
+  const eightsParticipantIds = isEights
+    ? await matchParticipantIds("8s", wager)
+    : [];
+  if (isEights ? !eightsParticipantIds.includes(req.user.id) : (!isHost && !isChallenger)) {
     return { success: false, error: "Only match participants can report scores" };
   }
   const teamAlphaScore = Number(req.body.team_alpha_score);
@@ -6433,6 +6446,101 @@ async function submitScore(req) {
   );
   if (!validSeriesScore) {
     return { success: false, error: `This BO${bestOf} must end when one team reaches ${winsNeeded} win${winsNeeded === 1 ? "" : "s"}` };
+  }
+
+  if (isEights) {
+    const playersPerTeam = Math.max(1, Number.parseInt(String(wager.team_size || "4v4"), 10) || 4);
+    const requiredVotes = playersPerTeam + 1;
+    if (wager.eights_score_vote_status === "approved") {
+      return { success: false, error: "This score report is already approved" };
+    }
+    const proposedAlpha = wager.eights_score_vote_alpha;
+    const proposedBravo = wager.eights_score_vote_bravo;
+    const hasProposal = proposedAlpha !== undefined && proposedAlpha !== null
+      && proposedBravo !== undefined && proposedBravo !== null
+      && wager.eights_score_vote_status === "pending";
+
+    if (hasProposal && (Number(proposedAlpha) !== teamAlphaScore || Number(proposedBravo) !== teamBravoScore)) {
+      return { success: false, error: `A ${Number(proposedAlpha)}-${Number(proposedBravo)} score vote is already active` };
+    }
+
+    const participantIds = new Set(eightsParticipantIds);
+    const existingVotes = Array.isArray(wager.eights_score_vote_user_ids)
+      ? wager.eights_score_vote_user_ids.filter((userId) => participantIds.has(userId))
+      : [];
+    const voteIds = [...new Set([...existingVotes, req.user.id])];
+    const votePatch = {
+      eights_score_vote_alpha: teamAlphaScore,
+      eights_score_vote_bravo: teamBravoScore,
+      eights_score_vote_user_ids: voteIds,
+      eights_score_vote_count: voteIds.length,
+      eights_score_vote_required: requiredVotes,
+      eights_score_vote_status: voteIds.length >= requiredVotes ? "approved" : "pending",
+      eights_score_vote_started_by: wager.eights_score_vote_started_by || req.user.id,
+      eights_score_vote_started_by_name: wager.eights_score_vote_started_by_name || nameFor(req.user),
+      eights_score_vote_started_date: wager.eights_score_vote_started_date || nowIso(),
+    };
+
+    if (voteIds.length < requiredVotes) {
+      const updated = await updateEntity("Wager", wager.id, votePatch);
+      await createMatchRoomSystemMessage(
+        "wager",
+        updated,
+        `${nameFor(req.user)} agreed with the ${teamAlphaScore}-${teamBravoScore} score report (${voteIds.length}/${requiredVotes}).`,
+        req.user,
+      ).catch(() => null);
+      return {
+        success: true,
+        ready_to_complete: false,
+        vote_pending: true,
+        vote_count: voteIds.length,
+        required_votes: requiredVotes,
+        status: wager.status,
+        message: `${voteIds.length} of ${requiredVotes} players agreed.`,
+      };
+    }
+
+    const winner_id = teamAlphaScore > teamBravoScore ? wager.host_id : wager.challenger_id;
+    const winner_name = winner_id === wager.host_id ? wager.host_name : wager.challenger_name;
+    const approvedReport = {
+      ...votePatch,
+      host_reported_score_alpha: teamAlphaScore,
+      host_reported_score_bravo: teamBravoScore,
+      host_reported_score_by: req.user.id,
+      host_reported_score_date: nowIso(),
+      challenger_reported_score_alpha: teamAlphaScore,
+      challenger_reported_score_bravo: teamBravoScore,
+      challenger_reported_score_by: req.user.id,
+      challenger_reported_score_date: nowIso(),
+      reported_score_alpha: teamAlphaScore,
+      reported_score_bravo: teamBravoScore,
+      reported_score_by: req.user.id,
+      reported_score_date: nowIso(),
+      status: "awaiting_completion",
+      scores_confirmed: true,
+      confirmed_score_alpha: teamAlphaScore,
+      confirmed_score_bravo: teamBravoScore,
+      confirmed_score_date: nowIso(),
+    };
+    await updateEntity("Wager", wager.id, approvedReport);
+    await createMatchRoomSystemMessage(
+      "wager",
+      { ...wager, ...approvedReport },
+      `Score report approved by ${requiredVotes} players: ${teamAlphaScore}-${teamBravoScore}.`,
+      req.user,
+    ).catch(() => null);
+    return {
+      success: true,
+      ready_to_complete: true,
+      vote_pending: false,
+      vote_count: voteIds.length,
+      required_votes: requiredVotes,
+      winner_id,
+      winner_name,
+      winner_score: Math.max(teamAlphaScore, teamBravoScore),
+      loser_score: Math.min(teamAlphaScore, teamBravoScore),
+      message: `Score approved by ${requiredVotes} players.`,
+    };
   }
   const reportingTeam = isHost ? "host" : "challenger";
   const otherTeam = isHost ? "challenger" : "host";
@@ -6539,6 +6647,13 @@ async function submitScore(req) {
   };
 }
 
+async function submitScore(req) {
+  return withTournamentMutationLock(
+    `wager-report:${req.body.wager_id}`,
+    () => submitScoreUnlocked(req),
+  );
+}
+
 async function completeWager(req) {
   const wager = await getEntity("Wager", req.body.wager_id);
   if (!wager || wager.status === "completed") {
@@ -6547,7 +6662,9 @@ async function completeWager(req) {
   if (!wager.challenger_id) {
     return { success: false, error: "Opponent has not joined yet" };
   }
-  const isParticipant = req.user.id === wager.host_id || req.user.id === wager.challenger_id;
+  const isParticipant = wager.match_type === "8s"
+    ? (await matchParticipantIds("8s", wager)).includes(req.user.id)
+    : req.user.id === wager.host_id || req.user.id === wager.challenger_id;
   const isStaff = hasRole(req.user, "moderator");
   if (!isParticipant && !isStaff) {
     return { success: false, error: "Only match participants can complete this wager" };

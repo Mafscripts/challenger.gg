@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Clock3, Crown, LogOut, RefreshCw, Shield, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Clock3, Crown, Flag, LogOut, RefreshCw, Shield, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MatchChat from "@/components/match/MatchChat";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
@@ -60,6 +60,8 @@ export default function EightsMatchRoom() {
   const [teamBravo, setTeamBravo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [requestingAdmin, setRequestingAdmin] = useState(false);
+  const [disputing, setDisputing] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -105,13 +107,22 @@ export default function EightsMatchRoom() {
 
   const allPlayers = useMemo(() => [...teamAlpha, ...teamBravo], [teamAlpha, teamBravo]);
   const isParticipant = allPlayers.some((player) => player.user_id === user?.id);
-  const isCaptain = [match?.host_id, match?.challenger_id].includes(user?.id);
   const joined = allPlayers.length;
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
   const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || countdown === 0);
   const isComplete = match?.status === "completed";
   const alphaWinner = isComplete && match?.winner_id === match?.host_id;
   const bravoWinner = isComplete && match?.winner_id === match?.challenger_id;
+  const scoreVoteIds = Array.isArray(match?.eights_score_vote_user_ids) ? match.eights_score_vote_user_ids : [];
+  const scoreVoteCount = scoreVoteIds.length || Number(match?.eights_score_vote_count || 0);
+  const playersPerTeam = Math.max(1, Number.parseInt(String(match?.team_size || "4v4"), 10) || 4);
+  const requiredScoreVotes = Number(match?.eights_score_vote_required || playersPerTeam + 1);
+  const hasScoreProposal = match?.eights_score_vote_status === "pending"
+    && match?.eights_score_vote_alpha !== undefined
+    && match?.eights_score_vote_alpha !== null
+    && match?.eights_score_vote_bravo !== undefined
+    && match?.eights_score_vote_bravo !== null;
+  const currentUserAgreed = Boolean(user?.id && scoreVoteIds.includes(user.id));
 
   const leave = async () => {
     setBusy(true);
@@ -126,25 +137,75 @@ export default function EightsMatchRoom() {
   };
 
   const submitScore = async () => {
+    const submittedScoreA = hasScoreProposal ? Number(match.eights_score_vote_alpha) : Number(scoreA);
+    const submittedScoreB = hasScoreProposal ? Number(match.eights_score_vote_bravo) : Number(scoreB);
     const winsNeeded = Math.floor(Number(match.best_of || 3) / 2) + 1;
-    if (Math.max(Number(scoreA), Number(scoreB)) !== winsNeeded || Number(scoreA) === Number(scoreB)) {
+    if (Math.max(submittedScoreA, submittedScoreB) !== winsNeeded || submittedScoreA === submittedScoreB) {
       toast({ title: "Invalid score", description: `One team must reach ${winsNeeded} map wins.`, variant: "destructive" });
       return;
     }
     setBusy(true);
     try {
-      const report = await base44.functions.invoke("submitScore", { wager_id: id, team_alpha_score: Number(scoreA), team_bravo_score: Number(scoreB) });
+      const report = await base44.functions.invoke("submitScore", { wager_id: id, team_alpha_score: submittedScoreA, team_bravo_score: submittedScoreB });
       if (!report.data?.success) throw new Error(report.data?.error || "Could not submit score");
       if (report.data.ready_to_complete) {
-        const complete = await base44.functions.invoke("completeWager", { wager_id: id, winner_id: report.data.winner_id, team_alpha_score: Number(scoreA), team_bravo_score: Number(scoreB) });
+        const complete = await base44.functions.invoke("completeWager", { wager_id: id, winner_id: report.data.winner_id, team_alpha_score: submittedScoreA, team_bravo_score: submittedScoreB });
         if (!complete.data?.success) throw new Error(complete.data?.error || "Could not complete match");
       }
       setScoreOpen(false);
-      toast({ title: report.data.ready_to_complete ? "Match complete" : "Score submitted", description: report.data.ready_to_complete ? "XP and monthly standings are updated." : "Waiting for the other captain to confirm." });
+      toast({ title: report.data.ready_to_complete ? "Match complete" : "Agreement recorded", description: report.data.ready_to_complete ? "XP and monthly standings are updated." : (report.data.message || `Waiting for ${requiredScoreVotes} player approvals.`) });
       await loadRoom(true);
     } catch (error) {
       toast({ title: "Score not submitted", description: error.message, variant: "destructive" });
     } finally { setBusy(false); }
+  };
+
+  const requestAdmin = async () => {
+    setRequestingAdmin(true);
+    try {
+      const response = await base44.functions.invoke("requestAdminAlert", {
+        match_type: "8s",
+        match_id: match.id,
+        subject: `8s match admin request ${match.id}`,
+        description: `A player requested admin support from 8s match room ${match.id}.`,
+        priority: "high",
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not request admin");
+      toast({ title: "Admin requested", description: "Staff were notified for this 8s match." });
+      await loadRoom(true);
+    } catch (error) {
+      toast({ title: "Request failed", description: error.message, variant: "destructive" });
+    } finally {
+      setRequestingAdmin(false);
+    }
+  };
+
+  const createDispute = async () => {
+    const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
+    if (evidenceText === null) return;
+    const evidenceUrls = evidenceText.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
+    const onAlpha = teamAlpha.some((player) => player.user_id === user?.id);
+    setDisputing(true);
+    try {
+      const response = await base44.functions.invoke("createDispute", {
+        match_type: "8s",
+        match_id: match.id,
+        wager_id: match.id,
+        reason: "score_dispute",
+        description: `Dispute submitted from 8s match room ${match.id}.`,
+        reported_against: onAlpha ? match.challenger_id : match.host_id,
+        reported_against_name: onAlpha ? (match.challenger_name || "Team Bravo") : (match.host_name || "Team Alpha"),
+        evidence_urls: evidenceUrls,
+        escalated: Boolean(user?.is_premium),
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not create dispute");
+      toast({ title: "Dispute submitted", description: "A review case was created for staff." });
+      await loadRoom(true);
+    } catch (error) {
+      toast({ title: "Dispute failed", description: error.message, variant: "destructive" });
+    } finally {
+      setDisputing(false);
+    }
   };
 
   if (loading && !match) return <div className="flex min-h-[70vh] items-center justify-center text-sm text-vapor">Opening 8s match room...</div>;
@@ -164,7 +225,7 @@ export default function EightsMatchRoom() {
             <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan"><Shield className="h-4 w-4" /> Ranked 8s match room</p><h1 className="mt-3 text-3xl font-black sm:text-4xl">Team Alpha <span className="text-vapor">vs</span> Team Bravo</h1><p className="mt-2 text-sm text-vapor">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3} · Match #{String(match.id).slice(-8).toUpperCase()}</p></div>
             <div className="flex flex-wrap gap-2">
               {!locked && isParticipant && !closedStatuses.has(match.status) && <button onClick={leave} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><LogOut className="h-4 w-4" /> Leave lobby</button>}
-              {isCaptain && scoreStatuses.has(match.status) && <button onClick={() => setScoreOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit score</button>}
+              {isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && <button onClick={() => setScoreOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit Score</button>}
             </div>
           </div>
         </header>
@@ -184,17 +245,41 @@ export default function EightsMatchRoom() {
 
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.65fr)]">
           <div className="space-y-5"><MatchMapSeries maps={Array.isArray(match.series_maps) ? match.series_maps : []} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} /><MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} /></div>
-          <MatchChat conversationId={match.id} matchType="wager" accent="cyan" teamAPlayerIds={teamAlpha.map((p) => p.user_id)} teamBPlayerIds={teamBravo.map((p) => p.user_id)} live compact sticky={false} heightClass="h-[520px]" />
+          <MatchChat
+            conversationId={match.id}
+            matchType="wager"
+            accent="cyan"
+            teamAPlayerIds={teamAlpha.map((p) => p.user_id)}
+            teamBPlayerIds={teamBravo.map((p) => p.user_id)}
+            live
+            compact
+            sticky={false}
+            heightClass="h-[520px]"
+            inputActions={(
+              <div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={requestAdmin} disabled={!isParticipant || requestingAdmin || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:opacity-40">
+                    <AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
+                  </button>
+                  <button type="button" onClick={createDispute} disabled={!isParticipant || disputing || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
+                    <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Dispute"}
+                  </button>
+                </div>
+                {(match.admin_request_status || match.requested_admin) && <p className="mt-2 text-center text-[8px] font-bold text-red-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
+              </div>
+            )}
+          />
         </div>
       </div>
 
-      {scoreOpen && (
+      {scoreOpen && isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <button className="absolute inset-0" onClick={() => setScoreOpen(false)} aria-label="Close score dialog" />
           <section className="relative z-10 w-full max-w-md rounded-2xl border border-white/[0.1] bg-card p-6">
-            <div className="flex items-start justify-between"><div><p className="text-[9px] font-black uppercase tracking-wider text-cyan">Captain confirmation</p><h2 className="mt-1 text-xl font-black">Submit final score</h2><p className="mt-1 text-xs text-vapor">Both captains must enter the same result.</p></div><button onClick={() => setScoreOpen(false)} className="rounded-lg border border-white/[0.08] p-2 text-vapor"><X className="h-4 w-4" /></button></div>
-            <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-end gap-3"><label className="text-center"><span className="text-[9px] font-black uppercase text-cyan">Alpha</span><input type="number" min="0" max="2" value={scoreA} onChange={(event) => setScoreA(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-cyan/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-cyan outline-none" /></label><span className="mb-5 text-xs font-black text-vapor">VS</span><label className="text-center"><span className="text-[9px] font-black uppercase text-orange">Bravo</span><input type="number" min="0" max="2" value={scoreB} onChange={(event) => setScoreB(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-orange/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-orange outline-none" /></label></div>
-            <button onClick={submitScore} disabled={busy} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-5 py-3.5 text-xs font-black uppercase tracking-wider text-background disabled:opacity-50"><Sparkles className="h-4 w-4" /> {busy ? "Submitting..." : "Confirm result"}</button>
+            <div className="flex items-start justify-between"><div><p className="text-[9px] font-black uppercase tracking-wider text-cyan">Player agreement</p><h2 className="mt-1 text-xl font-black">Submit final score</h2><p className="mt-1 text-xs text-vapor">The report proceeds when {requiredScoreVotes} players agree.</p></div><button onClick={() => setScoreOpen(false)} className="rounded-lg border border-white/[0.08] p-2 text-vapor"><X className="h-4 w-4" /></button></div>
+            <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-end gap-3"><label className="text-center"><span className="text-[9px] font-black uppercase text-cyan">Alpha</span><input type="number" min="0" max="2" value={hasScoreProposal ? match.eights_score_vote_alpha : scoreA} onChange={(event) => setScoreA(Number(event.target.value))} disabled={hasScoreProposal} className="mt-2 w-full rounded-xl border border-cyan/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-cyan outline-none disabled:opacity-70" /></label><span className="mb-5 text-xs font-black text-vapor">VS</span><label className="text-center"><span className="text-[9px] font-black uppercase text-orange">Bravo</span><input type="number" min="0" max="2" value={hasScoreProposal ? match.eights_score_vote_bravo : scoreB} onChange={(event) => setScoreB(Number(event.target.value))} disabled={hasScoreProposal} className="mt-2 w-full rounded-xl border border-orange/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-orange outline-none disabled:opacity-70" /></label></div>
+            <div className="mt-5 flex items-center justify-between rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Player approvals</span><span className="font-mono text-sm font-black text-cyan">{scoreVoteCount}/{requiredScoreVotes}</span></div>
+            <button onClick={submitScore} disabled={busy || currentUserAgreed} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-5 py-3.5 text-xs font-black uppercase tracking-wider text-background disabled:opacity-50"><Sparkles className="h-4 w-4" /> {busy ? "Submitting..." : currentUserAgreed ? "Agreement recorded" : hasScoreProposal ? "Agree with score" : "Submit score"}</button>
           </section>
         </div>
       )}
