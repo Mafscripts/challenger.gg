@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
+  ChevronDown,
   Clock,
   Loader2,
   LogOut,
@@ -283,6 +284,7 @@ function TournamentEntryBadge({ tournament, className = "" }) {
 export default function Tournaments() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
+  const [visibleTournamentCount, setVisibleTournamentCount] = useState(8);
   const [user, setUser] = useState(null);
   const [tournaments, setTournaments] = useState([]);
   const [matchesByTournament, setMatchesByTournament] = useState({});
@@ -328,6 +330,10 @@ export default function Tournaments() {
     const countdownInterval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(countdownInterval);
   }, []);
+
+  useEffect(() => {
+    setVisibleTournamentCount(8);
+  }, [filter]);
 
   const loadTournaments = async ({ silent = false } = {}) => {
     if (refreshInFlightRef.current && silent) return;
@@ -558,14 +564,16 @@ export default function Tournaments() {
   const filteredTournaments = useMemo(() => (
     officialTournaments.filter((tournament) => filter === "All" || statusLabels[tournament.status] === filter || tournament.status === filter)
   ), [officialTournaments, filter]);
-  const visibleScheduleTournaments = useMemo(() => (
+  const scheduleTournaments = useMemo(() => (
     [...filteredTournaments]
       .sort((a, b) => {
         const priorityDifference = tournamentSchedulePriority(b.status) - tournamentSchedulePriority(a.status);
         return priorityDifference || tournamentScheduleDate(b) - tournamentScheduleDate(a);
       })
-      .slice(0, 10)
+      .slice(0, 16)
   ), [filteredTournaments]);
+  const visibleScheduleTournaments = scheduleTournaments.slice(0, visibleTournamentCount);
+  const hasMoreScheduleTournaments = visibleScheduleTournaments.length < scheduleTournaments.length;
   const liveTournaments = officialTournaments.filter((tournament) => ["live", "in_progress"].includes(tournament.status));
   const selectedTournament = officialTournaments.find((tournament) => tournament.id === selectedTournamentId);
   const selectedMatches = matchesByTournament[selectedTournamentId] || [];
@@ -725,16 +733,16 @@ export default function Tournaments() {
           );
         })}
 
-        <div className="tournaments-main-grid mt-4 grid gap-5 xl:grid-cols-12">
-          <section className="tournaments-list-panel rounded-xl border border-white/[0.07] bg-card/45 p-3 xl:col-span-5">
+        <div className="tournaments-main-grid mt-4">
+          <section className="tournaments-list-panel w-full rounded-xl border border-white/[0.07] bg-card/45 p-3">
             <div className="mb-3 flex items-center justify-between gap-3 px-1 pb-2">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Official competition</p>
                 <h2 className="mt-1 text-lg font-black">Tournament schedule</h2>
               </div>
-              <span className="rounded-full bg-white/[0.055] px-2.5 py-1 text-[10px] font-bold text-vapor">{visibleScheduleTournaments.length}</span>
+              <span className="rounded-full bg-white/[0.055] px-2.5 py-1 text-[10px] font-bold text-vapor">{scheduleTournaments.length}</span>
             </div>
-            <div className="space-y-2 xl:max-h-[780px] xl:overflow-y-auto xl:pr-1">
+            <div className="space-y-2">
               {visibleScheduleTournaments.length === 0 ? (
                 <div className="rounded-lg border border-white/5 px-5 py-10 text-center">
                   <Trophy className="w-10 h-10 text-vapor/30 mx-auto mb-3" />
@@ -744,7 +752,7 @@ export default function Tournaments() {
                 <TournamentCard
                   key={tournament.id}
                   tournament={tournament}
-                  selected={selectedTournamentId === tournament.id}
+                  selected={false}
                   joined={joinedTournamentIds.has(tournament.id)}
                   onSelect={handleSelectTournament}
                   canJoin={canJoinTournament(tournament)}
@@ -753,9 +761,18 @@ export default function Tournaments() {
                 />
               ))}
             </div>
+            {hasMoreScheduleTournaments && (
+              <button
+                type="button"
+                onClick={() => setVisibleTournamentCount((current) => Math.min(current + 8, 16))}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-background/35 px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:border-orange/25 hover:bg-orange/[0.06] hover:text-orange"
+              >
+                Load more tournaments <ChevronDown className="h-4 w-4" />
+              </button>
+            )}
           </section>
 
-          <div className="tournaments-detail-rail space-y-4 self-start xl:col-span-7 xl:sticky xl:top-20">
+          <div className="hidden" aria-hidden="true">
             <div id="tournament-bracket-preview" className="scroll-mt-24 space-y-5">
               {selectedTournament && (
                 <div className="tournament-detail-header glass flex flex-col gap-5 rounded-xl border border-white/[0.07] p-5 lg:flex-row lg:items-center lg:justify-between">
