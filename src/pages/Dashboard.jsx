@@ -149,7 +149,7 @@ function FeaturedNews() {
   const move = (direction) => setActive((current) => (current + direction + slides.length) % slides.length);
 
   return (
-    <section className="home-featured relative isolate h-[520px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:h-[430px] lg:h-[400px]">
+    <section className="home-featured relative isolate h-[590px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:h-[550px] lg:h-[520px]">
       <div key={`base-${active}`} className="home-featured-image absolute inset-0">
         <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
       </div>
@@ -180,15 +180,15 @@ function FeaturedNews() {
         ))}
       </div>
 
-      <div key={`copy-${active}`} className="home-featured-copy relative z-10 flex h-full max-w-3xl flex-col justify-center px-6 py-14 sm:px-10 lg:px-14">
-        <p className="mb-12 flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.24em] text-vapor sm:mb-14">
+      <div key={`copy-${active}`} className="home-featured-copy relative z-10 flex h-full max-w-3xl flex-col justify-start px-6 pb-28 pt-12 sm:px-10 sm:pt-14 lg:px-14">
+        <p className="mb-7 flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.24em] text-vapor sm:mb-8">
           <span className="h-1.5 w-1.5 bg-orange" /> Featured news
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <span className="rounded border border-orange/40 bg-orange/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-orange">{slide.tag}</span>
           <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-vapor">{slide.meta}</span>
         </div>
-        <h1 className="mt-4 max-w-3xl font-heading text-3xl font-black uppercase leading-[.95] text-white sm:text-5xl lg:text-6xl">
+        <h1 className="mt-4 max-w-3xl font-heading text-3xl font-black uppercase leading-[.95] text-white sm:text-4xl lg:text-5xl">
           {slide.title}<br /><span className="text-orange">{slide.accent}</span>
         </h1>
         <p className="mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">{slide.description}</p>

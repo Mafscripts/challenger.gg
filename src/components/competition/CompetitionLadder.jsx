@@ -131,8 +131,8 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
   const copy = modeCopy[mode] || modeCopy.xp;
   return (
     <div className={`space-y-5 ${className}`}>
-      <section className="premium-panel relative min-h-[340px] overflow-hidden rounded-2xl border border-white/[0.07]">
-        <img src="/assets/competition/topfragg-bo7-header.png" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_52%] opacity-75" />
+      <section className="premium-panel relative min-h-[430px] overflow-hidden rounded-2xl border border-white/[0.07] lg:min-h-[480px]">
+        <img src="/assets/competition/topfragg-bo7-header.png" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_58%] opacity-75" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.98)_0%,hsl(var(--background)/0.88)_32%,hsl(var(--background)/0.28)_66%,hsl(var(--background)/0.12)_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(0deg,hsl(var(--background)/0.82)_0%,transparent_55%)]" />
         <div className="landing-bullet-field absolute inset-0 z-[5]" aria-hidden="true">
@@ -152,7 +152,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
             />
           ))}
         </div>
-        <div className="relative z-10 grid min-h-[340px] gap-8 p-7 md:p-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="relative z-10 grid min-h-[430px] gap-8 p-7 md:p-9 lg:min-h-[480px] lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
             <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.28em] ${copy.accent}`}><span className={`h-1.5 w-1.5 ${copy.line}`} /> {copy.eyebrow}</div>
             <h1 className="mt-4 max-w-xl font-heading text-4xl font-black uppercase leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,.75)] sm:text-5xl">{copy.title}</h1>
