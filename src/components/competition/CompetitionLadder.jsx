@@ -166,7 +166,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
             </div>
           </div>
           {action && (
-            <div className="w-full rounded-2xl border border-white/15 bg-background p-3.5 shadow-[0_20px_55px_rgba(0,0,0,.55)] [&_a]:h-16 [&_a]:w-full [&_a]:rounded-xl [&_button]:h-16 [&_button]:w-full [&_button]:rounded-xl lg:w-[360px]">
+            <div className="w-full [&_a]:h-16 [&_a]:w-full [&_a]:rounded-xl [&_a]:shadow-[0_10px_30px_rgba(0,0,0,.4)] [&_button]:h-16 [&_button]:w-full [&_button]:rounded-xl [&_button]:shadow-[0_10px_30px_rgba(0,0,0,.4)] lg:w-[320px]">
               {action}
             </div>
           )}
