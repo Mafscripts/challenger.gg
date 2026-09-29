@@ -228,7 +228,7 @@ export default function Ranked() {
           openCount={rankedMatches.length}
           action={
             <div className="flex w-full flex-col gap-3 xl:w-[320px]">
-              <Link to="/rules" className="group rounded-xl border border-cyan/25 bg-cyan/[0.06] px-4 py-3 transition-colors hover:border-cyan/45 hover:bg-cyan/10">
+              <Link to="/rules" className="group rounded-xl border border-cyan/35 bg-secondary px-4 py-3 shadow-sm transition-colors hover:border-cyan/55 hover:bg-secondary/90">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/10 text-cyan"><Trophy className="h-4 w-4" /></div>
@@ -241,13 +241,13 @@ export default function Ranked() {
                 </div>
               </Link>
               {activeRankedMatch ? (
-                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/15 px-6 py-3 text-sm font-bold uppercase tracking-wider text-cyan transition-colors hover:border-cyan/35 hover:bg-cyan/20">
+                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-secondary px-6 py-3 text-sm font-bold uppercase tracking-wider text-cyan shadow-sm transition-colors hover:border-cyan/60 hover:bg-secondary/90">
                   Return to Active Match <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan px-6 py-3 text-sm font-bold uppercase tracking-wider text-background transition-all hover:bg-cyan/90 hover:shadow-lg hover:shadow-cyan/25"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan bg-cyan px-6 py-3 text-sm font-black uppercase tracking-wider text-black shadow-[0_8px_24px_hsl(var(--cyan)/0.2)] transition-all hover:bg-cyan/90 hover:shadow-lg hover:shadow-cyan/30"
                 >
                   <Plus className="w-4 h-4" /> Create XP Match
                 </button>
