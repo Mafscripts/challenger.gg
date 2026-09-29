@@ -60,6 +60,31 @@ const number = (value) => Number(value || 0);
 const playerName = (user, row) => user?.display_name || user?.username || user?.full_name || row?.username || row?.user_name || "Player";
 const playerSlug = (user, row) => user?.username || user?.handle || row?.username || row?.user_id || user?.id || "";
 const monthLabel = () => new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date());
+const emptyInventoryTrophies = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0, topfragg: 0, hosted: 0 });
+
+const countInventoryTrophies = (items = []) => {
+  const counts = emptyInventoryTrophies();
+  items.forEach((item) => {
+    const text = [item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method]
+      .filter(Boolean)
+      .join(" ")
+      .trim()
+      .toLowerCase();
+    if (item.item_category !== "trophy" && !text.includes("trophy")) return;
+
+    if (text.includes("topfrag") || text.includes("topfragg")) counts.topfragg += 1;
+    else if (text.includes("hosted") || text.includes("host trophy")) counts.hosted += 1;
+    else if (text.includes("premium")) counts.premium += 1;
+    else if (text.includes("gold")) counts.gold += 1;
+    else if (text.includes("silver")) counts.silver += 1;
+    else if (text.includes("bronze")) counts.bronze += 1;
+    else if (["exclusive", "mythic"].includes(item.item_rarity)) counts.premium += 1;
+    else if (["legendary", "epic"].includes(item.item_rarity)) counts.gold += 1;
+    else if (item.item_rarity === "rare") counts.silver += 1;
+    else counts.bronze += 1;
+  });
+  return counts;
+};
 
 const trophyCount = (user) => {
   const detailed = trophyTypes.reduce((sum, trophy) => {
@@ -94,6 +119,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const [rankedRows, setRankedRows] = useState([]);
   const [eightsRows, setEightsRows] = useState([]);
   const [tournaments, setTournaments] = useState([]);
+  const [inventoryTrophies, setInventoryTrophies] = useState(emptyInventoryTrophies);
   const [loading, setLoading] = useState(true);
   const copy = modeCopy[mode] || modeCopy.xp;
 
@@ -119,6 +145,25 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     load();
     return () => { active = false; };
   }, [mode]);
+
+  useEffect(() => {
+    let active = true;
+    if (!currentUser?.id) {
+      setInventoryTrophies(emptyInventoryTrophies());
+      return () => { active = false; };
+    }
+
+    base44.entities.UserInventory
+      .filter({ user_id: currentUser.id }, "-acquired_date", 500)
+      .then((items) => {
+        if (active) setInventoryTrophies(countInventoryTrophies(items || []));
+      })
+      .catch(() => {
+        if (active) setInventoryTrophies(emptyInventoryTrophies());
+      });
+
+    return () => { active = false; };
+  }, [currentUser?.id]);
 
   const usersById = useMemo(() => new Map(users.map((user) => [String(user.id), user])), [users]);
   const xpByUser = useMemo(() => new Map(xpRows.map((row) => [String(row.user_id), row])), [xpRows]);
@@ -195,7 +240,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const myXp = xpByUser.get(String(currentUser?.id)) || {};
   const myTrophies = trophyTypes.map((trophy) => ({
     ...trophy,
-    value: trophy.fields.reduce((best, field) => Math.max(best, number(me?.[field])), 0),
+    value: trophy.fields.reduce((best, field) => Math.max(best, number(me?.[field])), 0) + number(inventoryTrophies[trophy.key]),
   }));
   const nextTournament = tournaments
     .slice()
