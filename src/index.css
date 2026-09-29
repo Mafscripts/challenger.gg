@@ -2042,6 +2042,46 @@
   }
 }
 
+.landing-arena {
+  background:
+    radial-gradient(circle at 8% 18%, rgba(20, 216, 255, .055), transparent 25%),
+    radial-gradient(circle at 92% 58%, rgba(255, 108, 0, .05), transparent 26%);
+}
+
+.landing-arena-glow {
+  position: absolute;
+  width: 42rem;
+  height: 42rem;
+  border-radius: 999px;
+  pointer-events: none;
+  filter: blur(120px);
+  opacity: .13;
+}
+
+.landing-arena-glow-cyan { top: 6%; left: -24rem; background: hsl(var(--cyan)); }
+.landing-arena-glow-orange { top: 48%; right: -25rem; background: hsl(var(--orange)); }
+
+.landing-season-card {
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .38), 0 0 70px rgba(20, 216, 255, .055), 0 0 90px rgba(255, 108, 0, .04);
+}
+
+.landing-stat-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: linear-gradient(90deg, hsl(var(--cyan)), hsl(var(--orange)), transparent);
+  opacity: .65;
+}
+
+.landing-final-cta::before {
+  content: "";
+  position: absolute;
+  inset: -100% 20%;
+  background: radial-gradient(circle, rgba(20, 216, 255, .16), transparent 62%);
+  pointer-events: none;
+}
+
 /* Popup backdrops stay fully clear. Full-screen blur is expensive while a modal is open. */
 .fixed.inset-0[class*="bg-black/"],
 .fixed.inset-0[class*="bg-slate-950/"],

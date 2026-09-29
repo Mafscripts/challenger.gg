@@ -12,12 +12,14 @@ export default function HeroSection() {
       {/* Background */}
       <div className="absolute inset-0">
         <img
-          src="https://media.base44.com/images/public/6a38e7860fd3c41494b9c695/902c6e4df_generated_5b6cee19.png"
+          src="/assets/home/featured-season.png"
           alt="Competitive player preparing for a match"
-          className="h-full w-full object-cover opacity-[0.16]"
+          className="h-full w-full object-cover object-center opacity-[0.3]"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/35" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/60" />
+        <div className="absolute -left-40 top-1/4 h-[520px] w-[520px] rounded-full bg-cyan/[0.11] blur-[110px]" />
+        <div className="absolute -right-40 bottom-0 h-[560px] w-[560px] rounded-full bg-orange/[0.09] blur-[120px]" />
         {/* Animated grid */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "linear-gradient(hsl(185 100% 50% / 0.3) 1px, transparent 1px), linear-gradient(90deg, hsl(185 100% 50% / 0.3) 1px, transparent 1px)",
@@ -35,7 +37,7 @@ export default function HeroSection() {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan/10 border border-cyan/20 mb-6"
           >
             <span className="w-2 h-2 rounded-full bg-cyan animate-pulse" />
-            <span className="text-cyan text-xs font-mono font-semibold tracking-wider uppercase">Season 1 - Live Now</span>
+            <span className="text-cyan text-xs font-mono font-semibold tracking-wider uppercase">October Season - Live Now</span>
           </motion.div>
 
           {/* Title */}

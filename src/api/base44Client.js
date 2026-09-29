@@ -280,6 +280,11 @@ const entityClient = (entity) => ({
 });
 
 export const base44 = {
+  public: {
+    homeOverview() {
+      return apiFetch("/public/home-overview");
+    },
+  },
   auth,
   entities: new Proxy({}, {
     get(_target, entity) {
