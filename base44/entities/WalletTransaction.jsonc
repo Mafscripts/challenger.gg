@@ -20,6 +20,7 @@
         "wager_loss",
         "wager_refund",
         "tournament_prize",
+        "eights_monthly_prize",
         "premium_subscription",
         "admin_adjustment"
       ],

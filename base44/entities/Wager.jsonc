@@ -121,6 +121,11 @@
       "format": "date-time",
       "title": "Roster Lock Deadline"
     },
+    "teams_generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Random Teams Generated At"
+    },
     "total_prize_pool": {
       "type": "number",
       "title": "Total Prize Pool"

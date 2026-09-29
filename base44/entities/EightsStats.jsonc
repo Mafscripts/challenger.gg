@@ -50,6 +50,30 @@
       "default": 0,
       "title": "Matches Played"
     },
+    "monthly_key": {
+      "type": "string",
+      "title": "Active Month (YYYY-MM)"
+    },
+    "monthly_wins": {
+      "type": "number",
+      "default": 0,
+      "title": "Wins This Month"
+    },
+    "monthly_matches": {
+      "type": "number",
+      "default": 0,
+      "title": "Matches This Month"
+    },
+    "monthly_xp": {
+      "type": "number",
+      "default": 0,
+      "title": "8s XP This Month"
+    },
+    "monthly_history": {
+      "type": "array",
+      "items": { "type": "object" },
+      "title": "Archived Monthly Results"
+    },
     "favorite_mode": {
       "type": "string",
       "enum": [

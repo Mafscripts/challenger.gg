@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     const host = balanced.find((row) => row.team === 'host') || null;
     const challenger = balanced.find((row) => row.team === 'challenger') || null;
     await Promise.all(balanced.map((row) => base44.asServiceRole.entities.WagerParticipant.update(row.id, { team: row.team, is_captain: row.id === host?.id || row.id === challenger?.id }).catch(() => null)));
-    const reopened = await base44.asServiceRole.entities.Wager.update(id, { host_id: host?.user_id || '', host_name: host?.user_name || '', challenger_id: challenger?.user_id || '', challenger_name: challenger?.user_name || '', status: 'open', roster_locked: false, roster_lock_deadline: '', match_started_date: '', final_map_id: '', final_map_name: '', series_maps: [] });
+    const reopened = await base44.asServiceRole.entities.Wager.update(id, { host_id: host?.user_id || '', host_name: host?.user_name || '', challenger_id: challenger?.user_id || '', challenger_name: challenger?.user_name || '', status: 'open', roster_locked: false, roster_lock_deadline: '', match_started_date: '', final_map_id: '', final_map_name: '', series_maps: [], teams_generated_at: '' });
     return Response.json({ success: true, wager: reopened });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

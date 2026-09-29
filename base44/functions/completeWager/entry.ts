@@ -21,7 +21,7 @@ const xpRewardFor = (wager, won) => {
   if (!won) return 50;
   if (wager.match_type === 'xp') return 200;
   if (wager.match_type === 'ranked') return 175;
-  if (wager.match_type === '8s') return 125;
+  if (wager.match_type === '8s') return 150;
   return 300;
 };
 
@@ -117,6 +117,49 @@ async function awardXP(base44, user, wager, won) {
   return { xpGain, level };
 }
 
+async function updateEightsPlayerStats(base44, player, won) {
+  const rows = await base44.asServiceRole.entities.EightsStats.filter({ user_id: player.id });
+  const month = new Date().toISOString().slice(0, 7);
+  const now = new Date().toISOString();
+  const stats = rows[0] || await base44.asServiceRole.entities.EightsStats.create({
+    user_id: player.id,
+    username: playerName(player),
+    rating: 1000,
+    wins: 0,
+    losses: 0,
+    win_rate: 0,
+    matches_played: 0,
+    monthly_key: month,
+    monthly_wins: 0,
+    monthly_matches: 0,
+    monthly_xp: 0,
+    region: player.region || 'na',
+    season: 1,
+  });
+  const sameMonth = stats.monthly_key === month;
+  const wins = toInt(stats.wins, 0) + (won ? 1 : 0);
+  const losses = toInt(stats.losses, 0) + (won ? 0 : 1);
+  const matches = toInt(stats.matches_played, 0) + 1;
+  const monthlyHistory = Array.isArray(stats.monthly_history) ? [...stats.monthly_history] : [];
+  if (!sameMonth && stats.monthly_key && toInt(stats.monthly_matches, 0) > 0 && !monthlyHistory.some((entry) => entry?.month === stats.monthly_key)) {
+    monthlyHistory.push({ month: stats.monthly_key, wins: toInt(stats.monthly_wins, 0), matches: toInt(stats.monthly_matches, 0), xp: toInt(stats.monthly_xp, 0), rating: toInt(stats.rating, 1000) });
+  }
+  return base44.asServiceRole.entities.EightsStats.update(stats.id, {
+    username: playerName(player),
+    rating: Math.max(0, toInt(stats.rating, 1000) + (won ? 20 : -10)),
+    wins,
+    losses,
+    matches_played: matches,
+    win_rate: Math.round((wins / matches) * 100),
+    monthly_key: month,
+    monthly_wins: (sameMonth ? toInt(stats.monthly_wins, 0) : 0) + (won ? 1 : 0),
+    monthly_matches: (sameMonth ? toInt(stats.monthly_matches, 0) : 0) + 1,
+    monthly_xp: (sameMonth ? toInt(stats.monthly_xp, 0) : 0) + (won ? 150 : 50),
+    monthly_history: monthlyHistory.slice(-12),
+    last_played_date: now,
+  });
+}
+
 async function updateModeStats(base44, winner, loser, wager) {
   const now = new Date().toISOString();
 
@@ -170,50 +213,10 @@ async function updateModeStats(base44, winner, loser, wager) {
   }
 
   if (wager.match_type === '8s') {
-    const winnerRows = await base44.asServiceRole.entities.EightsStats.filter({ user_id: winner.id });
-    const loserRows = await base44.asServiceRole.entities.EightsStats.filter({ user_id: loser.id });
-    const winnerStats = winnerRows[0] || await base44.asServiceRole.entities.EightsStats.create({
-      user_id: winner.id,
-      username: playerName(winner),
-      rating: 1000,
-      wins: 0,
-      losses: 0,
-      win_rate: 0,
-      matches_played: 0,
-      region: winner.region || 'na',
-      season: 1,
-    });
-    const loserStats = loserRows[0] || await base44.asServiceRole.entities.EightsStats.create({
-      user_id: loser.id,
-      username: playerName(loser),
-      rating: 1000,
-      wins: 0,
-      losses: 0,
-      win_rate: 0,
-      matches_played: 0,
-      region: loser.region || 'na',
-      season: 1,
-    });
-    const winnerMatches = toInt(winnerStats.matches_played, 0) + 1;
-    const loserMatches = toInt(loserStats.matches_played, 0) + 1;
-    const winnerWins = toInt(winnerStats.wins, 0) + 1;
-
-    await base44.asServiceRole.entities.EightsStats.update(winnerStats.id, {
-      username: playerName(winner),
-      rating: toInt(winnerStats.rating, 1000) + 20,
-      wins: winnerWins,
-      matches_played: winnerMatches,
-      win_rate: Math.round((winnerWins / winnerMatches) * 100),
-      last_played_date: now,
-    });
-    await base44.asServiceRole.entities.EightsStats.update(loserStats.id, {
-      username: playerName(loser),
-      rating: Math.max(0, toInt(loserStats.rating, 1000) - 10),
-      losses: toInt(loserStats.losses, 0) + 1,
-      matches_played: loserMatches,
-      win_rate: loserMatches > 0 ? Math.round((toInt(loserStats.wins, 0) / loserMatches) * 100) : 0,
-      last_played_date: now,
-    });
+    await Promise.all([
+      updateEightsPlayerStats(base44, winner, true),
+      updateEightsPlayerStats(base44, loser, false),
+    ]);
   }
 }
 
@@ -344,6 +347,25 @@ Deno.serve(async (req) => {
     const winnerXp = await awardXP(base44, winner, wager, true);
     const loserXp = await awardXP(base44, loser, wager, false);
     await updateModeStats(base44, winner, loser, wager);
+
+    if (wager.match_type === '8s') {
+      const participants = await base44.asServiceRole.entities.WagerParticipant.filter({ wager_id: wager.id }, '-joined_date', 20);
+      const winningTeam = winner_id === wager.host_id ? 'host' : 'challenger';
+      const otherPlayers = participants.filter((participant) => ![winner_id, loserId].includes(participant.user_id));
+      await Promise.all(otherPlayers.map(async (participant) => {
+        const player = await base44.asServiceRole.entities.User.get(participant.user_id);
+        if (!player) return;
+        const won = participant.team === winningTeam;
+        const xp = await awardXP(base44, player, wager, won);
+        await Promise.all([
+          updateEightsPlayerStats(base44, player, won),
+          base44.asServiceRole.entities.User.update(player.id, {
+            xp_level: xp.level,
+            current_win_streak: won ? toInt(player.current_win_streak, 0) + 1 : 0,
+          }),
+        ]);
+      }));
+    }
 
     await base44.asServiceRole.entities.User.update(winner_id, {
       wallet_balance: entryFee > 0 ? winnerNewAvailable : (winner.wallet_balance || 0),

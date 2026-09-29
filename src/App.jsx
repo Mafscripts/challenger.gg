@@ -11,6 +11,7 @@ import PageLayout from '@/components/layout/PageLayout';
 const Home = lazy(() => import('@/pages/Home'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Ranked = lazy(() => import('@/pages/Ranked'));
+const RankedEights = lazy(() => import('@/pages/RankedEights'));
 const Wagers = lazy(() => import('@/pages/Wagers'));
 const Tournaments = lazy(() => import('@/pages/Tournaments'));
 const StreamerTournaments = lazy(() => import('@/pages/StreamerTournaments'));
@@ -19,6 +20,7 @@ const TournamentMatchRoom = lazy(() => import('@/pages/TournamentMatchRoom'));
 const MatchRoom = lazy(() => import('@/pages/MatchRoom'));
 const RankedMatchRoom = lazy(() => import('@/pages/RankedMatchRoom'));
 const WagersMatchRoom = lazy(() => import('@/pages/WagersMatchRoom'));
+const EightsMatchRoom = lazy(() => import('@/pages/EightsMatchRoom'));
 const Leaderboards = lazy(() => import('@/pages/Leaderboards'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Teams = lazy(() => import('@/pages/Teams'));
@@ -111,6 +113,7 @@ const AuthenticatedApp = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/ranked" element={<Ranked />} />
+          <Route path="/ranked/8s" element={<RankedEights />} />
           <Route path="/wagers" element={<Wagers />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/streamer-tournaments" element={<StreamerTournaments />} />
@@ -119,6 +122,7 @@ const AuthenticatedApp = () => {
           <Route path="/match-room/:id" element={<MatchRoom />} />
           <Route path="/ranked-match/:id" element={<RankedMatchRoom />} />
           <Route path="/wagers-match/:id" element={<WagersMatchRoom />} />
+          <Route path="/8s-match/:id" element={<EightsMatchRoom />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:username" element={<Profile />} />

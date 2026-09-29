@@ -1433,6 +1433,58 @@ async function applyParticipantRewards(winnerIds = [], loserIds = []) {
   return changes;
 }
 
+const currentEightsMonthKey = () => new Date().toISOString().slice(0, 7);
+
+async function updateEightsOutcome(userId, didWin) {
+  const user = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+  if (!user) return null;
+  const existing = await firstEntity("EightsStats", { user_id: userId }).catch(() => null);
+  const stats = existing || await createEntity("EightsStats", {
+    user_id: userId,
+    username: nameFor(user),
+    rating: 1000,
+    wins: 0,
+    losses: 0,
+    matches_played: 0,
+    monthly_key: currentEightsMonthKey(),
+    monthly_wins: 0,
+    monthly_matches: 0,
+    monthly_xp: 0,
+    season: 1,
+  });
+  const sameMonth = stats.monthly_key === currentEightsMonthKey();
+  const wins = Number(stats.wins || 0) + (didWin ? 1 : 0);
+  const losses = Number(stats.losses || 0) + (didWin ? 0 : 1);
+  const matches = Number(stats.matches_played || 0) + 1;
+  const monthlyWins = (sameMonth ? Number(stats.monthly_wins || 0) : 0) + (didWin ? 1 : 0);
+  const monthlyMatches = (sameMonth ? Number(stats.monthly_matches || 0) : 0) + 1;
+  const monthlyXp = (sameMonth ? Number(stats.monthly_xp || 0) : 0) + (didWin ? WIN_XP : LOSS_XP);
+  const monthlyHistory = Array.isArray(stats.monthly_history) ? [...stats.monthly_history] : [];
+  if (!sameMonth && stats.monthly_key && Number(stats.monthly_matches || 0) > 0 && !monthlyHistory.some((row) => row.month === stats.monthly_key)) {
+    monthlyHistory.push({
+      month: stats.monthly_key,
+      wins: Number(stats.monthly_wins || 0),
+      matches: Number(stats.monthly_matches || 0),
+      xp: Number(stats.monthly_xp || 0),
+      rating: Number(stats.rating || 1000),
+    });
+  }
+  return updateEntity("EightsStats", stats.id, {
+    username: nameFor(user),
+    rating: Math.max(0, Number(stats.rating || 1000) + (didWin ? 20 : -10)),
+    wins,
+    losses,
+    matches_played: matches,
+    win_rate: Math.round((wins / matches) * 100),
+    monthly_key: currentEightsMonthKey(),
+    monthly_wins: monthlyWins,
+    monthly_matches: monthlyMatches,
+    monthly_xp: monthlyXp,
+    monthly_history: monthlyHistory.slice(-12),
+    last_played_date: nowIso(),
+  });
+}
+
 async function reverseXPOutcome(userId, didWin) {
   const stats = await firstEntity("XPStats", { user_id: userId }).catch(() => null);
   if (!stats) return null;
@@ -5999,6 +6051,39 @@ async function createWager(req) {
   return { success: true, wager, wager_id: wager.id };
 }
 
+async function randomizeEightsTeams(wager, participantRows) {
+  const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
+  if ((participantRows || []).length < requiredSize * 2) return wager;
+  const shuffled = shuffledCopy(participantRows).slice(0, requiredSize * 2);
+  const alpha = shuffled.slice(0, requiredSize);
+  const bravo = shuffled.slice(requiredSize, requiredSize * 2);
+  await Promise.all(shuffled.map((participant) => {
+    const team = alpha.some((row) => row.id === participant.id) ? "host" : "challenger";
+    return updateEntity("WagerParticipant", participant.id, {
+      team,
+      team_name: team === "host" ? "Team Alpha" : "Team Bravo",
+      is_captain: participant.id === alpha[0]?.id || participant.id === bravo[0]?.id,
+    });
+  }));
+  const selectedMaps = randomWagerMaps(wager.game_mode, wager.best_of || 3);
+  return updateEntity("Wager", wager.id, {
+    host_id: alpha[0]?.user_id || "",
+    host_name: alpha[0]?.user_name || "Team Alpha Captain",
+    host_team_name: "Team Alpha",
+    challenger_id: bravo[0]?.user_id || "",
+    challenger_name: bravo[0]?.user_name || "Team Bravo Captain",
+    challenger_team_name: "Team Bravo",
+    series_maps: selectedMaps.map((map) => map.name),
+    final_map_id: selectedMaps[0]?.id || "",
+    final_map_name: selectedMaps[0]?.name || "",
+    roster_lock_deadline: new Date(Date.now() + 30000).toISOString(),
+    roster_locked: false,
+    teams_generated_at: nowIso(),
+    status: "open",
+    accepted_date: nowIso(),
+  });
+}
+
 async function acceptWager(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
@@ -6104,7 +6189,7 @@ async function acceptWager(req) {
     ? new Date(Date.now() + 30 * 1000).toISOString()
     : "";
   const selectedMaps = rosterFull ? randomWagerMaps(wager.game_mode, wager.best_of) : [];
-  const updated = await updateEntity("Wager", wager.id, {
+  let updated = await updateEntity("Wager", wager.id, {
     challenger_id: wager.challenger_id || (individualSide === "challenger" ? req.user.id : ""),
     challenger_name: wager.challenger_name || (individualSide === "challenger" ? nameFor(req.user) : ""),
     challenger_team_id: challengerTeam?.id,
@@ -6122,6 +6207,11 @@ async function acceptWager(req) {
     accepted_date: new Date().toISOString(),
     match_started_date: isTeamMatch || isIndividualEights ? wager.match_started_date : new Date().toISOString(),
   });
+
+  if (isIndividualEights && rosterFull) {
+    const fullRoster = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
+    updated = await randomizeEightsTeams(updated, fullRoster);
+  }
 
   const startState = isTeamMatch ? await maybeStartWager(wager.id) : { wager: updated, ready: !isIndividualEights };
   const acceptedParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
@@ -6164,8 +6254,12 @@ async function syncEightsLobby(req) {
     return { success: true, wager: reopened, locked: false, full: false };
   }
 
-  if (wager.roster_locked || wager.status === "in_progress") return { success: true, wager, locked: true, full: true };
-  const deadline = wager.roster_lock_deadline ? new Date(wager.roster_lock_deadline) : null;
+  let currentWager = wager;
+  if (!wager.teams_generated_at) {
+    currentWager = await randomizeEightsTeams(wager, participants);
+  }
+  if (currentWager.roster_locked || currentWager.status === "in_progress") return { success: true, wager: currentWager, locked: true, full: true };
+  const deadline = currentWager.roster_lock_deadline ? new Date(currentWager.roster_lock_deadline) : null;
   if (!deadline || Number.isNaN(deadline.getTime())) {
     const pending = await updateEntity("Wager", wager.id, {
       roster_lock_deadline: new Date(Date.now() + 30 * 1000).toISOString(),
@@ -6175,13 +6269,13 @@ async function syncEightsLobby(req) {
     return { success: true, wager: pending, locked: false, full: true };
   }
   if (deadline.getTime() > Date.now()) {
-    return { success: true, wager, locked: false, full: true, seconds_remaining: Math.ceil((deadline.getTime() - Date.now()) / 1000) };
+    return { success: true, wager: currentWager, locked: false, full: true, seconds_remaining: Math.ceil((deadline.getTime() - Date.now()) / 1000) };
   }
 
-  const locked = await updateEntity("Wager", wager.id, {
+  const locked = await updateEntity("Wager", currentWager.id, {
     status: "in_progress",
     roster_locked: true,
-    match_started_date: wager.match_started_date || nowIso(),
+    match_started_date: currentWager.match_started_date || nowIso(),
   });
   return { success: true, wager: locked, locked: true, full: true };
 }
@@ -6226,8 +6320,71 @@ async function leaveEightsLobby(req) {
     final_map_id: "",
     final_map_name: "",
     series_maps: [],
+    teams_generated_at: "",
   });
   return { success: true, wager: reopened };
+}
+
+function previousMonthKey() {
+  const date = new Date();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() - 1);
+  return date.toISOString().slice(0, 7);
+}
+
+async function settleEightsMonthlyPrize() {
+  const month = previousMonthKey();
+  const referenceId = `8s-monthly-${month}`;
+  const priorTransactions = await listEntities("WalletTransaction", { reference_id: referenceId }, "-created_date", 5).catch(() => []);
+  const settled = priorTransactions.find((transaction) => transaction.type === "eights_monthly_prize" && transaction.status === "completed");
+  if (settled) return { success: true, already_settled: true, month, winner_id: settled.user_id, amount: Number(settled.amount || 100) };
+
+  const rows = await listEntities("EightsStats", {}, "-created_date", 500).catch(() => []);
+  const candidates = rows.map((stats) => {
+    const snapshot = stats.monthly_key === month
+      ? { month, wins: Number(stats.monthly_wins || 0), matches: Number(stats.monthly_matches || 0), xp: Number(stats.monthly_xp || 0), rating: Number(stats.rating || 1000) }
+      : (Array.isArray(stats.monthly_history) ? stats.monthly_history.find((entry) => entry?.month === month) : null);
+    return snapshot ? { stats, snapshot } : null;
+  }).filter((entry) => entry?.snapshot?.matches > 0).sort((a, b) => (
+    b.snapshot.wins - a.snapshot.wins
+    || b.snapshot.xp - a.snapshot.xp
+    || b.snapshot.rating - a.snapshot.rating
+    || new Date(a.stats.last_played_date || 0) - new Date(b.stats.last_played_date || 0)
+  ));
+  if (candidates.length === 0) return { success: true, settled: false, month, reason: "No eligible players" };
+
+  const winnerStats = candidates[0].stats;
+  const winner = await userFor(winnerStats.user_id);
+  if (!winner) return { success: false, error: "Monthly winner account not found" };
+  const wallet = await walletFor(winner.id);
+  const before = roundedMoney(wallet.available_balance);
+  const amount = 100;
+  const after = roundedMoney(before + amount);
+  const updatedWallet = await updateEntity("Wallet", wallet.id, {
+    available_balance: after,
+    withdrawable_balance: roundedMoney(Number(wallet.withdrawable_balance || 0) + amount),
+    total_earnings: roundedMoney(Number(wallet.total_earnings || 0) + amount),
+  });
+  await syncUserWalletBalance(winner.id, updatedWallet);
+  await createWalletTransaction(winner.id, updatedWallet, {
+    type: "eights_monthly_prize",
+    amount,
+    balance_before: before,
+    balance_after: after,
+    description: `Ranked 8s monthly champion prize · ${month}`,
+    reference_id: referenceId,
+    reference_type: "EightsMonthlyPrize",
+    metadata: { month, wins: candidates[0].snapshot.wins, matches: candidates[0].snapshot.matches, xp: candidates[0].snapshot.xp },
+  });
+  await notifyUser(winner.id, {
+    title: "You won the Ranked 8s monthly race",
+    message: `$100 has been added to your wallet for finishing #1 in ${month}.`,
+    type: "reward",
+    action_url: "/wallet",
+    related_entity_id: referenceId,
+    related_entity_type: "EightsMonthlyPrize",
+  });
+  return { success: true, settled: true, month, winner_id: winner.id, winner_name: nameFor(winner), amount };
 }
 
 async function resolveOpenMatchDisputes(matchId, resolution, resolvedBy = null) {
@@ -6467,6 +6624,12 @@ async function completeWager(req) {
     ? await releaseWagerEscrow(wager, winnerId)
     : { totalPot: 0, winnerProfit: 0, walletChanges: {} };
   const xpChanges = await applyParticipantRewards(winnerUserIds, loserUserIds);
+  if ((wager.match_type || "wagers") === "8s") {
+    await Promise.all([
+      ...winnerUserIds.map((userId) => updateEightsOutcome(userId, true)),
+      ...loserUserIds.map((userId) => updateEightsOutcome(userId, false)),
+    ]);
+  }
   const completedWager = await updateEntity("Wager", wager.id, {
     xp_changes: xpChanges,
     wallet_changes: payoutResult.walletChanges,
@@ -8876,6 +9039,7 @@ const handlers = {
   acceptWager,
   syncEightsLobby,
   leaveEightsLobby,
+  settleEightsMonthlyPrize,
   payWagerEntry,
   submitScore,
   completeWager,

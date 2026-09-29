@@ -362,6 +362,38 @@ Deno.serve(async (req) => {
       match_type: wager.match_type || (entryFee > 0 ? 'wagers' : 'xp'),
     });
 
+    if (isIndividualEights && rosterFull) {
+      const fullRoster = await base44.asServiceRole.entities.WagerParticipant.filter({ wager_id }, 'joined_date', 20);
+      const shuffled = [...fullRoster];
+      for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+      }
+      const alpha = shuffled.slice(0, requiredSize);
+      const bravo = shuffled.slice(requiredSize, requiredSize * 2);
+      await Promise.all(shuffled.map((participant) => {
+        const team = alpha.some((row) => row.id === participant.id) ? 'host' : 'challenger';
+        return base44.asServiceRole.entities.WagerParticipant.update(participant.id, {
+          team,
+          team_name: team === 'host' ? 'Team Alpha' : 'Team Bravo',
+          is_captain: participant.id === alpha[0]?.id || participant.id === bravo[0]?.id,
+        });
+      }));
+      const shuffledMaps = [...pool].sort(() => Math.random() - 0.5).slice(0, Math.max(1, Number(wager.best_of || 3)));
+      await base44.asServiceRole.entities.Wager.update(wager_id, {
+        host_id: alpha[0]?.user_id || '',
+        host_name: alpha[0]?.user_name || 'Team Alpha Captain',
+        host_team_name: 'Team Alpha',
+        challenger_id: bravo[0]?.user_id || '',
+        challenger_name: bravo[0]?.user_name || 'Team Bravo Captain',
+        challenger_team_name: 'Team Bravo',
+        final_map_id: shuffledMaps[0]?.id || '',
+        final_map_name: shuffledMaps[0]?.name || '',
+        series_maps: shuffledMaps.map((map) => map.name),
+        teams_generated_at: now,
+      });
+    }
+
     const startState = isTeamMatch ? await maybeStartWager(base44, wager_id) : {
       wager: await base44.asServiceRole.entities.Wager.get(wager_id),
       ready: !isIndividualEights,
