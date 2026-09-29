@@ -191,7 +191,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
           if (response.data.error) {
             toast({
-              title: "Failed to create ranked match",
+              title: "Failed to create XP match",
               description: response.data.error,
               variant: "destructive"
             });
@@ -200,7 +200,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           }
           
           toast({
-            title: "Ranked match created!",
+            title: "XP match created!",
             description: `Created ${selectedTeamSize} ${gameModeObj.name}`,
           });
 
@@ -317,8 +317,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           {/* Header */}
           <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black">{isEights ? "Create 8s Lobby" : "Create Lobby"}</h2>
-              <p className="text-xs text-vapor mt-0.5">{isEights ? "Pick a BO3 series; teams are generated at 8 players" : "Configure your match settings"}</p>
+              <h2 className="text-xl font-black">{isEights ? "Create 8s Lobby" : isRanked ? "Create XP Match" : "Create Wager"}</h2>
+              <p className="text-xs text-vapor mt-0.5">{isEights ? "Pick a BO3 series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-vapor" />
@@ -427,7 +427,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 {(requiresTeam || supportsRankedParty) && (
                   <div className="mt-5 rounded-xl border border-white/5 bg-secondary/40 p-4">
                     <label className="text-xs text-vapor mb-2 block uppercase tracking-wider">
-                      {isRanked ? "Ranked party (optional)" : "Select wager team"}
+                      {isRanked ? "XP match party (optional)" : "Select wager team"}
                     </label>
                     <select
                       value={selectedTeamId}
@@ -443,7 +443,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     </select>
                     {compatibleTeams.length === 0 && (
                       isRanked ? (
-                        <p className="mt-2 text-xs text-vapor">No complete Ranked Team fits this mode yet.</p>
+                        <p className="mt-2 text-xs text-vapor">No complete XP Match Team fits this mode yet.</p>
                       ) : (
                         <p className="text-xs text-red-400 mt-2">Create a dedicated wager team first. Tournament teams cannot be used here.</p>
                       )
@@ -662,7 +662,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   <p className="text-xs text-green font-bold">{isEights ? "FREE · RANDOM TEAMS · XP ENABLED" : "FREE TO PLAY"}</p>
                   {selectedTeam && (
                     <p className="text-xs text-vapor mt-2">
-                      Ranked party: {selectedTeam.name} ({selectedTeam.members.length} players)
+                      XP match party: {selectedTeam.name} ({selectedTeam.members.length} players)
                     </p>
                   )}
                 </div>
@@ -678,7 +678,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     disabled={isCreating}
                     className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
-                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isEights ? "Open 8s Lobby" : "Create Lobby"}
+                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isEights ? "Open 8s Lobby" : "Create XP Match"}
                   </button>
                 </div>
               </div>

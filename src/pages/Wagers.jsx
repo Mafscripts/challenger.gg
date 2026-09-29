@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Zap, Plus, DollarSign, Star, Clock3, ShieldCheck, Swords, History, Users, Gamepad2
+  Zap, Plus, Clock3, History, Users, Gamepad2
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { wagerPlayRule } from "@/lib/wagerRules";
@@ -250,7 +251,6 @@ export default function Wagers() {
     return true;
   });
 
-  const hasActivePremium = user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires) > new Date());
   const compatibleTeamsFor = (_wager) => (
     userTeams.filter((team) => (
       team.team_type === "wager"
@@ -261,16 +261,12 @@ export default function Wagers() {
   return (
     <div className="min-h-screen py-6 md:py-10">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <section className="premium-panel relative mb-10 overflow-hidden rounded-[1.75rem] p-6 md:p-9">
-          <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-blue-400">
-                <Swords className="h-4 w-4" /> Competitive wagers
-              </div>
-              <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">Find your next match</h1>
-              <p className="mt-3 max-w-2xl text-base leading-relaxed text-vapor">Post a challenge or accept an open wager. Your entry is secured until the match is completed.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
+        <CompetitionLadder
+          mode="wagers"
+          currentUser={user}
+          openCount={wagers.length}
+          action={
+            <div className="flex flex-col gap-2">
               <Link to="/teams?create=wager" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/10 bg-secondary px-5 py-3.5 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-blue-400/25 hover:bg-blue-500/10 hover:text-blue-300">
                 <Users className="h-[18px] w-[18px]" /> Create Wager Team
               </Link>
@@ -278,24 +274,11 @@ export default function Wagers() {
                 <Plus className="h-[18px] w-[18px]" /> Post a wager
               </button>
             </div>
-          </div>
-          <div className="relative mt-7 grid grid-cols-2 gap-4 border-t border-white/5 pt-6 md:grid-cols-4">
-            {[
-              { label: "Open now", value: wagers.length, icon: Zap },
-              { label: "Wallet", value: user ? `$${(user.wallet_balance || 0).toFixed(2)}` : "$0.00", icon: DollarSign },
-              { label: "Account", value: hasActivePremium ? "Premium" : "Standard", icon: Star },
-              { label: "Platform fee", value: hasActivePremium ? "5%" : "10%", icon: ShieldCheck },
-            ].map(({ label, value, icon: Icon }) => (
-              <div key={label} className="premium-card flex items-center gap-4 rounded-2xl px-4 py-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400"><Icon className="h-5 w-5" /></div>
-                <div><p className="text-[11px] font-black uppercase tracking-wider text-vapor">{label}</p><p className="mt-1 font-mono text-lg font-black text-white">{value}</p></div>
-              </div>
-            ))}
-          </div>
-        </section>
+          }
+        />
         <ActivisionIdNotice user={user} className="mb-5" />
 
-        <div className="mb-5 flex flex-col gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div id="matchfinder" className="mb-5 flex scroll-mt-24 flex-col gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-2.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex rounded-lg bg-black/20 p-1">
             <button onClick={() => setTab("active")} className={`flex flex-1 items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-bold transition-all sm:flex-none ${tab === "active" ? "bg-cyan/10 text-cyan shadow-sm" : "text-vapor hover:text-foreground"}`}><Zap className="h-4 w-4" /> Open wagers</button>
             <button onClick={() => setTab("history")} className={`flex flex-1 items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-bold transition-all sm:flex-none ${tab === "history" ? "bg-cyan/10 text-cyan shadow-sm" : "text-vapor hover:text-foreground"}`}><History className="h-4 w-4" /> My history</button>

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Award, ArrowRight, Flame, Globe, Medal, Plus, Swords, Trophy, Users } from "lucide-react";
+import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
-import CompetitionHero from "@/components/match/CompetitionHero";
+import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import RankBadge from "@/components/ui/RankBadge";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
@@ -170,7 +170,7 @@ export default function Ranked() {
       setLeaderboardPosition(position >= 0 ? position + 1 : null);
     } catch (error) {
       console.error("Failed to load ranked data:", error);
-      toast({ title: "Ranked unavailable", description: "Could not load ranked data.", variant: "destructive" });
+      toast({ title: "XP Matches unavailable", description: "Could not load XP match data.", variant: "destructive" });
     } finally {
       setLoadingMatches(false);
     }
@@ -184,7 +184,7 @@ export default function Ranked() {
 
   const handleAcceptMatch = async (match) => {
     if (!user) {
-      toast({ title: "Login required", description: "Please log in to accept ranked matches.", variant: "destructive" });
+      toast({ title: "Login required", description: "Please log in to accept XP matches.", variant: "destructive" });
       return;
     }
     if (!hasActivisionId(user)) {
@@ -199,7 +199,7 @@ export default function Ranked() {
       });
 
       if (response.data?.success) {
-        toast({ title: "Ranked match accepted", description: "Opening match room." });
+        toast({ title: "XP match accepted", description: "Opening match room." });
         navigate(`/ranked-match/${match.id}`);
         return;
       }
@@ -222,10 +222,10 @@ export default function Ranked() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <CompetitionHero
-          eyebrow="Season 1 Competitive Ladder"
-          title="Ranked"
-          description="Open or accept a ranked lobby, complete the map flow, and report the result from a consistent competitive match room."
+        <CompetitionLadder
+          mode="xp"
+          currentUser={user}
+          openCount={rankedMatches.length}
           action={
             <div className="flex w-full flex-col gap-3 xl:w-[320px]">
               <Link to="/rules" className="group rounded-xl border border-blue-400/25 bg-blue-500/[0.06] px-4 py-3 transition-colors hover:border-blue-400/45 hover:bg-blue-500/10">
@@ -234,7 +234,7 @@ export default function Ranked() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400"><Trophy className="h-4 w-4" /></div>
                     <div>
                       <div className="flex items-center gap-2"><p className="text-xs font-black uppercase tracking-wider text-blue-300">CDL Rules</p><span className="rounded-full border border-blue-400/20 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-blue-300">Required</span></div>
-                      <p className="mt-1 text-[10px] text-vapor">Competitive Ranked ruleset</p>
+                      <p className="mt-1 text-[10px] text-vapor">Competitive XP match ruleset</p>
                     </div>
                   </div>
                   <ArrowRight className="h-4 w-4 text-blue-400 transition-transform group-hover:translate-x-0.5" />
@@ -249,16 +249,11 @@ export default function Ranked() {
                   onClick={() => setIsCreateModalOpen(true)}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white transition-all hover:bg-blue-400 hover:shadow-lg hover:shadow-cyan/25"
                 >
-                  <Plus className="w-4 h-4" /> Create Ranked Match
+                  <Plus className="w-4 h-4" /> Create XP Match
                 </button>
               )}
             </div>
           }
-          stats={[
-            { label: "Open Matches", value: rankedMatches.length, icon: Globe, color: "text-orange" },
-            { label: "Season Wins", value: currentStats?.wins || 0, icon: Award, color: "text-yellow-400" },
-            { label: "Matches Played", value: currentStats?.matches_played || 0, icon: Trophy, color: "text-cyan" },
-          ]}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
 
@@ -267,7 +262,7 @@ export default function Ranked() {
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan/20 bg-cyan/10 text-cyan"><Swords className="h-5 w-5" /></div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan">Your Active Ranked Match</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan">Your Active XP Match</p>
                 <p className="mt-1 font-black">{activeRankedMatch.team_size} {activeRankedMatch.game_mode_display || modeLabels[activeRankedMatch.game_mode] || activeRankedMatch.game_mode}</p>
                 <p className="mt-1 text-xs text-vapor">{activeRankedMatch.status === "open" ? "Waiting for an opponent" : `${activeRankedMatch.host_name} vs ${activeRankedMatch.challenger_name || "Opponent"}`}</p>
               </div>
@@ -278,10 +273,10 @@ export default function Ranked() {
           </div>
         )}
 
-        <div className="glass rounded-xl border border-white/5 p-6 mb-6">
+        <div id="matchfinder" className="glass scroll-mt-24 rounded-xl border border-white/5 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm flex items-center gap-2">
-              <Swords className="w-4 h-4 text-cyan" /> Available Ranked Matches
+              <Swords className="w-4 h-4 text-cyan" /> Available XP Matches
             </h3>
             <button onClick={loadRankedData} className="text-xs text-cyan hover:underline">Refresh</button>
           </div>
@@ -292,7 +287,7 @@ export default function Ranked() {
             </div>
           ) : rankedMatches.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-vapor text-sm mb-2">No ranked matches available</p>
+              <p className="text-vapor text-sm mb-2">No XP matches available</p>
               <p className="text-xs text-vapor/60">Create one to open the ladder.</p>
             </div>
           ) : (

@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CalendarDays, Crown, Flame, Plus, RefreshCw, Sparkles, Trophy, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, Plus, RefreshCw, Sparkles, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import CompetitionHero from "@/components/match/CompetitionHero";
+import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
@@ -25,7 +25,6 @@ export default function RankedEights() {
   const [lobbies, setLobbies] = useState([]);
   const [counts, setCounts] = useState({});
   const [xpStats, setXpStats] = useState(null);
-  const [eightsStats, setEightsStats] = useState([]);
   const [activeLobby, setActiveLobby] = useState(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState("");
@@ -35,20 +34,17 @@ export default function RankedEights() {
     if (!quiet) setLoading(true);
     try {
       const currentUser = await base44.auth.me();
-      const [openRows, statsRows, xpRows, memberships] = await Promise.all([
+      const [openRows, xpRows, memberships] = await Promise.all([
         base44.entities.Wager.filterFresh({ match_type: "8s", status: "open" }, "-created_date", 30),
-        base44.entities.EightsStats.filterFresh({}, "-monthly_wins", 100),
         base44.entities.XPStats.filterFresh({ user_id: currentUser.id }, "-created_date", 1),
         base44.entities.WagerParticipant.filterFresh({ user_id: currentUser.id }, "-joined_date", 50),
       ]);
-      const relevantStats = (statsRows || []).filter((row) => !row.monthly_key || row.monthly_key === monthKey());
       const activeMemberships = (memberships || []).filter(Boolean);
       const activeMatches = await Promise.all(activeMemberships.map((row) => base44.entities.Wager.getFresh(row.wager_id).catch(() => null)));
       const current = activeMatches.filter((row) => row?.match_type === "8s" && activeStatuses.has(row.status)).sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
       const participantLists = await Promise.all((openRows || []).map((row) => base44.entities.WagerParticipant.filterFresh({ wager_id: row.id }, "joined_date", 8).catch(() => [])));
       setUser(currentUser);
       setLobbies(openRows || []);
-      setEightsStats(relevantStats);
       setXpStats((xpRows || [])[0] || null);
       setActiveLobby(current);
       setCounts(Object.fromEntries((openRows || []).map((row, index) => [row.id, participantLists[index]?.length || 0])));
@@ -69,12 +65,6 @@ export default function RankedEights() {
     return () => window.clearInterval(interval);
   }, [load]);
 
-  const sortedLeaders = useMemo(() => [...eightsStats].sort((a, b) => (
-    Number(b.monthly_wins || 0) - Number(a.monthly_wins || 0)
-    || Number(b.monthly_xp || 0) - Number(a.monthly_xp || 0)
-    || Number(b.rating || 1000) - Number(a.rating || 1000)
-  )).slice(0, 8), [eightsStats]);
-  const myStats = eightsStats.find((row) => row.user_id === user?.id);
   const level = Number(xpStats?.level || user?.xp_level || 1);
   const currentXp = Number(xpStats?.current_xp || 0);
   const xpTarget = Number(xpStats?.xp_to_next_level || 1000);
@@ -108,10 +98,10 @@ export default function RankedEights() {
   return (
     <div className="min-h-screen py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        <CompetitionHero
-          eyebrow="8-player competitive queue"
-          title="Ranked 8s"
-          description="Join solo. At 8 players the system shuffles everyone into two random teams, picks the map rotation and locks the match room."
+        <CompetitionLadder
+          mode="eights"
+          currentUser={user}
+          openCount={lobbies.length}
           action={activeLobby ? (
             <Link to={`/8s-match/${activeLobby.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background">
               Return to your 8s <ArrowRight className="h-4 w-4" />
@@ -121,11 +111,6 @@ export default function RankedEights() {
               <Plus className="h-4 w-4" /> Create 8s lobby
             </button>
           )}
-          stats={[
-            { label: "Open lobbies", value: lobbies.length, icon: Users, color: "text-cyan" },
-            { label: "Your 8s wins", value: myStats?.wins || 0, icon: Trophy, color: "text-yellow-400" },
-            { label: "XP level", value: level, icon: Sparkles, color: "text-purple-300" },
-          ]}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
 
@@ -148,7 +133,7 @@ export default function RankedEights() {
         </section>
 
         <div className="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,.75fr)]">
-          <section className="glass overflow-hidden rounded-2xl border border-white/[0.07]">
+          <section id="matchfinder" className="glass scroll-mt-24 overflow-hidden rounded-2xl border border-white/[0.07]">
             <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
               <div><h2 className="font-black">Open 8s lobbies</h2><p className="mt-1 text-xs text-vapor">Every lobby is fixed at 4v4 / 8 players.</p></div>
               <button onClick={() => load()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh lobbies"><RefreshCw className="h-4 w-4" /></button>
@@ -185,16 +170,6 @@ export default function RankedEights() {
           </section>
         </div>
 
-        <section className="glass overflow-hidden rounded-2xl border border-white/[0.07]">
-          <div className="border-b border-white/[0.06] px-5 py-4"><h2 className="flex items-center gap-2 font-black"><Flame className="h-4 w-4 text-orange" /> Monthly leaderboard</h2><p className="mt-1 text-xs text-vapor">{prizeActive ? "Only players with a completed match are eligible for the $100 prize." : "The $100 prize race begins October 1; results before then are not prize-eligible."}</p></div>
-          <div className="divide-y divide-white/[0.05]">
-            {sortedLeaders.length === 0 ? <p className="px-5 py-10 text-center text-sm text-vapor">The race starts with the first completed 8s match.</p> : sortedLeaders.map((entry, index) => (
-              <div key={entry.id || entry.user_id} className="grid grid-cols-[40px_minmax(0,1fr)_70px_80px] items-center gap-3 px-5 py-3.5 text-sm">
-                <span className={`font-mono font-black ${index === 0 ? "text-yellow-300" : "text-vapor"}`}>#{index + 1}</span><span className="truncate font-bold">{entry.username || "Player"}</span><span className="text-right font-mono font-black text-cyan">{entry.monthly_wins || 0} W</span><span className="text-right font-mono text-xs text-vapor">{entry.monthly_xp || 0} XP</span>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
       <CreateLobbyModal isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode="eights" />
     </div>
