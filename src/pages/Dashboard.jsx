@@ -14,13 +14,14 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const SLIDE_DURATION = 8000;
+const SLIDE_DURATION = 10000;
 const HOME_REFRESH_INTERVAL = 60000;
 const blackOps7Artwork = "/assets/tournaments/black-ops-7.webp";
 
 const slides = [
   {
     image: "/assets/home/featured-season.png",
+    objectPosition: "center 35%",
     tag: "New season",
     meta: "Oct 1, 2026",
     title: "BLACK OPS 7 LADDER",
@@ -33,6 +34,7 @@ const slides = [
   },
   {
     image: "/assets/home/featured-tournaments.png",
+    objectPosition: "center 43%",
     tag: "Tournament ladder",
     meta: "Six-week season",
     title: "BLACK OPS 7 TOURNAMENTS",
@@ -141,15 +143,15 @@ function FeaturedNews() {
   const move = (direction) => setActive((current) => (current + direction + slides.length) % slides.length);
 
   return (
-    <section className="home-featured relative isolate min-h-[410px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:min-h-[440px]">
+    <section className="home-featured relative isolate min-h-[370px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:min-h-[400px]">
       <div key={`base-${active}`} className="home-featured-image absolute inset-0">
-        <img src={slide.image} alt="" className="h-full w-full object-cover object-center" loading={active === 0 ? "eager" : "lazy"} />
+        <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
       </div>
       <div key={`glitch-cyan-${active}`} className="home-featured-glitch home-featured-glitch-cyan absolute inset-0" aria-hidden="true">
-        <img src={slide.image} alt="" className="h-full w-full object-cover object-center" />
+        <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} />
       </div>
       <div key={`glitch-orange-${active}`} className="home-featured-glitch home-featured-glitch-orange absolute inset-0" aria-hidden="true">
-        <img src={slide.image} alt="" className="h-full w-full object-cover object-center" />
+        <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} />
       </div>
       <div key={`impact-${active}`} className="home-featured-impact absolute inset-0" aria-hidden="true" />
       <div className="home-featured-scanlines absolute inset-0" aria-hidden="true" />
@@ -157,7 +159,7 @@ function FeaturedNews() {
       <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,9,16,.86)_0%,transparent_45%)]" />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
 
-      <div key={`copy-${active}`} className="home-featured-copy relative z-10 flex min-h-[410px] max-w-3xl flex-col justify-center px-6 py-16 sm:min-h-[440px] sm:px-10 lg:px-14">
+      <div key={`copy-${active}`} className="home-featured-copy relative z-10 flex min-h-[370px] max-w-3xl flex-col justify-center px-6 py-14 sm:min-h-[400px] sm:px-10 lg:px-14">
         <p className="mb-12 flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.24em] text-vapor sm:mb-14">
           <span className="h-1.5 w-1.5 bg-orange" /> Featured news
         </p>

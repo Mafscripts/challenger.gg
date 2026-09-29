@@ -2090,7 +2090,7 @@ img {
 }
 
 .home-featured-image {
-  animation: home-featured-zoom 8s cubic-bezier(.18, .68, .2, 1) both;
+  animation: home-featured-zoom 10s ease-in-out both;
   will-change: transform;
 }
 
@@ -2103,12 +2103,12 @@ img {
 
 .home-featured-glitch-cyan {
   filter: saturate(1.45) contrast(1.15) drop-shadow(-9px 0 var(--home-glitch-cyan));
-  animation: home-featured-glitch-cyan 8s steps(1, end) both;
+  animation: home-featured-glitch-cyan 10s steps(1, end) both;
 }
 
 .home-featured-glitch-orange {
   filter: saturate(1.35) contrast(1.18) drop-shadow(9px 0 var(--home-glitch-orange));
-  animation: home-featured-glitch-orange 8s steps(1, end) both;
+  animation: home-featured-glitch-orange 10s steps(1, end) both;
 }
 
 .home-featured-impact {
@@ -2119,7 +2119,7 @@ img {
     repeating-linear-gradient(0deg, transparent 0 6px, rgba(255,255,255,.025) 7px, transparent 8px);
   mix-blend-mode: screen;
   opacity: 0;
-  animation: home-featured-impact 8s steps(1, end) both;
+  animation: home-featured-impact 10s steps(1, end) both;
   will-change: opacity, transform;
 }
 
@@ -2141,13 +2141,14 @@ img {
 
 .home-slide-progress {
   width: 0;
-  animation: home-slide-progress 8s linear both;
+  animation: home-slide-progress 10s linear both;
 }
 
 @keyframes home-featured-zoom {
-  0% { transform: scale(1.015) translate3d(0, 0, 0); filter: saturate(.88) contrast(1.04); }
-  8% { transform: scale(1.045) translate3d(-.35%, .1%, 0); filter: saturate(1.08) contrast(1.08); }
-  100% { transform: scale(1.14) translate3d(-1.25%, -.55%, 0); filter: saturate(1.16) contrast(1.1); }
+  0% { transform: scale(1.01) translate3d(-.15%, 0, 0); filter: saturate(.94) contrast(1.04); }
+  32% { transform: scale(1.023) translate3d(-.8%, -.08%, 0); filter: saturate(1.02) contrast(1.06); }
+  67% { transform: scale(1.04) translate3d(.55%, -.14%, 0); filter: saturate(1.08) contrast(1.07); }
+  100% { transform: scale(1.055) translate3d(-.25%, -.2%, 0); filter: saturate(1.1) contrast(1.08); }
 }
 
 @keyframes home-featured-copy-in {
