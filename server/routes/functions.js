@@ -4133,11 +4133,9 @@ async function moderateStreamerTournamentUser(req) {
 }
 
 function tournamentRegistrationIsLocked(tournament) {
-  const registrationEnded = tournament?.registration_end && new Date(tournament.registration_end) <= new Date();
   return Boolean(
     tournament?.registration_locked
     || tournament?.bracket_generated
-    || registrationEnded
     || !tournamentStatusesOpenForRegistration.includes(tournament?.status)
   );
 }

@@ -10,6 +10,7 @@ import {
   Globe2,
   Layers3,
   Loader2,
+  LogOut,
   Medal,
   Monitor,
   ShieldCheck,
@@ -88,6 +89,13 @@ const canJoin = (tournament, joined, user) => {
   const hasSpace = !Number(tournament.max_teams || 0) || Number(tournament.registered_teams || 0) < Number(tournament.max_teams || 0);
   return ["open", "registration"].includes(tournament.status) && hasSpace && (!inviteOnly || invited);
 };
+const canLeave = (tournament, matches) => Boolean(
+  tournament
+  && ["open", "registration"].includes(tournament.status)
+  && tournament.registration_locked !== true
+  && tournament.bracket_generated !== true
+  && matches.length === 0
+);
 
 function Countdown({ value, now }) {
   const target = new Date(value || "").getTime();
@@ -190,6 +198,7 @@ export default function TournamentOverview() {
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [paymentMode, setPaymentMode] = useState("own");
   const [joining, setJoining] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [joined, setJoined] = useState(false);
 
   const loadTeams = async (currentUser) => {
@@ -278,6 +287,43 @@ export default function TournamentOverview() {
     }
   };
 
+  const handleLeave = async () => {
+    if (!user?.id || !tournament || leaving) return;
+    const participant = participants.find((row) => (
+      row.captain_id === user.id
+      || row.user_id === user.id
+      || (row.members || []).some((member) => member.user_id === user.id)
+    ));
+    if (!participant || participant.captain_id !== user.id) {
+      toast({ title: "Captain required", description: "Only the team captain can leave a tournament.", variant: "destructive" });
+      return;
+    }
+
+    setLeaving(true);
+    try {
+      const response = await base44.functions.invoke("leaveTournament", {
+        tournament_id: tournament.id,
+        participant_id: participant.id,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Leave failed", description: response.data?.error || "Could not leave tournament.", variant: "destructive" });
+        return;
+      }
+
+      setJoined(false);
+      setParticipants((current) => current.filter((row) => row.id !== participant.id));
+      setTournament((current) => ({
+        ...current,
+        registered_teams: response.data.tournament?.registered_teams ?? Math.max(0, Number(current.registered_teams || 0) - 1),
+      }));
+      toast({ title: "Tournament left", description: `${participant.team_name || "Your team"} left ${tournament.name}.` });
+    } catch (error) {
+      toast({ title: "Leave failed", description: error.message || "Could not leave tournament.", variant: "destructive" });
+    } finally {
+      setLeaving(false);
+    }
+  };
+
   const handleTeamCreated = async (team) => {
     const refreshedTeams = await loadTeams(user);
     setTeams(refreshedTeams);
@@ -300,6 +346,12 @@ export default function TournamentOverview() {
   }
 
   const joinAvailable = canJoin(tournament, joined, user);
+  const joinedParticipant = participants.find((participant) => (
+    participant.captain_id === user?.id
+    || participant.user_id === user?.id
+    || (participant.members || []).some((member) => member.user_id === user?.id)
+  ));
+  const leaveAvailable = joinedParticipant?.captain_id === user?.id && canLeave(tournament, matches);
   const distribution = tournament.prize_distribution || {};
   const firstPrize = Number(distribution.first_amount ?? distribution.first ?? tournament.first_place_prize ?? tournament.prize_pool ?? 0);
   const secondPrize = Number(distribution.second_amount ?? distribution.second ?? tournament.second_place_prize ?? 0);
@@ -336,7 +388,15 @@ export default function TournamentOverview() {
             </div>
             <div className="space-y-3">
               {joined ? (
-                <div className="flex items-center justify-center gap-2 rounded-xl border border-green/20 bg-green/10 px-5 py-4 text-[10px] font-black uppercase tracking-wider text-green"><Check className="h-4 w-4" /> Tournament joined</div>
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-center gap-2 rounded-xl border border-green/20 bg-green/10 px-5 py-4 text-[10px] font-black uppercase tracking-wider text-green"><Check className="h-4 w-4" /> Tournament joined</div>
+                  {leaveAvailable && (
+                    <button type="button" onClick={handleLeave} disabled={leaving} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-3 text-[10px] font-black uppercase tracking-[0.15em] text-red-300 transition-all hover:border-red-500/40 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">
+                      {leaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                      {leaving ? "Leaving..." : "Leave tournament"}
+                    </button>
+                  )}
+                </div>
               ) : joinAvailable ? (
                 <button type="button" onClick={openJoin} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange px-5 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-white shadow-[0_14px_35px_rgba(255,130,0,.24)] transition-all hover:-translate-y-0.5 hover:bg-orange/90"><Users className="h-4 w-4" /> Join tournament</button>
               ) : (
