@@ -482,6 +482,12 @@ export default function Navbar() {
   }, [authUser?.id]);
 
   useEffect(() => {
+    const handleCreditsUpdated = () => loadUser();
+    window.addEventListener("topfragg:credits-updated", handleCreditsUpdated);
+    return () => window.removeEventListener("topfragg:credits-updated", handleCreditsUpdated);
+  }, [authUser?.id]);
+
+  useEffect(() => {
     const handleNotificationsUpdated = (event) => {
       const detail = event.detail || {};
       if (detail.refresh) {

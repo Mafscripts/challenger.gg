@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Check,
   Clock3,
+  Coins,
   Gamepad2,
   Globe2,
   Layers3,
@@ -22,6 +23,16 @@ import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
 
@@ -199,6 +210,8 @@ export default function TournamentOverview() {
   const [paymentMode, setPaymentMode] = useState("own");
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [refundResult, setRefundResult] = useState(null);
   const [joined, setJoined] = useState(false);
 
   const loadTeams = async (currentUser) => {
@@ -316,7 +329,17 @@ export default function TournamentOverview() {
         ...current,
         registered_teams: response.data.tournament?.registered_teams ?? Math.max(0, Number(current.registered_teams || 0) - 1),
       }));
-      toast({ title: "Tournament left", description: `${participant.team_name || "Your team"} left ${tournament.name}.` });
+      const refunds = response.data.refunds || [];
+      const refundedCredits = refunds.reduce((total, refund) => total + Number(refund.amount || 0), 0);
+      const personalRefund = refunds.find((refund) => String(refund.user_id) === String(user.id));
+      if (personalRefund) {
+        setUser((current) => ({ ...current, credits: Number(current?.credits || 0) + Number(personalRefund.amount || 0) }));
+      }
+      window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
+      setRefundResult({
+        credits: refundedCredits,
+        recipients: refunds.length,
+      });
     } catch (error) {
       toast({ title: "Leave failed", description: error.message || "Could not leave tournament.", variant: "destructive" });
     } finally {
@@ -391,9 +414,8 @@ export default function TournamentOverview() {
                 <div className="grid gap-2">
                   <div className="flex items-center justify-center gap-2 rounded-xl border border-green/20 bg-green/10 px-5 py-4 text-[10px] font-black uppercase tracking-wider text-green"><Check className="h-4 w-4" /> Tournament joined</div>
                   {leaveAvailable && (
-                    <button type="button" onClick={handleLeave} disabled={leaving} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-3 text-[10px] font-black uppercase tracking-[0.15em] text-red-300 transition-all hover:border-red-500/40 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">
-                      {leaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-                      {leaving ? "Leaving..." : "Leave tournament"}
+                    <button type="button" onClick={() => { setRefundResult(null); setLeaveDialogOpen(true); }} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-3 text-[10px] font-black uppercase tracking-[0.15em] text-red-300 transition-all hover:border-red-500/40 hover:bg-red-500/20">
+                      <LogOut className="h-4 w-4" /> Leave tournament
                     </button>
                   )}
                 </div>
@@ -501,6 +523,49 @@ export default function TournamentOverview() {
         onPaymentModeChange={setPaymentMode}
         requiresCredits={["credits", "credits_premium"].includes(entryType(tournament)) && Number(tournament.entry_fee || 0) > 0}
       />
+      <AlertDialog open={leaveDialogOpen} onOpenChange={(open) => {
+        if (leaving) return;
+        setLeaveDialogOpen(open);
+        if (!open) setRefundResult(null);
+      }}>
+        <AlertDialogContent className="overflow-hidden border-white/10 bg-card p-0">
+          {refundResult ? (
+            <>
+              <div className="border-b border-white/[0.07] bg-green/[0.06] px-6 py-7 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-green/25 bg-green/10 text-green"><Coins className="h-7 w-7" /></div>
+                <AlertDialogTitle className="mt-4 text-xl font-black text-white">Credits refunded</AlertDialogTitle>
+                <p className="mt-2 font-mono text-3xl font-black text-green">+{refundResult.credits.toLocaleString()} Credits</p>
+              </div>
+              <div className="px-6 pb-6">
+                <AlertDialogDescription className="text-center leading-6 text-vapor">
+                  {refundResult.credits > 0
+                    ? `The tournament entry was refunded to ${refundResult.recipients === 1 ? "the original payer" : `${refundResult.recipients} original payers`}.`
+                    : "No credits were charged for this tournament entry."}
+                </AlertDialogDescription>
+                <AlertDialogAction onClick={() => setLeaveDialogOpen(false)} className="mt-5 w-full bg-green font-black uppercase tracking-wider text-background hover:bg-green/90">Done</AlertDialogAction>
+              </div>
+            </>
+          ) : (
+            <div className="p-6">
+              <AlertDialogHeader>
+                <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-xl border border-red-500/25 bg-red-500/10 text-red-300"><LogOut className="h-5 w-5" /></div>
+                <AlertDialogTitle className="text-xl font-black">Leave tournament?</AlertDialogTitle>
+                <AlertDialogDescription className="leading-6 text-vapor">Your team will be removed from {tournament.name}. This cannot be undone.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="my-5 flex items-center justify-between rounded-xl border border-green/20 bg-green/[0.07] px-4 py-3">
+                <span className="flex items-center gap-2 text-xs font-bold text-vapor"><Coins className="h-4 w-4 text-green" /> Credits refunded</span>
+                <span className="font-mono text-sm font-black text-green">{Number(joinedParticipant?.entry_fee_paid || 0).toLocaleString()} Credits</span>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={leaving}>Keep my spot</AlertDialogCancel>
+                <AlertDialogAction onClick={(event) => { event.preventDefault(); handleLeave(); }} disabled={leaving} className="bg-red-500 font-black text-white hover:bg-red-500/90">
+                  {leaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Refunding...</> : "Leave & refund"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </div>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
       <CreateTeamModal
         isOpen={createTeamOpen}
         onClose={() => { setCreateTeamOpen(false); setJoinOpen(true); }}
