@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { Award, ArrowRight, Flame, Globe, Medal, Plus, Swords, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -367,9 +366,9 @@ export default function Ranked() {
               </div>
               <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
                 {groupedRanks.map((tier) => (
-                  <motion.div key={tier.tier} whileHover={{ y: -4 }} className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-5 text-center transition-colors ${rankCardTones[tier.tier]?.border || "border-white/10"} ${rankCardTones[tier.tier]?.wash || "from-card to-card"}`}>
+                  <div key={tier.tier} className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-5 text-center ${rankCardTones[tier.tier]?.border || "border-white/10"} ${rankCardTones[tier.tier]?.wash || "from-card to-card"}`}>
                     <div className={`pointer-events-none absolute inset-x-8 top-3 h-24 rounded-full opacity-20 blur-3xl ${rankCardTones[tier.tier]?.accent || "bg-cyan"}`} />
-                    <div className="relative flex justify-center"><RankBadge rank={tier.tier} size="lg" showLabel={false} /></div>
+                    <div className="relative flex justify-center"><RankBadge rank={tier.tier} size="lg" showLabel={false} animated={false} /></div>
                     <div className="relative mt-2">
                       <p className={`text-lg font-black ${tier.color}`}>{tier.name}</p>
                       <p className="mt-1 text-xs text-vapor">{tier.tier === "champion" ? "Top rank" : "Competitive rank"}</p>
@@ -377,7 +376,7 @@ export default function Ranked() {
                         {rankRangeLabel(tier)}
                       </span>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -396,7 +395,7 @@ export default function Ranked() {
               <div className="p-5">
                 <div className="rounded-2xl border border-white/5 bg-background/30 p-4">
                 <div className="flex items-center gap-4">
-                  <div className={`flex min-h-32 w-32 shrink-0 items-center justify-center rounded-2xl border ${rankTone.soft}`}><RankBadge rank={rank.tier} size="lg" showLabel={false} /></div>
+                  <div className={`flex min-h-32 w-32 shrink-0 items-center justify-center rounded-2xl border ${rankTone.soft}`}><RankBadge rank={rank.tier} size="lg" showLabel={false} animated={false} /></div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -408,7 +407,7 @@ export default function Ranked() {
                     </div>
                     <div className="mt-4 flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Rank progress</p><p className="text-right text-[10px] font-bold text-vapor">{nextRank ? <><span className={rankTone.text}>{Math.max(0, nextRank.min - elo)} ELO</span> to {nextRank.name}</> : "Top rank reached"}</p></div>
                     <div className="mt-2 h-2.5 overflow-hidden rounded-full border border-white/5 bg-secondary">
-                      <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: progress / 100 }} transition={{ duration: 0.7, ease: "easeOut" }} className={`h-full origin-left rounded-full ${rankTone.accent}`} />
+                      <div style={{ width: `${progress}%` }} className={`h-full rounded-full ${rankTone.accent}`} />
                     </div>
                     <div className="mt-2 flex justify-between text-[9px] font-bold uppercase tracking-wider text-vapor">
                       <span>{rank.min.toLocaleString()}</span>

@@ -14,7 +14,7 @@ const ranks = {
   champion: { label: "Champion", text: "text-white", icon: "/assets/ranks/compact/champion.png" },
 };
 
-export default function RankBadge({ rank, elo, size = "md", showLabel = true }) {
+export default function RankBadge({ rank, elo, size = "md", showLabel = true, animated = true }) {
   const calculated = elo !== undefined ? getRankForElo(elo) : null;
   const rankKey = calculated?.tier || rank || "bronze";
   const cfg = ranks[rankKey] || ranks.bronze;
@@ -26,14 +26,15 @@ export default function RankBadge({ rank, elo, size = "md", showLabel = true }) 
     xl: "h-48 w-48",
   };
   const isChampion = rankKey === "champion";
+  const showChampionEffects = isChampion && animated;
   const isCompact = size === "sm";
 
   return (
-    <div className={`group/rank flex shrink-0 flex-col items-center gap-1.5 ${isChampion ? "champion-rank-group" : ""}`}>
-      <div className={`relative ${sizes[size]} ${isChampion ? `champion-rank-badge ${isCompact ? "champion-rank-badge--compact" : "champion-rank-badge--full"}` : ""}`}>
-        {isChampion && <span aria-hidden="true" className="champion-rank-aura" />}
-        <img src={cfg.icon} alt={label} loading="lazy" decoding="async" className={`relative z-[1] h-full w-full object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)] ${isChampion ? "champion-rank-core" : ""}`} />
-        {isChampion && !isCompact && <img aria-hidden="true" src={cfg.icon} alt="" loading="lazy" decoding="async" className="champion-rank-shine" />}
+    <div className={`group/rank flex shrink-0 flex-col items-center gap-1.5 ${showChampionEffects ? "champion-rank-group" : ""}`}>
+      <div className={`relative ${sizes[size]} ${showChampionEffects ? `champion-rank-badge ${isCompact ? "champion-rank-badge--compact" : "champion-rank-badge--full"}` : ""}`}>
+        {showChampionEffects && <span aria-hidden="true" className="champion-rank-aura" />}
+        <img src={cfg.icon} alt={label} loading="lazy" decoding="async" className={`relative z-[1] h-full w-full object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)] ${showChampionEffects ? "champion-rank-core" : ""}`} />
+        {showChampionEffects && !isCompact && <img aria-hidden="true" src={cfg.icon} alt="" loading="lazy" decoding="async" className="champion-rank-shine" />}
       </div>
       {showLabel && size !== "sm" && <span className={`text-xs font-mono font-black ${cfg.text}`}>{label}</span>}
     </div>
