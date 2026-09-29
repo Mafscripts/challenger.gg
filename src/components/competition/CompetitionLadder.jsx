@@ -45,7 +45,21 @@ const modeCopy = {
     accent: "text-orange",
     line: "bg-orange",
   },
+  tournaments: {
+    eyebrow: "Tournament center",
+    title: "Upcoming Tournaments",
+    description: "Choose an upcoming event, enter with your team and follow every bracket.",
+    accent: "text-orange",
+    line: "bg-orange",
+  },
 };
+
+const competitionBulletImpacts = [
+  { left: "66%", top: "24%", size: "34px", delay: "1.4s", rotate: "12deg" },
+  { left: "83%", top: "40%", size: "27px", delay: "2.3s", rotate: "-18deg" },
+  { left: "73%", top: "67%", size: "31px", delay: "3.2s", rotate: "29deg" },
+  { left: "91%", top: "74%", size: "23px", delay: "4.1s", rotate: "-33deg" },
+];
 
 const trophyTypes = [
   { key: "gold", label: "Gold", image: "/assets/trophies/compact/gold.png", fields: ["gold_count"] },
@@ -111,6 +125,61 @@ function rankTone(index) {
   if (index === 1) return "text-slate-200";
   if (index === 2) return "text-orange";
   return "text-vapor";
+}
+
+export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "" }) {
+  const copy = modeCopy[mode] || modeCopy.xp;
+  return (
+    <div className={`space-y-5 ${className}`}>
+      <section className="premium-panel relative min-h-[340px] overflow-hidden rounded-2xl border border-white/[0.07]">
+        <img src="/assets/competition/topfragg-bo7-header.png" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_52%] opacity-75" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.98)_0%,hsl(var(--background)/0.88)_32%,hsl(var(--background)/0.28)_66%,hsl(var(--background)/0.12)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(0deg,hsl(var(--background)/0.82)_0%,transparent_55%)]" />
+        <div className="landing-bullet-field absolute inset-0 z-[5]" aria-hidden="true">
+          {competitionBulletImpacts.map((impact, index) => (
+            <span
+              key={`${impact.left}-${impact.top}`}
+              className="landing-bullet-hole"
+              style={{
+                left: impact.left,
+                top: impact.top,
+                width: impact.size,
+                height: impact.size,
+                "--impact-delay": impact.delay,
+                "--impact-rotation": impact.rotate,
+                "--impact-index": index,
+              }}
+            />
+          ))}
+        </div>
+        <div className="relative z-10 grid min-h-[340px] gap-8 p-7 md:p-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div>
+            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.28em] ${copy.accent}`}><span className={`h-1.5 w-1.5 ${copy.line}`} /> {copy.eyebrow}</div>
+            <h1 className="mt-4 max-w-xl font-heading text-4xl font-black uppercase leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,.75)] sm:text-5xl">{copy.title}</h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-white/75">{copy.description}</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">Cross platform</span>
+              <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{monthLabel()}</span>
+              <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{playerCount} {mode === "tournaments" ? "events" : "players"}</span>
+            </div>
+          </div>
+          {action && <div className="w-full lg:w-[300px]">{action}</div>}
+        </div>
+      </section>
+
+      <nav className="grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 lg:grid-cols-4">
+        {navigation.map(({ key, label, to, icon: Icon }) => {
+          const active = key === mode;
+          return (
+            <Link key={key} to={to} className={`relative flex min-h-14 items-center justify-center gap-2 border-b border-white/[0.06] px-4 py-4 text-xs font-black transition-colors sm:border-r lg:border-b-0 ${active ? "bg-secondary text-white" : "text-vapor hover:bg-secondary/70 hover:text-white"}`}>
+              <Icon className={`h-4 w-4 ${active ? copy.accent : ""}`} /> {label}
+              {active && <span className={`absolute inset-x-0 bottom-0 h-0.5 ${copy.line}`} />}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
 }
 
 export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action }) {
@@ -293,36 +362,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
 
   return (
     <div className="mb-7 space-y-5">
-      <section className="premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_35%,hsl(var(--cyan)/0.08),transparent_34%),linear-gradient(90deg,hsl(var(--card))_0%,hsl(var(--card)/0.94)_48%,hsl(var(--background)/0.72)_100%)]" />
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-r from-transparent to-background/40" />
-        <div className="relative grid min-h-[250px] gap-8 p-7 md:p-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <div>
-            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.28em] ${copy.accent}`}><span className={`h-1.5 w-1.5 ${copy.line}`} /> Ladder</div>
-            <img src="/assets/black-ops-7-logo.png" alt="Call of Duty Black Ops 7" className="mt-4 h-auto w-[290px] max-w-full object-contain object-left" />
-            <h1 className="sr-only">{copy.title}</h1>
-            <p className="mt-5 max-w-xl text-sm leading-6 text-vapor">{copy.description}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor">Cross platform</span>
-              <span className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor">{monthLabel()}</span>
-              <span className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor">{standings.length} players</span>
-            </div>
-          </div>
-          <div className="w-full lg:w-[300px]">{action}</div>
-        </div>
-      </section>
-
-      <nav className="grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 lg:grid-cols-4">
-        {navigation.map(({ key, label, to, icon: Icon }) => {
-          const active = key === mode;
-          return (
-            <Link key={key} to={to} className={`relative flex min-h-14 items-center justify-center gap-2 border-b border-white/[0.06] px-4 py-4 text-xs font-black transition-colors sm:border-r lg:border-b-0 ${active ? "bg-secondary text-white" : "text-vapor hover:bg-secondary/70 hover:text-white"}`}>
-              <Icon className={`h-4 w-4 ${active ? copy.accent : ""}`} /> {label}
-              {active && <span className={`absolute inset-x-0 bottom-0 h-0.5 ${copy.line}`} />}
-            </Link>
-          );
-        })}
-      </nav>
+      <CompetitionHeader mode={mode} playerCount={standings.length} action={action} />
 
       <div className={`grid gap-3 sm:grid-cols-2 ${mode === "wagers" ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {summary.map(({ label, value, detail, icon: Icon, tone }) => (

@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import PageHeader from "@/components/ui/PageHeader";
+import { CompetitionHeader } from "@/components/competition/CompetitionLadder";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
@@ -637,20 +637,19 @@ export default function Tournaments() {
   return (
     <div className="tournaments-page min-h-screen py-6">
       <div className="tournaments-container mx-auto max-w-[1760px] px-4 lg:px-7">
-        <PageHeader
-          className="tournaments-page-header"
-          eyebrow="Tournament center"
-          title="Tournaments"
-          description="Choose an event, enter with your team and follow every bracket."
+        <CompetitionHeader
+          mode="tournaments"
+          playerCount={officialTournaments.length}
+          className="mb-5"
           action={<div className="flex flex-wrap items-center gap-2">
-            <Link to="/teams" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-secondary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-vapor transition-colors hover:border-blue-400/25 hover:text-blue-300">
+            <Link to="/teams" className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-background/70 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-vapor backdrop-blur-sm transition-colors hover:border-cyan/30 hover:text-cyan">
               <Users className="h-3.5 w-3.5" /> My Teams
             </Link>
-            <button type="button" onClick={() => openTournamentTeamCreator()} className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:bg-blue-400">
+            <button type="button" onClick={() => openTournamentTeamCreator()} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-cyan/90">
               <Plus className="h-3.5 w-3.5" /> Create Tournament Team
             </button>
             {isAdmin && (
-              <Link to="/admin" className="inline-flex items-center gap-2 rounded-xl border border-orange/25 bg-orange/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15">
+              <Link to="/admin" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-orange/30 bg-background/70 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange backdrop-blur-sm transition-colors hover:bg-orange/15">
                 <Trophy className="h-3.5 w-3.5" /> Create Tournament
               </Link>
             )}

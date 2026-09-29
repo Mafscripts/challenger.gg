@@ -17,6 +17,12 @@ import { base44 } from "@/api/base44Client";
 const SLIDE_DURATION = 10000;
 const HOME_REFRESH_INTERVAL = 60000;
 const blackOps7Artwork = "/assets/tournaments/black-ops-7.webp";
+const homeBulletImpacts = [
+  { left: "72%", top: "24%", size: "34px", delay: "1.4s", rotate: "12deg" },
+  { left: "84%", top: "42%", size: "27px", delay: "2.3s", rotate: "-18deg" },
+  { left: "66%", top: "67%", size: "31px", delay: "3.2s", rotate: "29deg" },
+  { left: "91%", top: "73%", size: "23px", delay: "4.1s", rotate: "-33deg" },
+];
 
 const slides = [
   {
@@ -34,7 +40,7 @@ const slides = [
   },
   {
     image: "/assets/home/featured-tournaments.png",
-    objectPosition: "center 43%",
+    objectPosition: "center 35%",
     tag: "Tournament ladder",
     meta: "Six-week season",
     title: "BLACK OPS 7 TOURNAMENTS",
@@ -143,7 +149,7 @@ function FeaturedNews() {
   const move = (direction) => setActive((current) => (current + direction + slides.length) % slides.length);
 
   return (
-    <section className="home-featured relative isolate min-h-[370px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:min-h-[400px]">
+    <section className="home-featured relative isolate h-[520px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:h-[430px] lg:h-[400px]">
       <div key={`base-${active}`} className="home-featured-image absolute inset-0">
         <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
       </div>
@@ -156,8 +162,25 @@ function FeaturedNews() {
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,9,16,.98)_0%,rgba(5,9,16,.88)_34%,rgba(5,9,16,.42)_65%,rgba(5,9,16,.15)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,9,16,.86)_0%,transparent_45%)]" />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
+      <div key={`bullets-${active}`} className="landing-bullet-field absolute inset-0 z-[5]" aria-hidden="true">
+        {homeBulletImpacts.map((impact, index) => (
+          <span
+            key={`${impact.left}-${impact.top}`}
+            className="landing-bullet-hole"
+            style={{
+              left: impact.left,
+              top: impact.top,
+              width: impact.size,
+              height: impact.size,
+              "--impact-delay": impact.delay,
+              "--impact-rotation": impact.rotate,
+              "--impact-index": index,
+            }}
+          />
+        ))}
+      </div>
 
-      <div key={`copy-${active}`} className="home-featured-copy relative z-10 flex min-h-[370px] max-w-3xl flex-col justify-center px-6 py-14 sm:min-h-[400px] sm:px-10 lg:px-14">
+      <div key={`copy-${active}`} className="home-featured-copy relative z-10 flex h-full max-w-3xl flex-col justify-center px-6 py-14 sm:px-10 lg:px-14">
         <p className="mb-12 flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.24em] text-vapor sm:mb-14">
           <span className="h-1.5 w-1.5 bg-orange" /> Featured news
         </p>
