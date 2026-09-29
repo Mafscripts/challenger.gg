@@ -3211,38 +3211,59 @@ function wagerTeamTypeFor(matchType) {
   return matchType === "8s" ? "8s" : "wager";
 }
 
+async function wagerRosterPaymentError({ roster, entryFee, paymentMode, payer }) {
+  if (entryFee <= 0) return null;
+  if (paymentMode === "full_team") {
+    const wallet = await walletFor(payer.id);
+    return money(wallet.available_balance) < roundedMoney(entryFee * roster.length)
+      ? `${nameFor(payer)} does not have enough wager money`
+      : null;
+  }
+
+  const rosterUsers = await Promise.all(roster.map((member) => userFor(member.user_id)));
+  const teammateWithoutPermission = rosterUsers.find((memberUser) => (
+    String(memberUser.id) !== String(payer.id)
+    && memberUser.allow_team_wager_payments !== true
+  ));
+  if (teammateWithoutPermission) {
+    return `${nameFor(teammateWithoutPermission)} must enable Wager Wallet in Settings before paying their own entry`;
+  }
+  const wallets = await Promise.all(rosterUsers.map((memberUser) => walletFor(memberUser.id)));
+  const insufficientIndex = wallets.findIndex((wallet) => money(wallet.available_balance) < entryFee);
+  return insufficientIndex >= 0 ? `${nameFor(rosterUsers[insufficientIndex])} does not have enough wager money` : null;
+}
+
 async function createWagerParticipantsForRoster({ wager, side, team, roster, entryFee, paymentMode, payer }) {
   const isFree = entryFee <= 0;
-  const captainMember = roster.find((member) => member.user_id === payer.id) || roster[0];
-  const totalStake = isFree ? 0 : (paymentMode === "full_team" ? roundedMoney(entryFee * roster.length) : entryFee);
-  let escrow = { transaction: null };
+  const captainMember = roster.find((member) => String(member.user_id) === String(payer.id)) || roster[0];
+  const paidByCaptain = !isFree && paymentMode === "full_team";
+  const paymentError = await wagerRosterPaymentError({ roster, entryFee, paymentMode, payer });
+  if (paymentError) {
+    const error = new Error(paymentError);
+    error.status = 403;
+    throw error;
+  }
 
-  if (totalStake > 0) {
-    escrow = await escrowWagerStake({
-      userId: payer.id,
-      wagerId: wager.id,
-      entryFee: totalStake,
-      team: side,
-    });
-    await notifyUser(payer.id, {
-      title: "Wager money secured",
-      message: `$${totalStake.toFixed(2)} was deducted from your available balance and secured for this ${wager.team_size} wager.`,
-      type: "wager",
-      show_balance_popup: true,
-      balance_type: "wallet",
-      balance_change: -totalStake,
-      action_url: `/wagers-match/${wager.id}`,
-      related_entity_id: wager.id,
-      related_entity_type: "Wager",
-    });
+  const escrowByUserId = new Map();
+  if (paidByCaptain) {
+    const totalStake = roundedMoney(entryFee * roster.length);
+    const escrow = await escrowWagerStake({ userId: payer.id, wagerId: wager.id, entryFee: totalStake, team: side });
+    escrowByUserId.set(String(payer.id), { amount: totalStake, transaction: escrow.transaction });
+  } else if (!isFree) {
+    for (const member of roster) {
+      const escrow = await escrowWagerStake({ userId: member.user_id, wagerId: wager.id, entryFee, team: side });
+      escrowByUserId.set(String(member.user_id), { amount: entryFee, transaction: escrow.transaction });
+    }
   }
 
   const created = [];
   for (const member of roster) {
-    const isPayer = member.user_id === payer.id;
-    const paidByCaptain = paymentMode === "full_team" && totalStake > 0;
-    const paid = isFree || isPayer || paidByCaptain;
-    const paidAmount = isFree ? 0 : paidByCaptain && member.user_id === captainMember.user_id ? totalStake : isPayer ? entryFee : 0;
+    const memberId = String(member.user_id);
+    const isPayer = memberId === String(payer.id);
+    const memberEscrow = escrowByUserId.get(memberId);
+    const paidAmount = isFree ? 0 : paidByCaptain
+      ? memberId === String(captainMember.user_id) ? memberEscrow?.amount || 0 : 0
+      : memberEscrow?.amount || 0;
     const participant = await createEntity("WagerParticipant", {
       wager_id: wager.id,
       user_id: member.user_id,
@@ -3252,29 +3273,31 @@ async function createWagerParticipantsForRoster({ wager, side, team, roster, ent
       team_name: team?.name,
       is_captain: member.user_id === team?.captain_id,
       entry_fee_paid: paidAmount,
-      payment_status: paid ? "paid" : "pending",
-      paid_by: paid ? payer.id : null,
+      payment_status: "paid",
+      paid_by: paidByCaptain ? payer.id : member.user_id,
       escrowed: paidAmount > 0,
-      escrow_transaction_id: paidAmount > 0 ? escrow.transaction?.id : null,
+      escrow_transaction_id: paidAmount > 0 ? memberEscrow?.transaction?.id : null,
       joined_date: nowIso(),
     });
     created.push(participant);
 
-    if (!paid && entryFee > 0) {
+    if (!isFree && (!paidByCaptain || isPayer)) {
+      const chargedAmount = paidByCaptain ? escrowByUserId.get(String(payer.id))?.amount || 0 : entryFee;
       await notifyUser(member.user_id, {
-        title: "Wager entry pending",
-        message: `${team?.name || "Your team"} needs your $${entryFee.toFixed(2)} entry for ${wager.team_size}.`,
+        title: "Wager money secured",
+        message: `$${chargedAmount.toFixed(2)} was deducted from your available balance and secured for this ${wager.team_size} wager.`,
         type: "wager",
+        show_balance_popup: true,
+        balance_type: "wallet",
+        balance_change: -chargedAmount,
         action_url: `/wagers-match/${wager.id}`,
         related_entity_id: wager.id,
         related_entity_type: "Wager",
       });
-    } else if (member.user_id !== payer.id) {
+    } else if (paidByCaptain && !isPayer) {
       await notifyUser(member.user_id, {
-        title: paidByCaptain ? "Wager entry covered" : "Wager roster enrolled",
-        message: paidByCaptain
-          ? `${nameFor(payer)} paid your $${entryFee.toFixed(2)} entry for this ${wager.team_size} wager. Nothing was deducted from your balance.`
-          : `${team?.name || "Your team"} was enrolled in a ${wager.team_size} wager.`,
+        title: "Wager entry covered",
+        message: `${nameFor(payer)} paid your $${entryFee.toFixed(2)} entry for this ${wager.team_size} wager. Nothing was deducted from your balance.`,
         type: "wager",
         action_url: `/wagers-match/${wager.id}`,
         related_entity_id: wager.id,
@@ -3444,6 +3467,14 @@ async function registerTournament(req) {
         ? entryFee * (1 + sponsoredMemberIds.length)
         : sponsoredMemberIds.includes(String(memberUser.id)) ? 0 : entryFee,
     })).filter((allocation) => allocation.amount > 0);
+    const teammateWithoutPermission = memberUsers.find((memberUser) => (
+      String(memberUser.id) !== captainId
+      && paymentAllocations.some((allocation) => String(allocation.user_id) === String(memberUser.id))
+      && memberUser.allow_team_credit_payments !== true
+    ));
+    if (teammateWithoutPermission) {
+      return { success: false, error: `${nameFor(teammateWithoutPermission)} must enable Tournament Credits in Settings before paying their own entry` };
+    }
     const unpaidAllocation = paymentAllocations.find((allocation) => {
       const payer = memberUsers.find((memberUser) => String(memberUser.id) === String(allocation.user_id));
       return Number(payer?.credits || 0) < allocation.amount;
@@ -6050,6 +6081,8 @@ async function createWager(req) {
     }
     const rosterActivisionError = await activisionIdErrorForMembers(hostRoster);
     if (rosterActivisionError) return { success: false, error: rosterActivisionError, code: "ACTIVISION_ID_REQUIRED" };
+    const paymentError = await wagerRosterPaymentError({ roster: hostRoster, entryFee, paymentMode, payer: req.user });
+    if (paymentError) return { success: false, error: paymentError };
   } else if (entryFee > 0) {
     const wallet = await walletFor(req.user.id);
     if (money(wallet.available_balance) < entryFee) {

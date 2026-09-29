@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AccountSection from "@/components/settings/AccountSection";
 import CreditsSection from "@/components/settings/CreditsSection";
+import PaymentPermissionsSection from "@/components/settings/PaymentPermissionsSection";
 import DiscordSection from "@/components/settings/DiscordSection";
 import GamingIdsSection from "@/components/settings/GamingIdsSection";
 import PageHeader from "@/components/ui/PageHeader";
@@ -39,6 +40,7 @@ export default function Settings() {
         <PageHeader eyebrow="Account control" title="Settings" description="Manage your account, gaming identities and integrations." />
         <AccountSection user={user} onUserUpdate={loadUser} />
         <CreditsSection user={user} onUserUpdate={loadUser} />
+        <PaymentPermissionsSection user={user} onUserUpdate={loadUser} />
         <GamingIdsSection user={user} onUserUpdate={loadUser} />
         <DiscordSection user={user} onUserUpdate={loadUser} />
       </div>

@@ -226,6 +226,8 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       "discord_webhook_url",
       "discord_alerts_enabled",
       "display_name_color",
+      "allow_team_credit_payments",
+      "allow_team_wager_payments",
     ]);
     const unsupportedFields = Object.keys(rest).filter((field) => !selfServiceFields.has(field));
     if (unsupportedFields.length > 0) {

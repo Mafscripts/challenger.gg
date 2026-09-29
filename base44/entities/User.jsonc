@@ -51,6 +51,16 @@
       "default": false,
       "title": "Discord Alerts Enabled"
     },
+    "allow_team_credit_payments": {
+      "type": "boolean",
+      "default": false,
+      "title": "Allow Team Tournament Credit Payments"
+    },
+    "allow_team_wager_payments": {
+      "type": "boolean",
+      "default": false,
+      "title": "Allow Team Wager Wallet Payments"
+    },
     "display_name": {
       "type": "string",
       "title": "Display Name"
