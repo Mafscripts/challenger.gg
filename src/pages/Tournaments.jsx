@@ -1252,11 +1252,11 @@ function BracketTeamRow({ name, seed, score, winner, complete }) {
 
 function TournamentCardStat({ label, value, tone = "text-white", icon: Icon }) {
   return (
-    <div className="min-w-0 border-l border-white/[0.07] pl-3 sm:min-w-[92px] sm:pl-4">
-      <p className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.15em] text-vapor/65">
-        {Icon && <Icon className="h-3 w-3" />} {label}
+    <div className="min-w-0 border-l border-white/[0.07] pl-3 sm:min-w-[86px]">
+      <p className="flex items-center gap-1.5 text-[7px] font-black uppercase tracking-[0.14em] text-vapor/65">
+        {Icon && <Icon className="h-2.5 w-2.5" />} {label}
       </p>
-      <p className={`mt-1 whitespace-nowrap font-mono text-[12px] font-black ${tone}`}>{value}</p>
+      <p className={`mt-0.5 whitespace-nowrap font-mono text-[11px] font-black ${tone}`}>{value}</p>
     </div>
   );
 }
@@ -1268,12 +1268,12 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
   const scheduleCompleted = startLabel === "Completed";
   return (
     <motion.article
-      className={`tournament-list-card group relative grid w-full grid-cols-[56px_minmax(0,1fr)] gap-3 overflow-hidden rounded-lg border px-3 py-3 text-left transition-all lg:grid-cols-[56px_minmax(230px,1fr)_auto] lg:items-center ${
+      className={`tournament-list-card group relative grid w-full grid-cols-[48px_minmax(0,1fr)] gap-2.5 overflow-hidden rounded-lg border px-3 py-2.5 text-left transition-all lg:grid-cols-[48px_minmax(230px,1fr)_auto] lg:items-center ${
         selected ? "is-selected border-cyan/25 bg-cyan/[0.055]" : "border-white/[0.055] bg-background/20 hover:border-white/15 hover:bg-white/[0.03]"
       }`}
     >
       <button type="button" onClick={() => onSelect(tournament.id)} className="absolute inset-0 z-0" aria-label={`View ${tournament.name} overview`} />
-      <div className="pointer-events-none relative z-[1] h-14 w-14 overflow-hidden rounded-md border border-white/[0.07] bg-background">
+      <div className="pointer-events-none relative z-[1] h-12 w-12 overflow-hidden rounded-md border border-white/[0.07] bg-background">
         <img src={imageUrl || "/assets/tournaments/black-ops-7.webp"} alt="" className="h-full w-full object-cover" />
       </div>
       <div className="pointer-events-none relative z-[1] min-w-0">
@@ -1282,15 +1282,15 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
           {joined && <span className="shrink-0 rounded-full bg-green/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
         </div>
         <p className="mt-1 truncate text-[10px] leading-4 text-vapor">{compactModeLabel(tournament)}</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className={`text-[8px] font-black uppercase tracking-[0.14em] ${statusTone(tournament.status).split(" ").at(-1)}`}>
+        {tournament.status !== "completed" && (
+          <span className={`mt-1.5 inline-block text-[8px] font-black uppercase tracking-[0.14em] ${statusTone(tournament.status).split(" ").at(-1)}`}>
             {statusLabels[tournament.status] || tournament.status}
           </span>
-          <span className={`text-[8px] font-black uppercase tracking-[0.14em] ${entryInfo.tone.split(" ").at(-1)}`}>{entryInfo.label}</span>
-        </div>
+        )}
       </div>
-      <div className="pointer-events-none relative z-[1] col-span-2 grid grid-cols-2 items-center gap-x-3 gap-y-3 border-t border-white/[0.05] pt-3 sm:grid-cols-[repeat(3,auto)_auto] lg:col-span-1 lg:flex lg:border-t-0 lg:pt-0">
+      <div className="pointer-events-none relative z-[1] col-span-2 grid grid-cols-2 items-center gap-x-2.5 gap-y-2.5 border-t border-white/[0.05] pt-2.5 sm:grid-cols-[repeat(4,auto)_auto] lg:col-span-1 lg:flex lg:border-t-0 lg:pt-0">
         <TournamentCardStat label="Prize pool" value={formatMoney(tournament.prize_pool)} tone="text-green" icon={Trophy} />
+        <TournamentCardStat label="Entry" value={entryInfo.label} tone={entryInfo.tone.split(" ").at(-1)} />
         <TournamentCardStat label="Teams" value={`${tournament.registered_teams || 0} / ${tournament.max_teams || 0}`} icon={Users} />
         <TournamentCardStat label={scheduleCompleted ? "Status" : "Starts in"} value={startLabel} tone={scheduleCompleted ? "text-green" : "text-cyan"} icon={Clock} />
         {canJoin ? (
@@ -1302,7 +1302,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
             <Users className="h-3 w-3" /> Join
           </button>
         ) : (
-          <span className="col-span-2 inline-flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-wider text-vapor sm:col-span-1">View <ArrowRight className="h-3.5 w-3.5" /></span>
+          <span className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-md border border-cyan/25 bg-cyan/10 px-3 py-2 text-[8px] font-black uppercase tracking-wider text-cyan sm:col-span-1">View <ArrowRight className="h-3 w-3" /></span>
         )}
       </div>
     </motion.article>
