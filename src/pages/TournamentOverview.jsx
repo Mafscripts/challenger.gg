@@ -290,6 +290,13 @@ export default function TournamentOverview() {
         return;
       }
       setJoined(true);
+      if (response.data.participant) {
+        setParticipants((current) => (
+          current.some((participant) => participant.id === response.data.participant.id)
+            ? current
+            : [...current, response.data.participant]
+        ));
+      }
       setJoinOpen(false);
       setTournament((current) => ({ ...current, registered_teams: Number(current.registered_teams || 0) + 1 }));
       toast({ title: "Tournament joined", description: `${response.data.participant?.team_name || "Your team"} is registered.` });
