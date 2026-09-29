@@ -605,7 +605,16 @@ function SeasonRecordPanel({ rankedStats, wins, losses, winRate, currentStreak, 
           <span>Season</span><span>Played</span><span>Wins</span><span>Losses</span><span>Win %</span><span className="hidden sm:block">Earnings</span>
         </div>
         <div className="grid grid-cols-[minmax(120px,1.4fr)_repeat(4,minmax(52px,.55fr))] items-center px-4 py-4 text-xs sm:grid-cols-[minmax(180px,1.8fr)_repeat(5,minmax(70px,.6fr))] sm:px-5">
-          <div className="min-w-0"><p className="truncate font-black text-white">{seasonLabel}</p><span className="mt-1 inline-flex rounded bg-green/10 px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider text-green">Live</span></div>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate font-black text-white">{seasonLabel}</p>
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded border border-green/20 bg-green/10 px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider text-green">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green" />
+              </span>
+              Live
+            </span>
+          </div>
           <span className="font-mono font-black text-white">{played}</span>
           <span className="font-mono font-black text-green">{wins}</span>
           <span className="font-mono font-black text-red-300">{losses}</span>
