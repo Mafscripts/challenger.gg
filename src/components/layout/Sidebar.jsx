@@ -5,7 +5,7 @@ import {
   BookOpen,
   Crosshair,
   History,
-  LayoutDashboard,
+  House,
   LogOut,
   Newspaper,
   Package,
@@ -25,7 +25,7 @@ const sections = [
   {
     label: "Arena",
     items: [
-      { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+      { label: "Home", path: "/dashboard", icon: House },
       { label: "Profile", path: "/profile", icon: User, matchPrefix: "/profile/" },
       { label: "Ranked", path: "/ranked", icon: Crosshair },
       { label: "Wagers", path: "/wagers", icon: Swords },

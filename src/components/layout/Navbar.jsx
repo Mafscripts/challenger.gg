@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, Bell, MessageSquare, ChevronDown, User,
-  Menu, X, Gamepad2, Swords, Trophy, ShoppingBag,
+  Menu, X, House, Swords, Trophy, ShoppingBag,
   Users, Zap,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
   Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight
@@ -905,9 +905,9 @@ export default function Navbar() {
                   }`}
                 >
                   <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard") ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
-                    <Gamepad2 className="h-3.5 w-3.5" />
+                    <House className="h-3.5 w-3.5" />
                   </span>
-                  Dashboard
+                  Home
                 </Link>
                 {[rankedNavGroup, ...navGroups.filter((group) => group.label !== "Teams")].map((group) => {
                   const GroupIcon = group.icon;
@@ -1499,8 +1499,8 @@ export default function Navbar() {
                   navItemIsActive(location.pathname, "/dashboard") ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
                 }`}
               >
-                <Gamepad2 className="h-5 w-5" />
-                Dashboard
+                <House className="h-5 w-5" />
+                Home
               </Link>
               <Link
                 to="/ranked"

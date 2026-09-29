@@ -2082,3 +2082,65 @@ img {
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--menu-blue)); }
 
 ::selection { background: hsl(var(--menu-blue) / 0.34); color: #fff; }
+
+/* Lightweight Home hero motion: transform/clip only, with no blur or canvas work. */
+.home-featured-image {
+  animation: home-featured-zoom 8s ease-out both;
+  will-change: transform;
+}
+
+.home-featured-glitch {
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: home-featured-glitch 8s steps(1, end) both;
+  will-change: transform, clip-path, opacity;
+}
+
+.home-featured-copy {
+  animation: home-featured-copy-in .45s ease-out both;
+}
+
+.home-slide-progress {
+  width: 0;
+  animation: home-slide-progress 8s linear both;
+}
+
+@keyframes home-featured-zoom {
+  from { transform: scale(1.015); }
+  to { transform: scale(1.085); }
+}
+
+@keyframes home-featured-copy-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes home-slide-progress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes home-featured-glitch {
+  0%, 5%, 16%, 48%, 78%, 100% { opacity: 0; clip-path: inset(0 0 100% 0); transform: translate3d(0, 0, 0); }
+  6% { opacity: .2; clip-path: inset(18% 0 67% 0); transform: translate3d(9px, 0, 0); }
+  7% { opacity: .12; clip-path: inset(62% 0 24% 0); transform: translate3d(-7px, 0, 0); }
+  17% { opacity: .13; clip-path: inset(42% 0 45% 0); transform: translate3d(5px, 0, 0); }
+  18% { opacity: 0; clip-path: inset(0 0 100% 0); transform: translate3d(0, 0, 0); }
+  49% { opacity: .16; clip-path: inset(70% 0 18% 0); transform: translate3d(-8px, 0, 0); }
+  50% { opacity: 0; clip-path: inset(0 0 100% 0); transform: translate3d(0, 0, 0); }
+  79% { opacity: .12; clip-path: inset(28% 0 60% 0); transform: translate3d(6px, 0, 0); }
+  80% { opacity: 0; clip-path: inset(0 0 100% 0); transform: translate3d(0, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-featured-image,
+  .home-featured-glitch,
+  .home-featured-copy,
+  .home-slide-progress {
+    animation: none !important;
+    will-change: auto;
+  }
+
+  .home-slide-progress { width: 100%; }
+}

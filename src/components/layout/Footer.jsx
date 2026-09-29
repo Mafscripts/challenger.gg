@@ -5,7 +5,7 @@ import TopfraggLogo from "@/components/brand/TopfraggLogo";
 
 const footerLinks = {
   Platform: [
-    { label: "Dashboard", path: "/dashboard" },
+    { label: "Home", path: "/dashboard" },
     { label: "Ranked", path: "/ranked" },
     { label: "Wagers", path: "/wagers" },
     { label: "Tournaments", path: "/tournaments" },
