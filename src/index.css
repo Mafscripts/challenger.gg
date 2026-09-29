@@ -2083,15 +2083,14 @@ img {
 
 ::selection { background: hsl(var(--menu-blue) / 0.34); color: #fff; }
 
-/* Cinematic Home hero motion with chromatic distortion and scanline bursts. */
+/* Home hero distortion: short zigzag slices with a subtle RGB split. */
 .home-featured {
   --home-glitch-cyan: rgba(0, 220, 255, .38);
   --home-glitch-orange: rgba(255, 104, 0, .34);
 }
 
 .home-featured-image {
-  animation: home-featured-zoom 10s ease-in-out both;
-  will-change: transform;
+  transform: none;
 }
 
 .home-featured-glitch {
@@ -2102,37 +2101,13 @@ img {
 }
 
 .home-featured-glitch-cyan {
-  filter: saturate(1.45) contrast(1.15) drop-shadow(-9px 0 var(--home-glitch-cyan));
+  filter: saturate(1.3) contrast(1.08) drop-shadow(-6px 0 var(--home-glitch-cyan));
   animation: home-featured-glitch-cyan 10s steps(1, end) both;
 }
 
 .home-featured-glitch-orange {
-  filter: saturate(1.35) contrast(1.18) drop-shadow(9px 0 var(--home-glitch-orange));
+  filter: saturate(1.25) contrast(1.08) drop-shadow(6px 0 var(--home-glitch-orange));
   animation: home-featured-glitch-orange 10s steps(1, end) both;
-}
-
-.home-featured-impact {
-  z-index: 1;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, transparent 0 37%, rgba(0, 220, 255, .18) 48%, rgba(255, 108, 0, .22) 53%, transparent 67%),
-    repeating-linear-gradient(0deg, transparent 0 6px, rgba(255,255,255,.025) 7px, transparent 8px);
-  mix-blend-mode: screen;
-  opacity: 0;
-  animation: home-featured-impact 10s steps(1, end) both;
-  will-change: opacity, transform;
-}
-
-.home-featured-scanlines {
-  z-index: 2;
-  pointer-events: none;
-  opacity: .16;
-  background:
-    repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 4px),
-    linear-gradient(180deg, transparent 0%, rgba(0,220,255,.08) 48%, rgba(255,255,255,.22) 50%, rgba(255,104,0,.08) 52%, transparent 100%);
-  background-size: 100% 4px, 100% 230%;
-  animation: home-featured-scan 4.2s linear infinite;
-  will-change: background-position, opacity;
 }
 
 .home-featured-copy {
@@ -2142,13 +2117,6 @@ img {
 .home-slide-progress {
   width: 0;
   animation: home-slide-progress 10s linear both;
-}
-
-@keyframes home-featured-zoom {
-  0% { transform: scale(1.01) translate3d(-.15%, 0, 0); filter: saturate(.94) contrast(1.04); }
-  32% { transform: scale(1.023) translate3d(-.8%, -.08%, 0); filter: saturate(1.02) contrast(1.06); }
-  67% { transform: scale(1.04) translate3d(.55%, -.14%, 0); filter: saturate(1.08) contrast(1.07); }
-  100% { transform: scale(1.055) translate3d(-.25%, -.2%, 0); filter: saturate(1.1) contrast(1.08); }
 }
 
 @keyframes home-featured-copy-in {
@@ -2165,51 +2133,32 @@ img {
 }
 
 @keyframes home-featured-glitch-cyan {
-  0%, 2%, 9%, 18%, 31%, 49%, 67%, 84%, 100% { opacity: 0; clip-path: inset(0 0 100% 0); transform: translate3d(0, 0, 0) scale(1.03); }
-  2.5% { opacity: .72; clip-path: inset(11% 0 76% 0); transform: translate3d(-18px, 0, 0) scale(1.045); }
-  3.2% { opacity: .45; clip-path: inset(48% 0 38% 0); transform: translate3d(14px, 0, 0) scale(1.045); }
-  4% { opacity: .62; clip-path: inset(73% 0 13% 0); transform: translate3d(-10px, 0, 0) scale(1.045); }
-  10% { opacity: .34; clip-path: inset(28% 0 60% 0); transform: translate3d(10px, 0, 0) scale(1.055); }
-  11% { opacity: .55; clip-path: inset(61% 0 27% 0); transform: translate3d(-16px, 0, 0) scale(1.055); }
-  19% { opacity: .32; clip-path: inset(7% 0 82% 0); transform: translate3d(8px, 0, 0) scale(1.065); }
-  32% { opacity: .5; clip-path: inset(42% 0 46% 0); transform: translate3d(-13px, 0, 0) scale(1.075); }
-  50% { opacity: .38; clip-path: inset(66% 0 22% 0); transform: translate3d(15px, 0, 0) scale(1.09); }
-  68% { opacity: .42; clip-path: inset(23% 0 64% 0); transform: translate3d(-11px, 0, 0) scale(1.105); }
-  85% { opacity: .28; clip-path: inset(79% 0 9% 0); transform: translate3d(9px, 0, 0) scale(1.125); }
+  0%, 3%, 14%, 29%, 47%, 66%, 83%, 100% { opacity: 0; clip-path: polygon(0 0, 0 0, 0 0); transform: translate3d(0, 0, 0); }
+  3.4% { opacity: .52; clip-path: polygon(0 9%, 38% 9%, 33% 14%, 100% 14%, 100% 22%, 61% 22%, 66% 27%, 0 27%); transform: translate3d(-12px, 0, 0) skewX(-1deg); }
+  4.1% { opacity: .38; clip-path: polygon(0 37%, 56% 37%, 51% 42%, 100% 42%, 100% 49%, 29% 49%, 34% 55%, 0 55%); transform: translate3d(9px, 0, 0) skewX(1deg); }
+  5% { opacity: .46; clip-path: polygon(0 69%, 31% 69%, 37% 74%, 100% 74%, 100% 82%, 68% 82%, 62% 87%, 0 87%); transform: translate3d(-8px, 0, 0); }
+  15% { opacity: .32; clip-path: polygon(0 23%, 44% 23%, 39% 29%, 100% 29%, 100% 36%, 72% 36%, 77% 41%, 0 41%); transform: translate3d(8px, 0, 0); }
+  30% { opacity: .4; clip-path: polygon(0 51%, 25% 51%, 31% 57%, 100% 57%, 100% 64%, 55% 64%, 49% 69%, 0 69%); transform: translate3d(-10px, 0, 0); }
+  48% { opacity: .35; clip-path: polygon(0 5%, 64% 5%, 59% 11%, 100% 11%, 100% 18%, 36% 18%, 41% 23%, 0 23%); transform: translate3d(9px, 0, 0); }
+  67% { opacity: .38; clip-path: polygon(0 62%, 48% 62%, 42% 68%, 100% 68%, 100% 76%, 74% 76%, 69% 81%, 0 81%); transform: translate3d(-8px, 0, 0); }
+  84% { opacity: .3; clip-path: polygon(0 31%, 30% 31%, 36% 36%, 100% 36%, 100% 43%, 58% 43%, 53% 48%, 0 48%); transform: translate3d(7px, 0, 0); }
 }
 
 @keyframes home-featured-glitch-orange {
-  0%, 3%, 12%, 24%, 40%, 57%, 75%, 91%, 100% { opacity: 0; clip-path: inset(100% 0 0 0); transform: translate3d(0, 0, 0) scale(1.03); }
-  3.4% { opacity: .62; clip-path: inset(20% 0 66% 0); transform: translate3d(17px, 0, 0) scale(1.045); }
-  4.1% { opacity: .38; clip-path: inset(55% 0 31% 0); transform: translate3d(-12px, 0, 0) scale(1.045); }
-  13% { opacity: .46; clip-path: inset(76% 0 12% 0); transform: translate3d(13px, 0, 0) scale(1.055); }
-  25% { opacity: .31; clip-path: inset(34% 0 54% 0); transform: translate3d(-8px, 0, 0) scale(1.07); }
-  41% { opacity: .43; clip-path: inset(9% 0 78% 0); transform: translate3d(16px, 0, 0) scale(1.08); }
-  58% { opacity: .36; clip-path: inset(63% 0 24% 0); transform: translate3d(-14px, 0, 0) scale(1.095); }
-  76% { opacity: .4; clip-path: inset(45% 0 43% 0); transform: translate3d(11px, 0, 0) scale(1.115); }
-  92% { opacity: .27; clip-path: inset(17% 0 70% 0); transform: translate3d(-9px, 0, 0) scale(1.13); }
-}
-
-@keyframes home-featured-impact {
-  0% { opacity: .9; transform: translate3d(-5%, 0, 0) scaleX(1.08); }
-  1% { opacity: .16; transform: translate3d(4%, 0, 0) scaleX(.97); }
-  2.2% { opacity: .55; transform: translate3d(-2%, 0, 0); }
-  3.4%, 48% { opacity: 0; transform: translate3d(0, 0, 0); }
-  48.5% { opacity: .16; transform: translate3d(1.5%, 0, 0); }
-  49.2%, 100% { opacity: 0; transform: translate3d(0, 0, 0); }
-}
-
-@keyframes home-featured-scan {
-  0% { background-position: 0 0, 0 -130%; opacity: .12; }
-  45% { opacity: .18; }
-  100% { background-position: 0 12px, 0 130%; opacity: .1; }
+  0%, 4%, 18%, 36%, 55%, 73%, 91%, 100% { opacity: 0; clip-path: polygon(0 0, 0 0, 0 0); transform: translate3d(0, 0, 0); }
+  4.4% { opacity: .46; clip-path: polygon(0 17%, 29% 17%, 35% 22%, 100% 22%, 100% 30%, 52% 30%, 47% 35%, 0 35%); transform: translate3d(11px, 0, 0) skewX(1deg); }
+  5.2% { opacity: .34; clip-path: polygon(0 46%, 68% 46%, 62% 52%, 100% 52%, 100% 59%, 41% 59%, 46% 64%, 0 64%); transform: translate3d(-8px, 0, 0); }
+  6% { opacity: .42; clip-path: polygon(0 76%, 42% 76%, 36% 81%, 100% 81%, 100% 89%, 71% 89%, 77% 94%, 0 94%); transform: translate3d(7px, 0, 0); }
+  19% { opacity: .31; clip-path: polygon(0 8%, 55% 8%, 49% 14%, 100% 14%, 100% 21%, 24% 21%, 30% 26%, 0 26%); transform: translate3d(-7px, 0, 0); }
+  37% { opacity: .38; clip-path: polygon(0 58%, 37% 58%, 43% 63%, 100% 63%, 100% 71%, 63% 71%, 58% 76%, 0 76%); transform: translate3d(9px, 0, 0); }
+  56% { opacity: .33; clip-path: polygon(0 29%, 73% 29%, 68% 35%, 100% 35%, 100% 42%, 46% 42%, 51% 47%, 0 47%); transform: translate3d(-8px, 0, 0); }
+  74% { opacity: .36; clip-path: polygon(0 70%, 22% 70%, 28% 75%, 100% 75%, 100% 83%, 54% 83%, 49% 88%, 0 88%); transform: translate3d(8px, 0, 0); }
+  92% { opacity: .28; clip-path: polygon(0 39%, 47% 39%, 41% 45%, 100% 45%, 100% 52%, 69% 52%, 74% 57%, 0 57%); transform: translate3d(-6px, 0, 0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .home-featured-image,
   .home-featured-glitch,
-  .home-featured-impact,
-  .home-featured-scanlines,
   .home-featured-copy,
   .home-slide-progress {
     animation: none !important;
