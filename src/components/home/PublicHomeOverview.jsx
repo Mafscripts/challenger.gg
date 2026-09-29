@@ -19,6 +19,12 @@ const number = (value) => Number(value || 0);
 const formatNumber = (value) => Math.round(Math.max(0, number(value))).toLocaleString();
 const formatMoney = (value) => `$${Math.max(0, number(value)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const blackOps7Artwork = "/assets/tournaments/black-ops-7.webp";
+const bulletImpacts = [
+  { left: "72%", top: "24%", size: "34px", delay: "1.4s", rotate: "12deg" },
+  { left: "84%", top: "42%", size: "27px", delay: "2.3s", rotate: "-18deg" },
+  { left: "66%", top: "67%", size: "31px", delay: "3.2s", rotate: "29deg" },
+  { left: "91%", top: "73%", size: "23px", delay: "4.1s", rotate: "-33deg" },
+];
 
 const tournamentImage = (tournament) => {
   const identity = String(tournament?.name || "").toLowerCase();
@@ -94,11 +100,31 @@ export default function PublicHomeOverview() {
           <img src="/assets/home/featured-tournaments.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-65" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,17,.98)_0%,rgba(5,10,17,.9)_38%,rgba(5,10,17,.25)_78%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,10,17,.84),transparent_60%)]" />
+          <div className="landing-bullet-field absolute inset-0 z-[2]" aria-hidden="true">
+            {bulletImpacts.map((impact, index) => (
+              <span
+                key={`${impact.left}-${impact.top}`}
+                className="landing-bullet-hole"
+                style={{
+                  left: impact.left,
+                  top: impact.top,
+                  width: impact.size,
+                  height: impact.size,
+                  "--impact-delay": impact.delay,
+                  "--impact-rotation": impact.rotate,
+                  "--impact-index": index,
+                }}
+              />
+            ))}
+          </div>
           <div className="relative z-10 flex min-h-[360px] max-w-2xl flex-col justify-center px-6 py-12 sm:min-h-[410px] sm:px-10 lg:px-14">
-            <span className="inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> October season live</span>
-            <h2 className="mt-5 font-heading text-4xl font-black uppercase leading-[.95] text-white sm:text-5xl">Black Ops 7 ladder<br /><span className="text-orange">Become the Topfragger</span></h2>
-            <p className="mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">Compete throughout the six-week season for a $1,000 prize pool. The top 8 teams reach the playoffs, and the No. 1 competitor is featured in the next season.</p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <span className="landing-copy-reveal landing-copy-delay-1 inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> October season live</span>
+            <h2 className="mt-5 font-heading text-4xl font-black uppercase leading-[.95] text-white sm:text-5xl">
+              <span className="landing-title-reveal landing-copy-delay-2 block">Black Ops 7 ladder</span>
+              <span className="landing-title-reveal landing-copy-delay-3 block text-orange">Become the Topfragger</span>
+            </h2>
+            <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">Compete throughout the six-week season for a $1,000 prize pool. The top 8 teams reach the playoffs, and the No. 1 competitor is featured in the next season.</p>
+            <div className="landing-copy-reveal landing-copy-delay-5 mt-7 flex flex-wrap gap-3">
               <Link to={protectedHref("/tournaments")} className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> View tournaments <ArrowRight className="h-4 w-4" /></Link>
               {!isAuthenticated && <Link to="/register" className="inline-flex items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-5 py-3 text-[10px] font-black uppercase tracking-wider text-cyan">Create free account</Link>}
             </div>
