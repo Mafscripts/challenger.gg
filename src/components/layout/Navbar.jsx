@@ -60,7 +60,7 @@ const rankedNavGroup = {
   items: [
     { label: "XP Matches", description: "Queue for competitive matchmaking", path: "/ranked", icon: Swords, tone: "cyan" },
     { label: "8s", description: "Join the 8-player competitive queue", path: "/ranked/8s", icon: Users, tone: "cyan" },
-    { label: "XP Matches Leaderboard", description: "See the complete XP matches ladder", path: "/leaderboards", icon: Trophy, tone: "cyan" },
+    { label: "XP Matches Leaderboard", description: "See the complete XP matches ladder", path: "/ranked#standings", icon: Trophy, tone: "cyan" },
   ],
 };
 
@@ -186,15 +186,16 @@ const tournamentMatchSideFor = (match, keys) => {
   return null;
 };
 
-const navItemIsActive = (pathname, path) => (
-  pathname === path
-  || (path === "/tournaments" && pathname.startsWith("/tournament-match/"))
-  || (path === "/streamer-tournaments" && pathname.startsWith("/streamer-tournament/"))
-  || (path === "/ranked" && pathname.startsWith("/ranked-match/"))
-  || (path === "/ranked/8s" && pathname.startsWith("/8s-match/"))
-  || (path === "/wagers" && pathname.startsWith("/wagers-match/"))
-  || (path === "/dashboard" && pathname.startsWith("/match-room/"))
-);
+const navItemIsActive = (pathname, path) => {
+  const targetPath = String(path || "").split("#")[0];
+  return pathname === targetPath
+    || (targetPath === "/tournaments" && pathname.startsWith("/tournament-match/"))
+    || (targetPath === "/streamer-tournaments" && pathname.startsWith("/streamer-tournament/"))
+    || (targetPath === "/ranked" && pathname.startsWith("/ranked-match/"))
+    || (targetPath === "/ranked/8s" && pathname.startsWith("/8s-match/"))
+    || (targetPath === "/wagers" && pathname.startsWith("/wagers-match/"))
+    || (targetPath === "/dashboard" && pathname.startsWith("/match-room/"));
+};
 
 const formatMessageTime = (value) => {
   const timestamp = new Date(value || 0).getTime();
