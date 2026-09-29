@@ -494,7 +494,7 @@ export default function Profile() {
               <ProfileStatCard icon={Flame} label="Win ratio" value={`${winRate}%`} tone="text-cyan" />
               <ProfileStatCard icon={DollarSign} label="Lifetime earnings" value={formatMoney(earnedMoney)} tone="text-green" />
             </div>
-            <PlayerOverviewPanel user={user} profile={profile} name={name} rank={rank} elo={elo} wins={wins} losses={losses} earnedMoney={earnedMoney} trophyCount={trophyCount} socialLinks={socialLinks} />
+            <PlayerOverviewPanel user={user} profile={profile} name={name} rank={rank} elo={elo} wins={wins} losses={losses} earnedMoney={earnedMoney} trophies={trophyOverviewCards} socialLinks={socialLinks} />
             <SeasonRecordPanel rankedStats={rankedStats} wins={wins} losses={losses} winRate={winRate} currentStreak={currentStreak} earnedMoney={earnedMoney} />
             <RecentMatchesPanel matches={matches.slice(0, 6)} userId={user.id} />
           </div>
@@ -539,28 +539,39 @@ function ProfileStatCard({ icon: Icon, label, value, tone = "text-cyan" }) {
   );
 }
 
-function PlayerOverviewPanel({ user, profile, name, rank, elo, wins, losses, earnedMoney, trophyCount, socialLinks }) {
+function PlayerOverviewPanel({ user, profile, name, rank, elo, wins, losses, earnedMoney, trophies, socialLinks }) {
   return (
     <section>
       <ProfileSectionTitle title="Player overview" count="1 player" />
       <div className="overflow-hidden rounded-xl border border-white/10 bg-card">
-        <div className="hidden grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_90px_100px_100px_110px] border-b border-white/[0.07] bg-white/[0.025] px-5 py-3 font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor lg:grid">
-          <span>Player</span><span>Gamertag</span><span>Record</span><span>ELO</span><span>Earnings</span><span>Socials</span>
+        <div className="hidden grid-cols-[minmax(180px,1.35fr)_minmax(130px,.9fr)_70px_75px_90px_minmax(190px,1.2fr)_90px] border-b border-white/[0.07] bg-white/[0.025] px-5 py-3 font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor lg:grid">
+          <span>Player</span><span>Gamertag</span><span>Record</span><span>ELO</span><span>Earnings</span><span>Trophies</span><span>Socials</span>
         </div>
-        <div className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_90px_100px_100px_110px] lg:items-center lg:gap-0">
+        <div className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(180px,1.35fr)_minmax(130px,.9fr)_70px_75px_90px_minmax(190px,1.2fr)_90px] lg:items-center lg:gap-0">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-cyan/20 bg-cyan/10 font-black text-cyan">
               {profile?.avatar_url || user?.avatar_url ? <img src={profile?.avatar_url || user?.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black text-white">{name}</p>
-              <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rank.name || rank.tier} · {trophyCount} trophies</p>
+              <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rank.name || rank.tier}</p>
             </div>
           </div>
           <div className="min-w-0 lg:px-1"><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Gamertag</p><span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] text-white"><Gamepad2 className="h-3 w-3 text-cyan" /><span className="truncate">{activisionIdFor(user) || user?.handle || user?.username || "Not set"}</span></span></div>
           <ProfileTableValue label="Record" value={`${wins}-${losses}`} />
           <ProfileTableValue label="ELO" value={elo.toLocaleString()} tone="text-cyan" />
           <ProfileTableValue label="Earnings" value={formatMoney(earnedMoney)} tone="text-green" />
+          <div>
+            <p className="mb-2 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Trophies</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {(trophies || []).map((trophy) => (
+                <span key={trophy.key} title={`${trophy.label}: ${trophy.value}`} className="inline-flex items-center gap-1">
+                  <img src={trophy.image} alt={trophy.label} className="h-5 w-5 object-contain" />
+                  <span className={`font-mono text-[9px] font-black ${trophy.tone}`}>{trophy.value}</span>
+                </span>
+              ))}
+            </div>
+          </div>
           <div><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Socials</p>{socialLinks.length > 0 ? <div className="flex flex-wrap gap-1.5">{socialLinks.slice(0, 3).map((social) => social.url ? <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase text-cyan hover:text-orange">{social.label}</a> : <span key={social.key} className="text-[9px] font-black uppercase text-vapor">{social.label}</span>)}</div> : <span className="text-xs text-vapor">—</span>}</div>
         </div>
       </div>
@@ -585,7 +596,7 @@ function ProfileSectionTitle({ title, count }) {
 
 function SeasonRecordPanel({ rankedStats, wins, losses, winRate, currentStreak, earnedMoney }) {
   const played = statNumber(rankedStats?.matches_played) || wins + losses;
-  const seasonLabel = String(rankedStats?.season_name || rankedStats?.season || "Current season");
+  const seasonLabel = "October 2026";
   return (
     <section>
       <ProfileSectionTitle title="Season record" count={rankedStats ? "Live season" : "No season data"} />
