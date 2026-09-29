@@ -825,6 +825,8 @@ async function userFor(userId) {
   return prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
 }
 
+const userSettingEnabled = (user, key) => user?.[key] === true || user?.metadata?.[key] === true;
+
 function activisionIdErrorForUsers(users = []) {
   const missing = (users || []).filter((user) => user && !activisionIdFor(user));
   if (missing.length === 0) return null;
@@ -3223,7 +3225,7 @@ async function wagerRosterPaymentError({ roster, entryFee, paymentMode, payer })
   const rosterUsers = await Promise.all(roster.map((member) => userFor(member.user_id)));
   const teammateWithoutPermission = rosterUsers.find((memberUser) => (
     String(memberUser.id) !== String(payer.id)
-    && memberUser.allow_team_wager_payments !== true
+    && !userSettingEnabled(memberUser, "allow_team_wager_payments")
   ));
   if (teammateWithoutPermission) {
     return `${nameFor(teammateWithoutPermission)} must enable Wager Wallet in Settings before paying their own entry`;
@@ -3470,7 +3472,7 @@ async function registerTournament(req) {
     const teammateWithoutPermission = memberUsers.find((memberUser) => (
       String(memberUser.id) !== captainId
       && paymentAllocations.some((allocation) => String(allocation.user_id) === String(memberUser.id))
-      && memberUser.allow_team_credit_payments !== true
+      && !userSettingEnabled(memberUser, "allow_team_credit_payments")
     ));
     if (teammateWithoutPermission) {
       return { success: false, error: `${nameFor(teammateWithoutPermission)} must enable Tournament Credits in Settings before paying their own entry` };
