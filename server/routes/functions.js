@@ -3413,27 +3413,36 @@ async function registerTournament(req) {
 
   const feeType = tournament.entry_type || (tournament.is_premium_only ? "premium" : (Number(tournament.entry_fee || 0) > 0 ? "credits" : "free"));
   const entryFee = Number(tournament.entry_fee || 0);
-  const paymentMode = paymentModeFor(req.body.payment_mode);
-  const totalEntryFee = paymentMode === "full_team" ? entryFee * requiredSize : entryFee;
+  const memberIds = members.map((member) => String(member.user_id || "")).filter(Boolean);
+  const captainId = String(req.user.id);
+  const sponsoredMemberIds = [...new Set(Array.isArray(req.body.sponsored_member_ids) ? req.body.sponsored_member_ids.map(String) : [])]
+    .filter((memberId) => memberId !== captainId && memberIds.includes(memberId));
+  const paymentMode = requiredSize > 1 && sponsoredMemberIds.length === requiredSize - 1
+    ? "full_team"
+    : sponsoredMemberIds.length > 0 ? "selected" : "own";
+  const totalEntryFee = entryFee * requiredSize;
   const requiresCreditPayment = feeType === "credits" || feeType === "credits_premium";
+  let paymentAllocations = [];
   if (requiresCreditPayment && entryFee > 0) {
-    if (paymentMode === "full_team") {
-      if (Number(req.user.credits || 0) < totalEntryFee) {
-        return { success: false, error: "Not enough credits" };
-      }
-      await prisma.user.update({
-        where: { id: req.user.id },
-        data: { credits: { decrement: totalEntryFee } },
-      });
-    } else {
-      const memberUsers = await Promise.all(members.map((member) => userFor(member.user_id)));
-      const unpaidMember = memberUsers.find((memberUser) => Number(memberUser?.credits || 0) < entryFee);
-      if (unpaidMember) return { success: false, error: `${nameFor(unpaidMember)} does not have enough credits` };
-      await Promise.all(memberUsers.map((memberUser) => prisma.user.update({
-        where: { id: memberUser.id },
-        data: { credits: { decrement: entryFee } },
-      })));
+    const memberUsers = await Promise.all(members.map((member) => userFor(member.user_id)));
+    paymentAllocations = memberUsers.map((memberUser) => ({
+      user_id: memberUser.id,
+      amount: String(memberUser.id) === captainId
+        ? entryFee * (1 + sponsoredMemberIds.length)
+        : sponsoredMemberIds.includes(String(memberUser.id)) ? 0 : entryFee,
+    })).filter((allocation) => allocation.amount > 0);
+    const unpaidAllocation = paymentAllocations.find((allocation) => {
+      const payer = memberUsers.find((memberUser) => String(memberUser.id) === String(allocation.user_id));
+      return Number(payer?.credits || 0) < allocation.amount;
+    });
+    if (unpaidAllocation) {
+      const unpaidUser = memberUsers.find((memberUser) => String(memberUser.id) === String(unpaidAllocation.user_id));
+      return { success: false, error: `${nameFor(unpaidUser)} does not have enough credits` };
     }
+    await Promise.all(paymentAllocations.map((allocation) => prisma.user.update({
+      where: { id: allocation.user_id },
+      data: { credits: { decrement: allocation.amount } },
+    })));
   }
 
   const existingCount = Number(tournament.registered_teams || 0);
@@ -3462,8 +3471,10 @@ async function registerTournament(req) {
     eliminated: false,
     entry_type: feeType,
     payment_mode: paymentMode,
-    entry_fee_paid: requiresCreditPayment ? (paymentMode === "full_team" ? totalEntryFee : entryFee * requiredSize) : 0,
-    paid_member_ids: participantMembers.map((member) => member.user_id),
+    entry_fee_paid: requiresCreditPayment ? totalEntryFee : 0,
+    paid_member_ids: paymentAllocations.map((allocation) => allocation.user_id),
+    sponsored_member_ids: sponsoredMemberIds,
+    payment_allocations: paymentAllocations,
     roster_locked: true,
     registered_date: nowIso(),
   });
@@ -4145,6 +4156,19 @@ async function refundTournamentEntry(tournament, participant) {
   const requiresCredits = feeType === "credits" || feeType === "credits_premium";
   const totalPaid = roundedMoney(participant.entry_fee_paid);
   if (!requiresCredits || totalPaid <= 0) return [];
+
+  const storedAllocations = Array.isArray(participant.payment_allocations)
+    ? participant.payment_allocations
+      .map((allocation) => ({ user_id: allocation?.user_id, amount: roundedMoney(allocation?.amount) }))
+      .filter((allocation) => allocation.user_id && allocation.amount > 0)
+    : [];
+  if (storedAllocations.length > 0) {
+    await Promise.all(storedAllocations.map((allocation) => prisma.user.update({
+      where: { id: allocation.user_id },
+      data: { credits: { increment: allocation.amount } },
+    })));
+    return storedAllocations;
+  }
 
   if (participant.payment_mode === "full_team") {
     const refundUserId = participant.captain_id;

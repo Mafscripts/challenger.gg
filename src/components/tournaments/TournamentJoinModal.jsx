@@ -15,8 +15,8 @@ export default function TournamentJoinModal({
   onCreateTeam,
   onJoin,
   joining = false,
-  paymentMode = "own",
-  onPaymentModeChange,
+  sponsoredMemberIds = [],
+  onSponsoredMemberIdsChange,
   requiresCredits = false,
 }) {
   useEffect(() => {
@@ -37,6 +37,20 @@ export default function TournamentJoinModal({
     && Number(selectedTeam.roster_size || requiredPlayers) === requiredPlayers
     && selectedTeam.members?.length === requiredPlayers,
   );
+  const captainId = String(selectedTeam?.captain_id || "");
+  const selectableMemberIds = (selectedTeam?.members || []).map((member) => String(member.user_id || "")).filter((memberId) => memberId && memberId !== captainId);
+  const selectedSponsorIds = sponsoredMemberIds.map(String).filter((memberId) => selectableMemberIds.includes(memberId));
+  const entryFee = Number(tournament?.entry_fee || 0);
+  const captainPayment = entryFee * (1 + selectedSponsorIds.length);
+  const toggleSponsoredMember = (memberId) => {
+    const normalizedId = String(memberId || "");
+    if (!normalizedId || normalizedId === captainId) return;
+    onSponsoredMemberIdsChange?.(
+      selectedSponsorIds.includes(normalizedId)
+        ? selectedSponsorIds.filter((id) => id !== normalizedId)
+        : [...selectedSponsorIds, normalizedId],
+    );
+  };
 
   return createPortal(
     <AnimatePresence>
@@ -100,7 +114,7 @@ export default function TournamentJoinModal({
                       <button
                         key={team.id}
                         type="button"
-                        onClick={() => onSelectTeam?.(team.id)}
+                        onClick={() => { onSelectTeam?.(team.id); onSponsoredMemberIdsChange?.([]); }}
                         className={`flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition-all ${selected ? "border-orange/45 bg-orange/[0.09]" : "border-white/[0.07] bg-background/30 hover:border-white/15 hover:bg-white/[0.035]"}`}
                       >
                         <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border font-mono text-[10px] font-black ${selected ? "border-orange/30 bg-orange/15 text-orange" : "border-white/[0.07] bg-white/[0.03] text-vapor"}`}>
@@ -132,14 +146,39 @@ export default function TournamentJoinModal({
                 <Plus className="h-3.5 w-3.5" /> Create a new tournament team
               </button>
 
-              {requiresCredits && (
-                <label className="block">
-                  <span className="mb-2 block text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Payment</span>
-                  <select value={paymentMode} onChange={(event) => onPaymentModeChange?.(event.target.value)} className="w-full rounded-xl border border-white/[0.07] bg-secondary px-4 py-3 text-xs text-white outline-none focus:border-orange/35">
-                    <option value="own">Pay my own entry only</option>
-                    <option value="full_team">Pay the full team entry</option>
-                  </select>
-                </label>
+              {requiresCredits && selectedTeam && (
+                <div>
+                  <div className="mb-2 flex items-end justify-between gap-3">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Choose who you pay for</p>
+                      <p className="mt-1 text-[10px] text-vapor">Unselected teammates pay their own entry.</p>
+                    </div>
+                    <span className="font-mono text-xs font-black text-green">{captainPayment.toLocaleString()} Credits</span>
+                  </div>
+                  <div className="space-y-2 rounded-xl border border-white/[0.07] bg-background/30 p-2">
+                    {(selectedTeam?.members || []).map((member) => {
+                      const memberId = String(member.user_id || "");
+                      const isCaptain = memberId === captainId;
+                      const selected = isCaptain || selectedSponsorIds.includes(memberId);
+                      const memberName = member.user_name || member.username || member.display_name || member.handle || "Player";
+                      return (
+                        <button
+                          key={memberId}
+                          type="button"
+                          onClick={() => toggleSponsoredMember(memberId)}
+                          disabled={isCaptain}
+                          role="checkbox"
+                          aria-checked={selected}
+                          className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${selected ? "border-green/25 bg-green/[0.08]" : "border-white/[0.06] bg-white/[0.02] hover:border-white/15"}`}
+                        >
+                          <span className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? "border-green/40 bg-green text-background" : "border-white/15 text-transparent"}`}><Check className="h-3.5 w-3.5" /></span>
+                          <span className="min-w-0 flex-1 truncate text-xs font-bold text-white">{memberName}</span>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-vapor">{isCaptain ? "You" : selected ? "You pay" : "Pays own"}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
 

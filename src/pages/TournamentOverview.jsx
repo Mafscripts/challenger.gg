@@ -107,6 +107,14 @@ const canLeave = (tournament, matches) => Boolean(
   && tournament.bracket_generated !== true
   && matches.length === 0
 );
+const refundForUser = (participant, userId, tournament) => {
+  const allocation = (participant?.payment_allocations || []).find((item) => String(item?.user_id) === String(userId || ""));
+  if (allocation) return Number(allocation.amount || 0);
+  if (participant?.payment_mode === "full_team" && String(participant?.captain_id) === String(userId || "")) {
+    return Number(participant?.entry_fee_paid || 0);
+  }
+  return Number(tournament?.entry_fee || 0);
+};
 
 function Countdown({ value, now }) {
   const target = new Date(value || "").getTime();
@@ -207,7 +215,7 @@ export default function TournamentOverview() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState("");
-  const [paymentMode, setPaymentMode] = useState("own");
+  const [sponsoredMemberIds, setSponsoredMemberIds] = useState([]);
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
@@ -283,7 +291,7 @@ export default function TournamentOverview() {
       const response = await base44.functions.invoke("registerTournament", {
         tournament_id: tournament.id,
         team_id: selectedTeamId,
-        payment_mode: entryType(tournament) === "free" ? "own" : paymentMode,
+        sponsored_member_ids: entryType(tournament) === "free" ? [] : sponsoredMemberIds,
       });
       if (!response.data?.success) {
         toast({ title: "Join failed", description: response.data?.error || "Could not join tournament.", variant: "destructive" });
@@ -299,6 +307,7 @@ export default function TournamentOverview() {
       }
       setJoinOpen(false);
       setTournament((current) => ({ ...current, registered_teams: Number(current.registered_teams || 0) + 1 }));
+      window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
       toast({ title: "Tournament joined", description: `${response.data.participant?.team_name || "Your team"} is registered.` });
     } catch (error) {
       toast({ title: "Join failed", description: error.message || "Could not join tournament.", variant: "destructive" });
@@ -337,15 +346,17 @@ export default function TournamentOverview() {
         registered_teams: response.data.tournament?.registered_teams ?? Math.max(0, Number(current.registered_teams || 0) - 1),
       }));
       const refunds = response.data.refunds || [];
-      const refundedCredits = refunds.reduce((total, refund) => total + Number(refund.amount || 0), 0);
+      const fullTeamRefund = participant.payment_mode === "full_team";
       const personalRefund = refunds.find((refund) => String(refund.user_id) === String(user.id));
       if (personalRefund) {
         setUser((current) => ({ ...current, credits: Number(current?.credits || 0) + Number(personalRefund.amount || 0) }));
       }
       window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
       setRefundResult({
-        credits: refundedCredits,
-        recipients: refunds.length,
+        credits: fullTeamRefund
+          ? refunds.reduce((total, refund) => total + Number(refund.amount || 0), 0)
+          : Number(personalRefund?.amount || 0),
+        fullTeam: fullTeamRefund,
       });
     } catch (error) {
       toast({ title: "Leave failed", description: error.message || "Could not leave tournament.", variant: "destructive" });
@@ -358,6 +369,7 @@ export default function TournamentOverview() {
     const refreshedTeams = await loadTeams(user);
     setTeams(refreshedTeams);
     setSelectedTeamId(team.id);
+    setSponsoredMemberIds([]);
     setCreateTeamOpen(false);
     setJoinOpen(true);
   };
@@ -522,12 +534,12 @@ export default function TournamentOverview() {
         tournament={tournament}
         teams={teams}
         selectedTeamId={selectedTeamId}
-        onSelectTeam={setSelectedTeamId}
+        onSelectTeam={(teamId) => { setSelectedTeamId(teamId); setSponsoredMemberIds([]); }}
         onCreateTeam={() => { setJoinOpen(false); setCreateTeamOpen(true); }}
         onJoin={handleJoin}
         joining={joining}
-        paymentMode={paymentMode}
-        onPaymentModeChange={setPaymentMode}
+        sponsoredMemberIds={sponsoredMemberIds}
+        onSponsoredMemberIdsChange={setSponsoredMemberIds}
         requiresCredits={["credits", "credits_premium"].includes(entryType(tournament)) && Number(tournament.entry_fee || 0) > 0}
       />
       <AlertDialog open={leaveDialogOpen} onOpenChange={(open) => {
@@ -546,7 +558,9 @@ export default function TournamentOverview() {
               <div className="px-6 pb-6">
                 <AlertDialogDescription className="text-center leading-6 text-vapor">
                   {refundResult.credits > 0
-                    ? `The tournament entry was refunded to ${refundResult.recipients === 1 ? "the original payer" : `${refundResult.recipients} original payers`}.`
+                    ? refundResult.fullTeam
+                      ? "The full team entry was refunded to your wallet."
+                      : "Your payment was refunded to your wallet. Teammates receive their own refunds separately."
                     : "No credits were charged for this tournament entry."}
                 </AlertDialogDescription>
                 <AlertDialogAction onClick={() => setLeaveDialogOpen(false)} className="mt-5 w-full bg-green font-black uppercase tracking-wider text-background hover:bg-green/90">Done</AlertDialogAction>
@@ -561,7 +575,7 @@ export default function TournamentOverview() {
               </AlertDialogHeader>
               <div className="my-5 flex items-center justify-between rounded-xl border border-green/20 bg-green/[0.07] px-4 py-3">
                 <span className="flex items-center gap-2 text-xs font-bold text-vapor"><Coins className="h-4 w-4 text-green" /> Credits refunded</span>
-                <span className="font-mono text-sm font-black text-green">{Number(joinedParticipant?.entry_fee_paid || 0).toLocaleString()} Credits</span>
+                <span className="font-mono text-sm font-black text-green">{refundForUser(joinedParticipant, user?.id, tournament).toLocaleString()} Credits</span>
               </div>
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={leaving}>Keep my spot</AlertDialogCancel>

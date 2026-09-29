@@ -54,6 +54,7 @@
       "type": "string",
       "enum": [
         "own",
+        "selected",
         "full_team",
         "free"
       ],
@@ -81,6 +82,28 @@
         "type": "string"
       },
       "title": "Paid Member IDs"
+    },
+    "sponsored_member_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Roster Members Paid by Captain"
+    },
+    "payment_allocations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      },
+      "title": "Original Tournament Entry Payers"
     },
     "seed": {
       "type": "number",

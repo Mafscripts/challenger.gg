@@ -298,7 +298,7 @@ export default function Tournaments() {
   const [joinedTournamentIds, setJoinedTournamentIds] = useState(new Set());
   const [userTeams, setUserTeams] = useState([]);
   const [selectedTeamByTournament, setSelectedTeamByTournament] = useState({});
-  const [paymentModeByTournament, setPaymentModeByTournament] = useState({});
+  const [sponsoredMembersByTournament, setSponsoredMembersByTournament] = useState({});
   const [teamCreator, setTeamCreator] = useState({ open: false, tournamentId: null, rosterSize: 4 });
   const [joinTournamentId, setJoinTournamentId] = useState(null);
   const selectedTournamentIdRef = useRef(null);
@@ -468,7 +468,7 @@ export default function Tournaments() {
       const response = await base44.functions.invoke("registerTournament", {
         tournament_id: tournament.id,
         team_id: selectedTeam.id,
-        payment_mode: isFreeTournament(tournament) ? "own" : (paymentModeByTournament[tournament.id] || "own"),
+        sponsored_member_ids: isFreeTournament(tournament) ? [] : (sponsoredMembersByTournament[tournament.id] || []),
       });
       if (!response.data?.success) {
         toast({ title: "Join failed", description: response.data?.error || "Could not join tournament.", variant: "destructive" });
@@ -479,7 +479,9 @@ export default function Tournaments() {
       setTournaments((current) => current.map((row) => (
         row.id === tournament.id ? { ...row, registered_teams: registered } : row
       )));
+      window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
       toast({ title: "Tournament joined", description: `You are registered for ${tournament.name}.` });
+      setSponsoredMembersByTournament((current) => ({ ...current, [tournament.id]: [] }));
       setJoinTournamentId(null);
       await loadMatches(tournament.id);
     } catch (error) {
@@ -590,6 +592,7 @@ export default function Tournaments() {
     await loadTournaments();
     if (tournamentId) {
       setSelectedTeamByTournament((current) => ({ ...current, [tournamentId]: team.id }));
+      setSponsoredMembersByTournament((current) => ({ ...current, [tournamentId]: [] }));
       setJoinTournamentId(tournamentId);
     }
   };
@@ -870,7 +873,10 @@ export default function Tournaments() {
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <select
                         value={selectedTeamByTournament[selectedTournament.id] || ""}
-                        onChange={(event) => setSelectedTeamByTournament((current) => ({ ...current, [selectedTournament.id]: event.target.value }))}
+                        onChange={(event) => {
+                          setSelectedTeamByTournament((current) => ({ ...current, [selectedTournament.id]: event.target.value }));
+                          setSponsoredMembersByTournament((current) => ({ ...current, [selectedTournament.id]: [] }));
+                        }}
                         className="px-3 py-2 bg-secondary text-vapor text-xs rounded-lg border border-white/5 focus:border-cyan/30 focus:outline-none"
                       >
                         <option value="">Select team</option>
@@ -890,18 +896,8 @@ export default function Tournaments() {
                           Needs exactly {rosterSize(selectedTournament.team_size)} active players
                         </span>
                       )}
-                      {requiresTournamentCredits(selectedTournament) && (
-                        <select
-                          value={paymentModeByTournament[selectedTournament.id] || "own"}
-                          onChange={(event) => setPaymentModeByTournament((current) => ({ ...current, [selectedTournament.id]: event.target.value }))}
-                          className="px-3 py-2 bg-secondary text-vapor text-xs rounded-lg border border-white/5 focus:border-cyan/30 focus:outline-none"
-                        >
-                          <option value="own">Pay my own entry only</option>
-                          <option value="full_team">Pay full team entry</option>
-                        </select>
-                      )}
                       <button
-                        onClick={() => handleJoinTournament(selectedTournament)}
+                        onClick={() => setJoinTournamentId(selectedTournament.id)}
                         disabled={joiningId === selectedTournament.id}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-green text-background text-xs font-bold rounded-lg disabled:opacity-50 uppercase tracking-wider"
                       >
@@ -938,7 +934,11 @@ export default function Tournaments() {
           tournament={joinTournament}
           teams={joinTournament ? compatibleTeamsFor(joinTournament) : []}
           selectedTeamId={joinTournament ? selectedTeamByTournament[joinTournament.id] || "" : ""}
-          onSelectTeam={(teamId) => joinTournament && setSelectedTeamByTournament((current) => ({ ...current, [joinTournament.id]: teamId }))}
+          onSelectTeam={(teamId) => {
+            if (!joinTournament) return;
+            setSelectedTeamByTournament((current) => ({ ...current, [joinTournament.id]: teamId }));
+            setSponsoredMembersByTournament((current) => ({ ...current, [joinTournament.id]: [] }));
+          }}
           onCreateTeam={() => {
             if (!joinTournament) return;
             setJoinTournamentId(null);
@@ -946,8 +946,8 @@ export default function Tournaments() {
           }}
           onJoin={() => joinTournament && handleJoinTournament(joinTournament)}
           joining={joiningId === joinTournament?.id}
-          paymentMode={joinTournament ? paymentModeByTournament[joinTournament.id] || "own" : "own"}
-          onPaymentModeChange={(mode) => joinTournament && setPaymentModeByTournament((current) => ({ ...current, [joinTournament.id]: mode }))}
+          sponsoredMemberIds={joinTournament ? sponsoredMembersByTournament[joinTournament.id] || [] : []}
+          onSponsoredMemberIdsChange={(memberIds) => joinTournament && setSponsoredMembersByTournament((current) => ({ ...current, [joinTournament.id]: memberIds }))}
           requiresCredits={joinTournament ? requiresTournamentCredits(joinTournament) : false}
         />
       </div>
