@@ -9276,6 +9276,47 @@ async function changeDisplayName(req) {
   return { success: true, user };
 }
 
+const emptyCompetitionTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0, topfragg: 0, hosted: 0 });
+
+const competitionTrophyType = (item = {}) => {
+  const text = [item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method]
+    .filter(Boolean)
+    .join(" ")
+    .trim()
+    .toLowerCase();
+  if (item.item_category !== "trophy" && !text.includes("trophy")) return null;
+  if (text.includes("topfrag") || text.includes("topfragg")) return "topfragg";
+  if (text.includes("hosted") || text.includes("host trophy")) return "hosted";
+  if (text.includes("premium")) return "premium";
+  if (text.includes("gold")) return "gold";
+  if (text.includes("silver")) return "silver";
+  if (text.includes("bronze")) return "bronze";
+  if (["exclusive", "mythic"].includes(item.item_rarity)) return "premium";
+  if (["legendary", "epic"].includes(item.item_rarity)) return "gold";
+  if (item.item_rarity === "rare") return "silver";
+  return "bronze";
+};
+
+async function getCompetitionTrophyCounts(req) {
+  const userIds = [...new Set((Array.isArray(req.body.user_ids) ? req.body.user_ids : [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean))].slice(0, 100);
+  const requested = new Set(userIds);
+  const counts = Object.fromEntries(userIds.map((userId) => [userId, emptyCompetitionTrophyCounts()]));
+  if (!userIds.length) return { success: true, counts };
+
+  const inventoryRows = await prisma.userInventory.findMany({ select: { metadata: true } });
+  inventoryRows.forEach((row) => {
+    const item = row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? row.metadata : {};
+    const userId = String(item.user_id || "");
+    if (!requested.has(userId)) return;
+    const type = competitionTrophyType(item);
+    if (type) counts[userId][type] += 1;
+  });
+
+  return { success: true, counts };
+}
+
 const handlers = {
   completeRegistration,
   createWallet: completeRegistration,
@@ -9363,6 +9404,7 @@ const handlers = {
   adminGrantPremium,
   moderateUser,
   changeDisplayName,
+  getCompetitionTrophyCounts,
   adminAction: async (req) => ({ success: true, action: await createEntity("AdminAction", { ...req.body, admin_id: req.user.id, admin_name: nameFor(req.user), created_date: new Date().toISOString() }) }),
   postDiscordCelebration: async () => ({ success: true }),
   subscribePremium: async (req) => ({ success: true, user: await prisma.user.update({ where: { id: req.user.id }, data: { is_premium: true } }) }),

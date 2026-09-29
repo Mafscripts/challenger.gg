@@ -120,6 +120,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const [eightsRows, setEightsRows] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [inventoryTrophies, setInventoryTrophies] = useState(emptyInventoryTrophies);
+  const [leaderboardTrophies, setLeaderboardTrophies] = useState({});
   const [loading, setLoading] = useState(true);
   const copy = modeCopy[mode] || modeCopy.xp;
 
@@ -239,6 +240,27 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
       .slice(0, 50);
   }, [eightsRows, mode, rankedRows, users, usersById, xpByUser, xpRows]);
 
+  const standingsUserIds = useMemo(() => standings.map((row) => String(row.userId || "")).filter(Boolean).join("|"), [standings]);
+
+  useEffect(() => {
+    let active = true;
+    const userIds = standingsUserIds ? standingsUserIds.split("|") : [];
+    if (!userIds.length) {
+      setLeaderboardTrophies({});
+      return () => { active = false; };
+    }
+
+    base44.functions.invoke("getCompetitionTrophyCounts", { user_ids: userIds })
+      .then((response) => {
+        if (active) setLeaderboardTrophies(response.data?.counts || {});
+      })
+      .catch(() => {
+        if (active) setLeaderboardTrophies({});
+      });
+
+    return () => { active = false; };
+  }, [standingsUserIds]);
+
   const me = { ...(usersById.get(String(currentUser?.id)) || {}), ...(currentUser || {}) };
   const myXp = xpByUser.get(String(currentUser?.id)) || {};
   const myTrophies = trophyTypes.map((trophy) => ({
@@ -349,7 +371,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
                 <span className="text-center font-mono font-black text-white">{pct(row.wins, row.losses)}</span>
                 <span className="text-center font-mono font-black"><Flame className="mr-1 inline h-3.5 w-3.5 text-orange" />{row.streak}</span>
                 <span className="text-center font-mono font-black text-purple-300">{row.xp.toLocaleString()}</span>
-                <span className="flex items-center gap-2">{trophyTypes.map((trophy) => <span key={trophy.key} title={trophy.label} className="inline-flex items-center gap-0.5"><img src={trophy.image} alt="" className="h-4 w-4 object-contain" /><b className="font-mono text-[8px] text-vapor">{trophy.fields.reduce((best, field) => Math.max(best, number(row.user?.[field])), 0) + (String(row.userId) === String(currentUser?.id) ? number(inventoryTrophies[trophy.key]) : 0)}</b></span>)}</span>
+                <span className="flex items-center gap-2">{trophyTypes.map((trophy) => <span key={trophy.key} title={trophy.label} className="inline-flex items-center gap-0.5"><img src={trophy.image} alt="" className="h-4 w-4 object-contain" /><b className="font-mono text-[8px] text-vapor">{trophy.fields.reduce((best, field) => Math.max(best, number(row.user?.[field])), 0) + number(leaderboardTrophies[row.userId]?.[trophy.key])}</b></span>)}</span>
                 <span className={`text-right font-mono font-black ${mode === "wagers" ? "text-green" : "text-cyan"}`}>{mode === "wagers" ? `$${row.score.toLocaleString()}` : row.score.toLocaleString()}</span>
               </div>
             ))}
