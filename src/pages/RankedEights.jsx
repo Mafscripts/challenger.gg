@@ -10,12 +10,15 @@ import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
 
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
+const EIGHTS_PRIZE_START_MONTH = "2026-10";
+const EIGHTS_PRIZE_START_DATE = new Date("2026-10-01T00:00:00Z");
 const monthKey = () => new Date().toISOString().slice(0, 7);
 const daysLeftInMonth = () => {
   const now = new Date();
   const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return Math.max(0, last.getDate() - now.getDate());
 };
+const daysUntilPrizeStarts = () => Math.max(0, Math.ceil((EIGHTS_PRIZE_START_DATE.getTime() - Date.now()) / 86400000));
 
 export default function RankedEights() {
   const navigate = useNavigate();
@@ -59,7 +62,9 @@ export default function RankedEights() {
   }, []);
 
   useEffect(() => {
-    base44.functions.invoke("settleEightsMonthlyPrize", {}).catch(() => null);
+    if (monthKey() > EIGHTS_PRIZE_START_MONTH) {
+      base44.functions.invoke("settleEightsMonthlyPrize", {}).catch(() => null);
+    }
     load();
     const interval = window.setInterval(() => load(true), 6000);
     return () => window.clearInterval(interval);
@@ -75,6 +80,7 @@ export default function RankedEights() {
   const currentXp = Number(xpStats?.current_xp || 0);
   const xpTarget = Number(xpStats?.xp_to_next_level || 1000);
   const xpProgress = Math.min(100, Math.round((currentXp / Math.max(1, xpTarget)) * 100));
+  const prizeActive = monthKey() >= EIGHTS_PRIZE_START_MONTH;
 
   const joinLobby = async (lobby) => {
     if (!hasActivisionId(user)) {
@@ -130,15 +136,15 @@ export default function RankedEights() {
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-yellow-400/25 bg-yellow-400/10 text-yellow-300"><Crown className="h-6 w-6" /></div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-300">Monthly 8s race</p>
-                <h2 className="mt-1 text-2xl font-black">#1 wins $100</h2>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-vapor">Play at least one completed 8s match this month. Most wins takes the prize; monthly XP and rating break ties.</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-300">{prizeActive ? "Monthly 8s race" : "8s prize announcement"}</p>
+                <h2 className="mt-1 text-2xl font-black">{prizeActive ? "#1 wins $100" : "$100 monthly prize starts October 1"}</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-vapor">{prizeActive ? "Play at least one completed 8s match this month. Most wins takes the prize; monthly XP and rating break ties." : "Matches played before October 1 do not count toward the $100 prize. Starting in October, the player with the most monthly 8s wins takes the prize."}</p>
               </div>
             </div>
             <div className="rounded-xl border border-white/[0.08] bg-black/20 px-5 py-4 text-center">
               <CalendarDays className="mx-auto h-5 w-5 text-cyan" />
-              <p className="mt-2 font-mono text-2xl font-black">{daysLeftInMonth()}</p>
-              <p className="text-[9px] font-black uppercase tracking-wider text-vapor">days remaining</p>
+              <p className="mt-2 font-mono text-2xl font-black">{prizeActive ? daysLeftInMonth() : daysUntilPrizeStarts()}</p>
+              <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{prizeActive ? "days remaining" : "days until launch"}</p>
             </div>
           </div>
         </section>
@@ -182,7 +188,7 @@ export default function RankedEights() {
         </div>
 
         <section className="glass overflow-hidden rounded-2xl border border-white/[0.07]">
-          <div className="border-b border-white/[0.06] px-5 py-4"><h2 className="flex items-center gap-2 font-black"><Flame className="h-4 w-4 text-orange" /> Monthly leaderboard</h2><p className="mt-1 text-xs text-vapor">Only players with a completed match are eligible for the $100 prize.</p></div>
+          <div className="border-b border-white/[0.06] px-5 py-4"><h2 className="flex items-center gap-2 font-black"><Flame className="h-4 w-4 text-orange" /> Monthly leaderboard</h2><p className="mt-1 text-xs text-vapor">{prizeActive ? "Only players with a completed match are eligible for the $100 prize." : "The $100 prize race begins October 1; results before then are not prize-eligible."}</p></div>
           <div className="divide-y divide-white/[0.05]">
             {sortedLeaders.length === 0 ? <p className="px-5 py-10 text-center text-sm text-vapor">The race starts with the first completed 8s match.</p> : sortedLeaders.map((entry, index) => (
               <div key={entry.id || entry.user_id} className="grid grid-cols-[40px_minmax(0,1fr)_70px_80px] items-center gap-3 px-5 py-3.5 text-sm">

@@ -14,6 +14,11 @@ const gameModes = [
   { id: "hp", name: "Hardpoint", icon: Swords, description: "First to 250 score", tone: "red" },
 ];
 
+const eightsSeriesFormats = [
+  { id: "cdl_bo3", name: "CDL BO3", gameMode: "hp", modes: ["hp", "snd", "hp"], icon: Swords, description: "Hardpoint · Search & Destroy · Hardpoint", tone: "cyan" },
+  { id: "hp_bo3", name: "Hardpoint BO3", gameMode: "hp", modes: ["hp", "hp", "hp"], icon: Target, description: "Hardpoint · Hardpoint · Hardpoint", tone: "red" },
+];
+
 const teamSizes = [
   { id: "1v1", name: "1v1", players: 2, tone: "cyan" },
   { id: "2v2", name: "2v2", players: 4, tone: "green" },
@@ -76,6 +81,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const isWager = mode === "wager";
   const isRanked = mode === "ranked";
   const isEights = mode === "eights";
+  const modeChoices = isEights ? eightsSeriesFormats : gameModes;
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
@@ -130,7 +136,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     if (selectedGameMode && selectedTeamSize && user) {
       setIsCreating(true);
       try {
-        const gameModeObj = gameModes.find(gm => gm.id === selectedGameMode);
+        const selectedMode = modeChoices.find(gm => gm.id === selectedGameMode);
+        const gameModeObj = isEights
+          ? { id: selectedMode.gameMode, name: selectedMode.name }
+          : selectedMode;
         const teamSizeObj = teamSizes.find(ts => ts.id === selectedTeamSize);
         let createdResult = {};
         
@@ -209,7 +218,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           return;
         } else {
           const response = await base44.functions.invoke('createWager', {
-            game_mode: selectedGameMode,
+            game_mode: gameModeObj.id,
             game_mode_display: gameModeObj.name,
             team_size: isEights ? "4v4" : selectedTeamSize,
             amount: 0,
@@ -220,6 +229,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             host_banned_map_name: "",
             final_map: "",
             final_map_name: "",
+            series_format: isEights ? selectedMode.id : undefined,
+            series_modes: isEights ? selectedMode.modes : undefined,
             match_type: matchType,
           });
 
@@ -304,7 +315,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-black">{isEights ? "Create 8s Lobby" : "Create Lobby"}</h2>
-              <p className="text-xs text-vapor mt-0.5">{isEights ? "Pick a mode; teams are generated at 8 players" : "Configure your match settings"}</p>
+              <p className="text-xs text-vapor mt-0.5">{isEights ? "Pick a BO3 series; teams are generated at 8 players" : "Configure your match settings"}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-vapor" />
@@ -319,10 +330,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">1</span>
-                  Select Game Mode
+                  {isEights ? "Select BO3 Series" : "Select Game Mode"}
                 </h3>
-                <div className="grid sm:grid-cols-3 gap-4">
-                  {gameModes.map((mode) => {
+                <div className={`grid gap-4 ${isEights ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+                  {modeChoices.map((mode) => {
                     const Icon = mode.icon;
                     const isSelected = selectedGameMode === mode.id;
                     const tone = choiceTones[mode.tone];
@@ -635,12 +646,13 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 <div className="glass rounded-xl border border-white/5 p-4 mb-6">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-lg bg-cyan/10 flex items-center justify-center">
-                      {gameModes.find(gm => gm.id === selectedGameMode)?.icon && 
-                        React.createElement(gameModes.find(gm => gm.id === selectedGameMode).icon, { className: "w-5 h-5 text-cyan" })
+                      {modeChoices.find(gm => gm.id === selectedGameMode)?.icon &&
+                        React.createElement(modeChoices.find(gm => gm.id === selectedGameMode).icon, { className: "w-5 h-5 text-cyan" })
                       }
                     </div>
                     <div>
-                      <p className="font-bold text-sm">{gameModes.find(gm => gm.id === selectedGameMode)?.name}</p>
+                      <p className="font-bold text-sm">{modeChoices.find(gm => gm.id === selectedGameMode)?.name}</p>
+                      {isEights && <p className="mt-0.5 text-[10px] text-cyan">{modeChoices.find(gm => gm.id === selectedGameMode)?.description}</p>}
                       <p className="text-xs text-vapor">{isEights ? "4v4 · 8 solo players" : teamSizes.find(ts => ts.id === selectedTeamSize)?.name}</p>
                     </div>
                   </div>
@@ -653,7 +665,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 </div>
                 <div className="flex justify-between">
                   <button
-                    onClick={() => setStep(2)}
+                    onClick={() => setStep(isEights ? 1 : 2)}
                     className="px-6 py-2.5 bg-secondary text-vapor font-bold text-xs rounded-lg hover:bg-white/10 transition-all uppercase tracking-wider"
                   >
                     Back

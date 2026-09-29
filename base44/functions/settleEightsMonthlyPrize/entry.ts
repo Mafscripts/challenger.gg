@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const money = (value) => Math.round((Number(value) || 0) * 100) / 100;
 const playerName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || 'Player';
+const EIGHTS_MONTHLY_PRIZE_START_MONTH = '2026-10';
 
 const previousMonthKey = () => {
   const date = new Date();
@@ -17,6 +18,9 @@ Deno.serve(async (req) => {
     if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const month = previousMonthKey();
+    if (month < EIGHTS_MONTHLY_PRIZE_START_MONTH) {
+      return Response.json({ success: true, settled: false, month, reason: `Prize starts with ${EIGHTS_MONTHLY_PRIZE_START_MONTH}` });
+    }
     const referenceId = `8s-monthly-${month}`;
     const existing = await base44.asServiceRole.entities.WalletTransaction.filter({ reference_id: referenceId });
     const paid = existing.find((transaction) => transaction.type === 'eights_monthly_prize' && transaction.status === 'completed');

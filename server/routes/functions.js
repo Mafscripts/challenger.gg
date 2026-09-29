@@ -6074,7 +6074,7 @@ async function randomizeEightsTeams(wager, participantRows) {
       is_captain: participant.id === alpha[0]?.id || participant.id === bravo[0]?.id,
     });
   }));
-  const selectedMaps = randomWagerMaps(wager.game_mode, wager.best_of || 3);
+  const selectedMaps = randomEightsSeriesMaps(wager);
   return updateEntity("Wager", wager.id, {
     host_id: alpha[0]?.user_id || "",
     host_name: alpha[0]?.user_name || "Team Alpha Captain",
@@ -6083,6 +6083,7 @@ async function randomizeEightsTeams(wager, participantRows) {
     challenger_name: bravo[0]?.user_name || "Team Bravo Captain",
     challenger_team_name: "Team Bravo",
     series_maps: selectedMaps.map((map) => map.name),
+    series_modes: selectedMaps.map((map) => map.mode),
     final_map_id: selectedMaps[0]?.id || "",
     final_map_name: selectedMaps[0]?.name || "",
     roster_lock_deadline: new Date(Date.now() + 30000).toISOString(),
@@ -6197,7 +6198,9 @@ async function acceptWager(req) {
   const rosterLockDeadline = isIndividualEights && rosterFull
     ? new Date(Date.now() + 30 * 1000).toISOString()
     : "";
-  const selectedMaps = rosterFull ? randomWagerMaps(wager.game_mode, wager.best_of) : [];
+  const selectedMaps = rosterFull
+    ? (isIndividualEights ? randomEightsSeriesMaps(wager) : randomWagerMaps(wager.game_mode, wager.best_of))
+    : [];
   let updated = await updateEntity("Wager", wager.id, {
     challenger_id: wager.challenger_id || (individualSide === "challenger" ? req.user.id : ""),
     challenger_name: wager.challenger_name || (individualSide === "challenger" ? nameFor(req.user) : ""),
@@ -6208,6 +6211,7 @@ async function acceptWager(req) {
     challenger_banned_map_name: "",
     maps: RANKED_MAPS_BY_MODE[wager.game_mode] || RANKED_MAPS_BY_MODE.snd,
     series_maps: selectedMaps.map((map) => map.name),
+    series_modes: isIndividualEights ? selectedMaps.map((map) => map.mode) : wager.series_modes,
     final_map_id: selectedMaps[0]?.id || "",
     final_map_name: selectedMaps[0]?.name || "",
     status: isTeamMatch ? "accepted" : isIndividualEights ? "open" : "in_progress",
@@ -6341,8 +6345,13 @@ function previousMonthKey() {
   return date.toISOString().slice(0, 7);
 }
 
+const EIGHTS_MONTHLY_PRIZE_START_MONTH = "2026-10";
+
 async function settleEightsMonthlyPrize() {
   const month = previousMonthKey();
+  if (month < EIGHTS_MONTHLY_PRIZE_START_MONTH) {
+    return { success: true, settled: false, month, reason: `Prize starts with ${EIGHTS_MONTHLY_PRIZE_START_MONTH}` };
+  }
   const referenceId = `8s-monthly-${month}`;
   const priorTransactions = await listEntities("WalletTransaction", { reference_id: referenceId }, "-created_date", 5).catch(() => []);
   const settled = priorTransactions.find((transaction) => transaction.type === "eights_monthly_prize" && transaction.status === "completed");
@@ -6834,6 +6843,28 @@ function randomWagerMaps(gameMode, bestOf = 1) {
     }
   }
   return selected.map((name) => ({ name, id: name.toLowerCase().replace(/\s+/g, "_") }));
+}
+
+function eightsSeriesModes(wager = {}) {
+  const requested = Array.isArray(wager.series_modes)
+    ? wager.series_modes.map((mode) => String(mode || "").toLowerCase()).filter((mode) => ["hp", "snd"].includes(mode)).slice(0, 3)
+    : [];
+  if (requested.length === 3) return requested;
+  return wager.series_format === "hp_bo3" ? ["hp", "hp", "hp"] : ["hp", "snd", "hp"];
+}
+
+function randomEightsSeriesMaps(wager = {}) {
+  const usedByMode = new Map();
+  return eightsSeriesModes(wager).map((mode) => {
+    const pool = [...(RANKED_MAPS_BY_MODE[mode] || RANKED_MAPS_BY_MODE.hp)];
+    const used = usedByMode.get(mode) || new Set();
+    const available = pool.filter((name) => !used.has(name));
+    const candidates = available.length > 0 ? available : pool;
+    const name = candidates[Math.floor(Math.random() * candidates.length)];
+    used.add(name);
+    usedByMode.set(mode, used);
+    return { name, mode, id: name.toLowerCase().replace(/\s+/g, "_") };
+  });
 }
 
 async function previousRankedMapFor(userId, excludeMatchId = "") {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Check, Clock3, Crown, Flag, LogOut, RefreshCw, Shield, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Clock3, Crown, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MatchChat from "@/components/match/MatchChat";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
@@ -8,12 +8,14 @@ import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
+import { isStaffUser } from "@/lib/roles";
 import { toast } from "@/components/ui/use-toast";
 
 const closedStatuses = new Set(["completed", "cancelled"]);
 const scoreStatuses = new Set(["in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion"]);
 const displayStatus = (value) => ({ open: "Lobby open", in_progress: "Match live", awaiting_team_alpha_report: "Score confirmation", awaiting_team_bravo_report: "Score confirmation", awaiting_completion: "Completing", score_conflict: "Under review", disputed: "Under review", completed: "Complete", cancelled: "Cancelled" }[value] || String(value || "open").replaceAll("_", " "));
 const playerName = (player) => player?.full_name || player?.user_name || player?.username || "Open slot";
+const seriesModeName = (mode) => ({ hp: "Hardpoint", snd: "Search & Destroy" }[mode] || mode || "Mode pending");
 
 function PlayerCard({ player, captain, tone }) {
   const cyan = tone === "cyan";
@@ -62,9 +64,10 @@ export default function EightsMatchRoom() {
   const [busy, setBusy] = useState(false);
   const [requestingAdmin, setRequestingAdmin] = useState(false);
   const [disputing, setDisputing] = useState(false);
+  const [adminBusy, setAdminBusy] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
-  const [scoreA, setScoreA] = useState(0);
-  const [scoreB, setScoreB] = useState(0);
+  const [scoreA, setScoreA] = useState("");
+  const [scoreB, setScoreB] = useState("");
   const [now, setNow] = useState(Date.now());
 
   const hydrateProgression = useCallback(async (players) => Promise.all(players.map(async (player) => {
@@ -107,6 +110,7 @@ export default function EightsMatchRoom() {
 
   const allPlayers = useMemo(() => [...teamAlpha, ...teamBravo], [teamAlpha, teamBravo]);
   const isParticipant = allPlayers.some((player) => player.user_id === user?.id);
+  const isStaff = isStaffUser(user);
   const joined = allPlayers.length;
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
   const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || countdown === 0);
@@ -123,6 +127,11 @@ export default function EightsMatchRoom() {
     && match?.eights_score_vote_bravo !== undefined
     && match?.eights_score_vote_bravo !== null;
   const currentUserAgreed = Boolean(user?.id && scoreVoteIds.includes(user.id));
+  const seriesMaps = (Array.isArray(match?.series_maps) ? match.series_maps : []).map((map, index) => (
+    typeof map === "string"
+      ? { name: map, mode: seriesModeName(match?.series_modes?.[index]) }
+      : map
+  ));
 
   const leave = async () => {
     setBusy(true);
@@ -208,6 +217,46 @@ export default function EightsMatchRoom() {
     }
   };
 
+  const adminGrantWin = async (action) => {
+    const teamName = action === "approve_team_a" ? "Team Alpha" : "Team Bravo";
+    if (typeof window !== "undefined" && !window.confirm(`Grant ${teamName} the win and give the other team an automatic loss?`)) return;
+    setAdminBusy(true);
+    try {
+      const response = await base44.functions.invoke("adminResolveMatchRoom", {
+        match_type: "8s",
+        match_id: match.id,
+        ticket_id: match.admin_request_ticket_id,
+        action,
+        reason: `Admin granted ${teamName} the win.`,
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not resolve match");
+      toast({ title: "Match resolved", description: `${teamName} was granted the win.` });
+      await loadRoom(true);
+    } catch (error) {
+      toast({ title: "Resolve failed", description: error.message, variant: "destructive" });
+    } finally {
+      setAdminBusy(false);
+    }
+  };
+
+  const adminCancelMatch = async () => {
+    if (typeof window !== "undefined" && !window.confirm("Cancel this 8s match? This cannot be undone.")) return;
+    setAdminBusy(true);
+    try {
+      const response = await base44.functions.invoke("refundWager", {
+        wager_id: match.id,
+        reason: `Cancelled by staff (${user?.full_name || user?.username || user?.email || "Admin"}).`,
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not cancel match");
+      setMatch(response.data.wager || { ...match, status: "cancelled" });
+      toast({ title: "Match cancelled" });
+    } catch (error) {
+      toast({ title: "Cancel failed", description: error.message, variant: "destructive" });
+    } finally {
+      setAdminBusy(false);
+    }
+  };
+
   if (loading && !match) return <div className="flex min-h-[70vh] items-center justify-center text-sm text-vapor">Opening 8s match room...</div>;
   if (!match) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="text-2xl font-black">Match not found</h1><Link to="/ranked/8s" className="mt-5 inline-flex text-cyan">Back to Ranked 8s</Link></div>;
 
@@ -236,40 +285,51 @@ export default function EightsMatchRoom() {
           </section>
         )}
 
-        <section className="mb-6 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_260px_minmax(0,1fr)]">
+        <section className="mb-6 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,.72fr)_minmax(0,1fr)]">
           <TeamPanel label="Team Alpha" players={teamAlpha} captainId={match.host_id} tone="cyan" score={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : undefined} winner={alphaWinner} />
-          <div className="order-first rounded-2xl border border-white/[0.08] bg-card p-5 text-center xl:order-none xl:sticky xl:top-24">
-            <Swords className="mx-auto h-6 w-6 text-cyan" /><p className="mt-3 text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Randomized 4v4</p><p className="mt-2 text-2xl font-black">{match.game_mode_display || match.game_mode}</p><div className="my-4 h-px bg-white/[0.06]" /><p className="text-[9px] font-black uppercase text-vapor">XP rewards</p><div className="mt-2 flex justify-center gap-2"><span className="rounded-lg border border-green/15 bg-green/5 px-3 py-2 font-mono text-xs font-black text-green">+150 WIN</span><span className="rounded-lg border border-white/[0.08] px-3 py-2 font-mono text-xs font-black">+50 PLAY</span></div>{isComplete && <div className="mt-4 rounded-xl border border-yellow-300/20 bg-yellow-300/[0.07] p-3 text-yellow-300"><Trophy className="mx-auto h-5 w-5" /><p className="mt-1 text-xs font-black">{match.winner_name || "Winner"}</p></div>}</div>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-white/[0.08] bg-card p-5 text-center">
+              <Swords className="mx-auto h-6 w-6 text-cyan" /><p className="mt-3 text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Randomized 4v4</p><p className="mt-2 text-2xl font-black">{match.game_mode_display || match.game_mode}</p><div className="my-4 h-px bg-white/[0.06]" /><p className="text-[9px] font-black uppercase text-vapor">XP rewards</p><div className="mt-2 flex justify-center gap-2"><span className="rounded-lg border border-green/15 bg-green/5 px-3 py-2 font-mono text-xs font-black text-green">+150 WIN</span><span className="rounded-lg border border-white/[0.08] px-3 py-2 font-mono text-xs font-black">+50 PLAY</span></div>{isComplete && <div className="mt-4 rounded-xl border border-yellow-300/20 bg-yellow-300/[0.07] p-3 text-yellow-300"><Trophy className="mx-auto h-5 w-5" /><p className="mt-1 text-xs font-black">{match.winner_name || "Winner"}</p></div>}
+            </div>
+            {isStaff && !closedStatuses.has(match.status) && (
+              <div className="rounded-xl border border-pink-400/20 bg-card p-3">
+                <p className="mb-3 flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-pink-300"><ShieldCheck className="h-4 w-4" /> Admin controls</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
+                  <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
+                  <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
+                </div>
+              </div>
+            )}
+            <MatchChat
+              conversationId={match.id}
+              matchType="wager"
+              accent="cyan"
+              teamAPlayerIds={teamAlpha.map((p) => p.user_id)}
+              teamBPlayerIds={teamBravo.map((p) => p.user_id)}
+              live
+              compact
+              sticky={false}
+              heightClass="h-[520px]"
+              inputActions={(
+                <div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={requestAdmin} disabled={!isParticipant || requestingAdmin || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:opacity-40">
+                      <AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
+                    </button>
+                    <button type="button" onClick={createDispute} disabled={!isParticipant || disputing || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
+                      <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Dispute"}
+                    </button>
+                  </div>
+                  {(match.admin_request_status || match.requested_admin) && <p className="mt-2 text-center text-[8px] font-bold text-red-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
+                </div>
+              )}
+            />
+          </div>
           <TeamPanel label="Team Bravo" players={teamBravo} captainId={match.challenger_id} tone="orange" score={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : undefined} winner={bravoWinner} />
         </section>
 
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.65fr)]">
-          <div className="space-y-5"><MatchMapSeries maps={Array.isArray(match.series_maps) ? match.series_maps : []} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} /><MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} /></div>
-          <MatchChat
-            conversationId={match.id}
-            matchType="wager"
-            accent="cyan"
-            teamAPlayerIds={teamAlpha.map((p) => p.user_id)}
-            teamBPlayerIds={teamBravo.map((p) => p.user_id)}
-            live
-            compact
-            sticky={false}
-            heightClass="h-[520px]"
-            inputActions={(
-              <div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={requestAdmin} disabled={!isParticipant || requestingAdmin || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:opacity-40">
-                    <AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
-                  </button>
-                  <button type="button" onClick={createDispute} disabled={!isParticipant || disputing || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
-                    <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Dispute"}
-                  </button>
-                </div>
-                {(match.admin_request_status || match.requested_admin) && <p className="mt-2 text-center text-[8px] font-bold text-red-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
-              </div>
-            )}
-          />
-        </div>
+        <div className="space-y-5"><MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} /><MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} /></div>
       </div>
 
       {scoreOpen && isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && (
@@ -277,7 +337,7 @@ export default function EightsMatchRoom() {
           <button className="absolute inset-0" onClick={() => setScoreOpen(false)} aria-label="Close score dialog" />
           <section className="relative z-10 w-full max-w-md rounded-2xl border border-white/[0.1] bg-card p-6">
             <div className="flex items-start justify-between"><div><p className="text-[9px] font-black uppercase tracking-wider text-cyan">Player agreement</p><h2 className="mt-1 text-xl font-black">Submit final score</h2><p className="mt-1 text-xs text-vapor">The report proceeds when {requiredScoreVotes} players agree.</p></div><button onClick={() => setScoreOpen(false)} className="rounded-lg border border-white/[0.08] p-2 text-vapor"><X className="h-4 w-4" /></button></div>
-            <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-end gap-3"><label className="text-center"><span className="text-[9px] font-black uppercase text-cyan">Alpha</span><input type="number" min="0" max="2" value={hasScoreProposal ? match.eights_score_vote_alpha : scoreA} onChange={(event) => setScoreA(Number(event.target.value))} disabled={hasScoreProposal} className="mt-2 w-full rounded-xl border border-cyan/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-cyan outline-none disabled:opacity-70" /></label><span className="mb-5 text-xs font-black text-vapor">VS</span><label className="text-center"><span className="text-[9px] font-black uppercase text-orange">Bravo</span><input type="number" min="0" max="2" value={hasScoreProposal ? match.eights_score_vote_bravo : scoreB} onChange={(event) => setScoreB(Number(event.target.value))} disabled={hasScoreProposal} className="mt-2 w-full rounded-xl border border-orange/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-orange outline-none disabled:opacity-70" /></label></div>
+            <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-end gap-3"><label className="text-center"><span className="text-[9px] font-black uppercase text-cyan">Alpha</span><input type="number" min="0" max={Math.floor(Number(match.best_of || 3) / 2) + 1} value={hasScoreProposal ? match.eights_score_vote_alpha : scoreA} onChange={(event) => setScoreA(event.target.value)} disabled={hasScoreProposal} className="mt-2 w-full rounded-xl border border-cyan/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-cyan outline-none disabled:opacity-70" /></label><span className="mb-5 text-xs font-black text-vapor">VS</span><label className="text-center"><span className="text-[9px] font-black uppercase text-orange">Bravo</span><input type="number" min="0" max={Math.floor(Number(match.best_of || 3) / 2) + 1} value={hasScoreProposal ? match.eights_score_vote_bravo : scoreB} onChange={(event) => setScoreB(event.target.value)} disabled={hasScoreProposal} className="mt-2 w-full rounded-xl border border-orange/20 bg-black/20 px-3 py-3 text-center font-mono text-4xl font-black text-orange outline-none disabled:opacity-70" /></label></div>
             <div className="mt-5 flex items-center justify-between rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Player approvals</span><span className="font-mono text-sm font-black text-cyan">{scoreVoteCount}/{requiredScoreVotes}</span></div>
             <button onClick={submitScore} disabled={busy || currentUserAgreed} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-5 py-3.5 text-xs font-black uppercase tracking-wider text-background disabled:opacity-50"><Sparkles className="h-4 w-4" /> {busy ? "Submitting..." : currentUserAgreed ? "Agreement recorded" : hasScoreProposal ? "Agree with score" : "Submit score"}</button>
           </section>
