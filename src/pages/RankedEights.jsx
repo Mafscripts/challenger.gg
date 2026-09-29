@@ -5,7 +5,6 @@ import { base44 } from "@/api/base44Client";
 import CompetitionHero from "@/components/match/CompetitionHero";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
-import RankedModeTabs from "@/components/ranked/RankedModeTabs";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
 
@@ -109,7 +108,6 @@ export default function RankedEights() {
   return (
     <div className="min-h-screen py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        <RankedModeTabs />
         <CompetitionHero
           eyebrow="8-player competitive queue"
           title="Ranked 8s"

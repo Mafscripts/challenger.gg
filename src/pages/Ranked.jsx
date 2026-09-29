@@ -7,7 +7,6 @@ import CompetitionHero from "@/components/match/CompetitionHero";
 import RankBadge from "@/components/ui/RankBadge";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
-import RankedModeTabs from "@/components/ranked/RankedModeTabs";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import {
   RANK_THRESHOLDS,
@@ -223,7 +222,6 @@ export default function Ranked() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <RankedModeTabs />
         <CompetitionHero
           eyebrow="Season 1 Competitive Ladder"
           title="Ranked"

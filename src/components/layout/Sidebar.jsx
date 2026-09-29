@@ -27,7 +27,7 @@ const sections = [
     items: [
       { label: "Home", path: "/dashboard", icon: House },
       { label: "Profile", path: "/profile", icon: User, matchPrefix: "/profile/" },
-      { label: "Ranked", path: "/ranked", icon: Crosshair },
+      { label: "XP Matches", path: "/ranked", icon: Crosshair },
       { label: "Wagers", path: "/wagers", icon: Swords },
       { label: "Tournaments", path: "/tournaments", icon: Trophy },
     ],

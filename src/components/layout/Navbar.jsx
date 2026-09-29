@@ -52,13 +52,14 @@ const navGroups = [
 ];
 
 const rankedNavGroup = {
-  label: "Ranked",
+  label: "XP Matches",
   icon: Swords,
-  eyebrow: "Ranked competition",
+  eyebrow: "XP match competition",
   tone: "cyan",
   items: [
-    { label: "Ranked Arena", description: "Queue for competitive matchmaking", path: "/ranked", icon: Swords, tone: "cyan" },
-    { label: "Ranked Leaderboard", description: "See the complete ranked ladder", path: "/leaderboards", icon: Trophy, tone: "cyan" },
+    { label: "XP Matches", description: "Queue for competitive matchmaking", path: "/ranked", icon: Swords, tone: "cyan" },
+    { label: "8s", description: "Join the 8-player competitive queue", path: "/ranked/8s", icon: Users, tone: "cyan" },
+    { label: "XP Matches Leaderboard", description: "See the complete XP matches ladder", path: "/leaderboards", icon: Trophy, tone: "cyan" },
   ],
 };
 
@@ -189,6 +190,7 @@ const navItemIsActive = (pathname, path) => (
   || (path === "/tournaments" && pathname.startsWith("/tournament-match/"))
   || (path === "/streamer-tournaments" && pathname.startsWith("/streamer-tournament/"))
   || (path === "/ranked" && pathname.startsWith("/ranked-match/"))
+  || (path === "/ranked/8s" && pathname.startsWith("/8s-match/"))
   || (path === "/wagers" && pathname.startsWith("/wagers-match/"))
   || (path === "/dashboard" && pathname.startsWith("/match-room/"))
 );
@@ -911,8 +913,9 @@ export default function Navbar() {
                 </Link>
                 {[rankedNavGroup, ...navGroups.filter((group) => group.label !== "Teams")].map((group) => {
                   const GroupIcon = group.icon;
-                  const active = group.label === "Ranked"
+                  const active = group === rankedNavGroup
                     ? navItemIsActive(location.pathname, "/ranked")
+                      || navItemIsActive(location.pathname, "/ranked/8s")
                     : group.items.some((item) => navItemIsActive(location.pathname, item.path));
                   const open = navMenuOpen === group.label;
                   const groupTone = navTone[group.tone] || navTone.cyan;
@@ -1502,15 +1505,27 @@ export default function Navbar() {
                 <House className="h-5 w-5" />
                 Home
               </Link>
-              <Link
-                to="/ranked"
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
-                  navItemIsActive(location.pathname, "/ranked") ? "bg-cyan/10 text-cyan" : "text-vapor hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                <Swords className="h-5 w-5" />
-                Ranked
-              </Link>
+              <div className="pt-3">
+                <p className="px-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">{rankedNavGroup.label}</p>
+                <div className="space-y-1">
+                  {rankedNavGroup.items.map((link) => {
+                    const Icon = link.icon;
+                    const active = navItemIsActive(location.pathname, link.path);
+                    return (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
+                          active ? "bg-cyan/10 text-cyan" : "text-vapor hover:bg-secondary hover:text-foreground"
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
               {mobileNavSections.map((section) => (
                 <div key={section.label} className="pt-3">
                   <p className="px-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">{section.label}</p>
