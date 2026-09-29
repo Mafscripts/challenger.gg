@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Check, Clock3, Crown, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MatchChat from "@/components/match/MatchChat";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
@@ -38,10 +38,10 @@ function PlayerCard({ player, captain, tone }) {
   );
 }
 
-function TeamPanel({ label, players, captainId, tone, score, winner }) {
+function TeamPanel({ label, players, captainId, tone, score, winner, embedded = false }) {
   const cyan = tone === "cyan";
   return (
-    <section className={`overflow-hidden rounded-2xl border bg-card ${cyan ? "border-cyan/20" : "border-orange/20"}`}>
+    <section className={`min-w-0 overflow-hidden ${embedded ? "bg-transparent" : `rounded-2xl border bg-card ${cyan ? "border-cyan/20" : "border-orange/20"}`}`}>
       <header className={`flex items-center justify-between border-b px-5 py-4 ${cyan ? "border-cyan/15 bg-cyan/[0.06]" : "border-orange/15 bg-orange/[0.06]"}`}>
         <div><p className={`text-[9px] font-black uppercase tracking-[0.18em] ${cyan ? "text-cyan" : "text-orange"}`}>{label}</p><h2 className="mt-1 text-xl font-black">{players.length}/4 players</h2></div>
         {score !== undefined && <div className={`rounded-xl border bg-black/20 px-4 py-2 text-center ${winner ? "border-green/30" : "border-white/10"}`}><p className="text-[7px] font-black uppercase text-vapor">Score</p><p className={`font-mono text-2xl font-black ${winner ? "text-green" : cyan ? "text-cyan" : "text-orange"}`}>{score}</p></div>}
@@ -268,8 +268,9 @@ export default function EightsMatchRoom() {
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
-        <header className="relative mb-6 overflow-hidden rounded-2xl border border-white/[0.08] bg-card p-6 lg:p-8">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan/80 to-transparent" />
+        <section className="relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-card shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
+        <header className="relative border-b border-white/[0.06] p-6 lg:p-8">
+          <div className="absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/50 via-white/10 to-orange/50" />
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan"><Shield className="h-4 w-4" /> Ranked 8s match room</p><h1 className="mt-3 text-3xl font-black sm:text-4xl">Team Alpha <span className="text-vapor">vs</span> Team Bravo</h1><p className="mt-2 text-sm text-vapor">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3} · Match #{String(match.id).slice(-8).toUpperCase()}</p></div>
             <div className="flex flex-wrap gap-2">
@@ -280,27 +281,17 @@ export default function EightsMatchRoom() {
         </header>
 
         {!locked && !closedStatuses.has(match.status) && (
-          <section className="mb-6 rounded-2xl border border-purple-300/20 bg-purple-300/[0.055] p-5">
+          <section className="m-4 rounded-xl border border-purple-300/20 bg-purple-300/[0.055] p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Shuffle className="h-5 w-5" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-purple-300">Automatic team generator</p><p className="mt-1 font-black">{joined < 8 ? `Waiting for ${8 - joined} more ${8 - joined === 1 ? "player" : "players"}` : "Teams shuffled · roster lock pending"}</p></div></div><div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"><Users className="h-4 w-4 text-cyan" /><span className="font-mono font-black">{joined}/8</span>{countdown !== null && joined === 8 && <><span className="text-vapor">·</span><Clock3 className="h-4 w-4 text-yellow-300" /><span className="font-mono font-black text-yellow-300">{countdown}s</span></>}</div></div>
           </section>
         )}
 
-        <section className="mb-6 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,.72fr)_minmax(0,1fr)]">
-          <TeamPanel label="Team Alpha" players={teamAlpha} captainId={match.host_id} tone="cyan" score={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : undefined} winner={alphaWinner} />
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-white/[0.08] bg-card p-5 text-center">
+        <div className="grid min-w-0 divide-y divide-white/[0.06] border-t border-white/[0.06] xl:grid-cols-[minmax(0,1fr)_minmax(340px,.72fr)_minmax(0,1fr)] xl:divide-x xl:divide-y-0">
+          <TeamPanel embedded label="Team Alpha" players={teamAlpha} captainId={match.host_id} tone="cyan" score={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : undefined} winner={alphaWinner} />
+          <div className="flex min-w-0 flex-col gap-4 p-4">
+            <div className="rounded-xl border border-white/[0.07] bg-black/15 p-4 text-center">
               <Swords className="mx-auto h-6 w-6 text-cyan" /><p className="mt-3 text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Randomized 4v4</p><p className="mt-2 text-2xl font-black">{match.game_mode_display || match.game_mode}</p><div className="my-4 h-px bg-white/[0.06]" /><p className="text-[9px] font-black uppercase text-vapor">XP rewards</p><div className="mt-2 flex justify-center gap-2"><span className="rounded-lg border border-green/15 bg-green/5 px-3 py-2 font-mono text-xs font-black text-green">+150 WIN</span><span className="rounded-lg border border-white/[0.08] px-3 py-2 font-mono text-xs font-black">+50 PLAY</span></div>{isComplete && <div className="mt-4 rounded-xl border border-yellow-300/20 bg-yellow-300/[0.07] p-3 text-yellow-300"><Trophy className="mx-auto h-5 w-5" /><p className="mt-1 text-xs font-black">{match.winner_name || "Winner"}</p></div>}
             </div>
-            {isStaff && !closedStatuses.has(match.status) && (
-              <div className="rounded-xl border border-pink-400/20 bg-card p-3">
-                <p className="mb-3 flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-pink-300"><ShieldCheck className="h-4 w-4" /> Admin controls</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
-                  <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
-                  <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
-                </div>
-              </div>
-            )}
             <MatchChat
               conversationId={match.id}
               matchType="wager"
@@ -310,7 +301,7 @@ export default function EightsMatchRoom() {
               live
               compact
               sticky={false}
-              heightClass="h-[520px]"
+              heightClass="h-[350px]"
               inputActions={(
                 <div>
                   <div className="grid grid-cols-2 gap-2">
@@ -326,8 +317,23 @@ export default function EightsMatchRoom() {
               )}
             />
           </div>
-          <TeamPanel label="Team Bravo" players={teamBravo} captainId={match.challenger_id} tone="orange" score={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : undefined} winner={bravoWinner} />
+          <TeamPanel embedded label="Team Bravo" players={teamBravo} captainId={match.challenger_id} tone="orange" score={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : undefined} winner={bravoWinner} />
+        </div>
         </section>
+
+        {isStaff && !closedStatuses.has(match.status) && (
+          <details className="group mb-5 rounded-xl border border-blue-400/15 bg-card">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/[0.05] [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Admin tools</span>
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="grid gap-2 border-t border-white/[0.06] p-3 sm:grid-cols-3">
+              <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
+              <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
+              <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
+            </div>
+          </details>
+        )}
 
         <div className="space-y-5"><MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} /><MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} /></div>
       </div>
