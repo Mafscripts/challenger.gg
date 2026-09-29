@@ -22,8 +22,8 @@ export default function TopfraggLogo({
         </svg>
       </span>
       {showWordmark && (
-        <span className={`font-black uppercase leading-none tracking-[-0.03em] text-white ${wordmarkClassName}`}>
-          Top<span style={{ color: "#14D8FF" }}>fragg</span>
+        <span className={`font-black uppercase leading-none tracking-[-0.03em] ${wordmarkClassName}`}>
+          <span className="text-orange">Top</span><span style={{ color: "#14D8FF" }}>fragg</span>
         </span>
       )}
     </span>
