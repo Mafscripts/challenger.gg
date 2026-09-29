@@ -320,8 +320,6 @@ export default function Profile() {
     statNumber(profile?.total_earnings),
     statNumber(user?.total_wager_earnings),
   );
-  const mainTeam = profileTeams[0]?.team || null;
-  const inventoryPreview = inventory.slice(0, 5);
   const socialLinks = socialLinksFor(profile, user);
   const joinedDate = formatDate(profile?.account_created_date || user?.account_created_date || user?.created_date);
   const region = profile?.country || user?.region || "Region N/A";
@@ -407,263 +405,110 @@ export default function Profile() {
     );
   }
 
+  const tabs = [
+    { id: "overview", label: "Overview", icon: Gamepad2 },
+    { id: "statistics", label: "Statistics", icon: Target },
+    { id: "matches", label: "Match History", icon: Swords },
+    { id: "teams", label: "My Teams", icon: Users },
+  ];
+
   return (
-    <div className="min-h-screen py-10 sm:py-14">
-      <div className="mx-auto max-w-[1560px] px-4 sm:px-6 lg:px-10">
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="premium-panel relative mb-8 overflow-hidden rounded-[1.75rem]"
-        >
-          <motion.div
-            aria-hidden="true"
-            className="absolute inset-0 opacity-90"
-            animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
-            transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 86% 6%, rgba(210,214,220,.08), transparent 28%), radial-gradient(circle at 8% 100%, rgba(255,112,0,.055), transparent 25%), linear-gradient(118deg, rgba(17,18,21,.98) 0%, rgba(25,27,31,.96) 54%, rgba(16,18,21,.95) 100%)",
-              backgroundSize: "180% 180%",
-            }}
-          />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan/35 to-transparent" />
-          <div className="relative grid gap-8 p-6 sm:p-8 lg:p-10 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-10">
-            <div className="flex min-w-0 flex-col justify-between gap-9">
-              <div className="flex flex-col gap-7 lg:flex-row lg:items-center">
-                <div className="relative mx-auto shrink-0 lg:mx-0">
-                  <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-[1.8rem] border border-border bg-secondary text-4xl font-black shadow-sm sm:h-40 sm:w-40">
-                    {avatarDraft || profile?.avatar_url ? (
-                      <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-cyan">{name.charAt(0)}</span>
-                    )}
-                  </div>
-                  <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-xl bg-card shadow-[0_8px_20px_rgba(0,0,0,.35)]">
-                    <span className="h-3 w-3 rounded-full bg-green" />
-                  </span>
+    <div className="min-h-screen py-6 sm:py-8">
+      <div className="mx-auto max-w-[1560px] px-3 sm:px-6 lg:px-8">
+        <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-card">
+          {profile?.banner_url && <img src={profile.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_5%,rgba(20,216,255,.1),transparent_28%),radial-gradient(circle_at_15%_100%,rgba(255,110,0,.1),transparent_26%),linear-gradient(90deg,rgba(10,16,25,.97),rgba(12,18,28,.78))]" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
+          <div className="relative flex min-h-[210px] flex-col justify-end gap-7 p-5 sm:p-7 lg:flex-row lg:items-end lg:justify-between lg:p-8">
+            <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+              <div className="relative shrink-0">
+                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-3xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)] sm:h-28 sm:w-28">
+                  {avatarDraft || profile?.avatar_url ? <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" /> : name.charAt(0)}
                 </div>
-
-                <div className="min-w-0 flex-1 text-center lg:text-left">
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.24em] text-primary">TopFragg competitor profile</p>
-                  <div className="mb-3 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
-                    <h1 className="max-w-full break-words pb-1 text-4xl font-black leading-[1.08] tracking-[-0.04em] text-foreground sm:text-5xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>
-                      {name}
-                    </h1>
-                    <RoleBadge role={user.role || "user"} />
-                    <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
-                  </div>
-                  <p className="mb-4 text-sm font-medium text-vapor">
-                    @{user.handle || profile?.handle || user.username || "player"} <span className="px-2 text-white/20">/</span> {region} <span className="px-2 text-white/20">/</span> Joined {joinedDate}
-                  </p>
-                  <p className="mx-auto mb-5 max-w-2xl text-sm leading-6 text-vapor lg:mx-0">
-                    {profile?.bio || "Competitive player building a legacy on TopFragg."}
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-                    <span className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-3 py-1.5 text-[10px] font-black tracking-wider ${activisionIdFor(user) ? "border-purple-400/25 bg-purple-400/10 text-purple-300" : "border-orange/20 bg-orange/10 text-orange"}`}>
-                      <Gamepad2 className="h-3 w-3 shrink-0" />
-                      <span className="shrink-0 uppercase">Activision ID</span>
-                      <span className="truncate normal-case">{activisionIdFor(user) || "Not set"}</span>
-                    </span>
-                    {isOwnProfile && !activisionIdFor(user) && (
-                      <Link to="/settings#gaming-ids" className="rounded-md bg-orange px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90">
-                        Add in Settings
-                      </Link>
-                    )}
-                    {socialLinks.map((social) => (
-                      social.url ? (
-                        <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border border-white/5 bg-secondary/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor transition-colors hover:border-cyan/30 hover:text-cyan">
-                          {social.label} <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <span key={social.key} className="inline-flex items-center gap-1 rounded-md border border-white/5 bg-secondary/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor">
-                          {social.label}: {social.value}
-                        </span>
-                      )
-                    ))}
-                    {isOwnProfile && hasStreamerBadge && (
-                      <Link to="/streamer-tournaments" className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor transition-colors hover:bg-white/[0.08] hover:text-foreground">
-                        <Monitor className="h-3 w-3" /> Create Streamer Tournament
-                      </Link>
-                    )}
-                  </div>
-                </div>
+                <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-4 border-card bg-green" />
               </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 2xl:grid-cols-5">
-                <HeroSignal label="Record" value={`${wins} - ${losses}`} detail="Wins - Losses" icon={Swords} tone="text-cyan" />
-                <HeroSignal label="Win Rate" value={`${winRate}%`} detail="This season" icon={Target} tone="text-green" />
-                <HeroSignal label="Teams" value={profileTeams.length} detail="Total teams" icon={Users} tone="text-cyan" />
-                <HeroSignal label="Streak" value={currentStreak} detail="Wins in a row" icon={Flame} tone="text-orange" />
-                <HeroSignal label="Earnings" value={formatMoney(earnedMoney)} detail="Total earned" icon={DollarSign} tone="text-green" />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="break-words font-heading text-3xl font-black leading-none text-white sm:text-4xl" style={selectedNameColor ? { color: selectedNameColor } : undefined}>{name}</h1>
+                  <RoleBadge role={user.role || "user"} />
+                  <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
+                </div>
+                <p className="mt-2 max-w-2xl text-sm text-vapor">{profile?.bio || "No bio added yet."}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-md border border-cyan/20 bg-cyan/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-cyan">{activisionIdFor(user) || "Activision ID not set"}</span>
+                  <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">{region}</span>
+                  <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">Joined {joinedDate}</span>
+                </div>
               </div>
             </div>
 
-            <div className="grid content-start gap-4 xl:border-l xl:border-white/[0.05] xl:pl-9">
-              {isOwnProfile ? (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProfileResult(null);
-                      setEditingProfile((current) => !current);
-                    }}
-                    className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-[10px] font-black uppercase tracking-wider transition-all ${
-                      editingProfile
-                        ? "border-cyan/30 bg-cyan/10 text-cyan"
-                        : "border-white/10 bg-background/40 text-white hover:border-cyan/25 hover:text-cyan"
-                    }`}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit Profile
+            <div className="w-full lg:w-[310px]">
+              <div className="mb-5 flex justify-start gap-2 lg:justify-end">
+                {isOwnProfile ? (
+                  <button type="button" onClick={() => { setProfileResult(null); setEditingProfile((current) => !current); }} className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[9px] font-black uppercase tracking-wider ${editingProfile ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-white/10 bg-black/20 text-white hover:border-cyan/30 hover:text-cyan"}`}>
+                    <Pencil className="h-3.5 w-3.5" /> Edit profile
                   </button>
-                </div>
-              ) : currentUser?.id && user?.id ? (
-                <div className="flex justify-end">
-                  <Link
-                    to={`/messages?compose=${encodeURIComponent(user.id)}`}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-4 text-[10px] font-black uppercase tracking-wider text-cyan transition-all hover:-translate-y-0.5 hover:bg-cyan/15"
-                  >
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    Message
-                  </Link>
-                </div>
-              ) : null}
-              <div className="premium-card relative overflow-hidden rounded-2xl p-6">
-                <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan/10 blur-3xl" />
-                <div className="flex items-center gap-4">
-                  <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}>
-                    <RankBadge rank={rank.tier} division={rank.division} size="xl" />
-                  </motion.div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-vapor">Competitive rating</p>
-                    <p className="mt-1 font-mono text-4xl font-black tracking-tight text-cyan text-glow-cyan">{elo.toLocaleString()}</p>
-                    <p className="mt-1 text-sm font-bold text-white">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
-                  </div>
-                </div>
-                <ProgressBar value={rankProgress} tone="from-cyan via-cyan to-green" className="mt-5" />
-                <div className="mt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-vapor">
-                  <span>{rankProgress}% through rank</span>
-                  <span>{nextRank ? `Next: ${nextRank.name}` : "Top rank"}</span>
-                </div>
+                ) : currentUser?.id ? (
+                  <Link to={`/messages?compose=${encodeURIComponent(user.id)}`} className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-3 text-[9px] font-black uppercase tracking-wider text-cyan"><MessageSquare className="h-3.5 w-3.5" /> Message</Link>
+                ) : null}
               </div>
-
+              <div className="flex items-end justify-between gap-4">
+                <div><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">Competitive rating</p><p className="mt-1 font-mono text-lg font-black text-cyan">{elo.toLocaleString()} ELO</p></div>
+                <p className="text-right text-xs font-black text-white">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
+              </div>
+              <ProgressBar value={rankProgress} tone="from-cyan to-orange" className="mt-3 h-1.5" />
+              <div className="mt-2 flex justify-between font-mono text-[8px] font-bold uppercase tracking-wider text-vapor"><span>{rankProgress}% progress</span><span>{nextRank ? `Next ${nextRank.name}` : "Top rank"}</span></div>
             </div>
           </div>
 
           {isOwnProfile && editingProfile && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative border-t border-white/5 bg-background/25 p-4 sm:p-5"
-            >
+            <div className="relative border-t border-white/10 bg-black/10 p-4 sm:p-5">
               <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  <label className="space-y-1">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span>
-                    <input
-                      value={avatarDraft}
-                      onChange={(event) => setAvatarDraft(event.target.value)}
-                      onBlur={() => {
-                        try {
-                          setAvatarDraft(normalizeImageSource(avatarDraft));
-                        } catch {
-                          // Validation is shown when the profile is saved.
-                        }
-                      }}
-                      placeholder="https://i.imgur.com/example.png"
-                      className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
-                    />
-                  </label>
-                  <label className="space-y-1">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Upload profile picture</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarFile}
-                      className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
-                    />
-                    <span className="block text-[9px] text-vapor">JPG, PNG, GIF, or WebP up to 8MB. Large files are optimized automatically.</span>
-                  </label>
-                  {isVerifiedPlayer && (
-                    <label className="space-y-1">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Verified name color</span>
-                      <select
-                        value={nameColorDraft}
-                        onChange={(event) => setNameColorDraft(event.target.value)}
-                        className="w-full rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
-                      >
-                        {verifiedNameColors.map((color) => (
-                          <option key={color.label} value={color.value}>{color.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                  <label className="space-y-1 md:col-span-2 xl:col-span-3">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Bio</span>
-                    <textarea
-                      value={bioDraft}
-                      onChange={(event) => setBioDraft(event.target.value)}
-                      maxLength={500}
-                      rows={4}
-                      placeholder="Tell players about your playstyle, team role, stream, or tournament history."
-                      className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm outline-none transition-colors focus:border-cyan/40"
-                    />
-                    <span className="block text-right text-[10px] font-semibold text-vapor">{bioDraft.length}/500</span>
-                  </label>
+                  <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span><input value={avatarDraft} onChange={(event) => setAvatarDraft(event.target.value)} onBlur={() => { try { setAvatarDraft(normalizeImageSource(avatarDraft)); } catch { /* Save displays validation. */ } }} placeholder="https://i.imgur.com/example.png" className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
+                  <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Upload profile picture</span><input type="file" accept="image/*" onChange={handleAvatarFile} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
+                  {isVerifiedPlayer && <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Verified name color</span><select value={nameColorDraft} onChange={(event) => setNameColorDraft(event.target.value)} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40">{verifiedNameColors.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}</select></label>}
+                  <label className="space-y-1 md:col-span-2 xl:col-span-3"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Bio</span><textarea value={bioDraft} onChange={(event) => setBioDraft(event.target.value)} maxLength={500} rows={3} className="w-full resize-y rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /><span className="block text-right text-[9px] text-vapor">{bioDraft.length}/500</span></label>
                 </div>
-                <button
-                  onClick={handleSaveProfileVisuals}
-                  disabled={profileSaving}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-xs font-black uppercase tracking-wider text-background transition-transform hover:-translate-y-0.5 disabled:opacity-50"
-                >
-                  {profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />}
-                  Save
-                </button>
+                <button onClick={handleSaveProfileVisuals} disabled={profileSaving} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-[10px] font-black uppercase tracking-wider text-background disabled:opacity-50">{profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />} Save</button>
               </div>
-              {profileResult && (
-                <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${profileResult.success ? "border-green/20 bg-green/10 text-green" : "border-red-500/20 bg-red-500/10 text-red-400"}`}>
-                  {profileResult.message}
-                </div>
-              )}
-            </motion.div>
+              {profileResult && <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${profileResult.success ? "border-green/20 bg-green/10 text-green" : "border-red-500/20 bg-red-500/10 text-red-400"}`}>{profileResult.message}</div>}
+            </div>
           )}
-        </motion.section>
+        </section>
 
-        <nav className="mb-8 flex w-full items-center gap-1 overflow-x-auto rounded-2xl bg-white/[0.025] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.025)] sm:w-fit">
-          {["overview", "matches", "badges", "inventory", "teams"].map((item) => (
-            <button
-              key={item}
-              onClick={() => setTab(item)}
-              className={`h-10 whitespace-nowrap rounded-xl px-5 text-[11px] font-black uppercase tracking-[0.12em] transition-all ${
-                tab === item
-                  ? "bg-cyan text-background shadow-[0_8px_24px_rgba(210,214,220,.13)]"
-                  : "text-vapor hover:bg-white/[0.04] hover:text-foreground"
-              }`}
-            >
-              {item}
+        <nav className="mt-4 grid grid-cols-4 overflow-hidden rounded-xl border border-white/10 bg-card">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => setTab(id)} className={`relative flex min-h-12 items-center justify-center gap-2 border-r border-white/[0.06] px-2 text-[9px] font-black uppercase tracking-wider transition-colors last:border-r-0 sm:text-[10px] ${tab === id ? "bg-cyan/[0.07] text-cyan" : "text-vapor hover:bg-white/[0.03] hover:text-white"}`}>
+              <Icon className="hidden h-3.5 w-3.5 sm:block" /> {label}
+              {tab === id && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-cyan" />}
             </button>
           ))}
         </nav>
 
         {tab === "overview" && (
-          <div className="space-y-8">
-            <TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} />
-
-            <div className="grid gap-6 xl:grid-cols-12 2xl:gap-7">
-              <RecentMatchesPanel matches={matches.slice(0, 5)} userId={user.id} className="xl:col-span-4" />
-              <RankProgressPanel rank={rank} elo={elo} rankProgress={rankProgress} rankJourneyIndex={rankJourneyIndex} className="xl:col-span-5" />
-              <AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} className="xl:col-span-3" />
-              <InventoryPreview items={inventoryPreview} className="xl:col-span-4" />
-              <TeamPanel team={mainTeam} memberships={profileTeams} className="xl:col-span-4" />
-              <AchievementsPanel achievements={achievementCards} className="xl:col-span-4" />
+          <div className="mt-5 space-y-6">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <ProfileStatCard icon={Trophy} label="Rank" value={rank.name || rank.tier} tone="text-orange" />
+              <ProfileStatCard icon={Target} label="Record" value={`${wins}W - ${losses}L`} tone="text-green" />
+              <ProfileStatCard icon={Flame} label="Win ratio" value={`${winRate}%`} tone="text-cyan" />
+              <ProfileStatCard icon={DollarSign} label="Lifetime earnings" value={formatMoney(earnedMoney)} tone="text-green" />
             </div>
+            <PlayerOverviewPanel user={user} profile={profile} name={name} rank={rank} elo={elo} wins={wins} losses={losses} earnedMoney={earnedMoney} trophyCount={trophyCount} socialLinks={socialLinks} />
+            <SeasonRecordPanel rankedStats={rankedStats} wins={wins} losses={losses} winRate={winRate} currentStreak={currentStreak} earnedMoney={earnedMoney} />
+            <RecentMatchesPanel matches={matches.slice(0, 6)} userId={user.id} />
           </div>
         )}
 
-        {tab === "matches" && <RecentMatchesPanel matches={matches} userId={user.id} expanded />}
-        {tab === "badges" && <AchievementsPanel achievements={achievementCards} badges={badges} expanded />}
-        {tab === "inventory" && <InventoryShowcase items={inventory} />}
-        {tab === "teams" && <TeamsList teams={profileTeams} />}
+        {tab === "statistics" && (
+          <div className="mt-5 space-y-6">
+            <RankProgressPanel rank={rank} elo={elo} rankProgress={rankProgress} rankJourneyIndex={rankJourneyIndex} />
+            <TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} />
+            <div className="grid gap-6 xl:grid-cols-2"><AchievementsPanel achievements={achievementCards} badges={badges} expanded /><AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} /></div>
+          </div>
+        )}
+        {tab === "matches" && <div className="mt-5"><RecentMatchesPanel matches={matches} userId={user.id} expanded /></div>}
+        {tab === "teams" && <div className="mt-5"><TeamsList teams={profileTeams} /></div>}
       </div>
     </div>
   );
@@ -675,6 +520,90 @@ function SectionCard({ children, className = "" }) {
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       <div className="relative">{children}</div>
     </div>
+  );
+}
+
+function ProfileStatCard({ icon: Icon, label, value, tone = "text-cyan" }) {
+  return (
+    <div className="group relative min-h-[86px] overflow-hidden rounded-xl border border-white/10 bg-card px-4 py-4 sm:px-5">
+      <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white/[0.035] to-transparent" />
+      <div className="relative flex h-full items-center gap-4">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-black/10"><Icon className={`h-4 w-4 ${tone}`} /></span>
+        <div className="min-w-0">
+          <p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">{label}</p>
+          <p className="mt-1 truncate font-heading text-lg font-black text-white sm:text-xl">{value}</p>
+        </div>
+      </div>
+      <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-gradient-to-r from-cyan via-orange to-transparent transition-transform duration-300 group-hover:scale-x-100" />
+    </div>
+  );
+}
+
+function PlayerOverviewPanel({ user, profile, name, rank, elo, wins, losses, earnedMoney, trophyCount, socialLinks }) {
+  return (
+    <section>
+      <ProfileSectionTitle title="Player overview" count="1 player" />
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-card">
+        <div className="hidden grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_90px_100px_100px_110px] border-b border-white/[0.07] bg-white/[0.025] px-5 py-3 font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor lg:grid">
+          <span>Player</span><span>Gamertag</span><span>Record</span><span>ELO</span><span>Earnings</span><span>Socials</span>
+        </div>
+        <div className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_90px_100px_100px_110px] lg:items-center lg:gap-0">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-cyan/20 bg-cyan/10 font-black text-cyan">
+              {profile?.avatar_url || user?.avatar_url ? <img src={profile?.avatar_url || user?.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black text-white">{name}</p>
+              <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rank.name || rank.tier} · {trophyCount} trophies</p>
+            </div>
+          </div>
+          <div className="min-w-0 lg:px-1"><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Gamertag</p><span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] text-white"><Gamepad2 className="h-3 w-3 text-cyan" /><span className="truncate">{activisionIdFor(user) || user?.handle || user?.username || "Not set"}</span></span></div>
+          <ProfileTableValue label="Record" value={`${wins}-${losses}`} />
+          <ProfileTableValue label="ELO" value={elo.toLocaleString()} tone="text-cyan" />
+          <ProfileTableValue label="Earnings" value={formatMoney(earnedMoney)} tone="text-green" />
+          <div><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Socials</p>{socialLinks.length > 0 ? <div className="flex flex-wrap gap-1.5">{socialLinks.slice(0, 3).map((social) => social.url ? <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase text-cyan hover:text-orange">{social.label}</a> : <span key={social.key} className="text-[9px] font-black uppercase text-vapor">{social.label}</span>)}</div> : <span className="text-xs text-vapor">—</span>}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProfileTableValue({ label, value, tone = "text-white" }) {
+  return <div><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">{label}</p><p className={`font-mono text-xs font-black ${tone}`}>{value}</p></div>;
+}
+
+function ProfileSectionTitle({ title, count }) {
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      <span className="h-1.5 w-1.5 shrink-0 bg-orange" />
+      <h2 className="font-heading text-sm font-black text-white">{title}</h2>
+      <span className="h-px flex-1 bg-white/10" />
+      {count && <span className="font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{count}</span>}
+    </div>
+  );
+}
+
+function SeasonRecordPanel({ rankedStats, wins, losses, winRate, currentStreak, earnedMoney }) {
+  const played = statNumber(rankedStats?.matches_played) || wins + losses;
+  const seasonLabel = String(rankedStats?.season_name || rankedStats?.season || "Current season");
+  return (
+    <section>
+      <ProfileSectionTitle title="Season record" count={rankedStats ? "Live season" : "No season data"} />
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-card">
+        <div className="grid grid-cols-[minmax(120px,1.4fr)_repeat(4,minmax(52px,.55fr))] border-b border-white/[0.07] bg-white/[0.025] px-4 py-3 font-mono text-[8px] font-black uppercase tracking-[0.14em] text-vapor sm:grid-cols-[minmax(180px,1.8fr)_repeat(5,minmax(70px,.6fr))] sm:px-5">
+          <span>Season</span><span>Played</span><span>Wins</span><span>Losses</span><span>Win %</span><span className="hidden sm:block">Earnings</span>
+        </div>
+        <div className="grid grid-cols-[minmax(120px,1.4fr)_repeat(4,minmax(52px,.55fr))] items-center px-4 py-4 text-xs sm:grid-cols-[minmax(180px,1.8fr)_repeat(5,minmax(70px,.6fr))] sm:px-5">
+          <div className="min-w-0"><p className="truncate font-black text-white">{seasonLabel}</p><span className="mt-1 inline-flex rounded bg-green/10 px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider text-green">Live</span></div>
+          <span className="font-mono font-black text-white">{played}</span>
+          <span className="font-mono font-black text-green">{wins}</span>
+          <span className="font-mono font-black text-red-300">{losses}</span>
+          <span className="font-mono font-black text-cyan">{winRate}%</span>
+          <span className="hidden font-mono font-black text-green sm:block">{formatMoney(earnedMoney)}</span>
+        </div>
+        {currentStreak > 0 && <div className="border-t border-white/[0.06] px-4 py-2 font-mono text-[8px] font-black uppercase tracking-wider text-orange sm:px-5">Current streak: {currentStreak} wins</div>}
+      </div>
+    </section>
   );
 }
 
@@ -796,37 +725,33 @@ function TrophyOverview({ trophies, items = [] }) {
 
 function RecentMatchesPanel({ matches, userId, className = "", expanded = false }) {
   return (
-    <SectionCard className={`p-5 ${className}`}>
-      <SectionHeader title="Recent Matches" action={expanded ? null : "View All"} to="/profile" />
+    <section className={className}>
+      <ProfileSectionTitle title={expanded ? "Match history" : "Recent matches"} count={`${matches.length} ${matches.length === 1 ? "match" : "matches"}`} />
       {matches.length === 0 ? (
-        <EmptyPanel icon={Gamepad2} text="No matches found." />
+        <div className="rounded-xl border border-white/10 bg-card p-5"><EmptyPanel icon={Gamepad2} text="No matches found." /></div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {matches.map((match) => {
             const [result, resultColor, resultClass] = matchResultFor(match, userId);
             return (
-              <motion.div
+              <div
                 key={match.id}
-                whileHover={{ x: 4, transition: { duration: 0.1, ease: "easeOut" } }}
-                className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/5 bg-background/25 p-3 transition-colors hover:border-cyan/20 hover:bg-cyan/5"
+                className={`group grid min-h-[68px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/10 bg-card px-4 py-3 transition-colors hover:border-cyan/25 hover:bg-cyan/[0.035] sm:grid-cols-[38px_minmax(0,1fr)_90px_80px_118px] ${result === "Win" ? "border-l-green" : result === "Loss" ? "border-l-red-400" : "border-l-cyan"} border-l-2`}
               >
-                <span className={`rounded-md border px-2 py-1 text-[10px] font-black uppercase ${resultClass} ${resultColor}`}>
-                  {result}
-                </span>
+                <span className={`grid h-9 w-9 place-items-center rounded-lg border ${resultClass}`}><Swords className={`h-4 w-4 ${resultColor}`} /></span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{match.game_mode_display || match.game_mode || match.match_type || "Match"}</p>
-                  <p className="truncate text-[11px] text-vapor">{match.final_map_name || match.map_name || "Map pending"} / {formatDate(match.match_completed_date || match.completed_date || match.created_date)}</p>
+                  <p className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{match.game_mode_display || match.game_mode || match.match_type || "Match"}</p>
+                  <p className="mt-1 truncate font-mono text-[8px] uppercase tracking-wider text-vapor">{formatDate(match.match_completed_date || match.completed_date || match.created_date)} · {match.final_map_name || match.map_name || "Map pending"}</p>
                 </div>
-                <Link to={matchRouteFor(match)} className="flex items-center gap-2 font-mono text-sm font-black text-cyan">
-                  {matchScoreText(match)}
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              </motion.div>
+                <p className="hidden font-mono text-xs font-black text-white sm:block">{matchScoreText(match)}</p>
+                <span className={`hidden rounded-md border px-2 py-1 text-center text-[9px] font-black uppercase sm:block ${resultClass} ${resultColor}`}>{result}</span>
+                <Link to={matchRouteFor(match)} className="inline-flex items-center justify-end gap-1 font-mono text-[9px] font-black uppercase tracking-wider text-cyan transition-colors hover:text-orange">View match <ChevronRight className="h-3.5 w-3.5" /></Link>
+              </div>
             );
           })}
         </div>
       )}
-    </SectionCard>
+    </section>
   );
 }
 
