@@ -69,15 +69,15 @@ const countdownUntil = (value, now = Date.now()) => {
 const timeUntil = (value, now = Date.now()) => {
   if (!value) return "TBD";
   const diff = new Date(value).getTime() - now;
-  if (diff <= 0) return "Schedule passed";
+  if (diff <= 0) return "Completed";
   const totalSeconds = Math.floor(diff / 1000);
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
   if (days > 0) return `${days}d ${padCountdownUnit(hours)}h ${padCountdownUnit(minutes)}m ${padCountdownUnit(seconds)}s`;
-  if (hours > 0) return `${hours}h ${padCountdownUnit(minutes)}m ${padCountdownUnit(seconds)}s`;
-  return `${minutes}m ${padCountdownUnit(seconds)}s`;
+  if (hours > 0) return `${padCountdownUnit(hours)}h ${padCountdownUnit(minutes)}m ${padCountdownUnit(seconds)}s`;
+  return `${padCountdownUnit(minutes)}m ${padCountdownUnit(seconds)}s`;
 };
 const matchStartWindow = (match, now = Date.now()) => {
   const deadline = new Date(match?.start_deadline || "").getTime();
@@ -311,7 +311,7 @@ export default function Tournaments() {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       loadTournaments({ silent: true });
     };
-    const interval = window.setInterval(refreshLiveTournaments, 30000);
+    const interval = window.setInterval(refreshLiveTournaments, 10000);
     const handleVisibility = () => {
       if (document.visibilityState === "visible") loadTournaments({ silent: true });
     };
@@ -961,7 +961,7 @@ function TournamentCountdown({ value, now }) {
     return <CompactStat label="Starts in" value="TBD" tone="cyan" />;
   }
   if (countdown.expired) {
-    return <CompactStat label="Starts" value="Schedule passed" tone="orange" />;
+    return <CompactStat label="Status" value="Completed" tone="green" />;
   }
 
   const units = [
@@ -1250,54 +1250,59 @@ function BracketTeamRow({ name, seed, score, winner, complete }) {
   );
 }
 
+function TournamentCardStat({ label, value, tone = "text-white", icon: Icon }) {
+  return (
+    <div className="min-w-0 border-l border-white/[0.07] pl-3 sm:min-w-[92px] sm:pl-4">
+      <p className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.15em] text-vapor/65">
+        {Icon && <Icon className="h-3 w-3" />} {label}
+      </p>
+      <p className={`mt-1 whitespace-nowrap font-mono text-[12px] font-black ${tone}`}>{value}</p>
+    </div>
+  );
+}
+
 function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoin, now }) {
   const imageUrl = tournamentImageUrl(tournament);
   const entryInfo = tournamentEntryInfo(tournament);
+  const startLabel = timeUntil(tournament.start_date, now);
+  const scheduleCompleted = startLabel === "Completed";
   return (
     <motion.article
-      className={`tournament-list-card group relative grid w-full grid-cols-[64px_minmax(0,1fr)] gap-4 overflow-hidden rounded-xl border p-3.5 text-left transition-all sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center ${
+      className={`tournament-list-card group relative grid w-full grid-cols-[56px_minmax(0,1fr)] gap-3 overflow-hidden rounded-lg border px-3 py-3 text-left transition-all lg:grid-cols-[56px_minmax(230px,1fr)_auto] lg:items-center ${
         selected ? "is-selected border-cyan/25 bg-cyan/[0.055]" : "border-white/[0.055] bg-background/20 hover:border-white/15 hover:bg-white/[0.03]"
       }`}
     >
       <button type="button" onClick={() => onSelect(tournament.id)} className="absolute inset-0 z-0" aria-label={`View ${tournament.name} overview`} />
-      <div className="pointer-events-none relative z-[1] h-16 w-16 overflow-hidden rounded-lg border border-white/[0.07] bg-background">
-        {imageUrl ? (
-          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <img src="/assets/tournaments/black-ops-7.webp" alt="" className="h-full w-full object-cover" />
-        )}
+      <div className="pointer-events-none relative z-[1] h-14 w-14 overflow-hidden rounded-md border border-white/[0.07] bg-background">
+        <img src={imageUrl || "/assets/tournaments/black-ops-7.webp"} alt="" className="h-full w-full object-cover" />
       </div>
       <div className="pointer-events-none relative z-[1] min-w-0">
         <div className="flex min-w-0 items-center gap-2.5">
-          <h3 className="truncate text-[15px] font-black tracking-[-0.01em]">{tournament.name}</h3>
+          <h3 className="truncate text-sm font-black tracking-[-0.01em]">{tournament.name}</h3>
           {joined && <span className="shrink-0 rounded-full bg-green/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
         </div>
-        <p className="mt-1.5 truncate text-[11px] leading-5 text-vapor">{compactModeLabel(tournament)} · {tournament.registered_teams || 0}/{tournament.max_teams || 0} teams</p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <p className="mt-1 truncate text-[10px] leading-4 text-vapor">{compactModeLabel(tournament)}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className={`text-[8px] font-black uppercase tracking-[0.14em] ${statusTone(tournament.status).split(" ").at(-1)}`}>
             {statusLabels[tournament.status] || tournament.status}
           </span>
           <span className={`text-[8px] font-black uppercase tracking-[0.14em] ${entryInfo.tone.split(" ").at(-1)}`}>{entryInfo.label}</span>
         </div>
       </div>
-      <div className="pointer-events-none relative z-[1] col-span-2 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-3 sm:col-span-1 sm:min-w-[132px] sm:flex-col sm:items-end sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-        <div className="text-left sm:text-right">
-          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/70">Prize pool</p>
-          <p className="mt-1 font-mono text-base font-black text-green">{formatMoney(tournament.prize_pool)}</p>
-        </div>
-        <span className="inline-flex items-center gap-1.5 font-mono text-[9px] font-black text-cyan">
-          <Clock className="h-3 w-3" /> {timeUntil(tournament.start_date, now)}
-        </span>
+      <div className="pointer-events-none relative z-[1] col-span-2 grid grid-cols-2 items-center gap-x-3 gap-y-3 border-t border-white/[0.05] pt-3 sm:grid-cols-[repeat(3,auto)_auto] lg:col-span-1 lg:flex lg:border-t-0 lg:pt-0">
+        <TournamentCardStat label="Prize pool" value={formatMoney(tournament.prize_pool)} tone="text-green" icon={Trophy} />
+        <TournamentCardStat label="Teams" value={`${tournament.registered_teams || 0} / ${tournament.max_teams || 0}`} icon={Users} />
+        <TournamentCardStat label={scheduleCompleted ? "Status" : "Starts in"} value={startLabel} tone={scheduleCompleted ? "text-green" : "text-cyan"} icon={Clock} />
         {canJoin ? (
           <button
             type="button"
             onClick={(event) => { event.stopPropagation(); onJoin(); }}
-            className="pointer-events-auto relative z-10 inline-flex items-center gap-1.5 rounded-lg bg-orange px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(255,130,0,.16)] transition-colors hover:bg-orange/90"
+            className="pointer-events-auto relative z-10 col-span-2 inline-flex items-center justify-center gap-1.5 rounded-md bg-orange px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-white shadow-[0_6px_16px_rgba(255,130,0,.14)] transition-colors hover:bg-orange/90 sm:col-span-1"
           >
             <Users className="h-3 w-3" /> Join
           </button>
         ) : (
-          <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-vapor">View overview <ArrowRight className="h-3.5 w-3.5" /></span>
+          <span className="col-span-2 inline-flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-wider text-vapor sm:col-span-1">View <ArrowRight className="h-3.5 w-3.5" /></span>
         )}
       </div>
     </motion.article>

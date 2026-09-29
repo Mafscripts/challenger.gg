@@ -93,7 +93,7 @@ function Countdown({ value, now }) {
   const target = new Date(value || "").getTime();
   const difference = target - now;
   if (!Number.isFinite(target)) return <span className="font-mono text-sm font-black text-vapor">TBA</span>;
-  if (difference <= 0) return <span className="font-mono text-sm font-black text-orange">Schedule passed</span>;
+  if (difference <= 0) return <span className="font-mono text-sm font-black text-green">Completed</span>;
   const totalSeconds = Math.floor(difference / 1000);
   const units = [
     [Math.floor(totalSeconds / 86400), "D"],
