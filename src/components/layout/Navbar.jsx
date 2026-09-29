@@ -1466,7 +1466,7 @@ export default function Navbar() {
                   </Link>
                   <Link
                     to="/register"
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90"
+                    className="inline-flex items-center gap-2 rounded-lg bg-orange px-4 py-2 text-sm font-bold text-background shadow-[0_0_24px_rgba(255,108,0,.16)] transition-all hover:bg-orange/90"
                   >
                     <UserPlus className="w-4 h-4" />
                     Register
@@ -1637,7 +1637,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                       to="/register"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground transition-all hover:bg-primary/90"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange px-4 py-3 font-bold text-background shadow-[0_0_24px_rgba(255,108,0,.16)] transition-all hover:bg-orange/90"
                     >
                       <UserPlus className="w-4 h-4" />
                       Register

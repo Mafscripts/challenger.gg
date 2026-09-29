@@ -126,7 +126,7 @@ export default function PublicHomeOverview() {
             <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">Compete throughout the six-week season for a $1,000 prize pool. The top 8 teams reach the playoffs, and the No. 1 competitor is featured in the next season.</p>
             <div className="landing-copy-reveal landing-copy-delay-5 mt-7 flex flex-wrap gap-3">
               <Link to={protectedHref("/tournaments")} className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> View tournaments <ArrowRight className="h-4 w-4" /></Link>
-              {!isAuthenticated && <Link to="/register" className="inline-flex items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-5 py-3 text-[10px] font-black uppercase tracking-wider text-cyan">Create free account</Link>}
+              {!isAuthenticated && <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black shadow-[0_0_24px_rgba(255,108,0,.16)] transition-colors hover:bg-orange/90">Create free account</Link>}
             </div>
           </div>
         </section>
@@ -197,7 +197,7 @@ export default function PublicHomeOverview() {
 
         {!isAuthenticated && (
           <section className="landing-final-cta relative overflow-hidden rounded-2xl border border-cyan/20 bg-card px-6 py-12 text-center sm:px-10">
-            <div className="relative z-10"><p className="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-orange">Your season starts here</p><h2 className="mt-3 font-heading text-3xl font-black text-white sm:text-4xl">Ready to compete?</h2><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-vapor">Create an account to open tournaments, join matches, build your team and compete on the October ladder.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link to="/register" className="rounded-lg bg-cyan px-6 py-3 text-[10px] font-black uppercase tracking-wider text-black">Register free</Link><Link to="/login" className="rounded-lg border border-white/10 bg-white/[0.035] px-6 py-3 text-[10px] font-black uppercase tracking-wider text-white">Login</Link></div></div>
+            <div className="relative z-10"><p className="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-orange">Your season starts here</p><h2 className="mt-3 font-heading text-3xl font-black text-white sm:text-4xl">Ready to compete?</h2><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-vapor">Create an account to open tournaments, join matches, build your team and compete on the October ladder.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link to="/register" className="rounded-lg bg-orange px-6 py-3 text-[10px] font-black uppercase tracking-wider text-black shadow-[0_0_26px_rgba(255,108,0,.18)] transition-colors hover:bg-orange/90">Register free</Link><Link to="/login" className="rounded-lg border border-white/10 bg-white/[0.035] px-6 py-3 text-[10px] font-black uppercase tracking-wider text-white">Login</Link></div></div>
           </section>
         )}
       </div>
