@@ -14,6 +14,7 @@ const Ranked = lazy(() => import('@/pages/Ranked'));
 const RankedEights = lazy(() => import('@/pages/RankedEights'));
 const Wagers = lazy(() => import('@/pages/Wagers'));
 const Tournaments = lazy(() => import('@/pages/Tournaments'));
+const TournamentOverview = lazy(() => import('@/pages/TournamentOverview'));
 const StreamerTournaments = lazy(() => import('@/pages/StreamerTournaments'));
 const StreamerTournamentLobby = lazy(() => import('@/pages/StreamerTournamentLobby'));
 const TournamentMatchRoom = lazy(() => import('@/pages/TournamentMatchRoom'));
@@ -116,6 +117,7 @@ const AuthenticatedApp = () => {
           <Route path="/ranked/8s" element={<RankedEights />} />
           <Route path="/wagers" element={<Wagers />} />
           <Route path="/tournaments" element={<Tournaments />} />
+          <Route path="/tournaments/:id" element={<TournamentOverview />} />
           <Route path="/streamer-tournaments" element={<StreamerTournaments />} />
           <Route path="/streamer-tournament/:id" element={<StreamerTournamentLobby />} />
           <Route path="/tournament-match/:id" element={<TournamentMatchRoom />} />

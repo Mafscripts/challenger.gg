@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -16,11 +16,13 @@ import PageHeader from "@/components/ui/PageHeader";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
+import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
 
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const adminRoles = new Set(["ceo", "super_admin", "admin"]);
+const blackOps7Artwork = "/assets/tournaments/black-ops-7.webp";
 
 const statusLabels = {
   draft: "Draft",
@@ -107,8 +109,16 @@ const tournamentScheduleDate = (tournament) => new Date(
   tournament?.created_date || tournament?.updated_date || tournament?.start_date || 0,
 ).getTime();
 const compactModeLabel = (tournament) => `${tournament?.team_size || "1v1"} - ${modeLabels[tournament?.game_mode] || tournament?.game_mode || "Mode TBD"}`;
-const tournamentImageUrl = (tournament) => tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || "";
-const tournamentBannerUrl = (tournament) => tournament?.banner_url || tournament?.cover_image_url || tournament?.image_url || "";
+const usesBlackOps7Artwork = (tournament) => {
+  const identity = `${tournament?.name || ""} ${tournament?.game || ""} ${tournament?.game_name || ""}`.toLowerCase();
+  return identity.includes("black ops 7") || identity.includes("test tournament");
+};
+const tournamentImageUrl = (tournament) => usesBlackOps7Artwork(tournament)
+  ? blackOps7Artwork
+  : tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || "";
+const tournamentBannerUrl = (tournament) => usesBlackOps7Artwork(tournament)
+  ? blackOps7Artwork
+  : tournament?.banner_url || tournament?.cover_image_url || tournament?.image_url || "";
 const isStreamerTournament = (tournament) => Boolean(
   tournament?.is_streamer_tournament
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
@@ -271,6 +281,7 @@ function TournamentEntryBadge({ tournament, className = "" }) {
 }
 
 export default function Tournaments() {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState("All");
   const [user, setUser] = useState(null);
   const [tournaments, setTournaments] = useState([]);
@@ -287,6 +298,7 @@ export default function Tournaments() {
   const [selectedTeamByTournament, setSelectedTeamByTournament] = useState({});
   const [paymentModeByTournament, setPaymentModeByTournament] = useState({});
   const [teamCreator, setTeamCreator] = useState({ open: false, tournamentId: null, rosterSize: 4 });
+  const [joinTournamentId, setJoinTournamentId] = useState(null);
   const selectedTournamentIdRef = useRef(null);
   const refreshInFlightRef = useRef(false);
 
@@ -462,6 +474,7 @@ export default function Tournaments() {
         row.id === tournament.id ? { ...row, registered_teams: registered } : row
       )));
       toast({ title: "Tournament joined", description: `You are registered for ${tournament.name}.` });
+      setJoinTournamentId(null);
       await loadMatches(tournament.id);
     } catch (error) {
       toast({ title: "Join failed", description: error.message || "Could not join tournament.", variant: "destructive" });
@@ -532,15 +545,7 @@ export default function Tournaments() {
   };
 
   const handleSelectTournament = (tournamentId) => {
-    selectedTournamentIdRef.current = tournamentId;
-    setSelectedTournamentId(tournamentId);
-    setTournamentTab("overview");
-    if (!matchesByTournament[tournamentId]) {
-      loadMatches(tournamentId);
-    }
-    window.setTimeout(() => {
-      document.getElementById("tournament-bracket-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    navigate(`/tournaments/${tournamentId}`);
   };
 
   const officialTournaments = useMemo(() => tournaments.filter((tournament) => !isStreamerTournament(tournament)), [tournaments]);
@@ -577,6 +582,7 @@ export default function Tournaments() {
     await loadTournaments();
     if (tournamentId) {
       setSelectedTeamByTournament((current) => ({ ...current, [tournamentId]: team.id }));
+      setJoinTournamentId(tournamentId);
     }
   };
   const isStaff = staffRoles.has(user?.role);
@@ -600,6 +606,7 @@ export default function Tournaments() {
     .filter((team) => team.membership?.is_active !== false)
     .flatMap((team) => [team.id, team.name].filter(Boolean).map((value) => String(value).toLowerCase())));
   const selectedUserMatch = currentMatchForUser(selectedMatches, currentUserParticipantKeys, currentUserTeamKeys);
+  const joinTournament = officialTournaments.find((tournament) => tournament.id === joinTournamentId) || null;
   const recentChampions = officialTournaments
     .filter((tournament) => tournament.winner_name || tournament.status === "completed")
     .sort((a, b) => new Date(b.completed_date || b.updated_date || b.start_date || 0) - new Date(a.completed_date || a.updated_date || a.start_date || 0))
@@ -740,6 +747,8 @@ export default function Tournaments() {
                   selected={selectedTournamentId === tournament.id}
                   joined={joinedTournamentIds.has(tournament.id)}
                   onSelect={handleSelectTournament}
+                  canJoin={canJoinTournament(tournament)}
+                  onJoin={() => setJoinTournamentId(tournament.id)}
                   now={now}
                 />
               ))}
@@ -905,6 +914,24 @@ export default function Tournaments() {
           lockTeamType
           title="Create Tournament Team"
           description={`Create a ${teamRosterFormat(teamCreator.rosterSize)} tournament roster with yourself as captain.`}
+        />
+        <TournamentJoinModal
+          isOpen={Boolean(joinTournament)}
+          onClose={() => setJoinTournamentId(null)}
+          tournament={joinTournament}
+          teams={joinTournament ? compatibleTeamsFor(joinTournament) : []}
+          selectedTeamId={joinTournament ? selectedTeamByTournament[joinTournament.id] || "" : ""}
+          onSelectTeam={(teamId) => joinTournament && setSelectedTeamByTournament((current) => ({ ...current, [joinTournament.id]: teamId }))}
+          onCreateTeam={() => {
+            if (!joinTournament) return;
+            setJoinTournamentId(null);
+            openTournamentTeamCreator(joinTournament);
+          }}
+          onJoin={() => joinTournament && handleJoinTournament(joinTournament)}
+          joining={joiningId === joinTournament?.id}
+          paymentMode={joinTournament ? paymentModeByTournament[joinTournament.id] || "own" : "own"}
+          onPaymentModeChange={(mode) => joinTournament && setPaymentModeByTournament((current) => ({ ...current, [joinTournament.id]: mode }))}
+          requiresCredits={joinTournament ? requiresTournamentCredits(joinTournament) : false}
         />
       </div>
     </div>
@@ -1206,25 +1233,24 @@ function BracketTeamRow({ name, seed, score, winner, complete }) {
   );
 }
 
-function TournamentCard({ tournament, selected, joined, onSelect, now }) {
+function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoin, now }) {
   const imageUrl = tournamentImageUrl(tournament);
   const entryInfo = tournamentEntryInfo(tournament);
   return (
-    <motion.button
-      type="button"
-      onClick={() => onSelect(tournament.id)}
+    <motion.article
       className={`tournament-list-card group relative grid w-full grid-cols-[64px_minmax(0,1fr)] gap-4 overflow-hidden rounded-xl border p-3.5 text-left transition-all sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center ${
         selected ? "is-selected border-cyan/25 bg-cyan/[0.055]" : "border-white/[0.055] bg-background/20 hover:border-white/15 hover:bg-white/[0.03]"
       }`}
     >
-      <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-white/[0.07] bg-background">
+      <button type="button" onClick={() => onSelect(tournament.id)} className="absolute inset-0 z-0" aria-label={`View ${tournament.name} overview`} />
+      <div className="pointer-events-none relative z-[1] h-16 w-16 overflow-hidden rounded-lg border border-white/[0.07] bg-background">
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(20,216,255,0.065),transparent_55%,rgba(255,130,0,0.07))] text-vapor"><Trophy className="h-4 w-4" /></div>
+          <img src="/assets/tournaments/black-ops-7.webp" alt="" className="h-full w-full object-cover" />
         )}
       </div>
-      <div className="min-w-0">
+      <div className="pointer-events-none relative z-[1] min-w-0">
         <div className="flex min-w-0 items-center gap-2.5">
           <h3 className="truncate text-[15px] font-black tracking-[-0.01em]">{tournament.name}</h3>
           {joined && <span className="shrink-0 rounded-full bg-green/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
@@ -1237,7 +1263,7 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
           <span className={`text-[8px] font-black uppercase tracking-[0.14em] ${entryInfo.tone.split(" ").at(-1)}`}>{entryInfo.label}</span>
         </div>
       </div>
-      <div className="col-span-2 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-3 sm:col-span-1 sm:min-w-[132px] sm:flex-col sm:items-end sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+      <div className="pointer-events-none relative z-[1] col-span-2 flex items-center justify-between gap-4 border-t border-white/[0.05] pt-3 sm:col-span-1 sm:min-w-[132px] sm:flex-col sm:items-end sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
         <div className="text-left sm:text-right">
           <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/70">Prize pool</p>
           <p className="mt-1 font-mono text-base font-black text-green">{formatMoney(tournament.prize_pool)}</p>
@@ -1245,9 +1271,19 @@ function TournamentCard({ tournament, selected, joined, onSelect, now }) {
         <span className="inline-flex items-center gap-1.5 font-mono text-[9px] font-black text-cyan">
           <Clock className="h-3 w-3" /> {timeUntil(tournament.start_date, now)}
         </span>
-        <ArrowRight className="hidden h-4 w-4 text-vapor transition-transform group-hover:translate-x-1 group-hover:text-white sm:block" />
+        {canJoin ? (
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); onJoin(); }}
+            className="pointer-events-auto relative z-10 inline-flex items-center gap-1.5 rounded-lg bg-orange px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(255,130,0,.16)] transition-colors hover:bg-orange/90"
+          >
+            <Users className="h-3 w-3" /> Join
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-vapor">View overview <ArrowRight className="h-3.5 w-3.5" /></span>
+        )}
       </div>
-    </motion.button>
+    </motion.article>
   );
 }
 
