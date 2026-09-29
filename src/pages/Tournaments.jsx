@@ -1278,7 +1278,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
       </div>
       <div className="pointer-events-none relative z-[1] min-w-0">
         <div className="flex min-w-0 items-center gap-2.5">
-          <h3 className="truncate text-sm font-black tracking-[-0.01em]">{tournament.name}</h3>
+          <h3 className="truncate text-sm font-black tracking-[-0.01em] transition-colors duration-200 group-hover:text-orange">{tournament.name}</h3>
           {joined && <span className="shrink-0 rounded-full bg-green/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
         </div>
         <p className="mt-1 truncate text-[10px] leading-4 text-vapor">{compactModeLabel(tournament)}</p>
