@@ -153,12 +153,6 @@ function FeaturedNews() {
       <div key={`base-${active}`} className="home-featured-image absolute inset-0">
         <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
       </div>
-      <div key={`glitch-cyan-${active}`} className="home-featured-glitch home-featured-glitch-cyan absolute inset-0" aria-hidden="true">
-        <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} />
-      </div>
-      <div key={`glitch-orange-${active}`} className="home-featured-glitch home-featured-glitch-orange absolute inset-0" aria-hidden="true">
-        <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} />
-      </div>
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,9,16,.98)_0%,rgba(5,9,16,.88)_34%,rgba(5,9,16,.42)_65%,rgba(5,9,16,.15)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,9,16,.86)_0%,transparent_45%)]" />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
