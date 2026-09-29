@@ -1282,11 +1282,6 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
           {joined && <span className="shrink-0 rounded-full bg-green/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
         </div>
         <p className="mt-1 truncate text-[10px] leading-4 text-vapor">{compactModeLabel(tournament)}</p>
-        {tournament.status !== "completed" && (
-          <span className={`mt-1.5 inline-block text-[8px] font-black uppercase tracking-[0.14em] ${statusTone(tournament.status).split(" ").at(-1)}`}>
-            {statusLabels[tournament.status] || tournament.status}
-          </span>
-        )}
       </div>
       <div className="pointer-events-none relative z-[1] col-span-2 grid grid-cols-2 items-center gap-x-2.5 gap-y-2.5 border-t border-white/[0.05] pt-2.5 sm:grid-cols-[repeat(4,auto)_auto] lg:col-span-1 lg:flex lg:border-t-0 lg:pt-0">
         <TournamentCardStat label="Prize pool" value={formatMoney(tournament.prize_pool)} tone="text-green" icon={Trophy} />
