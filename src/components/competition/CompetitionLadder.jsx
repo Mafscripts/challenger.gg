@@ -174,6 +174,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
       return competitive
         .map((user) => ({
           id: user.id,
+          userId: user.id,
           user,
           name: playerName(user),
           slug: playerSlug(user),
@@ -196,6 +197,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
           const user = usersById.get(String(row.user_id));
           return {
             id: row.id || row.user_id,
+            userId: row.user_id,
             user,
             name: playerName(user, row),
             slug: playerSlug(user, row),
@@ -220,6 +222,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         const user = usersById.get(id);
         return {
           id: row.id || xp.id || id,
+          userId: id,
           user,
           name: playerName(user, row),
           slug: playerSlug(user, row),
@@ -338,7 +341,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
               <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span><span className="text-center">XP</span><span>Trophies</span><span className="text-right">{mode === "wagers" ? "Winnings" : mode === "eights" ? "Rating" : "ELO"}</span>
             </div>
             {loading ? <div className="px-5 py-12 text-center text-sm text-vapor">Loading standings...</div> : standings.length === 0 ? <div className="px-5 py-12 text-center text-sm text-vapor">The standings begin when the first match is completed.</div> : standings.map((row, index) => (
-              <div key={row.id} className={`grid grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors hover:bg-white/[0.02] ${String(row.user?.id || row.user_id) === String(currentUser?.id) ? "bg-cyan/[0.035]" : ""}`}>
+              <div key={row.id} className={`grid grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors hover:bg-white/[0.02] ${String(row.userId) === String(currentUser?.id) ? "bg-cyan/[0.035]" : ""}`}>
                 <span className={`font-mono font-black ${rankTone(index)}`}>{index < 3 ? <Trophy className="mr-2 inline h-3.5 w-3.5" /> : null}{index + 1}</span>
                 <Link to={`/profile/${row.slug}`} className="flex min-w-0 items-center gap-3 font-bold text-white hover:text-cyan"><span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.04] text-[10px] font-black">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" className="h-full w-full object-cover" /> : row.name.charAt(0).toUpperCase()}</span><span className="truncate underline decoration-white/15 underline-offset-2">{row.name}</span></Link>
                 <span className="text-center font-mono font-black text-green">{row.wins}</span>
@@ -346,7 +349,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
                 <span className="text-center font-mono font-black text-white">{pct(row.wins, row.losses)}</span>
                 <span className="text-center font-mono font-black"><Flame className="mr-1 inline h-3.5 w-3.5 text-orange" />{row.streak}</span>
                 <span className="text-center font-mono font-black text-purple-300">{row.xp.toLocaleString()}</span>
-                <span className="flex items-center gap-2">{trophyTypes.map((trophy) => <span key={trophy.key} title={trophy.label} className="inline-flex items-center gap-0.5"><img src={trophy.image} alt="" className="h-4 w-4 object-contain" /><b className="font-mono text-[8px] text-vapor">{trophy.fields.reduce((best, field) => Math.max(best, number(row.user?.[field])), 0)}</b></span>)}</span>
+                <span className="flex items-center gap-2">{trophyTypes.map((trophy) => <span key={trophy.key} title={trophy.label} className="inline-flex items-center gap-0.5"><img src={trophy.image} alt="" className="h-4 w-4 object-contain" /><b className="font-mono text-[8px] text-vapor">{trophy.fields.reduce((best, field) => Math.max(best, number(row.user?.[field])), 0) + (String(row.userId) === String(currentUser?.id) ? number(inventoryTrophies[trophy.key]) : 0)}</b></span>)}</span>
                 <span className={`text-right font-mono font-black ${mode === "wagers" ? "text-green" : "text-cyan"}`}>{mode === "wagers" ? `$${row.score.toLocaleString()}` : row.score.toLocaleString()}</span>
               </div>
             ))}
