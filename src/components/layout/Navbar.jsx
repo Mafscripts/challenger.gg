@@ -10,6 +10,7 @@ import {
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { toast } from "@/components/ui/use-toast";
 
 const navGroups = [
   {
@@ -217,6 +218,7 @@ export default function Navbar() {
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [notificationsHydrated, setNotificationsHydrated] = useState(false);
   const [messages, setMessages] = useState([]);
   const [profilePlayerQuery, setProfilePlayerQuery] = useState("");
   const [profilePlayerResults, setProfilePlayerResults] = useState([]);
@@ -251,6 +253,8 @@ export default function Navbar() {
   const soundedAdminDisputes = useRef(new Set());
   const pendingAdminDisputeSoundId = useRef(null);
   const notificationsLoadedAt = useRef(0);
+  const balancePopupsReady = useRef(false);
+  const shownBalancePopupIds = useRef(new Set());
   const primaryNavRef = useRef(null);
 
   useEffect(() => {
@@ -337,6 +341,29 @@ export default function Navbar() {
     });
   }, [authUser, notifications, user]);
 
+  useEffect(() => {
+    if (!notificationsHydrated) return;
+    const balanceNotifications = notifications.filter((notification) => notification.show_balance_popup === true);
+    if (!balancePopupsReady.current) {
+      balanceNotifications.forEach((notification) => shownBalancePopupIds.current.add(notification.id));
+      balancePopupsReady.current = true;
+      return;
+    }
+
+    const unseen = balanceNotifications.filter((notification) => !shownBalancePopupIds.current.has(notification.id));
+    if (unseen.length === 0) return;
+    unseen.slice().reverse().forEach((notification) => {
+      shownBalancePopupIds.current.add(notification.id);
+      const amount = Math.abs(Number(notification.balance_change || 0));
+      toast({
+        title: notification.balance_type === "wallet" ? `−$${amount.toFixed(2)}` : `−${amount.toLocaleString()} Credits`,
+        description: notification.message,
+        variant: "destructive",
+      });
+    });
+    loadUser(null, { fresh: true });
+  }, [notifications, notificationsHydrated]);
+
   const cancelDropdownClose = () => {
     if (!dropdownCloseTimer.current) return;
     window.clearTimeout(dropdownCloseTimer.current);
@@ -380,6 +407,9 @@ export default function Navbar() {
   const clearUserState = () => {
     setUser(null);
     setNotifications([]);
+    setNotificationsHydrated(false);
+    balancePopupsReady.current = false;
+    shownBalancePopupIds.current.clear();
     setMessages([]);
     setUnreadNotifCount(0);
     setUnreadMessagesCount(0);
@@ -482,7 +512,7 @@ export default function Navbar() {
   }, [authUser?.id]);
 
   useEffect(() => {
-    const handleCreditsUpdated = () => loadUser();
+    const handleCreditsUpdated = () => loadUser(null, { fresh: true });
     window.addEventListener("topfragg:credits-updated", handleCreditsUpdated);
     return () => window.removeEventListener("topfragg:credits-updated", handleCreditsUpdated);
   }, [authUser?.id]);
@@ -513,6 +543,12 @@ export default function Navbar() {
     window.addEventListener("topfragg:notifications-updated", handleNotificationsUpdated);
     return () => window.removeEventListener("topfragg:notifications-updated", handleNotificationsUpdated);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    const interval = window.setInterval(() => loadNotifications({ fresh: true }), 15000);
+    return () => window.clearInterval(interval);
+  }, [isAuthenticated, authUser?.id]);
 
   useEffect(() => {
     const handleMessagesUpdated = () => {
@@ -652,9 +688,9 @@ export default function Navbar() {
     };
   }, [isAuthenticated, authUser?.id, user?.id, user?.role, user?.admin_role, user?.is_admin]);
 
-  const loadUser = async (knownUser = null) => {
+  const loadUser = async (knownUser = null, { fresh = false } = {}) => {
     try {
-      const userData = knownUser?.id ? knownUser : await base44.auth.me();
+      const userData = fresh ? await base44.auth.me({ force: true }) : knownUser?.id ? knownUser : await base44.auth.me();
       if (!userData) {
         setUser(null);
         setWalletBalance(0);
@@ -663,7 +699,7 @@ export default function Navbar() {
         return;
       }
       const [wallets, profiles] = await Promise.all([
-        base44.entities.Wallet.filter({ user_id: userData.id }, "-created_date", 1).catch(() => []),
+        base44.entities.Wallet[fresh ? "filterFresh" : "filter"]({ user_id: userData.id }, "-created_date", 1).catch(() => []),
         base44.entities.PlayerProfile.filter({ user_id: userData.id }, "-created_date", 1).catch(() => []),
       ]);
       const playerProfile = profiles[0] || null;
@@ -693,6 +729,7 @@ export default function Navbar() {
       const unreadCount = rows.filter(n => !n.is_read).length;
       setNotifications(rows);
       setUnreadNotifCount(unreadCount);
+      setNotificationsHydrated(true);
       notificationsLoadedAt.current = Date.now();
     } catch (error) {
       console.error('Failed to load notifications:', error);

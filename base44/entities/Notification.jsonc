@@ -28,6 +28,23 @@
       "type": "string",
       "title": "Message"
     },
+    "show_balance_popup": {
+      "type": "boolean",
+      "default": false,
+      "title": "Show Balance Popup"
+    },
+    "balance_type": {
+      "type": "string",
+      "enum": [
+        "credits",
+        "wallet"
+      ],
+      "title": "Balance Type"
+    },
+    "balance_change": {
+      "type": "number",
+      "title": "Balance Change"
+    },
     "is_read": {
       "type": "boolean",
       "default": false,

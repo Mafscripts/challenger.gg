@@ -168,6 +168,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             setIsCreating(false);
             return;
           }
+
+          window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
+          window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
           
           toast({
             title: "Wager created!",

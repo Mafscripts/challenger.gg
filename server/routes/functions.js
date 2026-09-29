@@ -3224,6 +3224,17 @@ async function createWagerParticipantsForRoster({ wager, side, team, roster, ent
       entryFee: totalStake,
       team: side,
     });
+    await notifyUser(payer.id, {
+      title: "Wager money secured",
+      message: `$${totalStake.toFixed(2)} was deducted from your available balance and secured for this ${wager.team_size} wager.`,
+      type: "wager",
+      show_balance_popup: true,
+      balance_type: "wallet",
+      balance_change: -totalStake,
+      action_url: `/wagers-match/${wager.id}`,
+      related_entity_id: wager.id,
+      related_entity_type: "Wager",
+    });
   }
 
   const created = [];
@@ -3260,8 +3271,10 @@ async function createWagerParticipantsForRoster({ wager, side, team, roster, ent
       });
     } else if (member.user_id !== payer.id) {
       await notifyUser(member.user_id, {
-        title: "Wager roster enrolled",
-        message: `${team?.name || "Your team"} was enrolled in a ${wager.team_size} wager.`,
+        title: paidByCaptain ? "Wager entry covered" : "Wager roster enrolled",
+        message: paidByCaptain
+          ? `${nameFor(payer)} paid your $${entryFee.toFixed(2)} entry for this ${wager.team_size} wager. Nothing was deducted from your balance.`
+          : `${team?.name || "Your team"} was enrolled in a ${wager.team_size} wager.`,
         type: "wager",
         action_url: `/wagers-match/${wager.id}`,
         related_entity_id: wager.id,
@@ -3478,6 +3491,28 @@ async function registerTournament(req) {
     roster_locked: true,
     registered_date: nowIso(),
   });
+
+  if (requiresCreditPayment && entryFee > 0) {
+    await Promise.all(participantMembers.map((member) => {
+      const allocation = paymentAllocations.find((item) => String(item.user_id) === String(member.user_id));
+      const captainCoveredEntry = sponsoredMemberIds.includes(String(member.user_id));
+      return notifyUser(member.user_id, {
+        title: allocation ? "Tournament Credits deducted" : "Tournament entry covered",
+        message: allocation
+          ? `${Number(allocation.amount).toLocaleString()} Credits were deducted from your balance for ${tournament.name}${String(member.user_id) === captainId && sponsoredMemberIds.length > 0 ? `, including ${sponsoredMemberIds.length} teammate ${sponsoredMemberIds.length === 1 ? "entry" : "entries"}` : ""}.`
+          : captainCoveredEntry
+            ? `${captainName} paid your ${entryFee.toLocaleString()} Credit entry for ${tournament.name}. No Credits were deducted from your balance.`
+            : `Your ${entryFee.toLocaleString()} Credit entry for ${tournament.name} was processed.`,
+        type: "tournament",
+        show_balance_popup: Boolean(allocation),
+        balance_type: allocation ? "credits" : undefined,
+        balance_change: allocation ? -Number(allocation.amount) : undefined,
+        action_url: `/tournaments/${tournament.id}`,
+        related_entity_id: tournament.id,
+        related_entity_type: "Tournament",
+      });
+    }));
+  }
 
   await updateEntity("Tournament", tournament.id, {
     registered_teams: existingCount + 1,
@@ -6078,6 +6113,19 @@ async function createWager(req) {
       escrow_transaction_id: escrow.transaction?.id,
       joined_date: new Date().toISOString(),
     });
+    if (entryFee > 0) {
+      await notifyUser(req.user.id, {
+        title: "Wager money secured",
+        message: `$${entryFee.toFixed(2)} was deducted from your available balance and secured for this wager.`,
+        type: "wager",
+        show_balance_popup: true,
+        balance_type: "wallet",
+        balance_change: -entryFee,
+        action_url: `/wagers-match/${wager.id}`,
+        related_entity_id: wager.id,
+        related_entity_type: "Wager",
+      });
+    }
   }
   return { success: true, wager, wager_id: wager.id };
 }
@@ -6213,6 +6261,19 @@ async function acceptWager(req) {
       escrow_transaction_id: escrow.transaction?.id,
       joined_date: new Date().toISOString(),
     });
+    if (entryFee > 0) {
+      await notifyUser(req.user.id, {
+        title: "Wager money secured",
+        message: `$${entryFee.toFixed(2)} was deducted from your available balance and secured for this wager.`,
+        type: "wager",
+        show_balance_popup: true,
+        balance_type: "wallet",
+        balance_change: -entryFee,
+        action_url: `/wagers-match/${wager.id}`,
+        related_entity_id: wager.id,
+        related_entity_type: "Wager",
+      });
+    }
   }
 
   const joinedPlayerCount = enrolledParticipants.length + 1;

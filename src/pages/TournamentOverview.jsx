@@ -308,6 +308,7 @@ export default function TournamentOverview() {
       setJoinOpen(false);
       setTournament((current) => ({ ...current, registered_teams: Number(current.registered_teams || 0) + 1 }));
       window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
+      window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
       toast({ title: "Tournament joined", description: `${response.data.participant?.team_name || "Your team"} is registered.` });
     } catch (error) {
       toast({ title: "Join failed", description: error.message || "Could not join tournament.", variant: "destructive" });

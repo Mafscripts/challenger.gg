@@ -184,6 +184,8 @@ export default function Wagers() {
       });
 
       if (response.data.success) {
+        window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
+        window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
         toast({
           title: "Wager accepted!",
           description: `System-selected map: ${response.data.final_map_name || "Open the match room"}`,

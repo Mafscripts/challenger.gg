@@ -480,6 +480,7 @@ export default function Tournaments() {
         row.id === tournament.id ? { ...row, registered_teams: registered } : row
       )));
       window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
+      window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
       toast({ title: "Tournament joined", description: `You are registered for ${tournament.name}.` });
       setSponsoredMembersByTournament((current) => ({ ...current, [tournament.id]: [] }));
       setJoinTournamentId(null);
