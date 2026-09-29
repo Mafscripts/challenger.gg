@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
@@ -126,6 +127,15 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
       active = false;
     };
   }, [isOpen, user?.id]);
+
+  useEffect(() => {
+    if (!isOpen || typeof document === "undefined") return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   const handleCreate = async () => {
     if (!hasActivisionId(user)) {
@@ -297,14 +307,14 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.14 }}
-        className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
         onClick={handleClose}
       >
         <motion.div
@@ -312,10 +322,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="glass rounded-2xl border border-white/10 w-full max-w-2xl overflow-hidden will-change-transform"
+          className="glass flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 will-change-transform"
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
             <div>
               <h2 className="text-xl font-black">{isEights ? "Create 8s Lobby" : isRanked ? "Create XP Match" : "Create Wager"}</h2>
               <p className="text-xs text-vapor mt-0.5">{isEights ? "Pick a BO3 series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
@@ -326,7 +336,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="overflow-y-auto p-6">
             <ActivisionIdNotice user={user} className="mb-5" />
             {/* Step 1: Game Mode */}
             {step === 1 && (
@@ -686,6 +696,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
           </div>
         </motion.div>
-      </motion.div>
+      </motion.div>,
+      document.body,
   );
 }
