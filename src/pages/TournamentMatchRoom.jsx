@@ -668,7 +668,7 @@ function TournamentTeamTable({ label, name, color, seed, isFirstHost, players = 
                 <div className="min-w-0">
                   <p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Gamertag</p>
                   <div className="inline-flex max-w-full rounded-lg border border-white/[0.07] bg-black/20 px-3 py-2">
-                    <ActivisionIdLabel user={player} className="max-w-full" />
+                    <ActivisionIdLabel user={player} stacked className="max-w-full" />
                   </div>
                 </div>
 
