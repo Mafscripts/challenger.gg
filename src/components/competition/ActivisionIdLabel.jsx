@@ -1,5 +1,4 @@
 import React from "react";
-import { Gamepad2 } from "lucide-react";
 import { activisionIdFor } from "@/lib/activision";
 
 export default function ActivisionIdLabel({ user, className = "", showMissing = true }) {
@@ -8,8 +7,7 @@ export default function ActivisionIdLabel({ user, className = "", showMissing = 
 
   return (
     <span className={`inline-flex min-w-0 items-center gap-1 text-[10px] font-semibold tracking-wide ${activisionId ? "activision-id" : "text-orange/80"} ${className}`}>
-      <Gamepad2 className="h-3 w-3 shrink-0" />
-      <span className="shrink-0">Activision ID</span>
+      <span aria-hidden="true" className="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border border-current/50 text-[8px] font-black leading-none">A</span>
       <span className="truncate normal-case">{activisionId || "Not set"}</span>
     </span>
   );
