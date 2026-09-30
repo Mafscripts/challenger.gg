@@ -636,7 +636,7 @@ export default function Tournaments() {
 
   return (
     <div className="tournaments-page min-h-screen py-6">
-      <div className="tournaments-container mx-auto max-w-[1760px] px-4 lg:px-7">
+      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <CompetitionHeader
           mode="tournaments"
           playerCount={officialTournaments.length}
