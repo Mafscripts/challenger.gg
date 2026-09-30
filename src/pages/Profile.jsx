@@ -420,7 +420,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen py-6 sm:py-8">
-      <div className="mx-auto max-w-[1560px] px-3 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-card">
           {profile?.banner_url && <img src={profile.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_5%,rgba(20,216,255,.1),transparent_28%),radial-gradient(circle_at_15%_100%,rgba(255,110,0,.1),transparent_26%),linear-gradient(90deg,rgba(10,16,25,.97),rgba(12,18,28,.78))]" />
