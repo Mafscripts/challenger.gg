@@ -9,6 +9,7 @@ import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import { isStaffUser } from "@/lib/roles";
+import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
 
 const closedStatuses = new Set(["completed", "cancelled"]);
@@ -257,7 +258,7 @@ export default function EightsMatchRoom() {
     }
   };
 
-  if (loading && !match) return <div className="flex min-h-[70vh] items-center justify-center text-sm text-vapor">Opening 8s match room...</div>;
+  if (loading && !match) return <PageLoader label="Loading 8s match" />;
   if (!match) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="text-2xl font-black">Match not found</h1><Link to="/ranked/8s" className="mt-5 inline-flex text-cyan">Back to Ranked 8s</Link></div>;
 
   return (

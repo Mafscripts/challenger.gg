@@ -26,6 +26,7 @@ import RankedVoicePanel from "@/components/match/RankedVoicePanel";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
+import PageLoader from "@/components/ui/PageLoader";
 import { getRankForElo, getRankProgress } from "@/lib/ranks";
 import { isStaffUser } from "@/lib/roles";
 
@@ -745,11 +746,8 @@ export default function RankedMatchRoom() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading ranked match...</p>
-        </div>
+      <>
+        <PageLoader label="Loading ranked match" />
 
         {match?.status === "completed" && personalResult && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
@@ -768,7 +766,7 @@ export default function RankedMatchRoom() {
             </div>
           </div>
         )}
-      </div>
+      </>
     );
   }
 

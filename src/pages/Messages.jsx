@@ -15,6 +15,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 const initials = (name) => String(name || "Player").trim().slice(0, 1).toUpperCase();
 const messageTime = (value) => value
@@ -243,11 +244,7 @@ export default function Messages() {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-11 w-11 animate-spin rounded-full border-4 border-cyan/20 border-t-cyan" />
-      </div>
-    );
+    return <PageLoader label="Loading messages" />;
   }
 
   return (

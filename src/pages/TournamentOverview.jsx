@@ -23,6 +23,7 @@ import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
+import PageLoader from "@/components/ui/PageLoader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -376,7 +377,7 @@ export default function TournamentOverview() {
   };
 
   if (loading) {
-    return <div className="flex min-h-[70vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-cyan" /></div>;
+    return <PageLoader label="Loading tournament" />;
   }
   if (!tournament) {
     return (

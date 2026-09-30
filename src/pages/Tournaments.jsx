@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { CompetitionHeader } from "@/components/competition/CompetitionLadder";
+import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
@@ -24,44 +25,6 @@ import { teamRosterFormat } from "@/lib/teamFormats";
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const adminRoles = new Set(["ceo", "super_admin", "admin"]);
 const blackOps7Artwork = "/assets/tournaments/black-ops-7.webp";
-
-function TournamentPageLoader() {
-  return (
-    <div className="tournaments-page min-h-screen py-6" role="status" aria-label="Loading tournaments">
-      <div className="tf-loader-progress fixed left-0 right-0 top-14 z-[60] h-0.5" />
-      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        <CompetitionHeader
-          mode="tournaments"
-          playerCount={0}
-          action={<div className="tf-loader-shimmer h-16 w-full rounded-xl" />}
-        />
-
-        <section className="mt-5 grid min-h-[330px] overflow-hidden rounded-2xl border border-white/[0.08] bg-card/70 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-5 p-7 sm:p-10">
-            <div className="flex gap-2"><div className="tf-loader-shimmer h-6 w-36 rounded-md" /><div className="tf-loader-shimmer h-6 w-24 rounded-md" /></div>
-            <div className="tf-loader-shimmer h-12 w-3/5 rounded-lg" />
-            <div className="tf-loader-shimmer h-4 w-4/5 rounded-full" />
-            <div className="tf-loader-shimmer h-4 w-2/3 rounded-full" />
-          </div>
-          <div className="border-t border-white/[0.06] p-7 lg:border-l lg:border-t-0">
-            <div className="tf-loader-shimmer h-3 w-32 rounded-full" />
-            <div className="tf-loader-shimmer mt-5 h-20 w-full rounded-xl" />
-            <div className="mt-3 grid grid-cols-2 gap-3"><div className="tf-loader-shimmer h-16 rounded-xl" /><div className="tf-loader-shimmer h-16 rounded-xl" /></div>
-            <div className="tf-loader-shimmer mt-5 h-11 w-full rounded-xl" />
-          </div>
-        </section>
-
-        <div className="mt-5 flex items-center justify-between rounded-xl border border-white/[0.06] bg-card/55 p-4"><div className="space-y-2"><div className="tf-loader-shimmer h-3 w-32 rounded-full" /><div className="tf-loader-shimmer h-2 w-44 rounded-full" /></div><div className="tf-loader-shimmer h-9 w-72 rounded-lg" /></div>
-        <section className="mt-4 overflow-hidden rounded-xl border border-white/[0.07] bg-card/70 p-4">
-          <div className="tf-loader-shimmer mb-4 h-4 w-44 rounded-full" />
-          <div className="space-y-2">
-            {[0, 1, 2].map((item) => <div key={item} className="grid min-h-16 grid-cols-[48px_minmax(0,1fr)_280px] items-center gap-4 rounded-lg border border-white/[0.055] px-3"><div className="tf-loader-shimmer h-10 w-10 rounded-lg" /><div className="space-y-2"><div className="tf-loader-shimmer h-3 w-64 rounded-full" /><div className="tf-loader-shimmer h-2 w-40 rounded-full" /></div><div className="tf-loader-shimmer h-8 w-full rounded-lg" /></div>)}
-          </div>
-        </section>
-      </div>
-    </div>
-  );
-}
 
 const statusLabels = {
   draft: "Draft",
@@ -662,7 +625,7 @@ export default function Tournaments() {
     .sort((a, b) => new Date(b.completed_date || b.updated_date || b.start_date || 0) - new Date(a.completed_date || a.updated_date || a.start_date || 0))
     .slice(0, 4);
   if (loading) {
-    return <TournamentPageLoader />;
+    return <PageLoader label="Loading tournaments" />;
   }
 
   return (

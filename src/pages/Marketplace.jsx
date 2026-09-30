@@ -8,6 +8,7 @@ import BuyWithCreditsButton from "@/components/marketplace/BuyWithCreditsButton"
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 export const toMarketItem = (item) => ({
   id: item.id,
@@ -140,6 +141,10 @@ export default function Marketplace() {
 
   const canManageMarketplace = marketplaceManagers.includes(currentUser?.role) || marketplaceManagers.includes(currentUser?.admin_role) || currentUser?.is_admin;
 
+  if (loading) {
+    return <PageLoader label="Loading marketplace" />;
+  }
+
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
@@ -152,12 +157,7 @@ export default function Marketplace() {
 
         <CreditsStore />
 
-        {loading ? (
-          <div className="py-20 text-center">
-            <div className="w-10 h-10 border-2 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-vapor">Loading marketplace...</p>
-          </div>
-        ) : visibleItemsCount === 0 ? (
+        {visibleItemsCount === 0 ? (
           <div className="glass rounded-xl border border-white/5 py-16 text-center">
             <ShoppingBag className="w-12 h-12 text-vapor/30 mx-auto mb-3" />
             <p className="text-sm text-vapor">No marketplace items are visible.</p>

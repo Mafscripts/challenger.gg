@@ -13,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import PageLoader from "@/components/ui/PageLoader";
 
 const SLIDE_DURATION = 10000;
 const HOME_REFRESH_INTERVAL = 60000;
@@ -426,6 +427,10 @@ export default function Dashboard() {
       totalXp: data.xpStats.reduce((sum, row) => sum + number(row.total_xp ?? row.xp), 0),
     };
   }, [data]);
+
+  if (loading) {
+    return <PageLoader label="Loading dashboard" />;
+  }
 
   return (
     <main className="mx-auto w-full max-w-[1540px] space-y-8 px-3 pb-12 pt-4 sm:px-5 lg:space-y-10 lg:px-7">

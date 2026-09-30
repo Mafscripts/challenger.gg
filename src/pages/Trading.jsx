@@ -7,6 +7,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 
@@ -69,6 +70,10 @@ export default function Trading() {
     }
   };
 
+  if (loading) {
+    return <PageLoader label="Loading trades" />;
+  }
+
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
@@ -98,9 +103,7 @@ export default function Trading() {
           ))}
         </div>
 
-        {loading ? (
-          <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">Loading trades...</div>
-        ) : !user ? (
+        {!user ? (
           <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">Login required to view trades.</div>
         ) : (
           <TradeList

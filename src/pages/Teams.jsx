@@ -36,6 +36,7 @@ import { toast } from "@/components/ui/use-toast";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
+import PageLoader from "@/components/ui/PageLoader";
 import { normalizeTeamRosterSize, teamRosterFormat } from "@/lib/teamFormats";
 
 const teamInitials = (team) => {
@@ -533,6 +534,10 @@ export default function Teams() {
     setView("details");
   };
 
+  if (loading) {
+    return <PageLoader label="Loading teams" />;
+  }
+
   return (
     <div className="min-h-screen py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
@@ -558,9 +563,7 @@ export default function Teams() {
           </section>
         )}
 
-        {loading ? (
-          <div className="rounded-2xl border border-white/5 bg-card/70 p-12 text-center text-sm text-vapor">Loading your team hub...</div>
-        ) : teams.length === 0 ? (
+        {teams.length === 0 ? (
           <EmptyState icon={Users} title="Your first roster starts here" description="Create a Solo, Duo, Trio or Squad team, then invite the players you want to compete with." action={<button onClick={() => setCreateOpen(true)} className="rounded-lg bg-cyan px-4 py-2.5 text-xs font-black uppercase text-background">Create Team</button>} />
         ) : view === "my_teams" ? (
           <section className="min-w-0">

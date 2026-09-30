@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/use-toast";
 import TransactionHistory from "@/components/wallet/TransactionHistory";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 
 export default function Wallet() {
@@ -46,14 +47,7 @@ export default function Wallet() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-obsidian">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading wallet...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading wallet" />;
   }
 
   const walletData = user?.wallet;

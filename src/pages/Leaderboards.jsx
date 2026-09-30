@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
 import UserBadges from "@/components/ui/UserBadges";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 const tabs = [
   { key: "elo", label: "ELO Rankings", icon: TrendingUp },
@@ -99,6 +100,10 @@ export default function Leaderboards() {
   const rankedRows = rows.map((row, index) => ({ ...row, rank: index + 1 }));
   const podium = [rankedRows[1], rankedRows[0], rankedRows[2]].filter(Boolean);
 
+  if (loading) {
+    return <PageLoader label="Loading leaderboards" />;
+  }
+
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
@@ -131,9 +136,7 @@ export default function Leaderboards() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">Loading leaderboards...</div>
-        ) : rankedRows.length === 0 ? (
+        {rankedRows.length === 0 ? (
           <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">No leaderboard records yet.</div>
         ) : (
           <>

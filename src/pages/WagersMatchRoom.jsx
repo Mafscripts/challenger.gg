@@ -13,6 +13,7 @@ import MatchMapSeries from "@/components/match/MatchMapSeries";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
+import PageLoader from "@/components/ui/PageLoader";
 import { wagerPlayRule } from "@/lib/wagerRules";
 import { isStaffUser } from "@/lib/roles";
 
@@ -582,14 +583,7 @@ export default function WagersMatchRoom() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-green/20 border-t-green rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading wager match...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading wager match" />;
   }
 
   if (!wager) {

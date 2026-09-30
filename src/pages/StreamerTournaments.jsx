@@ -4,6 +4,7 @@ import { ArrowRight, Clock, Loader2, Monitor, Plus, Radio, Swords, Trophy, Users
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 const gameModeOptions = [
   { value: "bo1_snd", label: "BO1 SND" },
@@ -112,14 +113,7 @@ export default function StreamerTournaments() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading streamer tournaments...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading streamer tournaments" />;
   }
 
   return (

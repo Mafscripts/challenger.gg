@@ -2,12 +2,9 @@ import { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import PageLoader from '@/components/ui/PageLoader';
 
-const DefaultFallback = () => (
-  <div className="fixed inset-0 flex items-center justify-center">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary"></div>
-  </div>
-);
+const DefaultFallback = () => <PageLoader fullscreen label="Checking account" />;
 
 export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement }) {
   const { user, isAuthenticated, isLoadingAuth, authChecked, authError, checkUserAuth } = useAuth();

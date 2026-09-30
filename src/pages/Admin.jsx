@@ -43,6 +43,7 @@ import UserBadges from "@/components/ui/UserBadges";
 import RankBadge from "@/components/ui/RankBadge";
 import PageHeader from "@/components/ui/PageHeader";
 import RarityBadge from "@/components/ui/RarityBadge";
+import PageLoader from "@/components/ui/PageLoader";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
@@ -1792,14 +1793,7 @@ export default function Admin() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading admin console...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading admin console" />;
   }
 
   if (!canAccessAdminPanel(currentRole)) {

@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
+import PageLoader from "@/components/ui/PageLoader";
 
 const Navbar = lazy(() => import("./Navbar"));
 const Footer = lazy(() => import("./Footer"));
@@ -24,11 +25,7 @@ function DeferredFooter() {
 }
 
 function RouteFallback() {
-  return (
-    <div className="route-loading-frame" aria-live="polite" aria-label="Loading page">
-      <div className="route-loading-line" />
-    </div>
-  );
+  return <PageLoader />;
 }
 
 export default function PageLayout() {

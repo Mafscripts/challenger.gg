@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MatchChat from "@/components/match/MatchChat";
+import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
 import { getMapImage } from "@/lib/cdlMaps";
 
@@ -579,14 +580,7 @@ export default function StreamerTournamentLobby() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading streamer lobby...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading streamer lobby" />;
   }
 
   if (!tournament || !isStreamerTournament(tournament)) {

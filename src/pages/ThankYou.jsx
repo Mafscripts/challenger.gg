@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle, Coins, Loader2, ShieldAlert } from "lucide-react";
+import { CheckCircle, Coins, ShieldAlert } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import PageLoader from "@/components/ui/PageLoader";
 
 export default function ThankYou() {
   const location = useLocation();
@@ -20,6 +21,10 @@ export default function ThankYou() {
       setLoading(false);
     });
   }, []);
+
+  if (loading) {
+    return <PageLoader label="Loading payment status" />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center py-8">
@@ -43,17 +48,13 @@ export default function ThankYou() {
             : "No verified checkout confirmation was found. Your balance has not been presented as a successful payment."}
         </p>
 
-        {loading ? (
-          <Loader2 className="w-6 h-6 text-cyan animate-spin mx-auto" />
-        ) : (
-          <div className="bg-secondary/50 rounded-lg p-4 mb-6 border border-white/5">
-            <div className="flex items-center justify-center gap-2">
-              <Coins className="w-6 h-6 text-green" />
-              <span className="text-3xl font-black font-mono text-green">{user?.credits || 0}</span>
-            </div>
-            <p className="text-xs text-vapor uppercase tracking-wider mt-1">Current Balance</p>
+        <div className="bg-secondary/50 rounded-lg p-4 mb-6 border border-white/5">
+          <div className="flex items-center justify-center gap-2">
+            <Coins className="w-6 h-6 text-green" />
+            <span className="text-3xl font-black font-mono text-green">{user?.credits || 0}</span>
           </div>
-        )}
+          <p className="text-xs text-vapor uppercase tracking-wider mt-1">Current Balance</p>
+        </div>
 
         <Link
           to="/wallet"

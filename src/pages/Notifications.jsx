@@ -5,6 +5,7 @@ import { Bell, CheckCheck, Trash2, AlertCircle, Info, Trophy, Star, ShieldCheck 
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -131,14 +132,7 @@ export default function Notifications() {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading notifications...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading notifications" />;
   }
 
   return (

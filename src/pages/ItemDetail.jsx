@@ -6,6 +6,7 @@ import RarityBadge from "@/components/ui/RarityBadge";
 import BuyWithCreditsButton from "@/components/marketplace/BuyWithCreditsButton";
 import { base44 } from "@/api/base44Client";
 import { MarketplaceImage, dedupeById, getItemAccess, toMarketItem } from "@/pages/Marketplace";
+import PageLoader from "@/components/ui/PageLoader";
 
 const rarityDescriptions = {
   common: "A solid entry-level cosmetic for everyday operators.",
@@ -62,14 +63,7 @@ export default function ItemDetail() {
   ), [items, item?.id]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 border-2 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-vapor">Loading item...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading item" />;
   }
 
   if (!item) {

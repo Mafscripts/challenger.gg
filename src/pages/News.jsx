@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Clock, Newspaper, Tag } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 
@@ -17,14 +18,16 @@ export default function News() {
       .finally(() => setLoading(false));
   }, []);
 
+  if (loading) {
+    return <PageLoader label="Loading news" />;
+  }
+
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <PageHeader eyebrow="Topfragg updates" title="News" description="Platform updates, patch notes and announcements." />
 
-        {loading ? (
-          <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">Loading updates...</div>
-        ) : updates.length === 0 ? (
+        {updates.length === 0 ? (
           <div className="glass rounded-xl border border-white/5 px-6 py-9 text-center">
             <Newspaper className="mx-auto mb-3 h-9 w-9 text-vapor/35" />
             <h2 className="text-base font-black">No updates yet</h2>

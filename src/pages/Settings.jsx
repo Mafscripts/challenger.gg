@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AccountSection from "@/components/settings/AccountSection";
 import CreditsSection from "@/components/settings/CreditsSection";
@@ -7,6 +6,7 @@ import PaymentPermissionsSection from "@/components/settings/PaymentPermissionsS
 import DiscordSection from "@/components/settings/DiscordSection";
 import GamingIdsSection from "@/components/settings/GamingIdsSection";
 import PageHeader from "@/components/ui/PageHeader";
+import PageLoader from "@/components/ui/PageLoader";
 
 export default function Settings() {
   const [user, setUser] = useState(null);
@@ -27,11 +27,7 @@ export default function Settings() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-cyan animate-spin" />
-      </div>
-    );
+    return <PageLoader label="Loading settings" />;
   }
 
   return (

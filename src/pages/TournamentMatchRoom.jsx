@@ -26,6 +26,7 @@ import MatchChat from "@/components/match/MatchChat";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
+import PageLoader from "@/components/ui/PageLoader";
 import TournamentBracket from "@/components/tournaments/TournamentBracket";
 import { effectiveRoleForUser, isStaffUser } from "@/lib/roles";
 
@@ -1120,14 +1121,7 @@ export default function TournamentMatchRoom() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-orange/20 border-t-orange rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-vapor">Loading tournament match...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading tournament match" />;
   }
 
   if (!match) {

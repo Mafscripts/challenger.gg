@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import PageLoader from '@/components/ui/PageLoader';
 import ScrollToTop from './components/ScrollToTop';
 import Ranked from '@/pages/Ranked';
 import RankedEights from '@/pages/RankedEights';
@@ -70,22 +71,11 @@ function DeferredToaster() {
   return ready ? <Suspense fallback={null}><Toaster /></Suspense> : null;
 }
 
-const PageLoader = () => (
-  <div className="fixed inset-0 flex items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary shadow-sm">
-        <span className="font-mono text-lg font-bold text-primary-foreground">TF</span>
-      </div>
-      <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary/15 border-t-primary" />
-    </div>
-  </div>
-);
-
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return <PageLoader />;
+    return <PageLoader fullscreen label="Loading Topfragg" />;
   }
 
   if (authError) {
@@ -98,7 +88,7 @@ const AuthenticatedApp = () => {
   }
 
   return (
-    <Suspense fallback={<PageLoader />}>
+    <Suspense fallback={<PageLoader fullscreen />}>
       <Routes>
       <Route element={<PageLayout />}>
         <Route path="/" element={<Home />} />
