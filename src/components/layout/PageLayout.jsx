@@ -44,7 +44,7 @@ export default function PageLayout() {
       </Suspense>
       <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">
         <Suspense fallback={<RouteFallback />}>
-          <div key={location.pathname} className="route-stage route-page-enter">
+          <div className="route-stage">
             <Outlet />
           </div>
         </Suspense>

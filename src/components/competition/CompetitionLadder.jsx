@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -22,6 +23,21 @@ const navigation = [
   { key: "eights", label: "8s", to: "/ranked/8s", icon: Users },
   { key: "tournaments", label: "Upcoming Tournaments", to: "/tournaments", icon: Trophy },
 ];
+
+const competitionRoutePreloaders = {
+  xp: () => import("@/pages/Ranked"),
+  wagers: () => import("@/pages/Wagers"),
+  eights: () => import("@/pages/RankedEights"),
+  tournaments: () => import("@/pages/Tournaments"),
+};
+
+const preloadedCompetitionRoutes = new Map();
+const preloadCompetitionRoute = (key) => {
+  if (!preloadedCompetitionRoutes.has(key)) {
+    preloadedCompetitionRoutes.set(key, competitionRoutePreloaders[key]?.().catch(() => null));
+  }
+  return preloadedCompetitionRoutes.get(key) || Promise.resolve();
+};
 
 const modeCopy = {
   xp: {
@@ -102,9 +118,33 @@ function rankTone(index) {
 }
 
 export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "" }) {
+  const navigate = useNavigate();
   const copy = modeCopy[mode] || modeCopy.xp;
   const headerImage = "/assets/competition/topfragg-xp-header.png";
   const headerHeight = "min-h-[350px] lg:min-h-[370px]";
+
+  useEffect(() => {
+    navigation.forEach(({ key }) => {
+      if (key !== mode) preloadCompetitionRoute(key);
+    });
+  }, [mode]);
+
+  const handleCompetitionNavigation = (event, key, to, active) => {
+    if (active || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+
+    const changeRoute = () => preloadCompetitionRoute(key).then(() => {
+      flushSync(() => navigate(to));
+    });
+
+    if (document.startViewTransition && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.startViewTransition(changeRoute);
+      return;
+    }
+
+    changeRoute();
+  };
+
   return (
     <div className={`space-y-5 ${className}`}>
       <section className={`premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] ${headerHeight}`}>
@@ -151,7 +191,16 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
         {navigation.map(({ key, label, to, icon: Icon }) => {
           const active = key === mode;
           return (
-            <Link key={key} to={to} className={`relative flex min-h-14 items-center justify-center gap-2 border-b border-white/[0.06] px-4 py-4 text-xs font-black transition-colors sm:border-r lg:border-b-0 ${active ? "bg-secondary text-white" : "text-vapor hover:bg-secondary/70 hover:text-white"}`}>
+            <Link
+              key={key}
+              to={to}
+              aria-current={active ? "page" : undefined}
+              onPointerEnter={() => preloadCompetitionRoute(key)}
+              onFocus={() => preloadCompetitionRoute(key)}
+              onPointerDown={() => preloadCompetitionRoute(key)}
+              onClick={(event) => handleCompetitionNavigation(event, key, to, active)}
+              className={`relative flex min-h-14 items-center justify-center gap-2 border-b border-white/[0.06] px-4 py-4 text-xs font-black transition-colors sm:border-r lg:border-b-0 ${active ? "bg-secondary text-white" : "text-vapor hover:bg-secondary/70 hover:text-white"}`}
+            >
               <Icon className={`h-4 w-4 ${active ? copy.accent : ""}`} /> {label}
               {active && <span className={`absolute inset-x-0 bottom-0 h-0.5 ${copy.line}`} />}
             </Link>

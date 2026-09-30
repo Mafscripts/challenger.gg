@@ -175,10 +175,6 @@
     overflow-x: clip;
   }
 
-  .route-page-enter {
-    animation: route-page-enter 180ms cubic-bezier(.2, .8, .2, 1) both;
-  }
-
   .route-loading-frame {
     position: relative;
     overflow: hidden;
@@ -1973,14 +1969,42 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes route-page-enter {
-  from { opacity: 0.94; transform: translateY(3px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @keyframes route-loading-line {
   from { transform: translateX(-115%); }
   to { transform: translateX(415%); }
+}
+
+@supports (view-transition-name: none) {
+  .route-stage {
+    view-transition-name: route-content;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+
+  ::view-transition-group(route-content) {
+    animation-duration: 180ms;
+    animation-timing-function: cubic-bezier(.2, .8, .2, 1);
+  }
+
+  ::view-transition-old(route-content) {
+    animation: route-content-out 110ms ease-out both;
+  }
+
+  ::view-transition-new(route-content) {
+    animation: route-content-in 180ms cubic-bezier(.2, .8, .2, 1) both;
+  }
+}
+
+@keyframes route-content-out {
+  to { opacity: .78; }
+}
+
+@keyframes route-content-in {
+  from { opacity: .72; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (min-width: 1280px) and (max-width: 1439px) {
