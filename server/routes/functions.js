@@ -4638,7 +4638,7 @@ function matchRouteFor(matchType, match) {
   if (matchType === "ranked") return `/ranked-match/${match.id}`;
   if (matchType === "tournament") return `/tournament-match/${match.id}`;
   if (match.match_type === "8s") return `/8s-match/${match.id}`;
-  if (match.match_type === "xp") return `/xp-match/${match.id}`;
+  if (match.match_type === "xp") return `/match-room/${match.id}`;
   if (match.match_type === "ranked") return `/match-room/${match.id}`;
   return `/wagers-match/${match.id}`;
 }
@@ -4844,7 +4844,7 @@ async function requestAdminAlert(req) {
     username: existingTicket?.username || nameFor(req.user),
     subject: existingTicket?.subject || subject,
     description: existingTicket?.description || description,
-    category: context.matchType,
+    category: req.body.ticket_category || context.match?.match_type || context.matchType,
     priority: req.body.priority || existingTicket?.priority || "high",
     status: nextTicketStatus,
     requested_admin: true,
@@ -8911,6 +8911,33 @@ async function createDispute(req) {
     ...(req.body.screenshots || []),
     ...(req.body.videos || []),
   ];
+  const sourceMatchType = String(matchType === "ranked" ? "ranked" : (match?.match_type || matchType)).toLowerCase();
+  const createsPlayerTicket = ["ranked", "8s", "eights", "xp"].includes(sourceMatchType);
+  const ensureDisputeTicket = async (dispute) => {
+    if (!createsPlayerTicket || !dispute) return { dispute, ticket: null };
+    if (dispute.ticket_id) {
+      const ticket = await getEntity("Ticket", dispute.ticket_id).catch(() => null);
+      if (ticket) return { dispute, ticket };
+    }
+    const ticketResult = await requestAdminAlert({
+      ...req,
+      body: {
+        match_type: matchType,
+        match_id: match.id,
+        request_type: "dispute",
+        dispute_id: dispute.id,
+        subject: `${sourceMatchType.toUpperCase()} dispute ${match.id}`,
+        description: req.body.description || `Dispute opened for ${sourceMatchType} match ${match.id}.`,
+        priority: req.user.is_premium ? "critical" : "high",
+        proof_urls: submittedEvidence,
+        ticket_category: sourceMatchType,
+      },
+    }).catch(() => null);
+    const linkedDispute = ticketResult?.ticket?.id
+      ? await updateEntity("Dispute", dispute.id, { ticket_id: ticketResult.ticket.id }).catch(() => dispute)
+      : dispute;
+    return { dispute: linkedDispute, ticket: ticketResult?.ticket || null };
+  };
   const existingDisputes = await listEntities("Dispute", { match_id: match.id }, "-created_date", 20).catch(() => []);
   const existingOpenDispute = existingDisputes.find((row) => !["resolved", "rejected", "closed"].includes(row.status));
   if (existingOpenDispute) {
@@ -8935,9 +8962,11 @@ async function createDispute(req) {
         related_entity_id: existingOpenDispute.id,
         related_entity_type: "Dispute",
       });
-      return { success: true, dispute: updated, escalated: true };
+      const linked = await ensureDisputeTicket(updated);
+      return { success: true, dispute: linked.dispute, ticket: linked.ticket, escalated: true };
     }
-    return { success: true, dispute: existingOpenDispute, already_exists: true };
+    const linked = await ensureDisputeTicket(existingOpenDispute);
+    return { success: true, dispute: linked.dispute, ticket: linked.ticket, already_exists: true };
   }
 
   const [chatLogs, matchHistory] = await Promise.all([
@@ -8984,24 +9013,8 @@ async function createDispute(req) {
     related_entity_type: "Dispute",
   });
 
-  const ticketResult = await requestAdminAlert({
-    ...req,
-    body: {
-      match_type: matchType,
-      match_id: match.id,
-      request_type: "dispute",
-      dispute_id: dispute.id,
-      subject: `${matchType} dispute ${match.id}`,
-      description: req.body.description || `Dispute opened for ${matchType} match ${match.id}.`,
-      priority: req.user.is_premium ? "critical" : "high",
-      proof_urls: submittedEvidence,
-    },
-  }).catch(() => null);
-  const linkedDispute = ticketResult?.ticket?.id
-    ? await updateEntity("Dispute", dispute.id, { ticket_id: ticketResult.ticket.id }).catch(() => dispute)
-    : dispute;
-
-  return { success: true, dispute: linkedDispute, ticket: ticketResult?.ticket };
+  const linked = await ensureDisputeTicket(dispute);
+  return { success: true, dispute: linked.dispute, ticket: linked.ticket };
 }
 
 async function escalateDispute(req) {

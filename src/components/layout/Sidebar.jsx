@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Swords,
+  Ticket,
   Trophy,
   User,
   Users,
@@ -27,6 +28,7 @@ const sections = [
     items: [
       { label: "Home", path: "/dashboard", icon: House },
       { label: "Profile", path: "/profile", icon: User, matchPrefix: "/profile/" },
+      { label: "My Tickets", path: "/my-tickets", icon: Ticket },
       { label: "XP Matches", path: "/ranked", icon: Crosshair },
       { label: "Wagers", path: "/wagers", icon: Swords },
       { label: "Tournaments", path: "/tournaments", icon: Trophy },

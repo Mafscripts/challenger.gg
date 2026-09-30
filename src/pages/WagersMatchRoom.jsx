@@ -490,7 +490,11 @@ export default function WagersMatchRoom() {
       });
 
       if (response.data?.success) {
-        toast({ title: response.data.escalated ? "Dispute escalated" : "Dispute submitted", description: "A review case was created for staff." });
+        const createdTicket = Boolean(response.data.ticket);
+        toast({
+          title: response.data.escalated ? (createdTicket ? "Ticket escalated" : "Dispute escalated") : (createdTicket ? "Ticket created" : "Dispute submitted"),
+          description: createdTicket ? "You can follow this dispute under My Tickets." : "A review case was created for staff.",
+        });
         await loadWager();
       } else {
         toast({ title: "Dispute failed", description: response.data?.error || "Could not create dispute.", variant: "destructive" });
@@ -817,7 +821,7 @@ export default function WagersMatchRoom() {
               disabled={!canUseMatchRoom || requestingAdmin}
               className="rounded-lg border border-orange/20 bg-orange/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-orange transition-all hover:bg-orange/20 disabled:opacity-50"
             >
-              Submit Dispute
+              {wager.match_type === "xp" ? "Submit Ticket" : "Submit Dispute"}
             </button>
             <button
               onClick={() => handleRequestAdmin("Opponent no-show report.")}

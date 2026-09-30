@@ -1456,8 +1456,6 @@ export default function TournamentMatchRoom() {
                 label="Team A"
                 color="orange"
                 name={match.team_a_name}
-                seed={match.team_a_seed}
-                isFirstHost={match.first_host_team_id === match.team_a_id}
                 players={teamAPlayers}
                 isComplete={isComplete}
                 isWinner={isTeamAWinner}
@@ -1472,8 +1470,6 @@ export default function TournamentMatchRoom() {
                 label="Team B"
                 color="blue"
                 name={match.team_b_name}
-                seed={match.team_b_seed}
-                isFirstHost={match.first_host_team_id === match.team_b_id}
                 players={teamBPlayers}
                 isComplete={isComplete}
                 isWinner={isTeamBWinner}

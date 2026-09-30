@@ -129,6 +129,7 @@ const AuthenticatedApp = () => {
           <Route path="/cdl" element={<CDL />} />
           <Route path="/news" element={<News />} />
           <Route path="/support" element={<Support />} />
+          <Route path="/my-tickets" element={<Support ticketCenter />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/thank-you" element={<ThankYou />} />
           <Route path="/admin" element={<Admin />} />

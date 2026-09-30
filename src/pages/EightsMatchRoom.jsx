@@ -252,7 +252,7 @@ export default function EightsMatchRoom() {
         escalated: Boolean(user?.is_premium),
       });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not create dispute");
-      toast({ title: "Dispute submitted", description: "A review case was created for staff." });
+      toast({ title: "Ticket created", description: "You can follow this dispute under My Tickets." });
       await loadRoom(true);
     } catch (error) {
       toast({ title: "Dispute failed", description: error.message, variant: "destructive" });
@@ -361,7 +361,7 @@ export default function EightsMatchRoom() {
                       <AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
                     </button>
                     <button type="button" onClick={createDispute} disabled={!isParticipant || disputing || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
-                      <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Dispute"}
+                      <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Submit ticket"}
                     </button>
                   </div>
                   {(match.admin_request_status || match.requested_admin) && <p className="mt-2 text-center text-[8px] font-bold text-red-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}

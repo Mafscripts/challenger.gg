@@ -5,7 +5,7 @@ import {
   Menu, X, House, Swords, Trophy, ShoppingBag,
   Users, Zap,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
@@ -1420,6 +1420,7 @@ export default function Navbar() {
                         label="Account"
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
+                          { label: "My Tickets", path: "/my-tickets", icon: Ticket },
                           { label: "My Matches", path: matchHistoryPath, icon: History },
                           { label: "Teams", path: "/teams", icon: Users },
                           { label: "Wallet", path: "/wallet", icon: Wallet },
@@ -1616,6 +1617,13 @@ export default function Navbar() {
                     >
                       <User className="w-5 h-5" />
                       My Profile
+                    </Link>
+                    <Link
+                      to="/my-tickets"
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
+                    >
+                      <Ticket className="w-5 h-5" />
+                      My Tickets
                     </Link>
                     <Link
                       to="/teams"

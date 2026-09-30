@@ -681,7 +681,7 @@ export default function RankedMatchRoom() {
       });
 
       if (response.data?.success) {
-        toast({ title: response.data.escalated ? "Dispute escalated" : "Dispute submitted", description: "A review case was created for staff." });
+        toast({ title: response.data.escalated ? "Ticket escalated" : "Ticket created", description: "You can follow this dispute under My Tickets." });
         await loadRoom();
       } else {
         toast({ title: "Dispute failed", description: response.data?.error || "Could not create dispute.", variant: "destructive" });

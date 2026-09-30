@@ -211,6 +211,14 @@ const visibleWagers = async (req, rows) => {
   return visible.filter(Boolean);
 };
 
+const visibleTickets = (req, rows) => {
+  if (hasRole(req.user, "moderator")) return rows;
+  return rows.filter((ticket) => (
+    String(ticket.user_id || "") === String(req.user.id)
+    || (ticket.participant_user_ids || []).some((userId) => String(userId) === String(req.user.id))
+  ));
+};
+
 router.get("/:entity", requireAuth, async (req, res, next) => {
   try {
     if (["Ban", "AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
@@ -235,6 +243,9 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
     if (req.params.entity === "ChatMessage") {
       return res.json(protectIpVisibility(req, await visibleChatMessages(req, rows)));
     }
+    if (req.params.entity === "Ticket") {
+      return res.json(protectIpVisibility(req, visibleTickets(req, rows)));
+    }
     res.json(protectIpVisibility(req, rows));
   } catch (error) {
     next(error);
@@ -247,6 +258,9 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "Moderator access required" });
     }
     const row = await getEntity(req.params.entity, req.params.id);
+    if (req.params.entity === "Ticket" && visibleTickets(req, [row]).length === 0) {
+      return res.status(403).json({ error: "You cannot view this ticket" });
+    }
     if (req.params.entity === "TournamentMatch" && !await canViewTournamentMatch(req, row)) {
       return res.status(403).json({ error: "Tournament match is not available" });
     }

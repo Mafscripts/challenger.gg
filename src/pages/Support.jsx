@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Crown, MessageSquare, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -16,11 +17,10 @@ const categories = [
   { value: "other", label: "Other" },
 ];
 
-export default function Support() {
+export default function Support({ ticketCenter = false }) {
   const [user, setUser] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [tickets, setTickets] = useState([]);
-  const [messages, setMessages] = useState([]);
   const [replyDrafts, setReplyDrafts] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [form, setForm] = useState({
@@ -38,20 +38,15 @@ export default function Support() {
     setUser(currentUser);
     if (!currentUser) return;
 
-    const [ticketRows, messageRows] = await Promise.all([
-      base44.entities.Ticket.filter({}, "-created_date", 500).catch(() => []),
-      base44.entities.Message.filter({}, "-created_date", 500).catch(() => []),
-    ]);
+    const ticketRows = await base44.entities.Ticket.filter({}, "-created_date", 500).catch(() => []);
     setTickets(ticketRows.filter((ticket) => (
       ticket.user_id === currentUser.id || (ticket.participant_user_ids || []).includes(currentUser.id)
     )));
-    setMessages(messageRows);
   };
 
   const ticketMessages = (ticket) => {
     const rows = [
       ...(ticket.messages || []),
-      ...messages.filter((message) => message.ticket_id === ticket.id || message.conversation_id === ticket.id),
     ];
     const seen = new Set();
     return rows
@@ -153,7 +148,7 @@ export default function Support() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4 lg:px-6">
-        <PageHeader eyebrow="Player support" title="Support Center" description="Open a ticket for account, payment, match, tournament, marketplace or technical issues." />
+        <PageHeader eyebrow="Player support" title={ticketCenter ? "My Tickets" : "Support Center"} description={ticketCenter ? "Create, follow and reply to your support and match tickets." : "Open a ticket for account, payment, match, tournament, marketplace or technical issues."} />
 
         <div className="grid lg:grid-cols-3 gap-6">
           <motion.form
@@ -220,7 +215,7 @@ export default function Support() {
             </p>
           </div>
 
-          <div className="lg:col-span-3 glass rounded-xl border border-white/5 overflow-hidden">
+          <div id="my-tickets" className="lg:col-span-3 glass rounded-xl border border-white/5 overflow-hidden">
             <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between gap-3">
               <h2 className="font-bold text-sm flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-cyan" /> My Tickets
@@ -240,7 +235,7 @@ export default function Support() {
                         <div>
                           <p className="font-semibold text-sm">{ticket.subject}</p>
                           <p className="text-xs text-vapor capitalize">
-                            {statusText(ticket.status)} - {ticket.assigned_admin_name || "Unassigned"}
+                            {statusText(ticket.status)} - {String(ticket.category || "support").replace(/_/g, " ")} - {ticket.assigned_admin_name || "Unassigned"}
                           </p>
                         </div>
                         {user?.is_premium && !ticket.premium_escalated && !closed && (
@@ -253,6 +248,12 @@ export default function Support() {
                           </button>
                         )}
                       </div>
+                      {ticket.description && <p className="mb-3 rounded-lg border border-white/5 bg-background/30 p-3 text-sm leading-6 text-foreground/80 whitespace-pre-line">{ticket.description}</p>}
+                      {ticket.action_url && ticket.action_url !== "/admin" && (
+                        <Link to={ticket.action_url} className="mb-3 inline-flex rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/20">
+                          Open match room
+                        </Link>
+                      )}
                       <div className="space-y-2 mb-3">
                         {rows.length === 0 ? (
                           <p className="text-xs text-vapor">No replies yet.</p>
