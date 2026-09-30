@@ -7880,6 +7880,102 @@ async function adminAdjustWallet(req) {
   };
 }
 
+async function adminMassResetBalances(req) {
+  if (!hasRole(req.user, "super_admin")) return { success: false, error: "Super Admin or CEO access required" };
+  if (String(req.body.confirmation || "").trim() !== "RESET ALL") {
+    return { success: false, error: "Type RESET ALL to confirm this mass reset" };
+  }
+
+  const trophyKeys = [
+    "gold_count",
+    "silver_count",
+    "bronze_count",
+    "invitational_count",
+    "invitation_count",
+    "champion_count",
+    "premium_count",
+    "premium_trophies",
+    "topfragg_count",
+    "topfrag_count",
+    "topfragg_trophies",
+    "hosted_count",
+    "hosted_trophies",
+  ];
+  const clearedTrophyMetadata = (metadata = {}) => ({
+    ...(metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {}),
+    ...Object.fromEntries(trophyKeys.map((key) => [key, 0])),
+  });
+  const isTrophyInventory = (metadata = {}) => {
+    const item = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {};
+    const text = [item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return item.item_category === "trophy" || text.includes("trophy");
+  };
+  const updateInBatches = async (rows, update) => {
+    for (let start = 0; start < rows.length; start += 100) {
+      await Promise.all(rows.slice(start, start + 100).map(update));
+    }
+  };
+
+  const [users, wallets, profiles, inventory] = await Promise.all([
+    prisma.user.findMany({ select: { id: true, metadata: true } }),
+    prisma.wallet.findMany({ select: { id: true, metadata: true } }),
+    prisma.playerProfile.findMany({ select: { id: true, metadata: true } }),
+    prisma.userInventory.findMany({ select: { id: true, metadata: true } }),
+  ]);
+  const trophyInventoryIds = inventory.filter((item) => isTrophyInventory(item.metadata)).map((item) => item.id);
+
+  await prisma.user.updateMany({ data: { credits: 0, wallet_balance: 0, trophies: 0 } });
+  await updateInBatches(users, (user) => prisma.user.update({
+    where: { id: user.id },
+    data: { metadata: clearedTrophyMetadata(user.metadata) },
+  }));
+  await updateInBatches(wallets, (wallet) => prisma.wallet.update({
+    where: { id: wallet.id },
+    data: {
+      metadata: {
+        ...(wallet.metadata && typeof wallet.metadata === "object" && !Array.isArray(wallet.metadata) ? wallet.metadata : {}),
+        available_balance: 0,
+        pending_balance: 0,
+        escrow_balance: 0,
+        withdrawable_balance: 0,
+      },
+    },
+  }));
+  await updateInBatches(profiles, (profile) => prisma.playerProfile.update({
+    where: { id: profile.id },
+    data: { metadata: clearedTrophyMetadata(profile.metadata) },
+  }));
+  await updateInBatches(trophyInventoryIds, (id) => prisma.userInventory.delete({ where: { id } }));
+
+  const action = await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "mass_balance_trophy_reset",
+    description: "Mass reset: cleared all user credits, wallet balances, and trophies.",
+    details: {
+      users_reset: users.length,
+      wallets_reset: wallets.length,
+      profiles_reset: profiles.length,
+      trophy_inventory_items_removed: trophyInventoryIds.length,
+      confirmation: "RESET ALL",
+      reset_date: nowIso(),
+    },
+    created_date: nowIso(),
+  });
+
+  return {
+    success: true,
+    users_reset: users.length,
+    wallets_reset: wallets.length,
+    trophy_inventory_items_removed: trophyInventoryIds.length,
+    action,
+  };
+}
+
 async function adminAdjustRankedElo(req) {
   if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access required" };
   const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
@@ -9441,6 +9537,7 @@ const handlers = {
   addFunds,
   depositToWallet: addFunds,
   adminAdjustWallet,
+  adminMassResetBalances,
   adminAdjustRankedElo,
   adminUpdateRankedStats,
   adminResetRankedSeason,

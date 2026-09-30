@@ -484,6 +484,8 @@ export default function Admin() {
   const [ticketResolutionDrafts, setTicketResolutionDrafts] = useState({});
   const [walletAdjustmentOpen, setWalletAdjustmentOpen] = useState(false);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
+  const [massResetOpen, setMassResetOpen] = useState(false);
+  const [massResetConfirmation, setMassResetConfirmation] = useState("");
   const [rankedPlayerSearch, setRankedPlayerSearch] = useState("");
   const [rankedAdjustment, setRankedAdjustment] = useState({ user_id: "", operation: "set", amount: "", reason: "" });
   const [rankedStatsForm, setRankedStatsForm] = useState(defaultRankedStatsForm);
@@ -1068,6 +1070,36 @@ export default function Admin() {
       }
     } catch (error) {
       toast({ title: "Adjustment failed", description: error.message || "Could not add funds.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleMassBalanceReset = async (event) => {
+    event.preventDefault();
+    if (!canAddWalletAdjustment(currentRole)) {
+      toast({ title: "Not allowed", description: "CEO or Super Admin is required.", variant: "destructive" });
+      return;
+    }
+    if (massResetConfirmation.trim() !== "RESET ALL") {
+      toast({ title: "Confirmation required", description: "Type RESET ALL exactly to continue.", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm("This permanently clears credits, wallet balances, and trophies for every user. Continue?")) return;
+
+    setBusyId("mass-balance-reset");
+    try {
+      const response = await base44.functions.invoke("adminMassResetBalances", { confirmation: massResetConfirmation.trim() });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not reset user balances");
+      toast({
+        title: "All balances reset",
+        description: `${response.data.users_reset} users reset; ${response.data.trophy_inventory_items_removed} trophy items removed.`,
+      });
+      setMassResetConfirmation("");
+      setMassResetOpen(false);
+      await loadAdminData();
+    } catch (error) {
+      toast({ title: "Mass reset failed", description: error.message || "Could not reset user balances.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -1897,6 +1929,20 @@ export default function Admin() {
                   ["System logs", data.systemLogs.length],
                 ]} />
               </div>
+              {canAddWalletAdjustment(currentRole) && (
+                <section className="mt-6 rounded-xl border border-red-500/25 bg-red-500/[0.045] p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div><p className="text-sm font-black text-red-200">Mass reset user balances</p><p className="mt-1 text-xs text-vapor">Sets every user&apos;s credits, wallet money and trophies to zero. Trophy items are removed; match history stays intact.</p></div>
+                    <button type="button" onClick={() => setMassResetOpen((open) => !open)} disabled={busyId === "mass-balance-reset"} className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-black text-red-200 hover:bg-red-500/20 disabled:opacity-50"><RotateCcw className="h-4 w-4" /> {massResetOpen ? "Close reset" : "Mass reset"}</button>
+                  </div>
+                  {massResetOpen && (
+                    <form onSubmit={handleMassBalanceReset} className="mt-5 border-t border-red-500/15 pt-5">
+                      <label className="block max-w-md"><span className="text-[10px] font-black uppercase tracking-wider text-red-200">Type RESET ALL to confirm</span><input value={massResetConfirmation} onChange={(event) => setMassResetConfirmation(event.target.value)} placeholder="RESET ALL" autoComplete="off" className="mt-2 w-full rounded-lg border border-red-500/25 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/60 focus:outline-none" /></label>
+                      <button type="submit" disabled={busyId === "mass-balance-reset" || massResetConfirmation.trim() !== "RESET ALL"} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-xs font-black text-white hover:bg-red-400 disabled:opacity-50">{busyId === "mass-balance-reset" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Reset all users now</button>
+                    </form>
+                  )}
+                </section>
+              )}
             </div>
           )}
 
