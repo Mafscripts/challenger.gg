@@ -186,10 +186,14 @@ const tournamentMatchSideFor = (match, keys) => {
   return null;
 };
 
-const navItemIsActive = (pathname, path) => {
-  const targetPath = String(path || "").split("#")[0];
-  return pathname === targetPath
-    || (targetPath === "/tournaments" && pathname.startsWith("/tournament-match/"))
+const navItemIsActive = (pathname, path, hash = "") => {
+  const [targetPath, targetHash] = String(path || "").split("#");
+  const expectedHash = targetHash ? `#${targetHash}` : "";
+
+  if (expectedHash) return pathname === targetPath && hash === expectedHash;
+  if (pathname === targetPath) return targetPath !== "/ranked" || hash !== "#standings";
+
+  return (targetPath === "/tournaments" && pathname.startsWith("/tournament-match/"))
     || (targetPath === "/streamer-tournaments" && pathname.startsWith("/streamer-tournament/"))
     || (targetPath === "/ranked" && pathname.startsWith("/ranked-match/"))
     || (targetPath === "/ranked/8s" && pathname.startsWith("/8s-match/"))
@@ -942,25 +946,22 @@ export default function Navbar() {
                   to="/dashboard"
                   data-nav-item
                   data-tone="orange"
-                  data-active={navItemIsActive(location.pathname, "/dashboard") ? "true" : "false"}
+                  data-active={navItemIsActive(location.pathname, "/dashboard", location.hash) ? "true" : "false"}
                   onMouseEnter={closeDropdowns}
                   className={`${navButtonClass} nav-dashboard-link ${
-                    navItemIsActive(location.pathname, "/dashboard")
+                    navItemIsActive(location.pathname, "/dashboard", location.hash)
                       ? navTone.orange.button
                       : "border-transparent text-vapor hover:border-orange/20 hover:bg-orange/[0.07] hover:text-orange"
                   }`}
                 >
-                  <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard") ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
+                  <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard", location.hash) ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
                     <House className="h-3.5 w-3.5" />
                   </span>
                   Home
                 </Link>
                 {[rankedNavGroup, ...navGroups.filter((group) => group.label !== "Teams")].map((group) => {
                   const GroupIcon = group.icon;
-                  const active = group === rankedNavGroup
-                    ? navItemIsActive(location.pathname, "/ranked")
-                      || navItemIsActive(location.pathname, "/ranked/8s")
-                    : group.items.some((item) => navItemIsActive(location.pathname, item.path));
+                  const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash));
                   const open = navMenuOpen === group.label;
                   const groupTone = navTone[group.tone] || navTone.cyan;
 
@@ -1007,7 +1008,7 @@ export default function Navbar() {
                             </div>
                             {group.items.map((item) => {
                               const ItemIcon = item.icon;
-                              const itemActive = navItemIsActive(location.pathname, item.path);
+                              const itemActive = navItemIsActive(location.pathname, item.path, location.hash);
                               const itemTone = navTone[item.tone] || navTone.cyan;
 
                               return (
@@ -1543,7 +1544,7 @@ export default function Navbar() {
               <Link
                 to="/dashboard"
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
-                  navItemIsActive(location.pathname, "/dashboard") ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
+                  navItemIsActive(location.pathname, "/dashboard", location.hash) ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
                 }`}
               >
                 <House className="h-5 w-5" />
@@ -1554,7 +1555,7 @@ export default function Navbar() {
                 <div className="space-y-1">
                   {rankedNavGroup.items.map((link) => {
                     const Icon = link.icon;
-                    const active = navItemIsActive(location.pathname, link.path);
+                    const active = navItemIsActive(location.pathname, link.path, location.hash);
                     return (
                       <Link
                         key={link.path}

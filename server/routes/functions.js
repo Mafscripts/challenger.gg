@@ -7159,6 +7159,8 @@ async function createRankedMatch(req) {
     return { success: false, error: "Invalid ranked game mode" };
   }
   const slotsPerTeam = Math.max(1, Number.parseInt(String(req.body.team_size || "1v1").split("v")[0], 10) || 1);
+  const allowedPlayRules = new Set(["controller_only", "mixed_pc_allowed", "console_only"]);
+  const playRule = allowedPlayRules.has(req.body.play_rule) ? req.body.play_rule : "controller_only";
   let party;
   try {
     party = await rankedPartyFor(req, req.body.team_id, slotsPerTeam);
@@ -7171,6 +7173,7 @@ async function createRankedMatch(req) {
     host_name: party.team?.name || nameFor(req.user),
     host_party_team_id: party.team?.id || "",
     host_party_size: party.size,
+    play_rule: playRule,
     best_of: 1,
     maps: RANKED_MAPS_BY_MODE[req.body.game_mode],
     final_map_id: "",

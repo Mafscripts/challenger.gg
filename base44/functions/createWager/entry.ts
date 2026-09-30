@@ -214,6 +214,8 @@ Deno.serve(async (req) => {
     if (match_type === 'ranked') return Response.json({ error: 'Ranked matches must use createRankedMatch' }, { status: 400 });
 
     const normalizedMatchType = ['8s', 'xp', 'wagers'].includes(match_type) ? match_type : (entryFee > 0 ? 'wagers' : 'xp');
+    const allowedPlayRules = new Set(['controller_only', 'mixed_pc_allowed', 'console_only']);
+    const playRule = allowedPlayRules.has(body.play_rule) ? body.play_rule : 'controller_only';
     const requiredSize = rosterSize(team_size);
     const isTeamMatch = normalizedMatchType === 'wagers';
     const paymentMode = paymentModeFor(body.payment_mode);
@@ -261,6 +263,7 @@ Deno.serve(async (req) => {
       team_entry_fee: toMoney(entryFee * requiredSize),
       required_players_per_team: requiredSize,
       roster_locked: isTeamMatch,
+      play_rule: playRule,
       total_prize_pool: totalPrizePool,
       platform_fee_percent: platformFeePercent,
       platform_fee_amount: platformFeeAmount,

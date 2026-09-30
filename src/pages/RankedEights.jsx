@@ -4,6 +4,7 @@ import { ArrowRight, CalendarDays, Crown, Plus, RefreshCw, Sparkles, Users } fro
 import { base44 } from "@/api/base44Client";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import MatchAccessBadges from "@/components/match/MatchAccessBadges";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
@@ -151,9 +152,12 @@ export default function RankedEights() {
                         <div className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-wider text-cyan">{lobby.game_mode_display || lobby.game_mode}</p><h3 className="mt-1 font-black">Random 4v4</h3></div><span className="rounded-full border border-cyan/20 bg-cyan/10 px-2.5 py-1 font-mono text-xs font-black text-cyan">{joined}/8</span></div>
                         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-cyan transition-all" style={{ width: `${(joined / 8) * 100}%` }} /></div>
                         <p className="mt-3 text-xs text-vapor">Hosted by {lobby.host_name || "Player"} · BO{lobby.best_of || 3}</p>
-                        <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || joined >= 8} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="mt-4 w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
-                          {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? "Finish active 8s first" : "Join solo"}
-                        </button>
+                        <MatchAccessBadges playRule={lobby.play_rule} className="mt-3" />
+                        {user && (
+                          <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || joined >= 8} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="mt-4 w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
+                            {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? "Finish active 8s first" : "Accept This Match"}
+                          </button>
+                        )}
                       </article>
                     );
                   })}

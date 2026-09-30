@@ -40,6 +40,34 @@ const wagerAmounts = [5, 10, 25, 50, 100];
 const playRuleIcons = { controller_only: Gamepad2, mixed_pc_allowed: Keyboard, console_only: Monitor };
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 
+function PlayRulePicker({ selectedPlayRule, onSelect, matchLabel }) {
+  return (
+    <div className="border-t border-white/5 pt-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold">Input & Platform Rule</p>
+          <p className="mt-0.5 text-xs text-vapor">Players see this rule before accepting your {matchLabel}.</p>
+        </div>
+        <span className="rounded-md border border-orange/20 bg-orange/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-orange">Required</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {WAGER_PLAY_RULES.map((rule) => {
+          const Icon = playRuleIcons[rule.value];
+          const selected = selectedPlayRule === rule.value;
+          return (
+            <button key={rule.value} type="button" onClick={() => onSelect(rule.value)} className={`rounded-xl border p-3 text-left transition-colors ${selected ? "border-green/35 bg-green/10" : "border-white/[0.07] bg-secondary/70 hover:border-white/15 hover:bg-white/[0.04]"}`}>
+              <div className="flex items-start justify-between gap-2"><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${selected ? "bg-green/15 text-green" : "bg-background/40 text-vapor"}`}><Icon className="h-4 w-4" /></span>{selected && <Check className="h-4 w-4 text-green" />}</div>
+              <p className="mt-2 text-[8px] font-black uppercase tracking-[0.14em] text-vapor">Allowed input</p>
+              <p className={`mt-0.5 text-xs font-black ${selected ? "text-green" : "text-foreground"}`}>{rule.inputLabel}</p>
+              <p className={`mt-1 text-[10px] font-bold ${rule.pcAllowed ? "text-cyan" : "text-orange"}`}>PC players {rule.pcAllowed ? "allowed" : "not allowed"}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const mapsByMode = {
   snd: [
     { id: "raid", name: "Raid" },
@@ -197,6 +225,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             team_size: selectedTeamSize,
             max_players: teamSizeObj.players,
             team_id: selectedTeamId || undefined,
+            play_rule: selectedPlayRule,
           });
 
           if (response.data.error) {
@@ -226,6 +255,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           setSelectedTeamSize(null);
           setSelectedAmount(0);
           setCustomAmount("");
+          setSelectedTeamId("");
+          setSelectedPlayRule("controller_only");
           setIsCreating(false);
           onClose();
           return;
@@ -244,6 +275,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             final_map_name: "",
             series_format: isEights ? selectedMode.id : undefined,
             series_modes: isEights ? selectedMode.modes : undefined,
+            play_rule: selectedPlayRule,
             match_type: matchType,
           });
 
@@ -517,27 +549,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     </button>
                   ))}
                 </div>
-                <div className="mb-6 border-t border-white/5 pt-5">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-bold">Input & Platform Rule</p>
-                      <p className="mt-0.5 text-xs text-vapor">Players see this rule before accepting your wager.</p>
-                    </div>
-                    <span className="rounded-md border border-orange/20 bg-orange/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-orange">Required</span>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {WAGER_PLAY_RULES.map((rule) => {
-                      const Icon = playRuleIcons[rule.value];
-                      const selected = selectedPlayRule === rule.value;
-                      return (
-                        <button key={rule.value} type="button" onClick={() => setSelectedPlayRule(rule.value)} className={`rounded-xl border p-3 text-left transition-colors ${selected ? "border-green/35 bg-green/10" : "border-white/[0.07] bg-secondary/70 hover:border-white/15 hover:bg-white/[0.04]"}`}>
-                          <div className="flex items-start justify-between gap-2"><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${selected ? "bg-green/15 text-green" : "bg-background/40 text-vapor"}`}><Icon className="h-4 w-4" /></span>{selected && <Check className="h-4 w-4 text-green" />}</div>
-                          <p className={`mt-2 text-xs font-black ${selected ? "text-green" : "text-foreground"}`}>{rule.label}</p>
-                          <p className="mt-1 text-[10px] leading-4 text-vapor">{rule.description}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="mb-6">
+                  <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel="wager" />
                 </div>
                 <div className="flex justify-between">
                   <button
@@ -675,6 +688,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                       XP match party: {selectedTeam.name} ({selectedTeam.members.length} players)
                     </p>
                   )}
+                </div>
+                <div className="mb-6">
+                  <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel={isEights ? "8s lobby" : "XP match"} />
                 </div>
                 <div className="flex justify-between">
                   <button

@@ -51,6 +51,8 @@ Deno.serve(async (req) => {
     if (![1, 2, 3, 4].includes(slotsPerTeam) || teamSize !== `${slotsPerTeam}v${slotsPerTeam}`) {
       return Response.json({ error: 'Invalid ranked team size' }, { status: 400 });
     }
+    const allowedPlayRules = new Set(['controller_only', 'mixed_pc_allowed', 'console_only']);
+    const playRule = allowedPlayRules.has(body.play_rule) ? body.play_rule : 'controller_only';
 
     const mapPool = mapsByMode[gameMode];
     const now = new Date().toISOString();
@@ -64,6 +66,7 @@ Deno.serve(async (req) => {
       game_mode: gameMode,
       game_mode_display: body.game_mode_display || gameMode,
       team_size: teamSize,
+      play_rule: playRule,
       best_of: 1,
       maps: mapPool.map((map) => map.name),
       final_map_id: '',

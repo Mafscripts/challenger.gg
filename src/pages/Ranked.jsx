@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import MatchAccessBadges from "@/components/match/MatchAccessBadges";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import RankBadge from "@/components/ui/RankBadge";
 import { toast } from "@/components/ui/use-toast";
@@ -305,6 +306,7 @@ export default function Ranked() {
                       return `${joined}/${slots} players · ${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`;
                     })()}
                   </p>
+                  <MatchAccessBadges playRule={match.play_rule} className="mb-3 mt-3" />
                   {match.host_id === user?.id || match.team_alpha_player_ids?.includes(user?.id) || match.team_bravo_player_ids?.includes(user?.id) ? (
                     <Link
                       to={`/ranked-match/${match.id}`}
@@ -312,7 +314,7 @@ export default function Ranked() {
                     >
                       Open Room
                     </Link>
-                  ) : (
+                  ) : user ? (
                     <div className="space-y-2">
                       {Number.parseInt(String(match.team_size || "1v1"), 10) > 1 && (
                         <div className="rounded-lg border border-white/[0.06] bg-background/35 p-2.5">
@@ -340,10 +342,10 @@ export default function Ranked() {
                         onClick={() => handleAcceptMatch(match)}
                         className="w-full py-2 bg-cyan text-background font-bold text-xs rounded-lg hover:bg-cyan/90 transition-all uppercase"
                       >
-                        {selectedPartyByMatch[match.id] ? "Join with team" : "Join solo"}
+                        Accept This Match
                       </button>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

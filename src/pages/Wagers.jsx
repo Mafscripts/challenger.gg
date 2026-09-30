@@ -2,15 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Zap, Plus, Clock3, History, Users, Gamepad2
+  Zap, Plus, Clock3, History, Users
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
+import MatchAccessBadges from "@/components/match/MatchAccessBadges";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
-import { wagerPlayRule } from "@/lib/wagerRules";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -312,7 +312,7 @@ export default function Wagers() {
                     <div>
                       <p className="text-base font-black">{w.host_id === user?.id ? "Your wager" : "Anonymous player"}</p>
                     </div>
-                    <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · Random map after acceptance</p><span className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-black uppercase tracking-wide text-vapor"><Gamepad2 className="h-3 w-3 text-cyan" /> {wagerPlayRule(w.play_rule).shortLabel}</span></div>
+                    <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · Random map after acceptance</p><MatchAccessBadges playRule={w.play_rule} className="mt-3" /></div>
                     <div><p className="font-mono text-xl font-black text-green">${w.entry_fee ?? w.amount ?? 0}</p><p className="text-[11px] uppercase text-vapor">per player</p></div>
                     <span className="w-fit rounded-md border border-cyan/15 bg-cyan/5 px-3 py-1.5 font-mono text-xs font-black text-cyan">BO{w.best_of || 1}</span>
                     <div className="md:justify-self-end">
@@ -328,7 +328,7 @@ export default function Wagers() {
                             {cancellingWagerId === w.id ? "Cancelling..." : "Cancel"}
                           </button>
                         </div>
-                      ) : w.status === "open" && (
+                      ) : user && w.status === "open" && (
                         <div className="flex flex-col gap-2">
                           <select
                             value={acceptTeamByWager[w.id] || ""}
@@ -365,7 +365,7 @@ export default function Wagers() {
                             disabled={!acceptTeamByWager[w.id]}
                             className="rounded-lg bg-green px-5 py-2.5 text-xs font-black uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-green/20 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            Accept wager
+                            Accept This Match
                           </button>
                         </div>
                       )}
