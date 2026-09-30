@@ -63,6 +63,7 @@ const tournamentGameModeOptions = [
   { value: "Best of 7", label: "Best of 7" },
 ];
 const tournamentModeSetOptions = [
+  { value: "bo1_snd", label: "BEST OF 1 SND", gameModes: ["snd"], gameMode: "Best of 1" },
   { value: "snd_only", label: "SND ONLY", gameModes: ["snd"] },
   { value: "hp_only", label: "HP ONLY", gameModes: ["hp"] },
   { value: "cdl_var", label: "CDL VAR · HP / SND / OVERLOAD", gameModes: ["hp", "snd", "overload"] },
@@ -87,16 +88,19 @@ const tournamentGameModeValue = (value) => {
   return cleaned.slice(0, 80);
 };
 const tournamentGameModesForSet = (value) => (
-  tournamentModeSetOptions.find((option) => option.value === value)?.gameModes || tournamentModeSetOptions[2].gameModes
+  tournamentModeSetOptions.find((option) => option.value === value)?.gameModes
+  || tournamentModeSetOptions.find((option) => option.value === "cdl_var").gameModes
 );
 const tournamentModeSetFor = (tournament) => {
   const gameModes = Array.isArray(tournament?.game_modes)
     ? tournament.game_modes.map((mode) => String(mode || "").toLowerCase()).filter(Boolean)
     : [];
+  const legacyMode = String(tournament?.game_mode || "").toLowerCase();
+  const isBestOfOne = legacyMode === "bo1_snd" || /\b(?:bo|best[\s-]*of)\s*1\b/i.test(legacyMode);
+  if ((gameModes.length === 1 && gameModes[0] === "snd" && isBestOfOne) || legacyMode === "bo1_snd") return "bo1_snd";
   if (gameModes.length === 1 && gameModes[0] === "snd") return "snd_only";
   if (gameModes.length === 1 && gameModes[0] === "hp") return "hp_only";
-  const legacyMode = String(tournament?.game_mode || "").toLowerCase();
-  if (["bo1_snd", "snd"].includes(legacyMode)) return "snd_only";
+  if (legacyMode === "snd") return "snd_only";
   if (legacyMode === "hp") return "hp_only";
   return "cdl_var";
 };
@@ -2887,7 +2891,15 @@ export default function Admin() {
                       <span className="text-[10px] text-vapor uppercase">Game modes</span>
                       <select
                         value={tournamentForm.game_mode_set}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode_set: event.target.value }))}
+                        onChange={(event) => {
+                          const gameModeSet = event.target.value;
+                          const preset = tournamentModeSetOptions.find((option) => option.value === gameModeSet);
+                          setTournamentForm((prev) => ({
+                            ...prev,
+                            game_mode_set: gameModeSet,
+                            ...(preset?.gameMode ? { game_mode: preset.gameMode } : {}),
+                          }));
+                        }}
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                       >
                         {tournamentModeSetOptions.map((option) => (
