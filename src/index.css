@@ -2292,3 +2292,51 @@ img {
 
   .home-slide-progress { width: 100%; }
 }
+
+@keyframes tf-loader-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes tf-loader-progress {
+  0% { transform: translateX(-100%) scaleX(.3); }
+  50% { transform: translateX(25%) scaleX(.55); }
+  100% { transform: translateX(180%) scaleX(.25); }
+}
+
+@keyframes tf-loader-logo {
+  0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 8px hsl(var(--cyan) / .08)); }
+  50% { transform: translateY(-3px); filter: drop-shadow(0 0 18px hsl(var(--cyan) / .2)); }
+}
+
+.tf-loader-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .055);
+}
+
+.tf-loader-shimmer::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(100deg, transparent 20%, rgba(20, 216, 255, .11) 46%, rgba(255, 130, 0, .07) 54%, transparent 80%);
+  animation: tf-loader-shimmer 1.6s ease-in-out infinite;
+}
+
+.tf-loader-progress {
+  transform-origin: left;
+  background: linear-gradient(90deg, transparent, hsl(var(--cyan)), hsl(var(--orange)), transparent);
+  animation: tf-loader-progress 1.5s ease-in-out infinite;
+}
+
+.tf-loader-logo {
+  animation: tf-loader-logo 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-loader-shimmer::after,
+  .tf-loader-progress,
+  .tf-loader-logo {
+    animation: none !important;
+  }
+}
