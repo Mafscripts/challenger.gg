@@ -64,6 +64,7 @@ const tournamentGameModeOptions = [
 ];
 const tournamentModeSetOptions = [
   { value: "bo1_snd", label: "BEST OF 1 SND", gameModes: ["snd"], gameMode: "Best of 1" },
+  { value: "hp_snd_hp", label: "HP / SND / HP", gameModes: ["hp", "snd"], gameMode: "Best of 3" },
   { value: "snd_only", label: "SND ONLY", gameModes: ["snd"] },
   { value: "hp_only", label: "HP ONLY", gameModes: ["hp"] },
   { value: "cdl_var", label: "CDL VAR · HP / SND / OVERLOAD", gameModes: ["hp", "snd", "overload"] },
@@ -98,6 +99,7 @@ const tournamentModeSetFor = (tournament) => {
   const legacyMode = String(tournament?.game_mode || "").toLowerCase();
   const isBestOfOne = legacyMode === "bo1_snd" || /\b(?:bo|best[\s-]*of)\s*1\b/i.test(legacyMode);
   if ((gameModes.length === 1 && gameModes[0] === "snd" && isBestOfOne) || legacyMode === "bo1_snd") return "bo1_snd";
+  if (gameModes.length === 2 && gameModes[0] === "hp" && gameModes[1] === "snd") return "hp_snd_hp";
   if (gameModes.length === 1 && gameModes[0] === "snd") return "snd_only";
   if (gameModes.length === 1 && gameModes[0] === "hp") return "hp_only";
   if (legacyMode === "snd") return "snd_only";
