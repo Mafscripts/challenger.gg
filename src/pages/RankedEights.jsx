@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CalendarDays, Crown, Plus, RefreshCw, Sparkles, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, Plus, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
+import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
-import MatchAccessBadges from "@/components/match/MatchAccessBadges";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
@@ -103,6 +103,30 @@ export default function RankedEights() {
           mode="eights"
           currentUser={user}
           openCount={lobbies.length}
+          matchfinder={(
+            <CompetitionMatchfinder loading={loading} emptyMessage="No 8s lobbies are open right now.">
+              {lobbies.map((lobby) => {
+                const joined = counts[lobby.id] || 0;
+                const alreadyIn = activeLobby?.id === lobby.id;
+                return (
+                  <CompetitionMatchfinderRow
+                    key={lobby.id}
+                    game={lobby.game_mode_display || lobby.game_mode}
+                    gameDetail={`4v4 · ${joined}/8 players`}
+                    competition="Ranked 8s"
+                    competitionDetail={`Hosted by ${lobby.host_name || "Player"} · BO${lobby.best_of || 3}`}
+                    playRule={lobby.play_rule}
+                    tone="orange"
+                    action={user ? (
+                      <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || joined >= 8} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
+                        {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? "Finish active 8s first" : "Accept This Match"}
+                      </button>
+                    ) : null}
+                  />
+                );
+              })}
+            </CompetitionMatchfinder>
+          )}
           action={activeLobby ? (
             <Link to={`/8s-match/${activeLobby.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background">
               Return to your 8s <ArrowRight className="h-4 w-4" />
@@ -133,46 +157,12 @@ export default function RankedEights() {
           </div>
         </section>
 
-        <div className="mb-6 grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,.75fr)]">
-          <section id="matchfinder" className="glass scroll-mt-24 overflow-hidden rounded-2xl border border-white/[0.07]">
-            <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
-              <div><h2 className="font-black">Open 8s lobbies</h2><p className="mt-1 text-xs text-vapor">Every lobby is fixed at 4v4 / 8 players.</p></div>
-              <button onClick={() => load()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh lobbies"><RefreshCw className="h-4 w-4" /></button>
-            </div>
-            <div className="p-4">
-              {loading ? <div className="py-12 text-center text-sm text-vapor">Loading 8s lobbies...</div> : lobbies.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 px-6 py-12 text-center"><Users className="mx-auto h-7 w-7 text-vapor" /><p className="mt-3 font-bold">No open lobby yet</p><p className="mt-1 text-xs text-vapor">Create the first lobby and wait for seven rivals.</p></div>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {lobbies.map((lobby) => {
-                    const joined = counts[lobby.id] || 0;
-                    const alreadyIn = activeLobby?.id === lobby.id;
-                    return (
-                      <article key={lobby.id} className="rounded-xl border border-white/[0.08] bg-secondary/45 p-4 transition-colors hover:border-cyan/25">
-                        <div className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-wider text-cyan">{lobby.game_mode_display || lobby.game_mode}</p><h3 className="mt-1 font-black">Random 4v4</h3></div><span className="rounded-full border border-cyan/20 bg-cyan/10 px-2.5 py-1 font-mono text-xs font-black text-cyan">{joined}/8</span></div>
-                        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-cyan transition-all" style={{ width: `${(joined / 8) * 100}%` }} /></div>
-                        <p className="mt-3 text-xs text-vapor">Hosted by {lobby.host_name || "Player"} · BO{lobby.best_of || 3}</p>
-                        <MatchAccessBadges playRule={lobby.play_rule} className="mt-3" />
-                        {user && (
-                          <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || joined >= 8} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="mt-4 w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
-                            {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? "Finish active 8s first" : "Accept This Match"}
-                          </button>
-                        )}
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="glass rounded-2xl border border-purple-300/15 p-5">
+        <section className="mb-6 glass rounded-2xl border border-purple-300/15 p-5">
             <div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-purple-300">Your progression</p><h2 className="mt-1 text-xl font-black">Level {level}</h2></div><div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Sparkles className="h-6 w-6" /></div></div>
             <div className="mt-6 flex items-end justify-between"><p className="font-mono text-2xl font-black">{currentXp.toLocaleString()} <span className="text-sm text-vapor">XP</span></p><p className="text-xs text-vapor">{xpTarget.toLocaleString()} needed</p></div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-purple-400 to-cyan" style={{ width: `${xpProgress}%` }} /></div>
             <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl border border-green/15 bg-green/5 p-3"><p className="text-[9px] font-black uppercase text-vapor">Win</p><p className="mt-1 font-mono font-black text-green">+150 XP</p></div><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3"><p className="text-[9px] font-black uppercase text-vapor">Played</p><p className="mt-1 font-mono font-black">+50 XP</p></div></div>
-          </section>
-        </div>
+        </section>
 
       </div>
       <CreateLobbyModal isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode="eights" />

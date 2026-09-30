@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
-  Zap, Plus, Clock3, History, Users
+  Plus, Clock3, Users
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
+import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
-import MatchAccessBadges from "@/components/match/MatchAccessBadges";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -17,10 +16,12 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
+const isWagerMatch = (wager) => (
+  (wager.match_type || ((wager.entry_fee ?? wager.amount ?? 0) > 0 ? "wagers" : "ranked")) === "wagers"
+);
 
 export default function Wagers() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState("active");
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [wagers, setWagers] = useState([]);
@@ -46,9 +47,7 @@ export default function Wagers() {
       try {
         const wagerList = await base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 50);
         if (!active) return;
-        setWagers((wagerList || []).filter((wager) => (
-          (wager.match_type || ((wager.entry_fee ?? wager.amount ?? 0) > 0 ? "wagers" : "ranked")) === "wagers"
-        )));
+        setWagers((wagerList || []).filter(isWagerMatch));
 
         if (user?.id) {
           const [wallets, hosted, challenged] = await Promise.all([
@@ -61,6 +60,7 @@ export default function Wagers() {
           setUser((current) => current ? { ...current, wallet_balance: Number(wallet?.available_balance ?? current.wallet_balance ?? 0), wallet: wallet || current.wallet } : current);
           setHistoryWagers([...hosted, ...challenged]
             .filter((wager, index, list) => list.findIndex((item) => item.id === wager.id) === index)
+            .filter(isWagerMatch)
             .filter((wager) => ["completed", "cancelled", "disputed", "score_conflict"].includes(wager.status))
             .sort((a, b) => new Date(b.match_completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.accepted_date || a.created_date || 0)));
         }
@@ -109,6 +109,7 @@ export default function Wagers() {
         setUserTeams(teams.filter(Boolean));
         const combinedHistory = [...hosted, ...challenged]
           .filter((w, index, list) => list.findIndex(item => item.id === w.id) === index)
+          .filter(isWagerMatch)
           .filter(w => ["completed", "cancelled", "disputed", "score_conflict"].includes(w.status))
           .sort((a, b) => new Date(b.match_completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.accepted_date || a.created_date || 0));
         const wallet = wallets[0];
@@ -123,7 +124,7 @@ export default function Wagers() {
         setUserTeams([]);
         setHistoryWagers([]);
       }
-      setWagers(wagerList.filter(w => (w.match_type || ((w.entry_fee ?? w.amount ?? 0) > 0 ? "wagers" : "ranked")) === "wagers"));
+      setWagers(wagerList.filter(isWagerMatch));
       setLoading(false);
     } catch (error) {
       console.error("Failed to load wagers:", error);
@@ -265,6 +266,41 @@ export default function Wagers() {
           mode="wagers"
           currentUser={user}
           openCount={wagers.length}
+          matchfinder={(
+            <div>
+              <div className="flex justify-end gap-1 overflow-x-auto border-b border-white/[0.06] px-5 py-3">
+                {["All", "$5-$10", "$25-$50", "$100+"].map((amount) => <button key={amount} onClick={() => setAmountFilter(amount)} className={`whitespace-nowrap rounded-md border px-4 py-2 text-[10px] font-black transition-all ${amountFilter === amount ? "border-green/30 bg-green/10 text-green" : "border-transparent text-vapor hover:bg-white/5 hover:text-foreground"}`}>{amount}</button>)}
+              </div>
+              <CompetitionMatchfinder loading={loading} emptyMessage="No wagers are open right now.">
+                {filteredWagers.map((wager) => (
+                  <CompetitionMatchfinderRow
+                    key={wager.id}
+                    game={wager.game_mode_display || wager.game_mode}
+                    gameDetail={`${wager.team_size} · $${wager.entry_fee ?? wager.amount ?? 0} per player`}
+                    competition="Wager"
+                    competitionDetail={`BO${wager.best_of || 1} · ${wager.host_id === user?.id ? "Your wager" : "Open challenge"}`}
+                    playRule={wager.play_rule}
+                    tone="green"
+                    action={wager.host_id === user?.id ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-orange"><Clock3 className="h-3.5 w-3.5" /> Awaiting opponent</span>
+                        <button type="button" onClick={() => setWagerToCancel(wager)} disabled={cancellingWagerId === wager.id} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black text-vapor hover:border-red-400/30 hover:text-red-400 disabled:opacity-50">{cancellingWagerId === wager.id ? "Cancelling..." : "Cancel"}</button>
+                      </div>
+                    ) : user ? (
+                      <div className="w-52 space-y-2">
+                        <select value={acceptTeamByWager[wager.id] || ""} onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [wager.id]: event.target.value }))} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none">
+                          <option value="">Select wager team</option>
+                          {compatibleTeamsFor(wager).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(wager.team_size)})</option>)}
+                        </select>
+                        {rosterSize(wager.team_size) > 1 && <select value={acceptPaymentByWager[wager.id] || "own"} onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [wager.id]: event.target.value }))} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none"><option value="own">Pay my own entry</option><option value="full_team">Pay full team entry</option></select>}
+                        <button onClick={() => handleAccept(wager)} disabled={!acceptTeamByWager[wager.id]} className="w-full rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-50">Accept This Match</button>
+                      </div>
+                    ) : null}
+                  />
+                ))}
+              </CompetitionMatchfinder>
+            </div>
+          )}
           action={
             <div className="flex flex-col gap-2">
               <Link to="/teams?create=wager" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/10 bg-secondary px-5 py-3.5 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-cyan/25 hover:bg-cyan/10 hover:text-cyan">
@@ -278,105 +314,8 @@ export default function Wagers() {
         />
         <ActivisionIdNotice user={user} className="mb-5" />
 
-        <div id="matchfinder" className="mb-5 flex scroll-mt-24 flex-col gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex rounded-lg bg-black/20 p-1">
-            <button onClick={() => setTab("active")} className={`flex flex-1 items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-bold transition-all sm:flex-none ${tab === "active" ? "bg-cyan/10 text-cyan shadow-sm" : "text-vapor hover:text-foreground"}`}><Zap className="h-4 w-4" /> Open wagers</button>
-            <button onClick={() => setTab("history")} className={`flex flex-1 items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-bold transition-all sm:flex-none ${tab === "history" ? "bg-cyan/10 text-cyan shadow-sm" : "text-vapor hover:text-foreground"}`}><History className="h-4 w-4" /> My history</button>
-          </div>
-          {tab === "active" && <div className="flex gap-1 overflow-x-auto">
-            {["All", "$5-$10", "$25-$50", "$100+"].map(a => <button key={a} onClick={() => setAmountFilter(a)} className={`whitespace-nowrap rounded-md border px-4 py-2.5 text-xs font-black transition-all ${amountFilter === a ? "border-green/30 bg-green/10 text-green" : "border-transparent text-vapor hover:bg-white/5 hover:text-foreground"}`}>{a}</button>)}
-          </div>}
-        </div>
-
-        {tab === "active" ? (
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-card/70 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
-            <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
-              <div><h2 className="text-lg font-black">Open challenges</h2><p className="mt-1 text-sm text-vapor">Choose a match that fits your team and stake.</p></div>
-              <span className="rounded-full bg-cyan/10 px-3 py-1.5 font-mono text-xs font-black text-cyan">{filteredWagers.length} OPEN</span>
-            </div>
-            <div className="hidden grid-cols-[1.1fr_1.6fr_.7fr_.7fr_1.5fr] gap-5 border-b border-white/5 bg-white/[0.015] px-6 py-3.5 text-xs font-black uppercase tracking-[0.12em] text-vapor md:grid">
-              <span>Posted by</span><span>Challenge</span><span>Stake</span><span>Series</span><span className="text-right">Action</span>
-            </div>
-            <div className="divide-y divide-white/5">
-              {loading ? (
-                <div className="px-5 py-8 text-center text-vapor">Loading wagers...</div>
-              ) : filteredWagers.length === 0 ? (
-                <div className="px-5 py-8 text-center text-vapor">No active wagers</div>
-              ) : (
-                filteredWagers.map((w) => (
-                  <motion.div
-                    key={w.id}
-                    whileHover={{ backgroundColor: "rgba(255,255,255,0.02)", transition: { duration: 0.1, ease: "easeOut" } }}
-                    className="grid gap-4 px-6 py-6 md:min-h-24 md:grid-cols-[1.1fr_1.6fr_.7fr_.7fr_1.5fr] md:items-center md:gap-5"
-                  >
-                    <div>
-                      <p className="text-base font-black">{w.host_id === user?.id ? "Your wager" : "Anonymous player"}</p>
-                    </div>
-                    <div><p className="text-base font-bold">{w.game_mode_display}</p><p className="mt-1.5 text-sm text-vapor">{w.team_size} · Random map after acceptance</p><MatchAccessBadges playRule={w.play_rule} className="mt-3" /></div>
-                    <div><p className="font-mono text-xl font-black text-green">${w.entry_fee ?? w.amount ?? 0}</p><p className="text-[11px] uppercase text-vapor">per player</p></div>
-                    <span className="w-fit rounded-md border border-cyan/15 bg-cyan/5 px-3 py-1.5 font-mono text-xs font-black text-cyan">BO{w.best_of || 1}</span>
-                    <div className="md:justify-self-end">
-                      {w.status === "open" && w.host_id === user?.id ? (
-                        <div className="flex items-center gap-3">
-                          <span className="inline-flex items-center gap-2 text-sm font-bold text-orange"><Clock3 className="h-4 w-4" /> Awaiting opponent</span>
-                          <button
-                            type="button"
-                            onClick={() => setWagerToCancel(w)}
-                            disabled={cancellingWagerId === w.id}
-                            className="rounded-lg border border-white/10 px-4 py-2.5 text-xs font-black text-vapor transition-all hover:border-red-400/30 hover:bg-red-400/10 hover:text-red-400 disabled:opacity-50"
-                          >
-                            {cancellingWagerId === w.id ? "Cancelling..." : "Cancel"}
-                          </button>
-                        </div>
-                      ) : user && w.status === "open" && (
-                        <div className="flex flex-col gap-2">
-                          <select
-                            value={acceptTeamByWager[w.id] || ""}
-                            onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [w.id]: event.target.value }))}
-                            className="px-2 py-1.5 bg-secondary text-vapor text-xs rounded border border-white/5 focus:border-cyan/30 focus:outline-none"
-                          >
-                            <option value="">Select wager team</option>
-                            {compatibleTeamsFor(w).map((team) => (
-                              <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(w.team_size)})</option>
-                            ))}
-                          </select>
-                          {compatibleTeamsFor(w).length === 0 && (
-                            <Link to="/teams?create=wager" className="text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">
-                              Create a wager team first
-                            </Link>
-                          )}
-                          {acceptTeamByWager[w.id] && compatibleTeamsFor(w).find((team) => team.id === acceptTeamByWager[w.id])?.members.length < rosterSize(w.team_size) && (
-                            <span className="text-[10px] text-orange">
-                              Needs {rosterSize(w.team_size)} active players
-                            </span>
-                          )}
-                          {rosterSize(w.team_size) > 1 && (
-                              <select
-                                value={acceptPaymentByWager[w.id] || "own"}
-                                onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [w.id]: event.target.value }))}
-                                className="px-2 py-1.5 bg-secondary text-vapor text-xs rounded border border-white/5 focus:border-cyan/30 focus:outline-none"
-                              >
-                                <option value="own">Pay my own entry only</option>
-                                <option value="full_team">Pay full team entry</option>
-                              </select>
-                          )}
-                          <button
-                            onClick={() => handleAccept(w)}
-                            disabled={!acceptTeamByWager[w.id]}
-                            className="rounded-lg bg-green px-5 py-2.5 text-xs font-black uppercase tracking-wider text-background transition-all hover:shadow-lg hover:shadow-green/20 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            Accept This Match
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="glass rounded-xl border border-white/5 overflow-hidden">
+        <section className="glass overflow-hidden rounded-xl border border-white/5">
+          <div className="border-b border-white/5 px-5 py-4"><h2 className="font-black">My wager history</h2><p className="mt-1 text-xs text-vapor">Your completed and previous wager matches.</p></div>
             <div className="divide-y divide-white/5">
               {historyWagers.length === 0 ? (
                 <div className="px-5 py-8 text-center text-vapor">
@@ -399,8 +338,7 @@ export default function Wagers() {
                 })
               )}
             </div>
-          </div>
-        )}
+        </section>
 
         {/* Create Lobby Modal */}
         <CreateLobbyModal

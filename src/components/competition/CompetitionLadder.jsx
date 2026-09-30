@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   ChevronRight,
@@ -188,7 +188,9 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
   );
 }
 
-export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action }) {
+export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [xpRows, setXpRows] = useState([]);
   const [rankedRows, setRankedRows] = useState([]);
@@ -198,6 +200,8 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const [leaderboardTrophies, setLeaderboardTrophies] = useState({});
   const [loading, setLoading] = useState(true);
   const copy = modeCopy[mode] || modeCopy.xp;
+  const activeTab = location.hash === "#matchfinder" ? "matchfinder" : "standings";
+  const selectTab = (tab) => navigate(`${location.pathname}${location.search}#${tab}`);
 
   useEffect(() => {
     let active = true;
@@ -394,16 +398,16 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         </div>
       </section>
 
-      <section id="standings" className="premium-panel scroll-mt-24 overflow-hidden rounded-xl border border-white/[0.08]">
+      <section id={activeTab} className="premium-panel scroll-mt-24 overflow-hidden rounded-xl border border-white/[0.08]">
         <div className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div><div className="flex items-center gap-2"><span className={`h-2 w-2 ${copy.line}`} /><h2 className="font-black">{copy.title} standings</h2></div><p className="mt-1 text-xs text-vapor">A separate leaderboard for this competition.</p></div>
+          <div><div className="flex items-center gap-2"><span className={`h-2 w-2 ${copy.line}`} /><h2 className="font-black">{activeTab === "matchfinder" ? `${copy.title} matchfinder` : `${copy.title} standings`}</h2></div><p className="mt-1 text-xs text-vapor">{activeTab === "matchfinder" ? `${openCount} open ${openCount === 1 ? "match" : "matches"} in this competition.` : "A separate leaderboard for this competition."}</p></div>
           <div className="flex rounded-lg border border-white/[0.07] bg-black/15 p-1 text-[9px] font-black uppercase tracking-wider">
-            <span className={`rounded-md px-3 py-2 ${copy.accent} bg-white/[0.04]`}><Medal className="mr-1.5 inline h-3 w-3" /> Standings</span>
-            <a href="#matchfinder" className="rounded-md px-3 py-2 text-vapor hover:text-white"><Gamepad2 className="mr-1.5 inline h-3 w-3" /> Matchfinder</a>
+            <button type="button" onClick={() => selectTab("standings")} className={`rounded-md px-3 py-2 ${activeTab === "standings" ? `${copy.accent} bg-white/[0.04]` : "text-vapor hover:text-white"}`}><Medal className="mr-1.5 inline h-3 w-3" /> Standings</button>
+            <button type="button" onClick={() => selectTab("matchfinder")} className={`rounded-md px-3 py-2 ${activeTab === "matchfinder" ? `${copy.accent} bg-white/[0.04]` : "text-vapor hover:text-white"}`}><Gamepad2 className="mr-1.5 inline h-3 w-3" /> Matchfinder</button>
             <Link to="/rules" className="rounded-md px-3 py-2 text-vapor hover:text-white"><ShieldCheck className="mr-1.5 inline h-3 w-3" /> Rules</Link>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        {activeTab === "matchfinder" ? matchfinder : <div className="overflow-x-auto">
           <div className="min-w-[1080px]">
             <div className="grid grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] gap-3 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor">
               <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span><span className="text-center">XP</span><span>Trophies</span><span className="text-right">{mode === "wagers" ? "Winnings" : mode === "eights" ? "Rating" : "ELO"}</span>
@@ -422,8 +426,8 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
               </div>
             ))}
           </div>
-        </div>
-        {standings.length > 0 && <div className="flex items-center justify-end px-5 py-3 text-[9px] font-black uppercase tracking-wider text-vapor">Top {standings.length} players <ChevronRight className="ml-1 h-3.5 w-3.5" /></div>}
+        </div>}
+        {activeTab === "standings" && standings.length > 0 && <div className="flex items-center justify-end px-5 py-3 text-[9px] font-black uppercase tracking-wider text-vapor">Top {standings.length} players <ChevronRight className="ml-1 h-3.5 w-3.5" /></div>}
       </section>
     </div>
   );

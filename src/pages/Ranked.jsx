@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy, Users } from "lucide-react";
+import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
-import MatchAccessBadges from "@/components/match/MatchAccessBadges";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
+import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import RankBadge from "@/components/ui/RankBadge";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
@@ -227,6 +227,44 @@ export default function Ranked() {
           mode="xp"
           currentUser={user}
           openCount={rankedMatches.length}
+          matchfinder={(
+            <CompetitionMatchfinder loading={loadingMatches} emptyMessage="No XP matches are open right now.">
+              {rankedMatches.map((match) => {
+                const slots = Math.max(1, Number.parseInt(String(match.team_size || "1v1").split("v")[0], 10) || 1) * 2;
+                const joined = new Set([...(match.team_alpha_player_ids || [match.host_id]), ...(match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : []))].filter(Boolean)).size;
+                const belongsToUser = match.host_id === user?.id || match.team_alpha_player_ids?.includes(user?.id) || match.team_bravo_player_ids?.includes(user?.id);
+                const partyMatch = Number.parseInt(String(match.team_size || "1v1"), 10) > 1;
+                return (
+                  <CompetitionMatchfinderRow
+                    key={match.id}
+                    game={match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}
+                    gameDetail={`${match.team_size} · ${joined}/${slots} players`}
+                    competition="XP Ranked"
+                    competitionDetail={`${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`}
+                    playRule={match.play_rule}
+                    tone="cyan"
+                    action={belongsToUser ? (
+                      <Link to={`/ranked-match/${match.id}`} className="inline-flex min-w-44 items-center justify-center rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room</Link>
+                    ) : user ? (
+                      <div className="w-52 space-y-2">
+                        {partyMatch && (
+                          <select value={selectedPartyByMatch[match.id] || ""} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
+                            <option value="">Solo player</option>
+                            {rankedTeams.filter((team) => {
+                              const partySize = Number(team.roster_size || team.members.length || 0);
+                              const matchSize = Number.parseInt(String(match.team_size || "1v1"), 10) || 1;
+                              return partySize >= 2 && partySize <= matchSize && team.members.length === partySize;
+                            }).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player party)</option>)}
+                          </select>
+                        )}
+                        <button onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background">Accept This Match</button>
+                      </div>
+                    ) : null}
+                  />
+                );
+              })}
+            </CompetitionMatchfinder>
+          )}
           action={
             <div className="flex w-full flex-col gap-3 xl:w-[320px]">
               <Link to="/rules" className="group rounded-xl border border-cyan/35 bg-secondary px-4 py-3 shadow-sm transition-colors hover:border-cyan/55 hover:bg-secondary/90">
@@ -273,84 +311,6 @@ export default function Ranked() {
             </Link>
           </div>
         )}
-
-        <div id="matchfinder" className="glass scroll-mt-24 rounded-xl border border-white/5 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-sm flex items-center gap-2">
-              <Swords className="w-4 h-4 text-cyan" /> Available XP Matches
-            </h3>
-            <button onClick={loadRankedData} className="text-xs text-cyan hover:underline">Refresh</button>
-          </div>
-          {loadingMatches ? (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-2 border-cyan/20 border-t-cyan rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-vapor text-sm">Loading matches...</p>
-            </div>
-          ) : rankedMatches.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-vapor text-sm mb-2">No XP matches available</p>
-              <p className="text-xs text-vapor/60">Create one to open the ladder.</p>
-            </div>
-          ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {rankedMatches.map((match) => (
-                <div key={match.id} className="bg-secondary/50 rounded-lg border border-white/5 p-4 hover:border-cyan/30 transition-all">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono text-cyan">{match.team_size}</span>
-                    <span className="text-xs text-vapor">{match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}</span>
-                  </div>
-                  <p className="text-sm font-bold mb-1 text-cyan">
-                    {(() => {
-                      const slots = Math.max(1, Number.parseInt(String(match.team_size || "1v1").split("v")[0], 10) || 1) * 2;
-                      const joined = new Set([...(match.team_alpha_player_ids || [match.host_id]), ...(match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : []))].filter(Boolean)).size;
-                      return `${joined}/${slots} players · ${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`;
-                    })()}
-                  </p>
-                  <MatchAccessBadges playRule={match.play_rule} className="mb-3 mt-3" />
-                  {match.host_id === user?.id || match.team_alpha_player_ids?.includes(user?.id) || match.team_bravo_player_ids?.includes(user?.id) ? (
-                    <Link
-                      to={`/ranked-match/${match.id}`}
-                      className="block w-full py-2 bg-secondary text-center text-foreground font-bold text-xs rounded-lg hover:bg-white/10 transition-all uppercase"
-                    >
-                      Open Room
-                    </Link>
-                  ) : user ? (
-                    <div className="space-y-2">
-                      {Number.parseInt(String(match.team_size || "1v1"), 10) > 1 && (
-                        <div className="rounded-lg border border-white/[0.06] bg-background/35 p-2.5">
-                          <div className="mb-1.5 flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-vapor"><Users className="h-3 w-3" /> Join with</span>
-                            <Link to="/teams?create=ranked" className="text-[9px] font-black uppercase tracking-wider text-cyan hover:underline">Create team</Link>
-                          </div>
-                          <select
-                            value={selectedPartyByMatch[match.id] || ""}
-                            onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))}
-                            className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none"
-                          >
-                            <option value="">Solo player</option>
-                            {rankedTeams
-                              .filter((team) => {
-                                const partySize = Number(team.roster_size || team.members.length || 0);
-                                const matchSize = Number.parseInt(String(match.team_size || "1v1"), 10) || 1;
-                                return partySize >= 2 && partySize <= matchSize && team.members.length === partySize;
-                              })
-                              .map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player party)</option>)}
-                          </select>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => handleAcceptMatch(match)}
-                        className="w-full py-2 bg-cyan text-background font-bold text-xs rounded-lg hover:bg-cyan/90 transition-all uppercase"
-                      >
-                        Accept This Match
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
