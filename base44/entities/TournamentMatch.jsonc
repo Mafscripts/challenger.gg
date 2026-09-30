@@ -162,6 +162,18 @@
       "type": "string",
       "title": "Tournament Game Mode"
     },
+    "tournament_game_modes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "snd",
+          "hp",
+          "overload"
+        ]
+      },
+      "title": "Tournament Game Modes"
+    },
     "best_of": {
       "type": "number",
       "default": 3,

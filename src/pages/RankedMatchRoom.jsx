@@ -20,7 +20,8 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
-import MatchChat from "@/components/match/MatchChat";
+import MatchRoomChat from "@/components/match/MatchRoomChat";
+import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import RankedVoicePanel from "@/components/match/RankedVoicePanel";
 import RankBadge from "@/components/ui/RankBadge";
@@ -442,11 +443,13 @@ export default function RankedMatchRoom() {
   const loadPlayer = async (userId, fallbackName) => {
     if (!userId) return null;
 
-    const [userRows, statsRows] = await Promise.all([
+    const [userRows, statsRows, profileRows] = await Promise.all([
       base44.entities.User.getFresh(userId).then((row) => row).catch(() => null),
       base44.entities.RankedStats.filterFresh({ user_id: userId }).catch(() => []),
+      base44.entities.PlayerProfile.filterFresh({ user_id: userId }, "-created_date", 1).catch(() => []),
     ]);
     const stats = statsRows?.[0] || {};
+    const profile = profileRows?.[0] || {};
 
     return {
       id: userId,
@@ -456,6 +459,19 @@ export default function RankedMatchRoom() {
       elo: stats.elo || 0,
       wins: stats.wins || 0,
       losses: stats.losses || 0,
+      lifetime_earnings: Math.max(Number(userRows?.lifetime_earnings || 0), Number(userRows?.total_wager_earnings || 0)),
+      gold_count: userRows?.gold_count || 0,
+      silver_count: userRows?.silver_count || 0,
+      bronze_count: userRows?.bronze_count || 0,
+      premium_count: userRows?.premium_count || 0,
+      champion_count: userRows?.champion_count || userRows?.invitational_count || 0,
+      socials: {
+        discord: profile.discord || userRows?.discord || "",
+        twitter: profile.twitter || profile.x || userRows?.twitter || userRows?.x || "",
+        twitch: profile.twitch || userRows?.twitch || "",
+        youtube: profile.youtube || userRows?.youtube || "",
+        website: profile.website || userRows?.website || "",
+      },
       win_streak: stats.win_streak || 0,
       peak_elo: stats.peak_elo || 0,
       matches_played: stats.matches_played || 0,
@@ -810,24 +826,23 @@ export default function RankedMatchRoom() {
               <Link to="/ranked" className="rounded-lg border border-white/[0.08] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor hover:text-white">Ranked</Link>
             </div>
           </div>
-          <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_360px_minmax(0,1fr)] xl:p-5">
-            <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} order-1`}><PlayerPanel label="Team Alpha" teamName={match.host_name} color="cyan" players={visibleAlphaPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} /></div>
-            <div className={`${communicationHeightClass(slotsPerRankedTeam(match))} order-3 flex min-h-0 flex-col gap-2 xl:order-2`}>
+          <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_410px] xl:p-5">
+            <div className="min-w-0 space-y-4">
+              <MatchTeamTable label="Team Alpha" name={match.host_name || "Team Alpha"} color="orange" players={visibleAlphaPlayers} captainId={match.host_id} finalScore={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} />
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-3 py-2">
-                <span className="truncate text-right text-[9px] font-black uppercase tracking-wider text-cyan">{match.host_name || "Team Alpha"}</span>
+                <span className="truncate text-right text-[9px] font-black uppercase tracking-wider text-orange">{match.host_name || "Team Alpha"}</span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-card text-[8px] font-black uppercase text-vapor">VS</span>
-                <span className="truncate text-[9px] font-black uppercase tracking-wider text-orange">{match.challenger_name || "Team Bravo"}</span>
+                <span className="truncate text-[9px] font-black uppercase tracking-wider text-cyan">{match.challenger_name || "Team Bravo"}</span>
               </div>
+              <MatchTeamTable label="Team Bravo" name={match.challenger_name || "Opponent pending"} color="cyan" players={visibleBravoPlayers} captainId={match.challenger_id} finalScore={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} />
+            </div>
+            <div className="flex min-w-0 flex-col gap-2">
               <RankedVoicePanel match={match} user={user} isParticipant={isParticipant} />
-              <MatchChat
+              <MatchRoomChat
                 conversationId={match.id}
                 matchType="ranked"
-                accent="cyan"
-                teamAPlayerIds={visibleAlphaPlayers}
-                teamBPlayerIds={visibleBravoPlayers}
-                compact
-                sticky={false}
-                heightClass="min-h-[250px] flex-1"
+                teamAPlayers={visibleAlphaPlayers}
+                teamBPlayers={visibleBravoPlayers}
                 inputActions={(
                   <details className="group">
                     <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2 text-[8px] font-black uppercase tracking-wider text-vapor hover:text-white [&::-webkit-details-marker]:hidden">
@@ -850,7 +865,6 @@ export default function RankedMatchRoom() {
                 )}
               />
             </div>
-            <div className={`${arenaHeightClass(slotsPerRankedTeam(match))} order-2 xl:order-3`}><PlayerPanel label="Team Bravo" teamName={match.challenger_name || "Opponent pending"} color="orange" players={visibleBravoPlayers} slots={slotsPerRankedTeam(match)} score={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} /></div>
           </div>
         </section>
 

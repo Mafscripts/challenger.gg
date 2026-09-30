@@ -4,10 +4,12 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
     .catch(() => []);
 
   const hydratedPlayers = await Promise.all((participantRows || []).map(async (participant) => {
-    const [userRow, inventoryRows] = await Promise.all([
+    const [userRow, inventoryRows, profileRows] = await Promise.all([
       base44.entities.User[options.fresh ? "getFresh" : "get"](participant.user_id).catch(() => null),
       base44.entities.UserInventory[options.fresh ? "filterFresh" : "filter"]({ user_id: participant.user_id }, "-acquired_date", 200).catch(() => []),
+      base44.entities.PlayerProfile[options.fresh ? "filterFresh" : "filter"]({ user_id: participant.user_id }, "-created_date", 1).catch(() => []),
     ]);
+    const profileRow = profileRows?.[0] || {};
 
     const inventoryTrophies = (inventoryRows || []).reduce((counts, item) => {
       const text = String([item.item_name, item.unlock_key, item.item_rarity, item.purchase_method].filter(Boolean).join(" ")).toLowerCase();
@@ -49,6 +51,13 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
       bronze_count: Number(userRow?.bronze_count || 0) + inventoryTrophies.bronze,
       premium_count: Number(userRow?.premium_count || 0) + inventoryTrophies.premium,
       champion_count: Number(userRow?.champion_count || userRow?.invitational_count || 0) + inventoryTrophies.champion,
+      socials: {
+        discord: profileRow.discord || userRow?.discord || "",
+        twitter: profileRow.twitter || profileRow.x || userRow?.twitter || userRow?.x || "",
+        twitch: profileRow.twitch || userRow?.twitch || "",
+        youtube: profileRow.youtube || userRow?.youtube || "",
+        website: profileRow.website || userRow?.website || "",
+      },
       team: participant.team,
       entry_fee_paid: participant.entry_fee_paid,
       payment_status: participant.payment_status,

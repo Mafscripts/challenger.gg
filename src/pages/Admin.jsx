@@ -57,25 +57,52 @@ const defaultTournamentSndMapsText = defaultTournamentSndMaps.join("\n");
 const defaultTournamentHpMapsText = defaultTournamentHpMaps.join("\n");
 const defaultTournamentOverloadMapsText = defaultTournamentOverloadMaps.join("\n");
 const tournamentGameModeOptions = [
-  { value: "bo1_snd", label: "BO1 SND - 1 and done" },
-  { value: "snd", label: "BO3 Search & Destroy" },
-  { value: "hp", label: "BO3 Hardpoint" },
-  { value: "overload", label: "BO3 Overload" },
-  { value: "snd_hp_snd", label: "BO3 SND / HP / SND" },
-  { value: "bo3_hp_overload_snd", label: "BO3 HP / Overload / SND" },
-  { value: "bo5_hp_overload_snd_hp_snd", label: "BO5 HP / Overload / SND / HP / SND" },
+  { value: "Best of 1", label: "Best of 1" },
+  { value: "Best of 3", label: "Best of 3" },
+  { value: "Best of 5", label: "Best of 5" },
+  { value: "Best of 7", label: "Best of 7" },
 ];
-const tournamentGameModeLabel = (value) => (
-  tournamentGameModeOptions.find((option) => option.value === value)?.label || String(value || "")
-);
+const tournamentModeSetOptions = [
+  { value: "snd_only", label: "SND ONLY", gameModes: ["snd"] },
+  { value: "hp_only", label: "HP ONLY", gameModes: ["hp"] },
+  { value: "cdl_var", label: "CDL VAR · HP / SND / OVERLOAD", gameModes: ["hp", "snd", "overload"] },
+];
+const legacyTournamentBestOf = {
+  bo1_snd: 1,
+  snd: 3,
+  hp: 3,
+  overload: 3,
+  snd_hp_snd: 3,
+  bo3_hp_overload_snd: 3,
+  bo5_hp_overload_snd_hp_snd: 5,
+};
+const tournamentGameModeLabel = (value) => {
+  const cleaned = String(value || "").trim();
+  if (legacyTournamentBestOf[cleaned]) return `Best of ${legacyTournamentBestOf[cleaned]}`;
+  const bestOf = cleaned.match(/\b(?:bo|best[\s-]*of)\s*(\d{1,2})\b/i)?.[1];
+  return bestOf ? `Best of ${bestOf}` : cleaned;
+};
 const tournamentGameModeValue = (value) => {
   const cleaned = String(value || "").trim();
-  const preset = tournamentGameModeOptions.find((option) => (
-    option.value.toLowerCase() === cleaned.toLowerCase()
-    || option.label.toLowerCase() === cleaned.toLowerCase()
-  ));
-  return (preset?.value || cleaned).slice(0, 80);
+  return cleaned.slice(0, 80);
 };
+const tournamentGameModesForSet = (value) => (
+  tournamentModeSetOptions.find((option) => option.value === value)?.gameModes || tournamentModeSetOptions[2].gameModes
+);
+const tournamentModeSetFor = (tournament) => {
+  const gameModes = Array.isArray(tournament?.game_modes)
+    ? tournament.game_modes.map((mode) => String(mode || "").toLowerCase()).filter(Boolean)
+    : [];
+  if (gameModes.length === 1 && gameModes[0] === "snd") return "snd_only";
+  if (gameModes.length === 1 && gameModes[0] === "hp") return "hp_only";
+  const legacyMode = String(tournament?.game_mode || "").toLowerCase();
+  if (["bo1_snd", "snd"].includes(legacyMode)) return "snd_only";
+  if (legacyMode === "hp") return "hp_only";
+  return "cdl_var";
+};
+const tournamentModeSetLabel = (tournament) => (
+  tournamentModeSetOptions.find((option) => option.value === tournamentModeSetFor(tournament))?.label || "CDL VAR"
+);
 const tournamentTeamSizeOptions = Array.from({ length: 8 }, (_, index) => `${index + 1}v${index + 1}`);
 const userBadgeOptions = [
   { value: "none", label: "No special badge", types: [] },
@@ -124,7 +151,8 @@ const defaultTournamentForm = {
   name: "",
   image_url: "",
   banner_url: "",
-  game_mode: tournamentGameModeLabel("snd_hp_snd"),
+  game_mode: "Best of 3",
+  game_mode_set: "cdl_var",
   team_size: "2v2",
   entry_fee: "0",
   entry_type: "free",
@@ -1274,6 +1302,7 @@ export default function Admin() {
       image_url: tournamentForm.image_url.trim(),
       banner_url: tournamentForm.banner_url.trim(),
       game_mode: tournamentGameModeValue(tournamentForm.game_mode),
+      game_modes: tournamentGameModesForSet(tournamentForm.game_mode_set),
       team_size: tournamentForm.team_size,
       entry_fee: Number(tournamentForm.entry_fee || 0),
       entry_type: entryType,
@@ -1323,7 +1352,7 @@ export default function Admin() {
     }
 
     if (!tournamentForm.game_mode.trim()) {
-      toast({ title: "Game mode required", description: "Choose a suggestion or enter a custom game mode.", variant: "destructive" });
+      toast({ title: "Series required", description: "Choose or enter a Best of series length.", variant: "destructive" });
       return;
     }
 
@@ -1356,6 +1385,7 @@ export default function Admin() {
       image_url: tournament.image_url || "",
       banner_url: tournament.banner_url || "",
       game_mode: tournamentGameModeLabel(tournament.game_mode || "snd"),
+      game_mode_set: tournamentModeSetFor(tournament),
       team_size: tournament.team_size || "2v2",
       entry_fee: String(tournament.entry_fee ?? 0),
       entry_type: tournament.entry_type || (tournament.is_premium_only ? "premium" : (Number(tournament.entry_fee || 0) > 0 ? "credits" : "free")),
@@ -2836,12 +2866,12 @@ export default function Admin() {
                       <span className="block text-[9px] text-vapor/70">Recommended: 1920 × 640 px (3:1)</span>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Game mode</span>
+                      <span className="text-[10px] text-vapor uppercase">Series / Best of</span>
                       <input
                         list="admin-tournament-game-modes"
                         value={tournamentForm.game_mode}
                         onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode: event.target.value }))}
-                        placeholder="Select or type a custom mode"
+                        placeholder="For example: Best of 3"
                         maxLength={80}
                         required
                         className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
@@ -2851,7 +2881,20 @@ export default function Admin() {
                           <option key={option.value} value={option.label} />
                         ))}
                       </datalist>
-                      <span className="block text-[9px] text-vapor/70">Choose a suggestion or type your own, for example “Best of 5”.</span>
+                      <span className="block text-[9px] text-vapor/70">Sets the series length, for example “Best of 3” or “Best of 5”.</span>
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] text-vapor uppercase">Game modes</span>
+                      <select
+                        value={tournamentForm.game_mode_set}
+                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode_set: event.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
+                      >
+                        {tournamentModeSetOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                      <span className="block text-[9px] text-vapor/70">Used for every map and its matching map pool.</span>
                     </label>
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">Team size</span>
@@ -3191,6 +3234,7 @@ export default function Admin() {
                     ["Name", tournament.name],
                     ["Status", <StatusPill status={tournament.status} />],
                     ["Teams", `${tournament.registered_teams || 0}/${tournament.max_teams}`],
+                    ["Modes", tournamentModeSetLabel(tournament)],
                     ["Format", (tournament.bracket_type || tournament.format) === "double_elimination" ? "Double Elimination · Lower Bracket" : "Single Elimination"],
                     ["Prize", tournamentPrizeSummary(tournament)],
                     ["Featured", tournament.is_featured ? <span className="rounded-md border border-blue-400/25 bg-blue-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-blue-300">Featured</span> : "No"],

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import MatchChat from "@/components/match/MatchChat";
+import MatchRoomChat from "@/components/match/MatchRoomChat";
+import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
@@ -80,7 +81,7 @@ export default function EightsMatchRoom() {
     ]);
     const xp = xpRows?.[0];
     const stats = statRows?.[0];
-    return { ...player, xp_level: xp?.level || 1, eights_rating: stats?.rating || 1000, eights_wins: stats?.wins || 0, monthly_wins: stats?.monthly_wins || 0 };
+    return { ...player, xp_level: xp?.level || 1, eights_rating: stats?.rating || 1000, eights_wins: stats?.wins || 0, eights_losses: stats?.losses || 0, monthly_wins: stats?.monthly_wins || 0 };
   })), []);
 
   const loadRoom = useCallback(async (quiet = false) => {
@@ -338,22 +339,21 @@ export default function EightsMatchRoom() {
           </section>
         )}
 
-        <div className="grid min-w-0 divide-y divide-white/[0.06] border-t border-white/[0.06] xl:grid-cols-[minmax(0,1fr)_minmax(340px,.72fr)_minmax(0,1fr)] xl:divide-x xl:divide-y-0">
-          <TeamPanel embedded label="Team Alpha" players={teamAlpha} captainId={match.host_id} tone="cyan" score={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : undefined} winner={alphaWinner} />
-          <div className="flex min-w-0 flex-col gap-4 p-4">
+        <div className="grid min-w-0 gap-5 border-t border-white/[0.06] p-4 xl:grid-cols-[minmax(0,1fr)_410px] xl:p-5">
+          <div className="min-w-0 space-y-4">
+            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
+            <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
+            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
+          </div>
+          <div className="flex min-w-0 flex-col gap-4">
             <div className="rounded-xl border border-white/[0.07] bg-black/15 p-4 text-center">
               <Swords className="mx-auto h-6 w-6 text-cyan" /><p className="mt-3 text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Randomized 4v4</p><p className="mt-2 text-2xl font-black">{match.game_mode_display || match.game_mode}</p><div className="my-4 h-px bg-white/[0.06]" /><p className="text-[9px] font-black uppercase text-vapor">XP rewards</p><div className="mt-2 flex justify-center gap-2"><span className="rounded-lg border border-green/15 bg-green/5 px-3 py-2 font-mono text-xs font-black text-green">+150 WIN</span><span className="rounded-lg border border-white/[0.08] px-3 py-2 font-mono text-xs font-black">+50 PLAY</span></div>{isComplete && <div className="mt-4 rounded-xl border border-yellow-300/20 bg-yellow-300/[0.07] p-3 text-yellow-300"><Trophy className="mx-auto h-5 w-5" /><p className="mt-1 text-xs font-black">{match.winner_name || "Winner"}</p></div>}
             </div>
-            <MatchChat
+            <MatchRoomChat
               conversationId={match.id}
               matchType="wager"
-              accent="cyan"
-              teamAPlayerIds={teamAlpha.map((p) => p.user_id)}
-              teamBPlayerIds={teamBravo.map((p) => p.user_id)}
-              live
-              compact
-              sticky={false}
-              heightClass="h-[350px]"
+              teamAPlayers={teamAlpha}
+              teamBPlayers={teamBravo}
               inputActions={(
                 <div>
                   <div className="grid grid-cols-2 gap-2">
@@ -369,7 +369,6 @@ export default function EightsMatchRoom() {
               )}
             />
           </div>
-          <TeamPanel embedded label="Team Bravo" players={teamBravo} captainId={match.challenger_id} tone="orange" score={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : undefined} winner={bravoWinner} />
         </div>
         </section>
 

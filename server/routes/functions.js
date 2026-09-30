@@ -112,6 +112,12 @@ const tournamentSeriesDefinitions = {
   bo3_hp_overload_snd: { label: "HP / Overload / SND", games: tournamentHpOverloadSndModes },
   bo5_hp_overload_snd_hp_snd: { label: "HP / Overload / SND / HP / SND", games: tournamentHpOverloadSndHpSndModes },
 };
+const validTournamentGameModes = new Set(["snd", "hp", "overload"]);
+const tournamentGameModeDetails = {
+  snd: { game_mode: "snd", mode: "Search and Destroy" },
+  hp: { game_mode: "hp", mode: "Hardpoint" },
+  overload: { game_mode: "overload", mode: "Overload" },
+};
 const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const specialUserBadgeTypes = new Set(["verified_player", "streamer"]);
 const specialUserBadgeLabels = {
@@ -1721,17 +1727,32 @@ function mapPoolForGameMode(gameMode, pools) {
   return pools.snd;
 }
 
-function tournamentMapSeriesFor(gameMode, mapPools = {}) {
+function normalizeTournamentGameModes(value, fallbackGameMode = "") {
+  const modes = (Array.isArray(value) ? value : [])
+    .map((mode) => String(mode || "").trim().toLowerCase())
+    .filter((mode) => validTournamentGameModes.has(mode));
+  if (modes.length > 0) return [...new Set(modes)].slice(0, 3);
+  const legacyMode = String(fallbackGameMode || "").trim().toLowerCase();
+  if (["bo1_snd", "snd"].includes(legacyMode)) return ["snd"];
+  if (legacyMode === "hp") return ["hp"];
+  if (legacyMode === "overload") return ["overload"];
+  if (legacyMode) return ["hp", "snd", "overload"];
+  return [];
+}
+
+function tournamentMapSeriesFor(gameMode, mapPools = {}, configuredGameModes = []) {
   const rawMode = String(gameMode || "").trim().slice(0, 80);
   const key = rawMode.toLowerCase();
   const presetDefinition = tournamentSeriesDefinitions[key];
+  const explicitGameModes = normalizeTournamentGameModes(configuredGameModes);
   const pools = {
     snd: normalizeMapPool(mapPools.snd, tournamentSndMapPool),
     hp: normalizeMapPool(mapPools.hp, tournamentHpMapPool),
     overload: normalizeMapPool(mapPools.overload, tournamentOverloadMapPool),
   };
+  const requestedBestOf = key.match(/\b(?:bo|best[\s-]*of)\s*(\d{1,2})\b/i)?.[1];
   const customBestOf = Math.max(1, Math.min(15, Number(
-    key.match(/\b(?:bo|best[\s-]*of)\s*(\d{1,2})\b/i)?.[1] || defaultTournamentBestOf
+    requestedBestOf || presetDefinition?.games.length || defaultTournamentBestOf
   )));
   const customTokens = key
     .replace(/\b(?:bo|best[\s-]*of)\s*\d{1,2}\b/gi, "")
@@ -1750,7 +1771,15 @@ function tournamentMapSeriesFor(gameMode, mapPools = {}) {
       { length: customBestOf },
       () => customTokens[0] || { game_mode: "snd", mode: "Search and Destroy" }
     );
-  const definition = presetDefinition || {
+  const configuredGames = explicitGameModes.length > 0
+    ? Array.from({ length: customBestOf }, (_, index) => (
+      tournamentGameModeDetails[explicitGameModes[index % explicitGameModes.length]]
+    ))
+    : null;
+  const definition = configuredGames ? {
+    label: explicitGameModes.map((mode) => tournamentGameModeDetails[mode].mode).join(" / "),
+    games: configuredGames,
+  } : presetDefinition || {
     label: rawMode || tournamentSeriesDefinitions.snd.label,
     games: customGames,
   };
@@ -1759,6 +1788,7 @@ function tournamentMapSeriesFor(gameMode, mapPools = {}) {
     key: presetDefinition ? key : (rawMode || "snd"),
     label: definition.label,
     bestOf: definition.games.length,
+    gameModes: [...new Set(definition.games.map((game) => game.game_mode))],
     games: definition.games.map((game) => ({
       ...game,
       pool: mapPoolForGameMode(game.game_mode, pools),
@@ -1770,7 +1800,8 @@ function tournamentMapSeriesForMatch(match, tournament = null) {
   const source = tournament || match || {};
   return tournamentMapSeriesFor(
     tournament?.game_mode || match?.tournament_game_mode || match?.series_key || match?.game_mode,
-    tournamentMapPoolsFor(source)
+    tournamentMapPoolsFor(source),
+    tournament?.game_modes || match?.tournament_game_modes || []
   );
 }
 
@@ -1911,6 +1942,7 @@ function tournamentMatchSetupPatch(match, participants = [], tournament = null) 
     best_of: series.bestOf,
     game_mode: series.label,
     tournament_game_mode: series.key,
+    tournament_game_modes: series.gameModes,
     map_sequence: series.games.map((game, index) => ({
       game: index + 1,
       game_mode: game.game_mode,
@@ -4348,6 +4380,9 @@ async function updateTournament(req) {
   if (Object.prototype.hasOwnProperty.call(patch, "game_mode")) {
     patch.game_mode = String(patch.game_mode || "").trim().slice(0, 80) || "snd_hp_snd";
   }
+  if (Object.prototype.hasOwnProperty.call(patch, "game_modes")) {
+    patch.game_modes = normalizeTournamentGameModes(patch.game_modes, patch.game_mode || previousTournament.game_mode);
+  }
   const requestedBracketType = patch.bracket_type || patch.format;
   if (
     previousTournament.bracket_generated
@@ -4372,7 +4407,8 @@ async function updateTournament(req) {
   }
   const shouldRefreshMaps = Object.prototype.hasOwnProperty.call(patch, "map_pools")
     || Object.prototype.hasOwnProperty.call(patch, "maps")
-    || Object.prototype.hasOwnProperty.call(patch, "game_mode");
+    || Object.prototype.hasOwnProperty.call(patch, "game_mode")
+    || Object.prototype.hasOwnProperty.call(patch, "game_modes");
   const refreshedMatches = [];
 
   if (shouldRefreshMaps) {
@@ -4448,6 +4484,7 @@ async function createTournament(req) {
     name,
     title: name,
     game_mode: String(tournamentBody.game_mode || "").trim().slice(0, 80) || "snd_hp_snd",
+    game_modes: normalizeTournamentGameModes(tournamentBody.game_modes, tournamentBody.game_mode || "snd_hp_snd"),
     format: bracketType,
     bracket_type: bracketType,
     invited_user_ids: invitedUserIds,

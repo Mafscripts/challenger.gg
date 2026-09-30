@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-import MatchChat from "@/components/match/MatchChat";
+import MatchRoomChat from "@/components/match/MatchRoomChat";
+import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
@@ -667,15 +668,9 @@ export default function WagersMatchRoom() {
             </div>
 
             <div className="grid gap-5 p-6 md:grid-cols-[1fr_auto_1fr] md:p-8">
-              <SimpleRoster title="Host" players={teamAPlayers} tone="cyan" />
+              <MatchTeamTable label="Team Alpha" name={wager.host_team_name || wager.host_name || "Host"} color="orange" players={teamAPlayers} captainId={wager.host_id} />
               <div className="flex items-center justify-center text-2xl font-black text-vapor">VS</div>
-              <div className="flex min-h-64 items-center justify-center rounded-xl border border-dashed border-orange/20 bg-orange/5 p-6 text-center">
-                <div>
-                  <div className="mx-auto mb-3 h-3 w-3 animate-pulse rounded-full bg-orange" />
-                  <p className="font-black text-orange">Opponent pending</p>
-                  <p className="mt-2 text-xs leading-5 text-vapor">Another player must accept and pay the entry before scores, chat and match controls unlock.</p>
-                </div>
-              </div>
+              <MatchTeamTable label="Team Bravo" name="Opponent pending" color="cyan" players={[]} />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-background/25 px-6 py-4 md:px-8">
@@ -728,9 +723,13 @@ export default function WagersMatchRoom() {
             </div>
           </div>
           </div>
-          <div className="grid gap-4 border-t border-white/[0.06] p-4 lg:grid-cols-2 lg:p-5">
-            <SimpleRoster title="Team Alpha" name={hostDisplayName} players={teamAPlayers} tone="cyan" score={wager.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={hostWinner} />
-            <SimpleRoster title="Team Bravo" name={challengerDisplayName} players={teamBPlayers} tone="orange" score={wager.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={challengerWinner} />
+          <div className="grid gap-5 border-t border-white/[0.06] p-4 lg:p-5 xl:grid-cols-[minmax(0,1fr)_410px]">
+            <div className="min-w-0 space-y-4">
+              <MatchTeamTable label="Team Alpha" name={hostDisplayName} color="orange" players={teamAPlayers} captainId={wager.host_id} finalScore={wager.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={hostWinner} />
+              <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
+              <MatchTeamTable label="Team Bravo" name={challengerDisplayName} color="cyan" players={teamBPlayers} captainId={wager.challenger_id} finalScore={wager.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={challengerWinner} />
+            </div>
+            <aside className="min-w-0"><MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} /></aside>
           </div>
         </section>
 
@@ -752,7 +751,7 @@ export default function WagersMatchRoom() {
           <div className="glass mb-6 flex items-center gap-3 rounded-xl border border-green/20 bg-green/5 p-5"><Trophy className="h-5 w-5 text-green" /><div><p className="font-bold text-green">Winner: {wager.winner_name || "Match completed"}</p><p className="text-xs text-vapor">Final score {wager.winner_score ?? scoreA}-{wager.loser_score ?? scoreB}</p></div></div>
         )}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
+        <div>
           <div className="min-w-0 space-y-6">
             <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(285px,0.8fr)]">
               <MatchMapSeries maps={Array.isArray(wager.series_maps) && wager.series_maps.length ? wager.series_maps : (wager.final_map_name ? [wager.final_map_name] : [])} mode={wager.game_mode_display || wager.game_mode} host={wager.host_name || hostDisplayName} bestOf={bestOf} compact />
@@ -843,7 +842,6 @@ export default function WagersMatchRoom() {
         </div>
             <button onClick={loadWager} className="inline-flex items-center gap-2 rounded-lg border border-white/5 bg-secondary/50 px-4 py-3 text-sm font-bold text-vapor hover:bg-secondary"><RefreshCw className="h-4 w-4" /> Refresh room</button>
           </div>
-          <aside className="min-w-0"><MatchChat conversationId={wager.id} matchType="wager" accent="cyan" teamAPlayerIds={teamAPlayers} teamBPlayerIds={teamBPlayers} live compact sticky={false} heightClass="h-[440px] xl:h-[620px]" /></aside>
         </div>
       </div>
 

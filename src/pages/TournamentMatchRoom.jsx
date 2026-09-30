@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-import MatchChat from "@/components/match/MatchChat";
+import MatchRoomChat from "@/components/match/MatchRoomChat";
+import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
@@ -709,18 +710,11 @@ function TournamentChatColumn({
 }) {
   return (
     <aside className="min-w-0 xl:h-full">
-      <MatchChat
+      <MatchRoomChat
         conversationId={match.id}
         matchType="tournament"
-        accent="orange"
         teamAPlayerIds={teamAPlayers}
         teamBPlayerIds={teamBPlayers}
-        teamAColor="orange"
-        teamBColor="cyan"
-        live
-        compact
-        sticky={false}
-        heightClass="h-[520px] xl:h-[680px]"
         inputActions={!isStreamerMatch ? (
           <div>
             <div className="grid grid-cols-2 gap-2">
@@ -1458,7 +1452,7 @@ export default function TournamentMatchRoom() {
           </div>
           <div className={`grid gap-5 p-4 sm:p-5 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_410px]" : ""}`}>
             <div className="min-w-0 space-y-4">
-              <TournamentTeamTable
+              <MatchTeamTable
                 label="Team A"
                 color="orange"
                 name={match.team_a_name}
@@ -1474,7 +1468,7 @@ export default function TournamentMatchRoom() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span>
                 <span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" />
               </div>
-              <TournamentTeamTable
+              <MatchTeamTable
                 label="Team B"
                 color="blue"
                 name={match.team_b_name}
