@@ -2,8 +2,8 @@ import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import PageLoader from "@/components/ui/PageLoader";
+import Navbar from "./Navbar";
 
-const Navbar = lazy(() => import("./Navbar"));
 const Footer = lazy(() => import("./Footer"));
 
 function DeferredFooter() {
@@ -36,9 +36,7 @@ export default function PageLayout() {
   return (
     <div className={`relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"} ${isAdminRoute ? "app-shell-admin" : ""}`}>
       <div className="page-ambient" aria-hidden="true" />
-      <Suspense fallback={<div className="fixed inset-x-0 top-0 z-50 h-16 bg-[#111821]" />}>
-        <Navbar />
-      </Suspense>
+      <Navbar />
       <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">
         <Suspense fallback={<RouteFallback />}>
           <div className="route-stage">

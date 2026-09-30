@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageLoader from '@/components/ui/PageLoader';
 
-const DefaultFallback = () => <PageLoader fullscreen label="Checking account" />;
+const DefaultFallback = () => <PageLoader label="Checking account" />;
 
 export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement }) {
   const { user, isAuthenticated, isLoadingAuth, authChecked, authError, checkUserAuth } = useAuth();

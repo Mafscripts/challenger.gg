@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
   CalendarDays,
@@ -462,7 +461,7 @@ export default function TournamentOverview() {
         </div>
 
         {activeTab === "overview" && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
             <div className="space-y-7">
               <section>
                 <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-black">Prizes</h2><span className="font-mono text-lg font-black text-green">{formatMoney(tournament.prize_pool)}</span></div>
@@ -514,7 +513,7 @@ export default function TournamentOverview() {
                 </div>
               </section>
             </aside>
-          </motion.div>
+          </div>
         )}
 
         {activeTab === "bracket" && <div className="mt-7"><BracketPreview matches={matches} /></div>}
