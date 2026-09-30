@@ -1974,39 +1974,6 @@
   to { transform: translateX(415%); }
 }
 
-@supports (view-transition-name: none) {
-  .route-stage {
-    view-transition-name: route-content;
-  }
-
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
-  }
-
-  ::view-transition-group(route-content) {
-    animation-duration: 180ms;
-    animation-timing-function: cubic-bezier(.2, .8, .2, 1);
-  }
-
-  ::view-transition-old(route-content) {
-    animation: route-content-out 110ms ease-out both;
-  }
-
-  ::view-transition-new(route-content) {
-    animation: route-content-in 180ms cubic-bezier(.2, .8, .2, 1) both;
-  }
-}
-
-@keyframes route-content-out {
-  to { opacity: .78; }
-}
-
-@keyframes route-content-in {
-  from { opacity: .72; transform: translateY(3px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @media (min-width: 1280px) and (max-width: 1439px) {
   .app-topbar-v2 .topbar-primary-nav > .nav-dashboard-link,
   .app-topbar-v2 .topbar-primary-nav > .nav-dropdown-anchor > button {
@@ -2328,11 +2295,6 @@ img {
   100% { transform: translateX(180%) scaleX(.25); }
 }
 
-@keyframes tf-loader-logo {
-  0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 8px hsl(var(--cyan) / .08)); }
-  50% { transform: translateY(-3px); filter: drop-shadow(0 0 18px hsl(var(--cyan) / .2)); }
-}
-
 .tf-loader-shimmer {
   position: relative;
   overflow: hidden;
@@ -2353,14 +2315,9 @@ img {
   animation: tf-loader-progress 1.5s ease-in-out infinite;
 }
 
-.tf-loader-logo {
-  animation: tf-loader-logo 2.2s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .tf-loader-shimmer::after,
-  .tf-loader-progress,
-  .tf-loader-logo {
+  .tf-loader-progress {
     animation: none !important;
   }
 }

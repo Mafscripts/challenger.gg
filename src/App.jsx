@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-d
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
+import Ranked from '@/pages/Ranked';
+import RankedEights from '@/pages/RankedEights';
+import Wagers from '@/pages/Wagers';
+import Tournaments from '@/pages/Tournaments';
 
 // Layout
 import PageLayout from '@/components/layout/PageLayout';
@@ -10,10 +14,6 @@ import PageLayout from '@/components/layout/PageLayout';
 // Pages are split by route so visitors only download the screen they open.
 const Home = lazy(() => import('@/pages/Home'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const Ranked = lazy(() => import('@/pages/Ranked'));
-const RankedEights = lazy(() => import('@/pages/RankedEights'));
-const Wagers = lazy(() => import('@/pages/Wagers'));
-const Tournaments = lazy(() => import('@/pages/Tournaments'));
 const TournamentOverview = lazy(() => import('@/pages/TournamentOverview'));
 const StreamerTournaments = lazy(() => import('@/pages/StreamerTournaments'));
 const StreamerTournamentLobby = lazy(() => import('@/pages/StreamerTournamentLobby'));

@@ -13,7 +13,6 @@ import {
   Users,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { CompetitionHeader } from "@/components/competition/CompetitionLadder";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
@@ -31,24 +30,11 @@ function TournamentPageLoader() {
     <div className="tournaments-page min-h-screen py-6" role="status" aria-label="Loading tournaments">
       <div className="tf-loader-progress fixed left-0 right-0 top-14 z-[60] h-0.5" />
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        <section className="relative min-h-[350px] overflow-hidden rounded-2xl border border-white/[0.07] bg-card lg:min-h-[370px]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_35%,hsl(var(--cyan)/0.08),transparent_28%),radial-gradient(circle_at_82%_30%,hsl(var(--orange)/0.06),transparent_24%),linear-gradient(120deg,hsl(var(--background)/0.9),hsl(var(--card)))]" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="tf-loader-logo flex h-24 w-24 items-center justify-center rounded-3xl border border-cyan/15 bg-background/55 shadow-[0_0_50px_hsl(var(--cyan)/0.08)] backdrop-blur-sm">
-              <TopfraggLogo showWordmark={false} markClassName="h-16 w-16" />
-            </div>
-          </div>
-          <div className="absolute bottom-8 left-7 w-[min(480px,55%)] space-y-4 md:left-9">
-            <div className="tf-loader-shimmer h-2 w-36 rounded-full" />
-            <div className="tf-loader-shimmer h-10 w-4/5 rounded-lg" />
-            <div className="tf-loader-shimmer h-3 w-full rounded-full" />
-            <div className="flex gap-2 pt-2"><div className="tf-loader-shimmer h-8 w-28 rounded-md" /><div className="tf-loader-shimmer h-8 w-32 rounded-md" /></div>
-          </div>
-        </section>
-
-        <div className="mt-5 grid h-14 overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((item) => <div key={item} className="flex items-center justify-center border-b border-r border-white/[0.06] p-4 lg:border-b-0"><div className="tf-loader-shimmer h-3 w-32 rounded-full" /></div>)}
-        </div>
+        <CompetitionHeader
+          mode="tournaments"
+          playerCount={0}
+          action={<div className="tf-loader-shimmer h-16 w-full rounded-xl" />}
+        />
 
         <section className="mt-5 grid min-h-[330px] overflow-hidden rounded-2xl border border-white/[0.08] bg-card/70 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-5 p-7 sm:p-10">
