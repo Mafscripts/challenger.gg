@@ -1,0 +1,199 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CalendarDays, Gamepad2, Search, Shield, Swords, Trophy, Users, Zap } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
+import { toast } from "@/components/ui/use-toast";
+
+const categories = [
+  { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", active: "border-cyan/35 bg-cyan/10 text-cyan", dot: "bg-cyan" },
+  { key: "elo", label: "ELO", icon: Shield, tone: "cyan", active: "border-purple-400/35 bg-purple-400/10 text-purple-300", dot: "bg-purple-400" },
+  { key: "eights", label: "8s", icon: Users, tone: "orange", active: "border-orange/35 bg-orange/10 text-orange", dot: "bg-orange" },
+  { key: "wagers", label: "Wagers", icon: Zap, tone: "green", active: "border-green/35 bg-green/10 text-green", dot: "bg-green" },
+  { key: "tournaments", label: "Scheduled tournaments", icon: Trophy, tone: "orange", active: "border-red-400/35 bg-red-400/10 text-red-300", dot: "bg-red-400" },
+];
+
+const openTournamentStatuses = new Set(["open", "registration", "live", "in_progress"]);
+const wagerType = (match) => String(match?.match_type || ((match?.entry_fee ?? match?.amount ?? 0) > 0 ? "wagers" : "ranked")).toLowerCase();
+const teamSlots = (teamSize) => Math.max(1, Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1) * 2;
+const displayMode = (item) => item?.game_mode_display || item?.game_mode || item?.mode || "Search & Destroy";
+const formatStart = (value) => {
+  if (!value) return "Schedule TBA";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Schedule TBA";
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+};
+
+export default function Matchfinder() {
+  const navigate = useNavigate();
+  const [activeCategory, setActiveCategory] = useState("xp");
+  const [user, setUser] = useState(null);
+  const [rankedMatches, setRankedMatches] = useState([]);
+  const [wagerMatches, setWagerMatches] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [acceptingId, setAcceptingId] = useState("");
+
+  const loadMatches = async () => {
+    try {
+      setLoading(true);
+      const [currentUser, rankedRows, wagerRows, tournamentRows] = await Promise.all([
+        base44.auth.me().catch(() => null),
+        base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 100).catch(() => []),
+        base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 100).catch(() => []),
+        base44.entities.Tournament.filterFresh({}, "start_date", 100).catch(() => []),
+      ]);
+      setUser(currentUser);
+      setRankedMatches(rankedRows || []);
+      setWagerMatches(wagerRows || []);
+      setTournaments((tournamentRows || []).filter((tournament) => (
+        openTournamentStatuses.has(String(tournament?.status || "").toLowerCase())
+        && !tournament?.is_streamer_tournament
+      )));
+    } catch (error) {
+      console.error("Failed to load matchfinder:", error);
+      toast({ title: "Matchfinder unavailable", description: "The open matches could not be loaded.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMatches();
+  }, []);
+
+  const matches = useMemo(() => ({
+    xp: rankedMatches,
+    elo: wagerMatches.filter((match) => wagerType(match) === "ranked"),
+    eights: wagerMatches.filter((match) => wagerType(match) === "8s"),
+    wagers: wagerMatches.filter((match) => wagerType(match) === "wagers"),
+    tournaments,
+  }), [rankedMatches, tournaments, wagerMatches]);
+
+  const activeRows = matches[activeCategory] || [];
+  const currentCategory = categories.find((category) => category.key === activeCategory) || categories[0];
+  const totalOpen = Object.values(matches).reduce((total, rows) => total + rows.length, 0);
+
+  const ownsMatch = (match) => (
+    match?.host_id === user?.id
+    || match?.challenger_id === user?.id
+    || match?.team_alpha_player_ids?.includes(user?.id)
+    || match?.team_bravo_player_ids?.includes(user?.id)
+  );
+
+  const roomPath = (category, item) => {
+    if (category === "xp") return `/ranked-match/${item.id}`;
+    if (category === "eights") return `/8s-match/${item.id}`;
+    if (category === "wagers") return `/wagers-match/${item.id}`;
+    if (category === "tournaments") return `/tournaments/${item.id}`;
+    return `/match-room/${item.id}`;
+  };
+
+  const acceptMatch = async (category, match) => {
+    if (category === "wagers") {
+      navigate(`/wagers?match=${match.id}`);
+      return;
+    }
+    if (category === "tournaments") {
+      navigate(`/tournaments/${match.id}`);
+      return;
+    }
+    setAcceptingId(match.id);
+    try {
+      const response = category === "xp"
+        ? await base44.functions.invoke("acceptRankedMatch", { ranked_match_id: match.id })
+        : await base44.functions.invoke("acceptWager", { wager_id: match.id });
+      if (!response.data?.success) throw new Error(response.data?.error || "This match could not be accepted.");
+      navigate(roomPath(category, match));
+    } catch (error) {
+      toast({ title: "Could not accept match", description: error.message || "Please try again.", variant: "destructive" });
+      await loadMatches();
+    } finally {
+      setAcceptingId("");
+    }
+  };
+
+  const renderAction = (item) => {
+    if (activeCategory === "tournaments") {
+      return <button type="button" onClick={() => navigate(roomPath(activeCategory, item))} className="min-w-40 rounded-lg border border-red-400/25 bg-red-400/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300">View Tournament</button>;
+    }
+    if (ownsMatch(item)) {
+      return <button type="button" onClick={() => navigate(roomPath(activeCategory, item))} className="min-w-44 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open Match Room</button>;
+    }
+    return (
+      <button type="button" disabled={acceptingId === item.id} onClick={() => acceptMatch(activeCategory, item)} className="min-w-44 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-wait disabled:opacity-50">
+        {acceptingId === item.id ? "Accepting..." : "Accept This Match"}
+      </button>
+    );
+  };
+
+  return (
+    <main className="min-h-screen py-8">
+      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+        <section className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-card px-6 py-7 sm:px-8">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-yellow-300/80 to-transparent" />
+          <div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,.10),transparent_58%)]" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.24em] text-yellow-300"><Search className="h-3.5 w-3.5" /> Competition hub</div>
+              <h1 className="mt-3 font-heading text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">Matchfinder</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-vapor">Find every open match and scheduled tournament from one clean overview.</p>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-background/55 px-4 py-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-300/20 bg-yellow-300/10 text-yellow-300"><Gamepad2 className="h-5 w-5" /></span>
+              <div><p className="font-mono text-xl font-black text-white">{totalOpen}</p><p className="text-[8px] font-black uppercase tracking-[0.17em] text-vapor">Available now</p></div>
+            </div>
+          </div>
+        </section>
+
+        <nav className="mt-5 grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 xl:grid-cols-5" aria-label="Matchfinder categories">
+          {categories.map((category) => {
+            const Icon = category.icon;
+            const active = activeCategory === category.key;
+            return (
+              <button key={category.key} type="button" onClick={() => setActiveCategory(category.key)} className={`relative flex min-h-16 items-center justify-between gap-3 border-b border-white/[0.06] px-5 text-left sm:border-r xl:border-b-0 ${active ? category.active : "text-vapor hover:bg-white/[0.025] hover:text-white"}`}>
+                <span className="flex min-w-0 items-center gap-2.5"><Icon className="h-4 w-4 shrink-0" /><span className="truncate text-[11px] font-black uppercase tracking-wide">{category.label}</span></span>
+                <span className="font-mono text-xs font-black">{matches[category.key]?.length || 0}</span>
+                {active && <span className={`absolute inset-x-0 bottom-0 h-0.5 ${category.dot}`} />}
+              </button>
+            );
+          })}
+        </nav>
+
+        <section className="mt-5 overflow-hidden rounded-2xl border border-white/[0.08] bg-card">
+          <header className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Now browsing</p>
+              <h2 className="mt-1 flex items-center gap-2 text-lg font-black text-white"><span className={`h-2 w-2 rounded-full ${currentCategory.dot}`} /> {currentCategory.label}</h2>
+            </div>
+            <button type="button" onClick={loadMatches} className="self-start rounded-lg border border-white/[0.08] bg-white/[0.025] px-4 py-2 text-[9px] font-black uppercase tracking-wider text-vapor hover:border-yellow-300/25 hover:text-yellow-300">Refresh matches</button>
+          </header>
+
+          <CompetitionMatchfinder loading={loading} emptyMessage={`No ${currentCategory.label.toLowerCase()} available right now.`}>
+            {activeRows.map((item) => {
+              const slots = teamSlots(item.team_size);
+              const joined = new Set([...(item.team_alpha_player_ids || [item.host_id]), ...(item.team_bravo_player_ids || (item.challenger_id ? [item.challenger_id] : []))].filter(Boolean)).size;
+              const isTournament = activeCategory === "tournaments";
+              const amount = Number(item.entry_fee ?? item.amount ?? 0);
+              return (
+                <CompetitionMatchfinderRow
+                  key={item.id}
+                  game={isTournament ? item.name : displayMode(item)}
+                  gameDetail={isTournament ? `${item.team_size || "Team format"} · ${item.game || "Call of Duty"}` : `${item.team_size || "1v1"} · ${activeCategory === "eights" ? "8-player lobby" : `${joined}/${slots} players`}`}
+                  competition={activeCategory === "xp" ? "XP Match" : activeCategory === "elo" ? "ELO Ranked" : activeCategory === "eights" ? "Ranked 8s" : activeCategory === "wagers" ? `$${amount} Wager` : "Official Tournament"}
+                  competitionDetail={isTournament ? `${item.current_teams || item.registered_teams || 0}/${item.max_teams || item.team_limit || "—"} teams registered` : `Hosted by ${item.host_name || "Player"} · BO${item.best_of || 1}`}
+                  playRule={item.play_rule}
+                  starting={isTournament ? formatStart(item.start_date) : "Available now"}
+                  tone={currentCategory.tone}
+                  action={renderAction(item)}
+                />
+              );
+            })}
+          </CompetitionMatchfinder>
+        </section>
+
+        <div className="mt-4 flex items-center gap-2 text-[10px] text-vapor"><CalendarDays className="h-3.5 w-3.5 text-yellow-300" /> Scheduled tournaments show their announced start time; open matches can be accepted immediately.</div>
+      </div>
+    </main>
+  );
+}

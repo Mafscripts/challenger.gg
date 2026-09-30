@@ -33,11 +33,12 @@ const navGroups = [
     ],
   },
   {
-    label: "Rankings",
-    icon: Trophy,
-    eyebrow: "Competitive rankings",
+    label: "Matchfinder",
+    icon: Search,
+    eyebrow: "Find your next match",
     tone: "gold",
     items: [
+      { label: "Matchfinder", description: "Browse every open competition", path: "/matchfinder", icon: Search, tone: "gold" },
       { label: "Leaderboards", description: "Compare the best competitors", path: "/leaderboards", icon: Trophy, tone: "gold" },
     ],
   },
@@ -74,7 +75,7 @@ const mobileNavSections = [
     items: navGroups[1].items,
   },
   {
-    label: "Rankings",
+    label: "Matchfinder",
     items: navGroups[2].items,
   },
   {
@@ -260,7 +261,6 @@ export default function Navbar() {
   const notificationsLoadedAt = useRef(0);
   const balancePopupsReady = useRef(false);
   const shownBalancePopupIds = useRef(new Set());
-  const primaryNavRef = useRef(null);
 
   useEffect(() => {
     const unlockAndPlayPendingStaffAlert = async () => {
@@ -390,23 +390,6 @@ export default function Navbar() {
     setNotifOpen(false);
     setMessagesOpen(false);
     setProfileOpen(false);
-  };
-
-  const movePrimaryNavIndicator = (event) => {
-    const nav = primaryNavRef.current;
-    const item = event.target.closest("[data-nav-item]");
-    if (!nav || !item || !nav.contains(item)) return;
-
-    const navRect = nav.getBoundingClientRect();
-    const itemRect = item.getBoundingClientRect();
-    nav.style.setProperty("--nav-hover-x", `${itemRect.left - navRect.left}px`);
-    nav.style.setProperty("--nav-hover-width", `${itemRect.width}px`);
-    nav.style.setProperty("--nav-pointer-x", `${event.clientX - navRect.left}px`);
-    nav.dataset.hovering = "true";
-  };
-
-  const hidePrimaryNavIndicator = () => {
-    if (primaryNavRef.current) primaryNavRef.current.dataset.hovering = "false";
   };
 
   const clearUserState = () => {
@@ -934,14 +917,7 @@ export default function Navbar() {
 
             {/* Desktop Nav */}
             {user && (
-              <div
-                ref={primaryNavRef}
-                className="topbar-primary-nav hidden xl:flex items-center justify-center gap-1 p-1"
-                onPointerMove={movePrimaryNavIndicator}
-                onPointerLeave={hidePrimaryNavIndicator}
-              >
-                <span className="nav-cursor-glow" aria-hidden="true" />
-                <span className="nav-hover-indicator" aria-hidden="true" />
+              <div className="topbar-primary-nav hidden xl:flex items-center justify-center gap-1 p-1">
                 <Link
                   to="/dashboard"
                   data-nav-item
@@ -997,7 +973,7 @@ export default function Navbar() {
                       >
                         <GroupIcon className={`nav-primary-icon h-4 w-4 shrink-0 ${active || open ? groupTone.icon.split(" ").at(-1) : "text-vapor"}`} />
                         {group.label}
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+                        <ChevronDown className={`w-3.5 h-3.5 ${open ? "rotate-180" : ""}`} />
                       </button>
 
                       {open && (
@@ -1016,7 +992,7 @@ export default function Navbar() {
                                   key={item.path}
                                   to={item.path}
                                   onClick={() => setNavMenuOpen(null)}
-                                  className={`group flex items-center gap-3 rounded-lg border px-2.5 py-2.5 transition-colors duration-100 ${
+                                  className={`group flex items-center gap-3 rounded-lg border px-2.5 py-2.5 ${
                                     itemActive
                                       ? `${itemTone.button}`
                                       : "border-transparent text-vapor hover:border-white/[0.07] hover:bg-white/[0.045] hover:text-foreground"
@@ -1071,7 +1047,7 @@ export default function Navbar() {
                   >
                     <Activity className={`nav-primary-icon h-4 w-4 shrink-0 ${matchesOpen ? "text-purple-300" : "text-vapor"}`} />
                     My Matches
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${matchesOpen ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 ${matchesOpen ? "rotate-180" : ""}`} />
                     {activeMatches.length > 0 && (
                       <span aria-label={`${activeMatches.length} active match${activeMatches.length === 1 ? "" : "es"}`} className="absolute -right-1.5 -top-1.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-orange px-1 font-mono text-[8px] font-black leading-none text-white">
                         {activeMatches.length}

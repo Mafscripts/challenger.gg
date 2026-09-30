@@ -24,6 +24,7 @@ const RankedMatchRoom = lazy(() => import('@/pages/RankedMatchRoom'));
 const WagersMatchRoom = lazy(() => import('@/pages/WagersMatchRoom'));
 const EightsMatchRoom = lazy(() => import('@/pages/EightsMatchRoom'));
 const Leaderboards = lazy(() => import('@/pages/Leaderboards'));
+const Matchfinder = lazy(() => import('@/pages/Matchfinder'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Teams = lazy(() => import('@/pages/Teams'));
 const Marketplace = lazy(() => import('@/pages/Marketplace'));
@@ -116,6 +117,7 @@ const AuthenticatedApp = () => {
           <Route path="/wagers-match/:id" element={<WagersMatchRoom />} />
           <Route path="/8s-match/:id" element={<EightsMatchRoom />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
+          <Route path="/matchfinder" element={<Matchfinder />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:username" element={<Profile />} />
           <Route path="/teams" element={<Teams />} />

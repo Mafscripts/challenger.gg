@@ -2324,3 +2324,87 @@ img {
     animation: none !important;
   }
 }
+
+/* Calm, compact competition navigation. Accent colors identify destinations without moving labels. */
+.app-topbar-v2 .topbar-primary-nav,
+.app-topbar-v2 .topbar-primary-nav:hover {
+  height: 2.75rem;
+  gap: .15rem;
+  padding: .22rem;
+  border: 1px solid rgb(255 255 255 / .055);
+  border-radius: .72rem;
+  background: rgb(12 21 31 / .78);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .035);
+  transition: none;
+}
+
+.app-topbar-v2 .topbar-primary-nav > .nav-dashboard-link,
+.app-topbar-v2 .topbar-primary-nav > .nav-dropdown-anchor > button {
+  height: 2.3rem;
+  min-width: 0;
+  gap: .42rem;
+  padding-inline: .68rem;
+  border: 1px solid transparent;
+  border-radius: .48rem;
+  background: transparent;
+  color: hsl(var(--vapor) / .88);
+  font-size: .69rem;
+  letter-spacing: .01em;
+  box-shadow: none;
+  transform: none;
+  transition: none;
+}
+
+.app-topbar-v2 .topbar-primary-nav > .nav-dashboard-link:hover,
+.app-topbar-v2 .topbar-primary-nav > .nav-dashboard-link:focus-visible,
+.app-topbar-v2 .topbar-primary-nav > .nav-dropdown-anchor > button:hover,
+.app-topbar-v2 .topbar-primary-nav > .nav-dropdown-anchor > button:focus-visible {
+  border-color: var(--nav-accent-border);
+  background: var(--nav-accent-soft);
+  color: var(--nav-accent);
+  box-shadow: none;
+  transform: none;
+}
+
+.app-topbar-v2 .topbar-primary-nav > .nav-dashboard-link[data-active="true"],
+.app-topbar-v2 .topbar-primary-nav > .nav-dropdown-anchor > button[data-active="true"] {
+  border-color: var(--nav-accent-border);
+  background: var(--nav-accent-soft);
+  color: var(--nav-accent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .04);
+}
+
+.app-topbar-v2 .topbar-primary-nav > .nav-dashboard-link::after,
+.app-topbar-v2 .topbar-primary-nav > .nav-dropdown-anchor > button::after {
+  content: none;
+}
+
+.app-topbar-v2 .nav-primary-button,
+.app-topbar-v2 .nav-primary-icon,
+.app-topbar-v2 .nav-dashboard-icon,
+.app-topbar-v2 .nav-primary-button svg,
+.app-topbar-v2 .nav-popover-enter,
+.app-topbar-v2 .nav-popover-enter > * {
+  animation: none !important;
+  transition: none !important;
+}
+
+.app-topbar-v2 .nav-primary-button:hover .nav-primary-icon,
+.app-topbar-v2 .nav-primary-button:focus-visible .nav-primary-icon,
+.app-topbar-v2 .nav-dashboard-link:hover .nav-dashboard-icon,
+.app-topbar-v2 .nav-dashboard-link:focus-visible .nav-dashboard-icon,
+.app-topbar-v2 .nav-dashboard-link[data-active="true"] .nav-dashboard-icon {
+  color: var(--nav-accent) !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+.app-topbar-v2 .nav-popover-enter,
+.app-topbar-v2 .nav-popover-enter > * {
+  transform: none;
+}
+
+.app-topbar-v2 .nav-popover .group > :last-child {
+  transform: none !important;
+  transition: none !important;
+}
