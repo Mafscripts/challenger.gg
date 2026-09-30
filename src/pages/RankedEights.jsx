@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CalendarDays, Crown, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, Plus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
@@ -25,7 +25,6 @@ export default function RankedEights() {
   const [user, setUser] = useState(null);
   const [lobbies, setLobbies] = useState([]);
   const [counts, setCounts] = useState({});
-  const [xpStats, setXpStats] = useState(null);
   const [activeLobby, setActiveLobby] = useState(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState("");
@@ -35,9 +34,8 @@ export default function RankedEights() {
     if (!quiet) setLoading(true);
     try {
       const currentUser = await base44.auth.me();
-      const [openRows, xpRows, memberships] = await Promise.all([
+      const [openRows, memberships] = await Promise.all([
         base44.entities.Wager.filterFresh({ match_type: "8s", status: "open" }, "-created_date", 30),
-        base44.entities.XPStats.filterFresh({ user_id: currentUser.id }, "-created_date", 1),
         base44.entities.WagerParticipant.filterFresh({ user_id: currentUser.id }, "-joined_date", 50),
       ]);
       const activeMemberships = (memberships || []).filter(Boolean);
@@ -46,7 +44,6 @@ export default function RankedEights() {
       const participantLists = await Promise.all((openRows || []).map((row) => base44.entities.WagerParticipant.filterFresh({ wager_id: row.id }, "joined_date", 8).catch(() => [])));
       setUser(currentUser);
       setLobbies(openRows || []);
-      setXpStats((xpRows || [])[0] || null);
       setActiveLobby(current);
       setCounts(Object.fromEntries((openRows || []).map((row, index) => [row.id, participantLists[index]?.length || 0])));
     } catch (error) {
@@ -66,10 +63,6 @@ export default function RankedEights() {
     return () => window.clearInterval(interval);
   }, [load]);
 
-  const level = Number(xpStats?.level || user?.xp_level || 1);
-  const currentXp = Number(xpStats?.current_xp || 0);
-  const xpTarget = Number(xpStats?.xp_to_next_level || 1000);
-  const xpProgress = Math.min(100, Math.round((currentXp / Math.max(1, xpTarget)) * 100));
   const prizeActive = monthKey() >= EIGHTS_PRIZE_START_MONTH;
 
   const joinLobby = async (lobby) => {
@@ -155,13 +148,6 @@ export default function RankedEights() {
               <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{prizeActive ? "days remaining" : "days until launch"}</p>
             </div>
           </div>
-        </section>
-
-        <section className="mb-6 glass rounded-2xl border border-purple-300/15 p-5">
-            <div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-purple-300">Your progression</p><h2 className="mt-1 text-xl font-black">Level {level}</h2></div><div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Sparkles className="h-6 w-6" /></div></div>
-            <div className="mt-6 flex items-end justify-between"><p className="font-mono text-2xl font-black">{currentXp.toLocaleString()} <span className="text-sm text-vapor">XP</span></p><p className="text-xs text-vapor">{xpTarget.toLocaleString()} needed</p></div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-purple-400 to-cyan" style={{ width: `${xpProgress}%` }} /></div>
-            <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl border border-green/15 bg-green/5 p-3"><p className="text-[9px] font-black uppercase text-vapor">Win</p><p className="mt-1 font-mono font-black text-green">+150 XP</p></div><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3"><p className="text-[9px] font-black uppercase text-vapor">Played</p><p className="mt-1 font-mono font-black">+50 XP</p></div></div>
         </section>
 
       </div>

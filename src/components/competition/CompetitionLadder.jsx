@@ -74,32 +74,6 @@ const number = (value) => Number(value || 0);
 const playerName = (user, row) => user?.display_name || user?.username || user?.full_name || row?.username || row?.user_name || "Player";
 const playerSlug = (user, row) => user?.username || user?.handle || row?.username || row?.user_id || user?.id || "";
 const monthLabel = () => new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date());
-const emptyInventoryTrophies = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0, topfragg: 0, hosted: 0 });
-
-const countInventoryTrophies = (items = []) => {
-  const counts = emptyInventoryTrophies();
-  items.forEach((item) => {
-    const text = [item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method]
-      .filter(Boolean)
-      .join(" ")
-      .trim()
-      .toLowerCase();
-    if (item.item_category !== "trophy" && !text.includes("trophy")) return;
-
-    if (text.includes("topfrag") || text.includes("topfragg")) counts.topfragg += 1;
-    else if (text.includes("hosted") || text.includes("host trophy")) counts.hosted += 1;
-    else if (text.includes("premium")) counts.premium += 1;
-    else if (text.includes("gold")) counts.gold += 1;
-    else if (text.includes("silver")) counts.silver += 1;
-    else if (text.includes("bronze")) counts.bronze += 1;
-    else if (["exclusive", "mythic"].includes(item.item_rarity)) counts.premium += 1;
-    else if (["legendary", "epic"].includes(item.item_rarity)) counts.gold += 1;
-    else if (item.item_rarity === "rare") counts.silver += 1;
-    else counts.bronze += 1;
-  });
-  return counts;
-};
-
 const trophyCount = (user) => {
   const detailed = trophyTypes.reduce((sum, trophy) => {
     const value = trophy.fields.reduce((best, field) => Math.max(best, number(user?.[field])), 0);
@@ -196,7 +170,6 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const [rankedRows, setRankedRows] = useState([]);
   const [eightsRows, setEightsRows] = useState([]);
   const [tournaments, setTournaments] = useState([]);
-  const [inventoryTrophies, setInventoryTrophies] = useState(emptyInventoryTrophies);
   const [leaderboardTrophies, setLeaderboardTrophies] = useState({});
   const [loading, setLoading] = useState(true);
   const copy = modeCopy[mode] || modeCopy.xp;
@@ -225,25 +198,6 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     load();
     return () => { active = false; };
   }, [mode]);
-
-  useEffect(() => {
-    let active = true;
-    if (!currentUser?.id) {
-      setInventoryTrophies(emptyInventoryTrophies());
-      return () => { active = false; };
-    }
-
-    base44.entities.UserInventory
-      .filter({ user_id: currentUser.id }, "-acquired_date", 500)
-      .then((items) => {
-        if (active) setInventoryTrophies(countInventoryTrophies(items || []));
-      })
-      .catch(() => {
-        if (active) setInventoryTrophies(emptyInventoryTrophies());
-      });
-
-    return () => { active = false; };
-  }, [currentUser?.id]);
 
   const usersById = useMemo(() => new Map(users.map((user) => [String(user.id), user])), [users]);
   const xpByUser = useMemo(() => new Map(xpRows.map((row) => [String(row.user_id), row])), [xpRows]);
@@ -341,11 +295,6 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   }, [standingsUserIds]);
 
   const me = { ...(usersById.get(String(currentUser?.id)) || {}), ...(currentUser || {}) };
-  const myXp = xpByUser.get(String(currentUser?.id)) || {};
-  const myTrophies = trophyTypes.map((trophy) => ({
-    ...trophy,
-    value: trophy.fields.reduce((best, field) => Math.max(best, number(me?.[field])), 0) + number(inventoryTrophies[trophy.key]),
-  }));
   const nextTournament = tournaments
     .slice()
     .sort((a, b) => new Date(a.start_date || 8640000000000000) - new Date(b.start_date || 8640000000000000))[0];
@@ -382,21 +331,6 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
           </div>
         ))}
       </div>
-
-      <section className="premium-panel grid gap-4 rounded-xl border border-white/[0.07] p-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
-        <div className="flex items-center gap-4 border-white/[0.07] lg:border-r lg:pr-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-purple-300/20 bg-purple-300/10 text-purple-300"><Sparkles className="h-6 w-6" /></div>
-          <div><p className="text-[8px] font-black uppercase tracking-[0.2em] text-vapor">Your progression</p><p className="mt-1 font-mono text-xl font-black text-purple-300">{number(myXp.total_xp ?? myXp.xp).toLocaleString()} XP</p><p className="text-[9px] text-vapor">Level {number(myXp.level || me.xp_level || 1)}</p></div>
-        </div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {myTrophies.map((trophy) => (
-            <div key={trophy.key} className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-black/10 px-2.5 py-2">
-              <img src={trophy.image} alt="" className="h-8 w-8 object-contain" />
-              <div><p className="font-mono text-sm font-black text-white">{trophy.value}</p><p className="text-[7px] font-black uppercase tracking-wider text-vapor">{trophy.label}</p></div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       <section id={activeTab} className="premium-panel scroll-mt-24 overflow-hidden rounded-xl border border-white/[0.08]">
         <div className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">

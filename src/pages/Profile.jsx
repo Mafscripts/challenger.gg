@@ -19,6 +19,7 @@ import {
   Pencil,
   Save,
   Shield,
+  Sparkles,
   Star,
   Swords,
   Target,
@@ -199,6 +200,7 @@ export default function Profile() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [rankedStats, setRankedStats] = useState(null);
+  const [xpStats, setXpStats] = useState(null);
   const [wallet, setWallet] = useState(null);
   const [inventory, setInventory] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -218,6 +220,7 @@ export default function Profile() {
     setLoading(true);
     setEditingProfile(false);
     setWallet(null);
+    setXpStats(null);
     try {
       let userRow = null;
       const authUser = await base44.auth.me().catch(() => null);
@@ -243,6 +246,7 @@ export default function Profile() {
       const [
         profileRows,
         rankedRows,
+        xpRows,
         walletRows,
         inventoryRows,
         teamMemberRows,
@@ -253,6 +257,7 @@ export default function Profile() {
       ] = await Promise.all([
         base44.entities.PlayerProfile.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
         base44.entities.RankedStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
+        base44.entities.XPStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
         base44.entities.Wallet.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
         base44.entities.UserInventory.filter({ user_id: userRow.id }, "-acquired_date", 200).catch(() => []),
         base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
@@ -268,6 +273,7 @@ export default function Profile() {
       setBioDraft(loadedProfile?.bio || "");
       setNameColorDraft(userRow?.display_name_color || "");
       setRankedStats(rankedRows[0] || null);
+      setXpStats(xpRows[0] || null);
       setWallet(walletRows[0] || null);
       setInventory(inventoryRows || []);
 
@@ -502,6 +508,7 @@ export default function Profile() {
 
         {tab === "statistics" && (
           <div className="mt-5 space-y-6">
+            <XpProgressPanel xpStats={xpStats} user={user} />
             <RankProgressPanel rank={rank} elo={elo} rankProgress={rankProgress} rankJourneyIndex={rankJourneyIndex} />
             <TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} />
             <div className="grid gap-6 xl:grid-cols-2"><AchievementsPanel achievements={achievementCards} badges={badges} expanded /><AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} /></div>
@@ -814,6 +821,35 @@ function RankProgressPanel({ rank, elo, rankProgress, rankJourneyIndex, classNam
             </div>
           );
         })}
+      </div>
+    </SectionCard>
+  );
+}
+
+function XpProgressPanel({ xpStats, user }) {
+  const level = statNumber(xpStats?.level || user?.xp_level || 1);
+  const currentXp = statNumber(xpStats?.current_xp);
+  const totalXp = statNumber(xpStats?.total_xp);
+  const xpTarget = Math.max(1, statNumber(xpStats?.xp_to_next_level) || 1000);
+  const progress = clampPercent((currentXp / xpTarget) * 100);
+
+  return (
+    <SectionCard className="p-6 sm:p-7">
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-purple-300">Your progression</p>
+          <h2 className="mt-1 font-heading text-xl font-black text-white">Level {level}</h2>
+        </div>
+        <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-purple-300/20 bg-purple-300/10 text-purple-300"><Sparkles className="h-6 w-6" /></span>
+      </div>
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
+        <p className="font-mono text-2xl font-black text-white">{currentXp.toLocaleString()} <span className="text-sm text-vapor">XP</span></p>
+        <div className="text-right"><p className="text-xs text-vapor">{xpTarget.toLocaleString()} needed</p><p className="mt-1 font-mono text-[9px] font-black uppercase tracking-wider text-purple-300">{totalXp.toLocaleString()} total XP</p></div>
+      </div>
+      <ProgressBar value={progress} tone="from-purple-400 to-cyan" className="mt-3 h-2" />
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-green/15 bg-green/5 p-3"><p className="text-[9px] font-black uppercase text-vapor">Win</p><p className="mt-1 font-mono font-black text-green">+150 XP</p></div>
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3"><p className="text-[9px] font-black uppercase text-vapor">Played</p><p className="mt-1 font-mono font-black text-white">+50 XP</p></div>
       </div>
     </SectionCard>
   );
