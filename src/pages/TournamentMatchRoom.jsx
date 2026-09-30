@@ -565,8 +565,12 @@ const rosterSocialDefinitions = [
 
 const rosterSocialUrl = (key, value) => {
   const text = String(value || "").trim();
-  if (!text || key === "discord") return "";
+  if (!text) return "";
   if (/^https?:\/\//i.test(text)) return text;
+  if (key === "discord") {
+    const invite = text.replace(/^discord\.gg\//i, "").replace(/^discord\.com\/invite\//i, "");
+    return invite !== text ? `https://discord.gg/${invite}` : "";
+  }
   const handle = text.replace(/^@/, "");
   if (key === "twitter") return `https://x.com/${handle}`;
   if (key === "twitch") return `https://twitch.tv/${handle}`;
