@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   AlertCircle,
+  AtSign,
   Award,
   Check,
   ChevronDown,
@@ -9,16 +10,20 @@ import {
   Crown,
   Flag,
   Gavel,
+  Globe2,
   LayoutGrid,
   Map as MapIcon,
   Medal,
+  MessageCircle,
   RefreshCw,
   Shield,
   ShieldCheck,
   Swords,
   Trophy,
+  Twitch,
   Unlock,
   X,
+  Youtube,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -266,6 +271,13 @@ function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
     losses: Math.max(profileLosses, wagerLosses),
     trophies: trophyCountsFor(userRow, inventoryRows),
     earnings,
+    socials: {
+      discord: profileRow?.discord || userRow?.discord || "",
+      twitter: profileRow?.twitter || profileRow?.x || userRow?.twitter || userRow?.x || userRow?.twitter_url || "",
+      twitch: profileRow?.twitch || userRow?.twitch || userRow?.twitch_url || "",
+      youtube: profileRow?.youtube || userRow?.youtube || userRow?.youtube_url || "",
+      website: profileRow?.website || userRow?.website || userRow?.website_url || "",
+    },
   };
 }
 
@@ -315,17 +327,17 @@ function teamMonogram(name) {
   return String(words[0] || "--").slice(0, 2).toUpperCase();
 }
 
-function TrophyCounts({ trophies }) {
+function TrophyCounts({ trophies, align = "end", compact = false }) {
   const counts = trophies || emptyTrophyCounts();
   return (
-    <div className="flex flex-wrap justify-end gap-1.5 overflow-visible">
+    <div className={`flex flex-wrap gap-1.5 overflow-visible ${align === "start" ? "justify-start" : "justify-end"}`}>
       {trophySlots.map(({ key, label, icon: Icon, className }) => {
         const count = statNumber(counts[key]);
         return (
           <span
             key={key}
             aria-label={`${label}: ${count}`}
-            className={`group/trophy relative inline-flex h-8 min-w-10 cursor-default select-none items-center justify-center gap-1.5 rounded-md border px-2 text-[11px] font-black transition-all duration-200 hover:-translate-y-0.5 ${count === 0 ? "opacity-70" : "ring-1 ring-current/10 shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_5px_18px_-10px_currentColor]"} ${className}`}
+            className={`group/trophy relative inline-flex cursor-default select-none items-center justify-center rounded-md border font-black transition-all duration-200 hover:-translate-y-0.5 ${compact ? "h-7 min-w-8 gap-1 px-1.5 text-[10px]" : "h-8 min-w-10 gap-1.5 px-2 text-[11px]"} ${count === 0 ? "opacity-70" : "ring-1 ring-current/10 shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_5px_18px_-10px_currentColor]"} ${className}`}
           >
             <span className="flex h-4 w-4 items-center justify-center rounded-full bg-current/10">
               <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
@@ -539,6 +551,142 @@ function TeamCard({ label, name, color, seed, isFirstHost, players = [], isCompl
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+const rosterSocialDefinitions = [
+  { key: "discord", label: "Discord", icon: MessageCircle },
+  { key: "twitter", label: "X", icon: AtSign },
+  { key: "twitch", label: "Twitch", icon: Twitch },
+  { key: "youtube", label: "YouTube", icon: Youtube },
+  { key: "website", label: "Website", icon: Globe2 },
+];
+
+const rosterSocialUrl = (key, value) => {
+  const text = String(value || "").trim();
+  if (!text || key === "discord") return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  const handle = text.replace(/^@/, "");
+  if (key === "twitter") return `https://x.com/${handle}`;
+  if (key === "twitch") return `https://twitch.tv/${handle}`;
+  if (key === "youtube") return `https://youtube.com/${handle}`;
+  if (key === "website") return `https://${text}`;
+  return "";
+};
+
+function RosterSocials({ socials }) {
+  const available = rosterSocialDefinitions.filter(({ key }) => socials?.[key]);
+  if (available.length === 0) return <span className="text-xs text-vapor/45">&mdash;</span>;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {available.map(({ key, label, icon: Icon }) => {
+        const value = socials[key];
+        const href = rosterSocialUrl(key, value);
+        const classes = "inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-black/20 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan";
+        return href ? (
+          <a key={key} href={href} target="_blank" rel="noreferrer" title={label} aria-label={label} className={classes}>
+            <Icon className="h-3.5 w-3.5" />
+          </a>
+        ) : (
+          <span key={key} title={`${label}: ${value}`} aria-label={`${label}: ${value}`} className={classes}>
+            <Icon className="h-3.5 w-3.5" />
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function TournamentTeamTable({ label, name, color, seed, isFirstHost, players = [], isComplete = false, isWinner = false, finalScore = 0 }) {
+  const isOrange = color === "orange";
+  const toneClass = isOrange ? "text-orange" : "text-cyan";
+  const tintClass = isOrange ? "border-orange/30 bg-orange/10" : "border-cyan/30 bg-cyan/10";
+  const hoverToneClass = isOrange ? "hover:text-orange" : "hover:text-cyan";
+
+  return (
+    <section className="relative overflow-visible rounded-xl border border-white/[0.075] bg-white/[0.018]">
+      <div className={`absolute inset-x-10 top-0 h-px ${isOrange ? "bg-gradient-to-r from-transparent via-orange/70 to-transparent" : "bg-gradient-to-r from-transparent via-cyan/70 to-transparent"}`} />
+      <header className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-mono text-base font-black ${tintClass} ${toneClass}`}>{teamMonogram(name)}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${toneClass}`}>{label}</p>
+            <span className="rounded-md border border-white/[0.06] bg-black/20 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-vapor">Seed {seedLabel(seed)}</span>
+            {isFirstHost && <span className={`rounded-md border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${tintClass} ${toneClass}`}>Hosts map 1</span>}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2.5">
+            <h3 className="truncate text-xl font-black sm:text-2xl">{name || "Open slot"}</h3>
+            {isWinner && <span className="inline-flex items-center gap-1 rounded-md border border-green/25 bg-green/[0.09] px-2 py-1 text-[8px] font-black uppercase tracking-wider text-green"><Trophy className="h-3 w-3" /> Winner</span>}
+          </div>
+          <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-vapor">{players.length} confirmed player{players.length === 1 ? "" : "s"}</p>
+        </div>
+        {isComplete && name && (
+          <div className="min-w-28 shrink-0 rounded-xl border border-white/[0.08] bg-black/20 px-5 py-2.5 text-center">
+            <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Final score</p>
+            <p className={`mt-1 font-mono text-2xl font-black tabular-nums ${toneClass}`}>{finalScore ?? 0}</p>
+          </div>
+        )}
+      </header>
+
+      <div className="hidden grid-cols-[minmax(250px,1.35fr)_minmax(210px,1fr)_105px_minmax(250px,1.15fr)_110px] gap-4 border-y border-white/[0.06] bg-white/[0.035] px-5 py-3 text-[8px] font-black uppercase tracking-[0.18em] text-vapor lg:grid">
+        <span>User</span>
+        <span>Gamertag</span>
+        <span>Record</span>
+        <span>Trophies</span>
+        <span>Socials</span>
+      </div>
+
+      {players.length === 0 ? (
+        <div className="flex min-h-28 items-center justify-center border-t border-white/[0.06] text-xs text-vapor">Roster unavailable</div>
+      ) : (
+        <div className="divide-y divide-white/[0.055]">
+          {players.map((player, index) => {
+            const profileSlug = player.user_id || player.username || player.handle || player.user_name;
+            const displayName = playerName(player);
+            return (
+              <article key={player.user_id || `${displayName}-${index}`} className="grid gap-4 px-4 py-4 transition-colors hover:bg-white/[0.025] sm:px-5 lg:grid-cols-[minmax(250px,1.35fr)_minmax(210px,1fr)_105px_minmax(250px,1.15fr)_110px] lg:items-center">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border font-mono text-sm font-black ${tintClass} ${toneClass}`}>
+                    {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} className={`truncate text-sm font-black text-white transition-colors ${hoverToneClass}`}>{displayName}</Link> : <span className="truncate text-sm font-black text-white">{displayName}</span>}
+                      <TournamentRankBadge goldTrophies={player.trophies?.gold} />
+                      <UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />
+                    </div>
+                    <p className="mt-1 text-[9px] text-vapor"><span className={`font-black uppercase ${player.role === "captain" ? "text-cyan" : "text-vapor"}`}>{player.role === "captain" ? "Captain" : "Member"}</span><span className="mx-1.5 text-white/20">&bull;</span>Earned <span className="font-mono font-black text-green">{moneyLabel(player.earnings)}</span></p>
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Gamertag</p>
+                  <div className="inline-flex max-w-full rounded-lg border border-white/[0.07] bg-black/20 px-3 py-2">
+                    <ActivisionIdLabel user={player} className="max-w-full" />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Record</p>
+                  <p className="font-mono text-sm font-black"><span className="text-white">{statNumber(player.wins)}W</span><span className="mx-1.5 text-white/20">/</span><span className="text-vapor">{statNumber(player.losses)}L</span></p>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Trophies</p>
+                  <TrophyCounts trophies={player.trophies} align="start" compact />
+                </div>
+
+                <div>
+                  <p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Socials</p>
+                  <RosterSocials socials={player.socials} />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -1234,9 +1382,8 @@ export default function TournamentMatchRoom() {
               </Link>
             </div>
           </div>
-          <div className="relative grid min-w-0 lg:grid-cols-2 lg:divide-x lg:divide-white/[0.06]">
-            <span className="absolute left-1/2 top-5 z-20 hidden h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full border border-white/[0.08] bg-[#111821] text-[8px] font-black uppercase text-vapor/60 lg:flex">vs</span>
-            <TeamCard
+          <div className="space-y-4 p-4 sm:p-5">
+            <TournamentTeamTable
               label="Team A"
               color="orange"
               name={match.team_a_name}
@@ -1247,7 +1394,12 @@ export default function TournamentMatchRoom() {
               isWinner={isTeamAWinner}
               finalScore={match.team_a_score || 0}
             />
-            <TeamCard
+            <div className="flex items-center gap-4 px-2" aria-hidden="true">
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" />
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span>
+              <span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" />
+            </div>
+            <TournamentTeamTable
               label="Team B"
               color="blue"
               name={match.team_b_name}
