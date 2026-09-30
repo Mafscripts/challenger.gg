@@ -630,7 +630,7 @@ function TournamentTeamTable({ label, name, color, seed, isFirstHost, players = 
         )}
       </header>
 
-      <div className="hidden grid-cols-[minmax(250px,1.35fr)_minmax(210px,1fr)_105px_minmax(250px,1.15fr)_110px] gap-4 border-y border-white/[0.06] bg-white/[0.035] px-5 py-3 text-[8px] font-black uppercase tracking-[0.18em] text-vapor lg:grid">
+      <div className="hidden grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_minmax(210px,1fr)_86px] gap-3 border-y border-white/[0.06] bg-white/[0.035] px-5 py-3 text-[8px] font-black uppercase tracking-[0.18em] text-vapor lg:grid">
         <span>User</span>
         <span>Gamertag</span>
         <span>Record</span>
@@ -646,7 +646,7 @@ function TournamentTeamTable({ label, name, color, seed, isFirstHost, players = 
             const profileSlug = player.user_id || player.username || player.handle || player.user_name;
             const displayName = playerName(player);
             return (
-              <article key={player.user_id || `${displayName}-${index}`} className="grid gap-4 px-4 py-4 transition-colors hover:bg-white/[0.025] sm:px-5 lg:grid-cols-[minmax(250px,1.35fr)_minmax(210px,1fr)_105px_minmax(250px,1.15fr)_110px] lg:items-center">
+              <article key={player.user_id || `${displayName}-${index}`} className="grid gap-4 px-4 py-4 transition-colors hover:bg-white/[0.025] sm:px-5 lg:grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_minmax(210px,1fr)_86px] lg:items-center lg:gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border font-mono text-sm font-black ${tintClass} ${toneClass}`}>
                     {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}
@@ -688,6 +688,76 @@ function TournamentTeamTable({ label, name, color, seed, isFirstHost, players = 
         </div>
       )}
     </section>
+  );
+}
+
+function TournamentChatColumn({
+  match,
+  teamAPlayers,
+  teamBPlayers,
+  isStreamerMatch,
+  isMatchParticipant,
+  supportWindowUnlocked,
+  requestingAdmin,
+  disputing,
+  onRequestAdmin,
+  onCreateDispute,
+}) {
+  return (
+    <aside className="min-w-0 xl:h-full">
+      <MatchChat
+        conversationId={match.id}
+        matchType="tournament"
+        accent="orange"
+        teamAPlayerIds={teamAPlayers}
+        teamBPlayerIds={teamBPlayers}
+        teamAColor="orange"
+        teamBColor="cyan"
+        live
+        compact
+        sticky={false}
+        heightClass="h-[520px] xl:h-[680px]"
+        inputActions={!isStreamerMatch ? (
+          <div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={onRequestAdmin}
+                disabled={!isMatchParticipant || !supportWindowUnlocked || requestingAdmin}
+                title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : "Request help from tournament staff"}
+                className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-2 py-2.5 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <Gavel className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request admin"}
+              </button>
+              <button
+                type="button"
+                onClick={onCreateDispute}
+                disabled={!isMatchParticipant || !supportWindowUnlocked || disputing}
+                title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : "Open a dispute with evidence"}
+                className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange transition-all hover:bg-orange/15 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Dispute"}
+              </button>
+            </div>
+            {!supportWindowUnlocked && isMatchParticipant && (
+              <p className="mt-2 text-center text-[9px] leading-4 text-vapor">Support unlocks when the start timer reaches 00:00.</p>
+            )}
+            {(match.admin_request_status || match.requested_admin) && (
+              <p className="mt-2 text-center text-[9px] font-bold text-blue-300">
+                Admin request: {{
+                  waiting_for_admin: "Waiting for admin",
+                  admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined",
+                  waiting_for_user: "Waiting for you",
+                  escalated: "Escalated",
+                  resolved: "Resolved",
+                  closed: "Closed",
+                }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
+              </p>
+            )}
+          </div>
+        ) : null}
+      />
+    </aside>
   );
 }
 
@@ -1382,34 +1452,50 @@ export default function TournamentMatchRoom() {
               </Link>
             </div>
           </div>
-          <div className="space-y-4 p-4 sm:p-5">
-            <TournamentTeamTable
-              label="Team A"
-              color="orange"
-              name={match.team_a_name}
-              seed={match.team_a_seed}
-              isFirstHost={match.first_host_team_id === match.team_a_id}
-              players={teamAPlayers}
-              isComplete={isComplete}
-              isWinner={isTeamAWinner}
-              finalScore={match.team_a_score || 0}
-            />
-            <div className="flex items-center gap-4 px-2" aria-hidden="true">
-              <span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" />
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span>
-              <span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" />
+          <div className={`grid gap-5 p-4 sm:p-5 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_410px]" : ""}`}>
+            <div className="min-w-0 space-y-4">
+              <TournamentTeamTable
+                label="Team A"
+                color="orange"
+                name={match.team_a_name}
+                seed={match.team_a_seed}
+                isFirstHost={match.first_host_team_id === match.team_a_id}
+                players={teamAPlayers}
+                isComplete={isComplete}
+                isWinner={isTeamAWinner}
+                finalScore={match.team_a_score || 0}
+              />
+              <div className="flex items-center gap-4 px-2" aria-hidden="true">
+                <span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" />
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span>
+                <span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" />
+              </div>
+              <TournamentTeamTable
+                label="Team B"
+                color="blue"
+                name={match.team_b_name}
+                seed={match.team_b_seed}
+                isFirstHost={match.first_host_team_id === match.team_b_id}
+                players={teamBPlayers}
+                isComplete={isComplete}
+                isWinner={isTeamBWinner}
+                finalScore={match.team_b_score || 0}
+              />
             </div>
-            <TournamentTeamTable
-              label="Team B"
-              color="blue"
-              name={match.team_b_name}
-              seed={match.team_b_seed}
-              isFirstHost={match.first_host_team_id === match.team_b_id}
-              players={teamBPlayers}
-              isComplete={isComplete}
-              isWinner={isTeamBWinner}
-              finalScore={match.team_b_score || 0}
-            />
+            {canChat && (
+              <TournamentChatColumn
+                match={match}
+                teamAPlayers={teamAPlayers}
+                teamBPlayers={teamBPlayers}
+                isStreamerMatch={isStreamerMatch}
+                isMatchParticipant={isMatchParticipant}
+                supportWindowUnlocked={supportWindowUnlocked}
+                requestingAdmin={requestingAdmin}
+                disputing={disputing}
+                onRequestAdmin={handleRequestAdmin}
+                onCreateDispute={handleCreateDispute}
+              />
+            )}
           </div>
         </section>
 
@@ -1490,7 +1576,7 @@ export default function TournamentMatchRoom() {
           </div>
         )}
 
-        <div className={`grid gap-6 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_460px]" : ""}`}>
+        <div className="min-w-0">
           <div className="min-w-0 space-y-6">
             <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(285px,0.8fr)]">
               <MapSeries match={match} />
@@ -1521,62 +1607,6 @@ export default function TournamentMatchRoom() {
               defaultOpen={false}
             />
           </div>
-          {canChat && (
-            <aside className="min-w-0">
-              <MatchChat
-                conversationId={match.id}
-                matchType="tournament"
-                accent="orange"
-                teamAPlayerIds={teamAPlayers}
-                teamBPlayerIds={teamBPlayers}
-                teamAColor="orange"
-                teamBColor="cyan"
-                live
-                compact
-                sticky={false}
-                heightClass="h-[440px] xl:h-[540px]"
-                inputActions={!isStreamerMatch ? (
-                  <div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={handleRequestAdmin}
-                        disabled={!isMatchParticipant || !supportWindowUnlocked || requestingAdmin}
-                        title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : "Request help from tournament staff"}
-                        className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-2 py-2.5 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        <Gavel className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request admin"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCreateDispute}
-                        disabled={!isMatchParticipant || !supportWindowUnlocked || disputing}
-                        title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : "Open a dispute with evidence"}
-                        className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange transition-all hover:bg-orange/15 disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Dispute"}
-                      </button>
-                    </div>
-                    {!supportWindowUnlocked && isMatchParticipant && (
-                      <p className="mt-2 text-center text-[9px] leading-4 text-vapor">Support unlocks when the start timer reaches 00:00.</p>
-                    )}
-                    {(match.admin_request_status || match.requested_admin) && (
-                      <p className="mt-2 text-center text-[9px] font-bold text-blue-300">
-                        Admin request: {{
-                          waiting_for_admin: "Waiting for admin",
-                          admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined",
-                          waiting_for_user: "Waiting for you",
-                          escalated: "Escalated",
-                          resolved: "Resolved",
-                          closed: "Closed",
-                        }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
-                      </p>
-                    )}
-                  </div>
-                ) : null}
-              />
-            </aside>
-          )}
         </div>
 
         {bracketMatches.length > 0 && (
