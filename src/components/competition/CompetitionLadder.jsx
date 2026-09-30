@@ -15,7 +15,6 @@ import {
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import PageLoader from "@/components/ui/PageLoader";
 
 const navigation = [
   { key: "xp", label: "XP Matches", to: "/ranked", icon: Zap },
@@ -325,10 +324,6 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     { label: "Next tournament", value: formatDate(nextTournament?.start_date), detail: nextTournament?.name || "No event announced", icon: CalendarDays, tone: "text-orange" },
   ];
 
-  if (loading) {
-    return <PageLoader label={`Loading ${copy.title}`} />;
-  }
-
   return (
     <div className="mb-7 space-y-5">
       <CompetitionHeader mode={mode} playerCount={standings.length} action={action} />
@@ -356,7 +351,17 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             <div className="grid grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] gap-3 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor">
               <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span><span className="text-center">XP</span><span>Trophies</span><span className="text-right">{mode === "wagers" ? "Winnings" : mode === "eights" ? "Rating" : "ELO"}</span>
             </div>
-            {standings.length === 0 ? <div className="px-5 py-12 text-center text-sm text-vapor">The standings begin when the first match is completed.</div> : standings.map((row, index) => (
+            {loading ? (
+              <div className="space-y-px" aria-label={`Loading ${copy.title} standings`}>
+                {[0, 1, 2, 3, 4].map((item) => (
+                  <div key={item} className="grid min-h-[52px] grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] items-center gap-3 border-b border-white/[0.035] px-5">
+                    <span className="h-2 w-5 rounded-full bg-white/[0.055]" />
+                    <span className="h-2.5 w-32 rounded-full bg-white/[0.055]" />
+                    {[0, 1, 2, 3, 4, 5, 6].map((cell) => <span key={cell} className="mx-auto h-2 w-7 rounded-full bg-white/[0.045]" />)}
+                  </div>
+                ))}
+              </div>
+            ) : standings.length === 0 ? <div className="px-5 py-12 text-center text-sm text-vapor">The standings begin when the first match is completed.</div> : standings.map((row, index) => (
               <div key={row.id} className={`grid grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors hover:bg-white/[0.02] ${String(row.userId) === String(currentUser?.id) ? "bg-cyan/[0.035]" : ""}`}>
                 <span className={`font-mono font-black ${rankTone(index)}`}>{index < 3 ? <Trophy className="mr-2 inline h-3.5 w-3.5" /> : null}{index + 1}</span>
                 <Link to={`/profile/${row.slug}`} className="flex min-w-0 items-center gap-3 font-bold text-white hover:text-cyan"><span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.04] text-[10px] font-black">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" className="h-full w-full object-cover" /> : row.name.charAt(0).toUpperCase()}</span><span className="truncate underline decoration-white/15 underline-offset-2">{row.name}</span></Link>

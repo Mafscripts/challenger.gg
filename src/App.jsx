@@ -8,6 +8,7 @@ import Ranked from '@/pages/Ranked';
 import RankedEights from '@/pages/RankedEights';
 import Wagers from '@/pages/Wagers';
 import Tournaments from '@/pages/Tournaments';
+import TournamentOverview from '@/pages/TournamentOverview';
 
 // Layout
 import PageLayout from '@/components/layout/PageLayout';
@@ -15,7 +16,6 @@ import PageLayout from '@/components/layout/PageLayout';
 // Pages are split by route so visitors only download the screen they open.
 const Home = lazy(() => import('@/pages/Home'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const TournamentOverview = lazy(() => import('@/pages/TournamentOverview'));
 const StreamerTournaments = lazy(() => import('@/pages/StreamerTournaments'));
 const StreamerTournamentLobby = lazy(() => import('@/pages/StreamerTournamentLobby'));
 const TournamentMatchRoom = lazy(() => import('@/pages/TournamentMatchRoom'));
