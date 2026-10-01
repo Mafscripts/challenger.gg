@@ -30,6 +30,13 @@ const economyUserFields = new Set([
   "is_premium",
   "premium_expires",
 ]);
+const discordIdentityFields = new Set([
+  "discord_user_id",
+  "discord_username",
+  "discord_display_name",
+  "discord_avatar_url",
+  "discord_connected_at",
+]);
 const cleanName = (value) => String(value || "").trim().toLowerCase();
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 
@@ -284,6 +291,9 @@ router.post("/:entity", requireAuth, async (req, res, next) => {
     if (req.params.entity === "Tournament" && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Admin or higher is required to create tournaments" });
     }
+    if (req.params.entity === "User" && !hasRole(req.user, "admin")) {
+      return res.status(403).json({ error: "Accounts can only be created through registration" });
+    }
     if (["AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Moderator access required" });
     }
@@ -312,10 +322,14 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
       const changingRole = Object.keys(payload).some((key) => roleFields.has(key));
       const changingModeration = ["is_banned", "ban_reason"].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
       const changingEconomy = Object.keys(payload).some((key) => economyUserFields.has(key));
+      const changingDiscordIdentity = Object.keys(payload).some((key) => discordIdentityFields.has(key));
       if (changingRole) return res.status(403).json({ error: "Use role management actions" });
       if (changingModeration) return res.status(403).json({ error: "Use moderation actions" });
       if (changingEconomy && !hasRole(req.user, "admin")) {
         return res.status(403).json({ error: "Only admins can change account balances or premium access" });
+      }
+      if (changingDiscordIdentity) {
+        return res.status(403).json({ error: "Use the Discord connection settings to change a Discord identity" });
       }
       if (req.params.id !== req.user.id && !hasRole(req.user, "moderator")) return res.status(403).json({ error: "Cannot update another user" });
     }

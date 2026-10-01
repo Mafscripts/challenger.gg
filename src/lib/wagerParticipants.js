@@ -52,7 +52,7 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
       premium_count: Number(userRow?.premium_count || 0) + inventoryTrophies.premium,
       champion_count: Number(userRow?.champion_count || userRow?.invitational_count || 0) + inventoryTrophies.champion,
       socials: {
-        discord: profileRow.discord || userRow?.discord || "",
+        discord: userRow?.discord_username || profileRow.discord || userRow?.discord || "",
         twitter: profileRow.twitter || profileRow.x || userRow?.twitter || userRow?.x || "",
         twitch: profileRow.twitch || userRow?.twitch || "",
         youtube: profileRow.youtube || userRow?.youtube || "",

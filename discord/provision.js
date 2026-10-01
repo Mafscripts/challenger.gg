@@ -363,14 +363,19 @@ async function seedInformation(guild) {
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.green)
       .setTitle("✅ Verify your Topfragg identity")
-      .setDescription("Connect your Discord identity to your Topfragg profile so staff can recognize you during competitions. Never send passwords or security codes to anyone."),
+      .setDescription("Link Discord securely through Topfragg. We verify your unique Discord user ID automatically—never by trusting a typed username or old #1234 tag.")
+      .addFields(
+        { name: "1. Connect", value: "Open Topfragg Settings and press **Connect Discord**." },
+        { name: "2. Approve", value: "Authorize basic identity access on Discord. Topfragg never receives your password." },
+        { name: "3. Verify", value: "The **Verified Player** role is assigned automatically. Use `/verify` to synchronize it again." },
+      ),
     [
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setLabel("Open Topfragg settings")
+          .setLabel("Connect Discord securely")
           .setEmoji("🔗")
           .setStyle(ButtonStyle.Link)
-          .setURL(`${config.publicUrl}/settings`),
+          .setURL(`${config.publicUrl}/settings?connect=discord`),
       ),
     ],
     ["Verify your Topfragg identity"],

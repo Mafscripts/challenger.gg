@@ -37,6 +37,11 @@ model User {
   premium_expires      DateTime?
   is_banned            Boolean   @default(false)
   ban_reason           String?
+  discord_user_id      String?   @unique
+  discord_username     String?
+  discord_display_name String?
+  discord_avatar_url   String?
+  discord_connected_at DateTime?
   account_created_date DateTime  @default(now())
   created_date         DateTime  @default(now())
   updated_date         DateTime  @updatedAt

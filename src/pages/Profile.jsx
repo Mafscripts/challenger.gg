@@ -8,13 +8,11 @@ import {
   Camera,
   ChevronRight,
   DollarSign,
-  ExternalLink,
   Flame,
   Gamepad2,
   Globe2,
   Medal,
   MessageSquare,
-  Monitor,
   Package,
   Pencil,
   Save,
@@ -101,7 +99,9 @@ const socialUrlFor = (label, value) => {
 };
 const socialLinksFor = (profile, user) => socialFields
   .map((field) => {
-    const value = profile?.[field.key] || user?.[field.key] || user?.[`${field.key}_url`];
+    const value = field.key === "discord"
+      ? (user?.discord_username || profile?.discord_username || profile?.discord || user?.discord)
+      : (profile?.[field.key] || user?.[field.key] || user?.[`${field.key}_url`]);
     return value ? { ...field, value, url: socialUrlFor(field.label, value) } : null;
   })
   .filter(Boolean);

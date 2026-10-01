@@ -141,7 +141,7 @@ export const categorySpecs = [
 
 export const commandSpecs = [
   { name: "ping", description: "Check whether Topfragg Bot is online." },
-  { name: "verify", description: "See how to verify your Topfragg account." },
+  { name: "verify", description: "Verify your linked Topfragg and Discord identity." },
   { name: "tournaments", description: "Open the current Topfragg tournaments." },
   {
     name: "support",

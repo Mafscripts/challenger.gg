@@ -286,6 +286,26 @@ export const base44 = {
     },
   },
   auth,
+  discord: {
+    connect() {
+      requireToken();
+      return apiFetch("/discord/connect", { method: "POST", dedupe: false });
+    },
+    status() {
+      requireToken();
+      return apiFetch("/discord/status", { dedupe: false });
+    },
+    sync() {
+      requireToken();
+      return apiFetch("/discord/sync", { method: "POST", dedupe: false });
+    },
+    async disconnect() {
+      requireToken();
+      const result = await apiFetch("/discord/connection", { method: "DELETE", dedupe: false });
+      invalidateMeCache();
+      return result;
+    },
+  },
   entities: new Proxy({}, {
     get(_target, entity) {
       return entityClient(entity);

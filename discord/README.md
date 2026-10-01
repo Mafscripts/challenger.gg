@@ -10,10 +10,21 @@ Open the repository's `.env` file and add:
 DISCORD_TOKEN="paste-the-private-bot-token-here"
 DISCORD_CLIENT_ID="1555247113070317600"
 DISCORD_GUILD_ID="1555246540027596972"
+DISCORD_CLIENT_SECRET="paste-the-private-oauth-client-secret-here"
+DISCORD_OAUTH_REDIRECT_URI="https://topfragg.gg/api/discord/callback"
+DISCORD_OAUTH_STATE_SECRET="use-a-long-random-secret-here"
 TOPFRAGG_PUBLIC_URL="https://topfragg.gg"
 ```
 
-Never paste `DISCORD_TOKEN` into chat, screenshots, source files or Git. The `.env` file is ignored by Git.
+Never paste `DISCORD_TOKEN`, `DISCORD_CLIENT_SECRET` or `DISCORD_OAUTH_STATE_SECRET` into chat, screenshots, source files or Git. The `.env` file is ignored by Git.
+
+In the Discord Developer Portal, add this exact redirect under **OAuth2 > Redirects**:
+
+```text
+https://topfragg.gg/api/discord/callback
+```
+
+The OAuth flow only requests the `identify` scope. Topfragg stores the Discord user ID and public profile details, but never stores a Discord OAuth access token.
 
 ## 2. Prepare Discord
 
@@ -44,4 +55,23 @@ Available commands:
 - `/support reason:<message>`
 - `/setup-status` (server managers only)
 
-Website-driven role synchronization and tournament announcements can be added after the initial server structure is approved.
+## 5. Website verification
+
+A signed-in player can open **Settings > Discord** and choose **Connect Discord**. Discord asks the player to approve the identity connection and then returns them to Topfragg.
+
+After a successful connection:
+
+- the immutable Discord user ID is linked to exactly one Topfragg account;
+- the website shows the connected Discord account;
+- the bot assigns the **Verified Player** role when the member is in the Topfragg server;
+- `/verify` checks the same linked user ID and can synchronize the role again;
+- disconnecting removes the link and attempts to remove the role.
+
+Modern Discord usernames normally do not include a `#1234` discriminator. Players do not type a username manually; OAuth identifies the correct account.
+
+Before restarting production after deploying this feature, apply the Prisma migration and regenerate the client:
+
+```powershell
+npm run prisma:deploy
+npm run prisma:generate
+```

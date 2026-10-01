@@ -22,6 +22,7 @@ import {
   staffRoleNames,
   TOPFRAGG_COLORS,
 } from "./config.js";
+import { prisma } from "../server/prisma.js";
 
 const config = discordEnvironment();
 const client = new Client({
@@ -247,7 +248,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
     if (interaction.commandName === "verify") {
-      await interaction.reply(ephemeral(`Open ${config.publicUrl}/settings and add your Discord username to your Topfragg profile. Then use \`/support\` if staff verification is required.`));
+      const linkedUser = await prisma.user.findUnique({
+        where: { discord_user_id: interaction.user.id },
+      });
+      if (!linkedUser) {
+        await interaction.reply({
+          content: "Connect this Discord account to your Topfragg account first. No username or #1234 tag is needed.",
+          flags: MessageFlags.Ephemeral,
+          components: [
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setLabel("Connect Discord on Topfragg")
+                .setStyle(ButtonStyle.Link)
+                .setURL(`${config.publicUrl}/settings?connect=discord`),
+            ),
+          ],
+        });
+        return;
+      }
+      const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
+      if (!verifiedRole) {
+        await interaction.reply(ephemeral("The Verified Player role is unavailable. Please contact Topfragg support."));
+        return;
+      }
+      await interaction.member.roles.add(verifiedRole, "Topfragg website Discord identity verified");
+      await interaction.reply(ephemeral(`Verified successfully. Welcome back, ${linkedUser.display_name || linkedUser.username || interaction.user.username}!`));
       return;
     }
     if (interaction.commandName === "tournaments") {

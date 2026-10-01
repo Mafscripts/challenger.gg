@@ -5,6 +5,7 @@ import authRoutes, { registerHandler } from "./routes/auth.js";
 import entityRoutes from "./routes/entities.js";
 import functionRoutes from "./routes/functions.js";
 import publicRoutes from "./routes/public.js";
+import discordRoutes from "./routes/discord.js";
 import { disconnectPrisma } from "./prisma.js";
 import { attachRankedVoiceServer } from "./ranked-voice.js";
 
@@ -33,6 +34,7 @@ app.get("/api/health", (_req, res) => {
 app.post("/register", registerHandler);
 app.use("/api/public", publicRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/discord", discordRoutes);
 app.use("/api/entities", entityRoutes);
 app.use("/api/functions", functionRoutes);
 

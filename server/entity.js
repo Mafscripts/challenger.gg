@@ -67,6 +67,11 @@ const userFields = new Set([
   "premium_expires",
   "is_banned",
   "ban_reason",
+  "discord_user_id",
+  "discord_username",
+  "discord_display_name",
+  "discord_avatar_url",
+  "discord_connected_at",
   "account_created_date",
 ]);
 

@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { AtSign, Globe2, Link2, Loader2, MessageCircle, Save, Twitch, Youtube } from "lucide-react";
+import { AtSign, Globe2, Link2, Loader2, Save, Twitch, Youtube } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const socialFields = [
-  { key: "discord", label: "Discord", icon: MessageCircle, placeholder: "discord.gg/your-server or username" },
   { key: "x", label: "X", icon: AtSign, placeholder: "@yourhandle or x.com/yourhandle" },
   { key: "twitch", label: "Twitch", icon: Twitch, placeholder: "yourchannel or twitch.tv/yourchannel" },
   { key: "youtube", label: "YouTube", icon: Youtube, placeholder: "@yourchannel or youtube.com/@yourchannel" },

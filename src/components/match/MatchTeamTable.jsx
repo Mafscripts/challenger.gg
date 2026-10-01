@@ -23,7 +23,7 @@ const trophiesFor = (player) => player?.trophies || {
   premium: number(player?.premium_count),
 };
 const socialsFor = (player) => player?.socials || {
-  discord: player?.discord,
+  discord: player?.discord_username || player?.discord,
   twitter: player?.twitter || player?.x || player?.twitter_url,
   twitch: player?.twitch || player?.twitch_url,
   youtube: player?.youtube || player?.youtube_url,
