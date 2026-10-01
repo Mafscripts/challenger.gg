@@ -713,8 +713,8 @@ function TournamentChatColumn({
       <MatchRoomChat
         conversationId={match.id}
         matchType="tournament"
-        teamAPlayerIds={teamAPlayers}
-        teamBPlayerIds={teamBPlayers}
+        teamAPlayers={teamAPlayers}
+        teamBPlayers={teamBPlayers}
         inputActions={!isStreamerMatch ? (
           <div>
             <div className="grid grid-cols-2 gap-2">
