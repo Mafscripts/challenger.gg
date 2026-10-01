@@ -169,6 +169,52 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
       return;
     }
+    if (interaction.isButton() && interaction.customId === "topfragg:report:open") {
+      const modal = new ModalBuilder()
+        .setCustomId("topfragg:report:form")
+        .setTitle("Confidential player report")
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("reported_player")
+              .setLabel("Player name or Discord username")
+              .setStyle(TextInputStyle.Short)
+              .setMaxLength(80)
+              .setRequired(true),
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("report_context")
+              .setLabel("Tournament, team or match")
+              .setPlaceholder("Add the relevant event or match if known")
+              .setStyle(TextInputStyle.Short)
+              .setMaxLength(100)
+              .setRequired(false),
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("report_details")
+              .setLabel("What happened?")
+              .setPlaceholder("Describe the incident and mention any evidence you have.")
+              .setStyle(TextInputStyle.Paragraph)
+              .setMinLength(20)
+              .setMaxLength(1500)
+              .setRequired(true),
+          ),
+        );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === "topfragg:report:form") {
+      const player = interaction.fields.getTextInputValue("reported_player");
+      const context = interaction.fields.getTextInputValue("report_context") || "Not provided";
+      const details = interaction.fields.getTextInputValue("report_details");
+      await createSupportTicket(interaction, {
+        subject: `Player report: ${player}`,
+        reason: `**Tournament / match:** ${context}\n\n**Report:** ${details}`,
+      });
+      return;
+    }
     if (interaction.isButton() && interaction.customId === "topfragg:support:close") {
       const isOwner = interaction.channel?.topic === `Topfragg ticket owner:${interaction.user.id}`;
       const isStaff = staffRoleNames.some((name) => interaction.member.roles.cache.some((role) => role.name === name));
