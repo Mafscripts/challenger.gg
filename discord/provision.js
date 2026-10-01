@@ -88,6 +88,29 @@ function overwriteForMode(guild, roles, mode) {
   ];
 }
 
+async function grantRuntimeChannelAccess(channel, roles) {
+  const botRuntimeId = roles.get(botRuntimeRoleSpec.name);
+  if (!botRuntimeId) return false;
+  try {
+    await channel.permissionOverwrites.edit(
+      botRuntimeId,
+      {
+        ViewChannel: true,
+        ReadMessageHistory: true,
+        SendMessages: true,
+        EmbedLinks: true,
+        AttachFiles: true,
+        ManageMessages: true,
+      },
+      { reason: "Allow Topfragg Bot to maintain managed channels" },
+    );
+    return true;
+  } catch (error) {
+    if ([50001, 50013].includes(error.code)) return false;
+    throw error;
+  }
+}
+
 async function ensureRoles(guild) {
   await guild.roles.fetch();
   const botMember = await guild.members.fetchMe();
@@ -177,6 +200,7 @@ async function ensureChannels(guild) {
   const created = new Map();
 
   for (const categorySpec of categorySpecs) {
+    let categoryRuntimeAccess = true;
     let category = guild.channels.cache.find((channel) => (
       channel.type === ChannelType.GuildCategory && channel.name === categorySpec.name
     ));
@@ -190,8 +214,10 @@ async function ensureChannels(guild) {
       });
       log(`Created category: ${categorySpec.name}`);
     } else if (categorySpec.mode === "staff") {
-      await category.permissionOverwrites.set(categoryOverwrites, "Topfragg server setup");
-      log(`Updated category access: ${categorySpec.name}`);
+      categoryRuntimeAccess = await grantRuntimeChannelAccess(category, roles);
+      log(categoryRuntimeAccess
+        ? `Updated category access: ${categorySpec.name}`
+        : `Skipped hidden category without access: ${categorySpec.name}`);
     }
     created.set(categorySpec.name, category);
 
@@ -205,11 +231,19 @@ async function ensureChannels(guild) {
           log(`Skipped ${channelSpec.name}: an existing channel has a different type.`);
           continue;
         }
-        await existing.edit({
-          topic: channelSpec.topic,
-          permissionOverwrites,
-          reason: "Topfragg server setup",
-        });
+        if (categorySpec.mode === "staff" && !categoryRuntimeAccess) {
+          log(`Skipped hidden channel without access: ${categorySpec.name}/${channelSpec.name}`);
+          continue;
+        }
+        if (["read-only", "staff"].includes(channelSpec.mode || categorySpec.mode)) {
+          await grantRuntimeChannelAccess(existing, roles);
+        }
+        if (channelSpec.topic !== undefined) {
+          await existing.edit({
+            topic: channelSpec.topic,
+            reason: "Topfragg server setup",
+          });
+        }
         log(`Updated channel: ${categorySpec.name}/${channelSpec.name}`);
         continue;
       }
