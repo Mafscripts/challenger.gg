@@ -8,6 +8,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import {
+  botRuntimeRoleSpec,
   categorySpecs,
   commandSpecs,
   discordEnvironment,
@@ -107,6 +108,55 @@ async function ensureRoles(guild) {
     log(`Created role: ${spec.name}`);
   }
   await guild.roles.fetch();
+}
+
+async function ensureBotRuntimeRole(guild) {
+  await guild.roles.fetch();
+  const botMember = await guild.members.fetchMe();
+  let runtimeRole = guild.roles.cache.find((role) => (
+    role.name === botRuntimeRoleSpec.name && !role.managed
+  ));
+  const roleData = {
+    colors: { primaryColor: botRuntimeRoleSpec.color },
+    hoist: false,
+    mentionable: false,
+    permissions: botRuntimeRoleSpec.permissions,
+    reason: "Topfragg bot least-privilege runtime access",
+  };
+
+  if (runtimeRole) {
+    runtimeRole = await runtimeRole.edit(roleData);
+    log(`Updated role: ${botRuntimeRoleSpec.name}`);
+  } else {
+    runtimeRole = await guild.roles.create({
+      name: botRuntimeRoleSpec.name,
+      ...roleData,
+    });
+    log(`Created role: ${botRuntimeRoleSpec.name}`);
+  }
+
+  if (!botMember.roles.cache.has(runtimeRole.id)) {
+    await botMember.roles.add(runtimeRole, "Topfragg bot runtime access");
+    log(`Assigned ${botRuntimeRoleSpec.name} to ${botMember.user.tag}`);
+  }
+
+  const managedBotRole = botMember.roles.cache
+    .filter((role) => role.managed)
+    .sort((left, right) => right.position - left.position)
+    .first();
+  const highestTopfraggPosition = Math.max(
+    ...roleSpecs
+      .map((spec) => guild.roles.cache.find((role) => role.name === spec.name)?.position)
+      .filter(Number.isInteger),
+    0,
+  );
+  const desiredPosition = managedBotRole
+    ? Math.min(managedBotRole.position - 1, highestTopfraggPosition + 1)
+    : highestTopfraggPosition + 1;
+  if (desiredPosition > 0 && runtimeRole.position !== desiredPosition) {
+    await runtimeRole.setPosition(desiredPosition, "Keep Topfragg bot access above Topfragg staff roles");
+    log(`Positioned ${botRuntimeRoleSpec.name} above Topfragg staff roles.`);
+  }
 }
 
 async function ensureChannels(guild) {
@@ -234,6 +284,7 @@ async function run() {
   const guild = await client.guilds.fetch(config.guildId);
   log(`Preparing server: ${guild.name}`);
   await ensureRoles(guild);
+  await ensureBotRuntimeRole(guild);
   await ensureChannels(guild);
   await guild.channels.fetch();
   await guild.commands.set(commandSpecs);

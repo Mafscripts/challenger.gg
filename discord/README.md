@@ -17,9 +17,8 @@ Never paste `DISCORD_TOKEN` into chat, screenshots, source files or Git. The `.e
 
 ## 2. Prepare Discord
 
-- Put the **Topfragg Bot** role above every role it must assign or manage.
-- Keep **Manage Channels** enabled so `/support` can create private ticket channels.
-- **Administrator** is only needed temporarily while running the initial server setup and can be disabled afterwards.
+- The setup creates and assigns **Topfragg Bot Access** with only the required channel, role and message permissions.
+- **Administrator** is only needed temporarily while running the initial server setup. Disable it after **Topfragg Bot Access** has been assigned.
 
 ## 3. Create the server structure
 

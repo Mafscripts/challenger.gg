@@ -13,6 +13,23 @@ export const TOPFRAGG_COLORS = {
   graphite: 0x222a35,
 };
 
+export const botRuntimeRoleSpec = {
+  name: "Topfragg Bot Access",
+  color: TOPFRAGG_COLORS.cyan,
+  permissions: [
+    PermissionFlagsBits.ViewChannel,
+    PermissionFlagsBits.SendMessages,
+    PermissionFlagsBits.ReadMessageHistory,
+    PermissionFlagsBits.EmbedLinks,
+    PermissionFlagsBits.AttachFiles,
+    PermissionFlagsBits.AddReactions,
+    PermissionFlagsBits.UseApplicationCommands,
+    PermissionFlagsBits.ManageChannels,
+    PermissionFlagsBits.ManageRoles,
+    PermissionFlagsBits.ManageMessages,
+  ],
+};
+
 export const roleSpecs = [
   { name: "CEO", color: TOPFRAGG_COLORS.orange, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
   { name: "Admin", color: TOPFRAGG_COLORS.red, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
