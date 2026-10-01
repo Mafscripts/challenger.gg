@@ -27,6 +27,7 @@ const displaySenderName = (message) => {
   const name = stripStaffPrefix(message.sender_name || "Unknown sender");
   return name || "Unknown sender";
 };
+const nameKey = (value) => String(value || "").trim().toLowerCase();
 const isStaffMessage = (message) => {
   const roles = [message.sender_role, message.sender_admin_role, message.admin_role]
     .map((role) => String(role || "").toLowerCase());
@@ -50,6 +51,15 @@ const playerIdentifiers = (player) => {
     .filter(Boolean)
     .map(String);
 };
+
+const playerNameKeys = (player) => [
+  player?.user_name,
+  player?.username,
+  player?.handle,
+  player?.display_name,
+  player?.full_name,
+  player?.name,
+].map(nameKey).filter(Boolean);
 
 const teamStyles = {
   cyan: {
@@ -95,6 +105,8 @@ export default function MatchChat({
   const tone = accents[accent] || accents.cyan;
   const teamAIds = useMemo(() => new Set(teamAPlayerIds.flatMap(playerIdentifiers)), [teamAPlayerIds]);
   const teamBIds = useMemo(() => new Set(teamBPlayerIds.flatMap(playerIdentifiers)), [teamBPlayerIds]);
+  const teamANameKeys = useMemo(() => new Set(teamAPlayerIds.flatMap(playerNameKeys)), [teamAPlayerIds]);
+  const teamBNameKeys = useMemo(() => new Set(teamBPlayerIds.flatMap(playerNameKeys)), [teamBPlayerIds]);
   const playersById = useMemo(() => new Map(
     [...teamAPlayerIds, ...teamBPlayerIds]
       .flatMap((player) => playerIdentifiers(player).map((id) => [id, player])),
@@ -214,16 +226,21 @@ export default function MatchChat({
         ) : messages.map((message, messageIndex) => {
           const staff = isStaffMessage(message);
           const senderId = String(message.sender_id || "");
+          const senderName = displaySenderName(message);
+          const senderNameKey = nameKey(senderName);
           const savedTeamSide = ["a", "b"].includes(String(message.team_side || ""))
             ? String(message.team_side)
             : null;
           const teamSide = !staff
-            ? (savedTeamSide || (teamAIds.has(senderId) ? "a" : (teamBIds.has(senderId) ? "b" : null)))
+            ? (savedTeamSide || (teamAIds.has(senderId)
+              ? "a"
+              : (teamBIds.has(senderId)
+                ? "b"
+                : (teamANameKeys.has(senderNameKey) ? "a" : (teamBNameKeys.has(senderNameKey) ? "b" : null)))))
             : null;
           const teamTone = teamSide === "a" ? teamStyles[teamAColor] : teamSide === "b" ? teamStyles[teamBColor] : null;
           const isOwnMessage = String(currentUser?.id || "") === senderId;
           const isTeamB = teamSide === "b";
-          const senderName = displaySenderName(message);
           const senderPlayer = playersById.get(senderId);
           const senderAvatar = message.sender_avatar_url || senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "") || "";
           const previousMessage = messages[messageIndex - 1];
