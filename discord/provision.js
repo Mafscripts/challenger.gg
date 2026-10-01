@@ -387,12 +387,15 @@ async function seedInformation(guild) {
   const verificationChannel = byKey("verification");
   const faqChannel = byKey("faq");
   const tournamentsChannel = byKey("tournaments");
+  const liveNowChannel = byKey("live-now");
+  const lookingForTeamChannel = byKey("looking-for-team");
   const tournamentSignupsChannel = byKey("tournament-signups");
   const matchResultsChannel = byKey("match-results");
   const leaderboardsChannel = byKey("leaderboards");
   const disputesChannel = byKey("disputes");
   const createTicketChannel = byKey("create-ticket");
   const playerReportsChannel = byKey("player-reports");
+  const giveawaysChannel = byKey("giveaways");
   await sendSeedEmbed(
     welcomeChannel,
     "Topfragg setup:v1:welcome",
@@ -448,6 +451,7 @@ async function seedInformation(guild) {
         { name: "1. Connect", value: "Open Topfragg Settings and press **Connect Discord**." },
         { name: "2. Approve", value: "Authorize basic identity access on Discord. Topfragg never receives your password." },
         { name: "3. Verify", value: "The **Verified Player** role is assigned automatically. Use `/verify` to synchronize it again." },
+        { name: "Automatic roles", value: "**Premium**, **Team Captain** and **Tournament Participant** update automatically from your Topfragg account." },
       ),
     [
       new ActionRowBuilder().addComponents(
@@ -495,6 +499,42 @@ async function seedInformation(guild) {
           .setEmoji("🔥")
           .setStyle(ButtonStyle.Link)
           .setURL(`${config.publicUrl}/tournaments`),
+      ),
+    ],
+  );
+  await sendSeedEmbed(
+    liveNowChannel,
+    "Topfragg setup:v1:live-now",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.red)
+      .setTitle("🔴 Live Topfragg matches")
+      .setDescription("When a tournament match goes live on Topfragg, it appears here automatically. Follow the match card to see the matchup and live room."),
+  );
+  await sendSeedEmbed(
+    lookingForTeamChannel,
+    "Topfragg setup:v1:looking-for-team",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.purple)
+      .setTitle("🔎 Find your next Topfragg team")
+      .setDescription("Create a clean player card so captains can find you quickly. Choose the roles that fit you, then share your region, platform, mode and availability.")
+      .addFields(
+        { name: "Step 1", value: "Pick your notification roles below.", inline: true },
+        { name: "Step 2", value: "Press **Create LFG post** and complete the form.", inline: true },
+        { name: "Keep it useful", value: "No spam, no account selling and no personal details." },
+      ),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId("topfragg:role:EU").setLabel("EU").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("topfragg:role:NA").setLabel("NA").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("topfragg:role:2v2").setLabel("2v2").setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId("topfragg:role:S&D").setLabel("S&D").setStyle(ButtonStyle.Secondary),
+      ),
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("topfragg:lfg:open")
+          .setLabel("Create LFG post")
+          .setEmoji("🔎")
+          .setStyle(ButtonStyle.Primary),
       ),
     ],
   );
@@ -557,7 +597,7 @@ async function seedInformation(guild) {
     [
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setCustomId("topfragg:support:open")
+          .setCustomId("topfragg:support:open:tournament")
           .setLabel("Open private dispute ticket")
           .setEmoji("⚖️")
           .setStyle(ButtonStyle.Danger),
@@ -596,10 +636,20 @@ async function seedInformation(guild) {
     [
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setCustomId("topfragg:support:open")
-          .setLabel("Open support ticket")
+          .setCustomId("topfragg:support:open:account")
+          .setLabel("Account help")
           .setEmoji("🎫")
           .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId("topfragg:support:open:tournament")
+          .setLabel("Tournament / match")
+          .setEmoji("🏆")
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId("topfragg:support:open:payment")
+          .setLabel("Payment / prize")
+          .setEmoji("💳")
+          .setStyle(ButtonStyle.Secondary),
       ),
     ],
   );
@@ -622,6 +672,18 @@ async function seedInformation(guild) {
           .setStyle(ButtonStyle.Danger),
       ),
     ],
+  );
+  await sendSeedEmbed(
+    giveawaysChannel,
+    "Topfragg setup:v1:giveaways",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.purple)
+      .setTitle("🎁 Official Topfragg giveaways")
+      .setDescription("Verified players can enter live giveaways with the button on each official giveaway post. Winners are selected automatically when the countdown ends.")
+      .addFields(
+        { name: "Stay safe", value: "Topfragg giveaways never ask for your password, token, payment details or a direct-message reply." },
+        { name: "How to enter", value: "Verify your Discord account, then press **Enter giveaway** on an active post." },
+      ),
   );
 }
 

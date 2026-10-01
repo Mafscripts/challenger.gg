@@ -304,6 +304,28 @@ model DiscordEventDispatch {
   metadata     Json     @default("{}")
 }
 
+model DiscordGiveaway {
+  id            String   @id @default(cuid())
+  title         String
+  prize         String
+  channel_id    String?
+  message_id    String?
+  ends_at       DateTime
+  winner_count  Int      @default(1)
+  status        String   @default("open")
+  created_date  DateTime @default(now())
+  updated_date  DateTime @updatedAt
+}
+
+model DiscordGiveawayEntry {
+  id              String   @id @default(cuid())
+  giveaway_id     String
+  discord_user_id String
+  created_date    DateTime @default(now())
+
+  @@unique([giveaway_id, discord_user_id])
+}
+
 model MarketplaceItem {
   id           String   @id @default(cuid())
   created_date DateTime @default(now())

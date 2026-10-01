@@ -85,3 +85,46 @@ While the `topfragg-discord` process is online, it checks the Topfragg database 
 - posts confirmed tournament match results once in **📊・match-results**.
 
 The `DiscordEventDispatch` database table prevents duplicate announcements when the bot restarts. Apply the Prisma migration and restart **topfragg-discord** after deployment for the automation to start.
+
+## 7. Team finder and player roles
+
+The **🔎・looking-for-team** card gives verified players two self-service options:
+
+- toggle the **EU**, **NA**, **2v2** and **S&D** notification roles;
+- submit a structured Looking For Team post with mode, region, platform/rank and availability.
+
+Run `npm run discord:setup` after deployment to create the roles and publish the card.
+
+## 8. Live matches, invite DMs and anti-spam
+
+- **🔴・live-now** receives one automatic card when a tournament match becomes `in_progress` or `live` on Topfragg.
+- A Discord-linked player receives a private Discord notification when they get a pending Topfragg team invite, with a direct link to the Teams page.
+- Public player channels have a basic anti-spam layer: five messages per eight seconds, duplicate-message removal and common Discord gift/token-scam filtering. Staff are excluded from the automatic chat filter.
+
+For anti-spam, enable **Message Content Intent** in Discord Developer Portal → **Bot** → **Privileged Gateway Intents**, then restart **topfragg-discord**. Without that switch, Discord does not provide public message text to the bot.
+
+## 9. Role system
+
+Discord roles now have a clear purpose:
+
+- **CEO, Admin, Tournament Admin, Moderator, Support, Caster, Streamer**: staff-managed roles. Assign these manually in Discord.
+- **Verified Player**: assigned after a player connects Discord through Topfragg. It also unlocks the verified-only community and competition channels.
+- **Premium**: assigned while the linked Topfragg account has active Premium access.
+- **Team Captain**: assigned while the linked player is captain of an active Topfragg team.
+- **Tournament Participant**: assigned while the linked player is registered in an active tournament.
+- **EU, NA, 2v2, S&D**: optional self-service roles from the team-finder card.
+
+The visible member list is grouped by these roles. Automatic roles synchronize while **topfragg-discord** is running; staff roles remain under your direct control.
+
+## 10. Ticket shortcuts, first tournament DM and giveaways
+
+- **🎫・create-ticket** has separate buttons for account help, tournament/match issues and payment/prize questions. Each opens a private ticket with the right subject automatically.
+- A linked Discord player receives a one-time private welcome when they register for their first Topfragg tournament.
+- **🎁・giveaways** supports verified-player-only entries. Staff can run:
+
+```text
+/giveaway start title:<name> prize:<reward> minutes:<5-10080> winners:<1-10>
+/giveaway end id:<giveaway-id>
+```
+
+The bot ends expired giveaways automatically, prevents duplicate entries and announces the randomly selected winners in the giveaway channel.

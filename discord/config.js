@@ -61,9 +61,13 @@ export const roleSpecs = [
   { name: "Caster", color: TOPFRAGG_COLORS.orange, hoist: true, permissions: [] },
   { name: "Streamer", color: 0x9146ff, hoist: true, permissions: [] },
   { name: "Premium", color: TOPFRAGG_COLORS.gold, hoist: true, permissions: [] },
-  { name: "Team Captain", color: TOPFRAGG_COLORS.green, hoist: false, permissions: [] },
-  { name: "Tournament Participant", color: TOPFRAGG_COLORS.orange, hoist: false, permissions: [] },
-  { name: "Verified Player", color: TOPFRAGG_COLORS.cyan, hoist: false, permissions: [] },
+  { name: "Team Captain", color: TOPFRAGG_COLORS.green, hoist: true, permissions: [] },
+  { name: "Tournament Participant", color: TOPFRAGG_COLORS.orange, hoist: true, permissions: [] },
+  { name: "Verified Player", color: TOPFRAGG_COLORS.cyan, hoist: true, permissions: [] },
+  { name: "EU", color: 0, hoist: false, permissions: [] },
+  { name: "NA", color: 0, hoist: false, permissions: [] },
+  { name: "2v2", color: 0, hoist: false, permissions: [] },
+  { name: "S&D", color: 0, hoist: false, permissions: [] },
   { name: "Muted", color: TOPFRAGG_COLORS.graphite, hoist: false, permissions: [] },
 ];
 
@@ -97,6 +101,7 @@ export const categorySpecs = [
     legacyNames: ["COMPETITION"],
     channels: [
       { key: "tournaments", name: "🏆・tournaments", legacyNames: ["tournaments"], type: ChannelType.GuildText, mode: "verified-read-only", topic: "Upcoming Topfragg tournaments and featured competitions." },
+      { key: "live-now", name: "🔴・live-now", legacyNames: ["live-now"], type: ChannelType.GuildText, mode: "verified-read-only", topic: "Live Topfragg tournament matches and featured competition updates." },
       { key: "tournament-signups", name: "📝・tournament-signups", legacyNames: ["tournament-signups"], type: ChannelType.GuildText, mode: "verified-chat", topic: "Tournament registration questions and roster calls." },
       { key: "match-results", name: "📊・match-results", legacyNames: ["match-results"], type: ChannelType.GuildText, mode: "verified-read-only", topic: "Official match results and confirmed scores." },
       { key: "leaderboards", name: "👑・leaderboards", legacyNames: ["leaderboards"], type: ChannelType.GuildText, mode: "verified-read-only", topic: "Topfragg standings, champions and season leaders." },
@@ -111,6 +116,14 @@ export const categorySpecs = [
       { key: "support-info", name: "ℹ️・support-info", legacyNames: ["support-info"], type: ChannelType.GuildText, mode: "read-only", topic: "Read this guide before contacting the Topfragg support team." },
       { key: "create-ticket", name: "🎫・create-ticket", legacyNames: ["create-ticket"], type: ChannelType.GuildText, mode: "read-only", topic: "Open a private support ticket with the Topfragg team." },
       { key: "player-reports", name: "🚨・player-reports", legacyNames: ["player-reports"], type: ChannelType.GuildText, mode: "read-only", topic: "Confidentially report cheating, harassment or rule violations." },
+    ],
+  },
+  {
+    key: "events",
+    name: "🎉 EVENTS",
+    legacyNames: ["EVENTS"],
+    channels: [
+      { key: "giveaways", name: "🎁・giveaways", legacyNames: ["giveaways"], type: ChannelType.GuildText, mode: "verified-read-only", topic: "Official Topfragg giveaways and community rewards." },
     ],
   },
   {
@@ -161,9 +174,36 @@ export const commandSpecs = [
     description: "Show the Topfragg Discord setup status.",
     defaultMemberPermissions: PermissionFlagsBits.ManageGuild.toString(),
   },
+  {
+    name: "giveaway",
+    description: "Start or end an official Topfragg giveaway.",
+    defaultMemberPermissions: PermissionFlagsBits.ManageGuild.toString(),
+    options: [
+      {
+        name: "start",
+        description: "Start a new giveaway in #giveaways.",
+        type: 1,
+        options: [
+          { name: "title", description: "Giveaway title", type: 3, required: true, maxLength: 80 },
+          { name: "prize", description: "What the winner receives", type: 3, required: true, maxLength: 120 },
+          { name: "minutes", description: "Duration in minutes (5 to 10080)", type: 4, required: true, minValue: 5, maxValue: 10080 },
+          { name: "winners", description: "Number of winners (1 to 10)", type: 4, required: true, minValue: 1, maxValue: 10 },
+        ],
+      },
+      {
+        name: "end",
+        description: "End a giveaway now and draw winners.",
+        type: 1,
+        options: [
+          { name: "id", description: "Giveaway ID", type: 3, required: true },
+        ],
+      },
+    ],
+  },
 ];
 
 export const staffRoleNames = ["CEO", "Admin", "Tournament Admin", "Moderator", "Support"];
+export const selfAssignableRoleNames = ["EU", "NA", "2v2", "S&D"];
 
 export function discordEnvironment() {
   const config = {

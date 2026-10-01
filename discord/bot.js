@@ -19,17 +19,23 @@ import {
   categorySpecs,
   discordEnvironment,
   roleSpecs,
+  selfAssignableRoleNames,
   staffRoleNames,
   TOPFRAGG_COLORS,
 } from "./config.js";
 import { prisma } from "../server/prisma.js";
 import { syncTournamentDiscord } from "./announcements.js";
+import { syncManagedDiscordRoles } from "./managed-roles.js";
+import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 
 const config = discordEnvironment();
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 let tournamentSyncRunning = false;
+const recentPublicMessages = new Map();
+const publicChatKeys = ["general", "looking-for-team", "clips-and-content", "off-topic", "tournament-signups"];
+const spamPhrases = [/discord\.gift/i, /free\s+nitro/i, /claim\s+(your\s+)?airdrop/i, /send\s+(me\s+)?(your\s+)?token/i];
 
 const ephemeral = (content) => ({ content, flags: MessageFlags.Ephemeral });
 
@@ -64,12 +70,38 @@ async function runTournamentDiscordSync(guild) {
       findChannel: findConfiguredChannel,
       log: (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`),
     });
+    await syncManagedDiscordRoles(
+      guild,
+      (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`),
+    );
+    await closeExpiredGiveaways(
+      guild,
+      (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`),
+    );
   } catch (error) {
     console.error("[Topfragg Discord] Tournament synchronization failed:", error);
     await botLog(guild, "Tournament synchronization failed. Check the Topfragg Discord bot logs.");
   } finally {
     tournamentSyncRunning = false;
   }
+}
+
+function isStaffMember(member) {
+  return staffRoleNames.some((name) => member?.roles?.cache?.some((role) => role.name === name));
+}
+
+function isPublicChatChannel(guild, channel) {
+  return publicChatKeys.some((key) => findConfiguredChannel(guild, key)?.id === channel.id);
+}
+
+async function removeSpamMessage(message, reason) {
+  await message.delete().catch(() => null);
+  const warning = await message.channel.send({
+    content: `<@${message.author.id}> ${reason}`,
+    allowedMentions: { users: [message.author.id] },
+  }).catch(() => null);
+  if (warning) setTimeout(() => warning.delete().catch(() => null), 10_000);
+  await botLog(message.guild, `Anti-spam removed a message from ${message.author.tag}: ${reason}`);
 }
 
 async function createSupportTicket(interaction, { subject, reason }) {
@@ -159,6 +191,97 @@ async function createSupportTicket(interaction, { subject, reason }) {
   await botLog(guild, `Support ticket ${channel.name} opened by ${interaction.user.tag}.`);
 }
 
+function supportModal(kind = "general") {
+  const details = {
+    account: { title: "Account support", subject: "Account support", placeholder: "Login, verification or profile question" },
+    tournament: { title: "Tournament or match support", subject: "Tournament / match support", placeholder: "Tournament name, teams, match time or result" },
+    payment: { title: "Payment or prize support", subject: "Payment / prize support", placeholder: "Order, payment, prize or withdrawal question" },
+    general: { title: "Open a support ticket", subject: "Topfragg Support Ticket", placeholder: "Account, tournament, match or player report" },
+  }[kind] || { title: "Open a support ticket", subject: "Topfragg Support Ticket", placeholder: "Explain what you need help with" };
+  return new ModalBuilder()
+    .setCustomId(`topfragg:support:form:${kind}`)
+    .setTitle(details.title)
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("support_subject")
+          .setLabel("What do you need help with?")
+          .setPlaceholder(details.placeholder)
+          .setStyle(TextInputStyle.Short)
+          .setMaxLength(80)
+          .setRequired(true),
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("support_details")
+          .setLabel("Explain your question or problem")
+          .setPlaceholder("Include the relevant details so staff can help quickly.")
+          .setStyle(TextInputStyle.Paragraph)
+          .setMinLength(10)
+          .setMaxLength(1000)
+          .setRequired(true),
+      ),
+    );
+}
+
+async function toggleSelfRole(interaction, roleName) {
+  if (!selfAssignableRoleNames.includes(roleName)) return;
+  const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
+  if (!verifiedRole || !interaction.member.roles.cache.has(verifiedRole.id)) {
+    await interaction.reply(ephemeral("Verify your Topfragg identity before choosing player roles."));
+    return;
+  }
+  const role = interaction.guild.roles.cache.find((item) => item.name === roleName);
+  if (!role) {
+    await interaction.reply(ephemeral("That role is not ready yet. Ask staff to run the Discord setup."));
+    return;
+  }
+  if (interaction.member.roles.cache.has(role.id)) {
+    await interaction.member.roles.remove(role, "Topfragg self-service role selection");
+    await interaction.reply(ephemeral(`Removed the **${roleName}** role.`));
+    return;
+  }
+  await interaction.member.roles.add(role, "Topfragg self-service role selection");
+  await interaction.reply(ephemeral(`Added the **${roleName}** role.`));
+}
+
+async function publishLookingForTeamPost(interaction) {
+  const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
+  if (!verifiedRole || !interaction.member.roles.cache.has(verifiedRole.id)) {
+    await interaction.reply(ephemeral("Verify your Topfragg identity before creating a team-finder post."));
+    return;
+  }
+  const channel = findConfiguredChannel(interaction.guild, "looking-for-team");
+  if (!channel?.isTextBased()) {
+    await interaction.reply(ephemeral("The team-finder channel has not been configured yet."));
+    return;
+  }
+  const mode = interaction.fields.getTextInputValue("lfg_mode");
+  const region = interaction.fields.getTextInputValue("lfg_region");
+  const profile = interaction.fields.getTextInputValue("lfg_profile");
+  const availability = interaction.fields.getTextInputValue("lfg_availability");
+  const notes = interaction.fields.getTextInputValue("lfg_notes");
+  await channel.send({
+    content: `<@${interaction.user.id}> is looking for a team`,
+    embeds: [
+      new EmbedBuilder()
+        .setColor(TOPFRAGG_COLORS.purple)
+        .setAuthor({ name: `${interaction.user.username} · Looking for team`, iconURL: interaction.user.displayAvatarURL() })
+        .addFields(
+          { name: "Mode", value: mode, inline: true },
+          { name: "Region", value: region, inline: true },
+          { name: "Platform / rank", value: profile, inline: true },
+          { name: "Availability", value: availability, inline: false },
+          { name: "About", value: notes, inline: false },
+        )
+        .setFooter({ text: "Reply in this channel or contact the player directly." })
+        .setTimestamp(),
+    ],
+    allowedMentions: { users: [interaction.user.id] },
+  });
+  await interaction.reply(ephemeral(`Your Looking for Team post is live in ${channel}.`));
+}
+
 client.once(Events.ClientReady, async (readyClient) => {
   readyClient.user.setActivity("Topfragg tournaments", { type: ActivityType.Competing });
   process.stdout.write(`[Topfragg Discord] Online as ${readyClient.user.tag}\n`);
@@ -171,42 +294,91 @@ client.once(Events.ClientReady, async (readyClient) => {
   setInterval(() => runTournamentDiscordSync(guild), 60_000);
 });
 
+client.on(Events.MessageCreate, async (message) => {
+  if (!message.guild || message.guild.id !== config.guildId || message.author.bot) return;
+  if (!isPublicChatChannel(message.guild, message.channel) || isStaffMember(message.member)) return;
+
+  const content = String(message.content || "").trim();
+  if (spamPhrases.some((pattern) => pattern.test(content))) {
+    await removeSpamMessage(message, "that looks like a scam or token request, so it was removed.");
+    return;
+  }
+
+  const now = Date.now();
+  const history = (recentPublicMessages.get(message.author.id) || []).filter((item) => now - item.at < 60_000);
+  const normalized = content.toLowerCase().replace(/\s+/g, " ");
+  const recentBurst = history.filter((item) => now - item.at < 8_000);
+  const duplicateCount = normalized && history.filter((item) => item.text === normalized).length;
+  history.push({ at: now, text: normalized });
+  recentPublicMessages.set(message.author.id, history);
+
+  if (recentBurst.length >= 5) {
+    await removeSpamMessage(message, "please slow down — messages are limited to 5 every 8 seconds.");
+    return;
+  }
+  if (duplicateCount >= 2) {
+    await removeSpamMessage(message, "please do not repeat the same message.");
+  }
+});
+
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.guildId !== config.guildId) return;
   try {
     if (interaction.isButton() && interaction.customId === "topfragg:support:open") {
+      await interaction.showModal(supportModal());
+      return;
+    }
+    if (interaction.isButton() && interaction.customId.startsWith("topfragg:support:open:")) {
+      await interaction.showModal(supportModal(interaction.customId.slice("topfragg:support:open:".length)));
+      return;
+    }
+    if (interaction.isButton() && interaction.customId.startsWith("topfragg:giveaway:enter:")) {
+      await enterGiveaway(interaction, interaction.customId.slice("topfragg:giveaway:enter:".length));
+      return;
+    }
+    if (interaction.isButton() && interaction.customId.startsWith("topfragg:role:")) {
+      await toggleSelfRole(interaction, interaction.customId.slice("topfragg:role:".length));
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === "topfragg:lfg:open") {
       const modal = new ModalBuilder()
-        .setCustomId("topfragg:support:form")
-        .setTitle("Open a support ticket")
+        .setCustomId("topfragg:lfg:form")
+        .setTitle("Looking for a Topfragg team")
         .addComponents(
           new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId("support_subject")
-              .setLabel("What do you need help with?")
-              .setPlaceholder("Account, tournament, match or player report")
-              .setStyle(TextInputStyle.Short)
-              .setMaxLength(80)
-              .setRequired(true),
+            new TextInputBuilder().setCustomId("lfg_mode").setLabel("Mode you want to play").setPlaceholder("2v2 S&D, Warzone, Ranked 8s...").setStyle(TextInputStyle.Short).setMaxLength(60).setRequired(true),
           ),
           new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId("support_details")
-              .setLabel("Explain your question or problem")
-              .setPlaceholder("Include the relevant tournament, team or match details.")
-              .setStyle(TextInputStyle.Paragraph)
-              .setMinLength(10)
-              .setMaxLength(1000)
-              .setRequired(true),
+            new TextInputBuilder().setCustomId("lfg_region").setLabel("Region").setPlaceholder("EU, NA East, NA West...").setStyle(TextInputStyle.Short).setMaxLength(60).setRequired(true),
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId("lfg_profile").setLabel("Platform and rank").setPlaceholder("PS5 · Crimson, PC · Diamond...").setStyle(TextInputStyle.Short).setMaxLength(100).setRequired(true),
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId("lfg_availability").setLabel("When are you available?").setPlaceholder("Weekdays after 19:00 CET").setStyle(TextInputStyle.Short).setMaxLength(120).setRequired(true),
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId("lfg_notes").setLabel("What should a team know about you?").setPlaceholder("Playstyle, experience and what you are looking for.").setStyle(TextInputStyle.Paragraph).setMaxLength(500).setRequired(true),
           ),
         );
       await interaction.showModal(modal);
       return;
     }
-    if (interaction.isModalSubmit() && interaction.customId === "topfragg:support:form") {
+    if (interaction.isModalSubmit() && interaction.customId.startsWith("topfragg:support:form:")) {
+      const kind = interaction.customId.slice("topfragg:support:form:".length);
+      const label = {
+        account: "Account support",
+        tournament: "Tournament / match support",
+        payment: "Payment / prize support",
+      }[kind] || "Topfragg Support Ticket";
       await createSupportTicket(interaction, {
-        subject: interaction.fields.getTextInputValue("support_subject"),
+        subject: `${label}: ${interaction.fields.getTextInputValue("support_subject")}`,
         reason: interaction.fields.getTextInputValue("support_details"),
       });
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === "topfragg:lfg:form") {
+      await publishLookingForTeamPost(interaction);
       return;
     }
     if (interaction.isButton() && interaction.customId === "topfragg:report:open") {
@@ -302,6 +474,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.commandName === "tournaments") {
       await interaction.reply(ephemeral(`Browse and enter Topfragg tournaments: ${config.publicUrl}/tournaments`));
+      return;
+    }
+    if (interaction.commandName === "giveaway") {
+      const subcommand = interaction.options.getSubcommand();
+      if (subcommand === "start") {
+        const giveawaysChannel = findConfiguredChannel(interaction.guild, "giveaways");
+        if (!giveawaysChannel?.isTextBased()) {
+          await interaction.reply(ephemeral("The giveaways channel is not configured yet. Run the Discord setup first."));
+          return;
+        }
+        await startGiveaway(interaction, giveawaysChannel);
+        return;
+      }
+      const result = await endGiveaway(interaction.guild, interaction.options.getString("id", true), { force: true });
+      await interaction.reply(ephemeral(result.ended
+        ? `Giveaway ended. Winner${result.winners.length === 1 ? "" : "s"}: ${result.winners.map((id) => `<@${id}>`).join(", ") || "no eligible entries"}.`
+        : "That giveaway is not currently open."));
       return;
     }
     if (interaction.commandName === "support") {
