@@ -41,8 +41,8 @@ export default function Settings() {
         <CreditsSection user={user} onUserUpdate={loadUser} />
         <PaymentPermissionsSection user={user} onUserUpdate={loadUser} />
         <GamingIdsSection user={user} onUserUpdate={loadUser} />
-        <DiscordSection user={user} onUserUpdate={loadUser} />
         <TwitchSection user={user} onUserUpdate={loadUser} />
+        <DiscordSection user={user} onUserUpdate={loadUser} />
       </div>
     </div>
   );
