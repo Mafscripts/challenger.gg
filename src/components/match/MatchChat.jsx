@@ -214,7 +214,12 @@ export default function MatchChat({
         ) : messages.map((message, messageIndex) => {
           const staff = isStaffMessage(message);
           const senderId = String(message.sender_id || "");
-          const teamSide = !staff && teamAIds.has(senderId) ? "a" : (!staff && teamBIds.has(senderId) ? "b" : null);
+          const savedTeamSide = ["a", "b"].includes(String(message.team_side || ""))
+            ? String(message.team_side)
+            : null;
+          const teamSide = !staff
+            ? (savedTeamSide || (teamAIds.has(senderId) ? "a" : (teamBIds.has(senderId) ? "b" : null)))
+            : null;
           const teamTone = teamSide === "a" ? teamStyles[teamAColor] : teamSide === "b" ? teamStyles[teamBColor] : null;
           const isOwnMessage = String(currentUser?.id || "") === senderId;
           const isTeamB = teamSide === "b";

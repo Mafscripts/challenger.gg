@@ -6098,9 +6098,10 @@ async function sendMatchRoomMessage(req) {
   const match = await getEntity(matchEntityFor(matchType), matchId);
   const participantIds = await matchParticipantIds(matchType, match);
   const participantIdSet = new Set(participantIds.map(String));
-  const isTournamentParticipant = matchType === "tournament"
-    ? (await tournamentMatchParticipantInfo(match, req.user)).isParticipant
-    : false;
+  const tournamentParticipantInfo = matchType === "tournament"
+    ? await tournamentMatchParticipantInfo(match, req.user)
+    : null;
+  const isTournamentParticipant = Boolean(tournamentParticipantInfo?.isParticipant);
   if (!hasRole(req.user, "moderator") && !participantIdSet.has(String(req.user.id)) && !isTournamentParticipant) {
     return { success: false, error: "Only match participants can chat in this room" };
   }
@@ -6116,6 +6117,11 @@ async function sendMatchRoomMessage(req) {
     content,
     is_read: false,
     match_type: matchType,
+    team_side: tournamentParticipantInfo?.reportingSide === "team_a"
+      ? "a"
+      : tournamentParticipantInfo?.reportingSide === "team_b"
+        ? "b"
+        : null,
     created_date: nowIso(),
   });
 
