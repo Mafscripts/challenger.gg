@@ -273,17 +273,25 @@ async function ensureChannels(guild) {
           log(`Skipped hidden channel without access: ${categorySpec.name}/${channelSpec.name}`);
           continue;
         }
-        if (["read-only", "staff"].includes(channelSpec.mode || categorySpec.mode)) {
-          await grantRuntimeChannelAccess(existing, roles);
-        }
-        if (channelSpec.topic !== undefined) {
-          await existing.edit({
-            name: channelSpec.name,
-            topic: channelSpec.topic,
-            reason: "Topfragg server setup",
-          });
-        } else if (existing.name !== channelSpec.name) {
-          await existing.edit({ name: channelSpec.name, reason: "Topfragg channel styling" });
+        try {
+          if (["read-only", "staff"].includes(channelSpec.mode || categorySpec.mode)) {
+            await grantRuntimeChannelAccess(existing, roles);
+          }
+          if (channelSpec.topic !== undefined) {
+            await existing.edit({
+              name: channelSpec.name,
+              topic: channelSpec.topic,
+              reason: "Topfragg server setup",
+            });
+          } else if (existing.name !== channelSpec.name) {
+            await existing.edit({ name: channelSpec.name, reason: "Topfragg channel styling" });
+          }
+        } catch (error) {
+          if ([50001, 50013].includes(error.code)) {
+            log(`Skipped channel without access: ${categorySpec.name}/${channelSpec.name}`);
+            continue;
+          }
+          throw error;
         }
         log(`Updated channel: ${categorySpec.name}/${channelSpec.name}`);
         continue;
