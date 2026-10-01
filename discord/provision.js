@@ -1,11 +1,15 @@
 import "dotenv/config";
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
   Client,
   EmbedBuilder,
   Events,
   GatewayIntentBits,
   PermissionFlagsBits,
+  PermissionsBitField,
 } from "discord.js";
 import {
   botRuntimeRoleSpec,
@@ -30,6 +34,7 @@ function overwriteForMode(guild, roles, mode) {
   const everyone = guild.roles.everyone.id;
   const muted = roles.get("Muted");
   const staffIds = staffRoleNames.map((name) => roles.get(name)).filter(Boolean);
+  const botRuntimeId = roles.get(botRuntimeRoleSpec.name);
   const staffAllow = [
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.ReadMessageHistory,
@@ -37,13 +42,13 @@ function overwriteForMode(guild, roles, mode) {
     PermissionFlagsBits.EmbedLinks,
     PermissionFlagsBits.AttachFiles,
     PermissionFlagsBits.ManageMessages,
-    PermissionFlagsBits.ManageThreads,
   ];
 
   if (mode === "staff") {
     return [
       { id: everyone, deny: [PermissionFlagsBits.ViewChannel] },
       ...staffIds.map((id) => ({ id, allow: staffAllow })),
+      ...(botRuntimeId ? [{ id: botRuntimeId, allow: staffAllow }] : []),
     ];
   }
 
@@ -63,6 +68,7 @@ function overwriteForMode(guild, roles, mode) {
         deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.CreatePublicThreads, PermissionFlagsBits.CreatePrivateThreads],
       },
       ...staffIds.map((id) => ({ id, allow: staffAllow })),
+      ...(botRuntimeId ? [{ id: botRuntimeId, allow: staffAllow }] : []),
     ];
   }
 
@@ -84,17 +90,23 @@ function overwriteForMode(guild, roles, mode) {
 
 async function ensureRoles(guild) {
   await guild.roles.fetch();
+  const botMember = await guild.members.fetchMe();
   for (const spec of [...roleSpecs].reverse()) {
     const existing = guild.roles.cache.find((role) => role.name === spec.name && !role.managed);
+    const canGrantPermissions = botMember.permissions.has(new PermissionsBitField(spec.permissions));
     if (existing) {
       await existing.edit({
         colors: { primaryColor: spec.color },
         hoist: spec.hoist,
         mentionable: false,
-        permissions: spec.permissions,
+        ...(canGrantPermissions ? { permissions: spec.permissions } : {}),
         reason: "Topfragg server setup",
       });
-      log(`Updated role: ${spec.name}`);
+      log(`Updated role: ${spec.name}${canGrantPermissions ? "" : " (kept existing permissions)"}`);
+      continue;
+    }
+    if (!canGrantPermissions) {
+      log(`Skipped missing role ${spec.name}: temporary Administrator access is required to create it.`);
       continue;
     }
     await guild.roles.create({
@@ -217,7 +229,7 @@ async function ensureChannels(guild) {
   return created;
 }
 
-async function sendSeedEmbed(channel, marker, embed) {
+async function sendSeedEmbed(channel, marker, embed, components = []) {
   if (!channel?.isTextBased()) return;
   const messages = await channel.messages.fetch({ limit: 50 });
   const exists = messages.some((message) => (
@@ -226,7 +238,7 @@ async function sendSeedEmbed(channel, marker, embed) {
   ));
   if (exists) return;
   embed.setFooter({ text: marker });
-  await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
+  await channel.send({ embeds: [embed], components, allowedMentions: { parse: [] } });
   log(`Seeded #${channel.name}`);
 }
 
@@ -274,6 +286,28 @@ async function seedInformation(guild) {
       .setColor(TOPFRAGG_COLORS.purple)
       .setTitle("Private player support")
       .setDescription("Use `/support reason:<your question>` to open a private channel with the Topfragg support team. Use this for account help, tournament disputes and player reports."),
+  );
+  await sendSeedEmbed(
+    byName("create-ticket"),
+    "Topfragg setup:v1:create-ticket",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.orange)
+      .setTitle("Need help from Topfragg staff?")
+      .setDescription("Open a private support ticket and answer two short questions. Only you and the Topfragg staff team can see your ticket.")
+      .addFields(
+        { name: "Account support", value: "Login, verification or profile questions.", inline: true },
+        { name: "Competition support", value: "Tournament, match or result questions.", inline: true },
+        { name: "Player reports", value: "Private reports and fair-play concerns.", inline: true },
+      ),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("topfragg:support:open")
+          .setLabel("Open support ticket")
+          .setEmoji("🎫")
+          .setStyle(ButtonStyle.Primary),
+      ),
+    ],
   );
 }
 

@@ -1,13 +1,19 @@
 import "dotenv/config";
 import {
+  ActionRowBuilder,
   ActivityType,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
   Client,
   EmbedBuilder,
   Events,
   GatewayIntentBits,
   MessageFlags,
+  ModalBuilder,
   PermissionFlagsBits,
+  TextInputBuilder,
+  TextInputStyle,
 } from "discord.js";
 import {
   categorySpecs,
@@ -29,7 +35,7 @@ async function botLog(guild, message) {
   if (channel) await channel.send({ content: message, allowedMentions: { parse: [] } }).catch(() => null);
 }
 
-async function createSupportTicket(interaction) {
+async function createSupportTicket(interaction, { subject, reason }) {
   const guild = interaction.guild;
   const suffix = interaction.user.id.slice(-6);
   const existing = guild.channels.cache.find((channel) => channel.topic === `Topfragg ticket owner:${interaction.user.id}`);
@@ -46,7 +52,6 @@ async function createSupportTicket(interaction) {
     return;
   }
 
-  const reason = interaction.options.getString("reason", true);
   const botMember = guild.members.me;
   if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
     await interaction.reply(ephemeral("Topfragg Bot needs the Manage Channels permission before it can create private support tickets."));
@@ -100,10 +105,18 @@ async function createSupportTicket(interaction) {
     embeds: [
       new EmbedBuilder()
         .setColor(TOPFRAGG_COLORS.purple)
-        .setTitle("Topfragg Support Ticket")
+        .setTitle(subject || "Topfragg Support Ticket")
         .setDescription(reason)
         .addFields({ name: "Opened by", value: interaction.user.tag, inline: true })
         .setTimestamp(),
+    ],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("topfragg:support:close")
+          .setLabel("Close ticket")
+          .setStyle(ButtonStyle.Secondary),
+      ),
     ],
     allowedMentions: { users: [interaction.user.id] },
   });
@@ -119,8 +132,56 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand() || interaction.guildId !== config.guildId) return;
+  if (interaction.guildId !== config.guildId) return;
   try {
+    if (interaction.isButton() && interaction.customId === "topfragg:support:open") {
+      const modal = new ModalBuilder()
+        .setCustomId("topfragg:support:form")
+        .setTitle("Open a support ticket")
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("support_subject")
+              .setLabel("What do you need help with?")
+              .setPlaceholder("Account, tournament, match or player report")
+              .setStyle(TextInputStyle.Short)
+              .setMaxLength(80)
+              .setRequired(true),
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("support_details")
+              .setLabel("Explain your question or problem")
+              .setPlaceholder("Include the relevant tournament, team or match details.")
+              .setStyle(TextInputStyle.Paragraph)
+              .setMinLength(10)
+              .setMaxLength(1000)
+              .setRequired(true),
+          ),
+        );
+      await interaction.showModal(modal);
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === "topfragg:support:form") {
+      await createSupportTicket(interaction, {
+        subject: interaction.fields.getTextInputValue("support_subject"),
+        reason: interaction.fields.getTextInputValue("support_details"),
+      });
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === "topfragg:support:close") {
+      const isOwner = interaction.channel?.topic === `Topfragg ticket owner:${interaction.user.id}`;
+      const isStaff = staffRoleNames.some((name) => interaction.member.roles.cache.some((role) => role.name === name));
+      if (!isOwner && !isStaff) {
+        await interaction.reply(ephemeral("Only the ticket owner or Topfragg staff can close this ticket."));
+        return;
+      }
+      await interaction.reply(ephemeral("Ticket closed. This channel will be removed in a few seconds."));
+      await botLog(interaction.guild, `Support ticket ${interaction.channel.name} closed by ${interaction.user.tag}.`);
+      setTimeout(() => interaction.channel.delete(`Ticket closed by ${interaction.user.tag}`).catch(() => null), 3000);
+      return;
+    }
+    if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName === "ping") {
       await interaction.reply(ephemeral(`Topfragg Bot is online — ${client.ws.ping}ms.`));
       return;
@@ -134,7 +195,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
     if (interaction.commandName === "support") {
-      await createSupportTicket(interaction);
+      await createSupportTicket(interaction, {
+        subject: "Topfragg Support Ticket",
+        reason: interaction.options.getString("reason", true),
+      });
       return;
     }
     if (interaction.commandName === "setup-status") {
