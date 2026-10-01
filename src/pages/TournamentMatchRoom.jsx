@@ -1456,6 +1456,8 @@ export default function TournamentMatchRoom() {
                 label="Team A"
                 color="orange"
                 name={match.team_a_name}
+                seed={match.team_a_seed}
+                isFirstHost={String(match.first_host_team_id || "") === String(match.team_a_id || "")}
                 players={teamAPlayers}
                 isComplete={isComplete}
                 isWinner={isTeamAWinner}
@@ -1468,8 +1470,10 @@ export default function TournamentMatchRoom() {
               </div>
               <MatchTeamTable
                 label="Team B"
-                color="blue"
+                color="cyan"
                 name={match.team_b_name}
+                seed={match.team_b_seed}
+                isFirstHost={String(match.first_host_team_id || "") === String(match.team_b_id || "")}
                 players={teamBPlayers}
                 isComplete={isComplete}
                 isWinner={isTeamBWinner}
