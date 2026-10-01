@@ -273,7 +273,7 @@ function TournamentRows({ tournaments, now, loading }) {
         {!loading && tournaments.length === 0 && (
           <div className="px-5 py-12 text-center text-sm text-vapor">No upcoming tournaments are scheduled yet.</div>
         )}
-        {tournaments.map((tournament) => {
+        {tournaments.map((tournament, index) => {
           const teams = number(tournament.registered_teams ?? tournament.participant_count);
           const maxTeams = number(tournament.max_teams || tournament.team_limit || 0);
           return (
@@ -283,7 +283,7 @@ function TournamentRows({ tournaments, now, loading }) {
                 <div className="flex items-center gap-2">
                   <h3 className="truncate font-heading text-sm font-black text-white transition-colors group-hover:text-orange sm:text-base">{tournament.name || "Tournament"}</h3>
                   <span className="hidden rounded bg-cyan/10 px-1.5 py-0.5 font-mono text-[8px] font-black uppercase tracking-wider text-cyan md:inline">{String(tournament.status || "Open").replace("_", " ")}</span>
-                  {tournamentEntry(tournament) === "Free entry" && <HalloweenEventBadge className="hidden xl:inline-flex" />}
+                  {index < 2 && <HalloweenEventBadge className="hidden xl:inline-flex" />}
                 </div>
                 <p className="mt-1 truncate text-[11px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p>
                 <p className="mt-1.5 font-mono text-[9px] font-bold uppercase tracking-wider text-cyan sm:hidden">{timeUntil(tournament.start_date, now)}</p>

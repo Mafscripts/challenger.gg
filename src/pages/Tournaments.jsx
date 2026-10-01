@@ -201,7 +201,7 @@ const currentMatchForUser = (matches, participantKeys, teamKeys) => {
     })[0] || null;
 };
 
-function FeaturedTournamentHero({ tournament, now, onSelect }) {
+function FeaturedTournamentHero({ tournament, now, onSelect, halloweenEvent = false }) {
   const bannerUrl = tournamentBannerUrl(tournament);
   const entryInfo = tournamentEntryInfo(tournament);
   const actionLabel = ["open", "registration"].includes(tournament.status)
@@ -225,7 +225,7 @@ function FeaturedTournamentHero({ tournament, now, onSelect }) {
               {statusLabels[tournament.status] || tournament.status}
             </span>
             <TournamentEntryBadge tournament={tournament} />
-            {isFreeTournament(tournament) && <HalloweenEventBadge />}
+            {halloweenEvent && <HalloweenEventBadge />}
           </div>
           <h2 className="mt-6 max-w-3xl text-4xl font-black leading-[.92] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">{tournament.name}</h2>
           <p className="mt-5 max-w-2xl text-[15px] leading-7 text-vapor">
@@ -561,6 +561,15 @@ export default function Tournaments() {
   };
 
   const officialTournaments = useMemo(() => tournaments.filter((tournament) => !isStreamerTournament(tournament)), [tournaments]);
+  const halloweenTournamentIds = useMemo(() => new Set(
+    [...officialTournaments]
+      .sort((a, b) => {
+        const priorityDifference = tournamentSchedulePriority(b.status) - tournamentSchedulePriority(a.status);
+        return priorityDifference || tournamentScheduleDate(b) - tournamentScheduleDate(a);
+      })
+      .slice(0, 2)
+      .map((tournament) => tournament.id)
+  ), [officialTournaments]);
   const featuredTournament = useMemo(() => (
     officialTournaments.find((tournament) => tournament.is_featured === true)
     || officialTournaments.find((tournament) => ["open", "registration", "live", "in_progress"].includes(tournament.status))
@@ -655,7 +664,7 @@ export default function Tournaments() {
         <ActivisionIdNotice user={user} className="mb-5" />
 
         {featuredTournament && (
-          <FeaturedTournamentHero tournament={featuredTournament} now={now} onSelect={handleSelectTournament} />
+          <FeaturedTournamentHero tournament={featuredTournament} now={now} onSelect={handleSelectTournament} halloweenEvent={halloweenTournamentIds.has(featuredTournament.id)} />
         )}
 
         <div className="tournaments-toolbar mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-card/55 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -757,6 +766,7 @@ export default function Tournaments() {
                   canJoin={canJoinTournament(tournament)}
                   onJoin={() => setJoinTournamentId(tournament.id)}
                   now={now}
+                  halloweenEvent={halloweenTournamentIds.has(tournament.id)}
                 />
               ))}
             </div>
@@ -1257,7 +1267,7 @@ function TournamentCardStat({ label, value, tone = "text-white", icon: Icon }) {
   );
 }
 
-function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoin, now }) {
+function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoin, now, halloweenEvent = false }) {
   const imageUrl = tournamentImageUrl(tournament);
   const entryInfo = tournamentEntryInfo(tournament);
   const startLabel = timeUntil(tournament.start_date, now);
@@ -1276,7 +1286,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
         <div className="flex min-w-0 items-center gap-2.5">
           <h3 className="truncate text-sm font-black tracking-[-0.01em] transition-colors duration-200 group-hover:text-orange">{tournament.name}</h3>
           {joined && <span className="shrink-0 rounded-full bg-green/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
-          {isFreeTournament(tournament) && <HalloweenEventBadge className="hidden sm:inline-flex" />}
+          {halloweenEvent && <HalloweenEventBadge className="hidden sm:inline-flex" />}
         </div>
         <p className="mt-1 truncate text-[10px] leading-4 text-vapor">{compactModeLabel(tournament)}</p>
       </div>

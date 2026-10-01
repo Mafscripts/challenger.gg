@@ -2,7 +2,6 @@ import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import PageLoader from "@/components/ui/PageLoader";
-import { HalloweenAtmosphere } from "@/components/halloween/HalloweenSeason";
 import Navbar from "./Navbar";
 
 const Footer = lazy(() => import("./Footer"));
@@ -37,7 +36,6 @@ export default function PageLayout() {
   return (
     <div className={`app-season-halloween relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"} ${isAdminRoute ? "app-shell-admin" : ""}`}>
       <div className="page-ambient" aria-hidden="true" />
-      <HalloweenAtmosphere />
       <Navbar />
       <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">
         <Suspense fallback={<RouteFallback />}>

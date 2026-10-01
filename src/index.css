@@ -2504,54 +2504,6 @@ img {
   }
 }
 
-/* Lightweight Halloween atmosphere shared by every route. */
-.halloween-atmosphere {
-  position: fixed;
-  z-index: 0;
-  inset: 4rem 0 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.halloween-bat {
-  position: absolute;
-  display: block;
-  aspect-ratio: 1.8 / 1;
-  height: auto !important;
-  background: linear-gradient(180deg, rgb(134 73 190 / .34), rgb(18 10 25 / .72));
-  clip-path: polygon(50% 45%, 60% 22%, 70% 39%, 96% 28%, 83% 61%, 62% 57%, 50% 82%, 38% 57%, 17% 61%, 4% 28%, 30% 39%, 40% 22%);
-  filter: drop-shadow(0 0 6px rgb(162 81 255 / .16));
-  opacity: .34;
-  animation: halloween-bat-flight var(--bat-duration) ease-in-out var(--bat-delay) infinite;
-  will-change: transform, opacity;
-}
-
-.halloween-mist {
-  position: absolute;
-  left: -18%;
-  width: 136%;
-  height: 17rem;
-  border-radius: 50%;
-  background:
-    radial-gradient(ellipse at 18% 55%, rgb(113 62 166 / .11), transparent 28%),
-    radial-gradient(ellipse at 48% 48%, rgb(255 107 13 / .055), transparent 24%),
-    radial-gradient(ellipse at 78% 58%, rgb(101 54 151 / .1), transparent 30%);
-  filter: blur(34px);
-  opacity: .7;
-  will-change: transform, opacity;
-}
-
-.halloween-mist-one {
-  top: 34%;
-  animation: halloween-mist-drift 19s ease-in-out infinite alternate;
-}
-
-.halloween-mist-two {
-  top: 72%;
-  transform: scaleX(-1);
-  animation: halloween-mist-drift 25s ease-in-out -9s infinite alternate-reverse;
-}
-
 .halloween-feature {
   isolation: isolate;
   border-color: rgb(255 114 19 / .24) !important;
@@ -2665,29 +2617,8 @@ img {
   height: .68rem;
 }
 
-@keyframes halloween-bat-flight {
-  0%, 100% { opacity: .18; transform: translate3d(-18px, 8px, 0) rotate(-6deg) scale(.88); }
-  28% { opacity: .42; transform: translate3d(10px, -18px, 0) rotate(5deg) scale(1.04); }
-  57% { opacity: .26; transform: translate3d(31px, 2px, 0) rotate(-3deg) scale(.94); }
-  78% { opacity: .38; transform: translate3d(7px, 17px, 0) rotate(6deg) scale(1); }
-}
-
-@keyframes halloween-mist-drift {
-  from { opacity: .42; transform: translate3d(-4%, 0, 0) scaleX(1); }
-  to { opacity: .76; transform: translate3d(5%, -10px, 0) scaleX(1.04); }
-}
-
 @media (max-width: 639px) {
   .halloween-countdown-label { display: none; }
   .halloween-feature::before,
   .halloween-feature::after { width: 6.5rem; height: 6.5rem; }
-  .halloween-bat:nth-of-type(even) { display: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .halloween-bat,
-  .halloween-mist {
-    animation: none !important;
-    will-change: auto;
-  }
 }

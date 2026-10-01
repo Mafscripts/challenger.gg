@@ -29,13 +29,6 @@ const bulletImpacts = [
   { left: "86%", top: "84%", size: "19px", delay: "4.45s", rotate: "7deg" },
 ];
 
-const isFreeTournament = (tournament) => {
-  const entryType = String(tournament?.entry_type || "free").toLowerCase();
-  return !tournament?.invite_only
-    && !["invitational", "premium", "credits", "credits_premium"].includes(entryType)
-    && Number(tournament?.entry_fee || 0) <= 0;
-};
-
 const tournamentImage = (tournament) => {
   const identity = String(tournament?.name || "").toLowerCase();
   return identity.includes("black ops 7") || identity.includes("test tournament") ? blackOps7Artwork : (tournament?.image_url || blackOps7Artwork);
@@ -156,10 +149,10 @@ export default function PublicHomeOverview() {
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
             {loading && [0, 1, 2].map((item) => <div key={item} className="h-[78px] animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
             {!loading && data.tournaments.length === 0 && <div className="p-8 text-center text-sm text-vapor">No upcoming tournaments are scheduled yet.</div>}
-            {data.tournaments.map((tournament) => (
+            {data.tournaments.map((tournament, index) => (
               <Link key={tournament.id} to={protectedHref(`/tournaments/${tournament.id}`)} className="group grid min-h-[78px] grid-cols-[52px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-3 last:border-0 hover:bg-white/[0.035] sm:grid-cols-[56px_minmax(0,1fr)_100px_90px_140px] sm:px-5">
                 <img src={tournamentImage(tournament)} alt="" className="h-[52px] w-[52px] rounded-lg border border-white/10 object-cover" loading="lazy" />
-                <div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h3 className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{tournament.name}</h3>{isFreeTournament(tournament) && <HalloweenEventBadge className="hidden lg:inline-flex" />}</div><p className="mt-1 truncate text-[10px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p></div>
+                <div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h3 className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{tournament.name}</h3>{index < 2 && <HalloweenEventBadge className="hidden lg:inline-flex" />}</div><p className="mt-1 truncate text-[10px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p></div>
                 <PreviewMetric label="Prize" value={formatMoney(tournament.prize_pool)} tone="text-green" />
                 <PreviewMetric label="Teams" value={`${tournament.registered_teams} / ${tournament.max_teams || "—"}`} extra="hidden sm:block" />
                 <div className="hidden border-l border-white/10 pl-5 sm:block"><p className="font-mono text-[8px] font-black uppercase tracking-wider text-vapor">Starts</p><p className="mt-1 font-mono text-[10px] font-black text-cyan">{formatDate(tournament.start_date)}</p></div>

@@ -57,35 +57,3 @@ export function HalloweenEventBadge({ className = "" }) {
     </span>
   );
 }
-
-const bats = [
-  { left: "5%", top: "13%", size: "24px", delay: "-2s", duration: "18s" },
-  { left: "19%", top: "31%", size: "15px", delay: "-11s", duration: "24s" },
-  { left: "42%", top: "10%", size: "19px", delay: "-7s", duration: "21s" },
-  { left: "61%", top: "26%", size: "13px", delay: "-16s", duration: "26s" },
-  { left: "76%", top: "9%", size: "21px", delay: "-4s", duration: "20s" },
-  { left: "89%", top: "37%", size: "16px", delay: "-13s", duration: "23s" },
-];
-
-export function HalloweenAtmosphere() {
-  return (
-    <div className="halloween-atmosphere" aria-hidden="true">
-      {bats.map((bat, index) => (
-        <span
-          key={index}
-          className="halloween-bat"
-          style={{
-            left: bat.left,
-            top: bat.top,
-            width: bat.size,
-            height: bat.size,
-            "--bat-delay": bat.delay,
-            "--bat-duration": bat.duration,
-          }}
-        />
-      ))}
-      <span className="halloween-mist halloween-mist-one" />
-      <span className="halloween-mist halloween-mist-two" />
-    </div>
-  );
-}
