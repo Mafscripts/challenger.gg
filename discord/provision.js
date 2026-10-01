@@ -26,6 +26,10 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 const log = (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`);
 
+const matchesSpecName = (actualName, spec) => (
+  actualName === spec.name || (spec.legacyNames || []).includes(actualName)
+);
+
 function roleIdsByName(guild) {
   return new Map(guild.roles.cache.map((role) => [role.name, role.id]));
 }
@@ -202,7 +206,7 @@ async function ensureChannels(guild) {
   for (const categorySpec of categorySpecs) {
     let categoryRuntimeAccess = true;
     let category = guild.channels.cache.find((channel) => (
-      channel.type === ChannelType.GuildCategory && channel.name === categorySpec.name
+      channel.type === ChannelType.GuildCategory && matchesSpecName(channel.name, categorySpec)
     ));
     const categoryOverwrites = overwriteForMode(guild, roles, categorySpec.mode || "chat");
     if (!category) {
@@ -215,15 +219,21 @@ async function ensureChannels(guild) {
       log(`Created category: ${categorySpec.name}`);
     } else if (categorySpec.mode === "staff") {
       categoryRuntimeAccess = await grantRuntimeChannelAccess(category, roles);
+      if (categoryRuntimeAccess && category.name !== categorySpec.name) {
+        category = await category.edit({ name: categorySpec.name, reason: "Topfragg channel styling" });
+      }
       log(categoryRuntimeAccess
         ? `Updated category access: ${categorySpec.name}`
         : `Skipped hidden category without access: ${categorySpec.name}`);
+    } else if (category.name !== categorySpec.name) {
+      category = await category.edit({ name: categorySpec.name, reason: "Topfragg channel styling" });
+      log(`Renamed category: ${categorySpec.name}`);
     }
-    created.set(categorySpec.name, category);
+    created.set(categorySpec.key, category);
 
     for (const channelSpec of categorySpec.channels) {
       const existing = guild.channels.cache.find((channel) => (
-        channel.parentId === category.id && channel.name === channelSpec.name
+        channel.parentId === category.id && matchesSpecName(channel.name, channelSpec)
       ));
       const permissionOverwrites = overwriteForMode(guild, roles, channelSpec.mode || categorySpec.mode || "chat");
       if (existing) {
@@ -240,9 +250,12 @@ async function ensureChannels(guild) {
         }
         if (channelSpec.topic !== undefined) {
           await existing.edit({
+            name: channelSpec.name,
             topic: channelSpec.topic,
             reason: "Topfragg server setup",
           });
+        } else if (existing.name !== channelSpec.name) {
+          await existing.edit({ name: channelSpec.name, reason: "Topfragg channel styling" });
         }
         log(`Updated channel: ${categorySpec.name}/${channelSpec.name}`);
         continue;
@@ -288,53 +301,129 @@ async function sendSeedEmbed(channel, marker, embed, components = [], previousTi
 }
 
 async function seedInformation(guild) {
-  const byName = (name) => guild.channels.cache.find((channel) => channel.name === name);
+  const byKey = (key) => {
+    const spec = categorySpecs.flatMap((category) => category.channels).find((channel) => channel.key === key);
+    return spec && guild.channels.cache.find((channel) => matchesSpecName(channel.name, spec));
+  };
+  const welcomeChannel = byKey("welcome");
+  const rulesChannel = byKey("rules");
+  const announcementsChannel = byKey("announcements");
+  const verificationChannel = byKey("verification");
+  const faqChannel = byKey("faq");
+  const tournamentsChannel = byKey("tournaments");
+  const createTicketChannel = byKey("create-ticket");
+  const playerReportsChannel = byKey("player-reports");
   await sendSeedEmbed(
-    byName("welcome"),
+    welcomeChannel,
     "Topfragg setup:v1:welcome",
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.orange)
-      .setTitle("Welcome to Topfragg.gg")
-      .setDescription("Compete in tournaments, build your roster, climb the leaderboards and prove who owns the lobby.")
+      .setTitle("⚡ Welcome to Topfragg.gg")
+      .setDescription("Your competitive arena starts here. Enter tournaments, build your roster, climb the leaderboards and prove who owns the lobby.")
       .addFields(
-        { name: "1. Read the rules", value: "Start in **#rules** before joining the competition." },
-        { name: "2. Verify", value: "Use `/verify` to connect your Topfragg identity." },
-        { name: "3. Compete", value: "Use `/tournaments` to find your next event." },
+        { name: "📜 1. Know the rules", value: `Start in ${rulesChannel} and keep every match fair.`, inline: true },
+        { name: "✅ 2. Get verified", value: `Visit ${verificationChannel} and connect your identity.`, inline: true },
+        { name: "🏆 3. Enter the arena", value: `Find your next event in ${tournamentsChannel}.`, inline: true },
+        { name: "🔥 Ready to compete?", value: "Bring your squad, play for prizes and build your reputation in the Topfragg community." },
       ),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel("Browse tournaments")
+          .setEmoji("🏆")
+          .setStyle(ButtonStyle.Link)
+          .setURL(`${config.publicUrl}/tournaments`),
+        new ButtonBuilder()
+          .setCustomId("topfragg:support:open")
+          .setLabel("Get support")
+          .setStyle(ButtonStyle.Secondary),
+      ),
+    ],
+    ["Welcome to Topfragg.gg"],
   );
   await sendSeedEmbed(
-    byName("rules"),
+    rulesChannel,
     "Topfragg setup:v1:rules",
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.cyan)
-      .setTitle("Topfragg Community Rules")
+      .setTitle("📜 Topfragg Community Rules")
       .setDescription([
-        "**1. Respect competitors.** No harassment, discrimination or threats.",
-        "**2. Compete fairly.** Cheating, exploiting or falsifying results is prohibited.",
-        "**3. Keep disputes private.** Use `/support` instead of public accusations.",
-        "**4. Protect personal information.** Never share passwords, tokens or payment details.",
-        "**5. Follow staff instructions.** Tournament and moderation decisions must use the official appeal process.",
+        "🤝 **Respect competitors.** No harassment, discrimination or threats.",
+        "🎯 **Compete fairly.** Cheating, exploiting or falsifying results is prohibited.",
+        `🔒 **Keep disputes private.** Use ${createTicketChannel} instead of public accusations.`,
+        "🛡️ **Protect personal information.** Never share passwords, tokens or payment details.",
+        "⚖️ **Follow staff instructions.** Use the official appeal process when you disagree with a decision.",
       ].join("\n\n")),
+    [],
+    ["Topfragg Community Rules"],
   );
   await sendSeedEmbed(
-    byName("verification"),
+    verificationChannel,
     "Topfragg setup:v1:verification",
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.green)
-      .setTitle("Verify your Topfragg identity")
-      .setDescription(`Use \`/verify\` for the current verification instructions. Never send your password or security codes to staff.\n\nTopfragg: ${config.publicUrl}`),
+      .setTitle("✅ Verify your Topfragg identity")
+      .setDescription("Connect your Discord identity to your Topfragg profile so staff can recognize you during competitions. Never send passwords or security codes to anyone."),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel("Open Topfragg settings")
+          .setEmoji("🔗")
+          .setStyle(ButtonStyle.Link)
+          .setURL(`${config.publicUrl}/settings`),
+      ),
+    ],
+    ["Verify your Topfragg identity"],
   );
   await sendSeedEmbed(
-    byName("support-info"),
+    announcementsChannel,
+    "Topfragg setup:v1:announcements",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.orange)
+      .setTitle("📢 Official Topfragg Updates")
+      .setDescription("Tournament drops, platform updates, featured matches and community news will be posted here. Turn on channel notifications so you never miss registration."),
+  );
+  await sendSeedEmbed(
+    faqChannel,
+    "Topfragg setup:v1:faq",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.purple)
+      .setTitle("❓ Quick Answers")
+      .addFields(
+        { name: "How do I enter a tournament?", value: `Open ${tournamentsChannel}, choose an event and complete registration on Topfragg.gg.` },
+        { name: "Where can I find teammates?", value: "Use **🔎・looking-for-team** and include your region, platform, mode and availability." },
+        { name: "How do I contact staff?", value: `Read **ℹ️・support-info**, then open a private ticket in ${createTicketChannel}.` },
+        { name: "How do I report someone?", value: `Use ${playerReportsChannel}. Reports are private and should include evidence when available.` },
+      ),
+  );
+  await sendSeedEmbed(
+    tournamentsChannel,
+    "Topfragg setup:v1:tournaments",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.gold)
+      .setTitle("🏆 Your next tournament starts here")
+      .setDescription("Discover free and featured competitions, register your team and fight for a place on the leaderboard."),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel("View Topfragg tournaments")
+          .setEmoji("🔥")
+          .setStyle(ButtonStyle.Link)
+          .setURL(`${config.publicUrl}/tournaments`),
+      ),
+    ],
+  );
+  await sendSeedEmbed(
+    byKey("support-info"),
     "Topfragg setup:v1:support",
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.cyan)
       .setTitle("Topfragg Support Guide")
       .setDescription("Read this before opening a ticket so the Topfragg team can help you quickly.")
       .addFields(
-        { name: "How do I get help?", value: "Go to **#create-ticket**, press **Open support ticket**, and answer the two questions." },
+        { name: "How do I get help?", value: `Go to ${createTicketChannel}, press **Open support ticket**, and answer the two questions.` },
         { name: "Tournament or match issue", value: "Include the tournament name, teams, match time and result when applicable." },
-        { name: "Reporting a player", value: "Use **#player-reports** for cheating, harassment or other confidential reports." },
+        { name: "Reporting a player", value: `Use ${playerReportsChannel} for cheating, harassment or other confidential reports.` },
         { name: "After opening a ticket", value: "A private channel appears under SUPPORT. Continue the conversation there and use **Close ticket** when finished." },
         { name: "Stay secure", value: "Topfragg staff will never ask for your password, bot token or security codes." },
       ),
@@ -342,7 +431,7 @@ async function seedInformation(guild) {
     ["Private player support", "Topfragg Support Center"],
   );
   await sendSeedEmbed(
-    byName("create-ticket"),
+    createTicketChannel,
     "Topfragg setup:v1:create-ticket",
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.orange)
@@ -364,7 +453,7 @@ async function seedInformation(guild) {
     ],
   );
   await sendSeedEmbed(
-    byName("player-reports"),
+    playerReportsChannel,
     "Topfragg setup:v1:player-reports",
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.red)

@@ -30,8 +30,24 @@ const client = new Client({
 
 const ephemeral = (content) => ({ content, flags: MessageFlags.Ephemeral });
 
+const matchesSpecName = (actualName, spec) => (
+  actualName === spec.name || (spec.legacyNames || []).includes(actualName)
+);
+
+function findConfiguredChannel(guild, key) {
+  const spec = categorySpecs.flatMap((category) => category.channels).find((channel) => channel.key === key);
+  return spec && guild.channels.cache.find((channel) => matchesSpecName(channel.name, spec));
+}
+
+function findConfiguredCategory(guild, key) {
+  const spec = categorySpecs.find((category) => category.key === key);
+  return spec && guild.channels.cache.find((channel) => (
+    channel.type === ChannelType.GuildCategory && matchesSpecName(channel.name, spec)
+  ));
+}
+
 async function botLog(guild, message) {
-  const channel = guild.channels.cache.find((item) => item.name === "bot-log" && item.isTextBased());
+  const channel = findConfiguredChannel(guild, "bot-log");
   if (channel) await channel.send({ content: message, allowedMentions: { parse: [] } }).catch(() => null);
 }
 
@@ -44,9 +60,7 @@ async function createSupportTicket(interaction, { subject, reason }) {
     return;
   }
 
-  const supportCategory = guild.channels.cache.find((channel) => (
-    channel.type === ChannelType.GuildCategory && channel.name === "SUPPORT"
-  ));
+  const supportCategory = findConfiguredCategory(guild, "support");
   if (!supportCategory) {
     await interaction.reply(ephemeral("The support category has not been configured yet. Ask an admin to run the Discord setup."));
     return;
@@ -249,9 +263,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.commandName === "setup-status") {
       const roleCount = roleSpecs.filter((spec) => interaction.guild.roles.cache.some((role) => role.name === spec.name)).length;
-      const channelNames = categorySpecs.flatMap((category) => category.channels.map((channel) => channel.name));
-      const channelCount = channelNames.filter((name) => interaction.guild.channels.cache.some((channel) => channel.name === name)).length;
-      await interaction.reply(ephemeral(`Topfragg setup: ${roleCount}/${roleSpecs.length} roles and ${channelCount}/${channelNames.length} channels found.`));
+      const channelSpecs = categorySpecs.flatMap((category) => category.channels);
+      const channelCount = channelSpecs.filter((spec) => (
+        interaction.guild.channels.cache.some((channel) => matchesSpecName(channel.name, spec))
+      )).length;
+      await interaction.reply(ephemeral(`Topfragg setup: ${roleCount}/${roleSpecs.length} roles and ${channelCount}/${channelSpecs.length} channels found.`));
     }
   } catch (error) {
     console.error("[Topfragg Discord] Command failed:", error);
