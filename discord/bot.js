@@ -47,6 +47,11 @@ async function createSupportTicket(interaction) {
   }
 
   const reason = interaction.options.getString("reason", true);
+  const botMember = guild.members.me;
+  if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    await interaction.reply(ephemeral("Topfragg Bot needs the Manage Channels permission before it can create private support tickets."));
+    return;
+  }
   const staffRoles = staffRoleNames
     .map((name) => guild.roles.cache.find((role) => role.name === name)?.id)
     .filter(Boolean);
@@ -57,6 +62,17 @@ async function createSupportTicket(interaction) {
     topic: `Topfragg ticket owner:${interaction.user.id}`,
     permissionOverwrites: [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+      {
+        id: client.user.id,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.EmbedLinks,
+          PermissionFlagsBits.ManageChannels,
+          PermissionFlagsBits.ManageMessages,
+        ],
+      },
       {
         id: interaction.user.id,
         allow: [
