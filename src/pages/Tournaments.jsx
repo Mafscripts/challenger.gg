@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { CompetitionHeader } from "@/components/competition/CompetitionLadder";
+import { HalloweenEventBadge } from "@/components/halloween/HalloweenSeason";
 import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
@@ -224,6 +225,7 @@ function FeaturedTournamentHero({ tournament, now, onSelect }) {
               {statusLabels[tournament.status] || tournament.status}
             </span>
             <TournamentEntryBadge tournament={tournament} />
+            {isFreeTournament(tournament) && <HalloweenEventBadge />}
           </div>
           <h2 className="mt-6 max-w-3xl text-4xl font-black leading-[.92] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">{tournament.name}</h2>
           <p className="mt-5 max-w-2xl text-[15px] leading-7 text-vapor">
@@ -1274,6 +1276,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
         <div className="flex min-w-0 items-center gap-2.5">
           <h3 className="truncate text-sm font-black tracking-[-0.01em] transition-colors duration-200 group-hover:text-orange">{tournament.name}</h3>
           {joined && <span className="shrink-0 rounded-full bg-green/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-green">Joined</span>}
+          {isFreeTournament(tournament) && <HalloweenEventBadge className="hidden sm:inline-flex" />}
         </div>
         <p className="mt-1 truncate text-[10px] leading-4 text-vapor">{compactModeLabel(tournament)}</p>
       </div>

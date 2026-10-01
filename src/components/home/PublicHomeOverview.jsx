@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { HalloweenCountdown, HalloweenEventBadge } from "@/components/halloween/HalloweenSeason";
 import { useAuth } from "@/lib/AuthContext";
 
 const number = (value) => Number(value || 0);
@@ -27,6 +28,13 @@ const bulletImpacts = [
   { left: "92%", top: "66%", size: "23px", delay: "3.85s", rotate: "-33deg" },
   { left: "86%", top: "84%", size: "19px", delay: "4.45s", rotate: "7deg" },
 ];
+
+const isFreeTournament = (tournament) => {
+  const entryType = String(tournament?.entry_type || "free").toLowerCase();
+  return !tournament?.invite_only
+    && !["invitational", "premium", "credits", "credits_premium"].includes(entryType)
+    && Number(tournament?.entry_fee || 0) <= 0;
+};
 
 const tournamentImage = (tournament) => {
   const identity = String(tournament?.name || "").toLowerCase();
@@ -98,7 +106,7 @@ export default function PublicHomeOverview() {
       <div className="landing-arena-glow landing-arena-glow-cyan" aria-hidden="true" />
       <div className="landing-arena-glow landing-arena-glow-orange" aria-hidden="true" />
       <div className="relative mx-auto max-w-[1540px] space-y-16 px-4 sm:px-6 lg:px-8">
-        <section className="landing-season-card relative min-h-[360px] overflow-hidden rounded-2xl border border-white/10 bg-card sm:min-h-[410px]">
+        <section className="halloween-feature landing-season-card relative isolate min-h-[430px] overflow-hidden rounded-2xl border border-white/10 bg-card sm:min-h-[440px]">
           <img src="/assets/home/halloween-special.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,17,.98)_0%,rgba(5,10,17,.9)_38%,rgba(5,10,17,.25)_78%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,10,17,.84),transparent_60%)]" />
@@ -119,14 +127,15 @@ export default function PublicHomeOverview() {
               />
             ))}
           </div>
-          <div className="relative z-10 flex min-h-[360px] max-w-2xl flex-col justify-center px-6 py-12 sm:min-h-[410px] sm:px-10 lg:px-14">
+          <div className="relative z-10 flex min-h-[430px] max-w-2xl flex-col justify-center px-6 py-12 sm:min-h-[440px] sm:px-10 lg:px-14">
             <span className="landing-copy-reveal landing-copy-delay-1 inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> Halloween special</span>
             <h2 className="mt-5 font-heading text-4xl font-black uppercase leading-[.95] text-white sm:text-5xl">
               <span className="landing-title-reveal landing-copy-delay-2 block">8 free tournaments</span>
               <span className="landing-title-reveal landing-copy-delay-3 block text-orange">Eight shots at glory</span>
             </h2>
             <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">Sign up, squad up, and enter eight free Halloween tournaments. Sharpen your game in every bracket, build your reputation, and prove you can compete with the pros.</p>
-            <div className="landing-copy-reveal landing-copy-delay-5 mt-7 flex flex-wrap gap-3">
+            <HalloweenCountdown className="landing-copy-reveal landing-copy-delay-5 mt-5" />
+            <div className="landing-copy-reveal landing-copy-delay-5 mt-5 flex flex-wrap gap-3">
               <Link to={protectedHref("/tournaments")} className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> Claim a free spot <ArrowRight className="h-4 w-4" /></Link>
               {!isAuthenticated && <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black shadow-[0_0_24px_rgba(255,108,0,.16)] transition-colors hover:bg-orange/90">Sign up free</Link>}
             </div>
@@ -150,7 +159,7 @@ export default function PublicHomeOverview() {
             {data.tournaments.map((tournament) => (
               <Link key={tournament.id} to={protectedHref(`/tournaments/${tournament.id}`)} className="group grid min-h-[78px] grid-cols-[52px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-3 last:border-0 hover:bg-white/[0.035] sm:grid-cols-[56px_minmax(0,1fr)_100px_90px_140px] sm:px-5">
                 <img src={tournamentImage(tournament)} alt="" className="h-[52px] w-[52px] rounded-lg border border-white/10 object-cover" loading="lazy" />
-                <div className="min-w-0"><h3 className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{tournament.name}</h3><p className="mt-1 truncate text-[10px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p></div>
+                <div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h3 className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{tournament.name}</h3>{isFreeTournament(tournament) && <HalloweenEventBadge className="hidden lg:inline-flex" />}</div><p className="mt-1 truncate text-[10px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p></div>
                 <PreviewMetric label="Prize" value={formatMoney(tournament.prize_pool)} tone="text-green" />
                 <PreviewMetric label="Teams" value={`${tournament.registered_teams} / ${tournament.max_teams || "—"}`} extra="hidden sm:block" />
                 <div className="hidden border-l border-white/10 pl-5 sm:block"><p className="font-mono text-[8px] font-black uppercase tracking-wider text-vapor">Starts</p><p className="mt-1 font-mono text-[10px] font-black text-cyan">{formatDate(tournament.start_date)}</p></div>

@@ -13,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { HalloweenCountdown, HalloweenEventBadge } from "@/components/halloween/HalloweenSeason";
 import PageLoader from "@/components/ui/PageLoader";
 
 const SLIDE_DURATION = 10000;
@@ -32,6 +33,7 @@ const homeBulletImpacts = [
 const slides = [
   {
     image: "/assets/home/halloween-special.png",
+    season: "halloween",
     objectPosition: "center center",
     tag: "Halloween special",
     meta: "8 free tournaments",
@@ -167,7 +169,7 @@ function FeaturedNews() {
   const move = (direction) => setActive((current) => (current + direction + slides.length) % slides.length);
 
   return (
-    <section className="home-featured relative isolate h-[590px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:h-[550px] lg:h-[520px]">
+    <section className={`home-featured relative isolate h-[590px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:h-[550px] lg:h-[520px] ${slide.season === "halloween" ? "halloween-feature" : ""}`}>
       <div key={`base-${active}`} className="home-featured-image absolute inset-0">
         <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
       </div>
@@ -204,7 +206,8 @@ function FeaturedNews() {
           {slide.title}<br /><span className="text-orange">{slide.accent}</span>
         </h1>
         <p className="mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">{slide.description}</p>
-        <div className="mt-7 flex flex-wrap gap-3">
+        {slide.season === "halloween" && <HalloweenCountdown className="mt-5" />}
+        <div className={`${slide.season === "halloween" ? "mt-5" : "mt-7"} flex flex-wrap gap-3`}>
           <Link to={slide.primaryHref} className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-black transition-transform hover:-translate-y-0.5">
             {slide.primaryLabel}<ArrowRight className="h-4 w-4" />
           </Link>
@@ -280,6 +283,7 @@ function TournamentRows({ tournaments, now, loading }) {
                 <div className="flex items-center gap-2">
                   <h3 className="truncate font-heading text-sm font-black text-white transition-colors group-hover:text-orange sm:text-base">{tournament.name || "Tournament"}</h3>
                   <span className="hidden rounded bg-cyan/10 px-1.5 py-0.5 font-mono text-[8px] font-black uppercase tracking-wider text-cyan md:inline">{String(tournament.status || "Open").replace("_", " ")}</span>
+                  {tournamentEntry(tournament) === "Free entry" && <HalloweenEventBadge className="hidden xl:inline-flex" />}
                 </div>
                 <p className="mt-1 truncate text-[11px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p>
                 <p className="mt-1.5 font-mono text-[9px] font-bold uppercase tracking-wider text-cyan sm:hidden">{timeUntil(tournament.start_date, now)}</p>
