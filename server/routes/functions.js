@@ -2931,6 +2931,13 @@ async function userActiveTeamMemberships(userId, teamType) {
   return rows.filter(Boolean);
 }
 
+const MAX_ACTIVE_TOURNAMENT_TEAMS = 5;
+
+async function activeTournamentTeamMemberships(userId) {
+  const memberships = await userActiveTeamMemberships(userId);
+  return memberships.filter(({ team }) => normalizeTeamType(team.team_type) === "tournament");
+}
+
 async function teamRoster(teamId, { requiredSize = 1, expectedType, exactSize = false, captainId } = {}) {
   const team = await getEntity("Team", teamId || "").catch(() => null);
   if (!team || team.is_active === false) {
@@ -3035,6 +3042,12 @@ async function manageTeam(req) {
     const teamType = normalizeTeamType(req.body.team_type);
     const rosterSize = Math.min(4, Math.max(1, Number(req.body.roster_size || (teamType === "8s" ? 4 : 2))));
     if (!name || !tag) return { success: false, error: "Team name and tag are required" };
+    if (teamType === "tournament") {
+      const activeTournamentTeams = await activeTournamentTeamMemberships(req.user.id);
+      if (activeTournamentTeams.length >= MAX_ACTIVE_TOURNAMENT_TEAMS) {
+        return { success: false, error: `You can be active on a maximum of ${MAX_ACTIVE_TOURNAMENT_TEAMS} tournament teams` };
+      }
+    }
     if (teamType === "8s") {
       const active8sTeams = await userActiveTeamMemberships(req.user.id, "8s");
       if (active8sTeams.length > 0) {
@@ -3103,8 +3116,16 @@ async function manageTeam(req) {
     if (target.id === req.user.id) return { success: false, error: "You are already on this team" };
     if (members.some((member) => member.user_id === target.id)) return { success: false, error: "Player is already on this team" };
 
-    const targetTeams = await userActiveTeamMemberships(target.id, normalizeTeamType(team.team_type));
-    if (targetTeams.length > 0) return { success: false, error: "Player needs to leave current team" };
+    const inviteTeamType = normalizeTeamType(team.team_type);
+    if (inviteTeamType === "tournament") {
+      const activeTournamentTeams = await activeTournamentTeamMemberships(target.id);
+      if (activeTournamentTeams.length >= MAX_ACTIVE_TOURNAMENT_TEAMS) {
+        return { success: false, error: `Player is already active on the maximum of ${MAX_ACTIVE_TOURNAMENT_TEAMS} tournament teams` };
+      }
+    } else {
+      const targetTeams = await userActiveTeamMemberships(target.id, inviteTeamType);
+      if (targetTeams.length > 0) return { success: false, error: "Player needs to leave current team" };
+    }
 
     const existingInvite = await firstEntity("TeamInvite", {
       team_id: team.id,
@@ -3152,7 +3173,12 @@ async function manageTeam(req) {
     }
     const members = await activeTeamMembers(inviteTeam.id);
     if (members.length >= rosterLimitForTeam(inviteTeam)) return { success: false, error: "Team roster is full" };
-    if (normalizeTeamType(inviteTeam.team_type) === "8s") {
+    if (normalizeTeamType(inviteTeam.team_type) === "tournament") {
+      const activeTournamentTeams = await activeTournamentTeamMemberships(req.user.id);
+      if (activeTournamentTeams.length >= MAX_ACTIVE_TOURNAMENT_TEAMS) {
+        return { success: false, error: `You can be active on a maximum of ${MAX_ACTIVE_TOURNAMENT_TEAMS} tournament teams` };
+      }
+    } else if (normalizeTeamType(inviteTeam.team_type) === "8s") {
       const active8sTeams = await userActiveTeamMemberships(req.user.id, "8s");
       if (active8sTeams.some((row) => row.team.id !== inviteTeam.id)) {
         return { success: false, error: "Leave your current 8s team before accepting another 8s invite" };
