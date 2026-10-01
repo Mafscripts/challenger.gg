@@ -263,17 +263,23 @@ async function ensureChannels(guild) {
   return created;
 }
 
-async function sendSeedEmbed(channel, marker, embed, components = []) {
+async function sendSeedEmbed(channel, marker, embed, components = [], previousTitles = []) {
   if (!channel?.isTextBased()) return;
   const messages = await channel.messages.fetch({ limit: 50 });
-  const existing = messages.find((message) => (
+  const managedMessages = messages.filter((message) => (
     message.author.id === client.user.id
     && message.embeds.some((item) => (
-      item.footer?.text === marker || item.title === embed.data.title
+      item.footer?.text === marker
+      || item.title === embed.data.title
+      || previousTitles.includes(item.title)
     ))
   ));
+  const existing = managedMessages.first();
   if (existing) {
     await existing.edit({ embeds: [embed], components, allowedMentions: { parse: [] } });
+    for (const duplicate of managedMessages.filter((message) => message.id !== existing.id).values()) {
+      await duplicate.delete().catch(() => null);
+    }
     log(`Updated information card in #${channel.name}`);
     return;
   }
@@ -323,23 +329,17 @@ async function seedInformation(guild) {
     "Topfragg setup:v1:support",
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.cyan)
-      .setTitle("Topfragg Support Center")
-      .setDescription("Need help? Choose the right private support option below. Your conversation is only visible to you and authorized Topfragg staff.")
+      .setTitle("Topfragg Support Guide")
+      .setDescription("Read this before opening a ticket so the Topfragg team can help you quickly.")
       .addFields(
-        { name: "Account & verification", value: "Help with login, profiles, verification and account access.", inline: true },
-        { name: "Tournaments & matches", value: "Questions about registrations, teams, results and disputes.", inline: true },
-        { name: "Player reports", value: "Use **#player-reports** for confidential fair-play or conduct reports.", inline: true },
-        { name: "Response time", value: "Provide clear details once. A staff member will respond in your private ticket as soon as possible." },
+        { name: "How do I get help?", value: "Go to **#create-ticket**, press **Open support ticket**, and answer the two questions." },
+        { name: "Tournament or match issue", value: "Include the tournament name, teams, match time and result when applicable." },
+        { name: "Reporting a player", value: "Use **#player-reports** for cheating, harassment or other confidential reports." },
+        { name: "After opening a ticket", value: "A private channel appears under SUPPORT. Continue the conversation there and use **Close ticket** when finished." },
+        { name: "Stay secure", value: "Topfragg staff will never ask for your password, bot token or security codes." },
       ),
-    [
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("topfragg:support:open")
-          .setLabel("Open support ticket")
-          .setEmoji("🎫")
-          .setStyle(ButtonStyle.Primary),
-      ),
-    ],
+    [],
+    ["Private player support", "Topfragg Support Center"],
   );
   await sendSeedEmbed(
     byName("create-ticket"),
