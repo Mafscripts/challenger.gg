@@ -17,6 +17,8 @@
     "seed": "node prisma/seed.js",
     "demo:tournament": "node prisma/demoTournament.js",
     "demo:tournament:entries": "node prisma/demoTournamentEntries.js",
+    "discord:setup": "node discord/provision.js",
+    "discord:start": "node discord/bot.js",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
   },
@@ -61,6 +63,7 @@
     "cmdk": "^1.0.0",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
+    "discord.js": "^14.27.0",
     "dotenv": "^16.4.7",
     "embla-carousel-react": "^8.5.2",
     "express": "^4.21.2",
