@@ -122,6 +122,10 @@ async function ensureRoles(guild) {
     const existing = guild.roles.cache.find((role) => role.name === spec.name && !role.managed);
     const canGrantPermissions = botMember.permissions.has(new PermissionsBitField(spec.permissions));
     if (existing) {
+      if (!existing.editable) {
+        log(`Skipped role ${spec.name}: it is above the Topfragg Bot role.`);
+        continue;
+      }
       await existing.edit({
         colors: { primaryColor: spec.color },
         hoist: spec.hoist,
