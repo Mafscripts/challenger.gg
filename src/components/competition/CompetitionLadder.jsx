@@ -55,10 +55,14 @@ const modeCopy = {
 };
 
 const competitionBulletImpacts = [
-  { left: "66%", top: "24%", size: "34px", delay: "1.4s", rotate: "12deg" },
-  { left: "83%", top: "40%", size: "27px", delay: "2.3s", rotate: "-18deg" },
-  { left: "73%", top: "67%", size: "31px", delay: "3.2s", rotate: "29deg" },
-  { left: "91%", top: "74%", size: "23px", delay: "4.1s", rotate: "-33deg" },
+  { left: "61%", top: "17%", size: "25px", delay: ".25s", rotate: "-8deg" },
+  { left: "69%", top: "29%", size: "34px", delay: ".85s", rotate: "12deg" },
+  { left: "87%", top: "19%", size: "22px", delay: "1.45s", rotate: "36deg" },
+  { left: "82%", top: "41%", size: "27px", delay: "2.05s", rotate: "-18deg" },
+  { left: "67%", top: "55%", size: "20px", delay: "2.65s", rotate: "18deg" },
+  { left: "74%", top: "69%", size: "31px", delay: "3.25s", rotate: "29deg" },
+  { left: "92%", top: "65%", size: "23px", delay: "3.85s", rotate: "-33deg" },
+  { left: "86%", top: "84%", size: "19px", delay: "4.45s", rotate: "7deg" },
 ];
 
 const trophyTypes = [

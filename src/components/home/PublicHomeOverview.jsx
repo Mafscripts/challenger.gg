@@ -2,14 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  Clock3,
   Coins,
   Crosshair,
   Gamepad2,
   LockKeyhole,
   Medal,
   Trophy,
-  Users,
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -20,10 +18,14 @@ const formatNumber = (value) => Math.round(Math.max(0, number(value))).toLocaleS
 const formatMoney = (value) => `$${Math.max(0, number(value)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const blackOps7Artwork = "/assets/tournaments/black-ops-7.webp";
 const bulletImpacts = [
-  { left: "72%", top: "24%", size: "34px", delay: "1.4s", rotate: "12deg" },
-  { left: "84%", top: "42%", size: "27px", delay: "2.3s", rotate: "-18deg" },
-  { left: "66%", top: "67%", size: "31px", delay: "3.2s", rotate: "29deg" },
-  { left: "91%", top: "73%", size: "23px", delay: "4.1s", rotate: "-33deg" },
+  { left: "63%", top: "18%", size: "25px", delay: ".25s", rotate: "-8deg" },
+  { left: "74%", top: "28%", size: "34px", delay: ".85s", rotate: "12deg" },
+  { left: "88%", top: "20%", size: "22px", delay: "1.45s", rotate: "36deg" },
+  { left: "83%", top: "43%", size: "27px", delay: "2.05s", rotate: "-18deg" },
+  { left: "68%", top: "57%", size: "20px", delay: "2.65s", rotate: "18deg" },
+  { left: "76%", top: "72%", size: "31px", delay: "3.25s", rotate: "29deg" },
+  { left: "92%", top: "66%", size: "23px", delay: "3.85s", rotate: "-33deg" },
+  { left: "86%", top: "84%", size: "19px", delay: "4.45s", rotate: "7deg" },
 ];
 
 const tournamentImage = (tournament) => {
@@ -97,7 +99,7 @@ export default function PublicHomeOverview() {
       <div className="landing-arena-glow landing-arena-glow-orange" aria-hidden="true" />
       <div className="relative mx-auto max-w-[1540px] space-y-16 px-4 sm:px-6 lg:px-8">
         <section className="landing-season-card relative min-h-[360px] overflow-hidden rounded-2xl border border-white/10 bg-card sm:min-h-[410px]">
-          <img src="/assets/home/featured-tournaments.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-65" />
+          <img src="/assets/home/halloween-special.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,17,.98)_0%,rgba(5,10,17,.9)_38%,rgba(5,10,17,.25)_78%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,10,17,.84),transparent_60%)]" />
           <div className="landing-bullet-field absolute inset-0 z-[2]" aria-hidden="true">
@@ -118,15 +120,15 @@ export default function PublicHomeOverview() {
             ))}
           </div>
           <div className="relative z-10 flex min-h-[360px] max-w-2xl flex-col justify-center px-6 py-12 sm:min-h-[410px] sm:px-10 lg:px-14">
-            <span className="landing-copy-reveal landing-copy-delay-1 inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> October season live</span>
+            <span className="landing-copy-reveal landing-copy-delay-1 inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> Halloween special</span>
             <h2 className="mt-5 font-heading text-4xl font-black uppercase leading-[.95] text-white sm:text-5xl">
-              <span className="landing-title-reveal landing-copy-delay-2 block">Black Ops 7 ladder</span>
-              <span className="landing-title-reveal landing-copy-delay-3 block text-orange">Become the Topfragger</span>
+              <span className="landing-title-reveal landing-copy-delay-2 block">8 free tournaments</span>
+              <span className="landing-title-reveal landing-copy-delay-3 block text-orange">Eight shots at glory</span>
             </h2>
-            <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">Compete throughout the six-week season for a $1,000 prize pool. The top 8 teams reach the playoffs, and the No. 1 competitor is featured in the next season.</p>
+            <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">Sign up, squad up, and enter eight free Halloween tournaments. Sharpen your game in every bracket, build your reputation, and prove you can compete with the pros.</p>
             <div className="landing-copy-reveal landing-copy-delay-5 mt-7 flex flex-wrap gap-3">
-              <Link to={protectedHref("/tournaments")} className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> View tournaments <ArrowRight className="h-4 w-4" /></Link>
-              {!isAuthenticated && <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black shadow-[0_0_24px_rgba(255,108,0,.16)] transition-colors hover:bg-orange/90">Create free account</Link>}
+              <Link to={protectedHref("/tournaments")} className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> Claim a free spot <ArrowRight className="h-4 w-4" /></Link>
+              {!isAuthenticated && <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black shadow-[0_0_24px_rgba(255,108,0,.16)] transition-colors hover:bg-orange/90">Sign up free</Link>}
             </div>
           </div>
         </section>

@@ -19,13 +19,30 @@ const SLIDE_DURATION = 10000;
 const HOME_REFRESH_INTERVAL = 60000;
 const blackOps7Artwork = "/assets/tournaments/black-ops-7.webp";
 const homeBulletImpacts = [
-  { left: "72%", top: "24%", size: "34px", delay: "1.4s", rotate: "12deg" },
-  { left: "84%", top: "42%", size: "27px", delay: "2.3s", rotate: "-18deg" },
-  { left: "66%", top: "67%", size: "31px", delay: "3.2s", rotate: "29deg" },
-  { left: "91%", top: "73%", size: "23px", delay: "4.1s", rotate: "-33deg" },
+  { left: "63%", top: "18%", size: "25px", delay: ".25s", rotate: "-8deg" },
+  { left: "74%", top: "28%", size: "34px", delay: ".85s", rotate: "12deg" },
+  { left: "88%", top: "20%", size: "22px", delay: "1.45s", rotate: "36deg" },
+  { left: "83%", top: "43%", size: "27px", delay: "2.05s", rotate: "-18deg" },
+  { left: "68%", top: "57%", size: "20px", delay: "2.65s", rotate: "18deg" },
+  { left: "76%", top: "72%", size: "31px", delay: "3.25s", rotate: "29deg" },
+  { left: "92%", top: "66%", size: "23px", delay: "3.85s", rotate: "-33deg" },
+  { left: "86%", top: "84%", size: "19px", delay: "4.45s", rotate: "7deg" },
 ];
 
 const slides = [
+  {
+    image: "/assets/home/halloween-special.png",
+    objectPosition: "center center",
+    tag: "Halloween special",
+    meta: "8 free tournaments",
+    title: "HALLOWEEN MAYHEM",
+    accent: "EIGHT SHOTS AT GLORY",
+    description: "Sign up, squad up, and enter eight free Halloween tournaments. Every bracket is a new chance to sharpen your game, build your reputation, and prove you can compete with the pros.",
+    primaryLabel: "Claim your free spot",
+    primaryHref: "/tournaments",
+    secondaryLabel: "View the leaderboard",
+    secondaryHref: "/leaderboards",
+  },
   {
     image: "/assets/home/featured-season.png",
     objectPosition: "center 35%",

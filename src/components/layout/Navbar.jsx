@@ -5,7 +5,7 @@ import {
   Menu, X, House, Swords, Trophy, ShoppingBag,
   Users, Zap,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket, Ghost
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
@@ -904,7 +904,8 @@ export default function Navbar() {
       })()}
       <nav
         data-scrolled={scrolled ? "true" : "false"}
-        className={`app-topbar app-topbar-v2 fixed top-0 left-0 right-0 z-50 ${scrolled ? "glass-nav" : ""}`}
+        data-season="halloween"
+        className={`app-topbar app-topbar-v2 topbar-halloween fixed top-0 left-0 right-0 z-50 ${scrolled ? "glass-nav" : ""}`}
       >
         <div className="app-topbar-inner mx-auto max-w-[1720px] px-3 lg:px-5">
           <div className="topbar-shell flex h-14 items-center justify-between gap-4 px-2.5 lg:px-3.5">
@@ -913,6 +914,10 @@ export default function Navbar() {
               <Link to="/" className="topbar-brand-link flex items-center gap-2.5" aria-label="Topfragg.gg home">
                 <TopfraggLogo className="topbar-logo" markClassName="topbar-logo-mark h-9 w-9" wordmarkClassName="hidden text-[17px] sm:inline-flex" />
               </Link>
+              <span className="topbar-season-badge" aria-label="Halloween season">
+                <Ghost className="h-3.5 w-3.5" />
+                <span>Halloween</span>
+              </span>
             </div>
 
             {/* Desktop Nav */}
