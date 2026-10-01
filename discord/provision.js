@@ -149,6 +149,30 @@ async function ensureRoles(guild) {
   await guild.roles.fetch();
 }
 
+async function ensureTopfraggRoleOrder(guild) {
+  await guild.roles.fetch();
+  const lowestToHighest = [...roleSpecs].reverse();
+
+  for (let index = 0; index < lowestToHighest.length; index += 1) {
+    const spec = lowestToHighest[index];
+    const role = guild.roles.cache.find((item) => item.name === spec.name && !item.managed);
+    const desiredPosition = index + 1;
+    if (!role || role.position === desiredPosition) continue;
+    try {
+      await role.setPosition(desiredPosition, "Keep Topfragg staff roles above player roles");
+      log(`Positioned role: ${spec.name}`);
+    } catch (error) {
+      if ([50001, 50013].includes(error.code)) {
+        log(`Could not position ${spec.name}: move Topfragg Bot Access above it first.`);
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  await guild.roles.fetch();
+}
+
 async function ensureBotRuntimeRole(guild) {
   await guild.roles.fetch();
   const botMember = await guild.members.fetchMe();
@@ -311,6 +335,10 @@ async function seedInformation(guild) {
   const verificationChannel = byKey("verification");
   const faqChannel = byKey("faq");
   const tournamentsChannel = byKey("tournaments");
+  const tournamentSignupsChannel = byKey("tournament-signups");
+  const matchResultsChannel = byKey("match-results");
+  const leaderboardsChannel = byKey("leaderboards");
+  const disputesChannel = byKey("disputes");
   const createTicketChannel = byKey("create-ticket");
   const playerReportsChannel = byKey("player-reports");
   await sendSeedEmbed(
@@ -419,6 +447,72 @@ async function seedInformation(guild) {
     ],
   );
   await sendSeedEmbed(
+    tournamentSignupsChannel,
+    "Topfragg setup:v1:tournament-signups",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.gold)
+      .setTitle("📝 Tournament sign-ups")
+      .setDescription("Official tournament registration happens on Topfragg.gg. This channel is for roster calls, finding a teammate and quick registration questions.")
+      .addFields(
+        { name: "1. Choose an event", value: "Open the tournament page and select the competition you want to play." },
+        { name: "2. Register your team", value: "Sign in to Topfragg, create or select your team, then complete registration." },
+        { name: "3. Need a teammate?", value: "Post your region, platform, mode, rank and availability here. Do not post private account details." },
+      ),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel("Browse tournaments")
+          .setEmoji("🏆")
+          .setStyle(ButtonStyle.Link)
+          .setURL(`${config.publicUrl}/tournaments`),
+      ),
+    ],
+  );
+  await sendSeedEmbed(
+    matchResultsChannel,
+    "Topfragg setup:v1:match-results",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.cyan)
+      .setTitle("📊 Official match results")
+      .setDescription("Confirmed scores and completed tournament matches are published here. Results are managed through Topfragg to keep every bracket accurate.")
+      .addFields({ name: "Wrong result?", value: `Do not argue publicly. Open a private ticket in ${createTicketChannel} with the tournament, teams and evidence.` }),
+  );
+  await sendSeedEmbed(
+    leaderboardsChannel,
+    "Topfragg setup:v1:leaderboards",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.purple)
+      .setTitle("👑 Topfragg leaderboards")
+      .setDescription("Track the players and teams setting the pace this season. Your tournament results and wins shape your standing."),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel("View leaderboards")
+          .setEmoji("👑")
+          .setStyle(ButtonStyle.Link)
+          .setURL(`${config.publicUrl}/leaderboards`),
+      ),
+    ],
+  );
+  await sendSeedEmbed(
+    disputesChannel,
+    "Topfragg setup:v1:disputes",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.red)
+      .setTitle("⚖️ Match disputes")
+      .setDescription("Keep disputes private and respectful. Staff can only review a case when the details are in a private ticket.")
+      .addFields({ name: "Include", value: "Tournament name, both teams, match time, score, what happened and screenshots or clips when available." }),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("topfragg:support:open")
+          .setLabel("Open private dispute ticket")
+          .setEmoji("⚖️")
+          .setStyle(ButtonStyle.Danger),
+      ),
+    ],
+  );
+  await sendSeedEmbed(
     byKey("support-info"),
     "Topfragg setup:v1:support",
     new EmbedBuilder()
@@ -486,6 +580,7 @@ async function run() {
   const guild = await client.guilds.fetch(config.guildId);
   log(`Preparing server: ${guild.name}`);
   await ensureRoles(guild);
+  await ensureTopfraggRoleOrder(guild);
   await ensureBotRuntimeRole(guild);
   await ensureChannels(guild);
   await guild.channels.fetch();
