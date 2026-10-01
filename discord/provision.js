@@ -34,9 +34,12 @@ function roleIdsByName(guild) {
   return new Map(guild.roles.cache.map((role) => [role.name, role.id]));
 }
 
-function overwriteForMode(guild, roles, mode) {
+function overwriteForMode(guild, roles, configuredMode) {
+  const requiresVerification = configuredMode.startsWith("verified-");
+  const mode = requiresVerification ? configuredMode.slice("verified-".length) : configuredMode;
   const everyone = guild.roles.everyone.id;
   const muted = roles.get("Muted");
+  const verified = roles.get("Verified Player");
   const staffIds = staffRoleNames.map((name) => roles.get(name)).filter(Boolean);
   const botRuntimeId = roles.get(botRuntimeRoleSpec.name);
   const staffAllow = [
@@ -65,6 +68,17 @@ function overwriteForMode(guild, roles, mode) {
   }
 
   if (mode === "read-only") {
+    if (requiresVerification && verified) {
+      return [
+        {
+          id: everyone,
+          deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.CreatePublicThreads, PermissionFlagsBits.CreatePrivateThreads],
+        },
+        { id: verified, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory] },
+        ...staffIds.map((id) => ({ id, allow: staffAllow })),
+        ...(botRuntimeId ? [{ id: botRuntimeId, allow: staffAllow }] : []),
+      ];
+    }
     return [
       {
         id: everyone,
@@ -77,9 +91,31 @@ function overwriteForMode(guild, roles, mode) {
   }
 
   if (mode === "voice") {
+    if (requiresVerification && verified) {
+      const voiceAccess = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak];
+      return [
+        { id: everyone, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] },
+        { id: verified, allow: voiceAccess },
+        ...staffIds.map((id) => ({ id, allow: voiceAccess })),
+        ...(muted ? [{ id: muted, deny: [PermissionFlagsBits.Speak] }] : []),
+      ];
+    }
     return [
       { id: everyone, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak] },
       ...(muted ? [{ id: muted, deny: [PermissionFlagsBits.Speak] }] : []),
+    ];
+  }
+
+  if (requiresVerification && verified) {
+    return [
+      { id: everyone, deny: [PermissionFlagsBits.ViewChannel] },
+      {
+        id: verified,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.SendMessages],
+      },
+      ...staffIds.map((id) => ({ id, allow: staffAllow })),
+      ...(botRuntimeId ? [{ id: botRuntimeId, allow: staffAllow }] : []),
+      ...(muted ? [{ id: muted, deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.AddReactions] }] : []),
     ];
   }
 
@@ -274,6 +310,10 @@ async function ensureChannels(guild) {
           continue;
         }
         try {
+          await existing.permissionOverwrites.set(
+            permissionOverwrites,
+            "Apply Topfragg channel access policy",
+          );
           if (["read-only", "staff"].includes(channelSpec.mode || categorySpec.mode)) {
             await grantRuntimeChannelAccess(existing, roles);
           }
