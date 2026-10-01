@@ -27,6 +27,7 @@ import { prisma } from "../server/prisma.js";
 import { syncTournamentDiscord } from "./announcements.js";
 import { syncManagedDiscordRoles } from "./managed-roles.js";
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
+import { syncTwitchLiveStreams } from "./streams.js";
 
 const config = discordEnvironment();
 const client = new Client({
@@ -76,6 +77,11 @@ async function runTournamentDiscordSync(guild) {
     );
     await closeExpiredGiveaways(
       guild,
+      (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`),
+    );
+    await syncTwitchLiveStreams(
+      guild,
+      findConfiguredChannel,
       (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`),
     );
   } catch (error) {

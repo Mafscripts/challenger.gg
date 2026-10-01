@@ -306,6 +306,22 @@ export const base44 = {
       return result;
     },
   },
+  twitch: {
+    connect() {
+      requireToken();
+      return apiFetch("/twitch/connect", { method: "POST", dedupe: false });
+    },
+    status() {
+      requireToken();
+      return apiFetch("/twitch/status", { dedupe: false });
+    },
+    async disconnect() {
+      requireToken();
+      const result = await apiFetch("/twitch/connection", { method: "DELETE", dedupe: false });
+      invalidateMeCache();
+      return result;
+    },
+  },
   entities: new Proxy({}, {
     get(_target, entity) {
       return entityClient(entity);

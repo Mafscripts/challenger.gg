@@ -4,6 +4,7 @@ import AccountSection from "@/components/settings/AccountSection";
 import CreditsSection from "@/components/settings/CreditsSection";
 import PaymentPermissionsSection from "@/components/settings/PaymentPermissionsSection";
 import DiscordSection from "@/components/settings/DiscordSection";
+import TwitchSection from "@/components/settings/TwitchSection";
 import GamingIdsSection from "@/components/settings/GamingIdsSection";
 import SocialsSection from "@/components/settings/SocialsSection";
 import PageHeader from "@/components/ui/PageHeader";
@@ -41,6 +42,7 @@ export default function Settings() {
         <PaymentPermissionsSection user={user} onUserUpdate={loadUser} />
         <GamingIdsSection user={user} onUserUpdate={loadUser} />
         <DiscordSection user={user} onUserUpdate={loadUser} />
+        <TwitchSection user={user} onUserUpdate={loadUser} />
       </div>
     </div>
   );

@@ -42,6 +42,11 @@ model User {
   discord_display_name String?
   discord_avatar_url   String?
   discord_connected_at DateTime?
+  twitch_user_id       String?   @unique
+  twitch_login         String?
+  twitch_display_name  String?
+  twitch_avatar_url    String?
+  twitch_connected_at  DateTime?
   account_created_date DateTime  @default(now())
   created_date         DateTime  @default(now())
   updated_date         DateTime  @updatedAt

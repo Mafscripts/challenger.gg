@@ -72,6 +72,11 @@ const userFields = new Set([
   "discord_display_name",
   "discord_avatar_url",
   "discord_connected_at",
+  "twitch_user_id",
+  "twitch_login",
+  "twitch_display_name",
+  "twitch_avatar_url",
+  "twitch_connected_at",
   "account_created_date",
 ]);
 

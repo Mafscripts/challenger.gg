@@ -128,3 +128,24 @@ The visible member list is grouped by these roles. Automatic roles synchronize w
 ```
 
 The bot ends expired giveaways automatically, prevents duplicate entries and announces the randomly selected winners in the giveaway channel.
+
+## 11. Twitch live alerts
+
+Players can open **Settings → Twitch live alerts** and select **Connect Twitch**. The connection stores the Twitch channel identity, not a Twitch password or a reusable player token.
+
+To enable it on production, create a Twitch application in the Twitch Developer Console and add this OAuth redirect URL:
+
+```text
+https://topfragg.gg/api/twitch/callback
+```
+
+Then add these values to the server `.env` file:
+
+```env
+TWITCH_CLIENT_ID="your-twitch-application-client-id"
+TWITCH_CLIENT_SECRET="your-twitch-application-client-secret"
+TWITCH_OAUTH_REDIRECT_URI="https://topfragg.gg/api/twitch/callback"
+TWITCH_OAUTH_STATE_SECRET="a-separate-long-random-secret"
+```
+
+When a connected player with both a linked Discord account and the manual **Streamer** Discord role goes live, the bot posts one stream card in **🔴・live-now** with a Twitch button. The Streamer role prevents every linked account from auto-posting.
