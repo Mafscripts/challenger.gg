@@ -230,6 +230,50 @@ function supportModal(kind = "general") {
     );
 }
 
+function isPublicHttpsUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    return url.protocol === "https:" && Boolean(url.hostname) && url.hostname !== "localhost";
+  } catch {
+    return false;
+  }
+}
+
+async function publishHighlight(interaction) {
+  const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
+  if (!verifiedRole || !interaction.member.roles.cache.has(verifiedRole.id)) {
+    await interaction.reply(ephemeral("Verify your Topfragg identity before posting highlights."));
+    return;
+  }
+  const title = interaction.fields.getTextInputValue("clip_title").trim();
+  const link = interaction.fields.getTextInputValue("clip_link").trim();
+  const description = interaction.fields.getTextInputValue("clip_description").trim();
+  if (!isPublicHttpsUrl(link)) {
+    await interaction.reply(ephemeral("Use a valid HTTPS link from Twitch, YouTube, TikTok or another public clip page."));
+    return;
+  }
+  const channel = findConfiguredChannel(interaction.guild, "clips-and-content");
+  if (!channel?.isTextBased()) {
+    await interaction.reply(ephemeral("The clips channel is unavailable. Please contact staff."));
+    return;
+  }
+  const embed = new EmbedBuilder()
+    .setColor(TOPFRAGG_COLORS.purple)
+    .setTitle(`🎬 ${title}`)
+    .setURL(link)
+    .setDescription(description || "A fresh Topfragg community highlight.")
+    .setAuthor({ name: `${interaction.user.username}'s highlight`, iconURL: interaction.user.displayAvatarURL() })
+    .addFields({ name: "Watch", value: `[Open this highlight](${link})` })
+    .setFooter({ text: "Topfragg community content" })
+    .setTimestamp();
+  await channel.send({
+    content: `<@${interaction.user.id}> shared a new highlight!`,
+    embeds: [embed],
+    allowedMentions: { users: [interaction.user.id] },
+  });
+  await interaction.reply(ephemeral(`Your highlight is live in ${channel}.`));
+}
+
 async function toggleSelfRole(interaction, roleName) {
   if (!selfAssignableRoleNames.includes(roleName)) return;
   const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
@@ -342,6 +386,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await enterGiveaway(interaction, interaction.customId.slice("topfragg:giveaway:enter:".length));
       return;
     }
+    if (interaction.isButton() && interaction.customId === "topfragg:clip:open") {
+      const modal = new ModalBuilder()
+        .setCustomId("topfragg:clip:form")
+        .setTitle("Post a Topfragg highlight")
+        .addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId("clip_title").setLabel("Highlight title").setPlaceholder("1v2 final-round clutch").setStyle(TextInputStyle.Short).setMaxLength(100).setRequired(true),
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId("clip_link").setLabel("Public clip link").setPlaceholder("https://www.twitch.tv/... or https://youtu.be/...").setStyle(TextInputStyle.Short).setMaxLength(500).setRequired(true),
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId("clip_description").setLabel("Optional context").setPlaceholder("Tournament, game mode, team or moment").setStyle(TextInputStyle.Paragraph).setMaxLength(500).setRequired(false),
+          ),
+        );
+      await interaction.showModal(modal);
+      return;
+    }
     if (interaction.isButton() && interaction.customId.startsWith("topfragg:role:")) {
       await toggleSelfRole(interaction, interaction.customId.slice("topfragg:role:".length));
       return;
@@ -381,6 +443,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         subject: `${label}: ${interaction.fields.getTextInputValue("support_subject")}`,
         reason: interaction.fields.getTextInputValue("support_details"),
       });
+      return;
+    }
+    if (interaction.isModalSubmit() && interaction.customId === "topfragg:clip:form") {
+      await publishHighlight(interaction);
       return;
     }
     if (interaction.isModalSubmit() && interaction.customId === "topfragg:lfg:form") {

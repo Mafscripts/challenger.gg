@@ -410,6 +410,7 @@ async function seedInformation(guild) {
   const tournamentsChannel = byKey("tournaments");
   const liveNowChannel = byKey("live-now");
   const lookingForTeamChannel = byKey("looking-for-team");
+  const clipsChannel = byKey("clips-and-content");
   const tournamentSignupsChannel = byKey("tournament-signups");
   const matchResultsChannel = byKey("match-results");
   const leaderboardsChannel = byKey("leaderboards");
@@ -555,6 +556,27 @@ async function seedInformation(guild) {
           .setCustomId("topfragg:lfg:open")
           .setLabel("Create LFG post")
           .setEmoji("🔎")
+          .setStyle(ButtonStyle.Primary),
+      ),
+    ],
+  );
+  await sendSeedEmbed(
+    clipsChannel,
+    "Topfragg setup:v1:clips-and-content",
+    new EmbedBuilder()
+      .setColor(TOPFRAGG_COLORS.purple)
+      .setTitle("🎬 Share your Topfragg highlight")
+      .setDescription("Hit a clutch? Won a match? Share your Twitch, YouTube or TikTok highlight with the community. Keep it competitive, respectful and relevant to Topfragg.")
+      .addFields(
+        { name: "How it works", value: "Press **Post a highlight**, add a title and link, then the bot creates a clean clip card for you." },
+        { name: "Who can post?", value: "Verified Players only. No self-promo spam, account selling or unrelated links." },
+      ),
+    [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("topfragg:clip:open")
+          .setLabel("Post a highlight")
+          .setEmoji("🎬")
           .setStyle(ButtonStyle.Primary),
       ),
     ],
