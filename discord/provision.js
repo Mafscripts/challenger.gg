@@ -352,6 +352,27 @@ async function ensureChannels(guild) {
   return created;
 }
 
+async function ensureCategoryOrder(guild) {
+  await guild.channels.fetch();
+  for (let index = 0; index < categorySpecs.length; index += 1) {
+    const spec = categorySpecs[index];
+    const category = guild.channels.cache.find((channel) => (
+      channel.type === ChannelType.GuildCategory && matchesSpecName(channel.name, spec)
+    ));
+    if (!category) continue;
+    try {
+      await category.setPosition(index, "Keep Topfragg server categories in the intended order");
+      log(`Positioned category: ${spec.name}`);
+    } catch (error) {
+      if ([50001, 50013].includes(error.code)) {
+        log(`Skipped category positioning without access: ${spec.name}`);
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 async function sendSeedEmbed(channel, marker, embed, components = [], previousTitles = []) {
   if (!channel?.isTextBased()) return;
   const messages = await channel.messages.fetch({ limit: 50 });
@@ -697,6 +718,7 @@ async function run() {
   await ensureTopfraggRoleOrder(guild);
   await ensureBotRuntimeRole(guild);
   await ensureChannels(guild);
+  await ensureCategoryOrder(guild);
   await guild.channels.fetch();
   await guild.commands.set(commandSpecs);
   log(`Registered ${commandSpecs.length} slash commands.`);

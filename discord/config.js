@@ -109,6 +109,14 @@ export const categorySpecs = [
     ],
   },
   {
+    key: "events",
+    name: "🎉 EVENTS",
+    legacyNames: ["EVENTS"],
+    channels: [
+      { key: "giveaways", name: "🎁・giveaways", legacyNames: ["giveaways"], type: ChannelType.GuildText, mode: "verified-read-only", topic: "Official Topfragg giveaways and community rewards." },
+    ],
+  },
+  {
     key: "support",
     name: "🛟 SUPPORT",
     legacyNames: ["SUPPORT"],
@@ -116,14 +124,6 @@ export const categorySpecs = [
       { key: "support-info", name: "ℹ️・support-info", legacyNames: ["support-info"], type: ChannelType.GuildText, mode: "read-only", topic: "Read this guide before contacting the Topfragg support team." },
       { key: "create-ticket", name: "🎫・create-ticket", legacyNames: ["create-ticket"], type: ChannelType.GuildText, mode: "read-only", topic: "Open a private support ticket with the Topfragg team." },
       { key: "player-reports", name: "🚨・player-reports", legacyNames: ["player-reports"], type: ChannelType.GuildText, mode: "read-only", topic: "Confidentially report cheating, harassment or rule violations." },
-    ],
-  },
-  {
-    key: "events",
-    name: "🎉 EVENTS",
-    legacyNames: ["EVENTS"],
-    channels: [
-      { key: "giveaways", name: "🎁・giveaways", legacyNames: ["giveaways"], type: ChannelType.GuildText, mode: "verified-read-only", topic: "Official Topfragg giveaways and community rewards." },
     ],
   },
   {
