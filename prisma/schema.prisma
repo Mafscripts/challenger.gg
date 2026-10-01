@@ -297,6 +297,13 @@ model TournamentWin {
   metadata     Json     @default("{}")
 }
 
+model DiscordEventDispatch {
+  id           String   @id @default(cuid())
+  event_key    String   @unique
+  created_date DateTime @default(now())
+  metadata     Json     @default("{}")
+}
+
 model MarketplaceItem {
   id           String   @id @default(cuid())
   created_date DateTime @default(now())

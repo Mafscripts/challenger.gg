@@ -23,11 +23,13 @@ import {
   TOPFRAGG_COLORS,
 } from "./config.js";
 import { prisma } from "../server/prisma.js";
+import { syncTournamentDiscord } from "./announcements.js";
 
 const config = discordEnvironment();
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
+let tournamentSyncRunning = false;
 
 const ephemeral = (content) => ({ content, flags: MessageFlags.Ephemeral });
 
@@ -50,6 +52,24 @@ function findConfiguredCategory(guild, key) {
 async function botLog(guild, message) {
   const channel = findConfiguredChannel(guild, "bot-log");
   if (channel) await channel.send({ content: message, allowedMentions: { parse: [] } }).catch(() => null);
+}
+
+async function runTournamentDiscordSync(guild) {
+  if (tournamentSyncRunning) return;
+  tournamentSyncRunning = true;
+  try {
+    await guild.channels.fetch();
+    await syncTournamentDiscord(guild, client, {
+      publicUrl: config.publicUrl,
+      findChannel: findConfiguredChannel,
+      log: (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`),
+    });
+  } catch (error) {
+    console.error("[Topfragg Discord] Tournament synchronization failed:", error);
+    await botLog(guild, "Tournament synchronization failed. Check the Topfragg Discord bot logs.");
+  } finally {
+    tournamentSyncRunning = false;
+  }
 }
 
 async function createSupportTicket(interaction, { subject, reason }) {
@@ -143,7 +163,12 @@ client.once(Events.ClientReady, async (readyClient) => {
   readyClient.user.setActivity("Topfragg tournaments", { type: ActivityType.Competing });
   process.stdout.write(`[Topfragg Discord] Online as ${readyClient.user.tag}\n`);
   const guild = await readyClient.guilds.fetch(config.guildId).catch(() => null);
-  if (!guild) process.stderr.write(`[Topfragg Discord] Server ${config.guildId} is unavailable.\n`);
+  if (!guild) {
+    process.stderr.write(`[Topfragg Discord] Server ${config.guildId} is unavailable.\n`);
+    return;
+  }
+  await runTournamentDiscordSync(guild);
+  setInterval(() => runTournamentDiscordSync(guild), 60_000);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

@@ -75,3 +75,13 @@ Before restarting production after deploying this feature, apply the Prisma migr
 npm run prisma:deploy
 npm run prisma:generate
 ```
+
+## 6. Tournament Discord automation
+
+While the `topfragg-discord` process is online, it checks the Topfragg database once per minute and automatically:
+
+- posts each current tournament once in **🏆・tournaments**, with its prize pool, format, start time and a join button;
+- sends direct-message reminders to Discord-linked registered players at roughly 24 hours and one hour before their tournament starts;
+- posts confirmed tournament match results once in **📊・match-results**.
+
+The `DiscordEventDispatch` database table prevents duplicate announcements when the bot restarts. Apply the Prisma migration and restart **topfragg-discord** after deployment for the automation to start.
