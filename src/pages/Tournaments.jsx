@@ -1282,6 +1282,23 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
   const entryInfo = tournamentEntryInfo(tournament);
   const startLabel = timeUntil(tournament.start_date, now);
   const scheduleCompleted = startLabel === "Completed";
+  const tournamentStatus = String(tournament.status || "").toLowerCase();
+  const scheduleStatusValue = !scheduleCompleted
+    ? startLabel
+    : ["live", "in_progress"].includes(tournamentStatus)
+      ? "Live now"
+      : tournamentStatus === "completed"
+        ? "Completed"
+        : tournamentStatus === "cancelled"
+          ? "Cancelled"
+          : "Starting";
+  const scheduleStatusTone = !scheduleCompleted
+    ? "text-cyan"
+    : ["live", "in_progress"].includes(tournamentStatus)
+      ? "text-orange"
+      : tournamentStatus === "completed"
+        ? "text-green"
+        : "text-cyan";
   return (
     <motion.article
       className={`tournament-list-card group relative grid w-full grid-cols-[48px_minmax(0,1fr)] gap-2.5 overflow-hidden rounded-lg border px-3 py-2.5 text-left transition-all lg:grid-cols-[48px_minmax(230px,1fr)_auto] lg:items-center ${
@@ -1304,7 +1321,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
         <TournamentCardStat label="Prize pool" value={formatMoney(tournament.prize_pool)} tone="text-green" icon={Trophy} />
         <TournamentCardStat label="Entry" value={entryInfo.label} tone={entryInfo.tone.split(" ").at(-1)} />
         <TournamentCardStat label="Teams" value={`${tournament.registered_teams || 0} / ${tournament.max_teams || 0}`} icon={Users} />
-        <TournamentCardStat label={scheduleCompleted ? "Status" : "Starts in"} value={startLabel} tone={scheduleCompleted ? "text-green" : "text-cyan"} icon={Clock} />
+        <TournamentCardStat label={scheduleCompleted ? "Status" : "Starts in"} value={scheduleStatusValue} tone={scheduleStatusTone} icon={Clock} />
         {canJoin ? (
           <button
             type="button"
