@@ -254,6 +254,7 @@ const initialData = {
   rankedStats: [],
   tournaments: [],
   tournamentMatches: [],
+  tournamentParticipants: [],
   wallets: [],
   withdrawals: [],
   marketplace: [],
@@ -515,6 +516,7 @@ export default function Admin() {
   const [tournamentForm, setTournamentForm] = useState(defaultTournamentForm);
   const [tournamentInviteSearch, setTournamentInviteSearch] = useState("");
   const [editingTournamentId, setEditingTournamentId] = useState(null);
+  const [expandedTournamentRosterId, setExpandedTournamentRosterId] = useState(null);
   const [ticketReplyDrafts, setTicketReplyDrafts] = useState({});
   const [ticketNoteDrafts, setTicketNoteDrafts] = useState({});
   const [ticketResolutionDrafts, setTicketResolutionDrafts] = useState({});
@@ -585,6 +587,7 @@ export default function Admin() {
         rankedStats,
         tournaments,
         tournamentMatches,
+        tournamentParticipants,
         wallets,
         withdrawals,
         marketplace,
@@ -603,6 +606,7 @@ export default function Admin() {
         safeList("RankedStats"),
         safeList("Tournament"),
         safeList("TournamentMatch"),
+        safeList("TournamentParticipant"),
         safeList("Wallet"),
         safeList("WithdrawalRequest"),
         safeList("MarketplaceItem"),
@@ -623,6 +627,7 @@ export default function Admin() {
         rankedStats,
         tournaments,
         tournamentMatches,
+        tournamentParticipants,
         wallets,
         withdrawals,
         marketplace: marketplace.filter(isVisibleMarketplaceItem),
@@ -1194,7 +1199,7 @@ export default function Admin() {
     const registeredTeams = Number(tournament.registered_teams || 0);
     const currentLimit = Math.max(registeredTeams, Number(tournament.max_teams || 0));
     if (typeof window === "undefined") return;
-    if (!window.confirm(`Reset the bracket for ${tournament.name}? Existing players stay registered, all bracket matches and results are removed, and registration reopens.`)) return;
+    if (!window.confirm(`Reset the bracket for ${tournament.name}? Existing teams stay registered, all bracket matches and results are removed, and registration reopens. Use View & manage teams afterwards to remove a team before its players rejoin with a new roster.`)) return;
     const requestedLimit = window.prompt("Maximum number of teams after reopening:", String(currentLimit));
     if (requestedLimit === null) return;
     const maxTeams = Number(requestedLimit);
@@ -1216,7 +1221,7 @@ export default function Admin() {
       if (response.data?.success) {
         toast({
           title: "Bracket reset and registration reopened",
-          description: `${response.data.retained_participant_count} existing participant(s) kept. Limit: ${maxTeams}.`,
+          description: `${response.data.retained_participant_count} existing participant(s) kept. Use View & manage teams to remove any roster that needs to rejoin. Limit: ${maxTeams}.`,
         });
         loadAdminData();
       } else {
@@ -1249,6 +1254,33 @@ export default function Admin() {
       }
     } catch (error) {
       toast({ title: "Disband failed", description: error.message || "Could not remove tournament registrations.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleAdminRemoveTournamentParticipant = async (tournament, participant) => {
+    if (typeof window === "undefined") return;
+    const teamName = participant.team_name || "this team";
+    if (!window.confirm(`Remove ${teamName} from ${tournament.name}? Their tournament registration is removed, their entry Credits are refunded, and they can join again with a different roster. The team itself is not deleted.`)) return;
+
+    setBusyId(`remove-tournament-team:${tournament.id}:${participant.id}`);
+    try {
+      const response = await base44.functions.invoke("adminRemoveTournamentParticipants", {
+        tournament_id: tournament.id,
+        participant_id: participant.id,
+      });
+      if (response.data?.success) {
+        toast({
+          title: "Team removed from tournament",
+          description: `${teamName} can now register again with a new roster.`,
+        });
+        loadAdminData();
+      } else {
+        toast({ title: "Could not remove team", description: response.data?.error || "The team could not be removed from this tournament.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Could not remove team", description: error.message || "The team could not be removed from this tournament.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -1513,6 +1545,12 @@ export default function Admin() {
       return {
         status,
         registration_locked: false,
+        // Reopen is an explicit admin action. Clear an old deadline so the
+        // lifecycle job cannot instantly close the tournament again.
+        registration_end: null,
+        registration_closed_date: null,
+        registration_closed_by: null,
+        registration_closed_by_name: null,
         cancelled_date: null,
         cancelled_by: null,
         cancelled_by_name: null,
@@ -3318,6 +3356,10 @@ export default function Admin() {
               )}
               <ListSection title="Tournaments" rows={data.tournaments} empty="No tournaments." render={(tournament) => {
                 const hasMatches = data.tournamentMatches.some((match) => match.tournament_id === tournament.id);
+                const registeredParticipants = data.tournamentParticipants
+                  .filter((participant) => String(participant.tournament_id) === String(tournament.id))
+                  .sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0));
+                const rosterIsOpen = expandedTournamentRosterId === tournament.id;
                 return (
                   <RowGrid columns={[
                     ["Name", tournament.name],
@@ -3346,12 +3388,62 @@ export default function Admin() {
                         {busyId === `bracket:${tournament.id}` ? "Generating..." : "Generate"}
                       </button>
                     )],
+                    ["Registered rosters", (
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => setExpandedTournamentRosterId((current) => current === tournament.id ? null : tournament.id)}
+                          className="text-xs text-cyan hover:underline"
+                        >
+                          {rosterIsOpen ? "Hide teams" : `View & manage ${registeredParticipants.length} team${registeredParticipants.length === 1 ? "" : "s"}`}
+                        </button>
+                        {rosterIsOpen && (
+                          <div className="space-y-2 rounded-lg border border-white/10 bg-background/40 p-2.5">
+                            {registeredParticipants.length === 0 ? (
+                              <p className="text-xs text-vapor">No teams are registered.</p>
+                            ) : registeredParticipants.map((participant) => {
+                              const roster = Array.isArray(participant.members) ? participant.members : [];
+                              return (
+                                <div key={participant.id} className="rounded-md border border-white/5 bg-secondary/35 p-2.5">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-xs font-bold">#{participant.seed || "?"} {participant.team_name || "Unnamed team"}</p>
+                                      <p className="mt-1 text-[10px] text-vapor">
+                                        {roster.length > 0 ? roster.map((member) => {
+                                          const memberId = String(member?.user_id || member || "");
+                                          const knownUser = userById[memberId];
+                                          return userName(knownUser) !== "Unknown"
+                                            ? userName(knownUser)
+                                            : member?.display_name || member?.user_name || member?.username || member?.handle || memberId;
+                                        }).filter(Boolean).join(" · ") : "Roster unavailable"}
+                                      </p>
+                                    </div>
+                                    <button
+                                      onClick={() => handleAdminRemoveTournamentParticipant(tournament, participant)}
+                                      disabled={busyId === `remove-tournament-team:${tournament.id}:${participant.id}`}
+                                      className="shrink-0 text-[10px] font-bold text-red-300 hover:underline disabled:opacity-50"
+                                    >
+                                      {busyId === `remove-tournament-team:${tournament.id}:${participant.id}` ? "Removing..." : "Remove"}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {registeredParticipants.length > 0 && (
+                              <button
+                                onClick={() => handleAdminDisbandTournamentTeams(tournament)}
+                                disabled={busyId === `disband-tournament-teams:${tournament.id}`}
+                                className="text-[10px] font-bold text-red-300 hover:underline disabled:opacity-50"
+                              >
+                                {busyId === `disband-tournament-teams:${tournament.id}` ? "Removing all..." : "Remove all teams from tournament"}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )],
                     ["Actions", (
                       <div className="flex flex-wrap gap-2">
                         <button onClick={() => handleEditTournament(tournament)} className="text-xs text-cyan hover:underline">Edit</button>
-                        <button onClick={() => handleAdminDisbandTournamentTeams(tournament)} disabled={busyId === `disband-tournament-teams:${tournament.id}`} className="text-xs text-red-300 hover:underline disabled:opacity-50">
-                          {busyId === `disband-tournament-teams:${tournament.id}` ? "Disbanding..." : "Admin disband teams"}
-                        </button>
                         {hasMatches && (
                           <>
                             <button onClick={() => handleRepairBracket(tournament)} disabled={busyId === `repair-bracket:${tournament.id}`} className="text-xs text-green hover:underline disabled:opacity-50">

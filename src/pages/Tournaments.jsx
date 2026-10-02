@@ -602,7 +602,22 @@ export default function Tournaments() {
   };
   const handleTournamentTeamCreated = async (team) => {
     const tournamentId = teamCreator.tournamentId;
+    // Do not depend on a just-created TeamMember record being visible in the
+    // first refetch. It otherwise leaves the join modal saying "Create team"
+    // even though the tournament team was created successfully.
+    const createdTeam = {
+      ...team,
+      membership: { user_id: user?.id, team_id: team.id, is_active: true, role: "captain" },
+      members: [{
+        user_id: user?.id,
+        user_name: user?.display_name || user?.username || user?.full_name || user?.email || "Captain",
+        role: "captain",
+        is_active: true,
+      }],
+    };
+    setUserTeams((current) => current.some((row) => row.id === team.id) ? current : [...current, createdTeam]);
     await loadTournaments();
+    setUserTeams((current) => current.some((row) => row.id === team.id) ? current : [...current, createdTeam]);
     if (tournamentId) {
       setSelectedTeamByTournament((current) => ({ ...current, [tournamentId]: team.id }));
       setSponsoredMembersByTournament((current) => ({ ...current, [tournamentId]: [] }));

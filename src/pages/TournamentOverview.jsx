@@ -446,12 +446,32 @@ export default function TournamentOverview() {
   };
 
   const handleTeamCreated = async (team) => {
-    const refreshedTeams = await loadTeams(user);
-    setTeams(refreshedTeams);
+    // Entity reads can briefly lag behind a successful create. Keep the new
+    // team in this chooser immediately so the player is not sent back to
+    // "Create team" again, including on free tournaments.
+    const createdTeam = {
+      ...team,
+      membership: { user_id: user?.id, team_id: team.id, is_active: true, role: "captain" },
+      members: [{
+        user_id: user?.id,
+        user_name: user?.display_name || user?.username || user?.full_name || user?.email || "Captain",
+        role: "captain",
+        is_active: true,
+      }],
+    };
+    setTeams((current) => current.some((row) => row.id === team.id) ? current : [...current, createdTeam]);
     setSelectedTeamId(team.id);
     setSponsoredMemberIds([]);
     setCreateTeamOpen(false);
     setJoinOpen(true);
+
+    const refreshedTeams = await loadTeams(user);
+    setTeams((current) => {
+      const next = refreshedTeams.some((row) => row.id === team.id)
+        ? refreshedTeams
+        : [...refreshedTeams, createdTeam];
+      return next;
+    });
   };
 
   if (loading) {

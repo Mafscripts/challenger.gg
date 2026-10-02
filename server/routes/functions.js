@@ -4398,7 +4398,7 @@ async function leaveTournament(req) {
   return { success: true, tournament: updatedTournament, participant, refunds };
 }
 
-async function adminDisbandTournamentTeams(req) {
+async function adminRemoveTournamentParticipants(req) {
   assertStaff(req, "admin");
   const tournamentId = req.body.tournament_id;
   if (!tournamentId) return { success: false, error: "Tournament id is required" };
@@ -4416,16 +4416,30 @@ async function adminDisbandTournamentTeams(req) {
     return { success: false, error: "This tournament has recorded match activity. Reset the bracket before disbanding registrations." };
   }
 
-  const refundGroups = await Promise.all(participants.map((participant) => refundTournamentEntry(tournament, participant)));
+  const requestedIds = [...new Set((Array.isArray(req.body.participant_ids) ? req.body.participant_ids : [req.body.participant_id])
+    .filter(Boolean)
+    .map(String))];
+  if (requestedIds.length === 0) return { success: false, error: "Select at least one tournament team" };
+  const removedParticipants = participants.filter((participant) => requestedIds.includes(String(participant.id)));
+  if (removedParticipants.length === 0) return { success: false, error: "Selected tournament team was not found" };
+
+  const refundGroups = await Promise.all(removedParticipants.map((participant) => refundTournamentEntry(tournament, participant)));
   await Promise.all([
     ...matches.map((match) => deleteEntity("TournamentMatch", match.id)),
-    ...participants.map((participant) => deleteEntity("TournamentParticipant", participant.id)),
+    ...removedParticipants.map((participant) => deleteEntity("TournamentParticipant", participant.id)),
   ]);
 
   const timestamp = nowIso();
+  const remainingTeamCount = Math.max(0, participants.length - removedParticipants.length);
   const updatedTournament = await updateEntity("Tournament", tournamentId, {
     status: "registration",
     registration_locked: false,
+    // A reopened tournament must not immediately close again because its old
+    // registration deadline is still in the past.
+    registration_end: null,
+    registration_closed_date: null,
+    registration_closed_by: null,
+    registration_closed_by_name: null,
     bracket_generated: false,
     bracket_generated_date: null,
     started_date: null,
@@ -4438,14 +4452,15 @@ async function adminDisbandTournamentTeams(req) {
     winner_name: null,
     runner_up_id: null,
     runner_up_name: null,
-    registered_teams: 0,
-    registration_disbanded_date: timestamp,
-    registration_disbanded_by: req.user.id,
-    registration_disbanded_by_name: nameFor(req.user),
+    registered_teams: remainingTeamCount,
+    registration_adjusted_date: timestamp,
+    registration_adjusted_by: req.user.id,
+    registration_adjusted_by_name: nameFor(req.user),
     updated_date: timestamp,
   });
 
-  await Promise.all(participants.map((participant) => notifyUsers(participantUserIds(participant), {
+  await reseedTournamentParticipants(tournamentId);
+  await Promise.all(removedParticipants.map((participant) => notifyUsers(participantUserIds(participant), {
     title: "Tournament registration removed",
     message: `${participant.team_name || "Your team"} was removed from ${tournament.name} by a tournament administrator. Any paid entry Credits were refunded.`,
     type: "tournament",
@@ -4457,13 +4472,14 @@ async function adminDisbandTournamentTeams(req) {
     admin_id: req.user.id,
     admin_name: nameFor(req.user),
     admin_role: req.user.role,
-    action_type: "tournament_registration_disbanded",
+    action_type: "tournament_team_registration_removed",
     target_user_id: tournamentId,
     target_username: tournament.name,
-    description: `Disbanded ${participants.length} tournament team registration(s) for ${tournament.name}`,
+    description: `Removed ${removedParticipants.length} tournament team registration(s) for ${tournament.name}`,
     details: {
       tournament_id: tournamentId,
-      removed_team_count: participants.length,
+      removed_team_count: removedParticipants.length,
+      remaining_team_count: remainingTeamCount,
       deleted_match_count: matches.length,
       refunded_credit_total: refundGroups.flat().reduce((sum, refund) => sum + Number(refund.amount || 0), 0),
     },
@@ -4473,10 +4489,20 @@ async function adminDisbandTournamentTeams(req) {
   return {
     success: true,
     tournament: updatedTournament,
-    removed_team_count: participants.length,
+    removed_team_count: removedParticipants.length,
+    remaining_team_count: remainingTeamCount,
     deleted_match_count: matches.length,
     refunds: refundGroups.flat(),
   };
+}
+
+async function adminDisbandTournamentTeams(req) {
+  assertStaff(req, "admin");
+  const participants = await tournamentParticipants(req.body.tournament_id).catch(() => []);
+  return adminRemoveTournamentParticipants({
+    ...req,
+    body: { ...req.body, participant_ids: participants.map((participant) => participant.id) },
+  });
 }
 
 async function clearOtherFeaturedTournaments(featuredTournamentId) {
@@ -9785,6 +9811,7 @@ const handlers = {
   moderateStreamerTournamentUser,
   registerTournament,
   leaveTournament,
+  adminRemoveTournamentParticipants,
   adminDisbandTournamentTeams,
   createTournament,
   updateTournament,
