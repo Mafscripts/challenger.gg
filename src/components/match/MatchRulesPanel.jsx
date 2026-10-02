@@ -7,6 +7,7 @@ const killCamRule = "Kill cams must remain enabled for the duration of every mat
 
 const commonRules = [
   "No Stretch Defuse.",
+  "Nade Delay must be set to Off.",
   killCamRule,
   "Use the official map veto and play the maps shown in this room.",
   "Report the final result within 10 minutes and keep video evidence for disputes.",
@@ -33,9 +34,12 @@ const rulesFor = ({ matchType, gameMode, playRule, customRules }) => {
   if (matchType === "tournament") {
     rules.push("Follow the published bracket, hosting order, roster and check-in requirements.");
   }
+  if (["wager", "tournament"].includes(matchType)) {
+    rules.push("Incorrect host rules: if the opponent reports a wrong lobby setup with evidence, staff awards that opponent one round. The map is not reset.");
+  }
   if (customRules) rules.push(customRules);
 
-  return [...new Set(rules)].slice(0, 8);
+  return [...new Set(rules)];
 };
 
 export default function MatchRulesPanel({

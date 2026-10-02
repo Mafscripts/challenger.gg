@@ -37,6 +37,7 @@ const sections = [
     icon: Swords,
     rules: [
       "No Stretch Defuse.",
+      "Nade Delay must be set to Off.",
       killCamRule,
       "If you have ever been console restricted, you are required to play on console in all Topfragg tournaments.",
       "Maps are selected via the official veto system. Manual map selection is not permitted.",
@@ -102,6 +103,7 @@ const sections = [
       "Minimum wager amount is $1. Maximum is $500 per match.",
       "Wager payouts process instantly upon result confirmation.",
       "Repeated false dispute claims will result in account restrictions.",
+      "If the host uses incorrect match rules and the opponent reports it with evidence, staff awards the opposing team one round. The map is not reset.",
     ],
   },
   {
@@ -113,6 +115,7 @@ const sections = [
       "Substitutes must be registered before the tournament begins.",
       "Tournament brackets are generated randomly and cannot be contested.",
       "Prize distributions follow the published structure for each event.",
+      "If the host uses incorrect match rules and the opponent reports it with evidence, staff awards the opposing team one round. The map is not reset.",
     ],
   },
   {
