@@ -259,7 +259,7 @@ function FeaturedTournamentHero({ tournament, now, onSelect, halloweenEvent = fa
             </div>
             <div className="mt-2 grid grid-cols-[84px_minmax(0,1fr)] gap-2">
               <CompactStat label="Teams" value={`${tournament.registered_teams || 0}/${tournament.max_teams || 0}`} />
-              <TournamentCountdown value={tournament.start_date} now={now} />
+              <TournamentCountdown tournament={tournament} now={now} />
             </div>
           </div>
           <button
@@ -961,13 +961,23 @@ export default function Tournaments() {
   );
 }
 
-function TournamentCountdown({ value, now }) {
-  const countdown = countdownUntil(value, now);
+function TournamentCountdown({ tournament, now }) {
+  const countdown = countdownUntil(tournament?.start_date, now);
+  const status = String(tournament?.status || "").toLowerCase();
   if (!countdown) {
     return <CompactStat label="Starts in" value="TBD" tone="cyan" />;
   }
   if (countdown.expired) {
-    return <CompactStat label="Status" value="Completed" tone="green" />;
+    if (["live", "in_progress"].includes(status)) {
+      return <CompactStat label="Status" value="Live now" tone="orange" />;
+    }
+    if (status === "completed") {
+      return <CompactStat label="Status" value="Completed" tone="green" />;
+    }
+    if (status === "cancelled") {
+      return <CompactStat label="Status" value="Cancelled" tone="default" />;
+    }
+    return <CompactStat label="Status" value="Starting" tone="cyan" />;
   }
 
   const units = [

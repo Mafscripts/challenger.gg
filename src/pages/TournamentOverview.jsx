@@ -116,11 +116,20 @@ const refundForUser = (participant, userId, tournament) => {
   return Number(tournament?.entry_fee || 0);
 };
 
-function Countdown({ value, now }) {
+function Countdown({ value, now, status, expiredLabel = "Closed" }) {
   const target = new Date(value || "").getTime();
   const difference = target - now;
   if (!Number.isFinite(target)) return <span className="font-mono text-sm font-black text-vapor">TBA</span>;
-  if (difference <= 0) return <span className="font-mono text-sm font-black text-green">Completed</span>;
+  if (difference <= 0) {
+    const normalizedStatus = String(status || "").toLowerCase();
+    if (["live", "in_progress"].includes(normalizedStatus)) {
+      return <span className="font-mono text-sm font-black text-orange">Live now</span>;
+    }
+    if (normalizedStatus === "completed") {
+      return <span className="font-mono text-sm font-black text-green">Completed</span>;
+    }
+    return <span className="font-mono text-sm font-black text-vapor">{expiredLabel}</span>;
+  }
   const totalSeconds = Math.floor(difference / 1000);
   const units = [
     [Math.floor(totalSeconds / 86400), "D"],
@@ -426,7 +435,7 @@ export default function TournamentOverview() {
               <p className="mt-3 text-xs font-bold text-vapor sm:text-sm">{tournament.team_size || "1v1"} <span className="px-2 text-white/20">|</span> {tournament.region?.toUpperCase() || "NA + EU"} <span className="px-2 text-white/20">|</span> {entryLabel(tournament)}</p>
               <div className="mt-5 flex items-center gap-3">
                 <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Starts in</span>
-                <Countdown value={tournament.start_date} now={now} />
+                <Countdown value={tournament.start_date} now={now} status={tournament.status} expiredLabel="Starting" />
               </div>
             </div>
             <div className="space-y-3">
@@ -477,11 +486,11 @@ export default function TournamentOverview() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-xl border border-white/[0.07] bg-card/45 p-5">
                     <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-vapor"><span className="h-1.5 w-1.5 rounded-full bg-cyan" /> Registration closes</p>
-                    <div className="mt-4 flex items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(registrationDate)}</p><p className="mt-1 text-[10px] text-vapor">Secure your place before the deadline.</p></div><Countdown value={registrationDate} now={now} /></div>
+                    <div className="mt-4 flex items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(registrationDate)}</p><p className="mt-1 text-[10px] text-vapor">Secure your place before the deadline.</p></div><Countdown value={registrationDate} now={now} expiredLabel="Closed" /></div>
                   </div>
                   <div className="rounded-xl border border-orange/15 bg-[linear-gradient(145deg,rgba(255,130,0,.07),rgba(255,255,255,.015))] p-5">
                     <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-vapor"><span className="h-1.5 w-1.5 rounded-full bg-orange" /> Tournament starts</p>
-                    <div className="mt-4 flex items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(tournament.start_date)}</p><p className="mt-1 text-[10px] text-vapor">All teams must be match ready.</p></div><Countdown value={tournament.start_date} now={now} /></div>
+                    <div className="mt-4 flex items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(tournament.start_date)}</p><p className="mt-1 text-[10px] text-vapor">All teams must be match ready.</p></div><Countdown value={tournament.start_date} now={now} status={tournament.status} expiredLabel="Starting" /></div>
                     {joinAvailable && <button type="button" onClick={openJoin} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Join tournament</button>}
                   </div>
                 </div>
