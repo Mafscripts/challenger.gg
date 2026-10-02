@@ -4,8 +4,10 @@ import {
   ArrowLeft,
   CalendarDays,
   Check,
+  ChevronRight,
   Clock3,
   Coins,
+  Crown,
   Gamepad2,
   Globe2,
   Layers3,
@@ -16,6 +18,7 @@ import {
   ShieldCheck,
   Trophy,
   Users,
+  X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -169,6 +172,33 @@ function DetailRow({ icon: Icon, label, value }) {
   );
 }
 
+const rosterMemberName = (member) => member?.display_name || member?.user_name || member?.username || member?.full_name || "Player";
+
+function TournamentRosterPlayerCard({ player, captain }) {
+  const wins = Number(player?.total_wins ?? player?.wins ?? 0);
+  const losses = Number(player?.total_losses ?? player?.losses ?? 0);
+  const avatar = player?.avatar_url || "";
+  return (
+    <article className="overflow-hidden rounded-xl border border-white/[0.08] bg-background/40 p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cyan/20 bg-cyan/10 font-mono text-sm font-black text-cyan">
+          {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : rosterMemberName(player).slice(0, 1).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5"><p className="truncate text-sm font-black text-white">{rosterMemberName(player)}</p>{captain && <Crown className="h-3.5 w-3.5 shrink-0 text-yellow-300" aria-label="Team captain" />}</div>
+          <p className="mt-1 truncate font-mono text-[10px] text-vapor">{player?.activision_id || player?.handle || player?.username || "Topfragg player"}</p>
+        </div>
+        <div className="rounded-lg border border-cyan/15 bg-cyan/[0.06] px-2.5 py-1.5 text-center"><p className="font-mono text-sm font-black text-cyan">{Number(player?.elo || 0).toLocaleString()}</p><p className="text-[7px] font-black uppercase tracking-wider text-vapor">ELO</p></div>
+      </div>
+      <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-lg border border-white/[0.06] bg-black/15 text-center">
+        <div className="px-2 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Wins</p><p className="mt-1 font-mono text-xs font-black text-green">{wins}</p></div>
+        <div className="border-x border-white/[0.06] px-2 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Losses</p><p className="mt-1 font-mono text-xs font-black text-white">{losses}</p></div>
+        <div className="px-2 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Level</p><p className="mt-1 font-mono text-xs font-black text-cyan">{player?.xp_level || 1}</p></div>
+      </div>
+    </article>
+  );
+}
+
 function BracketPreview({ matches }) {
   const rounds = useMemo(() => {
     const groups = new Map();
@@ -230,6 +260,46 @@ export default function TournamentOverview() {
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [refundResult, setRefundResult] = useState(null);
   const [joined, setJoined] = useState(false);
+  const [selectedParticipantId, setSelectedParticipantId] = useState(null);
+  const [rosterPlayers, setRosterPlayers] = useState([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
+
+  const selectedParticipant = useMemo(() => (
+    participants.find((participant) => String(participant.id) === String(selectedParticipantId)) || null
+  ), [participants, selectedParticipantId]);
+
+  useEffect(() => {
+    if (!selectedParticipant) {
+      setRosterPlayers([]);
+      setRosterLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const members = Array.isArray(selectedParticipant.members) && selectedParticipant.members.length
+      ? selectedParticipant.members
+      : [{
+        user_id: selectedParticipant.user_id || selectedParticipant.captain_id,
+        user_name: selectedParticipant.player_name || selectedParticipant.captain_name || selectedParticipant.team_name,
+      }];
+
+    setRosterLoading(true);
+    Promise.all(members.map(async (member) => {
+      const userId = member?.user_id;
+      if (!userId) return member;
+      const [userRow, profileRows] = await Promise.all([
+        base44.entities.User.get(userId).catch(() => null),
+        base44.entities.PlayerProfile.filterFresh({ user_id: userId }, "-created_date", 1).catch(() => []),
+      ]);
+      return { ...member, ...(profileRows?.[0] || {}), ...(userRow || {}) };
+    })).then((players) => {
+      if (!cancelled) setRosterPlayers(players);
+    }).finally(() => {
+      if (!cancelled) setRosterLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedParticipant]);
 
   const loadTeams = async (currentUser) => {
     if (!currentUser?.id) return [];
@@ -527,10 +597,41 @@ export default function TournamentOverview() {
 
         {activeTab === "bracket" && <div className="mt-7"><BracketPreview matches={matches} /></div>}
         {activeTab === "participants" && (
-          <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {participants.length ? participants.map((participant, index) => (
-              <div key={participant.id || index} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-card/40 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan/10 font-mono text-xs font-black text-cyan">#{participant.seed || index + 1}</span><div className="min-w-0"><p className="truncate text-sm font-black">{participant.team_name || participant.player_name || `Team ${index + 1}`}</p><p className="mt-1 text-[10px] text-vapor">{participant.members?.length || participant.player_names?.length || rosterSize(tournament.team_size)} player roster</p></div></div>
-            )) : <div className="col-span-full rounded-xl border border-dashed border-white/10 px-5 py-14 text-center text-sm text-vapor">No teams registered yet.</div>}
+          <div className="mt-7">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {participants.length ? participants.map((participant, index) => {
+                const selected = String(selectedParticipantId) === String(participant.id);
+                return (
+                  <button
+                    key={participant.id || index}
+                    type="button"
+                    onClick={() => setSelectedParticipantId(selected ? null : participant.id)}
+                    aria-expanded={selected}
+                    className={`group flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${selected ? "border-cyan/40 bg-cyan/[0.08]" : "border-white/[0.07] bg-card/40 hover:border-cyan/25 hover:bg-cyan/[0.04]"}`}
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan/10 font-mono text-xs font-black text-cyan">#{participant.seed || index + 1}</span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black">{participant.team_name || participant.player_name || `Team ${index + 1}`}</span><span className="mt-1 block text-[10px] text-vapor">{participant.members?.length || participant.player_names?.length || rosterSize(tournament.team_size)} player roster · View players</span></span>
+                    <ChevronRight className={`h-4 w-4 shrink-0 text-vapor transition-transform group-hover:text-cyan ${selected ? "rotate-90 text-cyan" : ""}`} />
+                  </button>
+                );
+              }) : <div className="col-span-full rounded-xl border border-dashed border-white/10 px-5 py-14 text-center text-sm text-vapor">No teams registered yet.</div>}
+            </div>
+
+            {selectedParticipant && (
+              <section className="mt-5 overflow-hidden rounded-xl border border-cyan/20 bg-card/50">
+                <header className="flex items-center justify-between gap-4 border-b border-cyan/15 bg-cyan/[0.05] px-5 py-4">
+                  <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Team roster</p><h2 className="mt-1 text-lg font-black text-white">{selectedParticipant.team_name || selectedParticipant.player_name || "Tournament team"}</h2></div>
+                  <button type="button" onClick={() => setSelectedParticipantId(null)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan" aria-label="Close roster"><X className="h-4 w-4" /></button>
+                </header>
+                <div className="p-4 sm:p-5">
+                  {rosterLoading ? <div className="flex items-center justify-center gap-2 py-10 text-sm text-vapor"><Loader2 className="h-4 w-4 animate-spin text-cyan" /> Loading player cards…</div> : (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {rosterPlayers.map((player, index) => <TournamentRosterPlayerCard key={player.user_id || player.id || index} player={player} captain={String(player.user_id || "") === String(selectedParticipant.captain_id || "")} />)}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
           </div>
         )}
         {activeTab === "rules" && (
