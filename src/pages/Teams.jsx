@@ -488,6 +488,28 @@ export default function Teams() {
     }
   };
 
+  const showTeamImmediately = (team, membership) => {
+    if (!team?.id) return;
+    const member = membership || {
+      team_id: team.id,
+      user_id: currentUser?.id,
+      user_name: currentUser?.display_name || currentUser?.username || currentUser?.full_name || currentUser?.email || "Player",
+      role: String(team.captain_id) === String(currentUser?.id) ? "captain" : "member",
+      is_active: true,
+    };
+    setTeams((current) => current.some((row) => String(row.id) === String(team.id)) ? current : [...current, team]);
+    setMembersByTeam((current) => {
+      const existing = current[team.id] || [];
+      const nextMembers = existing.some((row) => String(row.user_id) === String(member.user_id))
+        ? existing
+        : [...existing, member];
+      return { ...current, [team.id]: nextMembers };
+    });
+    setSelectedTeamId(team.id);
+    setDetailTab("overview");
+    setView("details");
+  };
+
   const handleInvite = async (event, selectedUserId = "") => {
     event.preventDefault();
     const identifier = selectedUserId || inviteIdentifier.trim();
@@ -500,7 +522,46 @@ export default function Teams() {
   };
 
   const handleInviteResponse = async (invite, decision) => {
-    await runTeamAction({ action: "respond_invite", team_id: invite.team_id, invite_id: invite.id, decision }, decision === "accept" ? "Invite accepted" : "Invite declined");
+    setBusyAction(`invite:${invite.id}`);
+    try {
+      const response = await base44.functions.invoke("manageTeam", {
+        action: "respond_invite",
+        team_id: invite.team_id,
+        invite_id: invite.id,
+        decision,
+      });
+      if (!response.data?.success) {
+        toast({ title: "Invite action failed", description: response.data?.error || "Could not update the invite.", variant: "destructive" });
+        return;
+      }
+
+      setPendingInvites((current) => current.filter((row) => String(row.id) !== String(invite.id)));
+      if (decision === "accept") {
+        const acceptedTeam = await base44.entities.Team.get(invite.team_id).catch(() => null);
+        showTeamImmediately(acceptedTeam, response.data.member);
+        toast({ title: "Invite accepted", description: `${acceptedTeam?.name || invite.team_name || "The team"} is now in your rosters.` });
+      } else {
+        toast({ title: "Invite declined" });
+      }
+
+      // Refresh again once the new membership has reached the list endpoint.
+      window.setTimeout(() => { loadTeams(); }, 800);
+    } catch (error) {
+      toast({ title: "Invite action failed", description: error.message || "Could not update the invite.", variant: "destructive" });
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleTeamCreated = (team) => {
+    showTeamImmediately(team, {
+      team_id: team.id,
+      user_id: currentUser?.id,
+      user_name: currentUser?.display_name || currentUser?.username || currentUser?.full_name || currentUser?.email || "Captain",
+      role: "captain",
+      is_active: true,
+    });
+    window.setTimeout(() => { loadTeams(); }, 800);
   };
 
   const handleLeaveTeam = async () => {
@@ -568,8 +629,8 @@ export default function Teams() {
                 <div key={invite.id} className="flex flex-col justify-between gap-3 rounded-xl border border-white/5 bg-card/70 p-4 sm:flex-row sm:items-center">
                   <div><p className="font-bold">{invite.team_name}</p><p className="mt-1 text-xs text-vapor">{teamTypeLabel(invite)} invite from {invite.invited_by_name || "Captain"}</p></div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleInviteResponse(invite, "accept")} className="inline-flex items-center gap-1.5 rounded-lg bg-green/10 px-3 py-2 text-xs font-bold text-green"><CheckCircle className="h-3.5 w-3.5" /> Accept</button>
-                    <button onClick={() => handleInviteResponse(invite, "decline")} className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400"><XCircle className="h-3.5 w-3.5" /> Decline</button>
+                    <button disabled={busyAction === `invite:${invite.id}`} onClick={() => handleInviteResponse(invite, "accept")} className="inline-flex items-center gap-1.5 rounded-lg bg-green/10 px-3 py-2 text-xs font-bold text-green disabled:opacity-50"><CheckCircle className="h-3.5 w-3.5" /> {busyAction === `invite:${invite.id}` ? "Saving..." : "Accept"}</button>
+                    <button disabled={busyAction === `invite:${invite.id}`} onClick={() => handleInviteResponse(invite, "decline")} className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 disabled:opacity-50"><XCircle className="h-3.5 w-3.5" /> Decline</button>
                   </div>
                 </div>
               ))}
@@ -654,7 +715,7 @@ export default function Teams() {
         ) : null}
       </div>
 
-      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedCreateType === "ranked" ? 2 : 4} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={async (team) => { await loadTeams(); setSelectedTeamId(team.id); setDetailTab("overview"); setView("details"); }} />
+      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedCreateType === "ranked" ? 2 : 4} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={handleTeamCreated} />
       <InvitePlayerModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} team={selectedTeam} value={inviteIdentifier} onChange={setInviteIdentifier} onSubmit={handleInvite} busy={Boolean(busyAction)} />
     </div>
   );

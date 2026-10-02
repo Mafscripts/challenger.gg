@@ -907,7 +907,7 @@ function InventoryPreview({ items, className = "" }) {
 function TeamPanel({ team, memberships, className = "" }) {
   return (
     <SectionCard className={`p-5 ${className}`}>
-      <SectionHeader title="Current Team" action="View Team" to="/teams" />
+      <SectionHeader title="Current Team" action="View Team" to={team?.id ? `/teams?team=${encodeURIComponent(team.id)}` : "/teams"} />
       {!team ? (
         <EmptyPanel icon={Users} text="No active team found." />
       ) : (
