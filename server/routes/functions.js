@@ -3158,7 +3158,7 @@ async function manageTeam(req) {
       title: "Team invite",
       message: `${nameFor(req.user)} invited you to ${team.name}.`,
       type: "system",
-      action_url: "/teams",
+      action_url: `/teams?invite=${encodeURIComponent(invite.id)}`,
       related_entity_id: invite.id,
       related_entity_type: "TeamInvite",
     });

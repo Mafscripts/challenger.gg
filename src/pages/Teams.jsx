@@ -192,6 +192,10 @@ export default function Teams() {
         .map((membership) => String(membership.team_id)));
       const directTeamIds = [...new Set([
         ...activeMembershipTeamIds,
+        // An invited player is not a member yet, so the invite's team must be
+        // fetched directly as well. Otherwise a valid pending invite can be
+        // hidden when it is absent from the generic team list.
+        ...(invites || []).map((invite) => String(invite.team_id || "")).filter(Boolean),
         linkedTeamId ? String(linkedTeamId) : null,
       ].filter(Boolean))];
       const directTeams = await Promise.all(directTeamIds.map((teamId) => (
