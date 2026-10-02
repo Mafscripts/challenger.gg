@@ -1229,6 +1229,31 @@ export default function Admin() {
     }
   };
 
+  const handleAdminDisbandTournamentTeams = async (tournament) => {
+    if (typeof window === "undefined") return;
+    if (!window.confirm(`Admin disband tournament teams for ${tournament.name}? This removes every team registration from this tournament, deletes any unplayed bracket, and refunds paid entry Credits. The teams themselves are not deleted.`)) return;
+
+    setBusyId(`disband-tournament-teams:${tournament.id}`);
+    try {
+      const response = await base44.functions.invoke("adminDisbandTournamentTeams", {
+        tournament_id: tournament.id,
+      });
+      if (response.data?.success) {
+        toast({
+          title: "Tournament teams disbanded",
+          description: `${response.data.removed_team_count || 0} registration(s) removed. Registration is open again.`,
+        });
+        loadAdminData();
+      } else {
+        toast({ title: "Disband failed", description: response.data?.error || "Could not remove tournament registrations.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Disband failed", description: error.message || "Could not remove tournament registrations.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleRepairBracket = async (tournament) => {
     if (typeof window === "undefined") return;
     if (!window.confirm(`Repair the bracket for ${tournament.name}? All match scores are removed, but every team keeps its current seed. A corrected bracket is generated immediately.`)) return;
@@ -3324,6 +3349,9 @@ export default function Admin() {
                     ["Actions", (
                       <div className="flex flex-wrap gap-2">
                         <button onClick={() => handleEditTournament(tournament)} className="text-xs text-cyan hover:underline">Edit</button>
+                        <button onClick={() => handleAdminDisbandTournamentTeams(tournament)} disabled={busyId === `disband-tournament-teams:${tournament.id}`} className="text-xs text-red-300 hover:underline disabled:opacity-50">
+                          {busyId === `disband-tournament-teams:${tournament.id}` ? "Disbanding..." : "Admin disband teams"}
+                        </button>
                         {hasMatches && (
                           <>
                             <button onClick={() => handleRepairBracket(tournament)} disabled={busyId === `repair-bracket:${tournament.id}`} className="text-xs text-green hover:underline disabled:opacity-50">

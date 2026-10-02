@@ -4398,6 +4398,87 @@ async function leaveTournament(req) {
   return { success: true, tournament: updatedTournament, participant, refunds };
 }
 
+async function adminDisbandTournamentTeams(req) {
+  assertStaff(req, "admin");
+  const tournamentId = req.body.tournament_id;
+  if (!tournamentId) return { success: false, error: "Tournament id is required" };
+
+  const tournament = await getEntity("Tournament", tournamentId);
+  if (tournamentStatusesStarted.includes(tournament.status)) {
+    return { success: false, error: "End or reset this live tournament before disbanding registrations" };
+  }
+
+  const [participants, matches] = await Promise.all([
+    tournamentParticipants(tournamentId),
+    listEntities("TournamentMatch", { tournament_id: tournamentId }, "round", 500).catch(() => []),
+  ]);
+  if (matches.some(tournamentMatchHasScoreActivity)) {
+    return { success: false, error: "This tournament has recorded match activity. Reset the bracket before disbanding registrations." };
+  }
+
+  const refundGroups = await Promise.all(participants.map((participant) => refundTournamentEntry(tournament, participant)));
+  await Promise.all([
+    ...matches.map((match) => deleteEntity("TournamentMatch", match.id)),
+    ...participants.map((participant) => deleteEntity("TournamentParticipant", participant.id)),
+  ]);
+
+  const timestamp = nowIso();
+  const updatedTournament = await updateEntity("Tournament", tournamentId, {
+    status: "registration",
+    registration_locked: false,
+    bracket_generated: false,
+    bracket_generated_date: null,
+    started_date: null,
+    started_by: null,
+    started_by_name: null,
+    completed_date: null,
+    completed_by: null,
+    completed_by_name: null,
+    winner_id: null,
+    winner_name: null,
+    runner_up_id: null,
+    runner_up_name: null,
+    registered_teams: 0,
+    registration_disbanded_date: timestamp,
+    registration_disbanded_by: req.user.id,
+    registration_disbanded_by_name: nameFor(req.user),
+    updated_date: timestamp,
+  });
+
+  await Promise.all(participants.map((participant) => notifyUsers(participantUserIds(participant), {
+    title: "Tournament registration removed",
+    message: `${participant.team_name || "Your team"} was removed from ${tournament.name} by a tournament administrator. Any paid entry Credits were refunded.`,
+    type: "tournament",
+    action_url: `/tournament/${tournamentId}`,
+    related_entity_id: tournamentId,
+    related_entity_type: "Tournament",
+  })));
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "tournament_registration_disbanded",
+    target_user_id: tournamentId,
+    target_username: tournament.name,
+    description: `Disbanded ${participants.length} tournament team registration(s) for ${tournament.name}`,
+    details: {
+      tournament_id: tournamentId,
+      removed_team_count: participants.length,
+      deleted_match_count: matches.length,
+      refunded_credit_total: refundGroups.flat().reduce((sum, refund) => sum + Number(refund.amount || 0), 0),
+    },
+    created_date: timestamp,
+  }).catch(() => null);
+
+  return {
+    success: true,
+    tournament: updatedTournament,
+    removed_team_count: participants.length,
+    deleted_match_count: matches.length,
+    refunds: refundGroups.flat(),
+  };
+}
+
 async function clearOtherFeaturedTournaments(featuredTournamentId) {
   const tournaments = await listEntities("Tournament", {}, "-updated_date", 500).catch(() => []);
   await Promise.all(tournaments
@@ -9704,6 +9785,7 @@ const handlers = {
   moderateStreamerTournamentUser,
   registerTournament,
   leaveTournament,
+  adminDisbandTournamentTeams,
   createTournament,
   updateTournament,
   deleteTournament,
