@@ -184,7 +184,24 @@ export default function Teams() {
         base44.entities.TournamentMatch.filter({}, "-assigned_date", 300).catch(() => []),
       ]);
 
-      const allowedTeams = (teamRows || []).filter((team) => (
+      // The generic team list can lag behind or omit a private/team-scoped
+      // record. Always fetch teams the user belongs to and a linked team
+      // directly, otherwise "View team" can land on the empty create screen.
+      const activeMembershipTeamIds = new Set((memberships || [])
+        .filter((membership) => membership.is_active !== false)
+        .map((membership) => String(membership.team_id)));
+      const directTeamIds = [...new Set([
+        ...activeMembershipTeamIds,
+        linkedTeamId ? String(linkedTeamId) : null,
+      ].filter(Boolean))];
+      const directTeams = await Promise.all(directTeamIds.map((teamId) => (
+        base44.entities.Team.get(teamId).catch(() => null)
+      )));
+      const allTeamRows = [...new Map([
+        ...(teamRows || []),
+        ...directTeams.filter(Boolean),
+      ].map((team) => [String(team.id), team])).values()];
+      const allowedTeams = allTeamRows.filter((team) => (
         !hiddenCompetitionTypes.has(String(team.team_type || "").toLowerCase())
       ));
       const allowedTeamIds = new Set(allowedTeams.map((team) => String(team.id)));
@@ -196,9 +213,6 @@ export default function Teams() {
       setTournamentParticipants(participantRows || []);
       setTournamentMatches(matchRows || []);
 
-      const activeMembershipTeamIds = new Set((memberships || [])
-        .filter((membership) => membership.is_active !== false)
-        .map((membership) => String(membership.team_id)));
       const myTeams = allowedTeams.filter((team) => (
         team.is_active !== false
         && (String(team.captain_id || "") === String(userData.id) || activeMembershipTeamIds.has(String(team.id)))
