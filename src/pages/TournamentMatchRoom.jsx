@@ -702,6 +702,7 @@ function TournamentChatColumn({
   teamBPlayers,
   isStreamerMatch,
   isMatchParticipant,
+  adminSupportUnlocked,
   supportWindowUnlocked,
   requestingAdmin,
   disputing,
@@ -721,8 +722,8 @@ function TournamentChatColumn({
               <button
                 type="button"
                 onClick={onRequestAdmin}
-                disabled={!isMatchParticipant || !supportWindowUnlocked || requestingAdmin}
-                title={!supportWindowUnlocked ? "Available after the 15-minute start timer expires" : "Request help from tournament staff"}
+                disabled={!isMatchParticipant || !adminSupportUnlocked || requestingAdmin}
+                title={!adminSupportUnlocked ? "Available when both teams are assigned" : "Request help from tournament staff"}
                 className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-2 py-2.5 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-all hover:bg-blue-400/15 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <Gavel className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request admin"}
@@ -738,7 +739,7 @@ function TournamentChatColumn({
               </button>
             </div>
             {!supportWindowUnlocked && isMatchParticipant && (
-              <p className="mt-2 text-center text-[9px] leading-4 text-vapor">Support unlocks when the start timer reaches 00:00.</p>
+              <p className="mt-2 text-center text-[9px] leading-4 text-vapor">Admin help is available now. Disputes unlock when the start timer reaches 00:00.</p>
             )}
             {(match.admin_request_status || match.requested_admin) && (
               <p className="mt-2 text-center text-[9px] font-bold text-blue-300">
@@ -1014,6 +1015,7 @@ export default function TournamentMatchRoom() {
     : null;
   const startWindowExpired = hasStartDeadline && startSecondsRemaining === 0;
   const supportWindowUnlocked = isStaff || startWindowExpired;
+  const adminSupportUnlocked = Boolean(match?.team_a_id && match?.team_b_id && !isComplete);
 
   const handleOpenBracket = () => {
     if (!bracketRef.current) return;
@@ -1167,11 +1169,8 @@ export default function TournamentMatchRoom() {
       toast({ title: "Streamer lobby moderation", description: "Streamer tournaments use host chat moderation instead of admin tickets." });
       return;
     }
-    if (!supportWindowUnlocked) {
-      toast({
-        title: "Admin support is still locked",
-        description: "You can call an admin after the 15-minute match start timer reaches 00:00.",
-      });
+    if (!adminSupportUnlocked) {
+      toast({ title: "Admin support is not available yet", description: "Wait until both teams are assigned to this match." });
       return;
     }
     setRequestingAdmin(true);
@@ -1487,6 +1486,7 @@ export default function TournamentMatchRoom() {
                 teamBPlayers={teamBPlayers}
                 isStreamerMatch={isStreamerMatch}
                 isMatchParticipant={isMatchParticipant}
+                adminSupportUnlocked={adminSupportUnlocked}
                 supportWindowUnlocked={supportWindowUnlocked}
                 requestingAdmin={requestingAdmin}
                 disputing={disputing}

@@ -4841,10 +4841,6 @@ async function requestAdminAlert(req) {
   if (context.matchType === "tournament" && context.is_streamer_tournament) {
     return { success: false, error: "Streamer tournaments use host moderation instead of admin tickets" };
   }
-  if (context.matchType === "tournament" && !hasRole(req.user, "moderator")) {
-    const supportWindowError = tournamentSupportWindowError(context.match);
-    if (supportWindowError) return { success: false, error: supportWindowError };
-  }
   const existingTickets = context.match?.id
     ? await listEntities("Ticket", { related_entity_id: context.match.id }, "-created_date", 50).catch(() => [])
     : [];
