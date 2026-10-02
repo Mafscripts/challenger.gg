@@ -2359,6 +2359,14 @@ async function routeTournamentResult(match) {
     return { advanced_to: resetMatch, grand_final_reset: true };
   }
 
+  // A routed bye, an empty bracket slot, or a match that is missing its next
+  // route must never finish the entire tournament. Only a real final played by
+  // two teams is allowed to set the tournament itself to completed.
+  const isFinalMatch = Boolean(match.is_final || match.bracket_final || match.bracket === "grand_final");
+  if (!isFinalMatch || !hasBothTeams(match) || match.bye === true) {
+    return {};
+  }
+
   const runnerUpId = tournamentMatchLoserId(match, match.winner_id);
   const runnerUpName = String(runnerUpId || "") === String(match.team_a_id || "") ? match.team_a_name : match.team_b_name;
   const completedTournament = await completeTournament(match.tournament_id, match.winner_id, match.winner_name, runnerUpId, runnerUpName);
@@ -8652,7 +8660,20 @@ async function ensureTournamentMatchSetup(req) {
 
 async function startTournament(req) {
   assertStaff(req, "admin");
-  const tournament = await getEntity("Tournament", req.body.tournament_id);
+  let tournament = await getEntity("Tournament", req.body.tournament_id);
+  // A tournament that was marked completed without a winner is a stale
+  // lifecycle state (usually from an old/empty bracket), not a real result.
+  // Clear it before starting so the live status cannot stay stuck on Completed.
+  if (tournament.status === "completed" && !tournament.winner_id) {
+    tournament = await updateEntity("Tournament", tournament.id, {
+      status: "closed",
+      completed_date: null,
+      completed_by: null,
+      completed_by_name: null,
+      runner_up_id: null,
+      runner_up_name: null,
+    });
+  }
   const [matches, participants] = await Promise.all([
     listEntities("TournamentMatch", { tournament_id: tournament.id }, "round", 500),
     tournamentParticipants(tournament.id),
