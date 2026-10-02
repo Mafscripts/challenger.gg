@@ -7,6 +7,7 @@ import { hasRole, rolePower } from "../roles.js";
 import { knownUserIpAddresses } from "../ban-enforcement.js";
 import { containsBlockedLanguage } from "../profanity-filter.js";
 import { issueRankedVoiceToken } from "../ranked-voice.js";
+import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -9565,6 +9566,57 @@ async function getCompetitionTrophyCounts(req) {
   return { success: true, counts };
 }
 
+async function getReferralStatus(req) {
+  const [program, code, referralCount] = await Promise.all([
+    ensureReferralProgram(),
+    ensureReferralCode(req.userRow),
+    prisma.referralReward.count({ where: { referrer_user_id: req.user.id } }),
+  ]);
+  const origin = String(process.env.APP_URL || process.env.FRONTEND_URL || "https://topfragg.gg").replace(/\/+$/, "");
+  return {
+    success: true,
+    program: {
+      enabled: program.enabled,
+      max_rewards: program.max_rewards,
+      reward_credits: program.reward_credits,
+    },
+    code: code.code,
+    invite_url: `${origin}/register?ref=${encodeURIComponent(code.code)}`,
+    successful_referrals: referralCount,
+  };
+}
+
+async function getReferralProgram(req) {
+  if (!hasRole(req.user, "super_admin")) return { success: false, error: "Super Admin or CEO access required" };
+  const [program, rewardedUsers] = await Promise.all([
+    ensureReferralProgram(),
+    prisma.referralReward.count(),
+  ]);
+  return { success: true, program, rewarded_users: rewardedUsers };
+}
+
+async function updateReferralProgram(req) {
+  if (!hasRole(req.user, "super_admin")) return { success: false, error: "Super Admin or CEO access required" };
+  const enabled = Boolean(req.body.enabled);
+  const maxRewards = Math.max(1, Math.min(100000, Math.trunc(Number(req.body.max_rewards)) || 250));
+  const rewardCredits = Math.max(1, Math.min(10000, Math.trunc(Number(req.body.reward_credits)) || 5));
+  const program = await prisma.referralProgram.upsert({
+    where: { key: "default" },
+    update: { enabled, max_rewards: maxRewards, reward_credits: rewardCredits },
+    create: { key: "default", enabled, max_rewards: maxRewards, reward_credits: rewardCredits },
+  });
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: effectiveChatRole(req.user),
+    action_type: "referral_program_update",
+    description: `Referral program ${enabled ? "enabled" : "disabled"}: first ${maxRewards} users receive ${rewardCredits} credits.`,
+    details: { enabled, max_rewards: maxRewards, reward_credits: rewardCredits },
+    created_date: nowIso(),
+  });
+  return { success: true, program, rewarded_users: await prisma.referralReward.count() };
+}
+
 const handlers = {
   completeRegistration,
   createWallet: completeRegistration,
@@ -9656,6 +9708,9 @@ const handlers = {
   moderateUser,
   changeDisplayName,
   getCompetitionTrophyCounts,
+  getReferralStatus,
+  getReferralProgram,
+  updateReferralProgram,
   adminAction: async (req) => ({ success: true, action: await createEntity("AdminAction", { ...req.body, admin_id: req.user.id, admin_name: nameFor(req.user), created_date: new Date().toISOString() }) }),
   postDiscordCelebration: async () => ({ success: true }),
   subscribePremium: async (req) => ({ success: true, user: await prisma.user.update({ where: { id: req.user.id }, data: { is_premium: true } }) }),

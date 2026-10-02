@@ -7,6 +7,7 @@ import DiscordSection from "@/components/settings/DiscordSection";
 import TwitchSection from "@/components/settings/TwitchSection";
 import GamingIdsSection from "@/components/settings/GamingIdsSection";
 import SocialsSection from "@/components/settings/SocialsSection";
+import ReferralSection from "@/components/settings/ReferralSection";
 import PageHeader from "@/components/ui/PageHeader";
 import PageLoader from "@/components/ui/PageLoader";
 
@@ -34,15 +35,18 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen py-8">
-      <div className="max-w-3xl mx-auto px-4 lg:px-6">
+      <div className="max-w-6xl mx-auto px-4 lg:px-6">
         <PageHeader eyebrow="Account control" title="Settings" description="Manage your account, gaming identities and integrations." />
-        <AccountSection user={user} onUserUpdate={loadUser} />
-        <SocialsSection user={user} onUserUpdate={loadUser} />
-        <CreditsSection user={user} onUserUpdate={loadUser} />
-        <PaymentPermissionsSection user={user} onUserUpdate={loadUser} />
-        <GamingIdsSection user={user} onUserUpdate={loadUser} />
-        <TwitchSection user={user} onUserUpdate={loadUser} />
-        <DiscordSection user={user} onUserUpdate={loadUser} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="lg:col-span-2"><AccountSection user={user} onUserUpdate={loadUser} /></div>
+          <CreditsSection user={user} onUserUpdate={loadUser} />
+          <ReferralSection />
+          <div className="lg:col-span-2"><SocialsSection user={user} onUserUpdate={loadUser} /></div>
+          <PaymentPermissionsSection user={user} onUserUpdate={loadUser} />
+          <GamingIdsSection user={user} onUserUpdate={loadUser} />
+          <TwitchSection user={user} onUserUpdate={loadUser} />
+          <DiscordSection user={user} onUserUpdate={loadUser} />
+        </div>
       </div>
     </div>
   );

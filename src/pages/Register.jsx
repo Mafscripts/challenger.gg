@@ -1,16 +1,17 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, UserPlus, Mail, Lock, Loader2 } from "lucide-react";
+import { User, UserPlus, Mail, Lock, Loader2, Gift } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 
 const usernamePattern = /^[a-z0-9_]{3,20}$/;
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -18,6 +19,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const referralCode = String(searchParams.get("ref") || "").trim().toUpperCase();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,6 +50,7 @@ export default function Register() {
         display_name: cleanDisplayName,
         email: normalizedEmail,
         password,
+        referral_code: referralCode || undefined,
       });
       if (result?.email_verification_required) {
         const verificationEmail = result.email || normalizedEmail;
@@ -87,6 +90,12 @@ export default function Register() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
+        {referralCode && (
+          <div className="flex items-center gap-3 rounded-lg border border-green/20 bg-green/[0.07] p-3 text-sm text-green">
+            <Gift className="h-4 w-4 shrink-0" />
+            <span>Invite applied — verify your email to claim the current referral reward.</span>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="username" className="text-xs font-bold uppercase tracking-wide text-vapor">Username</Label>
           <div className="relative">

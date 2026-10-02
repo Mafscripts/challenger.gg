@@ -90,6 +90,35 @@ model UserSettings {
   metadata     Json     @default("{}")
 }
 
+model ReferralProgram {
+  key            String   @id @default("default")
+  enabled        Boolean  @default(true)
+  max_rewards    Int      @default(250)
+  reward_credits Int      @default(5)
+  created_date   DateTime @default(now())
+  updated_date   DateTime @updatedAt
+}
+
+model ReferralCode {
+  id           String   @id @default(cuid())
+  user_id      String   @unique
+  code         String   @unique
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+}
+
+model ReferralReward {
+  id               String   @id @default(cuid())
+  referred_user_id String   @unique
+  referrer_user_id String
+  referral_code_id String
+  credits          Int
+  created_date     DateTime @default(now())
+
+  @@index([referrer_user_id])
+  @@index([referral_code_id])
+}
+
 model Notification {
   id           String   @id @default(cuid())
   created_date DateTime @default(now())

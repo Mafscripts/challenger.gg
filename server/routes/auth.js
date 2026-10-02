@@ -15,6 +15,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { dataForEntity } from "../entity.js";
 import { isEmailConfigured, sendPasswordResetEmail, sendVerificationEmail } from "../email.js";
 import { evaluateAccess, requestIpAddress } from "../ban-enforcement.js";
+import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
 
 const router = Router();
 const VERIFICATION_TTL_MS = 10 * 60 * 1000;
@@ -159,7 +160,15 @@ export const registerHandler = async (req, res, next) => {
     if (!isEmailConfigured() && process.env.NODE_ENV === "production") {
       return res.status(503).json({ error: "Email verification is not configured" });
     }
-    let user = await createUserWithPassword(req.body || {});
+    const payload = req.body || {};
+    let user = await createUserWithPassword(payload);
+    const referralCode = normalizeReferralCode(payload.referral_code || payload.referralCode);
+    if (referralCode) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { metadata: { ...(safeUserMetadata(user.metadata)), pending_referral_code: referralCode } },
+      });
+    }
     user = await recordIp(user, req, "registration_ip");
     const challenge = await issueVerificationChallenge(user);
     res.json({
@@ -311,8 +320,9 @@ router.post("/verify-otp", async (req, res, next) => {
       data: { email_verified: true, metadata: clearVerificationMetadata(metadata) },
     });
     const withIp = await recordIp(verified, req, "last_login_ip");
-    const bootstrap = await ensureUserRecords(withIp);
-    res.json({ access_token: signUser(withIp), user: bootstrap.user });
+    const referralResult = await applyReferralReward(withIp.id);
+    const bootstrap = await ensureUserRecords(referralResult.user || withIp);
+    res.json({ access_token: signUser(referralResult.user || withIp), user: bootstrap.user, referral_rewarded: referralResult.rewarded });
   } catch (error) {
     next(error);
   }

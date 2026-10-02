@@ -13,6 +13,7 @@ import {
   CreditCard,
   Edit3,
   Gavel,
+  Gift,
   KeyRound,
   Landmark,
   LayoutDashboard,
@@ -231,6 +232,7 @@ const tabs = [
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "tournamentMatches", label: "Tournament Matches", icon: ClipboardList },
   { id: "wallets", label: "Wallets", icon: Wallet },
+  { id: "referrals", label: "Referrals", icon: Gift },
   { id: "withdrawals", label: "Withdrawals", icon: Landmark },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag },
   { id: "inventory", label: "Inventory", icon: Boxes },
@@ -525,6 +527,7 @@ export default function Admin() {
   const [rankedStatsForm, setRankedStatsForm] = useState(defaultRankedStatsForm);
   const [seasonResetOpen, setSeasonResetOpen] = useState(false);
   const [seasonResetForm, setSeasonResetForm] = useState(() => createDefaultSeasonResetForm());
+  const [referralProgram, setReferralProgram] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
 
   useEffect(() => {
@@ -629,6 +632,10 @@ export default function Admin() {
         systemLogs,
         messages,
       });
+      const referralResponse = await base44.functions.invoke("getReferralProgram").catch(() => null);
+      if (referralResponse?.data?.success) {
+        setReferralProgram({ ...referralResponse.data.program, rewarded_users: referralResponse.data.rewarded_users });
+      }
     } catch (error) {
       console.error("Failed to load admin data:", error);
       toast({ title: "Error", description: "Failed to load admin data", variant: "destructive" });
@@ -1860,6 +1867,26 @@ export default function Admin() {
     }
   };
 
+  const handleReferralProgramSave = async (event) => {
+    event.preventDefault();
+    if (!referralProgram) return;
+    setBusyId("referral-program");
+    try {
+      const response = await base44.functions.invoke("updateReferralProgram", {
+        enabled: referralProgram.enabled,
+        max_rewards: Number(referralProgram.max_rewards),
+        reward_credits: Number(referralProgram.reward_credits),
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Referral program could not be saved");
+      setReferralProgram({ ...response.data.program, rewarded_users: response.data.rewarded_users });
+      toast({ title: "Referral program updated" });
+    } catch (error) {
+      toast({ title: "Referral program update failed", description: error.message, variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) {
     return <PageLoader label="Loading admin console" />;
   }
@@ -1979,6 +2006,29 @@ export default function Admin() {
                   )}
                 </section>
               )}
+            </div>
+          )}
+
+          {activeTab === "referrals" && (
+            <div className="p-6">
+              <div className="mb-6 flex items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-green/25 bg-green/[0.1] text-green"><Gift className="h-5 w-5" /></span>
+                <div><h2 className="text-lg font-black">Referral campaign</h2><p className="mt-1 text-sm text-vapor">New players receive credits after email verification. Existing rewards are never removed when you change these settings.</p></div>
+              </div>
+              {referralProgram ? (
+                <form onSubmit={handleReferralProgramSave} className="max-w-3xl rounded-xl border border-green/15 bg-green/[0.035] p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-5">
+                    <div><p className="text-sm font-black">Referral rewards</p><p className="mt-1 text-xs text-vapor">Controls all new invite claims instantly.</p></div>
+                    <label className="flex cursor-pointer items-center gap-3 text-xs font-black uppercase tracking-wider text-vapor"><span>{referralProgram.enabled ? "On" : "Off"}</span><input type="checkbox" checked={Boolean(referralProgram.enabled)} onChange={(event) => setReferralProgram((current) => ({ ...current, enabled: event.target.checked }))} className="h-5 w-5 accent-green" /></label>
+                  </div>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                    <label><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Maximum rewarded users</span><input type="number" min="1" max="100000" value={referralProgram.max_rewards} onChange={(event) => setReferralProgram((current) => ({ ...current, max_rewards: event.target.value }))} className="mt-2 w-full rounded-lg border border-white/10 bg-secondary px-3 py-2.5 text-sm font-bold focus:border-green/50 focus:outline-none" /></label>
+                    <label><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Credits per user</span><input type="number" min="1" max="10000" value={referralProgram.reward_credits} onChange={(event) => setReferralProgram((current) => ({ ...current, reward_credits: event.target.value }))} className="mt-2 w-full rounded-lg border border-white/10 bg-secondary px-3 py-2.5 text-sm font-bold focus:border-green/50 focus:outline-none" /></label>
+                    <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Already rewarded</p><p className="mt-1 font-mono text-2xl font-black text-green">{referralProgram.rewarded_users || 0}</p></div>
+                  </div>
+                  <button type="submit" disabled={busyId === "referral-program"} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-green px-4 py-2.5 text-xs font-black uppercase tracking-wider text-background hover:bg-green/90 disabled:opacity-50">{busyId === "referral-program" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save referral settings</button>
+                </form>
+              ) : <p className="text-sm text-vapor">Referral controls are available to CEO and Super Admin accounts.</p>}
             </div>
           )}
 
