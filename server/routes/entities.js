@@ -3,6 +3,28 @@ import { createEntity, deleteEntity, getEntity, listEntities, updateEntity } fro
 import { requireAuth } from "../middleware/auth.js";
 import { hasRole } from "../roles.js";
 
+const protectedMutationEntities = new Set([
+  // These records contain match results, escrow, support state, or bracket
+  // routing and must only be changed through their server-side actions.
+  "Wager",
+  "WagerParticipant",
+  "RankedMatch",
+  "RankedParticipant",
+  "TournamentMatch",
+  "TournamentParticipant",
+  "Dispute",
+  "Ticket",
+  "WithdrawalRequest",
+  "Wallet",
+  "WalletTransaction",
+  "CreditTransaction",
+  "CreditPurchase",
+  "Purchase",
+  "UserInventory",
+  "Inventory",
+  "PremiumMembership",
+]);
+
 const adminManagedEntities = new Set([
   "Tournament",
   "MarketplaceItem",
@@ -37,6 +59,15 @@ const discordIdentityFields = new Set([
   "discord_avatar_url",
   "discord_connected_at",
 ]);
+const sensitiveReadEntities = new Set([
+  "WalletTransaction",
+  "CreditTransaction",
+  "CreditPurchase",
+  "Purchase",
+  "WithdrawalRequest",
+  "PremiumMembership",
+]);
+
 const cleanName = (value) => String(value || "").trim().toLowerCase();
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 
@@ -228,6 +259,11 @@ const visibleTickets = (req, rows) => {
 
 router.get("/:entity", requireAuth, async (req, res, next) => {
   try {
+    if (sensitiveReadEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
+      // User-scoped wallet/inventory data is exposed through the authenticated
+      // bootstrap/API instead of the unrestricted entity listing endpoint.
+      return res.status(403).json({ error: "Admin access required" });
+    }
     if (["Ban", "AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Moderator access required" });
     }
@@ -238,6 +274,10 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
       req.query.order,
       req.query.limit
     );
+    if (["Wallet", "UserInventory", "Inventory", "Purchase"].includes(req.params.entity) && !hasRole(req.user, "admin")) {
+      const userScopedRows = rows.filter((row) => String(row.user_id || "") === String(req.user.id));
+      return res.json(protectIpVisibility(req, userScopedRows));
+    }
     if (req.params.entity === "TournamentParticipant") {
       return res.json(protectIpVisibility(req, await visibleTournamentParticipants(req, rows, filter)));
     }
@@ -261,10 +301,18 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
 
 router.get("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
+    if (sensitiveReadEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
     if (["Ban", "AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Moderator access required" });
     }
     const row = await getEntity(req.params.entity, req.params.id);
+    if (["Wallet", "UserInventory", "Inventory", "Purchase"].includes(req.params.entity)
+      && !hasRole(req.user, "admin")
+      && String(row?.user_id || "") !== String(req.user.id)) {
+      return res.status(403).json({ error: "You cannot view this record" });
+    }
     if (req.params.entity === "Ticket" && visibleTickets(req, [row]).length === 0) {
       return res.status(403).json({ error: "You cannot view this ticket" });
     }
@@ -294,6 +342,9 @@ router.post("/:entity", requireAuth, async (req, res, next) => {
     if (req.params.entity === "User" && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Accounts can only be created through registration" });
     }
+    if (protectedMutationEntities.has(req.params.entity)) {
+      return res.status(403).json({ error: "Use the protected action for this record" });
+    }
     if (["AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Moderator access required" });
     }
@@ -310,6 +361,9 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
     if (req.params.entity === "ChatMessage") {
       return res.status(403).json({ error: "Chat messages cannot be edited directly" });
+    }
+    if (protectedMutationEntities.has(req.params.entity)) {
+      return res.status(403).json({ error: "Use the protected action for this record" });
     }
     if (["AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Moderator access required" });
@@ -343,6 +397,9 @@ router.delete("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
     if (req.params.entity === "ChatMessage") {
       return res.status(403).json({ error: "Use a protected moderation action" });
+    }
+    if (protectedMutationEntities.has(req.params.entity)) {
+      return res.status(403).json({ error: "Protected records cannot be deleted directly" });
     }
     if (adminManagedEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Admin access required" });

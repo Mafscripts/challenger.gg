@@ -1218,8 +1218,19 @@ export default function TournamentMatchRoom() {
         tournament_match_id: match.id,
         reason: "score_dispute",
         description: `Dispute submitted from tournament match room ${match.id} in ${tournament?.name || "tournament"}. ${match.team_a_name || "Team A"} vs ${match.team_b_name || "Team B"}`,
-        reported_against: user?.id === match.team_a_id ? match.team_b_id : match.team_a_id,
-        reported_against_name: user?.id === match.team_a_id ? match.team_b_name : match.team_a_name,
+        // team_a_id/team_b_id are tournament participant/team ids, not user ids.
+        // Resolve the current side from the loaded roster so disputes target the
+        // actual opposing team even when the user is a team member/captain.
+        reported_against: teamAPlayers.some((player) => rosterPlayerMatchesUser(player, user))
+          ? match.team_b_id
+          : teamBPlayers.some((player) => rosterPlayerMatchesUser(player, user))
+            ? match.team_a_id
+            : undefined,
+        reported_against_name: teamAPlayers.some((player) => rosterPlayerMatchesUser(player, user))
+          ? match.team_b_name
+          : teamBPlayers.some((player) => rosterPlayerMatchesUser(player, user))
+            ? match.team_a_name
+            : undefined,
         evidence_urls: evidenceUrls,
         escalated: Boolean(user?.is_premium),
       });

@@ -1655,12 +1655,14 @@ async function tournamentMatchParticipantInfo(match, user) {
   const teamBUserIds = participantB ? participantUserIds(participantB) : await tournamentParticipantUserIds(match.tournament_id, match.team_b_id);
   const teamAMatch = teamAUserIds.includes(user?.id) || participantIncludesUserIdentity(participantA, user);
   const teamBMatch = teamBUserIds.includes(user?.id) || participantIncludesUserIdentity(participantB, user);
+  const ambiguousTeamMembership = teamAMatch && teamBMatch;
 
   return {
     teamAUserIds: teamAMatch ? [...new Set([...teamAUserIds, user.id])] : teamAUserIds,
     teamBUserIds: teamBMatch ? [...new Set([...teamBUserIds, user.id])] : teamBUserIds,
-    isParticipant: teamAMatch || teamBMatch,
-    reportingSide: teamAMatch ? "team_a" : teamBMatch ? "team_b" : null,
+    isParticipant: (teamAMatch || teamBMatch) && !ambiguousTeamMembership,
+    ambiguousTeamMembership,
+    reportingSide: ambiguousTeamMembership ? null : teamAMatch ? "team_a" : teamBMatch ? "team_b" : null,
   };
 }
 
@@ -8344,10 +8346,26 @@ async function adminResetRankedSeason(req) {
 }
 
 async function forgeMoneyToCredits(req) {
+  // This is an internal/testing helper. Never allow a normal user to mint
+  // credits directly, even when public commerce is enabled.
+  if (!hasRole(req.user, "admin")) {
+    return { success: false, error: "Admin access required" };
+  }
   const amount = money(req.body.amount);
+  if (amount <= 0 || amount > 100000) return { success: false, error: "Amount must be greater than zero and at most 100,000" };
   const credits = Math.floor(amount * 100);
-  await prisma.user.update({ where: { id: req.user.id }, data: { credits: req.userRow.credits + credits } });
-  return { success: true, credits_added: credits };
+  const updated = await prisma.user.update({
+    where: { id: req.user.id },
+    data: { credits: req.userRow.credits + credits },
+  });
+  await createEntity("CreditTransaction", {
+    user_id: req.user.id,
+    amount: credits,
+    type: "admin_grant",
+    description: "Credits minted by admin",
+    created_date: nowIso(),
+  }).catch(() => null);
+  return { success: true, credits_added: credits, credits_balance: updated.credits };
 }
 
 async function generateTournamentBracket(req) {
@@ -8734,14 +8752,28 @@ async function ensureTournamentMatchSetup(req) {
   const matchId = req.body.tournament_match_id || req.body.match_id;
   if (!matchId) return { success: false, error: "Tournament match id is required" };
   const match = await getEntity("TournamentMatch", matchId);
+  if (!match) return { success: false, error: "Tournament match not found" };
   if (!match.team_a_id || !match.team_b_id) {
     return { success: false, error: "Both teams must be assigned before maps can be generated" };
   }
 
-  const [participants, tournament] = await Promise.all([
+  const [participants, tournament, participantInfo] = await Promise.all([
     tournamentParticipants(match.tournament_id),
     getEntity("Tournament", match.tournament_id).catch(() => null),
+    tournamentMatchParticipantInfo(match, req.user),
   ]);
+  const isStaff = hasRole(req.user, "moderator");
+  if (!isStaff && !participantInfo.isParticipant) {
+    return { success: false, error: "Only match participants or staff can sync match setup" };
+  }
+
+  // Never rewrite the setup of a completed result. The room may still be
+  // opened after completion, but its historical map/host data must remain
+  // immutable for bracket and dispute records.
+  if (match.winner_id || (match.completed && match.status === "completed")) {
+    return { success: true, match };
+  }
+
   const patch = isStreamerTournament(tournament)
     ? streamerMatchSetupPatch(match, tournament, participants)
     : tournamentMatchSetupPatch(match, participants, tournament);
@@ -8942,8 +8974,11 @@ async function completeTournamentMatchUnlocked(req, matchId) {
   if (!match || match.status === "completed" || match.completed) {
     return { success: false, error: "Match is already completed" };
   }
-  const { teamAUserIds, teamBUserIds, isParticipant, reportingSide } = await tournamentMatchParticipantInfo(match, req.user);
+  const { teamAUserIds, teamBUserIds, isParticipant, reportingSide, ambiguousTeamMembership } = await tournamentMatchParticipantInfo(match, req.user);
   const isStaff = hasRole(req.user, "moderator");
+  if (ambiguousTeamMembership && !isStaff) {
+    return { success: false, error: "Your account is associated with both tournament sides for this match. Ask tournament staff to resolve the roster before reporting." };
+  }
   const canStaffOverride = isStaff && !isParticipant;
   if (!isStaff && !isParticipant) {
     return { success: false, error: "Only tournament match participants can submit results" };
@@ -9060,9 +9095,13 @@ async function createDispute(req) {
   }
 
   const involvedUserIds = await matchParticipantIds(matchType, match);
-  const isTournamentParticipant = matchType === "tournament"
-    ? (await tournamentMatchParticipantInfo(match, req.user)).isParticipant
-    : false;
+  const tournamentParticipantInfo = matchType === "tournament"
+    ? await tournamentMatchParticipantInfo(match, req.user)
+    : null;
+  const isTournamentParticipant = Boolean(tournamentParticipantInfo?.isParticipant);
+  if (tournamentParticipantInfo?.ambiguousTeamMembership && !hasRole(req.user, "moderator")) {
+    return { success: false, error: "Your account is associated with both tournament sides for this match. Ask tournament staff to resolve the roster before opening a dispute." };
+  }
   if (!hasRole(req.user, "moderator") && !involvedUserIds.includes(req.user.id) && !isTournamentParticipant) {
     return { success: false, error: "Only match participants can submit disputes" };
   }
@@ -9134,6 +9173,11 @@ async function createDispute(req) {
     listEntities("ChatMessage", { conversation_id: match.id }, "-created_date", 100).catch(() => []),
     listEntities("MatchHistory", { match_id: match.id }, "-created_date", 100).catch(() => []),
   ]);
+  const tournamentReportedAgainst = tournamentParticipantInfo?.reportingSide === "team_a"
+    ? { id: match.team_b_id, name: match.team_b_name }
+    : tournamentParticipantInfo?.reportingSide === "team_b"
+      ? { id: match.team_a_id, name: match.team_a_name }
+      : null;
   const dispute = await createEntity("Dispute", {
     wager_id: matchType === "wager" ? match.id : undefined,
     match_id: match.id,
@@ -9144,8 +9188,8 @@ async function createDispute(req) {
     chat_logs: chatLogs,
     reported_by: req.user.id,
     reported_by_name: nameFor(req.user),
-    reported_against: req.body.reported_against,
-    reported_against_name: req.body.reported_against_name,
+    reported_against: tournamentReportedAgainst?.id || req.body.reported_against,
+    reported_against_name: tournamentReportedAgainst?.name || req.body.reported_against_name,
     reason: req.body.reason || "score_dispute",
     description: req.body.description || "",
     evidence_urls: req.body.evidence_urls || [],
@@ -9824,7 +9868,26 @@ const handlers = {
   closeTournamentRegistration,
   extendTournamentRegistration,
   withdrawFromWallet: async (req) => ({ success: true, withdrawal: await createEntity("WithdrawalRequest", { ...req.body, user_id: req.user.id, status: "pending", created_date: new Date().toISOString() }) }),
-  processWithdrawal: async (req) => ({ success: true, withdrawal: await updateEntity("WithdrawalRequest", req.body.withdrawal_id, { status: req.body.status, processed_date: new Date().toISOString() }) }),
+  processWithdrawal: async (req) => {
+    assertStaff(req, "admin");
+    const withdrawalId = req.body.withdrawal_id;
+    const status = String(req.body.status || "").toLowerCase();
+    if (!withdrawalId || !["approved", "rejected", "completed", "cancelled"].includes(status)) {
+      return { success: false, error: "Invalid withdrawal action" };
+    }
+    const withdrawal = await getEntity("WithdrawalRequest", withdrawalId);
+    if (!withdrawal) return { success: false, error: "Withdrawal request not found" };
+    if (!["pending", "processing"].includes(String(withdrawal.status || "").toLowerCase())) {
+      return { success: false, error: "Withdrawal is already resolved" };
+    }
+    const updated = await updateEntity("WithdrawalRequest", withdrawal.id, {
+      status,
+      processed_by: req.user.id,
+      processed_by_name: nameFor(req.user),
+      processed_date: nowIso(),
+    });
+    return { success: true, withdrawal: updated };
+  },
   generateTournamentBracket,
   resetTournamentBracket,
   ensureTournamentMatchSetup,
@@ -9845,9 +9908,33 @@ const handlers = {
   getReferralStatus,
   getReferralProgram,
   updateReferralProgram,
-  adminAction: async (req) => ({ success: true, action: await createEntity("AdminAction", { ...req.body, admin_id: req.user.id, admin_name: nameFor(req.user), created_date: new Date().toISOString() }) }),
+  adminAction: async (req) => {
+    assertStaff(req, "moderator");
+    const action = await createEntity("AdminAction", {
+      ...req.body,
+      admin_id: req.user.id,
+      admin_name: nameFor(req.user),
+      admin_role: effectiveChatRole(req.user),
+      created_date: nowIso(),
+    });
+    return { success: true, action };
+  },
   postDiscordCelebration: async () => ({ success: true }),
-  subscribePremium: async (req) => ({ success: true, user: await prisma.user.update({ where: { id: req.user.id }, data: { is_premium: true } }) }),
+  subscribePremium: async (req) => {
+    assertStaff(req, "admin");
+    const targetId = String(req.body.user_id || req.user.id);
+    const target = await prisma.user.findUnique({ where: { id: targetId } });
+    if (!target) return { success: false, error: "User not found" };
+    if (!canModerateUser(req.user.role, target.role)) return { success: false, error: "You cannot modify this account" };
+    const updated = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        is_premium: true,
+        premium_expires: new Date(Date.now() + adminPremiumGrantDays * 86400000),
+      },
+    });
+    return { success: true, user: updated };
+  },
   "create-checkout": async (req) => ({ success: true, checkout_url: "/thank-you", pack_id: req.body.pack_id }),
 };
 
