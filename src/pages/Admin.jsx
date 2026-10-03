@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Archive,
   Award,
@@ -514,6 +515,7 @@ function TournamentRewardPicker({ title, description, selectedIds = [], items = 
 }
 
 export default function Admin() {
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState(initialAdminTab);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
@@ -543,7 +545,7 @@ export default function Admin() {
 
   useEffect(() => {
     loadAdminData();
-  }, []);
+  }, [authUser]);
 
   useEffect(() => {
     window.sessionStorage.setItem("adminActiveTab", activeTab);
@@ -576,7 +578,7 @@ export default function Admin() {
   const loadAdminData = async () => {
     try {
       setLoading(true);
-      const me = await base44.auth.me().catch(() => null);
+      const me = authUser || await base44.auth.me().catch(() => null);
       setCurrentUser(me);
 
       if (!canAccessAdminPanel(effectiveRoleFor(me))) {
