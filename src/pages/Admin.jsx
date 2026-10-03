@@ -534,6 +534,7 @@ export default function Admin() {
   const [ticketNoteDrafts, setTicketNoteDrafts] = useState({});
   const [ticketResolutionDrafts, setTicketResolutionDrafts] = useState({});
   const [walletAdjustmentOpen, setWalletAdjustmentOpen] = useState(false);
+  const [openManageUserId, setOpenManageUserId] = useState(null);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
   const [massResetOpen, setMassResetOpen] = useState(false);
   const [massResetConfirmation, setMassResetConfirmation] = useState("");
@@ -553,6 +554,7 @@ export default function Admin() {
   }, [authUser, isLoadingAuth]);
 
   useEffect(() => {
+    setOpenManageUserId(null);
     window.sessionStorage.setItem("adminActiveTab", activeTab);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", activeTab);
@@ -2129,7 +2131,7 @@ export default function Admin() {
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onChange={(event) => { setSearchQuery(event.target.value); setOpenManageUserId(null); }}
                     placeholder="Search users..."
                     className="pl-10 pr-4 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                   />
@@ -2267,11 +2269,16 @@ export default function Admin() {
                         <td className="relative z-20 overflow-visible py-3 px-4">
                           <div className="flex items-center justify-end gap-2 overflow-visible">
                             <Link to={`/profile/${user.username || user.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20">Profile</Link>
-                            <details className="relative z-[80]">
-                              <summary className="list-none cursor-pointer rounded-lg border border-white/10 bg-secondary px-3 py-1.5 text-xs font-bold text-vapor hover:bg-white/10 hover:text-foreground">
+                            <div className="relative z-[80]">
+                              <button
+                                type="button"
+                                onClick={() => setOpenManageUserId((current) => current === user.id ? null : user.id)}
+                                className="rounded-lg border border-white/10 bg-secondary px-3 py-1.5 text-xs font-bold text-vapor hover:bg-white/10 hover:text-foreground"
+                              >
                                 Manage
-                              </summary>
-                              <div className="absolute right-0 z-[120] mt-2 w-80 overflow-visible rounded-xl border border-white/10 bg-[#171d27] p-2 shadow-2xl shadow-black/50">
+                              </button>
+                              {openManageUserId === user.id && (
+                              <div className="fixed right-6 top-24 z-[9999] max-h-[calc(100vh-7rem)] w-80 overflow-y-auto rounded-xl border border-white/10 bg-[#171d27] p-2 shadow-2xl shadow-black/60">
                                 <div className="border-b border-white/5 px-3 py-2">
                                   <p className="text-xs font-bold text-foreground">{userName(user)}</p>
                                   <p className="text-[10px] text-vapor">{user.role || "user"} · account actions</p>
@@ -2388,7 +2395,8 @@ export default function Admin() {
                                   )}
                                 </div>
                               </div>
-                            </details>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
