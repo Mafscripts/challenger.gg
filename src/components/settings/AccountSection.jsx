@@ -186,7 +186,7 @@ export default function AccountSection({ user, onUserUpdate }) {
 
       <div className="border-t border-white/5 my-5" />
 
-      <div>
+      <div id="settings-password" className="scroll-mt-28">
         <div className="flex items-center gap-2 mb-3">
           <Lock className="w-4 h-4 text-vapor" />
           <h3 className="text-sm font-semibold">Change Password</h3>

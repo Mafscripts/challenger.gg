@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   AtSign,
   Coins,
+  ChevronDown,
   Gamepad2,
   Gift,
   KeyRound,
@@ -30,7 +31,8 @@ const settingGroups = [
     description: "Identity & security",
     icon: UserRound,
     items: [
-      { label: "Profile & password", icon: KeyRound, target: "settings-account" },
+      { label: "Profile & username", icon: UserRound, target: "settings-account" },
+      { label: "Password & security", icon: KeyRound, target: "settings-password" },
     ],
   },
   {
@@ -79,6 +81,7 @@ function GroupLabel({ icon: Icon, title, description }) {
 export default function Settings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [openGroup, setOpenGroup] = useState("account");
 
   const loadUser = async () => {
     const me = await base44.auth.me();
@@ -117,32 +120,49 @@ export default function Settings() {
           }
         />
 
-        <div className="sticky top-3 z-20 mb-8 rounded-2xl border border-white/[0.07] bg-background/90 p-2 shadow-2xl backdrop-blur-xl">
-          <div className="grid gap-1 md:grid-cols-3">
+        <div className="sticky top-3 z-20 mb-8 rounded-2xl border border-white/[0.07] bg-background/95 p-2 shadow-2xl backdrop-blur-xl">
+          <div className="space-y-1">
             {settingGroups.map((group) => {
               const Icon = group.icon;
+              const isOpen = openGroup === group.id;
               return (
-                <div key={group.id} className="rounded-xl p-1">
-                  <div className="flex items-center gap-2 px-2 pb-1.5 pt-1">
-                    <Icon className="h-3.5 w-3.5 text-cyan" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{group.label}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {group.items.map((item) => {
-                      const ItemIcon = item.icon;
-                      return (
-                        <button
-                          key={item.target}
-                          type="button"
-                          onClick={() => scrollToSetting(item.target)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-2 text-[10px] font-bold text-vapor transition hover:border-cyan/15 hover:bg-cyan/[0.06] hover:text-white"
-                        >
-                          <ItemIcon className="h-3.5 w-3.5" />
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div key={group.id} className="overflow-hidden rounded-xl border border-transparent">
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroup(isOpen ? null : group.id)}
+                    aria-expanded={isOpen}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition ${isOpen ? "border-cyan/15 bg-cyan/[0.06]" : "hover:bg-white/[0.025]"}`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan/15 bg-cyan/[0.06] text-cyan">
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span>
+                        <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-white">{group.label}</span>
+                        <span className="mt-0.5 block text-[9px] text-vapor">{group.description}</span>
+                      </span>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-vapor transition-transform ${isOpen ? "rotate-180 text-cyan" : ""}`} />
+                  </button>
+
+                  {isOpen && (
+                    <div className="flex flex-wrap gap-1 px-2 pb-2 pt-1">
+                      {group.items.map((item) => {
+                        const ItemIcon = item.icon;
+                        return (
+                          <button
+                            key={item.target}
+                            type="button"
+                            onClick={() => scrollToSetting(item.target)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2 text-[10px] font-bold text-vapor transition hover:border-cyan/15 hover:bg-cyan/[0.06] hover:text-white"
+                          >
+                            <ItemIcon className="h-3.5 w-3.5" />
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
