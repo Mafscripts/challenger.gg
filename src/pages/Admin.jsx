@@ -45,7 +45,7 @@ import RankBadge from "@/components/ui/RankBadge";
 import PageHeader from "@/components/ui/PageHeader";
 import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
-import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, getRoleConfig } from "@/lib/roles";
+import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
@@ -285,12 +285,7 @@ const adminAlertActionUrl = (alert, ticket) => {
   if (matchType === "ranked") return `/ranked-match/${id}`;
   return "/admin";
 };
-const rolePowerFor = (role) => getRoleConfig(role || "user").power;
-const effectiveRoleFor = (user) => (
-  [user?.role, user?.admin_role, user?.is_admin ? "admin" : null]
-    .filter(Boolean)
-    .reduce((best, role) => (rolePowerFor(role) > rolePowerFor(best) ? role : best), "user")
-);
+const effectiveRoleFor = (user) => effectiveRoleForUser(user);
 const canAddWalletAdjustment = (role) => ["ceo", "super_admin"].includes(role || "user");
 const canAdjustUserWallet = (actorRole, targetRole) => canAddWalletAdjustment(actorRole) && (actorRole === "ceo" || targetRole !== "ceo");
 const canGrantUserPremium = (actorRole, targetRole) => (

@@ -7,8 +7,14 @@ export const ROLES = {
 };
 
 export const normalizeRole = (role) => {
-  if (role === "superadmin") return "super_admin";
-  return ROLES[role] ? role : "user";
+  if (Array.isArray(role)) {
+    return role
+      .map((entry) => normalizeRole(entry))
+      .sort((a, b) => ROLES[b].power - ROLES[a].power)[0] || "user";
+  }
+  const normalized = String(role || "user").trim().toLowerCase();
+  if (normalized === "superadmin") return "super_admin";
+  return ROLES[normalized] ? normalized : "user";
 };
 
 export const getRoleConfig = (role) => ROLES[normalizeRole(role)];
