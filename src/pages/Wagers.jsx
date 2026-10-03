@@ -30,6 +30,7 @@ export default function Wagers() {
   const [userTeams, setUserTeams] = useState([]);
   const [acceptTeamByWager, setAcceptTeamByWager] = useState({});
   const [acceptPaymentByWager, setAcceptPaymentByWager] = useState({});
+  const [acceptingWagerId, setAcceptingWagerId] = useState(null);
   const [cancellingWagerId, setCancellingWagerId] = useState(null);
   const [wagerToCancel, setWagerToCancel] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -93,9 +94,9 @@ export default function Wagers() {
       if (currentUser) {
         const wallets = await base44.entities.Wallet.filterFresh({ user_id: currentUser.id }, "-created_date", 1);
         const [hosted, challenged, memberships] = await Promise.all([
-          base44.entities.Wager.filter({ host_id: currentUser.id }, "-created_date", 50),
-          base44.entities.Wager.filter({ challenger_id: currentUser.id }, "-created_date", 50),
-          base44.entities.TeamMember.filter({ user_id: currentUser.id }, "-joined_date", 50).catch(() => [])
+          base44.entities.Wager.filterFresh({ host_id: currentUser.id }, "-created_date", 50),
+          base44.entities.Wager.filterFresh({ challenger_id: currentUser.id }, "-created_date", 50),
+          base44.entities.TeamMember.filterFresh({ user_id: currentUser.id }, "-joined_date", 50).catch(() => [])
         ]);
         const teams = await Promise.all((memberships || [])
           .filter((membership) => membership.is_active !== false)
@@ -124,7 +125,7 @@ export default function Wagers() {
         setUserTeams([]);
         setHistoryWagers([]);
       }
-      setWagers(wagerList.filter(isWagerMatch));
+      setWagers((wagerList || []).filter(isWagerMatch));
       setLoading(false);
     } catch (error) {
       console.error("Failed to load wagers:", error);
@@ -133,6 +134,7 @@ export default function Wagers() {
   };
 
   const handleAccept = async (wager) => {
+    if (acceptingWagerId) return;
     if (!user) {
       toast({
         title: "Login required",
@@ -151,7 +153,7 @@ export default function Wagers() {
     const isTeamWager = true;
     const selectedTeamId = acceptTeamByWager[wager.id];
     const paymentMode = acceptPaymentByWager[wager.id] || "own";
-    const selectedTeam = compatibleTeamsFor(wager).find((team) => team.id === selectedTeamId);
+    const selectedTeam = compatibleTeamsFor(wager).find((team) => String(team.id) === String(selectedTeamId));
     if (isTeamWager && !selectedTeamId) {
       toast({
         title: "Team required",
@@ -160,10 +162,10 @@ export default function Wagers() {
       });
       return;
     }
-    if (isTeamWager && (!selectedTeam || selectedTeam.members.length < required)) {
+    if (isTeamWager && (!selectedTeam || selectedTeam.members.length !== required)) {
       toast({
         title: "Roster incomplete",
-        description: `That team needs ${required} active players before it can join this wager.`,
+        description: `That team needs exactly ${required} active players before it can join this wager.`,
         variant: "destructive"
       });
       return;
@@ -178,6 +180,7 @@ export default function Wagers() {
       return;
     }
 
+    setAcceptingWagerId(wager.id);
     try {
       const response = await base44.functions.invoke('acceptWager', {
         wager_id: wager.id,
@@ -185,18 +188,18 @@ export default function Wagers() {
         payment_mode: paymentMode,
       });
 
-      if (response.data.success) {
+      if (response.data?.success) {
         window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
         window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
         toast({
           title: "Wager accepted!",
           description: `System-selected map: ${response.data.final_map_name || "Open the match room"}`,
         });
-        navigate(`/wagers-match/${wager.id}`);
+        navigate(`/wagers-match/${response.data.wager?.id || wager.id}`);
       } else {
         toast({
           title: "Failed to accept",
-          description: response.data.error || "Unknown error",
+        description: response.data?.error || "The wager could not be accepted. Refresh the page and try again.",
           variant: "destructive"
         });
       }
@@ -208,6 +211,7 @@ export default function Wagers() {
         variant: "destructive"
       });
     } finally {
+      setAcceptingWagerId(null);
       loadData();
     }
   };
@@ -252,10 +256,11 @@ export default function Wagers() {
     return true;
   });
 
-  const compatibleTeamsFor = (_wager) => (
+  const compatibleTeamsFor = (wager) => (
     userTeams.filter((team) => (
       team.team_type === "wager"
-      && team.captain_id === user?.id
+      && String(team.captain_id || "") === String(user?.id || "")
+      && team.members.length === rosterSize(wager.team_size)
     ))
   );
 
@@ -288,12 +293,13 @@ export default function Wagers() {
                       </div>
                     ) : user ? (
                       <div className="w-52 space-y-2">
-                        <select value={acceptTeamByWager[wager.id] || ""} onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [wager.id]: event.target.value }))} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none">
+                        {compatibleTeamsFor(wager).length === 0 && <p className="rounded-lg border border-orange/20 bg-orange/5 px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-orange">Create a wager team with exactly {rosterSize(wager.team_size)} active player{rosterSize(wager.team_size) === 1 ? "" : "s"} to accept.</p>}
+                        <select value={acceptTeamByWager[wager.id] || ""} onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [wager.id]: event.target.value }))} disabled={acceptingWagerId === wager.id} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
                           <option value="">Select wager team</option>
                           {compatibleTeamsFor(wager).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(wager.team_size)})</option>)}
                         </select>
-                        {rosterSize(wager.team_size) > 1 && <select value={acceptPaymentByWager[wager.id] || "own"} onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [wager.id]: event.target.value }))} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none"><option value="own">Pay my own entry</option><option value="full_team">Pay full team entry</option></select>}
-                        <button onClick={() => handleAccept(wager)} disabled={!acceptTeamByWager[wager.id]} className="w-full rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-50">Accept This Match</button>
+                        {rosterSize(wager.team_size) > 1 && <select value={acceptPaymentByWager[wager.id] || "own"} onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [wager.id]: event.target.value }))} disabled={acceptingWagerId === wager.id} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"><option value="own">Pay my own entry</option><option value="full_team">Pay full team entry</option></select>}
+                        <button onClick={() => handleAccept(wager)} disabled={!acceptTeamByWager[wager.id] || acceptingWagerId === wager.id} className="w-full rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-50">{acceptingWagerId === wager.id ? "Joining..." : "Accept This Match"}</button>
                       </div>
                     ) : null}
                   />
