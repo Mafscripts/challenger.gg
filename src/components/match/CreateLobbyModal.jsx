@@ -685,8 +685,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               </div>
             )}
 
-            {/* Step 3: Create Lobby (Free modes) */}
-            {step === 3 && !isWager && (
+            {/* Step 3: Create Lobby (8s/free lobby only) */}
+            {step === 3 && !isWager && mode !== "xp" && (
               <div>
                 <h3 className="text-sm font-bold mb-4">Review & Create</h3>
                 <div className="glass rounded-xl border border-white/5 p-4 mb-6">
