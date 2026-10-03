@@ -56,7 +56,7 @@ export default function UserBadges({
   badges,
   size = "sm",
   showForceStream = true,
-  showMonitorCam = false,
+  showMonitorCam = true,
   iconOnly = false,
   streamerHref = "",
   showTooltip = true,
