@@ -7652,6 +7652,126 @@ async function cancelXPMatch(req) {
   return { success: true, match: updated };
 }
 
+
+async function completeXPMatch(req) {
+  const id = req.body.xp_match_id || req.body.match_id || req.body.ranked_match_id;
+  const match = await getEntity("XPMatch", id);
+  if (!match) return { success: false, error: "XP match not found" };
+  if (match.status === "completed") return { success: true, already_completed: true, match };
+  if (match.status === "cancelled") return { success: false, error: "XP match is cancelled" };
+  if (!match.challenger_id) return { success: false, error: "Opponent has not joined yet" };
+
+  const alphaScore = Number(req.body.team_alpha_score);
+  const bravoScore = Number(req.body.team_bravo_score);
+  if (!Number.isInteger(alphaScore) || !Number.isInteger(bravoScore) || alphaScore < 0 || bravoScore < 0 || alphaScore === bravoScore) {
+    return { success: false, error: "Invalid XP match score" };
+  }
+
+  const bestOf = [1, 3, 5].includes(Number(match.best_of)) ? Number(match.best_of) : 1;
+  const winsNeeded = Math.floor(bestOf / 2) + 1;
+  const valid = alphaScore <= winsNeeded && bravoScore <= winsNeeded
+    && ((alphaScore === winsNeeded && bravoScore < winsNeeded) || (bravoScore === winsNeeded && alphaScore < winsNeeded));
+  if (!valid) return { success: false, error: `Invalid BO${bestOf} score` };
+
+  const isHost = req.user.id === match.host_id;
+  const isChallenger = req.user.id === match.challenger_id;
+  const staffOverride = hasRole(req.user, "moderator");
+  if (!isHost && !isChallenger && !staffOverride) {
+    return { success: false, error: "Only participants or staff can submit scores" };
+  }
+
+  const getOrCreateXPStats = async (userId) => {
+    const rows = await listEntities("XPStats", { user_id: userId }, "-created_date", 10).catch(() => []);
+    if (rows[0]) return rows[0];
+    const userRow = await userFor(userId);
+    return createEntity("XPStats", {
+      user_id: userId,
+      username: nameFor(userRow),
+      level: 1,
+      current_xp: 0,
+      total_xp: 0,
+      xp_to_next_level: 1000,
+      weekly_xp: 0,
+      wins: 0,
+      losses: 0,
+      matches_played: 0,
+      win_streak: 0,
+      region: userRow?.region || "na",
+      season: 1,
+      created_date: nowIso(),
+    });
+  };
+
+  const applyXP = async (userId, gain, won) => {
+    const stats = await getOrCreateXPStats(userId);
+    const oldTotal = Number(stats.total_xp || 0);
+    const total = Math.max(0, oldTotal + gain);
+    const next = {
+      username: stats.username,
+      total_xp: total,
+      current_xp: total % 1000,
+      level: Math.floor(total / 1000) + 1,
+      xp_to_next_level: 1000,
+      weekly_xp: Number(stats.weekly_xp || 0) + gain,
+      wins: Number(stats.wins || 0) + (won ? 1 : 0),
+      losses: Number(stats.losses || 0) + (won ? 0 : 1),
+      matches_played: Number(stats.matches_played || 0) + 1,
+      win_streak: won ? Number(stats.win_streak || 0) + 1 : 0,
+      last_played_date: nowIso(),
+    };
+    await updateEntity("XPStats", stats.id, next);
+    return { previous_xp: oldTotal, new_xp: total, delta: gain, won };
+  };
+
+  const finalize = async (winnerId) => {
+    const loserId = winnerId === match.host_id ? match.challenger_id : match.host_id;
+    const [winnerRow, loserRow] = await Promise.all([userFor(winnerId), userFor(loserId)]);
+    const [winnerChange, loserChange] = await Promise.all([
+      applyXP(winnerId, 100, true),
+      applyXP(loserId, 25, false),
+    ]);
+    const xpChanges = { [winnerId]: winnerChange, [loserId]: loserChange };
+    const updated = await updateEntity("XPMatch", id, {
+      status: "completed",
+      match_type: "xp",
+      winner_id: winnerId,
+      winner_name: nameFor(winnerRow),
+      winner_score: winnerId === match.host_id ? alphaScore : bravoScore,
+      loser_score: winnerId === match.host_id ? bravoScore : alphaScore,
+      confirmed_score_alpha: alphaScore,
+      confirmed_score_bravo: bravoScore,
+      reported_score_alpha: alphaScore,
+      reported_score_bravo: bravoScore,
+      reported_score_by: req.user.id,
+      proof_urls: req.body.proof_urls || [],
+      xp_changes: xpChanges,
+      match_completed_date: nowIso(),
+    });
+    return { success: true, winner_id: winnerId, winner_name: nameFor(winnerRow), xp_changes: xpChanges, match: updated };
+  };
+
+  const winnerId = alphaScore > bravoScore ? match.host_id : match.challenger_id;
+  if (req.body.winner_id && staffOverride) return finalize(req.body.winner_id);
+
+  if (!match.reported_score_by || match.reported_score_by === req.user.id) {
+    const updated = await updateEntity("XPMatch", id, {
+      status: isHost ? "awaiting_challenger_report" : "awaiting_host_report",
+      reported_score_alpha: alphaScore,
+      reported_score_bravo: bravoScore,
+      reported_score_by: req.user.id,
+      proof_urls: req.body.proof_urls || [],
+    });
+    return { success: true, status: updated.status, match: updated, message: "Waiting for opponent confirmation." };
+  }
+
+  if (Number(match.reported_score_alpha) !== alphaScore || Number(match.reported_score_bravo) !== bravoScore) {
+    const updated = await updateEntity("XPMatch", id, { status: "score_conflict" });
+    return { success: true, status: "score_conflict", match: updated };
+  }
+
+  return finalize(winnerId);
+}
+
 async function readyUpRankedMatch(req) {
   const id = req.body.ranked_match_id || req.body.match_id || req.body.id;
   const match = await getEntity("RankedMatch", id);
@@ -9949,6 +10069,7 @@ const handlers = {
   createXPMatch,
   acceptXPMatch,
   cancelXPMatch,
+  completeXPMatch,
   readyUpRankedMatch,
   startRankedMatch,
   createRankedVoiceSession,

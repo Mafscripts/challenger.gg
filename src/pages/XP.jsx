@@ -313,7 +313,7 @@ export default function XP() {
         />
         <ActivisionIdNotice user={user} className="mb-6" />
 
-        {activeRankedMatch && (
+        {activeRankedMatch && activeRankedMatch.status !== "open" && (
           <div className="mb-6 flex flex-col gap-4 rounded-xl border border-cyan/25 bg-cyan/[0.055] p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan/20 bg-cyan/10 text-cyan"><Swords className="h-5 w-5" /></div>

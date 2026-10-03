@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const id = body.ranked_match_id || body.match_id;
+    const id = body.xp_match_id || body.match_id || body.ranked_match_id;
     const alphaScore = n(body.team_alpha_score);
     const bravoScore = n(body.team_bravo_score);
     if (!id || alphaScore === bravoScore || alphaScore < 0 || bravoScore < 0) {
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     if (body.winner_id && moderator) return finalize(base44, match, user, body.winner_id, alphaScore, bravoScore, body.proof_urls || [], true);
 
     if (!match.reported_score_by || match.reported_score_by === user.id) {
-      await base44.asServiceRole.entities.RankedMatch.update(id, {
+      await base44.asServiceRole.entities.XPMatch.update(id, {
         status: isHost ? 'awaiting_challenger_report' : 'awaiting_host_report',
         reported_score_alpha: alphaScore,
         reported_score_bravo: bravoScore,
