@@ -162,17 +162,23 @@ export default function Wagers() {
     const paymentMode = acceptPaymentByWager[wager.id] || "own";
     const selectedTeam = compatibleTeamsFor(wager).find((team) => String(team.id) === String(selectedTeamId));
     if (isTeamWager && !selectedTeamId) {
+      const ownedTeams = ownedWagerTeamsFor();
+      if (ownedTeams.length === 0) {
+        toast({ title: "Create a wager team first", description: "Your team will be set to the right match size automatically." });
+        navigate(createTeamUrlFor(wager));
+        return;
+      }
       toast({
         title: "Team required",
-        description: `Select a wager team with ${required} active players.`,
+        description: `Choose a roster with ${required} active players, or finish inviting your team first.`,
         variant: "destructive"
       });
       return;
     }
-    if (isTeamWager && (!selectedTeam || selectedTeam.members.length !== required)) {
+    if (isTeamWager && (!selectedTeam || selectedTeam.members.length < required)) {
       toast({
         title: "Roster incomplete",
-        description: `That team needs exactly ${required} active players before it can join this wager.`,
+        description: `That team needs at least ${required} active players before it can join this wager.`,
         variant: "destructive"
       });
       return;
@@ -265,9 +271,16 @@ export default function Wagers() {
 
   const compatibleTeamsFor = (wager) => (
     userTeams.filter((team) => (
-      team.team_type === "wager"
+      ["wager", "general"].includes(team.team_type)
       && String(team.captain_id || "") === String(user?.id || "")
-      && team.members.length === rosterSize(wager.team_size)
+      && team.members.length >= rosterSize(wager.team_size)
+    ))
+  );
+
+  const ownedWagerTeamsFor = () => (
+    userTeams.filter((team) => (
+      ["wager", "general"].includes(team.team_type)
+      && String(team.captain_id || "") === String(user?.id || "")
     ))
   );
 
@@ -307,16 +320,20 @@ export default function Wagers() {
                       <div className="w-52 space-y-2">
                         {compatibleTeamsFor(wager).length === 0 && (
                           <div className="space-y-2 rounded-lg border border-orange/20 bg-orange/5 px-2.5 py-2.5">
-                            <p className="text-[10px] font-semibold leading-relaxed text-orange">You need a wager team with exactly {rosterSize(wager.team_size)} active player{rosterSize(wager.team_size) === 1 ? "" : "s"}.</p>
-                            <Link to={createTeamUrlFor(wager)} className="flex w-full items-center justify-center gap-1.5 rounded-md bg-orange px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Create team to accept</Link>
+                            <p className="text-[10px] font-semibold leading-relaxed text-orange">{ownedWagerTeamsFor().length > 0 ? `Your wager roster needs at least ${rosterSize(wager.team_size)} active player${rosterSize(wager.team_size) === 1 ? "" : "s"}.` : `You need a wager team with at least ${rosterSize(wager.team_size)} active player${rosterSize(wager.team_size) === 1 ? "" : "s"}.`}</p>
+                            {ownedWagerTeamsFor().length > 0 ? (
+                              <Link to={`/teams?team=${encodeURIComponent(ownedWagerTeamsFor()[0].id)}`} className="flex w-full items-center justify-center gap-1.5 rounded-md bg-orange px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Finish roster</Link>
+                            ) : (
+                              <Link to={createTeamUrlFor(wager)} className="flex w-full items-center justify-center gap-1.5 rounded-md bg-orange px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Create team to accept</Link>
+                            )}
                           </div>
                         )}
                         <select value={acceptTeamByWager[wager.id] || ""} onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [wager.id]: event.target.value }))} disabled={acceptingWagerId === wager.id} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
                           <option value="">Select wager team</option>
-                          {compatibleTeamsFor(wager).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(wager.team_size)})</option>)}
+                          {compatibleTeamsFor(wager).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length} available · {rosterSize(wager.team_size)} needed)</option>)}
                         </select>
                         {rosterSize(wager.team_size) > 1 && <select value={acceptPaymentByWager[wager.id] || "own"} onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [wager.id]: event.target.value }))} disabled={acceptingWagerId === wager.id} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"><option value="own">Pay my own entry</option><option value="full_team">Pay full team entry</option></select>}
-                        <button onClick={() => handleAccept(wager)} disabled={!acceptTeamByWager[wager.id] || acceptingWagerId === wager.id} className="w-full rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-50">{acceptingWagerId === wager.id ? "Joining..." : "Accept This Match"}</button>
+                        <button onClick={() => handleAccept(wager)} disabled={acceptingWagerId === wager.id} className="w-full rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-50">{acceptingWagerId === wager.id ? "Joining..." : "Accept This Match"}</button>
                       </div>
                     ) : null}
                   />
