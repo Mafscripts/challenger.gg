@@ -5,7 +5,7 @@ import {
   Menu, X, House, Swords, Trophy, ShoppingBag,
   Users, Zap,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket, Ghost
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket, Ghost, Crown
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
@@ -1458,6 +1458,13 @@ export default function Navbar() {
                         items={[
                           { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
                           ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
+                        ]}
+                        onSelect={() => setProfileOpen(false)}
+                      />
+                      <ProfileMenuSection
+                        label="Premium"
+                        items={[
+                          { label: "Topfragg Premium", path: "/premium", icon: Crown },
                         ]}
                         onSelect={() => setProfileOpen(false)}
                       />

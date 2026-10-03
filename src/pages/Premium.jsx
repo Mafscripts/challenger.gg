@@ -1,109 +1,114 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Check, Shield, ShoppingBag, Trophy, Users, Sparkles, LockKeyhole } from "lucide-react";
-import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
+import { Check, Shield, ShoppingBag, Trophy, Users, Sparkles, Crown, ArrowRight, Zap, BadgeCheck } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 
 const benefits = [
-  { icon: Trophy, title: "Premium Tournaments", desc: "Access exclusive Premium-only tournaments with separate prize pools." },
-  { icon: ShoppingBag, title: "Marketplace Benefits", desc: "50% reduced marketplace fees on all purchases and sales." },
-  { icon: Sparkles, title: "Monthly Cosmetics", desc: "Receive an exclusive cosmetic drop every month — including Legendary+ items." },
-  { icon: Shield, title: "Enhanced Profile", desc: "Premium badge, custom profile frames, animated avatars, and priority showcase." },
-  { icon: Users, title: "Priority Queue", desc: "Jump to the front of matchmaking queues for faster games." },
+  { icon: Trophy, title: "Premium Tournaments", desc: "Access Premium-only tournaments and exclusive prize pools." },
+  { icon: ShoppingBag, title: "Marketplace Benefits", desc: "Reduced marketplace fees and better value on purchases and sales." },
+  { icon: Sparkles, title: "Monthly Drops", desc: "Receive exclusive cosmetic drops, profile items and seasonal rewards." },
+  { icon: Shield, title: "Premium Profile", desc: "Premium badge, enhanced profile presentation and exclusive frames." },
+  { icon: Users, title: "Priority Access", desc: "Priority access to selected queues, events and limited tournament slots." },
+  { icon: Zap, title: "Competitive Perks", desc: "Extra access to Topfragg competitive features reserved for Premium users." },
 ];
 
-const cosmetics = [
-  { name: "June: Solar Circuit Camo", rarity: "Legendary" },
-  { name: "July: Neon Rival Calling Card", rarity: "Epic" },
-  { name: "August: Apex Champion Emblem", rarity: "Mythic" },
+const comparison = [
+  ["Ranked, XP Matches & Wagers", true, true],
+  ["Standard Tournaments", true, true],
+  ["Premium-only Tournaments", false, true],
+  ["Reduced Marketplace Fees", false, true],
+  ["Monthly Cosmetic Drops", false, true],
+  ["Premium Badge & Frames", false, true],
+  ["Priority Event Access", false, true],
 ];
 
 export default function Premium() {
   return (
     <div className="min-h-screen py-8">
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
+      <div className="mx-auto max-w-[1500px] px-4 lg:px-6">
         <PageHeader
-          eyebrow="Premium membership"
-          title="Elevate Your Game"
-          description="Unlock the complete Topfragg experience with exclusive benefits, cosmetics and competitive advantages."
-          className="dark-focus dark-media mb-8"
-          action={<div className="text-left sm:text-right"><div><span className="font-mono text-4xl font-black text-white">$9.99</span><span className="ml-1 text-sm text-vapor">/mo</span></div><p className="mt-1 text-[9px] font-black uppercase tracking-wider text-blue-300">Premium access</p></div>}
+          eyebrow="Topfragg membership"
+          title="Premium"
+          description="One membership for extra tournament access, profile perks, marketplace benefits and exclusive Topfragg rewards."
+          className="dark-focus dark-media mb-6"
+          action={
+            <div className="rounded-xl border border-orange/20 bg-orange/[0.06] px-4 py-3 text-right">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Membership</p>
+              <p className="mt-1 font-mono text-2xl font-black text-white">$9.99 <span className="text-xs text-vapor">/ month</span></p>
+            </div>
+          }
         />
-        <div className="mb-12 rounded-2xl border border-white/[0.07] bg-card/60 p-5 text-center">
-          <CommercePausedNotice className="mx-auto mb-5 max-w-xl text-left" />
-          <button type="button" disabled className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-8 py-4 text-sm font-bold uppercase tracking-wider text-vapor"><LockKeyhole className="h-5 w-5" /> Subscriptions Paused</button>
-        </div>
 
-        {/* Benefits Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
-          {benefits.map((b, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }}
-              className="glass rounded-xl p-8 border border-orange/10 hover:border-orange/20 transition-all group"
-            >
-              <div className="inline-flex p-3 rounded-xl bg-orange/10 text-orange mb-5 group-hover:scale-110 transition-transform">
-                <b.icon className="w-6 h-6" />
+        <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,136,0,.10),rgba(20,216,255,.03),rgba(255,255,255,.02))]">
+          <div className="grid gap-8 p-6 lg:grid-cols-[1.2fr_.8fr] lg:p-10">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-orange/20 bg-orange/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange">
+                <Crown className="h-3.5 w-3.5" /> Topfragg Premium
               </div>
-              <h3 className="font-bold text-lg mb-3">{b.title}</h3>
-              <p className="text-vapor text-sm leading-relaxed">{b.desc}</p>
-            </motion.div>
-          ))}
-        </div>
+              <h2 className="mt-5 max-w-2xl text-3xl font-black leading-tight text-white lg:text-5xl">More access. Better rewards. One clean upgrade.</h2>
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-vapor">Premium is a standalone Topfragg membership. It does not replace your normal account — it adds exclusive tournament access, cosmetic drops, profile upgrades and marketplace benefits.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button type="button" className="inline-flex items-center gap-2 rounded-xl bg-orange px-5 py-3 text-xs font-black uppercase tracking-wider text-background transition hover:brightness-110">
+                  Get Premium <ArrowRight className="h-4 w-4" />
+                </button>
+                <a href="#compare" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-white/[0.06]">
+                  Compare plans
+                </a>
+              </div>
+            </div>
 
-        {/* Upcoming Cosmetics */}
-        <div className="glass rounded-2xl border border-orange/10 p-10 mb-20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-orange/5 rounded-full blur-[100px]" />
-          <div className="relative">
-            <h2 className="text-3xl font-black mb-8 text-center">Upcoming Monthly Drops</h2>
-            <div className="grid sm:grid-cols-3 gap-5">
-              {cosmetics.map((c, i) => (
-                <div key={i} className="glass rounded-xl p-6 border border-white/5 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-orange/20 to-yellow-400/20 flex items-center justify-center">
-                    <Sparkles className="w-8 h-8 text-orange" />
-                  </div>
-                  <p className="font-semibold text-sm mb-1">{c.name}</p>
-                  <span className="text-xs text-orange font-mono">{c.rarity}</span>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              {[
+                ["Premium tournaments", "Exclusive access"],
+                ["Monthly rewards", "Cosmetics & profile items"],
+                ["Marketplace", "Reduced fees"],
+                ["Profile", "Premium badge & frames"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl border border-white/[0.07] bg-background/35 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</p>
+                  <p className="mt-1 text-sm font-black text-white">{value}</p>
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Comparison */}
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-black mb-8 text-center">Free vs Premium</h2>
-          <div className="glass rounded-xl border border-white/5 overflow-hidden">
-            <div className="grid grid-cols-3 px-5 py-3 border-b border-white/5 text-xs text-vapor uppercase tracking-wider font-semibold">
-              <span>Feature</span>
-              <span className="text-center">Free</span>
-              <span className="text-center text-orange">Premium</span>
+        <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {benefits.map((benefit, index) => (
+            <motion.div
+              key={benefit.title}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.04 }}
+              className="rounded-2xl border border-white/[0.07] bg-card/70 p-5 transition hover:border-orange/20 hover:bg-card"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-orange/20 bg-orange/10 text-orange"><benefit.icon className="h-5 w-5" /></div>
+              <h3 className="mt-4 text-sm font-black text-white">{benefit.title}</h3>
+              <p className="mt-2 text-xs leading-5 text-vapor">{benefit.desc}</p>
+            </motion.div>
+          ))}
+        </section>
+
+        <section id="compare" className="mt-8 overflow-hidden rounded-2xl border border-white/[0.08] bg-card/65">
+          <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Plan comparison</p>
+              <h2 className="mt-1 text-lg font-black text-white">Free vs Premium</h2>
             </div>
-            {[
-              { feature: "Play Ranked, Wagers, Tournaments", free: true, premium: true },
-              { feature: "Premium Tournaments", free: false, premium: true },
-              { feature: "Reduced Marketplace Fees", free: false, premium: true },
-              { feature: "Monthly Cosmetic Drops", free: false, premium: true },
-              { feature: "Premium Badge & Frames", free: false, premium: true },
-              { feature: "Priority Matchmaking", free: false, premium: true },
-              { feature: "Animated Profile Avatars", free: false, premium: true },
-            ].map((row, i) => (
-              <div key={i} className="grid grid-cols-3 px-5 py-3 border-b border-white/5 last:border-0 items-center">
-                <span className="text-sm">{row.feature}</span>
-                <div className="text-center">
-                  {row.free ? <Check className="w-4 h-4 text-green mx-auto" /> : <span className="text-vapor text-sm">—</span>}
-                </div>
-                <div className="text-center">
-                  <Check className="w-4 h-4 text-orange mx-auto" />
-                </div>
-              </div>
-            ))}
+            <BadgeCheck className="h-6 w-6 text-orange" />
           </div>
-        </div>
+          <div className="grid grid-cols-[1.5fr_.5fr_.5fr] border-b border-white/[0.06] px-5 py-3 text-[10px] font-black uppercase tracking-wider text-vapor">
+            <span>Feature</span><span className="text-center">Free</span><span className="text-center text-orange">Premium</span>
+          </div>
+          {comparison.map(([feature, free, premium]) => (
+            <div key={feature} className="grid grid-cols-[1.5fr_.5fr_.5fr] items-center border-b border-white/[0.05] px-5 py-3 last:border-0">
+              <span className="text-sm text-white">{feature}</span>
+              <span className="text-center">{free ? <Check className="mx-auto h-4 w-4 text-green" /> : <span className="text-vapor">—</span>}</span>
+              <span className="text-center">{premium ? <Check className="mx-auto h-4 w-4 text-orange" /> : <span className="text-vapor">—</span>}</span>
+            </div>
+          ))}
+        </section>
       </div>
     </div>
   );
