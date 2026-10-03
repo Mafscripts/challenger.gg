@@ -524,7 +524,6 @@ export default function Admin() {
   const [currentUser, setCurrentUser] = useState(null);
   const [data, setData] = useState(initialData);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedUserId, setExpandedUserId] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [marketplaceForm, setMarketplaceForm] = useState(defaultMarketplaceForm);
   const [editingMarketplaceId, setEditingMarketplaceId] = useState(null);
@@ -2303,90 +2302,82 @@ export default function Admin() {
                         )}
                         <td className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
                         <td className="py-3 px-4">
-                          <div className="flex flex-wrap justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2">
                             <Link to={`/profile/${user.username || user.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20">Profile</Link>
-                            <button type="button" onClick={() => setExpandedUserId((current) => current === user.id ? null : user.id)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${expandedUserId === user.id ? "border-white/20 bg-white/10 text-foreground" : "border-white/10 bg-secondary text-vapor hover:text-foreground"}`}>{expandedUserId === user.id ? "Close" : "Manage"}</button>
-                            {expandedUserId === user.id && (
-                              <div className="mt-2 flex w-full flex-wrap justify-end gap-2 rounded-lg border border-white/5 bg-background/35 p-3 [&_button]:rounded-md [&_button]:border [&_button]:border-white/10 [&_button]:bg-secondary/70 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:no-underline [&_button:hover]:bg-white/10">
-                            {canViewUserIps(currentRole) && (
-                              <div className="w-full rounded-lg border border-cyan/10 bg-cyan/[0.03] p-3 text-left">
-                                <div className="mb-2 flex items-center justify-between gap-3">
-                                  <div>
-                                    <p className="text-[10px] font-black uppercase tracking-wider text-cyan">IP History</p>
-                                    <p className="text-[10px] text-vapor">Only real public/client IPs are shown.</p>
-                                  </div>
-                                  <span className="text-[10px] font-bold text-vapor">{knownIpAddresses(user).length} unique IP{knownIpAddresses(user).length === 1 ? "" : "s"}</span>
+                            <details className="relative">
+                              <summary className="list-none cursor-pointer rounded-lg border border-white/10 bg-secondary px-3 py-1.5 text-xs font-bold text-vapor hover:bg-white/10 hover:text-foreground">
+                                Manage
+                              </summary>
+                              <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#171d27] p-2 shadow-2xl shadow-black/40">
+                                <div className="border-b border-white/5 px-3 py-2">
+                                  <p className="text-xs font-bold text-foreground">{userName(user)}</p>
+                                  <p className="text-[10px] text-vapor">{user.role || "user"} · account actions</p>
                                 </div>
-                                {ipHistoryEntries(user).length > 0 ? (
-                                  <div className="max-h-36 space-y-1 overflow-y-auto">
-                                    {ipHistoryEntries(user).slice(0, 12).map((entry, index) => (
-                                      <div key={`${entry.ip}-${entry.date || index}`} className="flex items-center justify-between gap-3 font-mono text-[10px]">
-                                        <span className="text-foreground">{entry.ip}</span>
-                                        <span className="text-vapor">{entry.date ? formatDate(entry.date) : "Recorded"}</span>
+                                <div className="space-y-1 p-1">
+                                  {canAdjustUserWallet(currentRole, user.role || "user") && (
+                                    <div className="rounded-lg border border-white/5 bg-white/[0.02] p-1">
+                                      <p className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-vapor">Wallet & Premium</p>
+                                      <div className="grid grid-cols-2 gap-1">
+                                        <button onClick={() => openWalletAdjustment(user, "credits")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-green hover:bg-white/5">Add Credits</button>
+                                        <button onClick={() => openWalletAdjustment(user, "money")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-cyan hover:bg-white/5">Add Money</button>
+                                        {canManageWallets(currentRole) && canGrantUserPremium(currentRole, user.role || "user") && (
+                                          <button type="button" onClick={() => handleGrantPremium(user)} disabled={busyId === `${user.id}:premium`} className="col-span-2 rounded-md px-2 py-2 text-left text-[11px] font-bold text-orange hover:bg-white/5 disabled:opacity-50">
+                                            {hasActivePremium(user) ? "Extend Premium +30d" : "Give Premium 30d"}
+                                          </button>
+                                        )}
                                       </div>
-                                    ))}
+                                    </div>
+                                  )}
+                                  {canManageWallets(currentRole) && (
+                                    <div className="rounded-lg border border-white/5 bg-white/[0.02] p-1">
+                                      <p className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-vapor">Account & Security</p>
+                                      <button type="button" onClick={() => handleSetTemporaryPassword(user)} disabled={busyId === `${user.id}:password`} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] font-bold text-pink-400 hover:bg-white/5 disabled:opacity-50">
+                                        <KeyRound className="h-3 w-3" /> Set Password
+                                      </button>
+                                    </div>
+                                  )}
+                                  <div className="rounded-lg border border-white/5 bg-white/[0.02] p-1">
+                                    <p className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-vapor">Moderation</p>
+                                    <div className="grid grid-cols-2 gap-1">
+                                      <button onClick={() => handleModerateUser(user, "warning")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-yellow-400 hover:bg-white/5">Warn</button>
+                                      <button onClick={() => handleModerateUser(user, "suspension", "24h")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-orange hover:bg-white/5">Suspend 24h</button>
+                                      <button onClick={() => handleModerateUser(user, "temporary_ban", "24h")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-orange hover:bg-white/5">24h Ban</button>
+                                      <button onClick={() => handleModerateUser(user, "temporary_ban", "3d")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-red-400 hover:bg-white/5">3d Ban</button>
+                                      <button onClick={() => handleModerateUser(user, "temporary_ban", "7d")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-red-400 hover:bg-white/5">7d Ban</button>
+                                      <button onClick={() => handleModerateUser(user, "temporary_ban", "14d")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-red-400 hover:bg-white/5">14d Ban</button>
+                                      <button onClick={() => handleModerateUser(user, "temporary_ban", "30d")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-red-400 hover:bg-white/5">30d Ban</button>
+                                      <button onClick={() => handleModerateUser(user, "ban", "permanent")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-red-400 hover:bg-white/5">Permanent Ban</button>
+                                      <button onClick={() => handleModerateUser(user, "email_ban")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-red-400 hover:bg-white/5">Email Ban</button>
+                                      {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-green hover:bg-white/5">Unban</button>}
+                                    </div>
                                   </div>
-                                ) : (
-                                  <p className="text-xs text-vapor">No public IP captured yet. A valid client IP will be recorded on the next registration/login through the production proxy.</p>
-                                )}
+                                  {canViewUserIps(currentRole) && (
+                                    <div className="rounded-lg border border-cyan/10 bg-cyan/[0.03] p-1">
+                                      <p className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-cyan">IP & Security</p>
+                                      <div className="flex items-center justify-between gap-2 rounded-md px-2 py-2">
+                                        <span className="text-[11px] text-vapor">{knownIpAddresses(user).length} known public IP{knownIpAddresses(user).length === 1 ? "" : "s"}</span>
+                                        {knownIpAddresses(user).length > 0 ? (
+                                          <button onClick={() => handleModerateUser(user, "ip_ban")} disabled={busyId === `${user.id}:ip_ban`} className="rounded-md bg-red-500/10 px-2 py-1.5 text-[10px] font-black text-red-400 hover:bg-red-500/20 disabled:opacity-40">
+                                            {busyId === `${user.id}:ip_ban` ? "Banning…" : "Ban IPs"}
+                                          </button>
+                                        ) : (
+                                          <span className="text-[10px] text-vapor/60">Not captured</span>
+                                        )}
+                                      </div>
+                                      <div className="rounded-md px-2 pb-2">
+                                        {knownIpAddresses(user).length > 0 ? (
+                                          <div className="space-y-1 font-mono text-[10px]">
+                                            {knownIpAddresses(user).slice(0, 6).map((ip) => <div key={ip} className="flex items-center justify-between gap-2"><span>{ip}</span>{sharedIpCount(user) > 0 && <span className="font-sans text-[9px] font-bold text-red-400">shared</span>}</div>)}
+                                          </div>
+                                        ) : (
+                                          <p className="text-[10px] leading-relaxed text-vapor">A valid client IP will appear here after the next login through the production proxy.</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            )}
-                            {canAdjustUserWallet(currentRole, user.role || "user") && (
-                              <>
-                                <button onClick={() => openWalletAdjustment(user, "credits")} className="text-xs text-green hover:underline">Add Credits</button>
-                                <button onClick={() => openWalletAdjustment(user, "money")} className="text-xs text-cyan hover:underline">Add Money</button>
-                              </>
-                            )}
-                            {canManageWallets(currentRole) && (
-                              <>
-                                {canGrantUserPremium(currentRole, user.role || "user") && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleGrantPremium(user)}
-                                    disabled={busyId === `${user.id}:premium`}
-                                    className="inline-flex items-center gap-1 text-xs font-bold text-orange hover:underline disabled:opacity-50"
-                                  >
-                                    {busyId === `${user.id}:premium`
-                                      ? <Loader2 className="h-3 w-3 animate-spin" />
-                                      : <Crown className="h-3 w-3" />}
-                                    {hasActivePremium(user) ? "Extend Premium +30d" : "Give Premium 30d"}
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => handleSetTemporaryPassword(user)}
-                                  disabled={busyId === `${user.id}:password`}
-                                  className="inline-flex items-center gap-1 text-xs text-pink-400 hover:underline disabled:opacity-50"
-                                >
-                                  {busyId === `${user.id}:password`
-                                    ? <Loader2 className="h-3 w-3 animate-spin" />
-                                    : <KeyRound className="h-3 w-3" />}
-                                  Set Password
-                                </button>
-                              </>
-                            )}
-                            <button onClick={() => handleModerateUser(user, "warning")} className="text-xs text-yellow-400 hover:underline">Warn</button>
-                            <button onClick={() => handleModerateUser(user, "suspension", "24h")} className="text-xs text-orange hover:underline">Suspend 24h</button>
-                            <button onClick={() => handleModerateUser(user, "temporary_ban", "24h")} className="text-xs text-orange hover:underline">24h Ban</button>
-                            <button onClick={() => handleModerateUser(user, "temporary_ban", "3d")} className="text-xs text-red-400 hover:underline">3d Ban</button>
-                            <button onClick={() => handleModerateUser(user, "temporary_ban", "7d")} className="text-xs text-red-400 hover:underline">7d Ban</button>
-                            <button onClick={() => handleModerateUser(user, "temporary_ban", "14d")} className="text-xs text-red-400 hover:underline">14d Ban</button>
-                            <button onClick={() => handleModerateUser(user, "temporary_ban", "30d")} className="text-xs text-red-400 hover:underline">30d Ban</button>
-                            <button onClick={() => handleModerateUser(user, "ban", "permanent")} className="text-xs text-red-400 hover:underline">Permanent Ban</button>
-                            <button onClick={() => handleModerateUser(user, "email_ban")} className="text-xs text-red-400 hover:underline">Email Ban</button>
-                            {canViewUserIps(currentRole) && (
-                              <button
-                                onClick={() => handleModerateUser(user, "ip_ban")}
-                                disabled={knownIpAddresses(user).length === 0 || busyId === `${user.id}:ip_ban`}
-                                className="text-xs font-bold text-red-500 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
-                                title={knownIpAddresses(user).length === 0 ? "No valid public IP has been captured for this account yet." : "Ban all known public IP addresses for this account"}
-                              >
-                                {busyId === `${user.id}:ip_ban` ? "IP Ban…" : "IP Ban"}
-                              </button>
-                            )}
-                            {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="text-xs text-green hover:underline">Unban</button>}
-                              </div>
-                            )}
+                            </details>
                           </div>
                         </td>
                       </tr>
