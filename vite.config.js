@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
   ],
   resolve: {
+    // Keep the junction path (Documents\\peak-rival-arena) instead of resolving
+    // it to C:\\Dev\\peak-rival-arena during production builds. Vite/Rollup can
+    // otherwise emit an absolute source path as an asset name.
+    preserveSymlinks: true,
     alias: {
       '@': path.resolve(process.cwd(), 'src'),
     },
