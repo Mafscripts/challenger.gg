@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Plus, Clock3, Users
 } from "lucide-react";
@@ -22,6 +22,9 @@ const isWagerMatch = (wager) => (
 
 export default function Wagers() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedWagerId = searchParams.get("accept");
+  const requestedTeamId = searchParams.get("team");
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [wagers, setWagers] = useState([]);
@@ -107,7 +110,11 @@ export default function Wagers() {
               ? { ...team, membership, members: (members || []).filter((member) => member.is_active !== false) }
               : null;
           }));
-        setUserTeams(teams.filter(Boolean));
+        const activeTeams = teams.filter(Boolean);
+        setUserTeams(activeTeams);
+        if (requestedWagerId && requestedTeamId && activeTeams.some((team) => String(team.id) === String(requestedTeamId))) {
+          setAcceptTeamByWager((current) => ({ ...current, [requestedWagerId]: requestedTeamId }));
+        }
         const combinedHistory = [...hosted, ...challenged]
           .filter((w, index, list) => list.findIndex(item => item.id === w.id) === index)
           .filter(isWagerMatch)
@@ -264,6 +271,11 @@ export default function Wagers() {
     ))
   );
 
+  const createTeamUrlFor = (wager) => {
+    const returnTo = `/wagers?accept=${encodeURIComponent(wager.id)}`;
+    return `/teams?create=wager&roster=${rosterSize(wager.team_size)}&returnTo=${encodeURIComponent(returnTo)}`;
+  };
+
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
@@ -293,7 +305,12 @@ export default function Wagers() {
                       </div>
                     ) : user ? (
                       <div className="w-52 space-y-2">
-                        {compatibleTeamsFor(wager).length === 0 && <p className="rounded-lg border border-orange/20 bg-orange/5 px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-orange">Create a wager team with exactly {rosterSize(wager.team_size)} active player{rosterSize(wager.team_size) === 1 ? "" : "s"} to accept.</p>}
+                        {compatibleTeamsFor(wager).length === 0 && (
+                          <div className="space-y-2 rounded-lg border border-orange/20 bg-orange/5 px-2.5 py-2.5">
+                            <p className="text-[10px] font-semibold leading-relaxed text-orange">You need a wager team with exactly {rosterSize(wager.team_size)} active player{rosterSize(wager.team_size) === 1 ? "" : "s"}.</p>
+                            <Link to={createTeamUrlFor(wager)} className="flex w-full items-center justify-center gap-1.5 rounded-md bg-orange px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Create team to accept</Link>
+                          </div>
+                        )}
                         <select value={acceptTeamByWager[wager.id] || ""} onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [wager.id]: event.target.value }))} disabled={acceptingWagerId === wager.id} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
                           <option value="">Select wager team</option>
                           {compatibleTeamsFor(wager).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(wager.team_size)})</option>)}

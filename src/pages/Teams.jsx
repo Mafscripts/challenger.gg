@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Award,
@@ -127,9 +127,12 @@ const teamFilters = [
 ];
 
 export default function Teams() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const linkedTeamId = searchParams.get("team");
   const requestedCreateType = searchParams.get("create");
+  const requestedReturnTo = searchParams.get("returnTo");
+  const requestedRosterSize = normalizeTeamRosterSize(searchParams.get("roster"), requestedCreateType === "ranked" ? 2 : 4);
   const [view, setView] = useState("my_teams");
   const [detailTab, setDetailTab] = useState("overview");
   const [currentUser, setCurrentUser] = useState(null);
@@ -558,6 +561,15 @@ export default function Teams() {
   };
 
   const handleTeamCreated = (team) => {
+    const canReturnToWager = requestedCreateType === "wager"
+      && (requestedReturnTo === "/wagers" || String(requestedReturnTo || "").startsWith("/wagers?"));
+
+    if (canReturnToWager) {
+      const separator = requestedReturnTo.includes("?") ? "&" : "?";
+      navigate(`${requestedReturnTo}${separator}team=${encodeURIComponent(team.id)}`, { replace: true });
+      return;
+    }
+
     showTeamImmediately(team, {
       team_id: team.id,
       user_id: currentUser?.id,
@@ -719,7 +731,7 @@ export default function Teams() {
         ) : null}
       </div>
 
-      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedCreateType === "ranked" ? 2 : 4} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={handleTeamCreated} />
+      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedRosterSize} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={handleTeamCreated} />
       <InvitePlayerModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} team={selectedTeam} value={inviteIdentifier} onChange={setInviteIdentifier} onSubmit={handleInvite} busy={Boolean(busyAction)} />
     </div>
   );
