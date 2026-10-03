@@ -268,6 +268,9 @@ export default function Wagers() {
     if (amountFilter === "$100+" && entryFee < 100) return false;
     return true;
   });
+  const displayedWagers = requestedWagerId
+    ? filteredWagers.filter((wager) => String(wager.id) === String(requestedWagerId))
+    : filteredWagers;
 
   const compatibleTeamsFor = (wager) => (
     userTeams.filter((team) => (
@@ -302,7 +305,7 @@ export default function Wagers() {
                 {["All", "$5-$10", "$25-$50", "$100+"].map((amount) => <button key={amount} onClick={() => setAmountFilter(amount)} className={`whitespace-nowrap rounded-md border px-4 py-2 text-[10px] font-black transition-all ${amountFilter === amount ? "border-green/30 bg-green/10 text-green" : "border-transparent text-vapor hover:bg-white/5 hover:text-foreground"}`}>{amount}</button>)}
               </div>
               <CompetitionMatchfinder loading={loading} emptyMessage="No wagers are open right now.">
-                {filteredWagers.map((wager) => (
+                {displayedWagers.map((wager) => (
                   <CompetitionMatchfinderRow
                     key={wager.id}
                     game={wager.game_mode_display || wager.game_mode}

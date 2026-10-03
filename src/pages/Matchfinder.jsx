@@ -95,7 +95,7 @@ export default function Matchfinder() {
 
   const acceptMatch = async (category, match) => {
     if (category === "wagers") {
-      navigate(`/wagers?match=${match.id}`);
+      navigate(`/wagers?accept=${encodeURIComponent(match.id)}`);
       return;
     }
     if (category === "tournaments") {
