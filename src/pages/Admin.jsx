@@ -515,7 +515,7 @@ function TournamentRewardPicker({ title, description, selectedIds = [], items = 
 }
 
 export default function Admin() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, isLoadingAuth, authChecked } = useAuth();
   const [activeTab, setActiveTab] = useState(initialAdminTab);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
@@ -544,8 +544,8 @@ export default function Admin() {
   const currentRole = effectiveRoleFor(currentUser);
 
   useEffect(() => {
-    loadAdminData();
-  }, [authUser]);
+    if (!isLoadingAuth && authChecked) loadAdminData();
+  }, [authUser, isLoadingAuth, authChecked]);
 
   useEffect(() => {
     window.sessionStorage.setItem("adminActiveTab", activeTab);
@@ -578,8 +578,15 @@ export default function Admin() {
   const loadAdminData = async () => {
     try {
       setLoading(true);
-      const me = authUser || await base44.auth.me().catch(() => null);
-      setCurrentUser(me);
+      const freshUser = await base44.auth.me().catch(() => null);
+      const me = {
+        ...(freshUser || {}),
+        ...(authUser || {}),
+        role: authUser?.role ?? freshUser?.role,
+        admin_role: authUser?.admin_role ?? freshUser?.admin_role,
+        is_admin: authUser?.is_admin ?? freshUser?.is_admin,
+      };
+      setCurrentUser(me?.id ? me : null);
 
       if (!canAccessAdminPanel(effectiveRoleFor(me))) {
         setData(initialData);
