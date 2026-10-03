@@ -81,7 +81,7 @@ function GroupLabel({ icon: Icon, title, description }) {
 export default function Settings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [openGroup, setOpenGroup] = useState("account");
+  const [openGroup, setOpenGroup] = useState(null);
 
   const loadUser = async () => {
     const me = await base44.auth.me();
@@ -170,29 +170,35 @@ export default function Settings() {
         </div>
 
         <div className="space-y-10">
-          <section id="settings-account" className="scroll-mt-28">
-            <GroupLabel icon={UserRound} title="Account & security" description="Your identity, login credentials and account security." />
-            <AccountSection user={user} onUserUpdate={loadUser} />
-          </section>
+          {openGroup === "account" && (
+            <section id="settings-account" className="scroll-mt-28">
+              <GroupLabel icon={UserRound} title="Account & security" description="Your identity, login credentials and account security." />
+              <AccountSection user={user} onUserUpdate={loadUser} />
+            </section>
+          )}
 
-          <section className="scroll-mt-28">
-            <GroupLabel icon={WalletCards} title="Wallet & rewards" description="Credits, team payment permissions and your referral program." />
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div id="settings-credits" className="scroll-mt-28"><CreditsSection user={user} onUserUpdate={loadUser} /></div>
-              <div id="settings-referrals" className="scroll-mt-28"><ReferralSection /></div>
-              <div id="settings-payments" className="scroll-mt-28 lg:col-span-2"><PaymentPermissionsSection user={user} onUserUpdate={loadUser} /></div>
-            </div>
-          </section>
+          {openGroup === "wallet" && (
+            <section className="scroll-mt-28">
+              <GroupLabel icon={WalletCards} title="Wallet & rewards" description="Credits, team payment permissions and your referral program." />
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div id="settings-credits" className="scroll-mt-28"><CreditsSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-referrals" className="scroll-mt-28"><ReferralSection /></div>
+                <div id="settings-payments" className="scroll-mt-28 lg:col-span-2"><PaymentPermissionsSection user={user} onUserUpdate={loadUser} /></div>
+              </div>
+            </section>
+          )}
 
-          <section className="scroll-mt-28">
-            <GroupLabel icon={Link2} title="Connected identities" description="Connect your gaming accounts and social profiles to Topfragg." />
-            <div className="space-y-6">
-              <div id="settings-socials" className="scroll-mt-28"><SocialsSection user={user} onUserUpdate={loadUser} /></div>
-              <div id="settings-gaming" className="scroll-mt-28"><GamingIdsSection user={user} onUserUpdate={loadUser} /></div>
-              <div id="settings-twitch" className="scroll-mt-28"><TwitchSection user={user} onUserUpdate={loadUser} /></div>
-              <div id="settings-discord" className="scroll-mt-28"><DiscordSection user={user} onUserUpdate={loadUser} /></div>
-            </div>
-          </section>
+          {openGroup === "connections" && (
+            <section className="scroll-mt-28">
+              <GroupLabel icon={Link2} title="Connected identities" description="Connect your gaming accounts and social profiles to Topfragg." />
+              <div className="space-y-6">
+                <div id="settings-socials" className="scroll-mt-28"><SocialsSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-gaming" className="scroll-mt-28"><GamingIdsSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-twitch" className="scroll-mt-28"><TwitchSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-discord" className="scroll-mt-28"><DiscordSection user={user} onUserUpdate={loadUser} /></div>
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>
