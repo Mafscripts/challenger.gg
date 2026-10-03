@@ -3314,119 +3314,178 @@ export default function Admin() {
                   )}
                 </form>
               )}
-              <ListSection title="Tournaments" rows={data.tournaments} empty="No tournaments." render={(tournament) => {
-                const hasMatches = data.tournamentMatches.some((match) => match.tournament_id === tournament.id);
-                const registeredParticipants = data.tournamentParticipants
-                  .filter((participant) => String(participant.tournament_id) === String(tournament.id))
-                  .sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0));
-                const rosterIsOpen = expandedTournamentRosterId === tournament.id;
-                return (
-                  <RowGrid columns={[
-                    ["Name", tournament.name],
-                    ["Status", <StatusPill status={tournament.status} />],
-                    ["Teams", `${tournament.registered_teams || 0}/${tournament.max_teams}`],
-                    ["Modes", tournamentModeSetLabel(tournament)],
-                    ["Format", (tournament.bracket_type || tournament.format) === "double_elimination" ? "Double Elimination · Lower Bracket" : "Single Elimination"],
-                    ["Prize", tournamentPrizeSummary(tournament)],
-                    ["Featured", tournament.is_featured ? <span className="rounded-md border border-blue-400/25 bg-blue-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-blue-300">Featured</span> : "No"],
-                    ["Image", tournament.image_url ? (
-                      <img src={tournament.image_url} alt="" className="h-10 w-16 rounded object-cover bg-background" />
-                    ) : "None"],
-                    ["Entry", `${(tournament.entry_type || (tournament.is_premium_only ? "premium" : "free")).replace(/_/g, " ")}${Number(tournament.entry_fee || 0) > 0 ? ` - ${tournament.entry_fee} credits` : ""}`],
-                    ["Rewards", (
-                      <div className="space-y-1">
-                        <p><span className="text-yellow-400">#1 Gold</span><span className="text-vapor"> · automatic</span></p>
-                        <p><span className="text-slate-300">#2 Silver</span><span className="text-vapor"> · automatic</span></p>
-                        <p><span className="text-amber-600">#3 Bronze</span><span className="text-vapor"> · automatic</span></p>
-                        <p><span className="text-vapor">Special winner trophy:</span> {tournamentPlacementTrophySummary(tournament, data.marketplace, 1)}</p>
-                        <p><span className="text-vapor">Champion bonus items:</span> {tournamentRewardSummary(tournament, data.marketplace)}</p>
-                        <p><span className="text-vapor">Elimination items:</span> {tournamentRewardSummary(tournament, data.marketplace, "elimination_reward_item_ids", "elimination_reward_items")}</p>
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between gap-3 px-1">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Tournament management</p>
+                    <h2 className="mt-1 text-lg font-black text-white">Tournaments</h2>
+                  </div>
+                  <span className="rounded-full border border-white/[0.08] bg-secondary/40 px-3 py-1 text-[10px] font-black text-vapor">{data.tournaments.length} total</span>
+                </div>
+
+                {data.tournaments.length === 0 ? (
+                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center text-sm text-vapor">No tournaments.</div>
+                ) : data.tournaments.map((tournament) => {
+                  const hasMatches = data.tournamentMatches.some((match) => match.tournament_id === tournament.id);
+                  const registeredParticipants = data.tournamentParticipants
+                    .filter((participant) => String(participant.tournament_id) === String(tournament.id))
+                    .sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0));
+                  const rosterIsOpen = expandedTournamentRosterId === tournament.id;
+                  const entryType = (tournament.entry_type || (tournament.is_premium_only ? "premium" : "free")).replace(/_/g, " ");
+                  const formatLabel = (tournament.bracket_type || tournament.format) === "double_elimination"
+                    ? "Double Elimination"
+                    : "Single Elimination";
+                  const progressPct = Math.min(100, Math.round(((Number(tournament.registered_teams || 0)) / Math.max(1, Number(tournament.max_teams || 1))) * 100));
+
+                  return (
+                    <article key={tournament.id} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.012))]">
+                      <div className="flex flex-col gap-4 border-b border-white/[0.06] p-5 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="flex min-w-0 items-start gap-4">
+                          <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-white/[0.08] bg-background/50">
+                            {tournament.image_url ? (
+                              <img src={tournament.image_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[9px] font-black uppercase tracking-wider text-vapor">No image</div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="truncate text-base font-black text-white">{tournament.name}</h3>
+                              <StatusPill status={tournament.status} />
+                              {tournament.is_featured && <span className="rounded-full border border-blue-400/25 bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-blue-300">Featured</span>}
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                              <span className="rounded-lg border border-white/[0.07] bg-secondary/35 px-2.5 py-1.5 text-vapor">{tournamentModeSetLabel(tournament)}</span>
+                              <span className="rounded-lg border border-white/[0.07] bg-secondary/35 px-2.5 py-1.5 text-vapor">{formatLabel}</span>
+                              <span className="rounded-lg border border-white/[0.07] bg-secondary/35 px-2.5 py-1.5 text-vapor">{entryType}{Number(tournament.entry_fee || 0) > 0 ? ` · ${tournament.entry_fee} credits` : ""}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid min-w-[360px] grid-cols-3 gap-2">
+                          <div className="rounded-xl border border-white/[0.07] bg-background/30 p-3">
+                            <p className="text-[9px] font-black uppercase tracking-wider text-vapor">Teams</p>
+                            <p className="mt-1 text-lg font-black text-white">{tournament.registered_teams || 0}<span className="text-sm text-vapor">/{tournament.max_teams}</span></p>
+                          </div>
+                          <div className="rounded-xl border border-white/[0.07] bg-background/30 p-3">
+                            <p className="text-[9px] font-black uppercase tracking-wider text-vapor">Prize</p>
+                            <p className="mt-1 text-sm font-black text-white">{tournamentPrizeSummary(tournament)}</p>
+                          </div>
+                          <div className="rounded-xl border border-white/[0.07] bg-background/30 p-3">
+                            <p className="text-[9px] font-black uppercase tracking-wider text-vapor">Bracket</p>
+                            <p className="mt-1 text-sm font-black text-white">{hasMatches ? "Ready" : "Not generated"}</p>
+                          </div>
+                        </div>
                       </div>
-                    )],
-                    ["Bracket", hasMatches ? ((tournament.bracket_type || tournament.format) === "double_elimination" ? "Winners + Lower + Grand Final" : "Generated") : (
-                      <button onClick={() => handleGenerateBracket(tournament)} disabled={busyId === `bracket:${tournament.id}`} className="text-cyan hover:underline disabled:opacity-50">
-                        {busyId === `bracket:${tournament.id}` ? "Generating..." : "Generate"}
-                      </button>
-                    )],
-                    ["Registered rosters", (
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => setExpandedTournamentRosterId((current) => current === tournament.id ? null : tournament.id)}
-                          className="text-xs text-cyan hover:underline"
-                        >
-                          {rosterIsOpen ? "Hide teams" : `View & manage ${registeredParticipants.length} team${registeredParticipants.length === 1 ? "" : "s"}`}
-                        </button>
-                        {rosterIsOpen && (
-                          <div className="space-y-2 rounded-lg border border-white/10 bg-background/40 p-2.5">
+
+                      <div className="grid gap-4 p-5 xl:grid-cols-[1fr_1fr_1.2fr]">
+                        <section className="rounded-xl border border-white/[0.06] bg-background/25 p-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Registration</p>
+                            <span className="text-[10px] font-black text-cyan">{progressPct}%</span>
+                          </div>
+                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+                            <div className="h-full rounded-full bg-cyan" style={{ width: `${progressPct}%` }} />
+                          </div>
+                          <button onClick={() => setExpandedTournamentRosterId((current) => current === tournament.id ? null : tournament.id)} className="mt-3 text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">
+                            {rosterIsOpen ? "Hide registered teams" : `Manage ${registeredParticipants.length} registered team${registeredParticipants.length === 1 ? "" : "s"}`}
+                          </button>
+                        </section>
+
+                        <section className="rounded-xl border border-white/[0.06] bg-background/25 p-4">
+                          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Rewards</p>
+                          <div className="mt-3 space-y-1.5 text-[11px]">
+                            <p><span className="font-black text-yellow-400">#1 Gold</span><span className="text-vapor"> · automatic</span></p>
+                            <p><span className="font-black text-slate-300">#2 Silver</span><span className="text-vapor"> · automatic</span></p>
+                            <p><span className="font-black text-amber-600">#3 Bronze</span><span className="text-vapor"> · automatic</span></p>
+                            <p className="pt-1 text-vapor">Winner bonus: <span className="text-white">{tournamentPlacementTrophySummary(tournament, data.marketplace, 1)}</span></p>
+                          </div>
+                        </section>
+
+                        <section className="rounded-xl border border-white/[0.06] bg-background/25 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Bracket control</p>
+                              <p className="mt-1 text-xs font-bold text-white">{hasMatches ? ((tournament.bracket_type || tournament.format) === "double_elimination" ? "Winners + Lower + Grand Final" : "Generated") : "No bracket yet"}</p>
+                            </div>
+                            {!hasMatches && (
+                              <button onClick={() => handleGenerateBracket(tournament)} disabled={busyId === `bracket:${tournament.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan disabled:opacity-50">
+                                {busyId === `bracket:${tournament.id}` ? "Generating..." : "Generate"}
+                              </button>
+                            )}
+                          </div>
+                        </section>
+                      </div>
+
+                      {rosterIsOpen && (
+                        <div className="border-t border-white/[0.06] bg-background/20 p-5">
+                          <div className="mb-3 flex items-center justify-between">
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan">Registered rosters</p>
+                              <p className="mt-1 text-xs text-vapor">Manage seeds and remove teams before the tournament starts.</p>
+                            </div>
+                            {registeredParticipants.length > 0 && (
+                              <button onClick={() => handleAdminDisbandTournamentTeams(tournament)} disabled={busyId === `disband-tournament-teams:${tournament.id}`} className="text-[10px] font-black uppercase tracking-wider text-red-300 hover:underline disabled:opacity-50">
+                                {busyId === `disband-tournament-teams:${tournament.id}` ? "Removing..." : "Remove all"}
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                             {registeredParticipants.length === 0 ? (
-                              <p className="text-xs text-vapor">No teams are registered.</p>
+                              <div className="rounded-xl border border-white/[0.06] bg-secondary/25 p-4 text-xs text-vapor">No teams are registered.</div>
                             ) : registeredParticipants.map((participant) => {
                               const roster = Array.isArray(participant.members) ? participant.members : [];
+                              const rosterNames = roster.map((member) => {
+                                const memberId = String(member?.user_id || member || "");
+                                const knownUser = userById[memberId];
+                                return userName(knownUser) !== "Unknown"
+                                  ? userName(knownUser)
+                                  : member?.display_name || member?.user_name || member?.username || member?.handle || memberId;
+                              }).filter(Boolean);
                               return (
-                                <div key={participant.id} className="rounded-md border border-white/5 bg-secondary/35 p-2.5">
-                                  <div className="flex items-start justify-between gap-2">
+                                <div key={participant.id} className="rounded-xl border border-white/[0.06] bg-secondary/30 p-3">
+                                  <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
-                                      <p className="truncate text-xs font-bold">#{participant.seed || "?"} {participant.team_name || "Unnamed team"}</p>
-                                      <p className="mt-1 text-[10px] text-vapor">
-                                        {roster.length > 0 ? roster.map((member) => {
-                                          const memberId = String(member?.user_id || member || "");
-                                          const knownUser = userById[memberId];
-                                          return userName(knownUser) !== "Unknown"
-                                            ? userName(knownUser)
-                                            : member?.display_name || member?.user_name || member?.username || member?.handle || memberId;
-                                        }).filter(Boolean).join(" · ") : "Roster unavailable"}
-                                      </p>
+                                      <p className="truncate text-xs font-black text-white">#{participant.seed || "?"} {participant.team_name || "Unnamed team"}</p>
+                                      <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-vapor">{rosterNames.length ? rosterNames.join(" · ") : "Roster unavailable"}</p>
                                     </div>
-                                    <button
-                                      onClick={() => handleAdminRemoveTournamentParticipant(tournament, participant)}
-                                      disabled={busyId === `remove-tournament-team:${tournament.id}:${participant.id}`}
-                                      className="shrink-0 text-[10px] font-bold text-red-300 hover:underline disabled:opacity-50"
-                                    >
-                                      {busyId === `remove-tournament-team:${tournament.id}:${participant.id}` ? "Removing..." : "Remove"}
+                                    <button onClick={() => handleAdminRemoveTournamentParticipant(tournament, participant)} disabled={busyId === `remove-tournament-team:${tournament.id}:${participant.id}`} className="shrink-0 text-[9px] font-black uppercase tracking-wider text-red-300 hover:underline disabled:opacity-50">
+                                      {busyId === `remove-tournament-team:${tournament.id}:${participant.id}` ? "Removing" : "Remove"}
                                     </button>
                                   </div>
                                 </div>
                               );
                             })}
-                            {registeredParticipants.length > 0 && (
-                              <button
-                                onClick={() => handleAdminDisbandTournamentTeams(tournament)}
-                                disabled={busyId === `disband-tournament-teams:${tournament.id}`}
-                                className="text-[10px] font-bold text-red-300 hover:underline disabled:opacity-50"
-                              >
-                                {busyId === `disband-tournament-teams:${tournament.id}` ? "Removing all..." : "Remove all teams from tournament"}
-                              </button>
-                            )}
                           </div>
-                        )}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-3 border-t border-white/[0.06] bg-secondary/20 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="flex flex-wrap gap-2">
+                          <button onClick={() => handleEditTournament(tournament)} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan">Edit</button>
+                          {hasMatches && (
+                            <>
+                              <button onClick={() => handleRepairBracket(tournament)} disabled={busyId === `repair-bracket:${tournament.id}`} className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-emerald-300 disabled:opacity-50">{busyId === `repair-bracket:${tournament.id}` ? "Repairing..." : "Repair bracket"}</button>
+                              <button onClick={() => handleResetBracket(tournament)} disabled={busyId === `reset-bracket:${tournament.id}`} className="rounded-lg border border-orange/20 bg-orange/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-orange disabled:opacity-50">{busyId === `reset-bracket:${tournament.id}` ? "Resetting..." : "Reset & reopen"}</button>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <button onClick={() => handleSetTournamentStatus(tournament, "open")} disabled={busyId === `status:open:${tournament.id}` || tournament.status === "open"} className="rounded-lg border border-white/[0.08] bg-background/35 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:text-cyan disabled:opacity-40">Reopen</button>
+                          <button onClick={() => handleSetTournamentStatus(tournament, "closed")} disabled={busyId === `status:closed:${tournament.id}` || tournament.status === "closed"} className="rounded-lg border border-white/[0.08] bg-background/35 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:text-white disabled:opacity-40">Close</button>
+                          <button onClick={() => handleSetTournamentStatus(tournament, "completed")} disabled={busyId === `status:completed:${tournament.id}` || tournament.status === "completed"} className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-emerald-300 disabled:opacity-40">Complete</button>
+                          <button onClick={() => handleTournamentAction(tournament, "closeTournamentRegistration")} disabled={busyId === `closeTournamentRegistration:${tournament.id}`} className="rounded-lg border border-white/[0.08] bg-background/35 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor">Close reg</button>
+                          <button onClick={() => handleTournamentAction(tournament, "extendTournamentRegistration", { hours: 24 })} disabled={busyId === `extendTournamentRegistration:${tournament.id}`} className="rounded-lg border border-white/[0.08] bg-background/35 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor">+24h</button>
+                          <button onClick={() => handleTournamentAction(tournament, "startTournament")} disabled={busyId === `startTournament:${tournament.id}`} className="rounded-lg border border-green/20 bg-green/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-green">Start</button>
+                          <button onClick={() => handleTournamentAction(tournament, "cancelTournament")} disabled={busyId === `cancelTournament:${tournament.id}`} className="rounded-lg border border-orange/20 bg-orange/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-orange">Cancel</button>
+                          <button onClick={() => handleTournamentAction(tournament, "deleteTournament")} disabled={busyId === `deleteTournament:${tournament.id}`} className="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-red-300">Delete</button>
+                        </div>
                       </div>
-                    )],
-                    ["Actions", (
-                      <div className="flex flex-wrap gap-2">
-                        <button onClick={() => handleEditTournament(tournament)} className="text-xs text-cyan hover:underline">Edit</button>
-                        {hasMatches && (
-                          <>
-                            <button onClick={() => handleRepairBracket(tournament)} disabled={busyId === `repair-bracket:${tournament.id}`} className="text-xs text-green hover:underline disabled:opacity-50">
-                              {busyId === `repair-bracket:${tournament.id}` ? "Repairing..." : "Repair · keep seeds"}
-                            </button>
-                            <button onClick={() => handleResetBracket(tournament)} disabled={busyId === `reset-bracket:${tournament.id}`} className="text-xs text-orange hover:underline disabled:opacity-50">
-                              {busyId === `reset-bracket:${tournament.id}` ? "Resetting..." : "Reset & reopen"}
-                            </button>
-                          </>
-                        )}
-                        <button onClick={() => handleSetTournamentStatus(tournament, "open")} disabled={busyId === `status:open:${tournament.id}` || tournament.status === "open"} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Reopen</button>
-                        <button onClick={() => handleSetTournamentStatus(tournament, "closed")} disabled={busyId === `status:closed:${tournament.id}` || tournament.status === "closed"} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Close</button>
-                        <button onClick={() => handleSetTournamentStatus(tournament, "completed")} disabled={busyId === `status:completed:${tournament.id}` || tournament.status === "completed"} className="text-xs text-green hover:underline disabled:opacity-50">Complete</button>
-                        <button onClick={() => handleTournamentAction(tournament, "closeTournamentRegistration")} disabled={busyId === `closeTournamentRegistration:${tournament.id}`} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">Close Reg</button>
-                        <button onClick={() => handleTournamentAction(tournament, "extendTournamentRegistration", { hours: 24 })} disabled={busyId === `extendTournamentRegistration:${tournament.id}`} className="text-xs text-vapor hover:text-cyan disabled:opacity-50">+24h</button>
-                        <button onClick={() => handleTournamentAction(tournament, "startTournament")} disabled={busyId === `startTournament:${tournament.id}`} className="text-xs text-green hover:underline disabled:opacity-50">Start</button>
-                        <button onClick={() => handleTournamentAction(tournament, "cancelTournament")} disabled={busyId === `cancelTournament:${tournament.id}`} className="text-xs text-orange hover:underline disabled:opacity-50">Cancel</button>
-                        <button onClick={() => handleTournamentAction(tournament, "deleteTournament")} disabled={busyId === `deleteTournament:${tournament.id}`} className="text-xs text-red-400 hover:underline disabled:opacity-50">Delete</button>
-                      </div>
-                    )],
-                  ]} />
-                );
-              }} />
+                    </article>
+                  );
+                })}
+              </div>
             </div>
           )}
 
