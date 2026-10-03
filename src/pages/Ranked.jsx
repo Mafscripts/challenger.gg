@@ -224,11 +224,11 @@ export default function Ranked() {
     <div className="min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <CompetitionLadder
-          mode="xp"
+          mode="ranked"
           currentUser={user}
           openCount={rankedMatches.length}
           matchfinder={(
-            <CompetitionMatchfinder loading={loadingMatches} emptyMessage="No XP matches are open right now.">
+            <CompetitionMatchfinder loading={loadingMatches} emptyMessage="No ranked matches are open right now.">
               {rankedMatches.map((match) => {
                 const slots = Math.max(1, Number.parseInt(String(match.team_size || "1v1").split("v")[0], 10) || 1) * 2;
                 const joined = new Set([...(match.team_alpha_player_ids || [match.host_id]), ...(match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : []))].filter(Boolean)).size;
@@ -239,7 +239,7 @@ export default function Ranked() {
                     key={match.id}
                     game={match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}
                     gameDetail={`${match.team_size} · ${joined}/${slots} players`}
-                    competition="XP Ranked"
+                    competition="Ranked"
                     competitionDetail={`${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`}
                     playRule={match.play_rule}
                     tone="cyan"

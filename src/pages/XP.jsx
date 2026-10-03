@@ -280,7 +280,7 @@ export default function XP() {
                 </div>
               </Link>
               {activeRankedMatch ? (
-                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-secondary px-6 py-3 text-sm font-bold uppercase tracking-wider text-cyan shadow-sm transition-colors hover:border-cyan/60 hover:bg-secondary/90">
+                <Link to={`/xp-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-secondary px-6 py-3 text-sm font-bold uppercase tracking-wider text-cyan shadow-sm transition-colors hover:border-cyan/60 hover:bg-secondary/90">
                   Return to Active Match <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
@@ -306,7 +306,7 @@ export default function XP() {
                 <p className="mt-1 text-xs text-vapor">{activeRankedMatch.status === "open" ? "Waiting for an opponent" : `${activeRankedMatch.host_name} vs ${activeRankedMatch.challenger_name || "Opponent"}`}</p>
               </div>
             </div>
-            <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background">
+            <Link to={`/xp-match/${activeRankedMatch.id}`} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background">
               Open Match Room <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

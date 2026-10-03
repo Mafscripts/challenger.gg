@@ -17,6 +17,7 @@ import {
 import { base44 } from "@/api/base44Client";
 
 const navigation = [
+  { key: "ranked", label: "Ranked", to: "/ranked", icon: Medal },
   { key: "xp", label: "XP Matches", to: "/xp", icon: Zap },
   { key: "wagers", label: "Wagers", to: "/wagers", icon: Coins },
   { key: "eights", label: "8s", to: "/ranked/8s", icon: Users },
@@ -24,6 +25,13 @@ const navigation = [
 ];
 
 const modeCopy = {
+  ranked: {
+    eyebrow: "Ranked competition",
+    title: "Ranked",
+    description: "Create or accept ranked matches and climb the ELO ladder.",
+    accent: "text-cyan",
+    line: "bg-cyan",
+  },
   xp: {
     eyebrow: "XP competition ladder",
     title: "XP Matches",
@@ -151,7 +159,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
         </div>
       </section>
 
-      <nav className="grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 lg:grid-cols-4">
+      <nav className="grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 lg:grid-cols-5">
         {navigation.map(({ key, label, to, icon: Icon }) => {
           const active = key === mode;
           return (
@@ -192,7 +200,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
       const [userData, xpData, rankedData, eightsData, tournamentData] = await Promise.all([
         base44.entities.User.filter({}, mode === "wagers" ? "-total_wager_earnings" : "-created_date", 500).catch(() => []),
         base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []),
-        mode === "xp" ? base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []) : Promise.resolve([]),
+        mode === "ranked" ? base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []) : Promise.resolve([]),
         mode === "eights" ? base44.entities.EightsStats.filter({}, "-monthly_wins", 500).catch(() => []) : Promise.resolve([]),
         base44.entities.Tournament.filter({}, "start_date", 100).catch(() => []),
       ]);
@@ -256,15 +264,37 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         .slice(0, 50);
     }
 
+    if (mode === "xp") {
+      return xpRows
+        .map((xp) => {
+          const user = usersById.get(String(xp.user_id));
+          return {
+            id: xp.id || xp.user_id,
+            userId: xp.user_id,
+            user,
+            name: playerName(user, xp),
+            slug: playerSlug(user, xp),
+            wins: number(xp.wins),
+            losses: number(xp.losses),
+            streak: number(xp.win_streak),
+            xp: number(xp.total_xp),
+            score: number(xp.total_xp),
+            trophies: trophyCount(user),
+          };
+        })
+        .filter((row) => row.wins + row.losses + row.xp > 0)
+        .sort((a, b) => b.xp - a.xp || b.wins - a.wins)
+        .slice(0, 50);
+    }
+
     const rowsByUser = new Map(rankedRows.map((row) => [String(row.user_id), row]));
-    const ids = new Set([...rankedRows.map((row) => String(row.user_id)), ...xpRows.map((row) => String(row.user_id))]);
+    const ids = new Set(rankedRows.map((row) => String(row.user_id)));
     return [...ids]
       .map((id) => {
         const row = rowsByUser.get(id) || {};
-        const xp = xpByUser.get(id) || {};
         const user = usersById.get(id);
         return {
-          id: row.id || xp.id || id,
+          id: row.id || id,
           userId: id,
           user,
           name: playerName(user, row),
@@ -272,7 +302,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
           wins: number(row.wins),
           losses: number(row.losses),
           streak: number(row.win_streak ?? user?.current_win_streak),
-          xp: number(xp.total_xp ?? xp.xp),
+          xp: 0,
           score: number(row.elo),
           trophies: trophyCount(user),
         };
