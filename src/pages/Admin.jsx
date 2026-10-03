@@ -3145,12 +3145,26 @@ export default function Admin() {
                     </div>
                   </details>
 
-                  <section id="tournament-trophy-rewards" className="mt-5 scroll-mt-28 rounded-2xl border border-blue-400/15 bg-[linear-gradient(145deg,rgba(20,216,255,.055),rgba(255,255,255,.018))] p-5">
-                    <div className="flex flex-col gap-4 border-b border-white/[0.07] pb-5 sm:flex-row sm:items-start sm:justify-between">
+                  <details id="tournament-trophy-rewards" className="group mt-5 scroll-mt-28 overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(145deg,rgba(20,216,255,.04),rgba(255,255,255,.015))]">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 transition hover:bg-white/[0.025]">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Trophy rewards</span>
+                          <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-300">Gold · Silver · Bronze automatic</span>
+                        </div>
+                        <h3 className="mt-1 text-sm font-black text-white">Placement trophies & optional winner rewards</h3>
+                        <p className="mt-1 text-[10px] text-vapor">Open to manage winner bonus trophies, champion items and elimination rewards.</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="hidden rounded-lg border border-white/[0.08] bg-secondary/40 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-vapor sm:inline-flex">Configure rewards</span>
+                        <ChevronDown className="h-4 w-4 text-vapor transition-transform group-open:rotate-180" />
+                      </div>
+                    </summary>
+                    <div className="border-t border-white/[0.06] p-5">
+                    <div className="flex flex-col gap-4 border-b border-white/[0.07] pb-5 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-300">Step 2 · Trophy rewards</p>
-                        <h3 className="mt-1 text-lg font-black text-white">Automatic podium trophies + one winner bonus</h3>
-                        <p className="mt-1 max-w-2xl text-xs leading-5 text-vapor">Gold, Silver, and Bronze are always awarded automatically. Optionally give the winner one extra Premium or Invitational profile trophy.</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white">Reward settings</p>
+                        <p className="mt-1 max-w-2xl text-[10px] leading-4 text-vapor">Podium trophies are automatic. Only configure extras if this tournament needs them.</p>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
                         <button type="button" onClick={() => { setActiveTab("marketplace"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-secondary px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:text-white">
@@ -3234,7 +3248,8 @@ export default function Admin() {
                         <TournamentRewardPicker title="Elimination unlock items" description="Optional non-trophy items granted to registered rosters when they are eliminated." selectedIds={tournamentForm.elimination_reward_item_ids || []} items={tournamentBonusItems} onToggle={(itemId) => toggleTournamentReward("elimination_reward_item_ids", itemId)} />
                       </div>
                     </details>
-                  </section>
+                    </div>
+                  </details>
                   <label className="inline-flex items-center gap-2 mt-4 text-xs text-vapor">
                     <input
                       type="checkbox"
