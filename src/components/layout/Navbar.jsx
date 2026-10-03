@@ -54,14 +54,24 @@ const navGroups = [
 ];
 
 const rankedNavGroup = {
-  label: "XP Matches",
+  label: "Ranked",
   icon: Swords,
-  eyebrow: "XP match competition",
+  eyebrow: "Ranked competition",
   tone: "cyan",
   items: [
-    { label: "XP Matches", description: "Queue for competitive matchmaking", path: "/xp", icon: Swords, tone: "cyan" },
+    { label: "Ranked", description: "Queue for ranked matchmaking", path: "/ranked", icon: Swords, tone: "cyan" },
     { label: "8s", description: "Join the 8-player competitive queue", path: "/ranked/8s", icon: Users, tone: "cyan" },
-    { label: "XP Matches Leaderboard", description: "See the complete XP matches ladder", path: "/xp#standings", icon: Trophy, tone: "cyan" },
+  ],
+};
+
+const xpNavGroup = {
+  label: "XP Matches",
+  icon: Zap,
+  eyebrow: "Posted XP challenges",
+  tone: "purple",
+  items: [
+    { label: "XP Matches", description: "Post or accept XP challenges", path: "/xp", icon: Zap, tone: "purple" },
+    { label: "XP Leaderboard", description: "See the XP standings", path: "/xp#standings", icon: Trophy, tone: "purple" },
   ],
 };
 
@@ -117,7 +127,7 @@ const activeTournamentStatuses = new Set([
   "score_conflict",
   "disputed",
 ]);
-const hiddenMatchTypes = new Set(["8s", "eights", "xp"]);
+const hiddenMatchTypes = new Set(["8s", "eights"]);
 let disputeAlertAudioContext = null;
 
 const unlockDisputeAlertAudio = async () => {
@@ -197,6 +207,7 @@ const navItemIsActive = (pathname, path, hash = "") => {
   return (targetPath === "/tournaments" && pathname.startsWith("/tournament-match/"))
     || (targetPath === "/streamer-tournaments" && pathname.startsWith("/streamer-tournament/"))
     || (targetPath === "/ranked" && pathname.startsWith("/ranked-match/"))
+    || (targetPath === "/xp" && pathname.startsWith("/xp-match/"))
     || (targetPath === "/ranked/8s" && pathname.startsWith("/8s-match/"))
     || (targetPath === "/wagers" && pathname.startsWith("/wagers-match/"))
     || (targetPath === "/dashboard" && pathname.startsWith("/match-room/"));
@@ -754,12 +765,16 @@ export default function Navbar() {
         challengedWagers,
         hostedRanked,
         challengedRanked,
+        hostedXP,
+        challengedXP,
         tournamentParticipants,
       ] = await Promise.all([
         base44.entities.Wager[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
         base44.entities.Wager[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
         base44.entities.RankedMatch[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
         base44.entities.RankedMatch[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
+        base44.entities.XPMatch[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
+        base44.entities.XPMatch[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
         base44.entities.TournamentParticipant.filter({}, "-registered_date", 500).catch(() => []),
       ]);
 
@@ -768,6 +783,9 @@ export default function Navbar() {
         .filter((match) => !hiddenMatchTypes.has(String(match.match_type || "").toLowerCase()))
         .forEach((match) => byId.set(`wager:${match.id}`, { ...match, entity_type: "wager" }));
       [...hostedRanked, ...challengedRanked].forEach((match) => byId.set(`ranked:${match.id}`, { ...match, entity_type: "ranked" }));
+      [...hostedXP, ...challengedXP]
+        .filter((match) => match.status !== "open")
+        .forEach((match) => byId.set(`xp:${match.id}`, { ...match, entity_type: "xp", match_type: "xp" }));
 
       const userParticipants = (tournamentParticipants || []).filter((participant) => participantBelongsToUser(participant, user.id));
       const participantKeySet = new Set(userParticipants.flatMap(participantKeys));
@@ -940,7 +958,7 @@ export default function Navbar() {
                   </span>
                   Home
                 </Link>
-                {[rankedNavGroup, ...navGroups.filter((group) => group.label !== "Teams")].map((group) => {
+                {[rankedNavGroup, xpNavGroup, ...navGroups.filter((group) => group.label !== "Teams")].map((group) => {
                   const GroupIcon = group.icon;
                   const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash));
                   const open = navMenuOpen === group.label;
@@ -1099,9 +1117,11 @@ export default function Navbar() {
                                 : isHost ? (match.challenger_name || "Opponent pending") : (match.host_name || "Host unavailable");
                               const route = isTournament ? `/tournament-match/${match.id}` :
                                            match.entity_type === 'ranked' ? `/ranked-match/${match.id}` :
+                                           match.entity_type === 'xp' ? `/xp-match/${match.id}` :
                                            `/wagers-match/${match.id}`;
-                              const matchType = isTournament ? "tournament" : match.entity_type === 'ranked' ? 'ranked' : match.match_type;
+                              const matchType = isTournament ? "tournament" : match.entity_type === 'ranked' ? 'ranked' : match.entity_type === 'xp' ? 'xp' : match.match_type;
                               const themeClasses = matchType === 'ranked' ? 'bg-cyan/10 text-cyan' :
+                                                  matchType === 'xp' ? 'bg-purple-400/10 text-purple-300' :
                                                   matchType === 'tournament' ? 'bg-orange/10 text-orange' : 'bg-green/10 text-green';
 
                               return (

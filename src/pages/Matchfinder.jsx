@@ -28,6 +28,7 @@ export default function Matchfinder() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("xp");
   const [user, setUser] = useState(null);
+  const [xpMatches, setXpMatches] = useState([]);
   const [rankedMatches, setRankedMatches] = useState([]);
   const [wagerMatches, setWagerMatches] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -37,13 +38,15 @@ export default function Matchfinder() {
   const loadMatches = async () => {
     try {
       setLoading(true);
-      const [currentUser, rankedRows, wagerRows, tournamentRows] = await Promise.all([
+      const [currentUser, xpRows, rankedRows, wagerRows, tournamentRows] = await Promise.all([
         base44.auth.me().catch(() => null),
+        base44.entities.XPMatch.filterFresh({ status: "open" }, "-created_date", 100).catch(() => []),
         base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 100).catch(() => []),
         base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 100).catch(() => []),
         base44.entities.Tournament.filterFresh({}, "start_date", 100).catch(() => []),
       ]);
       setUser(currentUser);
+      setXpMatches((xpRows || []).filter((match) => match.posted_to_matchfinder !== false));
       setRankedMatches(rankedRows || []);
       setWagerMatches(wagerRows || []);
       setTournaments((tournamentRows || []).filter((tournament) => (
@@ -63,12 +66,12 @@ export default function Matchfinder() {
   }, []);
 
   const matches = useMemo(() => ({
-    xp: rankedMatches,
-    elo: wagerMatches.filter((match) => wagerType(match) === "ranked"),
+    xp: xpMatches,
+    elo: rankedMatches,
     eights: wagerMatches.filter((match) => wagerType(match) === "8s"),
     wagers: wagerMatches.filter((match) => wagerType(match) === "wagers"),
     tournaments,
-  }), [rankedMatches, tournaments, wagerMatches]);
+  }), [xpMatches, rankedMatches, tournaments, wagerMatches]);
 
   const activeRows = matches[activeCategory] || [];
   const currentCategory = categories.find((category) => category.key === activeCategory) || categories[0];
@@ -82,7 +85,8 @@ export default function Matchfinder() {
   );
 
   const roomPath = (category, item) => {
-    if (category === "xp") return `/ranked-match/${item.id}`;
+    if (category === "xp") return `/xp-match/${item.id}`;
+    if (category === "elo") return `/ranked-match/${item.id}`;
     if (category === "eights") return `/8s-match/${item.id}`;
     if (category === "wagers") return `/wagers-match/${item.id}`;
     if (category === "tournaments") return `/tournaments/${item.id}`;
@@ -101,8 +105,10 @@ export default function Matchfinder() {
     setAcceptingId(match.id);
     try {
       const response = category === "xp"
-        ? await base44.functions.invoke("acceptRankedMatch", { ranked_match_id: match.id })
-        : await base44.functions.invoke("acceptWager", { wager_id: match.id });
+        ? await base44.functions.invoke("acceptXPMatch", { xp_match_id: match.id })
+        : category === "elo"
+          ? await base44.functions.invoke("acceptRankedMatch", { ranked_match_id: match.id })
+          : await base44.functions.invoke("acceptWager", { wager_id: match.id });
       if (!response.data?.success) throw new Error(response.data?.error || "This match could not be accepted.");
       navigate(roomPath(category, match));
     } catch (error) {

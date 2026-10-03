@@ -218,8 +218,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             wager_id: response.data.wager_id || response.data.id || response.data.wager?.id,
             match: response.data.wager || response.data.match,
           };
-        } else if (mode === "ranked" || mode === "xp") {
-          const response = await base44.functions.invoke('createRankedMatch', {
+        } else if (mode === "xp") {
+          const response = await base44.functions.invoke('createXPMatch', {
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
@@ -247,7 +247,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             gameMode: selectedGameMode,
             teamSize: selectedTeamSize,
             amount: 0,
-            ranked_match_id: response.data.ranked_match_id,
+            xp_match_id: response.data.xp_match_id,
             match: response.data.match,
           });
           setStep(1);
@@ -257,6 +257,24 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           setCustomAmount("");
           setSelectedTeamId("");
           setSelectedPlayRule("controller_only");
+          setIsCreating(false);
+          onClose();
+          return;
+        } else if (mode === "ranked") {
+          const response = await base44.functions.invoke('createRankedMatch', {
+            game_mode: selectedGameMode,
+            game_mode_display: gameModeObj.name,
+            team_size: selectedTeamSize,
+            max_players: teamSizeObj.players,
+            team_id: selectedTeamId || undefined,
+            play_rule: selectedPlayRule,
+          });
+          if (response.data.error) {
+            toast({ title: "Failed to create ranked match", description: response.data.error, variant: "destructive" });
+            setIsCreating(false);
+            return;
+          }
+          onCreate({ ranked_match_id: response.data.ranked_match_id, match: response.data.match });
           setIsCreating(false);
           onClose();
           return;

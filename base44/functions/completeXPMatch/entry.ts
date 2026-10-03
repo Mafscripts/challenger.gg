@@ -73,7 +73,7 @@ async function finalize(base44, match, actor, winnerId, alphaScore, bravoScore, 
     [loser.id]: { won: false, delta: loserGain, previous_xp: n(loserStats.total_xp), new_xp: loserNext.total_xp },
   };
 
-  await base44.asServiceRole.entities.RankedMatch.update(match.id, {
+  await base44.asServiceRole.entities.XPMatch.update(match.id, {
     status: 'completed',
     match_type: 'xp',
     winner_id: winnerId,
@@ -120,8 +120,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Invalid XP match score' }, { status: 400 });
     }
 
-    const match = await base44.asServiceRole.entities.RankedMatch.get(id);
-    if (!match || String(match.match_type || '') !== 'xp') return Response.json({ error: 'XP match not found' }, { status: 404 });
+    const match = await base44.asServiceRole.entities.XPMatch.get(id);
+    if (!match) return Response.json({ error: 'XP match not found' }, { status: 404 });
     if (match.status === 'completed') return Response.json({ success: true, already_completed: true });
     if (match.status === 'cancelled') return Response.json({ error: 'XP match is cancelled' }, { status: 400 });
 
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
     }
 
     if (n(match.reported_score_alpha) !== alphaScore || n(match.reported_score_bravo) !== bravoScore) {
-      await base44.asServiceRole.entities.RankedMatch.update(id, { status: 'score_conflict' });
+      await base44.asServiceRole.entities.XPMatch.update(id, { status: 'score_conflict' });
       return Response.json({ success: true, status: 'score_conflict' });
     }
 

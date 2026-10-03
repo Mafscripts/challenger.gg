@@ -247,6 +247,13 @@ model RankedMatch {
   metadata     Json     @default("{}")
 }
 
+model XPMatch {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
 model RankedReward {
   id           String   @id @default(cuid())
   created_date DateTime @default(now())

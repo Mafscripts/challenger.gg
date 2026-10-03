@@ -110,8 +110,8 @@ export default function XP() {
       refreshing = true;
       try {
         const [matches, playerMatches, playerStats] = await Promise.all([
-          base44.entities.RankedMatch.filterFresh({ status: "open", match_type: "xp" }, "-created_date", 20),
-          base44.entities.RankedMatch.filterFresh({}, "-created_date", 100),
+          base44.entities.XPMatch.filterFresh({ status: "open" }, "-created_date", 20),
+          base44.entities.XPMatch.filterFresh({}, "-created_date", 100),
           base44.entities.XPStats.filterFresh({ user_id: user.id }, "-total_xp", 1),
         ]);
         if (active) {
@@ -159,7 +159,7 @@ export default function XP() {
       setUser(currentUser);
 
       const [matches, statsRows, captainTeams] = await Promise.all([
-        base44.entities.RankedMatch.filterFresh({ status: "open", match_type: "xp" }, "-created_date", 20),
+        base44.entities.XPMatch.filterFresh({ status: "open" }, "-created_date", 20),
         base44.entities.XPStats.filterFresh({}, "-total_xp", 500),
         loadCaptainRankedTeams(currentUser?.id),
       ]);
@@ -194,8 +194,8 @@ export default function XP() {
     }
 
     try {
-      const response = await base44.functions.invoke("acceptRankedMatch", {
-        ranked_match_id: match.id,
+      const response = await base44.functions.invoke("acceptXPMatch", {
+        xp_match_id: match.id,
         team_id: selectedPartyByMatch[match.id] || undefined,
       });
 
@@ -215,8 +215,9 @@ export default function XP() {
   const handleCreate = (result) => {
     setIsCreateModalOpen(false);
     loadRankedData();
-    if (result?.ranked_match_id) {
-      navigate(`/ranked-match/${result.ranked_match_id}`);
+    if (result?.xp_match_id) {
+      toast({ title: "Posted on Matchfinder", description: "Your XP challenge is live and can be cancelled until an opponent accepts." });
+      navigate("/xp#matchfinder");
     }
   };
 
@@ -244,7 +245,23 @@ export default function XP() {
                     playRule={match.play_rule}
                     tone="cyan"
                     action={belongsToUser ? (
-                      <Link to={`/xp-match/${match.id}`} className="inline-flex min-w-44 items-center justify-center rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room</Link>
+                      match.status === "open" && match.host_id === user?.id ? (
+                        <div className="min-w-52 space-y-2 text-right">
+                          <div className="rounded-lg border border-purple-400/25 bg-purple-400/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-purple-300">Posted on Matchfinder</div>
+                          <button onClick={async () => {
+                            try {
+                              const response = await base44.functions.invoke("cancelXPMatch", { xp_match_id: match.id });
+                              if (!response.data?.success) throw new Error(response.data?.error || "Could not cancel XP match.");
+                              toast({ title: "XP match cancelled", description: "Your post has been removed from Matchfinder." });
+                              loadRankedData();
+                            } catch (error) {
+                              toast({ title: "Cancel failed", description: error.message || "Could not cancel XP match.", variant: "destructive" });
+                            }
+                          }} className="w-full rounded-lg border border-red-400/25 bg-red-400/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300">Cancel Post</button>
+                        </div>
+                      ) : (
+                        <Link to={`/xp-match/${match.id}`} className="inline-flex min-w-44 items-center justify-center rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room</Link>
+                      )
                     ) : user ? (
                       <div className="w-52 space-y-2">
                         {partyMatch && (

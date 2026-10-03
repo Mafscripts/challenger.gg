@@ -329,7 +329,7 @@ export default function XPMatchRoom() {
       if (refreshing || document.visibilityState === "hidden") return;
       refreshing = true;
       try {
-        const latest = await base44.entities.RankedMatch.getFresh(id);
+        const latest = await base44.entities.XPMatch.getFresh(id);
         if (!active || !latest) return;
         let refreshedMatch = latest;
         if (roomRosterFull(latest) && !latest.final_map_name) {
@@ -503,7 +503,7 @@ export default function XPMatchRoom() {
       setLoading(true);
       const [currentUser, loadedMatch] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.entities.RankedMatch.get(id),
+        base44.entities.XPMatch.get(id),
       ]);
       let matchData = loadedMatch;
 
@@ -695,9 +695,8 @@ export default function XPMatchRoom() {
 
   const handleCancel = async () => {
     try {
-      const response = await base44.functions.invoke("cancelRankedMatch", {
-        ranked_match_id: match.id,
-        reason: "Cancelled from ranked match room",
+      const response = await base44.functions.invoke("cancelXPMatch", {
+        xp_match_id: match.id,
       });
 
       if (response.data?.success) {
