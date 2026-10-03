@@ -2854,7 +2854,7 @@ async function matchParticipantIds(matchType, match) {
       ...participants.map((participant) => participant.user_id),
     ].filter(Boolean))];
   }
-  if (matchType === "ranked") {
+  if (matchType === "ranked" || matchType === "xp") {
     const alphaRoster = Array.isArray(match.team_alpha_player_ids)
       ? match.team_alpha_player_ids
       : [];
@@ -4768,18 +4768,22 @@ function normalizeMatchType(matchType) {
   const value = String(matchType || "wager").toLowerCase();
   if (value === "streamer" || value === "streamer_tournament") return "streamer_tournament";
   if (value === "ranked") return "ranked";
+  if (value === "xp") return "xp";
   if (value === "tournament") return "tournament";
+  if (value === "8s" || value === "eights") return "8s";
   return "wager";
 }
 
 function matchEntityFor(matchType) {
   if (matchType === "ranked") return "RankedMatch";
+  if (matchType === "xp") return "XPMatch";
   if (matchType === "tournament") return "TournamentMatch";
   return "Wager";
 }
 
 function matchRouteFor(matchType, match) {
   if (matchType === "ranked") return `/ranked-match/${match.id}`;
+  if (matchType === "xp") return `/xp-match/${match.id}`;
   if (matchType === "tournament") return `/tournament-match/${match.id}`;
   if (match.match_type === "8s") return `/8s-match/${match.id}`;
   if (match.match_type === "xp") return `/match-room/${match.id}`;
