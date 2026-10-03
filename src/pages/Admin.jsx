@@ -46,7 +46,7 @@ import RankBadge from "@/components/ui/RankBadge";
 import PageHeader from "@/components/ui/PageHeader";
 import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
-import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser } from "@/lib/roles";
+import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
@@ -287,6 +287,7 @@ const adminAlertActionUrl = (alert, ticket) => {
   return "/admin";
 };
 const effectiveRoleFor = (user) => effectiveRoleForUser(user);
+const rolePowerFor = (role) => getRoleConfig(role).power;
 const canAddWalletAdjustment = (role) => ["ceo", "super_admin"].includes(role || "user");
 const canAdjustUserWallet = (actorRole, targetRole) => canAddWalletAdjustment(actorRole) && (actorRole === "ceo" || targetRole !== "ceo");
 const canGrantUserPremium = (actorRole, targetRole) => (
@@ -2235,55 +2236,6 @@ export default function Admin() {
                         <td className="py-3 px-4 min-w-[220px]">
                           <div className="space-y-2">
                             <UserBadges user={user} size="xs" />
-                            {canManageWallets(currentRole) && expandedUserId === user.id && (
-                              <div className="flex flex-col gap-1.5">
-                                <select
-                                  value={userBadgePreset(user)}
-                                  onChange={(event) => handleSetUserBadges(
-                                    user,
-                                    event.target.value,
-                                    Boolean(user.force_stream_required || user.stream_override_required),
-                                    Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required),
-                                  )}
-                                  disabled={busyId === `${user.id}:badges`}
-                                  className="w-full px-2 py-1.5 bg-secondary rounded text-xs border border-white/5 focus:border-cyan/30 focus:outline-none disabled:opacity-50"
-                                >
-                                  {userBadgeOptions.map((option) => (
-                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                  ))}
-                                </select>
-                                <label className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-vapor">
-                                  <input
-                                    type="checkbox"
-                                    checked={Boolean(user.force_stream_required || user.stream_override_required)}
-                                    onChange={(event) => handleSetUserBadges(
-                                      user,
-                                      userBadgePreset(user),
-                                      event.target.checked,
-                                      Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required),
-                                    )}
-                                    disabled={busyId === `${user.id}:badges`}
-                                    className="accent-orange"
-                                  />
-                                  Force stream
-                                </label>
-                                <label className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-vapor">
-                                  <input
-                                    type="checkbox"
-                                    checked={Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required)}
-                                    onChange={(event) => handleSetUserBadges(
-                                      user,
-                                      userBadgePreset(user),
-                                      Boolean(user.force_stream_required || user.stream_override_required),
-                                      event.target.checked,
-                                    )}
-                                    disabled={busyId === `${user.id}:badges`}
-                                    className="accent-red-500"
-                                  />
-                                  Monitor cam
-                                </label>
-                              </div>
-                            )}
                           </div>
                         </td>
                         <td className="py-3 px-4 min-w-[155px]">
@@ -2342,6 +2294,54 @@ export default function Admin() {
                                       <button type="button" onClick={() => handleSetTemporaryPassword(user)} disabled={busyId === `${user.id}:password`} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] font-bold text-pink-400 hover:bg-white/5 disabled:opacity-50">
                                         <KeyRound className="h-3 w-3" /> Set Password
                                       </button>
+                                      <div className="mt-1 space-y-2 border-t border-white/5 px-2 pt-2">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-vapor">Badges & stream requirements</p>
+                                        <select
+                                          value={userBadgePreset(user)}
+                                          onChange={(event) => handleSetUserBadges(
+                                            user,
+                                            event.target.value,
+                                            Boolean(user.force_stream_required || user.stream_override_required),
+                                            Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required),
+                                          )}
+                                          disabled={busyId === `${user.id}:badges`}
+                                          className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs focus:border-cyan/30 focus:outline-none disabled:opacity-50"
+                                        >
+                                          {userBadgeOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                          ))}
+                                        </select>
+                                        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-vapor">
+                                          <input
+                                            type="checkbox"
+                                            checked={Boolean(user.force_stream_required || user.stream_override_required)}
+                                            onChange={(event) => handleSetUserBadges(
+                                              user,
+                                              userBadgePreset(user),
+                                              event.target.checked,
+                                              Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required),
+                                            )}
+                                            disabled={busyId === `${user.id}:badges`}
+                                            className="accent-orange"
+                                          />
+                                          Force stream
+                                        </label>
+                                        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-vapor">
+                                          <input
+                                            type="checkbox"
+                                            checked={Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required)}
+                                            onChange={(event) => handleSetUserBadges(
+                                              user,
+                                              userBadgePreset(user),
+                                              Boolean(user.force_stream_required || user.stream_override_required),
+                                              event.target.checked,
+                                            )}
+                                            disabled={busyId === `${user.id}:badges`}
+                                            className="accent-red-500"
+                                          />
+                                          Monitor cam
+                                        </label>
+                                      </div>
                                     </div>
                                   )}
                                   <div className="rounded-lg border border-white/5 bg-white/[0.02] p-1">
