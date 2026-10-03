@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { CalendarDays, Gamepad2, Search, Shield, Swords, Trophy, Users, Zap } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { CalendarDays, Gamepad2, Search, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { toast } from "@/components/ui/use-toast";
@@ -16,6 +16,7 @@ const categories = [
 const openTournamentStatuses = new Set(["open", "registration", "live", "in_progress"]);
 const wagerType = (match) => String(match?.match_type || ((match?.entry_fee ?? match?.amount ?? 0) > 0 ? "wagers" : "ranked")).toLowerCase();
 const teamSlots = (teamSize) => Math.max(1, Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1) * 2;
+const rosterSize = (teamSize) => Math.max(1, Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1);
 const displayMode = (item) => item?.game_mode_display || item?.game_mode || item?.mode || "Search & Destroy";
 const formatStart = (value) => {
   if (!value) return "Schedule TBA";
@@ -26,6 +27,10 @@ const formatStart = (value) => {
 
 export default function Matchfinder() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedWagerId = searchParams.get("accept");
+  const requestedTeamId = searchParams.get("team");
+  const autoOpenedWagerId = useRef("");
   const [activeCategory, setActiveCategory] = useState("xp");
   const [user, setUser] = useState(null);
   const [xpMatches, setXpMatches] = useState([]);
@@ -34,6 +39,11 @@ export default function Matchfinder() {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState("");
+  const [wagerToAccept, setWagerToAccept] = useState(null);
+  const [wagerTeams, setWagerTeams] = useState([]);
+  const [selectedWagerTeamId, setSelectedWagerTeamId] = useState("");
+  const [wagerPaymentMode, setWagerPaymentMode] = useState("own");
+  const [loadingWagerTeams, setLoadingWagerTeams] = useState(false);
 
   const loadMatches = async () => {
     try {
@@ -65,6 +75,14 @@ export default function Matchfinder() {
     loadMatches();
   }, []);
 
+  useEffect(() => {
+    if (!requestedWagerId || autoOpenedWagerId.current === requestedWagerId) return;
+    const match = wagerMatches.find((item) => String(item.id) === String(requestedWagerId));
+    if (!match || !user?.id) return;
+    autoOpenedWagerId.current = requestedWagerId;
+    openWagerAccept(match);
+  }, [requestedWagerId, user?.id, wagerMatches]);
+
   const matches = useMemo(() => ({
     xp: xpMatches,
     elo: rankedMatches,
@@ -93,9 +111,86 @@ export default function Matchfinder() {
     return `/match-room/${item.id}`;
   };
 
+  const loadWagerTeams = async (userId = user?.id) => {
+    if (!userId) return [];
+    setLoadingWagerTeams(true);
+    try {
+      const memberships = await base44.entities.TeamMember.filterFresh({ user_id: userId }, "-joined_date", 50).catch(() => []);
+      const teams = await Promise.all((memberships || [])
+        .filter((membership) => membership.is_active !== false)
+        .map(async (membership) => {
+          const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
+          if (!team || team.is_active === false || !["wager", "general"].includes(team.team_type) || String(team.captain_id || "") !== String(userId)) return null;
+          const members = await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 50).catch(() => []);
+          return { ...team, members: (members || []).filter((member) => member.is_active !== false) };
+        }));
+      const activeTeams = teams.filter(Boolean);
+      setWagerTeams(activeTeams);
+      return activeTeams;
+    } catch (error) {
+      console.error("Failed to load wager teams:", error);
+      toast({ title: "Could not load teams", description: "Refresh and try again.", variant: "destructive" });
+      return [];
+    } finally {
+      setLoadingWagerTeams(false);
+    }
+  };
+
+  const openWagerAccept = async (match) => {
+    if (!user?.id) {
+      toast({ title: "Login required", description: "Log in before accepting a wager.", variant: "destructive" });
+      return;
+    }
+    setWagerToAccept(match);
+    setSelectedWagerTeamId("");
+    setWagerPaymentMode("own");
+    const teams = await loadWagerTeams(user.id);
+    const required = rosterSize(match.team_size);
+    const requestedTeam = teams.find((team) => String(team.id) === String(requestedTeamId) && team.members.length >= required);
+    if (requestedTeam) setSelectedWagerTeamId(requestedTeam.id);
+  };
+
+  const closeWagerAccept = () => {
+    setWagerToAccept(null);
+    setSelectedWagerTeamId("");
+  };
+
+  const finishWagerAccept = async () => {
+    if (!wagerToAccept || acceptingId) return;
+    const required = rosterSize(wagerToAccept.team_size);
+    const selectedTeam = wagerTeams.find((team) => String(team.id) === String(selectedWagerTeamId));
+    if (!selectedTeam) {
+      toast({ title: "Choose a team", description: "Select an eligible team, or create one first.", variant: "destructive" });
+      return;
+    }
+    if (selectedTeam.members.length < required) {
+      toast({ title: "Roster incomplete", description: `${selectedTeam.name} needs at least ${required} active players.`, variant: "destructive" });
+      return;
+    }
+
+    setAcceptingId(wagerToAccept.id);
+    try {
+      const response = await base44.functions.invoke("acceptWager", {
+        wager_id: wagerToAccept.id,
+        team_id: selectedTeam.id,
+        payment_mode: wagerPaymentMode,
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "This wager could not be accepted.");
+      window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
+      window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
+      closeWagerAccept();
+      navigate(`/wagers-match/${response.data.wager?.id || wagerToAccept.id}`);
+    } catch (error) {
+      toast({ title: "Could not accept wager", description: error.message || "Please try again.", variant: "destructive" });
+      await loadMatches();
+    } finally {
+      setAcceptingId("");
+    }
+  };
+
   const acceptMatch = async (category, match) => {
     if (category === "wagers") {
-      navigate(`/wagers?accept=${encodeURIComponent(match.id)}`);
+      await openWagerAccept(match);
       return;
     }
     if (category === "tournaments") {
@@ -200,6 +295,44 @@ export default function Matchfinder() {
 
         <div className="mt-4 flex items-center gap-2 text-[10px] text-vapor"><CalendarDays className="h-3.5 w-3.5 text-yellow-300" /> Scheduled tournaments show their announced start time; open matches can be accepted immediately.</div>
       </div>
+      {wagerToAccept && <WagerAcceptModal
+        wager={wagerToAccept}
+        teams={wagerTeams}
+        selectedTeamId={selectedWagerTeamId}
+        paymentMode={wagerPaymentMode}
+        loading={loadingWagerTeams}
+        accepting={acceptingId === wagerToAccept.id}
+        onClose={closeWagerAccept}
+        onSelectTeam={setSelectedWagerTeamId}
+        onPaymentMode={setWagerPaymentMode}
+        onAccept={finishWagerAccept}
+      />}
     </main>
+  );
+}
+
+function WagerAcceptModal({ wager, teams, selectedTeamId, paymentMode, loading, accepting, onClose, onSelectTeam, onPaymentMode, onAccept }) {
+  const required = rosterSize(wager.team_size);
+  const eligibleTeams = teams.filter((team) => team.members.length >= required);
+  const returnTo = `/matchfinder?accept=${encodeURIComponent(wager.id)}`;
+  const createTeamUrl = `/teams?create=wager&roster=${required}&returnTo=${encodeURIComponent(returnTo)}`;
+  const rosterUrl = teams[0]?.id ? `/teams?team=${encodeURIComponent(teams[0].id)}` : createTeamUrl;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Accept wager">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-green/25 bg-card shadow-[0_24px_80px_rgba(0,0,0,.6)]">
+        <div className="flex items-start justify-between border-b border-white/[0.07] px-5 py-4">
+          <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-green">Accept wager</p><h2 className="mt-1 text-lg font-black text-white">{wager.game_mode_display || wager.game_mode}</h2><p className="mt-1 text-xs text-vapor">{wager.team_size || "1v1"} · ${Number(wager.entry_fee ?? wager.amount ?? 0).toFixed(2)} per player</p></div>
+          <button type="button" onClick={onClose} disabled={accepting} className="rounded-lg p-2 text-vapor hover:bg-white/5 hover:text-white" aria-label="Close"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="space-y-4 p-5">
+          {loading ? <p className="py-6 text-center text-sm text-vapor">Loading your teams…</p> : eligibleTeams.length > 0 ? <>
+            <label className="block"><span className="mb-2 block text-[10px] font-black uppercase tracking-wider text-vapor">Your team</span><select value={selectedTeamId} onChange={(event) => onSelectTeam(event.target.value)} disabled={accepting} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-3 text-sm text-white focus:border-green/40 focus:outline-none"><option value="">Select a team</option>{eligibleTeams.map((team) => <option key={team.id} value={team.id}>{team.name} — {team.members.length} players</option>)}</select></label>
+            {required > 1 && <label className="block"><span className="mb-2 block text-[10px] font-black uppercase tracking-wider text-vapor">Entry payment</span><select value={paymentMode} onChange={(event) => onPaymentMode(event.target.value)} disabled={accepting} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-3 text-sm text-white focus:border-green/40 focus:outline-none"><option value="own">Pay my own entry</option><option value="full_team">Pay the full team entry</option></select></label>}
+            <button type="button" onClick={onAccept} disabled={accepting} className="w-full rounded-lg bg-green px-4 py-3 text-xs font-black uppercase tracking-wider text-background transition hover:bg-green/90 disabled:opacity-50">{accepting ? "Accepting…" : "Accept this match"}</button>
+          </> : <div className="rounded-xl border border-orange/25 bg-orange/5 p-4"><p className="text-sm font-bold text-orange">You need a team with at least {required} active player{required === 1 ? "" : "s"}.</p><p className="mt-1 text-xs leading-5 text-vapor">Create one now, or invite players to an existing roster. You will return to this Matchfinder accept window.</p><div className="mt-4 grid grid-cols-2 gap-2"><Link to={rosterUrl} className="rounded-lg border border-white/10 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wider text-vapor hover:border-green/30 hover:text-green">Finish roster</Link><Link to={createTeamUrl} className="rounded-lg bg-green px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wider text-background hover:bg-green/90">Create team</Link></div></div>}
+        </div>
+      </div>
+    </div>
   );
 }

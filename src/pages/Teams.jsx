@@ -561,10 +561,14 @@ export default function Teams() {
   };
 
   const handleTeamCreated = (team) => {
-    const canReturnToWager = requestedCreateType === "wager"
-      && (requestedReturnTo === "/wagers" || String(requestedReturnTo || "").startsWith("/wagers?"));
+    const canReturnToAcceptFlow = requestedCreateType === "wager"
+      && (
+        requestedReturnTo === "/wagers"
+        || String(requestedReturnTo || "").startsWith("/wagers?")
+        || String(requestedReturnTo || "").startsWith("/matchfinder?")
+      );
 
-    if (canReturnToWager) {
+    if (canReturnToAcceptFlow) {
       const separator = requestedReturnTo.includes("?") ? "&" : "?";
       navigate(`${requestedReturnTo}${separator}team=${encodeURIComponent(team.id)}`, { replace: true });
       return;
