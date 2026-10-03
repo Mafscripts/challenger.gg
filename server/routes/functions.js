@@ -8351,10 +8351,18 @@ async function adminMassResetBalances(req) {
   ]);
   const trophyInventoryIds = inventory.filter((item) => isTrophyInventory(item.metadata)).map((item) => item.id);
 
-  await prisma.user.updateMany({ data: { credits: 0, wallet_balance: 0, trophies: 0 } });
+  await prisma.user.updateMany({ data: { credits: 0, wallet_balance: 0, trophies: 0, lifetime_earnings: 0, total_wager_earnings: 0, biggest_wager_win: 0 } });
   await updateInBatches(users, (user) => prisma.user.update({
     where: { id: user.id },
-    data: { metadata: clearedTrophyMetadata(user.metadata) },
+    data: { metadata: {
+      ...clearedTrophyMetadata(user.metadata),
+      lifetime_earnings: 0,
+      total_earnings: 0,
+      earnings: 0,
+      winnings: 0,
+      total_winnings: 0,
+      biggest_wager_win: 0,
+    } },
   }));
   await updateInBatches(wallets, (wallet) => prisma.wallet.update({
     where: { id: wallet.id },
@@ -8365,12 +8373,28 @@ async function adminMassResetBalances(req) {
         pending_balance: 0,
         escrow_balance: 0,
         withdrawable_balance: 0,
+        total_earnings: 0,
+        earnings: 0,
+        winnings: 0,
+        total_winnings: 0,
+        total_deposits: 0,
+        total_withdrawals: 0,
+        total_wagered: 0,
       },
     },
   }));
   await updateInBatches(profiles, (profile) => prisma.playerProfile.update({
     where: { id: profile.id },
-    data: { metadata: clearedTrophyMetadata(profile.metadata) },
+    data: { metadata: {
+      ...clearedTrophyMetadata(profile.metadata),
+      lifetime_earnings: 0,
+      total_earnings: 0,
+      earnings: 0,
+      winnings: 0,
+      total_winnings: 0,
+      total_wager_earnings: 0,
+      biggest_wager_win: 0,
+    } },
   }));
   await updateInBatches(trophyInventoryIds, (id) => prisma.userInventory.delete({ where: { id } }));
 
@@ -8379,7 +8403,7 @@ async function adminMassResetBalances(req) {
     admin_name: nameFor(req.user),
     admin_role: req.user.role,
     action_type: "mass_balance_trophy_reset",
-    description: "Mass reset: cleared all user credits, wallet balances, and trophies.",
+    description: "Mass reset: cleared all user credits, wallet balances, earnings, and trophies.",
     details: {
       users_reset: users.length,
       wallets_reset: wallets.length,
@@ -9709,7 +9733,19 @@ async function updateUserBadges(req) {
     related_entity_type: "User",
   });
 
-  return { success: true, user: publicUser(user) };
+  return {
+    success: true,
+    user: {
+      ...publicUser(user),
+      force_stream_required: forceStream,
+      stream_override_required: forceStream,
+      monitor_cam_required: monitorCamRequired,
+      required_monitor_cam: monitorCamRequired,
+      moni_cam_required: monitorCamRequired,
+      verified_player: verified,
+      streamer_badge: streamer,
+    },
+  };
 }
 
 async function setUserTemporaryPassword(req) {

@@ -1072,6 +1072,7 @@ export default function Admin() {
       reason: "",
     });
     setWalletAdjustmentOpen(true);
+    window.setTimeout(() => document.getElementById("wallet-adjustment-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
   };
 
   const resetWalletAdjustment = () => {
@@ -2135,7 +2136,7 @@ export default function Admin() {
                 </div>
               </div>
               {walletAdjustmentOpen && canAddWalletAdjustment(currentRole) && (
-                <form onSubmit={handleSubmitWalletAdjustment} className="mb-4 rounded-lg border border-white/5 bg-secondary/30 p-4">
+                <form id="wallet-adjustment-form" onSubmit={handleSubmitWalletAdjustment} className="relative z-20 mb-4 rounded-lg border border-cyan/15 bg-secondary/70 p-4 shadow-xl shadow-black/20">
                   <div className="grid gap-3 md:grid-cols-4">
                     <label className="space-y-1">
                       <span className="text-[10px] text-vapor uppercase">User</span>
@@ -2202,7 +2203,8 @@ export default function Admin() {
                   </div>
                 </form>
               )}
-              <div className="overflow-x-auto">
+              <div className="overflow-visible">
+                <div className="overflow-x-auto overflow-y-visible">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-white/5 text-xs text-vapor uppercase">
@@ -2262,14 +2264,14 @@ export default function Admin() {
                           </td>
                         )}
                         <td className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="relative z-20 overflow-visible py-3 px-4">
+                          <div className="flex items-center justify-end gap-2 overflow-visible">
                             <Link to={`/profile/${user.username || user.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20">Profile</Link>
-                            <details className="relative">
+                            <details className="relative z-[80]">
                               <summary className="list-none cursor-pointer rounded-lg border border-white/10 bg-secondary px-3 py-1.5 text-xs font-bold text-vapor hover:bg-white/10 hover:text-foreground">
                                 Manage
                               </summary>
-                              <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#171d27] p-2 shadow-2xl shadow-black/40">
+                              <div className="absolute right-0 z-[120] mt-2 w-80 overflow-visible rounded-xl border border-white/10 bg-[#171d27] p-2 shadow-2xl shadow-black/50">
                                 <div className="border-b border-white/5 px-3 py-2">
                                   <p className="text-xs font-bold text-foreground">{userName(user)}</p>
                                   <p className="text-[10px] text-vapor">{user.role || "user"} · account actions</p>
@@ -2393,6 +2395,7 @@ export default function Admin() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}
