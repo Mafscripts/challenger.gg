@@ -34,7 +34,9 @@ export const requestIpAddress = (req) => {
 
 export const knownUserIpAddresses = (user) => {
   const metadata = user?.metadata && typeof user.metadata === "object" ? user.metadata : {};
-  const history = Array.isArray(metadata.ip_history) ? metadata.ip_history : [];
+  const history = Array.isArray(metadata.ip_history)
+    ? metadata.ip_history
+    : (Array.isArray(user?.ip_history) ? user.ip_history : []);
   return [...new Set([
     metadata.last_login_ip,
     metadata.registration_ip,

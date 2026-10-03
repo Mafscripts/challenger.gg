@@ -315,7 +315,17 @@ const knownIpAddresses = (user) => [...new Map([
   user?.registration_ip,
   ...((user?.ip_history || []).slice().reverse().map((entry) => entry?.ip)),
 ].filter(isTrackableUserIp).map((ip) => [ipComparisonKey(ip), ip])).values()];
-const ipHistoryText = (user) => knownIpAddresses(user).join(", ") || "N/A";
+const ipHistoryEntries = (user) => {
+  const rows = Array.isArray(user?.ip_history) ? user.ip_history : [];
+  return rows
+    .map((entry) => ({
+      ip: entry?.ip,
+      date: entry?.date || entry?.created_date || entry?.timestamp,
+    }))
+    .filter((entry) => isTrackableUserIp(entry.ip))
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+};
+const ipHistoryText = (user) => knownIpAddresses(user).join(", ") || "No public IP captured yet";
 const marketplacePlacementText = (item) => [
   item.is_featured === true ? "Featured" : null,
   item.show_in_marketplace !== false ? "Grid" : null,
@@ -2288,7 +2298,7 @@ export default function Admin() {
                                 {knownIpAddresses(user).length > 3 && <div className="font-sans text-[10px] text-cyan">+{knownIpAddresses(user).length - 3} more</div>}
                                 {sharedIpCount(user) > 0 && <div className="font-sans font-bold text-red-400">! shared by {sharedIpCount(user)} account(s)</div>}
                               </div>
-                            ) : <span>N/A</span>}
+                            ) : <span className="text-[10px] text-vapor/70">Not captured</span>}
                           </td>
                         )}
                         <td className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
@@ -2298,6 +2308,29 @@ export default function Admin() {
                             <button type="button" onClick={() => setExpandedUserId((current) => current === user.id ? null : user.id)} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${expandedUserId === user.id ? "border-white/20 bg-white/10 text-foreground" : "border-white/10 bg-secondary text-vapor hover:text-foreground"}`}>{expandedUserId === user.id ? "Close" : "Manage"}</button>
                             {expandedUserId === user.id && (
                               <div className="mt-2 flex w-full flex-wrap justify-end gap-2 rounded-lg border border-white/5 bg-background/35 p-3 [&_button]:rounded-md [&_button]:border [&_button]:border-white/10 [&_button]:bg-secondary/70 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:no-underline [&_button:hover]:bg-white/10">
+                            {canViewUserIps(currentRole) && (
+                              <div className="w-full rounded-lg border border-cyan/10 bg-cyan/[0.03] p-3 text-left">
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-[10px] font-black uppercase tracking-wider text-cyan">IP History</p>
+                                    <p className="text-[10px] text-vapor">Only real public/client IPs are shown.</p>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-vapor">{knownIpAddresses(user).length} unique IP{knownIpAddresses(user).length === 1 ? "" : "s"}</span>
+                                </div>
+                                {ipHistoryEntries(user).length > 0 ? (
+                                  <div className="max-h-36 space-y-1 overflow-y-auto">
+                                    {ipHistoryEntries(user).slice(0, 12).map((entry, index) => (
+                                      <div key={`${entry.ip}-${entry.date || index}`} className="flex items-center justify-between gap-3 font-mono text-[10px]">
+                                        <span className="text-foreground">{entry.ip}</span>
+                                        <span className="text-vapor">{entry.date ? formatDate(entry.date) : "Recorded"}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-vapor">No public IP captured yet. A valid client IP will be recorded on the next registration/login through the production proxy.</p>
+                                )}
+                              </div>
+                            )}
                             {canAdjustUserWallet(currentRole, user.role || "user") && (
                               <>
                                 <button onClick={() => openWalletAdjustment(user, "credits")} className="text-xs text-green hover:underline">Add Credits</button>
@@ -2341,7 +2374,16 @@ export default function Admin() {
                             <button onClick={() => handleModerateUser(user, "temporary_ban", "30d")} className="text-xs text-red-400 hover:underline">30d Ban</button>
                             <button onClick={() => handleModerateUser(user, "ban", "permanent")} className="text-xs text-red-400 hover:underline">Permanent Ban</button>
                             <button onClick={() => handleModerateUser(user, "email_ban")} className="text-xs text-red-400 hover:underline">Email Ban</button>
-                            {canViewUserIps(currentRole) && <button onClick={() => handleModerateUser(user, "ip_ban")} className="text-xs font-bold text-red-500 hover:underline">IP Ban</button>}
+                            {canViewUserIps(currentRole) && (
+                              <button
+                                onClick={() => handleModerateUser(user, "ip_ban")}
+                                disabled={knownIpAddresses(user).length === 0 || busyId === `${user.id}:ip_ban`}
+                                className="text-xs font-bold text-red-500 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                                title={knownIpAddresses(user).length === 0 ? "No valid public IP has been captured for this account yet." : "Ban all known public IP addresses for this account"}
+                              >
+                                {busyId === `${user.id}:ip_ban` ? "IP Ban…" : "IP Ban"}
+                              </button>
+                            )}
                             {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="text-xs text-green hover:underline">Unban</button>}
                               </div>
                             )}

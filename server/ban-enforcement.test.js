@@ -32,3 +32,16 @@ test("uses the normalized forwarded IP when Express trust proxy is configured", 
     "198.51.100.42",
   );
 });
+
+test("reads flattened IP history from serialized users", () => {
+  assert.deepEqual(
+    knownUserIpAddresses({
+      last_login_ip: "198.51.100.30",
+      ip_history: [
+        { ip: "198.51.100.20" },
+        { ip: "127.0.0.1" },
+      ],
+    }),
+    ["198.51.100.30", "198.51.100.20"],
+  );
+});
