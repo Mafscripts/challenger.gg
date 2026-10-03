@@ -123,12 +123,12 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
       const rosterLimit = Number(team.roster_size || team.members.length || 1);
       if (teamType !== expectedTeamType || team.captain_id !== user?.id) return false;
       if (isRanked) return rosterLimit >= 2 && rosterLimit <= requiredPlayers && team.members.length === rosterLimit;
-      return true;
+      return team.members.length === requiredPlayers;
     })
   ), [expectedTeamType, isRanked, requiredPlayers, user?.id, userTeams]);
   const selectedTeam = compatibleTeams.find((team) => team.id === selectedTeamId);
   const selectedTeamIsEligible = requiresTeam
-    ? Boolean(selectedTeam && selectedTeam.members.length >= requiredPlayers)
+    ? Boolean(selectedTeam && selectedTeam.members.length === requiredPlayers)
     : !selectedTeamId || Boolean(selectedTeam);
   const paymentTotal = isWager && requiresTeam && paymentMode === "full_team"
     ? enteredAmount * requiredPlayers

@@ -12,6 +12,7 @@ import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
+const matchChatLastSentAt = new Map();
 
 async function withTournamentMutationLock(key, operation) {
   const lockKey = String(key);
@@ -6185,6 +6186,11 @@ async function sendMatchRoomMessage(req) {
   if (!matchId) return { success: false, error: matchType === "streamer_tournament" ? "Tournament id is required" : "Match id is required" };
   if (!content) return { success: false, error: "Message is required" };
   if (content.length > 500) return { success: false, error: "Message is too long" };
+  const chatRateKey = `${matchType}:${matchId}:${req.user.id}`;
+  const previousMessageAt = Number(matchChatLastSentAt.get(chatRateKey) || 0);
+  if (!hasRole(req.user, "moderator") && Date.now() - previousMessageAt < 750) {
+    return { success: false, error: "Please wait a moment before sending another message" };
+  }
   const senderProfile = await firstEntity("PlayerProfile", { user_id: req.user.id }).catch(() => null);
   const senderAvatarUrl = senderProfile?.avatar_url || req.user.avatar_url || "";
 
@@ -6225,6 +6231,27 @@ async function sendMatchRoomMessage(req) {
     return { success: false, error: "Only match participants can chat in this room" };
   }
 
+  // Store the sender's side with every message. This keeps chat bubbles on the
+  // correct side even when a roster refresh has not reached the browser yet.
+  let teamSide = tournamentParticipantInfo?.reportingSide === "team_a"
+    ? "a"
+    : tournamentParticipantInfo?.reportingSide === "team_b"
+      ? "b"
+      : null;
+  if (!teamSide && (matchType === "wager" || matchType === "8s")) {
+    const participant = await firstEntity("WagerParticipant", {
+      wager_id: match.id,
+      user_id: req.user.id,
+    }).catch(() => null);
+    if (participant?.team === "host" || String(match.host_id || "") === String(req.user.id)) teamSide = "a";
+    if (participant?.team === "challenger" || String(match.challenger_id || "") === String(req.user.id)) teamSide = "b";
+  } else if (!teamSide && (matchType === "ranked" || matchType === "xp")) {
+    const alphaIds = Array.isArray(match.team_alpha_player_ids) ? match.team_alpha_player_ids.map(String) : [];
+    const bravoIds = Array.isArray(match.team_bravo_player_ids) ? match.team_bravo_player_ids.map(String) : [];
+    if (alphaIds.includes(String(req.user.id)) || String(match.host_id || "") === String(req.user.id)) teamSide = "a";
+    if (bravoIds.includes(String(req.user.id)) || String(match.challenger_id || "") === String(req.user.id)) teamSide = "b";
+  }
+
   const message = await createEntity("ChatMessage", {
     conversation_id: match.id,
     sender_id: req.user.id,
@@ -6236,13 +6263,11 @@ async function sendMatchRoomMessage(req) {
     content,
     is_read: false,
     match_type: matchType,
-    team_side: tournamentParticipantInfo?.reportingSide === "team_a"
-      ? "a"
-      : tournamentParticipantInfo?.reportingSide === "team_b"
-        ? "b"
-        : null,
+    team_side: teamSide,
     created_date: nowIso(),
   });
+
+  matchChatLastSentAt.set(chatRateKey, Date.now());
 
   return { success: true, message };
 }
@@ -6396,7 +6421,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
   });
 }
 
-async function acceptWager(req) {
+async function acceptWagerUnlocked(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const wager = await getEntity("Wager", req.body.wager_id);
@@ -6561,6 +6586,13 @@ async function acceptWager(req) {
     related_entity_type: "Wager",
   });
   return { success: true, wager: startState.wager, ready: startState.ready, final_map_name: startState.wager.final_map_name };
+}
+
+async function acceptWager(req) {
+  return withTournamentMutationLock(
+    `wager-accept:${req.body.wager_id}`,
+    () => acceptWagerUnlocked(req),
+  );
 }
 
 async function syncEightsLobby(req) {
@@ -7045,7 +7077,7 @@ async function submitScore(req) {
   );
 }
 
-async function completeWager(req) {
+async function completeWagerUnlocked(req) {
   const wager = await getEntity("Wager", req.body.wager_id);
   if (!wager || wager.status === "completed") {
     return { success: false, error: "Match is already completed" };
@@ -7155,6 +7187,13 @@ async function completeWager(req) {
   });
 
   return { success: true, winner_id: winnerId, winner_name: winnerName, xp_changes: xpChanges, wallet_changes: payoutResult.walletChanges, wager: completedWager };
+}
+
+async function completeWager(req) {
+  return withTournamentMutationLock(
+    `wager-complete:${req.body.wager_id}`,
+    () => completeWagerUnlocked(req),
+  );
 }
 
 async function refundWager(req) {

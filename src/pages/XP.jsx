@@ -5,15 +5,11 @@ import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
-import RankBadge from "@/components/ui/RankBadge";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import {
   RANK_THRESHOLDS,
-  getNextRankForElo,
-  getRankForElo,
-  getRankProgress,
 } from "@/lib/ranks";
 
 const modeLabels = {

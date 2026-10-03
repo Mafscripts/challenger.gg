@@ -605,14 +605,14 @@ export default function WagersMatchRoom() {
 
   const prizePool = Number(wager.total_prize_pool ?? ((wager.entry_fee || 0) * 2));
   const bestOf = wager.best_of || 1;
-  const currentParticipant = [...teamAPlayers, ...teamBPlayers].find((player) => player.user_id === user?.id);
+  const currentParticipant = [...teamAPlayers, ...teamBPlayers].find((player) => String(player.user_id || "") === String(user?.id || ""));
   const needsPayment = currentParticipant?.payment_status === "pending";
   const isStaff = isStaffUser(user);
   const canAdminResolve = isStaff && wager.status !== "completed" && wager.status !== "cancelled" && Boolean(wager.challenger_id);
   const isWaitingForOpponent = !wager.challenger_id || wager.status === "open";
   const canUseMatchRoom = Boolean(wager.challenger_id) && wager.status !== "open";
-  const isHostCaptain = user?.id === wager.host_id;
-  const isChallengerCaptain = user?.id === wager.challenger_id;
+  const isHostCaptain = String(user?.id || "") === String(wager.host_id || "");
+  const isChallengerCaptain = String(user?.id || "") === String(wager.challenger_id || "");
   const currentReportPrefix = isHostCaptain ? "host" : isChallengerCaptain ? "challenger" : null;
   const currentTeamHasReported = currentReportPrefix
     ? wager[`${currentReportPrefix}_reported_score_alpha`] !== undefined

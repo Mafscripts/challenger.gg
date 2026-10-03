@@ -59,6 +59,7 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
         website: profileRow.website || userRow?.website || "",
       },
       team: participant.team,
+      role: participant.is_captain ? "captain" : "member",
       entry_fee_paid: participant.entry_fee_paid,
       payment_status: participant.payment_status,
       paid_by: participant.paid_by,
