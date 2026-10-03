@@ -7866,11 +7866,13 @@ async function completeRankedMatch(req) {
   }
   const isHost = req.user.id === match.host_id;
   const isChallenger = req.user.id === match.challenger_id;
+  const isParticipant = isHost || isChallenger;
   const isStaff = hasRole(req.user, "moderator");
-  if (!isHost && !isChallenger && !isStaff) {
+  const isStaffOverride = isStaff && !isParticipant;
+  if (!isParticipant && !isStaffOverride) {
     return { success: false, error: "Only match participants can report scores" };
   }
-  if (["disputed", "score_conflict"].includes(match.status) && !isStaff) {
+  if (["disputed", "score_conflict"].includes(match.status) && !isStaffOverride) {
     return { success: false, error: "This match is under dispute review" };
   }
   const teamAlphaScore = Number(req.body.team_alpha_score);
@@ -7893,7 +7895,7 @@ async function completeRankedMatch(req) {
   }
 
   let confirmedReportPatch = {};
-  if (!isStaff) {
+  if (!isStaffOverride) {
     const reportingTeam = isHost ? "host" : "challenger";
     const otherTeam = isHost ? "challenger" : "host";
     const otherAlpha = match[`${otherTeam}_reported_score_alpha`];
