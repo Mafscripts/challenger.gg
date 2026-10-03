@@ -3335,14 +3335,14 @@ export default function Admin() {
                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Tournament management</p>
                     <h2 className="mt-1 text-lg font-black text-white">Tournaments</h2>
                   </div>
-                  <span className="rounded-full border border-white/[0.08] bg-secondary/40 px-3 py-1 text-[10px] font-black text-vapor">{data.tournaments.length} total</span>
+                  <span className="rounded-full border border-white/[0.08] bg-secondary/40 px-3 py-1 text-[10px] font-black text-vapor">{(data.tournaments || []).length} total</span>
                 </div>
 
-                {data.tournaments.length === 0 ? (
+                {(data.tournaments || []).length === 0 ? (
                   <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center text-sm text-vapor">No tournaments.</div>
-                ) : data.tournaments.map((tournament) => {
-                  const hasMatches = data.tournamentMatches.some((match) => match.tournament_id === tournament.id);
-                  const registeredParticipants = data.tournamentParticipants
+                ) : (data.tournaments || []).map((tournament) => {
+                  const hasMatches = (data.tournamentMatches || []).some((match) => match.tournament_id === tournament.id);
+                  const registeredParticipants = (data.tournamentParticipants || [])
                     .filter((participant) => String(participant.tournament_id) === String(tournament.id))
                     .sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0));
                   const rosterIsOpen = expandedTournamentRosterId === tournament.id;
@@ -3413,7 +3413,7 @@ export default function Admin() {
                             <p><span className="font-black text-yellow-400">#1 Gold</span><span className="text-vapor"> · automatic</span></p>
                             <p><span className="font-black text-slate-300">#2 Silver</span><span className="text-vapor"> · automatic</span></p>
                             <p><span className="font-black text-amber-600">#3 Bronze</span><span className="text-vapor"> · automatic</span></p>
-                            <p className="pt-1 text-vapor">Winner bonus: <span className="text-white">{tournamentPlacementTrophySummary(tournament, data.marketplace, 1)}</span></p>
+                            <p className="pt-1 text-vapor">Winner bonus: <span className="text-white">{tournamentPlacementTrophySummary(tournament, data.marketplace || [], 1)}</span></p>
                           </div>
                         </section>
 

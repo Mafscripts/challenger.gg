@@ -65,7 +65,7 @@ const rankedNavGroup = {
 };
 
 const xpNavGroup = {
-  label: "XP Matches",
+  label: "XP",
   icon: Zap,
   eyebrow: "Posted XP challenges",
   tone: "purple",
