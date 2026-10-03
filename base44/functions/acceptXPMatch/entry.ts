@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
       posted_to_matchfinder: !rosterFull,
       status: rosterFull ? 'accepted' : 'open',
       match_started_date: rosterFull ? new Date().toISOString() : '',
+      match_start_deadline: rosterFull ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : match.match_start_deadline,
     });
 
     return Response.json({ success: true, xp_match_id: id, match: updated, roster_full: rosterFull });

@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       game_mode_display: body.game_mode_display || gameMode,
       team_size: teamSize,
       play_rule: body.play_rule || 'controller_only',
-      best_of: 1,
+      best_of: [1, 3, 5].includes(Number(body.best_of)) ? Number(body.best_of) : 1,
       maps: mapsByMode[gameMode],
       team_alpha_player_ids: [user.id],
       team_alpha_player_names: [playerName(user)],
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       status: 'open',
       posted_to_matchfinder: true,
       proof_urls: [],
-      match_start_deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      match_start_deadline: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       created_date: new Date().toISOString(),
     });
 

@@ -23,7 +23,6 @@ import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
-import RankedVoicePanel from "@/components/match/RankedVoicePanel";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
@@ -374,8 +373,13 @@ export default function XPMatchRoom() {
   useEffect(() => {
     if (match?.status === "cancelled") {
       navigate("/xp", { replace: true });
+      return;
     }
-  }, [match?.status, navigate]);
+    if (match?.status === "open" && user?.id === match?.host_id) {
+      toast({ title: "Waiting for opponent", description: "Your XP match is posted on Matchfinder. The room opens after another player accepts it." });
+      navigate("/xp#matchfinder", { replace: true });
+    }
+  }, [match?.status, match?.host_id, user?.id, navigate]);
 
   const isParticipant = useMemo(() => (
     user?.id && (roomRosterIds(match, "alpha").includes(user.id) || roomRosterIds(match, "bravo").includes(user.id))
@@ -384,7 +388,7 @@ export default function XPMatchRoom() {
   const isHost = user?.id === match?.host_id;
   const isOpposingCaptain = user?.id === match?.challenger_id;
   const isStaff = isStaffUser(user);
-  const scoreReportOpen = ["in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report"].includes(match?.status);
+  const scoreReportOpen = ["accepted", "in_progress", "awaiting_host_report", "awaiting_challenger_report", "awaiting_team_alpha_report", "awaiting_team_bravo_report"].includes(match?.status);
   const ownScoreSubmitted = isHost ? match?.host_reported_score_by === user?.id : isOpposingCaptain ? match?.challenger_reported_score_by === user?.id : false;
   const canSubmitScore = (isHost || isOpposingCaptain || isStaff) && scoreReportOpen && roomRosterFull(match) && !ownScoreSubmitted;
   const scoreIsValid = validSeriesScore(match, scoreA, scoreB);
@@ -561,7 +565,7 @@ export default function XPMatchRoom() {
     setSubmitting(true);
     try {
       const response = await base44.functions.invoke("completeXPMatch", {
-        ranked_match_id: match.id,
+        xp_match_id: match.id,
         team_alpha_score: scoreA,
         team_bravo_score: scoreB,
         proof_urls: [],
@@ -582,17 +586,17 @@ export default function XPMatchRoom() {
 
       if (response.data.winner_id) {
         toast({
-          title: "Ranked match completed",
+          title: "XP match completed",
           description: `${response.data.winner_name} won. Review your XP result.`,
         });
-        setMatch(response.data.match || { ...match, status: "completed", elo_changes: response.data.elo_changes });
+        setMatch(response.data.match || { ...match, status: "completed", xp_changes: response.data.xp_changes });
         return;
       }
 
       toast({ title: "Score submitted", description: response.data.message || "Waiting for opponent confirmation." });
       await loadRoom();
     } catch (error) {
-      console.error("Failed to report ranked score:", error);
+      console.error("Failed to report XP score:", error);
       toast({ title: "Error", description: error.message || "Failed to report score.", variant: "destructive" });
     } finally {
       setSubmitting(false);
@@ -642,15 +646,15 @@ export default function XPMatchRoom() {
     setSupporting(true);
     try {
       const response = await base44.functions.invoke("requestAdminAlert", {
-        match_type: "ranked",
+        match_type: "xp",
         match_id: match.id,
-        subject: `Ranked match support ${match.id}`,
+        subject: `XP match support ${match.id}`,
         description: `${reason}\n\nMatch: ${match.id}\nStatus: ${match.status}\nParticipants: ${match.host_name || "Host unavailable"} vs ${match.challenger_name || "Opponent pending"}`,
         priority: "high",
       });
 
       if (response.data?.success) {
-        toast({ title: "Admin requested", description: "Staff were notified for this ranked match." });
+        toast({ title: "Admin requested", description: "Staff were notified for this XP match." });
         await loadRoom();
       } else {
         toast({ title: "Request failed", description: response.data?.error || "Could not request admin.", variant: "destructive" });
@@ -669,11 +673,11 @@ export default function XPMatchRoom() {
     setDisputing(true);
     try {
       const response = await base44.functions.invoke("createDispute", {
-        match_type: "ranked",
+        match_type: "xp",
         match_id: match.id,
-        ranked_match_id: match.id,
+        xp_match_id: match.id,
         reason: "score_dispute",
-        description: `Dispute submitted from ranked match room ${match.id}. ${match.host_name || "Host"} vs ${match.challenger_name || "Opponent"}`,
+        description: `Dispute submitted from XP match room ${match.id}. ${match.host_name || "Host"} vs ${match.challenger_name || "Opponent"}`,
         reported_against: user?.id === match.host_id ? match.challenger_id : match.host_id,
         reported_against_name: user?.id === match.host_id ? match.challenger_name : match.host_name,
         evidence_urls: evidenceUrls,
@@ -700,8 +704,8 @@ export default function XPMatchRoom() {
       });
 
       if (response.data?.success) {
-        toast({ title: "Ranked match cancelled" });
-        navigate("/ranked");
+        toast({ title: "XP match cancelled" });
+        navigate("/xp");
       } else {
         toast({ title: "Cancel failed", description: response.data?.error || "Could not cancel match.", variant: "destructive" });
       }
@@ -808,18 +812,11 @@ export default function XPMatchRoom() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/55 via-white/10 to-orange/55" />
           <div className="flex flex-col gap-4 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan"><Swords className="h-4 w-4" /> Ranked match · {formatStatus(match.status)}</p>
+              <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan"><Swords className="h-4 w-4" /> XP match · {formatStatus(match.status)}</p>
               <h1 className="mt-1.5 text-lg font-black">{match.team_size} {match.game_mode_display || match.game_mode}</h1>
               <p className="mt-1 text-[10px] font-mono text-vapor">Map {match.final_map_name || "pending"} · ID #{match.id?.slice(-8)}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {isParticipant && match.status === "ready_check" ? (
-                <button type="button" onClick={handleReadyUp} disabled={currentUserReady || readying} className="inline-flex items-center justify-center gap-2 rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background hover:bg-green/90 disabled:cursor-default disabled:opacity-55"><Check className="h-4 w-4" /> {currentUserReady ? `Ready · ${readyPlayerIds.length}/${rankedParticipantIds.length}` : readying ? "Readying..." : `Ready Up · ${readyPlayerIds.length}/${rankedParticipantIds.length}`}</button>
-              ) : null}
-              {isParticipant && match.status === "ready" && isHost ? (
-                <button type="button" onClick={handleStartMatch} disabled={!everyoneReady || startingMatch} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90 disabled:opacity-45"><Swords className="h-4 w-4" /> {startingMatch ? "Starting..." : "Start Match"}</button>
-              ) : null}
-              {isParticipant && match.status === "ready" && !isHost ? <span className="rounded-lg border border-green/20 bg-green/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-green">Ready · waiting for host</span> : null}
               {canSubmitScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
               {timeRemaining ? <div className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs font-black ${timeRemaining === "EXPIRED" ? "border-orange/25 bg-orange/10 text-orange" : "border-cyan/20 bg-cyan/10 text-cyan"}`}><Clock className="h-4 w-4" /> {timeRemaining}</div> : null}
               <Link to="/xp" className="rounded-lg border border-white/[0.08] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor hover:text-white">XP</Link>
@@ -836,10 +833,9 @@ export default function XPMatchRoom() {
               <MatchTeamTable label="Team Bravo" name={match.challenger_name || "Opponent pending"} color="cyan" players={visibleBravoPlayers} captainId={match.challenger_id} finalScore={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} />
             </div>
             <div className="flex min-w-0 flex-col gap-2">
-              <RankedVoicePanel match={match} user={user} isParticipant={isParticipant} />
               <MatchRoomChat
                 conversationId={match.id}
-                matchType="ranked"
+                matchType="xp"
                 teamAPlayers={visibleAlphaPlayers}
                 teamBPlayers={visibleBravoPlayers}
                 inputActions={(
@@ -849,7 +845,7 @@ export default function XPMatchRoom() {
                       <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
                     </summary>
                     <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => handleSupportTicket("I need support for this ranked match.")} disabled={!isParticipant || supporting} className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 hover:bg-blue-400/15 disabled:opacity-40">
+                      <button type="button" onClick={() => handleSupportTicket("I need support for this XP match.")} disabled={!isParticipant || supporting} className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 hover:bg-blue-400/15 disabled:opacity-40">
                         <Gavel className="h-3.5 w-3.5" /> {supporting ? "Requesting..." : "Request admin"}
                       </button>
                       <button type="button" onClick={handleCreateDispute} disabled={!isParticipant || disputing} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
@@ -877,10 +873,34 @@ export default function XPMatchRoom() {
           </div>
         )}
 
-        <div className="mb-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
-          <MapVetoVertical wager={match} ranked compact />
+        <div className="mb-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+          <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-card">
+            <div className="aspect-[16/6] min-h-[220px] overflow-hidden [&>*]:h-full [&>*]:min-h-0">
+              <MapVetoVertical wager={match} ranked compact />
+            </div>
+          </div>
           <div className="space-y-4">
-            <MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} />
+            <section className="rounded-2xl border border-white/[0.08] bg-card p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Match summary</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {[
+                  ["Mode", match.game_mode_display || match.game_mode || "XP"],
+                  ["Series", `Best of ${match.best_of || 1}`],
+                  ["Map", match.final_map_name || "Pending"],
+                  ["Team size", match.team_size || "1v1"],
+                  ["Host", match.host_name || "Host"],
+                  ["Opponent", match.challenger_name || "Pending"],
+                  ["Input", String(match.play_rule || "controller_only").replace(/_/g, " ")],
+                  ["Status", formatStatus(match.status)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl border border-white/[0.06] bg-background/30 p-3">
+                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-vapor">{label}</p>
+                    <p className="mt-1 truncate text-xs font-black text-white">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <MatchRulesPanel matchType="xp" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} />
 
             {isParticipant && !["completed", "cancelled"].includes(match.status) && (
               <section className="rounded-xl border border-red-500/15 bg-card p-4">

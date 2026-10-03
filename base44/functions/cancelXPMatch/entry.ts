@@ -9,8 +9,10 @@ Deno.serve(async (req) => {
     const id = body.xp_match_id || body.match_id;
     const match = await base44.asServiceRole.entities.XPMatch.get(id);
     if (!match) return Response.json({ error: 'XP match not found' }, { status: 404 });
-    if (match.host_id !== user.id) return Response.json({ error: 'Only the host can cancel this XP match' }, { status: 403 });
-    if (match.status !== 'open') return Response.json({ error: 'Only open XP matches can be cancelled' }, { status: 400 });
+    const isStaff = ['ceo', 'super_admin', 'admin', 'moderator'].includes(user.role) || ['ceo', 'super_admin', 'admin', 'moderator'].includes(user.admin_role) || user.is_admin === true;
+    if (match.host_id !== user.id && !isStaff) return Response.json({ error: 'Only the host or staff can cancel this XP match' }, { status: 403 });
+    if (['completed', 'cancelled'].includes(match.status)) return Response.json({ error: 'This XP match can no longer be cancelled' }, { status: 400 });
+    if (!isStaff && match.status !== 'open') return Response.json({ error: 'Only open XP matches can be cancelled by the host' }, { status: 400 });
 
     const updated = await base44.asServiceRole.entities.XPMatch.update(id, {
       status: 'cancelled',

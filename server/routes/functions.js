@@ -7550,6 +7550,7 @@ async function createXPMatch(req) {
   }
   const allowedPlayRules = new Set(["controller_only", "mixed_pc_allowed", "console_only"]);
   const playRule = allowedPlayRules.has(req.body.play_rule) ? req.body.play_rule : "controller_only";
+  const bestOf = [1, 3, 5].includes(Number(req.body.best_of)) ? Number(req.body.best_of) : 1;
   const match = await createEntity("XPMatch", {
     host_id: req.user.id,
     host_name: nameFor(req.user),
@@ -7559,7 +7560,7 @@ async function createXPMatch(req) {
     game_mode_display: req.body.game_mode_display || req.body.game_mode,
     team_size: req.body.team_size,
     play_rule: playRule,
-    best_of: 1,
+    best_of: bestOf,
     maps: RANKED_MAPS_BY_MODE[req.body.game_mode],
     final_map_id: "",
     final_map_name: "",
@@ -7571,7 +7572,7 @@ async function createXPMatch(req) {
     total_players: slotsPerTeam * 2,
     status: "open",
     posted_to_matchfinder: true,
-    match_start_deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    match_start_deadline: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     created_date: nowIso(),
   });
   return { success: true, xp_match: match, xp_match_id: match.id, match };
@@ -7612,6 +7613,7 @@ async function acceptXPMatch(req) {
     status: rosterFull ? "accepted" : "open",
     posted_to_matchfinder: !rosterFull,
     match_started_date: rosterFull ? nowIso() : "",
+    match_start_deadline: rosterFull ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : match.match_start_deadline,
     ...(selected ? {
       maps: selected.pool,
       final_map_id: selected.id,
@@ -7619,6 +7621,16 @@ async function acceptXPMatch(req) {
     } : {}),
   });
 
+  if (rosterFull) {
+    await notifyUser(match.host_id, {
+      title: "XP match accepted",
+      message: `${nameFor(req.user)} accepted your ${match.game_mode_display || match.game_mode} XP match.`,
+      type: "match",
+      action_url: `/xp-match/${id}`,
+      related_entity_id: id,
+      related_entity_type: "XPMatch",
+    }).catch(() => null);
+  }
   return { success: true, xp_match_id: id, match: updated, roster_full: rosterFull };
 }
 
@@ -7626,10 +7638,12 @@ async function cancelXPMatch(req) {
   const id = req.body.xp_match_id || req.body.match_id || req.body.id;
   const match = await getEntity("XPMatch", id);
   if (!match) return { success: false, error: "XP match not found" };
-  if (match.host_id !== req.user.id && !hasRole(req.user, "moderator")) {
-    return { success: false, error: "Only the host can cancel this XP match" };
+  const staffOverride = hasRole(req.user, "moderator");
+  if (match.host_id !== req.user.id && !staffOverride) {
+    return { success: false, error: "Only the host or staff can cancel this XP match" };
   }
-  if (match.status !== "open") return { success: false, error: "Only open XP matches can be cancelled" };
+  if (["completed", "cancelled"].includes(match.status)) return { success: false, error: "This XP match can no longer be cancelled" };
+  if (!staffOverride && match.status !== "open") return { success: false, error: "Only open XP matches can be cancelled by the host" };
   const updated = await updateEntity("XPMatch", id, {
     status: "cancelled",
     posted_to_matchfinder: false,

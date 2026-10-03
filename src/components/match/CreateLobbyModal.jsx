@@ -224,6 +224,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
             max_players: teamSizeObj.players,
+            best_of: bestOf,
             team_id: selectedTeamId || undefined,
             play_rule: selectedPlayRule,
           });
@@ -539,8 +540,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               </div>
             )}
 
-            {/* Step 3: Best Of Selection (Wagers only) */}
-            {step === 3 && isWager && (
+            {/* Step 3: Best Of Selection */}
+            {step === 3 && (isWager || mode === "xp") && (
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">3</span>
@@ -568,7 +569,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   ))}
                 </div>
                 <div className="mb-6">
-                  <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel="wager" />
+                  <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel={mode === "xp" ? "XP match" : "wager"} />
                 </div>
                 <div className="flex justify-between">
                   <button
@@ -578,10 +579,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     Back
                   </button>
                   <button
-                    onClick={() => setStep(4)}
-                    className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
+                    onClick={() => mode === "xp" ? handleCreate() : setStep(4)}
+                    disabled={mode === "xp" && isCreating}
+                    className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
                   >
-                    Next <ChevronRight className="w-4 h-4" />
+                    {mode === "xp" ? (isCreating ? "Posting..." : "Post XP Match") : <>Next <ChevronRight className="w-4 h-4" /></>}
                   </button>
                 </div>
               </div>
