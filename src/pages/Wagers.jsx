@@ -19,27 +19,17 @@ const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split
 const isWagerMatch = (wager) => (
   (wager.match_type || ((wager.entry_fee ?? wager.amount ?? 0) > 0 ? "wagers" : "ranked")) === "wagers"
 );
-const activeWagerStatuses = new Set([
-  "accepted", "escrow_paid", "map_veto", "ready", "in_progress",
-  "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion",
-]);
-const uniqueWagers = (rows) => rows.filter((wager, index, list) => (
-  list.findIndex((item) => item.id === wager.id) === index
-));
 
 export default function Wagers() {
   const navigate = useNavigate();
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [wagers, setWagers] = useState([]);
-  const [activeWagers, setActiveWagers] = useState([]);
   const [historyWagers, setHistoryWagers] = useState([]);
-  const [participantTeamByWager, setParticipantTeamByWager] = useState({});
   const [user, setUser] = useState(null);
   const [userTeams, setUserTeams] = useState([]);
   const [acceptTeamByWager, setAcceptTeamByWager] = useState({});
   const [acceptPaymentByWager, setAcceptPaymentByWager] = useState({});
-  const [acceptingWagerId, setAcceptingWagerId] = useState(null);
   const [cancellingWagerId, setCancellingWagerId] = useState(null);
   const [wagerToCancel, setWagerToCancel] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,23 +50,16 @@ export default function Wagers() {
         setWagers((wagerList || []).filter(isWagerMatch));
 
         if (user?.id) {
-          const [wallets, hosted, challenged, participantRows] = await Promise.all([
+          const [wallets, hosted, challenged] = await Promise.all([
             base44.entities.Wallet.filterFresh({ user_id: user.id }, "-created_date", 1),
             base44.entities.Wager.filterFresh({ host_id: user.id }, "-created_date", 50),
             base44.entities.Wager.filterFresh({ challenger_id: user.id }, "-created_date", 50),
-            base44.entities.WagerParticipant.filterFresh({ user_id: user.id }, "-joined_date", 100).catch(() => []),
           ]);
           if (!active) return;
-          const participantWagers = await Promise.all((participantRows || []).map((participant) => base44.entities.Wager.getFresh(participant.wager_id).catch(() => null)));
-          if (!active) return;
-          setParticipantTeamByWager(Object.fromEntries((participantRows || []).map((participant) => [participant.wager_id, participant.team])));
           const wallet = (wallets || [])[0];
           setUser((current) => current ? { ...current, wallet_balance: Number(wallet?.available_balance ?? current.wallet_balance ?? 0), wallet: wallet || current.wallet } : current);
-          const myWagers = uniqueWagers([...hosted, ...challenged, ...participantWagers.filter(Boolean)]).filter(isWagerMatch);
-          setActiveWagers(myWagers
-            .filter((wager) => activeWagerStatuses.has(wager.status))
-            .sort((a, b) => new Date(b.accepted_date || b.created_date || 0) - new Date(a.accepted_date || a.created_date || 0)));
-          setHistoryWagers(myWagers
+          setHistoryWagers([...hosted, ...challenged]
+            .filter((wager, index, list) => list.findIndex((item) => item.id === wager.id) === index)
             .filter(isWagerMatch)
             .filter((wager) => ["completed", "cancelled", "disputed", "score_conflict"].includes(wager.status))
             .sort((a, b) => new Date(b.match_completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.accepted_date || a.created_date || 0)));
@@ -109,14 +92,11 @@ export default function Wagers() {
       ]);
       if (currentUser) {
         const wallets = await base44.entities.Wallet.filterFresh({ user_id: currentUser.id }, "-created_date", 1);
-        const [hosted, challenged, memberships, participantRows] = await Promise.all([
-          base44.entities.Wager.filterFresh({ host_id: currentUser.id }, "-created_date", 50),
-          base44.entities.Wager.filterFresh({ challenger_id: currentUser.id }, "-created_date", 50),
-          base44.entities.TeamMember.filterFresh({ user_id: currentUser.id }, "-joined_date", 50).catch(() => []),
-          base44.entities.WagerParticipant.filterFresh({ user_id: currentUser.id }, "-joined_date", 100).catch(() => []),
+        const [hosted, challenged, memberships] = await Promise.all([
+          base44.entities.Wager.filter({ host_id: currentUser.id }, "-created_date", 50),
+          base44.entities.Wager.filter({ challenger_id: currentUser.id }, "-created_date", 50),
+          base44.entities.TeamMember.filter({ user_id: currentUser.id }, "-joined_date", 50).catch(() => [])
         ]);
-        const participantWagers = await Promise.all((participantRows || []).map((participant) => base44.entities.Wager.getFresh(participant.wager_id).catch(() => null)));
-        setParticipantTeamByWager(Object.fromEntries((participantRows || []).map((participant) => [participant.wager_id, participant.team])));
         const teams = await Promise.all((memberships || [])
           .filter((membership) => membership.is_active !== false)
           .map(async (membership) => {
@@ -127,13 +107,11 @@ export default function Wagers() {
               : null;
           }));
         setUserTeams(teams.filter(Boolean));
-        const myWagers = uniqueWagers([...hosted, ...challenged, ...participantWagers.filter(Boolean)]).filter(isWagerMatch);
-        const combinedHistory = myWagers
+        const combinedHistory = [...hosted, ...challenged]
+          .filter((w, index, list) => list.findIndex(item => item.id === w.id) === index)
+          .filter(isWagerMatch)
           .filter(w => ["completed", "cancelled", "disputed", "score_conflict"].includes(w.status))
           .sort((a, b) => new Date(b.match_completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.accepted_date || a.created_date || 0));
-        setActiveWagers(myWagers
-          .filter((wager) => activeWagerStatuses.has(wager.status))
-          .sort((a, b) => new Date(b.accepted_date || b.created_date || 0) - new Date(a.accepted_date || a.created_date || 0)));
         const wallet = wallets[0];
         setUser({
           ...currentUser,
@@ -144,11 +122,9 @@ export default function Wagers() {
       } else {
         setUser(null);
         setUserTeams([]);
-        setActiveWagers([]);
         setHistoryWagers([]);
-        setParticipantTeamByWager({});
       }
-      setWagers((wagerList || []).filter(isWagerMatch));
+      setWagers(wagerList.filter(isWagerMatch));
       setLoading(false);
     } catch (error) {
       console.error("Failed to load wagers:", error);
@@ -157,7 +133,6 @@ export default function Wagers() {
   };
 
   const handleAccept = async (wager) => {
-    if (acceptingWagerId) return;
     if (!user) {
       toast({
         title: "Login required",
@@ -185,10 +160,10 @@ export default function Wagers() {
       });
       return;
     }
-    if (isTeamWager && (!selectedTeam || selectedTeam.members.length !== required)) {
+    if (isTeamWager && (!selectedTeam || selectedTeam.members.length < required)) {
       toast({
         title: "Roster incomplete",
-        description: `That team needs exactly ${required} active players before it can join this wager.`,
+        description: `That team needs ${required} active players before it can join this wager.`,
         variant: "destructive"
       });
       return;
@@ -203,7 +178,6 @@ export default function Wagers() {
       return;
     }
 
-    setAcceptingWagerId(wager.id);
     try {
       const response = await base44.functions.invoke('acceptWager', {
         wager_id: wager.id,
@@ -211,7 +185,7 @@ export default function Wagers() {
         payment_mode: paymentMode,
       });
 
-      if (response.data?.success) {
+      if (response.data.success) {
         window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
         window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
         toast({
@@ -234,7 +208,6 @@ export default function Wagers() {
         variant: "destructive"
       });
     } finally {
-      setAcceptingWagerId(null);
       loadData();
     }
   };
@@ -279,11 +252,10 @@ export default function Wagers() {
     return true;
   });
 
-  const compatibleTeamsFor = (wager) => (
+  const compatibleTeamsFor = (_wager) => (
     userTeams.filter((team) => (
       team.team_type === "wager"
       && team.captain_id === user?.id
-      && team.members.length === rosterSize(wager.team_size)
     ))
   );
 
@@ -312,18 +284,16 @@ export default function Wagers() {
                     action={wager.host_id === user?.id ? (
                       <div className="flex items-center justify-end gap-2">
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-orange"><Clock3 className="h-3.5 w-3.5" /> Awaiting opponent</span>
-                        <Link to={`/wagers-match/${wager.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black text-cyan hover:bg-cyan/15">Open room</Link>
                         <button type="button" onClick={() => setWagerToCancel(wager)} disabled={cancellingWagerId === wager.id} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black text-vapor hover:border-red-400/30 hover:text-red-400 disabled:opacity-50">{cancellingWagerId === wager.id ? "Cancelling..." : "Cancel"}</button>
                       </div>
                     ) : user ? (
                       <div className="w-52 space-y-2">
-                        {compatibleTeamsFor(wager).length === 0 && <p className="rounded-lg border border-orange/20 bg-orange/5 px-2.5 py-2 text-[10px] font-semibold leading-relaxed text-orange">You need a wager team with exactly {rosterSize(wager.team_size)} active player{rosterSize(wager.team_size) === 1 ? "" : "s"} to accept.</p>}
-                        <select value={acceptTeamByWager[wager.id] || ""} onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [wager.id]: event.target.value }))} disabled={acceptingWagerId === wager.id} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
+                        <select value={acceptTeamByWager[wager.id] || ""} onChange={(event) => setAcceptTeamByWager((current) => ({ ...current, [wager.id]: event.target.value }))} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none">
                           <option value="">Select wager team</option>
                           {compatibleTeamsFor(wager).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}/{rosterSize(wager.team_size)})</option>)}
                         </select>
-                        {rosterSize(wager.team_size) > 1 && <select value={acceptPaymentByWager[wager.id] || "own"} onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [wager.id]: event.target.value }))} disabled={acceptingWagerId === wager.id} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"><option value="own">Pay my own entry</option><option value="full_team">Pay full team entry</option></select>}
-                        <button onClick={() => handleAccept(wager)} disabled={!acceptTeamByWager[wager.id] || acceptingWagerId === wager.id} className="w-full rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-50">{acceptingWagerId === wager.id ? "Joining..." : "Accept This Match"}</button>
+                        {rosterSize(wager.team_size) > 1 && <select value={acceptPaymentByWager[wager.id] || "own"} onChange={(event) => setAcceptPaymentByWager((current) => ({ ...current, [wager.id]: event.target.value }))} className="w-full rounded border border-white/5 bg-secondary px-2 py-1.5 text-xs text-vapor focus:border-cyan/30 focus:outline-none"><option value="own">Pay my own entry</option><option value="full_team">Pay full team entry</option></select>}
+                        <button onClick={() => handleAccept(wager)} disabled={!acceptTeamByWager[wager.id]} className="w-full rounded-lg bg-green px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-50">Accept This Match</button>
                       </div>
                     ) : null}
                   />
@@ -344,23 +314,6 @@ export default function Wagers() {
         />
         <ActivisionIdNotice user={user} className="mb-5" />
 
-        {activeWagers.length > 0 && (
-          <section className="glass mb-5 overflow-hidden rounded-xl border border-green/15">
-            <div className="border-b border-white/5 px-5 py-4"><h2 className="font-black">My active wagers</h2><p className="mt-1 text-xs text-vapor">Accepted wagers stay here until the match is completed.</p></div>
-            <div className="divide-y divide-white/5">
-              {activeWagers.map((activeWager) => (
-                <div key={activeWager.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-black">{activeWager.host_team_name || activeWager.host_name || "Team Alpha"} vs {activeWager.challenger_team_name || activeWager.challenger_name || "Team Bravo"}</p>
-                    <p className="mt-1 text-xs text-vapor">{activeWager.team_size} · {activeWager.game_mode_display || activeWager.game_mode} · ${activeWager.entry_fee ?? activeWager.amount ?? 0} per player · {String(activeWager.status).replaceAll("_", " ")}</p>
-                  </div>
-                  <Link to={`/wagers-match/${activeWager.id}`} className="rounded-lg bg-green px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider text-background">Open match room</Link>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         <section className="glass overflow-hidden rounded-xl border border-white/5">
           <div className="border-b border-white/5 px-5 py-4"><h2 className="font-black">My wager history</h2><p className="mt-1 text-xs text-vapor">Your completed and previous wager matches.</p></div>
             <div className="divide-y divide-white/5">
@@ -371,13 +324,7 @@ export default function Wagers() {
               ) : (
                 historyWagers.map((w) => {
                   const entryFee = w.entry_fee ?? w.amount ?? 0;
-                  const participantSide = participantTeamByWager[w.id];
-                  const won = participantSide === "host"
-                    ? String(w.winner_id || "") === String(w.host_id || "")
-                    : participantSide === "challenger"
-                      ? String(w.winner_id || "") === String(w.challenger_id || "")
-                      : String(w.winner_id || "") === String(user?.id || "");
-                  const result = won ? "Won" : w.status === "completed" ? "Lost" : w.status;
+                  const result = w.winner_id === user?.id ? "Won" : w.status === "completed" ? "Lost" : w.status;
                   return (
                     <div key={w.id} className="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-4 px-5 py-4 items-center">
                       <span className="font-semibold text-sm">{w.host_name || "Host unavailable"} vs {w.challenger_name || "Opponent pending"}</span>
@@ -404,7 +351,6 @@ export default function Wagers() {
             setIsCreateModalOpen(false);
             if (result?.wager_id) {
               toast({ title: "Wager posted", description: "The match room opens after another player accepts your wager." });
-              navigate(`/wagers-match/${result.wager_id}`);
             }
           }}
         />
