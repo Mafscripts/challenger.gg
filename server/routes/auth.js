@@ -258,7 +258,7 @@ router.patch("/me", requireAuth, async (req, res, next) => {
     if (Object.prototype.hasOwnProperty.call(req.body || {}, "username")) identityPayload.username = username;
     if (Object.prototype.hasOwnProperty.call(req.body || {}, "display_name")) identityPayload.display_name = display_name;
     if (Object.keys(identityPayload).length > 0) {
-      user = await updateUserIdentity(req.user.id, identityPayload);
+      user = await updateUserIdentity(req.user.id, identityPayload, req.user);
     }
     res.json(publicUser(user));
   } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { User, Lock, Save, Loader2 } from "lucide-react";
+import { User, Lock, Save, Loader2, Crown, Coins, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const usernamePattern = /^[a-z0-9_]{3,20}$/;
@@ -21,7 +21,23 @@ export default function AccountSection({ user, onUserUpdate }) {
   const originalName = user?.display_name || user?.full_name || "";
   const normalizedUsername = username.trim().toLowerCase();
   const cleanDisplayName = displayName.trim();
-  const identityChanged = normalizedUsername !== originalUsername || cleanDisplayName !== originalName;
+  const usernameChanged = normalizedUsername !== originalUsername;
+  const identityChanged = usernameChanged || cleanDisplayName !== originalName;
+  const isPrivileged = ["moderator", "admin", "super_admin", "ceo"].includes(user?.role)
+    || ["moderator", "admin", "super_admin", "ceo"].includes(user?.admin_role)
+    || user?.is_admin;
+  const isPremium = user?.is_premium === true
+    && (!user?.premium_expires || new Date(user.premium_expires).getTime() > Date.now());
+  const usernameChangeDate = user?.metadata?.username_change_last_at;
+  const premiumUsedThisMonth = usernameChangeDate
+    ? (() => {
+        const changed = new Date(usernameChangeDate);
+        const now = new Date();
+        return !Number.isNaN(changed.getTime())
+          && changed.getUTCFullYear() === now.getUTCFullYear()
+          && changed.getUTCMonth() === now.getUTCMonth();
+      })()
+    : false;
 
   useEffect(() => {
     setUsername(user?.username || "");
@@ -112,6 +128,31 @@ export default function AccountSection({ user, onUserUpdate }) {
               className="w-full px-4 py-2.5 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
             />
             <p className="text-[10px] text-vapor mt-1">3-20 characters: letters, numbers, underscore.</p>
+            <div className="mt-2 flex items-start gap-2 rounded-lg border border-white/5 bg-white/[0.025] px-3 py-2.5">
+              {isPrivileged ? (
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan" />
+              ) : isPremium ? (
+                <Crown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan" />
+              ) : (
+                <Coins className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan" />
+              )}
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-white">
+                  {isPrivileged
+                    ? "Unlimited username changes"
+                    : isPremium
+                      ? premiumUsedThisMonth ? "Monthly free change already used" : "1 free username change this month"
+                      : "5 credits per username change"}
+                </p>
+                <p className="mt-0.5 text-[9px] leading-relaxed text-vapor">
+                  {isPrivileged
+                    ? "Admin, moderator, super admin and CEO accounts are not limited."
+                    : isPremium
+                      ? "Premium members get one free username change per calendar month."
+                      : "Your balance: " + Number(user?.credits || 0) + " credits."}
+                </p>
+              </div>
+            </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-vapor uppercase tracking-wider mb-2 block">Display Name</label>
@@ -128,7 +169,7 @@ export default function AccountSection({ user, onUserUpdate }) {
         <div className="flex justify-end mt-3">
           <button
             onClick={handleIdentityChange}
-            disabled={identitySaving || !identityChanged || !normalizedUsername || !cleanDisplayName}
+            disabled={identitySaving || !identityChanged || !normalizedUsername || !cleanDisplayName || (usernameChanged && isPremium && premiumUsedThisMonth) || (usernameChanged && !isPremium && !isPrivileged && Number(user?.credits || 0) < 5)}
             className="flex items-center gap-2 px-5 py-2.5 bg-cyan/10 text-cyan text-sm font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all disabled:opacity-50"
           >
             {identitySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

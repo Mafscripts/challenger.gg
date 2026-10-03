@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { prisma } from "./prisma.js";
 import { createEntity, firstEntity, serializeRow, updateEntity } from "./entity.js";
+import { hasRole } from "./roles.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const JWT_EXPIRES_IN = "7d";
@@ -248,14 +249,66 @@ export const ensureUserRecords = async (user, payload = {}) => {
   return { user: publicUser(updated), wallet, profile: identityRecords.profile || profile };
 };
 
-export const updateUserIdentity = async (userId, payload = {}) => {
-  const data = {};
+const isActivePremium = (user) => (
+  user?.is_premium === true
+  && (!user?.premium_expires || new Date(user.premium_expires).getTime() > Date.now())
+);
 
-  if (Object.prototype.hasOwnProperty.call(payload, "username")) {
+const isSameUtcMonth = (left, right = new Date()) => {
+  const date = left ? new Date(left) : null;
+  if (!date || Number.isNaN(date.getTime())) return false;
+  return date.getUTCFullYear() === right.getUTCFullYear()
+    && date.getUTCMonth() === right.getUTCMonth();
+};
+
+export const updateUserIdentity = async (userId, payload = {}, actor = null) => {
+  const data = {};
+  const changingUsername = Object.prototype.hasOwnProperty.call(payload, "username");
+
+  if (changingUsername) {
     const username = validateUsername(payload.username);
-    await ensureUsernameAvailable(username, userId);
-    data.username = username;
-    data.handle = username;
+    const current = await prisma.user.findUnique({ where: { id: userId } });
+    if (!current) {
+      const error = new Error("User not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (normalizeUsername(current.username) !== username) {
+      await ensureUsernameAvailable(username, userId);
+
+      const privileged = actor && hasRole(actor, "moderator");
+      const premium = isActivePremium(current);
+      const metadata = safeUserMetadata(current.metadata);
+      const lastPremiumChange = metadata.username_change_last_at;
+      const premiumUsedThisMonth = isSameUtcMonth(lastPremiumChange);
+      const nowIso = new Date().toISOString();
+
+      if (privileged) {
+        data.username = username;
+        data.handle = username;
+      } else if (premium) {
+        if (premiumUsedThisMonth) {
+          const error = new Error("Premium members can change their username once per month. Your next free change is available next month.");
+          error.status = 429;
+          throw error;
+        }
+        data.username = username;
+        data.handle = username;
+        data.metadata = { ...metadata, username_change_last_at: nowIso };
+      } else {
+        const currentCredits = Number(current.credits || 0);
+        if (currentCredits < 5) {
+          const error = new Error("Changing your username costs 5 credits. You need at least 5 credits.");
+          error.status = 400;
+          throw error;
+        }
+        data.username = username;
+        data.handle = username;
+        data.credits = { decrement: 5 };
+        data.metadata = { ...metadata, username_change_last_at: nowIso };
+      }
+    }
   }
 
   if (Object.prototype.hasOwnProperty.call(payload, "display_name")) {
@@ -266,7 +319,38 @@ export const updateUserIdentity = async (userId, payload = {}) => {
     return prisma.user.findUnique({ where: { id: userId } });
   }
 
-  const user = await prisma.user.update({ where: { id: userId }, data });
+  let user;
+  if (data.credits?.decrement === 5) {
+    const result = await prisma.user.updateMany({
+      where: { id: userId, credits: { gte: 5 } },
+      data,
+    });
+    if (result.count !== 1) {
+      const error = new Error("Changing your username costs 5 credits. You need at least 5 credits.");
+      error.status = 400;
+      throw error;
+    }
+    user = await prisma.user.findUnique({ where: { id: userId } });
+  } else {
+    user = await prisma.user.update({ where: { id: userId }, data });
+  }
+
+  if (changingUsername && normalizeUsername(user.username) === normalizeUsername(payload.username)) {
+    const current = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, credits: true, metadata: true } });
+    const premium = isActivePremium(user);
+    const privileged = actor && hasRole(actor, "moderator");
+    if (!privileged && !premium) {
+      await createEntity("CreditTransaction", {
+        user_id: userId,
+        amount: -5,
+        type: "username_change",
+        description: "Username change",
+        created_date: new Date().toISOString(),
+        balance_after: current?.credits ?? user.credits,
+      }).catch(() => null);
+    }
+  }
+
   await syncUserIdentityRecords(user);
   return user;
 };
