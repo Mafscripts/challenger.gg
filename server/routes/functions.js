@@ -7537,6 +7537,107 @@ async function acceptRankedMatch(req) {
   return { success: true, match: updated, roster_full: rosterFull };
 }
 
+
+async function createXPMatch(req) {
+  const activisionError = activisionIdErrorForUsers([req.userRow]);
+  if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
+  if (!Object.prototype.hasOwnProperty.call(RANKED_MAPS_BY_MODE, req.body.game_mode)) {
+    return { success: false, error: "Invalid XP game mode" };
+  }
+  const slotsPerTeam = Math.max(1, Number.parseInt(String(req.body.team_size || "1v1").split("v")[0], 10) || 1);
+  if (![1, 2, 3, 4].includes(slotsPerTeam) || req.body.team_size !== `${slotsPerTeam}v${slotsPerTeam}`) {
+    return { success: false, error: "Invalid XP team size" };
+  }
+  const allowedPlayRules = new Set(["controller_only", "mixed_pc_allowed", "console_only"]);
+  const playRule = allowedPlayRules.has(req.body.play_rule) ? req.body.play_rule : "controller_only";
+  const match = await createEntity("XPMatch", {
+    host_id: req.user.id,
+    host_name: nameFor(req.user),
+    challenger_id: "",
+    challenger_name: "",
+    game_mode: req.body.game_mode,
+    game_mode_display: req.body.game_mode_display || req.body.game_mode,
+    team_size: req.body.team_size,
+    play_rule: playRule,
+    best_of: 1,
+    maps: RANKED_MAPS_BY_MODE[req.body.game_mode],
+    final_map_id: "",
+    final_map_name: "",
+    team_alpha_player_ids: [req.user.id],
+    team_alpha_player_names: [nameFor(req.user)],
+    team_bravo_player_ids: [],
+    team_bravo_player_names: [],
+    joined_players: 1,
+    total_players: slotsPerTeam * 2,
+    status: "open",
+    posted_to_matchfinder: true,
+    match_start_deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    created_date: nowIso(),
+  });
+  return { success: true, xp_match: match, xp_match_id: match.id, match };
+}
+
+async function acceptXPMatch(req) {
+  const id = req.body.xp_match_id || req.body.match_id || req.body.id;
+  const match = await getEntity("XPMatch", id);
+  if (!match) return { success: false, error: "XP match not found" };
+  if (match.status !== "open") return { success: false, error: "XP match is not open" };
+  if (match.host_id === req.user.id) return { success: false, error: "You cannot accept your own XP match" };
+
+  const slotsPerTeam = Math.max(1, Number.parseInt(String(match.team_size || "1v1").split("v")[0], 10) || 1);
+  const alphaIds = Array.isArray(match.team_alpha_player_ids) && match.team_alpha_player_ids.length ? [...match.team_alpha_player_ids] : [match.host_id];
+  const alphaNames = Array.isArray(match.team_alpha_player_names) && match.team_alpha_player_names.length ? [...match.team_alpha_player_names] : [match.host_name];
+  const bravoIds = Array.isArray(match.team_bravo_player_ids) ? [...match.team_bravo_player_ids] : [];
+  const bravoNames = Array.isArray(match.team_bravo_player_names) ? [...match.team_bravo_player_names] : [];
+
+  if ([...alphaIds, ...bravoIds].includes(req.user.id)) {
+    return { success: true, xp_match_id: id, match, already_joined: true };
+  }
+  if (bravoIds.length >= slotsPerTeam) return { success: false, error: "XP match is full" };
+
+  bravoIds.push(req.user.id);
+  bravoNames.push(nameFor(req.user));
+  const rosterFull = alphaIds.length >= slotsPerTeam && bravoIds.length >= slotsPerTeam;
+  const selected = rosterFull ? randomRankedMap(match.game_mode, []) : null;
+
+  const updated = await updateEntity("XPMatch", id, {
+    challenger_id: match.challenger_id || req.user.id,
+    challenger_name: match.challenger_name || nameFor(req.user),
+    team_alpha_player_ids: alphaIds,
+    team_alpha_player_names: alphaNames,
+    team_bravo_player_ids: bravoIds,
+    team_bravo_player_names: bravoNames,
+    joined_players: alphaIds.length + bravoIds.length,
+    total_players: slotsPerTeam * 2,
+    status: rosterFull ? "accepted" : "open",
+    posted_to_matchfinder: !rosterFull,
+    match_started_date: rosterFull ? nowIso() : "",
+    ...(selected ? {
+      maps: selected.pool,
+      final_map_id: selected.id,
+      final_map_name: selected.name,
+    } : {}),
+  });
+
+  return { success: true, xp_match_id: id, match: updated, roster_full: rosterFull };
+}
+
+async function cancelXPMatch(req) {
+  const id = req.body.xp_match_id || req.body.match_id || req.body.id;
+  const match = await getEntity("XPMatch", id);
+  if (!match) return { success: false, error: "XP match not found" };
+  if (match.host_id !== req.user.id && !hasRole(req.user, "moderator")) {
+    return { success: false, error: "Only the host can cancel this XP match" };
+  }
+  if (match.status !== "open") return { success: false, error: "Only open XP matches can be cancelled" };
+  const updated = await updateEntity("XPMatch", id, {
+    status: "cancelled",
+    posted_to_matchfinder: false,
+    cancelled_date: nowIso(),
+  });
+  return { success: true, match: updated };
+}
+
 async function readyUpRankedMatch(req) {
   const id = req.body.ranked_match_id || req.body.match_id || req.body.id;
   const match = await getEntity("RankedMatch", id);
@@ -9831,6 +9932,9 @@ const handlers = {
   refundWager,
   createRankedMatch,
   acceptRankedMatch,
+  createXPMatch,
+  acceptXPMatch,
+  cancelXPMatch,
   readyUpRankedMatch,
   startRankedMatch,
   createRankedVoiceSession,
