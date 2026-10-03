@@ -18,7 +18,19 @@ export const normalizeIpAddress = (value) => {
   return net.isIP(ip) ? ip.toLowerCase() : null;
 };
 
-export const requestIpAddress = (req) => normalizeIpAddress(req.ip || req.socket?.remoteAddress);
+const isTrackableIp = (value) => {
+  const ip = normalizeIpAddress(value);
+  if (!ip) return false;
+  if (ip === "0.0.0.0" || ip === "::") return false;
+  if (ip === "::1" || ip.startsWith("127.")) return false;
+  if (ip.startsWith("169.254.") || ip.startsWith("fe80:")) return false;
+  return true;
+};
+
+export const requestIpAddress = (req) => {
+  const ip = normalizeIpAddress(req.ip || req.socket?.remoteAddress);
+  return isTrackableIp(ip) ? ip : null;
+};
 
 export const knownUserIpAddresses = (user) => {
   const metadata = user?.metadata && typeof user.metadata === "object" ? user.metadata : {};
@@ -29,7 +41,7 @@ export const knownUserIpAddresses = (user) => {
     user?.last_login_ip,
     user?.registration_ip,
     ...history.map((entry) => entry?.ip),
-  ].map(normalizeIpAddress).filter(Boolean))];
+  ].map(normalizeIpAddress).filter(isTrackableIp))];
 };
 
 const metadataFor = (row) => (

@@ -134,7 +134,8 @@ const clearVerificationMetadata = (metadata) => {
 };
 
 const recordIp = async (user, req, field) => {
-  const ip = requestIpAddress(req) || "unknown";
+  const ip = requestIpAddress(req);
+  if (!ip) return user;
   const metadata = safeUserMetadata(user.metadata);
   const ipHistory = Array.isArray(metadata.ip_history) ? metadata.ip_history : [];
   const nextHistory = [

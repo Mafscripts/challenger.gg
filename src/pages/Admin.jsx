@@ -305,11 +305,16 @@ const hasActivePremium = (user) => {
   return Number.isFinite(expiresAt) && expiresAt > Date.now();
 };
 const ipComparisonKey = (value) => String(value || "").trim().toLowerCase().replace(/^::ffff:/, "");
+const isTrackableUserIp = (value) => {
+  const ip = ipComparisonKey(value);
+  if (!ip || ip === "0.0.0.0" || ip === "::" || ip === "::1" || ip.startsWith("127.") || ip.startsWith("169.254.") || ip.startsWith("fe80:")) return false;
+  return true;
+};
 const knownIpAddresses = (user) => [...new Map([
   user?.last_login_ip,
   user?.registration_ip,
   ...((user?.ip_history || []).slice().reverse().map((entry) => entry?.ip)),
-].filter(Boolean).map((ip) => [ipComparisonKey(ip), ip])).values()];
+].filter(isTrackableUserIp).map((ip) => [ipComparisonKey(ip), ip])).values()];
 const ipHistoryText = (user) => knownIpAddresses(user).join(", ") || "N/A";
 const marketplacePlacementText = (item) => [
   item.is_featured === true ? "Featured" : null,
