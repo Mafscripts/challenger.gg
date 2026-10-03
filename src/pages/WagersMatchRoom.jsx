@@ -19,7 +19,6 @@ import { wagerPlayRule } from "@/lib/wagerRules";
 import { isStaffUser } from "@/lib/roles";
 
 const formatStatus = (value) => String(value || "open").replace(/_/g, " ");
-const formatDate = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Pending";
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const playerName = (player) => player?.full_name || player?.username || player?.user_name || "Open slot";
 const wagerMapText = (match, pendingText = "Map pending") => {
@@ -42,16 +41,6 @@ const matchPhaseFor = (match) => ({
   completed: "Complete",
   cancelled: "Cancelled",
 }[match?.status] || "Live");
-
-const buildActivity = (match) => [
-  { label: "Match created", date: match.created_date, complete: Boolean(match.created_date) },
-  { label: "Teams joined", date: match.accepted_date, complete: Boolean(match.challenger_id || match.accepted_date) },
-  { label: "Admin requested", date: match.admin_request_updated_date, complete: Boolean(match.requested_admin || match.admin_request_status) },
-  { label: "Match started", date: match.match_started_date, complete: Boolean(match.match_started_date || ["ready", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed", "completed"].includes(match.status)) },
-  { label: "Score submitted", date: match.reported_score_date || match.host_reported_score_date || match.challenger_reported_score_date, complete: Boolean(match.reported_score_by || match.reported_score_date) },
-  { label: "Dispute opened", date: match.disputed_date, complete: Boolean(match.dispute_id || ["disputed", "score_conflict"].includes(match.status)) },
-  { label: "Admin resolved", date: match.admin_request_resolved_date, complete: match.admin_request_status === "resolved" },
-];
 
 function InfoRow({ label, value }) {
   return (
@@ -150,25 +139,6 @@ function MatchStatusCard({ match }) {
       <InfoRow label="Server" value={match.server || match.server_region || match.region || "Platform lobby"} />
       <InfoRow label="Current status" value={formatStatus(match.status)} />
       <InfoRow label="Match phase" value={matchPhaseFor(match)} />
-    </section>
-  );
-}
-
-function ActivityTimeline({ match }) {
-  return (
-    <section className="glass rounded-xl border border-white/5 p-5">
-      <h2 className="mb-4 text-sm font-black uppercase tracking-wider">Recent Activity</h2>
-      <div className="space-y-3">
-        {buildActivity(match).map((item) => (
-          <div key={item.label} className="flex gap-3">
-            <div className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${item.complete ? "bg-cyan" : "bg-vapor/30"}`} />
-            <div className="min-w-0">
-              <p className={`text-sm font-semibold ${item.complete ? "text-foreground" : "text-vapor"}`}>{item.label}</p>
-              <p className="text-[10px] uppercase tracking-wider text-vapor">{item.complete ? formatDate(item.date) : "Pending"}</p>
-            </div>
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
@@ -400,7 +370,7 @@ export default function WagersMatchRoom() {
             description: `${response.data.winner_name} won ${response.data.winner_score}-${response.data.loser_score}` 
           });
           setWager(completeResponse.data.wager || { ...wager, status: "completed", winner_id: completeResponse.data.winner_id, winner_name: completeResponse.data.winner_name, wallet_changes: completeResponse.data.wallet_changes });
-        } else if (response.data.status === 'score_conflict') {
+        } else if (["score_conflict", "disputed"].includes(response.data.status)) {
           toast({ 
             title: "Score conflict detected", 
             description: "Dispute opened automatically - admin will review", 
@@ -733,7 +703,7 @@ export default function WagersMatchRoom() {
               <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
               <MatchTeamTable label="Team Bravo" name={challengerDisplayName} color="cyan" players={teamBPlayers} captainId={wager.challenger_id} finalScore={wager.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={challengerWinner} />
             </div>
-            <aside className="min-w-0"><MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} /></aside>
+            <aside className="min-w-0"><MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} inputActions={<div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => handleRequestAdmin("Match room assistance requested.")} disabled={!canUseMatchRoom || requestingAdmin} className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"><AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting…" : "Request admin"}</button><button type="button" onClick={handleCreateDispute} disabled={!canUseMatchRoom || requestingAdmin} className="flex items-center justify-center gap-1.5 rounded-lg border border-orange/25 bg-orange/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/20 disabled:cursor-not-allowed disabled:opacity-45"><AlertCircle className="h-3.5 w-3.5" /> Submit dispute</button></div>} /></aside>
           </div>
         </section>
 
@@ -761,7 +731,6 @@ export default function WagersMatchRoom() {
               <MatchMapSeries maps={Array.isArray(wager.series_maps) && wager.series_maps.length ? wager.series_maps : (wager.final_map_name ? [wager.final_map_name] : [])} mode={wager.game_mode_display || wager.game_mode} host={wager.host_name || hostDisplayName} bestOf={bestOf} compact />
               <MatchStatusCard match={wager} />
             </div>
-            <ActivityTimeline match={wager} />
             <MatchRulesPanel matchType="wager" gameMode={wager.game_mode} playRule={wager.play_rule} collapsible defaultOpen={false} />
 
         <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
@@ -809,27 +778,6 @@ export default function WagersMatchRoom() {
                 {payingEntry ? "Paying..." : `Pay Entry ${formatMoney(wager.entry_fee || wager.amount || 0)}`}
               </button>
             )}
-            <button
-              onClick={() => handleRequestAdmin("A dispute needs staff review.")}
-              disabled={!canUseMatchRoom || requestingAdmin}
-              className="flex items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-red-400 transition-all hover:bg-red-500/20 disabled:opacity-50"
-            >
-              <AlertTriangle className="h-4 w-4" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
-            </button>
-            <button
-              onClick={handleCreateDispute}
-              disabled={!canUseMatchRoom || requestingAdmin}
-              className="rounded-lg border border-orange/20 bg-orange/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-orange transition-all hover:bg-orange/20 disabled:opacity-50"
-            >
-              {wager.match_type === "xp" ? "Submit Ticket" : "Submit Dispute"}
-            </button>
-            <button
-              onClick={() => handleRequestAdmin("Opponent no-show report.")}
-              disabled={!canUseMatchRoom || requestingAdmin}
-              className="rounded-lg border border-white/5 bg-secondary/50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-vapor transition-all hover:bg-secondary disabled:opacity-50"
-            >
-              Report No Show
-            </button>
           </div>
           {(wager.admin_request_status || wager.requested_admin) && (
             <p className="mt-3 text-xs text-vapor">

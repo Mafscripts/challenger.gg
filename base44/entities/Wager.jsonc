@@ -291,6 +291,33 @@
       "type": "string",
       "format": "date-time",
       "title": "Accepted Date"
+    },
+    "dispute_id": {
+      "type": "string",
+      "title": "Open Dispute ID"
+    },
+    "disputed_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Disputed Date"
+    },
+    "requested_admin": {
+      "type": "boolean",
+      "default": false,
+      "title": "Admin Requested"
+    },
+    "admin_request_ticket_id": {
+      "type": "string",
+      "title": "Admin Request Ticket ID"
+    },
+    "admin_request_status": {
+      "type": "string",
+      "title": "Admin Request Status"
+    },
+    "admin_request_updated_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Admin Request Updated Date"
     }
   },
   "required": [

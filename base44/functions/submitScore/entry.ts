@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     }
 
     await base44.asServiceRole.entities.Wager.update(wager_id, {
-      status: 'score_conflict',
+      status: 'disputed',
       team_alpha_score_reported: alphaScore,
       team_bravo_score_reported: bravoScore,
       [`${team === 'host' ? 'team_alpha' : 'team_bravo'}_reported_by`]: user.id,
@@ -148,9 +148,52 @@ Deno.serve(async (req) => {
       created_date: now,
     });
 
+    const ticket = await base44.asServiceRole.entities.Ticket.create({
+      user_id: user.id,
+      username: playerName(user),
+      subject: `Automatic wager score dispute ${wager.id}`,
+      description: `Conflicting score reports in ${wager.host_name || 'Team Alpha'} vs ${wager.challenger_name || 'Team Bravo'}. First report: ${existingAlpha}-${existingBravo}. Latest report: ${alphaScore}-${bravoScore}.`,
+      category: 'support',
+      priority: 'high',
+      status: 'open',
+      messages: [{ sender_id: user.id, sender_name: playerName(user), sender_role: user.role || 'user', message: 'Automatic dispute created after conflicting score reports.', timestamp: now }],
+    });
+    const alert = await base44.asServiceRole.entities.AdminAlert.create({
+      ticket_id: ticket.id,
+      match_type: 'wager',
+      match_id: wager.id,
+      requested_by: user.id,
+      requested_by_name: playerName(user),
+      priority: 'high',
+      status: 'open',
+      created_date: now,
+    });
+    await base44.asServiceRole.entities.Wager.update(wager_id, {
+      dispute_id: dispute.id,
+      disputed_date: now,
+      requested_admin: true,
+      admin_request_ticket_id: ticket.id,
+      admin_request_status: 'waiting_for_admin',
+      admin_request_updated_date: now,
+    });
+    await base44.asServiceRole.entities.ChatMessage.create({
+      conversation_id: wager.id,
+      sender_id: user.id,
+      sender_name: 'Topfragg System',
+      sender_role: 'admin',
+      staff_badge: true,
+      recipient_id: wager.id,
+      recipient_name: 'Wager match room',
+      content: `⚠️ Score reports conflict (${existingAlpha}-${existingBravo} vs ${alphaScore}-${bravoScore}). This match is now disputed and staff have been alerted.`,
+      is_read: false,
+      match_type: 'wager',
+      system: true,
+      created_date: now,
+    });
+
     return Response.json({
       success: true,
-      status: 'score_conflict',
+      status: 'disputed',
       team_alpha_score: alphaScore,
       team_bravo_score: bravoScore,
       dispute_id: dispute.id,

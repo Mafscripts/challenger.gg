@@ -74,6 +74,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (matchType === 'wager') {
+      const now = new Date().toISOString();
+      await base44.asServiceRole.entities.Wager.update(matchId, {
+        requested_admin: true,
+        admin_request_ticket_id: ticket.id,
+        admin_request_status: 'waiting_for_admin',
+        admin_request_updated_date: now,
+      });
+      await base44.asServiceRole.entities.ChatMessage.create({
+        conversation_id: matchId,
+        sender_id: user.id,
+        sender_name: 'Topfragg System',
+        sender_role: 'admin',
+        staff_badge: true,
+        recipient_id: matchId,
+        recipient_name: 'Wager match room',
+        content: `🛡️ ${playerName(user)} requested staff assistance. Admins have been notified.`,
+        is_read: false,
+        match_type: 'wager',
+        system: true,
+        created_date: now,
+      });
+    }
+
     return Response.json({
       success: true,
       ticket_id: ticket.id,

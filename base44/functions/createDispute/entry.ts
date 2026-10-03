@@ -151,14 +151,56 @@ Deno.serve(async (req) => {
       created_date: new Date().toISOString(),
     });
 
+    const now = new Date().toISOString();
+    const ticket = await base44.asServiceRole.entities.Ticket.create({
+      user_id: user.id,
+      username: playerName(user),
+      subject: `Wager dispute ${wager.id}`,
+      description,
+      category: 'support',
+      priority: reason === 'no_show' || reason === 'score_dispute' ? 'high' : 'medium',
+      status: 'open',
+      messages: [{ sender_id: user.id, sender_name: playerName(user), sender_role: user.role || 'user', message: description, timestamp: now }],
+    });
+    await base44.asServiceRole.entities.AdminAlert.create({
+      ticket_id: ticket.id,
+      match_type: 'wager',
+      match_id: wager.id,
+      requested_by: user.id,
+      requested_by_name: playerName(user),
+      priority: 'high',
+      status: 'open',
+      created_date: now,
+    });
     await base44.asServiceRole.entities.Wager.update(wager_id, {
       status: 'disputed',
+      dispute_id: dispute.id,
+      disputed_date: now,
+      requested_admin: true,
+      admin_request_ticket_id: ticket.id,
+      admin_request_status: 'waiting_for_admin',
+      admin_request_updated_date: now,
+    });
+    await base44.asServiceRole.entities.ChatMessage.create({
+      conversation_id: wager.id,
+      sender_id: user.id,
+      sender_name: 'Topfragg System',
+      sender_role: 'admin',
+      staff_badge: true,
+      recipient_id: wager.id,
+      recipient_name: 'Wager match room',
+      content: `⚠️ ${playerName(user)} opened a dispute. This match is now under staff review.`,
+      is_read: false,
+      match_type: 'wager',
+      system: true,
+      created_date: now,
     });
 
     return Response.json({
       success: true,
       message: 'Dispute created successfully',
       dispute_id: dispute.id,
+      ticket_id: ticket.id,
     });
   } catch (error) {
     console.error('Create dispute error:', error);
