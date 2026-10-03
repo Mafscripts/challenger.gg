@@ -8971,8 +8971,12 @@ async function completeTournamentMatchUnlocked(req, matchId) {
   }
 
   const otherSide = reportingSide === "team_a" ? "team_b" : "team_a";
-  const otherAlpha = match[`${otherSide}_reported_score_alpha`];
-  const otherBravo = match[`${otherSide}_reported_score_bravo`];
+  // Older match records only stored the generic reported_score_* fields.
+  // If that legacy report belongs to the other side, use it as the opponent
+  // report so a second matching submission can still confirm the result.
+  const legacyOtherReport = match.reported_score_team === otherSide;
+  const otherAlpha = match[`${otherSide}_reported_score_alpha`] ?? (legacyOtherReport ? match.reported_score_alpha : null);
+  const otherBravo = match[`${otherSide}_reported_score_bravo`] ?? (legacyOtherReport ? match.reported_score_bravo : null);
   const otherHasReport = otherAlpha !== undefined && otherAlpha !== null && otherBravo !== undefined && otherBravo !== null;
   const scoresMatch = otherHasReport && Number(otherAlpha) === teamAScore && Number(otherBravo) === teamBScore;
   const report = {

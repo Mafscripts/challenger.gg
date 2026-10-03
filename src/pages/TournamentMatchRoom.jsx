@@ -1058,12 +1058,11 @@ export default function TournamentMatchRoom() {
         base44.entities.TournamentMatch.get(id),
       ]);
       let activeMatch = matchData;
-      const expectedMapCount = Math.max(1, Number(activeMatch.best_of || activeMatch.map_sequence?.length || 3));
-      if (
-        activeMatch.team_a_id &&
-        activeMatch.team_b_id &&
-        (!Array.isArray(activeMatch.maps) || activeMatch.maps.length < expectedMapCount || !activeMatch.team_a_seed || !activeMatch.team_b_seed || !activeMatch.first_host_team_id || !activeMatch.map_generation_key || ((activeMatch.completed || activeMatch.status === "completed") && !activeMatch.winner_id) || (!(activeMatch.completed || activeMatch.status === "completed") && !activeMatch.start_deadline))
-      ) {
+      if (activeMatch.team_a_id && activeMatch.team_b_id) {
+        // Always re-sync the match setup when both teams are assigned. The
+        // backend keeps matching generation keys stable, while this also fixes
+        // older bracket matches that were generated with a stale game mode
+        // (for example 3x S&D after the tournament was configured for HP).
         const setup = await base44.functions.invoke("ensureTournamentMatchSetup", {
           tournament_match_id: activeMatch.id,
         }).catch(() => null);
