@@ -19,12 +19,20 @@ const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split
 const isWagerMatch = (wager) => (
   (wager.match_type || ((wager.entry_fee ?? wager.amount ?? 0) > 0 ? "wagers" : "ranked")) === "wagers"
 );
+const activeWagerStatuses = new Set([
+  "accepted", "escrow_paid", "map_veto", "ready", "in_progress",
+  "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion",
+]);
+const uniqueWagers = (rows) => rows.filter((wager, index, list) => (
+  list.findIndex((item) => item.id === wager.id) === index
+));
 
 export default function Wagers() {
   const navigate = useNavigate();
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [wagers, setWagers] = useState([]);
+  const [activeWagers, setActiveWagers] = useState([]);
   const [historyWagers, setHistoryWagers] = useState([]);
   const [user, setUser] = useState(null);
   const [userTeams, setUserTeams] = useState([]);
@@ -58,8 +66,11 @@ export default function Wagers() {
           if (!active) return;
           const wallet = (wallets || [])[0];
           setUser((current) => current ? { ...current, wallet_balance: Number(wallet?.available_balance ?? current.wallet_balance ?? 0), wallet: wallet || current.wallet } : current);
-          setHistoryWagers([...hosted, ...challenged]
-            .filter((wager, index, list) => list.findIndex((item) => item.id === wager.id) === index)
+          const myWagers = uniqueWagers([...hosted, ...challenged]).filter(isWagerMatch);
+          setActiveWagers(myWagers
+            .filter((wager) => activeWagerStatuses.has(wager.status))
+            .sort((a, b) => new Date(b.accepted_date || b.created_date || 0) - new Date(a.accepted_date || a.created_date || 0)));
+          setHistoryWagers(myWagers
             .filter(isWagerMatch)
             .filter((wager) => ["completed", "cancelled", "disputed", "score_conflict"].includes(wager.status))
             .sort((a, b) => new Date(b.match_completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.accepted_date || a.created_date || 0)));
@@ -107,11 +118,13 @@ export default function Wagers() {
               : null;
           }));
         setUserTeams(teams.filter(Boolean));
-        const combinedHistory = [...hosted, ...challenged]
-          .filter((w, index, list) => list.findIndex(item => item.id === w.id) === index)
-          .filter(isWagerMatch)
+        const myWagers = uniqueWagers([...hosted, ...challenged]).filter(isWagerMatch);
+        const combinedHistory = myWagers
           .filter(w => ["completed", "cancelled", "disputed", "score_conflict"].includes(w.status))
           .sort((a, b) => new Date(b.match_completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.accepted_date || a.created_date || 0));
+        setActiveWagers(myWagers
+          .filter((wager) => activeWagerStatuses.has(wager.status))
+          .sort((a, b) => new Date(b.accepted_date || b.created_date || 0) - new Date(a.accepted_date || a.created_date || 0)));
         const wallet = wallets[0];
         setUser({
           ...currentUser,
@@ -122,6 +135,7 @@ export default function Wagers() {
       } else {
         setUser(null);
         setUserTeams([]);
+        setActiveWagers([]);
         setHistoryWagers([]);
       }
       setWagers(wagerList.filter(isWagerMatch));
@@ -284,6 +298,7 @@ export default function Wagers() {
                     action={wager.host_id === user?.id ? (
                       <div className="flex items-center justify-end gap-2">
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-orange"><Clock3 className="h-3.5 w-3.5" /> Awaiting opponent</span>
+                        <Link to={`/wagers-match/${wager.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black text-cyan hover:bg-cyan/15">Open room</Link>
                         <button type="button" onClick={() => setWagerToCancel(wager)} disabled={cancellingWagerId === wager.id} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black text-vapor hover:border-red-400/30 hover:text-red-400 disabled:opacity-50">{cancellingWagerId === wager.id ? "Cancelling..." : "Cancel"}</button>
                       </div>
                     ) : user ? (
@@ -313,6 +328,23 @@ export default function Wagers() {
           }
         />
         <ActivisionIdNotice user={user} className="mb-5" />
+
+        {activeWagers.length > 0 && (
+          <section className="glass mb-5 overflow-hidden rounded-xl border border-green/15">
+            <div className="border-b border-white/5 px-5 py-4"><h2 className="font-black">My active wagers</h2><p className="mt-1 text-xs text-vapor">Accepted wagers stay here until the match is completed.</p></div>
+            <div className="divide-y divide-white/5">
+              {activeWagers.map((activeWager) => (
+                <div key={activeWager.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-black">{activeWager.host_team_name || activeWager.host_name || "Team Alpha"} vs {activeWager.challenger_team_name || activeWager.challenger_name || "Team Bravo"}</p>
+                    <p className="mt-1 text-xs text-vapor">{activeWager.team_size} · {activeWager.game_mode_display || activeWager.game_mode} · ${activeWager.entry_fee ?? activeWager.amount ?? 0} per player · {String(activeWager.status).replaceAll("_", " ")}</p>
+                  </div>
+                  <Link to={`/wagers-match/${activeWager.id}`} className="rounded-lg bg-green px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider text-background">Open match room</Link>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="glass overflow-hidden rounded-xl border border-white/5">
           <div className="border-b border-white/5 px-5 py-4"><h2 className="font-black">My wager history</h2><p className="mt-1 text-xs text-vapor">Your completed and previous wager matches.</p></div>
@@ -351,6 +383,7 @@ export default function Wagers() {
             setIsCreateModalOpen(false);
             if (result?.wager_id) {
               toast({ title: "Wager posted", description: "The match room opens after another player accepts your wager." });
+              navigate(`/wagers-match/${result.wager_id}`);
             }
           }}
         />

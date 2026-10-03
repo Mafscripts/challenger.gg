@@ -347,8 +347,10 @@ Deno.serve(async (req) => {
       status: isTeamMatch ? 'accepted' : isIndividualEights ? 'open' : 'in_progress',
       roster_locked: isTeamMatch,
       roster_lock_deadline: rosterLockDeadline,
-      challenger_id: wager.challenger_id || (individualSide === 'challenger' ? user.id : ''),
-      challenger_name: wager.challenger_name || (individualSide === 'challenger' ? playerName(user) : ''),
+      // Team wagers do not use `individualSide`; the accepting captain is
+      // always the challenger and must be stored to unlock the match room.
+      challenger_id: wager.challenger_id || (isTeamMatch || individualSide === 'challenger' ? user.id : ''),
+      challenger_name: wager.challenger_name || (isTeamMatch || individualSide === 'challenger' ? playerName(user) : ''),
       challenger_team_id: teamResult.team?.id || '',
       challenger_team_name: teamResult.team?.name || '',
       challenger_payment_mode: paymentMode,

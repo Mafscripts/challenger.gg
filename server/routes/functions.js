@@ -8,6 +8,7 @@ import { knownUserIpAddresses } from "../ban-enforcement.js";
 import { containsBlockedLanguage } from "../profanity-filter.js";
 import { issueRankedVoiceToken } from "../ranked-voice.js";
 import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
+import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -6515,9 +6516,14 @@ async function acceptWager(req) {
   const selectedMaps = rosterFull
     ? (isIndividualEights ? randomEightsSeriesMaps(wager) : randomWagerMaps(wager.game_mode, wager.best_of))
     : [];
+  const challengerIdentity = challengerIdentityAfterAccept(wager, {
+    isTeamMatch,
+    individualSide,
+    acceptingUserId: req.user.id,
+    acceptingUserName: nameFor(req.user),
+  });
   let updated = await updateEntity("Wager", wager.id, {
-    challenger_id: wager.challenger_id || (individualSide === "challenger" ? req.user.id : ""),
-    challenger_name: wager.challenger_name || (individualSide === "challenger" ? nameFor(req.user) : ""),
+    ...challengerIdentity,
     challenger_team_id: challengerTeam?.id,
     challenger_team_name: challengerTeam?.name,
     challenger_payment_mode: paymentMode,
