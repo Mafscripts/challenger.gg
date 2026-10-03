@@ -2,8 +2,8 @@ import React, { useRef, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
-  AlertTriangle, Clock, Check,
-  AlertCircle, Award, Crown, DollarSign, Medal, RefreshCw, ShieldCheck, Sparkles, Trophy, X
+  AlertTriangle, Clock, Check, ChevronDown, Gavel,
+  AlertCircle, Award, Crown, DollarSign, Medal, RefreshCw, Shield, ShieldCheck, Sparkles, Trophy, X
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -42,11 +42,11 @@ const matchPhaseFor = (match) => ({
   cancelled: "Cancelled",
 }[match?.status] || "Live");
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, valueClass = "" }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-white/5 py-2 last:border-0">
       <span className="text-[10px] uppercase tracking-wider text-vapor">{label}</span>
-      <span className="text-sm font-semibold text-right capitalize">{value || "Pending"}</span>
+      <span className={`text-right text-sm font-semibold capitalize ${valueClass}`}>{value || "Pending"}</span>
     </div>
   );
 }
@@ -123,22 +123,69 @@ function SimpleRoster({ title, name, players, tone = "cyan", score, isComplete =
   );
 }
 
-function MatchStatusCard({ match }) {
+function WagerAdminTools({ wager, resolving, onResetDispute, onResolve, onCancel }) {
+  const hasDisputeAction = ["score_conflict", "disputed"].includes(wager.status);
+  const actionClass = "flex w-full items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/15 disabled:opacity-50";
+
   return (
-    <section className="glass rounded-xl border border-white/5 p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-black uppercase tracking-wider">Match Status</h2>
-        <span className="rounded-md border border-cyan/20 bg-cyan/10 px-2 py-1 text-[10px] font-bold uppercase text-cyan">
-          {matchPhaseFor(match)}
-        </span>
+    <details className="group mt-4 border-t border-white/[0.06] pt-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-blue-400/15 bg-blue-400/[0.05] px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/10 [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2"><Gavel className="h-3.5 w-3.5" /> Admin tools</span>
+        <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-2 grid gap-2">
+        {hasDisputeAction && (
+          <button type="button" onClick={onResetDispute} disabled={resolving} className={actionClass}>
+            <RefreshCw className="h-3.5 w-3.5" /> Reset dispute
+          </button>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => onResolve("approve_team_a")} disabled={resolving} className={actionClass}>
+            <ShieldCheck className="h-3.5 w-3.5" /> Grant A win
+          </button>
+          <button type="button" onClick={() => onResolve("approve_team_b")} disabled={resolving} className={actionClass}>
+            <ShieldCheck className="h-3.5 w-3.5" /> Grant B win
+          </button>
+        </div>
+        <button type="button" onClick={onCancel} disabled={resolving} className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50">
+          <AlertTriangle className="h-3.5 w-3.5" /> Staff cancel match
+        </button>
       </div>
-      <InfoRow label="Mode" value={match.game_mode_display || match.game_mode} />
-      <InfoRow label="Input / platform" value={wagerPlayRule(match.play_rule).shortLabel} />
-      <InfoRow label="Map rotation" value={wagerMapText(match)} />
-      <InfoRow label="Host" value={match.host_name || "Host pending"} />
-      <InfoRow label="Server" value={match.server || match.server_region || match.region || "Platform lobby"} />
-      <InfoRow label="Current status" value={formatStatus(match.status)} />
-      <InfoRow label="Match phase" value={matchPhaseFor(match)} />
+    </details>
+  );
+}
+
+function MatchStatusCard({ match, onRefresh, adminTools = null }) {
+  const items = [
+    { label: "Status", value: matchPhaseFor(match), valueClass: "capitalize text-cyan" },
+    { label: "Mode", value: match.game_mode_display || match.game_mode },
+    { label: "Input / platform", value: wagerPlayRule(match.play_rule).shortLabel },
+    { label: "Map rotation", value: wagerMapText(match) },
+    { label: "Host", value: match.host_name || "Host pending" },
+    { label: "Server", value: match.server || match.server_region || match.region || "Platform lobby" },
+    { label: "Prize pool", value: formatMoney(match.total_prize_pool ?? ((match.entry_fee || match.amount || 0) * 2)), valueClass: "font-mono text-green" },
+    { label: "Current status", value: formatStatus(match.status), valueClass: "capitalize" },
+  ];
+
+  return (
+    <section className="dark-focus dark-media h-full rounded-xl border border-white/[0.09] p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
+          <Shield className="h-4 w-4 text-orange" /> Match State
+        </h2>
+        <button type="button" onClick={onRefresh} className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-secondary/50 p-2 text-vapor transition-colors hover:bg-secondary hover:text-white" title="Refresh match" aria-label="Refresh match">
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-2">
+        {items.map((item) => (
+          <div key={item.label} className={`rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2 ${item.label === "Prize pool" || item.label === "Current status" ? "col-span-2" : ""}`}>
+            <dt className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">{item.label}</dt>
+            <dd className={`mt-1 truncate text-[11px] font-bold ${item.valueClass || "text-white"}`} title={item.value}>{item.value || "Pending"}</dd>
+          </div>
+        ))}
+      </dl>
+      {adminTools}
     </section>
   );
 }
@@ -573,7 +620,6 @@ export default function WagersMatchRoom() {
     );
   }
 
-  const prizePool = Number(wager.total_prize_pool ?? ((wager.entry_fee || 0) * 2));
   const bestOf = wager.best_of || 1;
   const currentParticipant = [...teamAPlayers, ...teamBPlayers].find((player) => player.user_id === user?.id);
   const needsPayment = currentParticipant?.payment_status === "pending";
@@ -595,6 +641,16 @@ export default function WagersMatchRoom() {
     && scoreReportingOpen
     && Boolean(currentReportPrefix)
     && !currentTeamHasReported;
+  const wagerChatActions = (
+    <div className="grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => handleRequestAdmin("Match room assistance requested.")} disabled={!canUseMatchRoom || requestingAdmin} className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45">
+          <AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting…" : "Request admin"}
+        </button>
+        <button type="button" onClick={handleCreateDispute} disabled={!canUseMatchRoom || requestingAdmin} className="flex items-center justify-center gap-1.5 rounded-lg border border-orange/25 bg-orange/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/20 disabled:cursor-not-allowed disabled:opacity-45">
+          <AlertCircle className="h-3.5 w-3.5" /> Submit dispute
+        </button>
+    </div>
+  );
 
   if (wager.status === "cancelled") {
     return (
@@ -633,10 +689,6 @@ export default function WagersMatchRoom() {
                   <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Open Wager</p>
                   <h1 className="mt-2 text-3xl font-black">Waiting for an opponent</h1>
                   <p className="mt-2 text-sm text-vapor">The match room stays locked until another player accepts this wager from the Wagers page.</p>
-                </div>
-                <div className="rounded-xl border border-green/20 bg-green/10 px-5 py-3 text-center">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-green">Prize pool after acceptance</p>
-                  <p className="mt-1 font-mono text-2xl font-black text-green">{formatMoney(prizePool)}</p>
                 </div>
               </div>
             </div>
@@ -689,10 +741,6 @@ export default function WagersMatchRoom() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {canReportScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
-              <div className="rounded-xl border border-green/20 bg-green/10 px-5 py-3 text-center">
-                <p className="text-[9px] font-black uppercase tracking-wider text-green">Prize pool</p>
-                <p className="mt-1 font-mono text-2xl font-black text-green">{formatMoney(prizePool)}</p>
-              </div>
               <Link to="/wagers" className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-bold text-vapor transition-all hover:border-primary/30 hover:text-primary">Back to wagers</Link>
             </div>
           </div>
@@ -703,7 +751,7 @@ export default function WagersMatchRoom() {
               <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
               <MatchTeamTable label="Team Bravo" name={challengerDisplayName} color="cyan" players={teamBPlayers} captainId={wager.challenger_id} finalScore={wager.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={challengerWinner} />
             </div>
-            <aside className="min-w-0"><MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} inputActions={<div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => handleRequestAdmin("Match room assistance requested.")} disabled={!canUseMatchRoom || requestingAdmin} className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"><AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting…" : "Request admin"}</button><button type="button" onClick={handleCreateDispute} disabled={!canUseMatchRoom || requestingAdmin} className="flex items-center justify-center gap-1.5 rounded-lg border border-orange/25 bg-orange/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/20 disabled:cursor-not-allowed disabled:opacity-45"><AlertCircle className="h-3.5 w-3.5" /> Submit dispute</button></div>} /></aside>
+            <aside className="min-w-0"><MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} inputActions={wagerChatActions} /></aside>
           </div>
         </section>
 
@@ -729,45 +777,23 @@ export default function WagersMatchRoom() {
           <div className="min-w-0 space-y-6">
             <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(285px,0.8fr)]">
               <MatchMapSeries maps={Array.isArray(wager.series_maps) && wager.series_maps.length ? wager.series_maps : (wager.final_map_name ? [wager.final_map_name] : [])} mode={wager.game_mode_display || wager.game_mode} host={wager.host_name || hostDisplayName} bestOf={bestOf} compact />
-              <MatchStatusCard match={wager} />
+              <MatchStatusCard
+                match={wager}
+                onRefresh={loadWager}
+                adminTools={canAdminResolve ? (
+                  <WagerAdminTools
+                    wager={wager}
+                    resolving={resolvingAdmin}
+                    onResetDispute={handleAdminResetDispute}
+                    onResolve={handleAdminResolve}
+                    onCancel={handleAdminCancel}
+                  />
+                ) : null}
+              />
             </div>
             <MatchRulesPanel matchType="wager" gameMode={wager.game_mode} playRule={wager.play_rule} collapsible defaultOpen={false} />
 
         <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
-          {canAdminResolve && (
-            <div className="mb-3 grid gap-3 border-b border-white/5 pb-3 md:grid-cols-3">
-              {["score_conflict", "disputed"].includes(wager.status) && (
-                <button
-                  onClick={handleAdminResetDispute}
-                  disabled={resolvingAdmin}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-cyan transition-all hover:bg-cyan/20 disabled:opacity-50 md:col-span-3"
-                >
-                  <RefreshCw className="h-4 w-4" /> Reset Dispute &amp; Continue Match
-                </button>
-              )}
-              <button
-                onClick={() => handleAdminResolve("approve_team_a")}
-                disabled={resolvingAdmin}
-                className="flex items-center justify-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-pink-300 transition-all hover:bg-pink-400/20 disabled:opacity-50"
-              >
-                <ShieldCheck className="h-4 w-4" /> Grant {hostDisplayName} Win
-              </button>
-              <button
-                onClick={() => handleAdminResolve("approve_team_b")}
-                disabled={resolvingAdmin}
-                className="flex items-center justify-center gap-2 rounded-lg border border-pink-400/20 bg-pink-400/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-pink-300 transition-all hover:bg-pink-400/20 disabled:opacity-50"
-              >
-                <ShieldCheck className="h-4 w-4" /> Grant {challengerDisplayName} Win
-              </button>
-              <button
-                onClick={handleAdminCancel}
-                disabled={resolvingAdmin}
-                className="flex items-center justify-center gap-2 rounded-lg border border-red-400/25 bg-red-500/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-red-300 transition-all hover:bg-red-500/20 disabled:opacity-50"
-              >
-                <AlertTriangle className="h-4 w-4" /> Staff Cancel Match
-              </button>
-            </div>
-          )}
           <div className="flex flex-wrap items-center gap-3">
             {needsPayment && (
               <button
