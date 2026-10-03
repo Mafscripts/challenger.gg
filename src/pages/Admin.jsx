@@ -65,11 +65,11 @@ const tournamentGameModeOptions = [
   { value: "Best of 7", label: "Best of 7" },
 ];
 const tournamentModeSetOptions = [
-  { value: "bo1_snd", label: "BEST OF 1 SND", gameModes: ["snd"], gameMode: "Best of 1" },
-  { value: "hp_snd_hp", label: "HP / SND / HP", gameModes: ["hp", "snd"], gameMode: "Best of 3" },
-  { value: "snd_only", label: "SND ONLY", gameModes: ["snd"] },
-  { value: "hp_only", label: "HP ONLY", gameModes: ["hp"] },
-  { value: "cdl_var", label: "CDL VAR · HP / SND / OVERLOAD", gameModes: ["hp", "snd", "overload"] },
+  { value: "bo1_snd", label: "Search & Destroy — Best of 1", gameModes: ["snd"], gameMode: "Best of 1" },
+  { value: "hp_snd_hp", label: "Hardpoint / Search & Destroy / Hardpoint — Best of 3", gameModes: ["hp", "snd", "hp"], gameMode: "Best of 3" },
+  { value: "hp_only", label: "Hardpoint — Best of 1", gameModes: ["hp"], gameMode: "Best of 1" },
+  { value: "snd_only", label: "Search & Destroy — Best of 3", gameModes: ["snd"], gameMode: "Best of 3" },
+  { value: "cdl_var", label: "CDL Variant — Best of 3 · Hardpoint / Search & Destroy / Overload", gameModes: ["hp", "snd", "overload"], gameMode: "Best of 3" },
 ];
 const legacyTournamentBestOf = {
   bo1_snd: 1,
