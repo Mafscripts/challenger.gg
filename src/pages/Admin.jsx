@@ -544,8 +544,11 @@ export default function Admin() {
   const currentRole = effectiveRoleFor(currentUser);
 
   useEffect(() => {
-    if (!isLoadingAuth && authChecked) loadAdminData();
-  }, [authUser, isLoadingAuth, authChecked]);
+    // AuthContext can finish the loading transition before authChecked is
+    // committed in the same render. Do not gate the admin loader on a second
+    // flag, otherwise the console can stay on its initial loading state.
+    if (!isLoadingAuth) loadAdminData();
+  }, [authUser, isLoadingAuth]);
 
   useEffect(() => {
     window.sessionStorage.setItem("adminActiveTab", activeTab);
@@ -590,6 +593,7 @@ export default function Admin() {
 
       if (!canAccessAdminPanel(effectiveRoleFor(me))) {
         setData(initialData);
+        setLoading(false);
         return;
       }
 
