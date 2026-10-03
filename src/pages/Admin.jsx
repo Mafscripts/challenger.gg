@@ -3000,198 +3000,112 @@ export default function Admin() {
                       </button>
                     </div>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Tournament name</span>
-                      <input
-                        value={tournamentForm.name}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, name: event.target.value }))}
-                        placeholder="Tournament name"
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Tournament thumbnail URL</span>
-                      <input
-                        value={tournamentForm.image_url}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, image_url: event.target.value }))}
-                        placeholder="https://example.com/tournament.png"
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                      <span className="block text-[9px] text-vapor/70">Recommended: 800 × 800 px (1:1)</span>
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Featured banner URL</span>
-                      <input
-                        value={tournamentForm.banner_url}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, banner_url: event.target.value }))}
-                        placeholder="https://example.com/tournament-banner.jpg"
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                      <span className="block text-[9px] text-vapor/70">Recommended: 1920 × 640 px (3:1)</span>
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Series / Best of</span>
-                      <input
-                        list="admin-tournament-game-modes"
-                        value={tournamentForm.game_mode}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode: event.target.value }))}
-                        placeholder="For example: Best of 3"
-                        maxLength={80}
-                        required
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                      <datalist id="admin-tournament-game-modes">
-                        {tournamentGameModeOptions.map((option) => (
-                          <option key={option.value} value={option.label} />
-                        ))}
-                      </datalist>
-                      <span className="block text-[9px] text-vapor/70">Sets the series length, for example “Best of 3” or “Best of 5”.</span>
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Game modes</span>
-                      <select
-                        value={tournamentForm.game_mode_set}
-                        onChange={(event) => {
-                          const gameModeSet = event.target.value;
-                          const preset = tournamentModeSetOptions.find((option) => option.value === gameModeSet);
-                          setTournamentForm((prev) => ({
-                            ...prev,
-                            game_mode_set: gameModeSet,
-                            ...(preset?.gameMode ? { game_mode: preset.gameMode } : {}),
-                          }));
-                        }}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      >
-                        {tournamentModeSetOptions.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                      <span className="block text-[9px] text-vapor/70">Used for every map and its matching map pool.</span>
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Team size</span>
-                      <select
-                        value={tournamentForm.team_size}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, team_size: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      >
-                        {tournamentTeamSizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
-                      </select>
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Status</span>
-                      <select
-                        value={tournamentForm.status}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, status: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      >
-                        {tournamentStatusOptions.map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
-                      </select>
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Entry fee</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={tournamentForm.entry_fee}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, entry_fee: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Entry type</span>
-                      <select
-                        value={tournamentForm.entry_type}
-                        onChange={(event) => setTournamentForm((prev) => ({
-                          ...prev,
-                          entry_type: event.target.value,
-                          is_premium_only: ["premium", "credits_premium"].includes(event.target.value),
-                          invite_only: event.target.value === "invitational" ? true : prev.invite_only,
-                        }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      >
-                        <option value="free">Free</option>
-                        <option value="invitational">Invitational</option>
-                        <option value="credits">Credits</option>
-                        <option value="premium">Premium Only</option>
-                        <option value="credits_premium">Credits + Premium</option>
-                      </select>
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Prize pool</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={tournamentForm.prize_pool}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, prize_pool: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">#1 prize</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={tournamentForm.first_place_prize}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, first_place_prize: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">#2 prize</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={tournamentForm.second_place_prize}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, second_place_prize: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Max teams</span>
-                      <input
-                        type="number"
-                        min="2"
-                        value={tournamentForm.max_teams}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, max_teams: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Bracket format</span>
-                      <select
-                        value={tournamentForm.bracket_type}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, bracket_type: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      >
-                        <option value="single_elimination">Single Elimination</option>
-                        <option value="double_elimination">Double Elimination · Losers Bracket</option>
-                      </select>
-                      <span className="block text-[10px] leading-relaxed text-vapor/75">
-                        Double elimination adds a Lower Bracket and Grand Final to every match room.
-                      </span>
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Start date</span>
-                      <input
-                        type="datetime-local"
-                        value={tournamentForm.start_date}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, start_date: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-[10px] text-vapor uppercase">Registration ends</span>
-                      <input
-                        type="datetime-local"
-                        value={tournamentForm.registration_end}
-                        onChange={(event) => setTournamentForm((prev) => ({ ...prev, registration_end: event.target.value }))}
-                        className="w-full px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                      />
-                    </label>
+                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,.65fr)]">
+                    <div className="space-y-5">
+                      <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Tournament basics</p>
+                            <h3 className="mt-1 text-base font-black text-white">Identity & format</h3>
+                          </div>
+                          <span className="rounded-full border border-white/[0.08] bg-secondary/50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-vapor">Step 1</span>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <label className="space-y-1.5 md:col-span-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Tournament name</span>
+                            <input value={tournamentForm.name} onChange={(event) => setTournamentForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="e.g. Topfragg Open #12" className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35 focus:bg-secondary" />
+                          </label>
+                          <label className="space-y-1.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Series / Best of</span>
+                            <input list="admin-tournament-game-modes" value={tournamentForm.game_mode} onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode: event.target.value }))} placeholder="Best of 3" maxLength={80} required className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35 focus:bg-secondary" />
+                            <datalist id="admin-tournament-game-modes">{tournamentGameModeOptions.map((option) => <option key={option.value} value={option.label} />)}</datalist>
+                          </label>
+                          <label className="space-y-1.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Game modes</span>
+                            <select value={tournamentForm.game_mode_set} onChange={(event) => { const gameModeSet = event.target.value; const preset = tournamentModeSetOptions.find((option) => option.value === gameModeSet); setTournamentForm((prev) => ({ ...prev, game_mode_set: gameModeSet, ...(preset?.gameMode ? { game_mode: preset.gameMode } : {}) })); }} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35">
+                              {tournamentModeSetOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                          </label>
+                          <label className="space-y-1.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Team size</span>
+                            <select value={tournamentForm.team_size} onChange={(event) => setTournamentForm((prev) => ({ ...prev, team_size: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35">
+                              {tournamentTeamSizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
+                            </select>
+                          </label>
+                          <label className="space-y-1.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Bracket format</span>
+                            <select value={tournamentForm.bracket_type} onChange={(event) => setTournamentForm((prev) => ({ ...prev, bracket_type: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35">
+                              <option value="single_elimination">Single Elimination</option>
+                              <option value="double_elimination">Double Elimination · Losers Bracket</option>
+                            </select>
+                          </label>
+                        </div>
+                      </section>
+
+                      <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                        <div className="mb-4">
+                          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange">Entry & prizes</p>
+                          <h3 className="mt-1 text-base font-black text-white">Money, access & capacity</h3>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          <label className="space-y-1.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Entry type</span>
+                            <select value={tournamentForm.entry_type} onChange={(event) => setTournamentForm((prev) => ({ ...prev, entry_type: event.target.value, is_premium_only: ["premium", "credits_premium"].includes(event.target.value), invite_only: event.target.value === "invitational" ? true : prev.invite_only }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-orange/35">
+                              <option value="free">Free</option><option value="invitational">Invitational</option><option value="credits">Credits</option><option value="premium">Premium Only</option><option value="credits_premium">Credits + Premium</option>
+                            </select>
+                          </label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Entry fee</span><input type="number" min="0" value={tournamentForm.entry_fee} onChange={(event) => setTournamentForm((prev) => ({ ...prev, entry_fee: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-orange/35" /></label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Max teams</span><input type="number" min="2" value={tournamentForm.max_teams} onChange={(event) => setTournamentForm((prev) => ({ ...prev, max_teams: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-orange/35" /></label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Prize pool</span><input type="number" min="0" value={tournamentForm.prize_pool} onChange={(event) => setTournamentForm((prev) => ({ ...prev, prize_pool: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-orange/35" /></label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">#1 prize</span><input type="number" min="0" step="0.01" value={tournamentForm.first_place_prize} onChange={(event) => setTournamentForm((prev) => ({ ...prev, first_place_prize: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-orange/35" /></label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">#2 prize</span><input type="number" min="0" step="0.01" value={tournamentForm.second_place_prize} onChange={(event) => setTournamentForm((prev) => ({ ...prev, second_place_prize: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-orange/35" /></label>
+                        </div>
+                      </section>
+
+                      <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                        <div className="mb-4">
+                          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-purple-300">Schedule</p>
+                          <h3 className="mt-1 text-base font-black text-white">Registration & start</h3>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Status</span><select value={tournamentForm.status} onChange={(event) => setTournamentForm((prev) => ({ ...prev, status: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-purple-400/35">{tournamentStatusOptions.map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}</select></label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Registration ends</span><input type="datetime-local" value={tournamentForm.registration_end} onChange={(event) => setTournamentForm((prev) => ({ ...prev, registration_end: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-purple-400/35" /></label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Start date</span><input type="datetime-local" value={tournamentForm.start_date} onChange={(event) => setTournamentForm((prev) => ({ ...prev, start_date: event.target.value }))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-purple-400/35" /></label>
+                        </div>
+                      </section>
+                    </div>
+
+                    <aside className="space-y-5">
+                      <section className="rounded-2xl border border-cyan/15 bg-[linear-gradient(145deg,rgba(20,216,255,.055),rgba(255,255,255,.02))] p-5">
+                        <div className="mb-4">
+                          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Media</p>
+                          <h3 className="mt-1 text-base font-black text-white">Tournament visuals</h3>
+                          <p className="mt-1 text-xs leading-5 text-vapor">Paste image URLs and preview them before publishing.</p>
+                        </div>
+                        <div className="space-y-4">
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Thumbnail URL</span><input value={tournamentForm.image_url} onChange={(event) => setTournamentForm((prev) => ({ ...prev, image_url: event.target.value }))} placeholder="https://..." className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35" /><span className="block text-[9px] text-vapor/65">Recommended 800 × 800</span></label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Featured banner URL</span><input value={tournamentForm.banner_url} onChange={(event) => setTournamentForm((prev) => ({ ...prev, banner_url: event.target.value }))} placeholder="https://..." className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35" /><span className="block text-[9px] text-vapor/65">Recommended 1920 × 640</span></label>
+                        </div>
+                      </section>
+
+                      <section className="rounded-2xl border border-white/[0.08] bg-background/35 p-5">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Live summary</p>
+                        <div className="mt-4 space-y-3">
+                          {[
+                            ["Format", tournamentForm.game_mode || "Not set"],
+                            ["Mode set", tournamentModeSetOptions.find((option) => option.value === tournamentForm.game_mode_set)?.label || tournamentForm.game_mode_set],
+                            ["Teams", `${tournamentForm.team_size || "—"} · max ${tournamentForm.max_teams || "—"}`],
+                            ["Entry", tournamentForm.entry_type === "free" ? "Free" : `${tournamentForm.entry_type}${Number(tournamentForm.entry_fee || 0) > 0 ? ` · ${tournamentForm.entry_fee}` : ""}`],
+                            ["Prize pool", Number(tournamentForm.prize_pool || 0).toLocaleString()],
+                          ].map(([label, value]) => (
+                            <div key={label} className="flex items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-secondary/35 px-3.5 py-3">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-vapor">{label}</span>
+                              <span className="text-right text-xs font-bold text-white">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    </aside>
                   </div>
                   {(tournamentForm.image_url || tournamentForm.banner_url) && (
                     <div className="mt-4 grid gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
