@@ -185,7 +185,7 @@ export default function Ranked() {
 
   const handleAcceptMatch = async (match) => {
     if (!user) {
-      toast({ title: "Login required", description: "Please log in to accept XP matches.", variant: "destructive" });
+      toast({ title: "Login required", description: "Please log in to accept ranked matches.", variant: "destructive" });
       return;
     }
     if (!hasActivisionId(user)) {
@@ -200,7 +200,7 @@ export default function Ranked() {
       });
 
       if (response.data?.success) {
-        toast({ title: "XP match accepted", description: "Opening match room." });
+        toast({ title: "Ranked match accepted", description: "Opening ranked match room." });
         navigate(`/ranked-match/${match.id}`);
         return;
       }
@@ -273,7 +273,7 @@ export default function Ranked() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/10 text-cyan"><Trophy className="h-4 w-4" /></div>
                     <div>
                       <div className="flex items-center gap-2"><p className="text-xs font-black uppercase tracking-wider text-cyan">CDL Rules</p><span className="rounded-full border border-cyan/20 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-cyan">Required</span></div>
-                      <p className="mt-1 text-[10px] text-vapor">Competitive XP match ruleset</p>
+                      <p className="mt-1 text-[10px] text-vapor">Competitive ranked ruleset</p>
                     </div>
                   </div>
                   <ArrowRight className="h-4 w-4 text-cyan transition-transform group-hover:translate-x-0.5" />
@@ -288,7 +288,7 @@ export default function Ranked() {
                   onClick={() => setIsCreateModalOpen(true)}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan bg-cyan px-6 py-3 text-sm font-black uppercase tracking-wider text-black shadow-[0_8px_24px_hsl(var(--cyan)/0.2)] transition-all hover:bg-cyan/90 hover:shadow-lg hover:shadow-cyan/30"
                 >
-                  <Plus className="w-4 h-4" /> Create XP Match
+                  <Plus className="w-4 h-4" /> Create Ranked Match
                 </button>
               )}
             </div>
@@ -301,7 +301,7 @@ export default function Ranked() {
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan/20 bg-cyan/10 text-cyan"><Swords className="h-5 w-5" /></div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan">Your Active XP Match</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan">Your Active Ranked Match</p>
                 <p className="mt-1 font-black">{activeRankedMatch.team_size} {activeRankedMatch.game_mode_display || modeLabels[activeRankedMatch.game_mode] || activeRankedMatch.game_mode}</p>
                 <p className="mt-1 text-xs text-vapor">{activeRankedMatch.status === "open" ? "Waiting for an opponent" : `${activeRankedMatch.host_name} vs ${activeRankedMatch.challenger_name || "Opponent"}`}</p>
               </div>
