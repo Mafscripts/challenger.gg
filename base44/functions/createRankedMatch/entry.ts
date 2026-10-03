@@ -77,6 +77,7 @@ Deno.serve(async (req) => {
       team_bravo_player_names: [],
       joined_players: 1,
       total_players: slotsPerTeam * 2,
+      match_type: body.match_type === 'xp' ? 'xp' : 'ranked',
       status: 'open',
       proof_urls: [],
       match_start_deadline: deadline,
@@ -89,3 +90,4 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+

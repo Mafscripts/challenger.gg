@@ -108,7 +108,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const [isCreating, setIsCreating] = useState(false);
 
   const isWager = mode === "wager";
-  const isRanked = mode === "ranked";
+  const isRanked = mode === "ranked" || mode === "xp";
   const isEights = mode === "eights";
   const modeChoices = isEights ? eightsSeriesFormats : gameModes;
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
@@ -181,7 +181,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         const teamSizeObj = teamSizes.find(ts => ts.id === selectedTeamSize);
         let createdResult = {};
         
-        const matchType = isEights ? '8s' : mode === 'ranked' ? 'ranked' : 'wagers';
+        const matchType = isEights ? '8s' : mode === 'xp' ? 'xp' : mode === 'ranked' ? 'ranked' : 'wagers';
         
         if (isWager) {
           const response = await base44.functions.invoke('createWager', {
@@ -218,7 +218,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             wager_id: response.data.wager_id || response.data.id || response.data.wager?.id,
             match: response.data.wager || response.data.match,
           };
-        } else if (mode === "ranked") {
+        } else if (mode === "ranked" || mode === "xp") {
           const response = await base44.functions.invoke('createRankedMatch', {
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
@@ -716,3 +716,4 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
       document.body,
   );
 }
+

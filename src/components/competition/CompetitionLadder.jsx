@@ -17,7 +17,7 @@ import {
 import { base44 } from "@/api/base44Client";
 
 const navigation = [
-  { key: "xp", label: "XP Matches", to: "/ranked", icon: Zap },
+  { key: "xp", label: "XP Matches", to: "/xp", icon: Zap },
   { key: "wagers", label: "Wagers", to: "/wagers", icon: Coins },
   { key: "eights", label: "8s", to: "/ranked/8s", icon: Users },
   { key: "tournaments", label: "Upcoming Tournaments", to: "/tournaments", icon: Trophy },
@@ -385,3 +385,4 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     </div>
   );
 }
+

@@ -82,7 +82,7 @@ const rankCardTones = {
   champion: { border: "border-red-900/70", wash: "from-red-950/[0.30] via-white/[0.035] to-card", accent: "bg-gradient-to-r from-white via-slate-200 to-red-800", soft: "border-red-900/45 bg-red-950/[0.18]", text: "text-white" },
 };
 
-export default function Ranked() {
+export default function XP() {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -110,20 +110,20 @@ export default function Ranked() {
       refreshing = true;
       try {
         const [matches, playerMatches, playerStats] = await Promise.all([
-          base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
+          base44.entities.RankedMatch.filterFresh({ status: "open", match_type: "xp" }, "-created_date", 20),
           base44.entities.RankedMatch.filterFresh({}, "-created_date", 100),
-          base44.entities.RankedStats.filterFresh({ user_id: user.id }, "-elo", 1),
+          base44.entities.XPStats.filterFresh({ user_id: user.id }, "-total_xp", 1),
         ]);
         if (active) {
-          setRankedMatches((matches || []).filter((match) => match.match_type !== "xp"));
-          setActiveRankedMatch(selectActiveRankedMatch((playerMatches || []).filter((match) => match.match_type !== "xp"), user.id));
+          setRankedMatches(matches || []);
+          setActiveRankedMatch(selectActiveRankedMatch(playerMatches || [], user.id));
           setCurrentStats((playerStats || [])[0] || null);
         }
 
         leaderboardRefreshTick += 1;
         if (leaderboardRefreshTick >= 5) {
           leaderboardRefreshTick = 0;
-          const leaderboard = await base44.entities.RankedStats.filterFresh({}, "-elo", 500);
+          const leaderboard = await base44.entities.XPStats.filterFresh({}, "-total_xp", 500);
           if (active) {
             const position = (leaderboard || []).findIndex((stats) => stats.user_id === user.id);
             setLeaderboardPosition(position >= 0 ? position + 1 : null);
@@ -159,12 +159,12 @@ export default function Ranked() {
       setUser(currentUser);
 
       const [matches, statsRows, captainTeams] = await Promise.all([
-        base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
-        base44.entities.RankedStats.filterFresh({}, "-elo", 500),
+        base44.entities.RankedMatch.filterFresh({ status: "open", match_type: "xp" }, "-created_date", 20),
+        base44.entities.XPStats.filterFresh({}, "-total_xp", 500),
         loadCaptainRankedTeams(currentUser?.id),
       ]);
 
-      setRankedMatches((matches || []).filter((match) => match.match_type !== "xp"));
+      setRankedMatches(matches || []);
       setCurrentStats((statsRows || []).find((stats) => stats.user_id === currentUser?.id) || null);
       setRankedTeams(captainTeams || []);
       const position = (statsRows || []).findIndex((stats) => stats.user_id === currentUser?.id);
@@ -177,11 +177,11 @@ export default function Ranked() {
     }
   };
 
-  const elo = currentStats?.elo || 0;
-  const rank = getRankForElo(elo);
-  const nextRank = getNextRankForElo(elo);
-  const progress = getRankProgress(elo);
-  const rankTone = rankCardTones[rank.tier] || rankCardTones.bronze;
+  const xp = Number(currentStats?.total_xp || 0);
+  const level = Math.max(1, Number(currentStats?.level || Math.floor(xp / 1000) + 1));
+  const xpToNext = Math.max(1, Number(currentStats?.xp_to_next_level || 1000));
+  const progress = Math.min(100, Math.round((Number(currentStats?.current_xp ?? (xp % xpToNext)) / xpToNext) * 100));
+  const rankTone = rankCardTones.diamond;
 
   const handleAcceptMatch = async (match) => {
     if (!user) {
@@ -201,7 +201,7 @@ export default function Ranked() {
 
       if (response.data?.success) {
         toast({ title: "XP match accepted", description: "Opening match room." });
-        navigate(`/ranked-match/${match.id}`);
+        navigate(`/xp-match/${match.id}`);
         return;
       }
 
@@ -239,12 +239,12 @@ export default function Ranked() {
                     key={match.id}
                     game={match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}
                     gameDetail={`${match.team_size} · ${joined}/${slots} players`}
-                    competition="XP Ranked"
+                    competition="XP Match"
                     competitionDetail={`${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`}
                     playRule={match.play_rule}
                     tone="cyan"
                     action={belongsToUser ? (
-                      <Link to={`/ranked-match/${match.id}`} className="inline-flex min-w-44 items-center justify-center rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room</Link>
+                      <Link to={`/xp-match/${match.id}`} className="inline-flex min-w-44 items-center justify-center rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room</Link>
                     ) : user ? (
                       <div className="w-52 space-y-2">
                         {partyMatch && (
@@ -312,112 +312,48 @@ export default function Ranked() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="glass rounded-2xl border border-white/5 overflow-hidden">
-              <div className="px-5 py-4 border-b border-white/5">
-                <h3 className="font-bold text-lg">Rank Tiers</h3>
-                <p className="mt-1 text-sm text-vapor">Climb through every rank and earn the Champion crest.</p>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,.55fr)]">
+          <section className="glass overflow-hidden rounded-2xl border border-white/5">
+            <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Your XP progression</p>
+                <h3 className="mt-1 text-lg font-black">Level {level}</h3>
               </div>
-              <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
-                {groupedRanks.map((tier) => (
-                  <div key={tier.tier} className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-5 text-center ${rankCardTones[tier.tier]?.border || "border-white/10"} ${rankCardTones[tier.tier]?.wash || "from-card to-card"}`}>
-                    <div className={`pointer-events-none absolute inset-x-8 top-3 h-24 rounded-full opacity-20 blur-3xl ${rankCardTones[tier.tier]?.accent || "bg-cyan"}`} />
-                    <div className="relative flex justify-center"><RankBadge rank={tier.tier} size="lg" showLabel={false} animated={false} /></div>
-                    <div className="relative mt-2">
-                      <p className={`text-lg font-black ${tier.color}`}>{tier.name}</p>
-                      <p className="mt-1 text-xs text-vapor">{tier.tier === "champion" ? "Top rank" : "Competitive rank"}</p>
-                      <span className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-xs font-bold text-vapor">
-                        {rankRangeLabel(tier)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <span className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 font-mono text-sm font-black text-cyan">{xp.toLocaleString()} XP</span>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-6">
-            <div className={`order-1 relative overflow-hidden rounded-2xl border bg-gradient-to-br ${rankTone.border} ${rankTone.wash}`}>
-              <div className={`absolute inset-x-0 top-0 h-1 ${rankTone.accent}`} />
-              <div className="flex items-center justify-between border-b border-white/5 bg-background/20 px-5 py-4">
-                <div>
-                  <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${rankTone.text}`}>Season 1 competitive</p>
-                  <h3 className="mt-1 text-base font-black uppercase tracking-wide">Your Rank</h3>
-                </div>
-                <div className="text-right"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Global place</p><span className={`mt-1 inline-flex rounded-full border px-3 py-1 font-mono text-sm font-black ${rankTone.soft} ${rankTone.text}`}>{leaderboardPosition ? `#${leaderboardPosition}` : "Unranked"}</span></div>
+            <div className="p-5">
+              <div className="flex items-end justify-between gap-4">
+                <div><p className="text-xs text-vapor">Current level progress</p><p className="mt-1 text-2xl font-black">{Number(currentStats?.current_xp ?? (xp % xpToNext)).toLocaleString()} <span className="text-sm text-vapor">/ {xpToNext.toLocaleString()} XP</span></p></div>
+                <p className="font-mono text-sm font-black text-cyan">{progress}%</p>
               </div>
-              <div className="p-5">
-                <div className="rounded-2xl border border-white/5 bg-background/30 p-4">
-                <div className="flex items-center gap-4">
-                  <div className={`flex min-h-32 w-32 shrink-0 items-center justify-center rounded-2xl border ${rankTone.soft}`}><RankBadge rank={rank.tier} size="lg" showLabel={false} animated={false} /></div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Current division</p>
-                        <p className={`mt-1 text-3xl font-black ${rank.color}`}>{rank.name}</p>
-                        <p className={`mt-1 font-mono text-base font-black ${rankTone.text}`}>{elo.toLocaleString()} ELO</p>
-                      </div>
-                      <span className={`rounded-lg border px-2.5 py-1.5 text-right text-[9px] font-black uppercase tracking-wider ${rankTone.soft} ${rankTone.text}`}>{progress}% complete</span>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Rank progress</p><p className="text-right text-[10px] font-bold text-vapor">{nextRank ? <><span className={rankTone.text}>{Math.max(0, nextRank.min - elo)} ELO</span> to {nextRank.name}</> : "Top rank reached"}</p></div>
-                    <div className="mt-2 h-2.5 overflow-hidden rounded-full border border-white/5 bg-secondary">
-                      <div style={{ width: `${progress}%` }} className={`h-full rounded-full ${rankTone.accent}`} />
-                    </div>
-                    <div className="mt-2 flex justify-between text-[9px] font-bold uppercase tracking-wider text-vapor">
-                      <span>{rank.min.toLocaleString()}</span>
-                      <span>{Number.isFinite(rank.max) ? rank.max.toLocaleString() : "Champion"}</span>
-                    </div>
-                  </div>
-                </div>
-                </div>
-
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  {[
-                    { label: "Record", value: `${currentStats?.wins || 0}W - ${currentStats?.losses || 0}L`, icon: Medal, color: "text-cyan", accent: "bg-cyan" },
-                    { label: "Win rate", value: `${currentStats?.matches_played ? Math.round(((currentStats?.wins || 0) / currentStats.matches_played) * 100) : 0}%`, icon: Trophy, color: "text-yellow-400", accent: "bg-yellow-400" },
-                    { label: "Win streak", value: currentStats?.win_streak || 0, icon: Flame, color: "text-orange", accent: "bg-orange" },
-                    { label: "Peak ELO", value: currentStats?.peak_elo || elo, icon: Award, color: "text-purple-400", accent: "bg-purple-400" },
-                  ].map((stat) => {
-                    const Icon = stat.icon;
-                    return <div key={stat.label} className="relative overflow-hidden rounded-xl border border-white/5 bg-background/35 p-3.5"><div className={`absolute inset-x-0 top-0 h-0.5 ${stat.accent}`} /><div className="flex items-center gap-2"><Icon className={`h-3.5 w-3.5 ${stat.color}`} /><p className="text-[9px] font-black uppercase tracking-wider text-vapor">{stat.label}</p></div><p className="mt-2 font-mono text-base font-black">{stat.value}</p></div>;
-                  })}
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-white/5 bg-background/25 px-3 py-3"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Global leaderboard</p><p className={`mt-1 font-mono text-sm font-black ${rankTone.text}`}>{leaderboardPosition ? `#${leaderboardPosition}` : "Play to rank"}</p></div>
-                  <div className="rounded-xl border border-white/5 bg-background/25 px-3 py-3"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Season matches</p><p className="mt-1 font-mono text-sm font-black">{currentStats?.matches_played || 0}</p></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="order-3 glass rounded-xl border border-white/5 p-5">
-              <h3 className="font-bold text-sm mb-4">Season Stats</h3>
-              <div className="space-y-3">
+              <div className="mt-4 h-3 overflow-hidden rounded-full border border-white/5 bg-secondary"><div className="h-full rounded-full bg-cyan transition-all" style={{ width: `${progress}%` }} /></div>
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { label: "Matches Played", value: currentStats?.matches_played || 0 },
-                  { label: "Wins", value: currentStats?.wins || 0 },
-                  { label: "Losses", value: currentStats?.losses || 0 },
-                  { label: "Win Streak", value: currentStats?.win_streak || 0 },
-                  { label: "Peak ELO", value: currentStats?.peak_elo || elo },
-                ].map((stat) => (
-                  <div key={stat.label} className="flex items-center justify-between">
-                    <span className="text-xs text-vapor">{stat.label}</span>
-                    <span className="text-sm font-mono font-bold">{stat.value}</span>
-                  </div>
-                ))}
+                  { label: "Wins", value: currentStats?.wins || 0, icon: Trophy },
+                  { label: "Losses", value: currentStats?.losses || 0, icon: Swords },
+                  { label: "Win streak", value: currentStats?.win_streak || 0, icon: Flame },
+                  { label: "Global place", value: leaderboardPosition ? `#${leaderboardPosition}` : "Unranked", icon: Medal },
+                ].map((stat) => <div key={stat.label} className="rounded-xl border border-white/5 bg-background/30 p-4"><stat.icon className="h-4 w-4 text-cyan" /><p className="mt-3 text-[9px] font-black uppercase tracking-wider text-vapor">{stat.label}</p><p className="mt-1 font-mono text-lg font-black">{stat.value}</p></div>)}
               </div>
             </div>
-          </div>
-        </div>
+          </section>
 
+          <aside className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <Link to="/tournaments" className="group rounded-2xl border border-white/5 bg-card p-5 transition hover:border-orange/30"><Trophy className="h-5 w-5 text-orange" /><p className="mt-4 text-xs font-black uppercase tracking-wider">Tournament card</p><p className="mt-1 text-xs text-vapor">Open tournaments and brackets.</p><span className="mt-4 inline-flex items-center gap-1 text-[10px] font-black uppercase text-orange">View tournaments <ArrowRight className="h-3 w-3" /></span></Link>
+            <Link to="/teams" className="group rounded-2xl border border-white/5 bg-card p-5 transition hover:border-cyan/30"><Swords className="h-5 w-5 text-cyan" /><p className="mt-4 text-xs font-black uppercase tracking-wider">Team card</p><p className="mt-1 text-xs text-vapor">Manage your XP party and roster.</p><span className="mt-4 inline-flex items-center gap-1 text-[10px] font-black uppercase text-cyan">View teams <ArrowRight className="h-3 w-3" /></span></Link>
+            <Link to="/profile" className="group rounded-2xl border border-white/5 bg-card p-5 transition hover:border-purple-400/30"><Award className="h-5 w-5 text-purple-400" /><p className="mt-4 text-xs font-black uppercase tracking-wider">Profile card</p><p className="mt-1 text-xs text-vapor">Your public profile, stats and trophies.</p><span className="mt-4 inline-flex items-center gap-1 text-[10px] font-black uppercase text-purple-300">View profile <ArrowRight className="h-3 w-3" /></span></Link>
+          </aside>
+        </div>
         <CreateLobbyModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           user={user}
-          mode="ranked"
+          mode="xp"
           onCreate={handleCreate}
         />
       </div>
     </div>
   );
 }
+
+

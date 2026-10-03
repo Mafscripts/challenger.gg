@@ -21,6 +21,8 @@ const StreamerTournamentLobby = lazy(() => import('@/pages/StreamerTournamentLob
 const TournamentMatchRoom = lazy(() => import('@/pages/TournamentMatchRoom'));
 const MatchRoom = lazy(() => import('@/pages/MatchRoom'));
 const RankedMatchRoom = lazy(() => import('@/pages/RankedMatchRoom'));
+const XP = lazy(() => import('@/pages/XP'));
+const XPMatchRoom = lazy(() => import('@/pages/XPMatchRoom'));
 const WagersMatchRoom = lazy(() => import('@/pages/WagersMatchRoom'));
 const EightsMatchRoom = lazy(() => import('@/pages/EightsMatchRoom'));
 const Leaderboards = lazy(() => import('@/pages/Leaderboards'));
@@ -105,6 +107,7 @@ const AuthenticatedApp = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/ranked" element={<Ranked />} />
+          <Route path="/xp" element={<XP />} />
           <Route path="/ranked/8s" element={<RankedEights />} />
           <Route path="/wagers" element={<Wagers />} />
           <Route path="/tournaments" element={<Tournaments />} />
@@ -114,6 +117,7 @@ const AuthenticatedApp = () => {
           <Route path="/tournament-match/:id" element={<TournamentMatchRoom />} />
           <Route path="/match-room/:id" element={<MatchRoom />} />
           <Route path="/ranked-match/:id" element={<RankedMatchRoom />} />
+          <Route path="/xp-match/:id" element={<XPMatchRoom />} />
           <Route path="/wagers-match/:id" element={<WagersMatchRoom />} />
           <Route path="/8s-match/:id" element={<EightsMatchRoom />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
@@ -176,3 +180,4 @@ function App() {
 }
 
 export default App
+

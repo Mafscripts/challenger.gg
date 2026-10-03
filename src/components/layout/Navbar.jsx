@@ -59,9 +59,9 @@ const rankedNavGroup = {
   eyebrow: "XP match competition",
   tone: "cyan",
   items: [
-    { label: "XP Matches", description: "Queue for competitive matchmaking", path: "/ranked", icon: Swords, tone: "cyan" },
+    { label: "XP Matches", description: "Queue for competitive matchmaking", path: "/xp", icon: Swords, tone: "cyan" },
     { label: "8s", description: "Join the 8-player competitive queue", path: "/ranked/8s", icon: Users, tone: "cyan" },
-    { label: "XP Matches Leaderboard", description: "See the complete XP matches ladder", path: "/ranked#standings", icon: Trophy, tone: "cyan" },
+    { label: "XP Matches Leaderboard", description: "See the complete XP matches ladder", path: "/xp#standings", icon: Trophy, tone: "cyan" },
   ],
 };
 
@@ -1724,3 +1724,4 @@ function ProfileMenuSection({ label, items, onSelect }) {
     </div>
   );
 }
+
