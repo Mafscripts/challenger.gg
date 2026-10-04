@@ -239,6 +239,11 @@
     color: #fff !important;
   }
 
+  /* Profile colors must win over the generic dark panel title color. */
+  .player-name-color {
+    color: var(--player-name-color) !important;
+  }
+
   .dark-media .text-vapor,
   .dark-focus .text-vapor {
     color: hsl(var(--vapor)) !important;

@@ -17,7 +17,12 @@ function PlayerRow({ player, teamColor }) {
         </div>
         <div className="min-w-0">
           <p className={`text-[10px] font-bold ${teamColor === 'cyan' ? 'text-cyan' : 'text-orange'} truncate`}>
-            <span style={player.display_name_color ? { color: player.display_name_color } : undefined}>{name}</span>
+            <span
+              style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined}
+              className={player.display_name_color ? "player-name-color" : ""}
+            >
+              {name}
+            </span>
           </p>
           <UserBadges user={player} size="xs" iconOnly showMonitorCam className="mt-1" />
           <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
