@@ -131,6 +131,10 @@ function ticketControls({ closed = false } = {}) {
       .setCustomId("topfragg:support:reopen")
       .setLabel("Reopen ticket")
       .setStyle(ButtonStyle.Success));
+    controls.push(new ButtonBuilder()
+      .setCustomId("topfragg:support:delete")
+      .setLabel("Delete ticket")
+      .setStyle(ButtonStyle.Danger));
   }
   return new ActionRowBuilder().addComponents(controls);
 }
@@ -664,6 +668,52 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
       await interaction.reply(ephemeral("Ticket reopened."));
       await botLog(interaction.guild, `Support ticket ${interaction.channel.name} reopened by ${interaction.user.tag}.`);
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === "topfragg:support:delete") {
+      if (!isStaffMember(interaction.member)) {
+        await interaction.reply(ephemeral("Only Topfragg staff can permanently delete a ticket."));
+        return;
+      }
+      if (!String(interaction.channel?.topic || "").includes("status:closed")) {
+        await interaction.reply(ephemeral("Close this ticket before deleting it. This keeps active support conversations safe."));
+        return;
+      }
+      await interaction.reply({
+        content: "Delete this ticket permanently? Download a transcript first if you need a record. This cannot be undone.",
+        flags: MessageFlags.Ephemeral,
+        components: [
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("topfragg:support:delete-confirm")
+              .setLabel("Delete permanently")
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId("topfragg:support:delete-cancel")
+              .setLabel("Cancel")
+              .setStyle(ButtonStyle.Secondary),
+          ),
+        ],
+      });
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === "topfragg:support:delete-cancel") {
+      await interaction.update({ content: "Ticket deletion cancelled.", components: [] });
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === "topfragg:support:delete-confirm") {
+      if (!isStaffMember(interaction.member) || !canManageTicket(interaction)) {
+        await interaction.reply(ephemeral("Only Topfragg staff can permanently delete this ticket."));
+        return;
+      }
+      if (!String(interaction.channel?.topic || "").includes("status:closed")) {
+        await interaction.reply(ephemeral("This ticket is active again and cannot be deleted."));
+        return;
+      }
+      const channelName = interaction.channel.name;
+      await interaction.reply(ephemeral("Ticket permanently deleted."));
+      await botLog(interaction.guild, `Support ticket ${channelName} permanently deleted by ${interaction.user.tag}.`);
+      await interaction.channel.delete(`Ticket permanently deleted by ${interaction.user.tag}`);
       return;
     }
     if (interaction.isButton() && interaction.customId === "topfragg:support:transcript") {
