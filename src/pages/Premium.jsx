@@ -26,9 +26,20 @@ const plans = [
   { id: "yearly", label: "Yearly", price: "99.99", note: "Save with a full year" },
 ];
 
+const nameEffectShowcase = [
+  { id: "fx-prism", label: "Prism Protocol", detail: "Rainbow flow", tone: "from-rose-400 via-yellow-300 to-violet-400" },
+  { id: "fx-royal-frost", label: "Royal Frost", detail: "Purple / White", tone: "from-violet-400 via-white to-violet-300" },
+  { id: "fx-pink-noise", label: "Pink Noise", detail: "Pink / White", tone: "from-pink-400 via-white to-rose-400" },
+  { id: "fx-solar-circuit", label: "Solar Circuit", detail: "Cyan / Orange", tone: "from-cyan via-orange to-cyan" },
+  { id: "fx-blue-mercury", label: "Blue Mercury", detail: "Blue / Silver", tone: "from-blue-400 via-slate-200 to-blue-300" },
+  { id: "fx-aurora-core", label: "Aurora Core", detail: "Green / Cyan / Violet", tone: "from-green-400 via-cyan to-violet-400" },
+  { id: "fx-emberwave", label: "Emberwave", detail: "Orange / Rose", tone: "from-orange via-rose-400 to-orange" },
+  { id: "fx-neon-eclipse", label: "Neon Eclipse", detail: "Lime / Cyan / Purple", tone: "from-lime-300 via-cyan to-violet-400" },
+];
+
 const benefits = [
   { icon: Palette, title: "1 free name change", desc: "Change your display name once per Premium month without paying credits or a fee." },
-  { icon: Gem, title: "Wager name colors", desc: "Choose a verified Premium accent color so your name stands out in wager rooms and profiles." },
+  { icon: Gem, title: "Animated name effects", desc: "Pick a Premium color or flowing effect that follows your name across profiles, rosters and matchrooms." },
   { icon: Trophy, title: "Premium tournaments", desc: "Join Premium-only tournaments and unlock their exclusive prize pools instantly." },
   { icon: Headset, title: "Instant live support", desc: "Premium support requests skip the normal 5-minute wait when a match needs staff." },
   { icon: RotateCcw, title: "Trophy reset", desc: "Reset one Gold, Silver or Bronze trophy counter once per Premium membership period." },
@@ -42,7 +53,7 @@ const comparison = [
   ["Standard Tournaments", true, true],
   ["Premium-only Tournaments", false, true],
   ["1 free name change", false, true],
-  ["Wager name color", false, true],
+  ["Premium name colors & animations", false, true],
   ["Instant live support", false, true],
   ["1 Gold / Silver / Bronze trophy reset", false, true],
   ["Premium crown on profile & player cards", false, true],
@@ -58,6 +69,7 @@ const hasActivePremium = (user) => Boolean(
 export default function Premium() {
   const [user, setUser] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState("monthly");
+  const [selectedEffectId, setSelectedEffectId] = useState("fx-prism");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   useEffect(() => {
@@ -66,6 +78,7 @@ export default function Premium() {
 
   const premiumActive = hasActivePremium(user);
   const selectedPlanDetails = useMemo(() => plans.find((plan) => plan.id === selectedPlan) || plans[1], [selectedPlan]);
+  const selectedEffect = useMemo(() => nameEffectShowcase.find((effect) => effect.id === selectedEffectId) || nameEffectShowcase[0], [selectedEffectId]);
   const expiryText = user?.premium_expires
     ? new Date(user.premium_expires).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
     : "Active membership";
@@ -111,8 +124,8 @@ export default function Premium() {
           <div className="relative grid gap-8 p-6 lg:grid-cols-[1.08fr_.92fr] lg:p-10">
             <div className="flex flex-col justify-center">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-orange/25 bg-orange/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange"><Crown className="h-3.5 w-3.5" /> Topfragg Premium</div>
-              <h2 className="mt-5 max-w-2xl font-heading text-3xl font-black leading-[1.02] text-white sm:text-4xl lg:text-6xl">More access.<br /><span className="text-orange">More presence.</span></h2>
-              <p className="mt-5 max-w-2xl text-sm leading-6 text-vapor">Premium puts the useful things first: a free name change, a custom wager color, instant support and a crown that follows you into every player card.</p>
+              <h2 className="mt-5 max-w-2xl font-heading text-3xl font-black leading-[1.02] text-white sm:text-4xl lg:text-6xl">Your name.<br /><span className="text-orange">Your signal.</span></h2>
+              <p className="mt-5 max-w-2xl text-sm leading-6 text-vapor">Premium puts the useful things first: an animated name effect, a free name change, instant support and a crown that follows you into every player card.</p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button type="button" onClick={handleSubscribe} disabled={checkoutBusy} className="inline-flex items-center gap-2 rounded-xl bg-orange px-5 py-3 text-xs font-black uppercase tracking-wider text-background shadow-lg shadow-orange/20 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{checkoutBusy ? "Activating..." : premiumActive ? "Premium active" : `Get ${selectedPlanDetails.label} Premium`} <ArrowRight className="h-4 w-4" /></button>
                 <a href="#compare" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-white/[0.06]">Compare benefits</a>
@@ -129,6 +142,39 @@ export default function Premium() {
               ].map(([label, value, Icon, tone]) => (
                 <div key={label} className="premium-card flex items-center gap-3 rounded-2xl p-4"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] ${tone}`}><Icon className="h-5 w-5" /></span><div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</p><p className="mt-1 text-sm font-black text-white">{value}</p></div></div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="premium-panel relative overflow-hidden rounded-3xl border border-cyan/20 p-5 sm:p-7 lg:p-9">
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_30%,rgba(34,211,238,.14),transparent_55%)]" />
+          <div className="relative grid gap-6 xl:grid-cols-[.86fr_1.14fr] xl:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan/25 bg-cyan/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-cyan"><Sparkles className="h-3.5 w-3.5" /> Premium name lab</div>
+              <h2 className="mt-4 max-w-xl font-heading text-3xl font-black leading-[1.02] text-white sm:text-4xl">Not just a color.<br /><span className="text-cyan">A moving identity.</span></h2>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-vapor">Choose an effect in Edit Profile. It follows you through profiles, tournament rosters, wagers, matchrooms and leaderboards.</p>
+
+              <div className="mt-6 rounded-2xl border border-white/[0.09] bg-black/25 p-4 shadow-[0_18px_45px_rgba(0,0,0,.22)]">
+                <div className="flex items-center justify-between gap-3"><span className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Live player-card preview</span><span className="inline-flex items-center gap-1 rounded-full border border-yellow-300/25 bg-yellow-300/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-yellow-200"><Crown className="h-3 w-3" /> Premium</span></div>
+                <div className="mt-4 flex items-center gap-4">
+                  <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-cyan/35 bg-gradient-to-br from-cyan/20 via-secondary to-violet-500/15 font-heading text-2xl font-black text-cyan shadow-[0_0_28px_rgba(34,211,238,.14)]">T</div>
+                  <div className="min-w-0"><p data-name-effect={selectedEffect.id} style={{ "--player-name-color": selectedEffect.id }} className="player-name-color truncate font-heading text-2xl font-black tracking-tight">TOPFRAGG</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">Premium competitor <span className="mx-1 text-white/20">•</span> 46 ELO</p></div>
+                </div>
+                <div className="mt-4 flex items-center justify-between border-t border-white/[0.07] pt-3"><div><p className="text-[9px] font-black uppercase tracking-wider text-cyan">{selectedEffect.label}</p><p className="mt-0.5 text-[10px] text-vapor">{selectedEffect.detail}</p></div><span className="text-[10px] font-black uppercase tracking-wider text-green">Live everywhere</span></div>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {nameEffectShowcase.map((effect) => {
+                const selected = effect.id === selectedEffect.id;
+                return <button key={effect.id} type="button" onClick={() => setSelectedEffectId(effect.id)} className={`group relative overflow-hidden rounded-2xl border p-4 text-left transition ${selected ? "border-cyan/60 bg-cyan/[0.11] shadow-[0_0_28px_rgba(34,211,238,.14)]" : "border-white/[0.09] bg-black/15 hover:border-cyan/30 hover:bg-cyan/[0.04]"}`}>
+                  <span className={`pointer-events-none absolute -right-4 -top-5 h-20 w-20 rounded-full bg-gradient-to-br ${effect.tone} opacity-[.14] blur-2xl`} />
+                  <span data-name-effect={effect.id} style={{ "--player-name-color": effect.id }} className="player-name-color relative block font-heading text-lg font-black tracking-tight">TOPFRAGG</span>
+                  <span className="relative mt-2 block text-[10px] font-black uppercase tracking-wider text-white">{effect.label}</span>
+                  <span className="relative mt-1 block text-[10px] text-vapor">{effect.detail}</span>
+                  {selected && <span className="absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full bg-cyan text-background"><Check className="h-3.5 w-3.5 stroke-[3]" /></span>}
+                </button>;
+              })}
             </div>
           </div>
         </section>
