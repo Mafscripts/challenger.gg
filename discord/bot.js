@@ -280,6 +280,37 @@ async function createSupportTicket(interaction, { subject, reason }) {
   await botLog(guild, `Support ticket ${channel.name} opened by ${interaction.user.tag}.`);
 }
 
+async function addControlsToExistingTickets(guild) {
+  const ticketChannels = guild.channels.cache.filter((channel) => (
+    channel.type === ChannelType.GuildText && Boolean(ticketOwnerId(channel))
+  ));
+  for (const channel of ticketChannels.values()) {
+    const recentMessages = await channel.messages.fetch({ limit: 100 }).catch(() => null);
+    if (!recentMessages) continue;
+    const hasTicketControls = recentMessages.some((message) => (
+      message.author?.id === client.user?.id
+      && message.components.some((row) => row.components.some((component) => (
+        String(component.customId || "").startsWith("topfragg:support:")
+      )))
+    ));
+    if (hasTicketControls) continue;
+
+    const closed = String(channel.topic || "").includes("status:closed");
+    await channel.send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(closed ? TOPFRAGG_COLORS.orange : TOPFRAGG_COLORS.cyan)
+          .setTitle("Ticket management")
+          .setDescription(closed
+            ? "This archived ticket can be reopened or exported below."
+            : "Use these controls to close this ticket or download a transcript whenever needed.")
+          .setTimestamp(),
+      ],
+      components: [ticketControls({ closed })],
+    }).catch(() => null);
+  }
+}
+
 function supportModal(kind = "general") {
   const details = {
     account: { title: "Account support", subject: "Account support", placeholder: "Login, verification or profile question" },
@@ -424,6 +455,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     return;
   }
   await runTournamentDiscordSync(guild);
+  await addControlsToExistingTickets(guild).catch((error) => console.error("[Topfragg Discord] Ticket control sync failed:", error));
   await syncMemberCount(guild).catch((error) => console.error("[Topfragg Discord] Member counter sync failed:", error));
   setInterval(() => runTournamentDiscordSync(guild), 60_000);
   setInterval(() => syncMemberCount(guild).catch((error) => console.error("[Topfragg Discord] Member counter sync failed:", error)), 60_000);
