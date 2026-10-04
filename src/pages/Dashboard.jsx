@@ -334,7 +334,7 @@ function TournamentLadder({ players, loading }) {
               <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
                 {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : <Medal className={`h-4 w-4 ${index < 3 ? "text-orange" : "text-cyan"}`} />}
               </div>
-              <div className="min-w-0"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{playerName(player)}</p><p className="truncate text-[9px] uppercase tracking-wider text-vapor">Tournament competitor</p></div>
+              <div className="min-w-0"><p data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`truncate text-sm font-black text-white transition-colors group-hover:text-orange ${player.display_name_color ? "player-name-color" : ""}`}>{playerName(player)}</p><p className="truncate text-[9px] uppercase tracking-wider text-vapor">Tournament competitor</p></div>
             </div>
             <span className="text-center font-mono text-xs font-black text-cyan">{formatWholeNumber(player.tournament_wins)}</span>
             <span className="text-right font-mono text-xs font-black text-green">{formatMoney(player.total_wager_earnings || player.lifetime_earnings)}</span>
