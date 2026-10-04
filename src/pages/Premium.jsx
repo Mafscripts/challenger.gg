@@ -38,14 +38,14 @@ const nameEffectShowcase = [
 ];
 
 const benefits = [
-  { icon: Palette, title: "1 free name change", desc: "Change your display name once per Premium month without paying credits or a fee." },
-  { icon: Gem, title: "Animated name effects", desc: "Pick a Premium color or flowing effect that follows your name across profiles, rosters and matchrooms." },
-  { icon: Trophy, title: "Premium tournaments", desc: "Join Premium-only tournaments and unlock their exclusive prize pools instantly." },
-  { icon: Headset, title: "Instant live support", desc: "Premium support requests skip the normal 5-minute wait when a match needs staff." },
-  { icon: RotateCcw, title: "Trophy reset", desc: "Reset one Gold, Silver or Bronze trophy counter once per Premium membership period." },
-  { icon: Crown, title: "Premium crown", desc: "Your profile and every player card show the Premium crown and badge automatically." },
-  { icon: ShoppingBag, title: "Marketplace savings", desc: "Pay lower platform fees and get access to Premium-only drops and cosmetics." },
-  { icon: Sparkles, title: "Monthly drops", desc: "Receive seasonal profile items, cosmetics and member rewards as Premium evolves." },
+  { icon: Palette, title: "1 free name change", desc: "Change your display name once per Premium month without paying credits or a fee.", tone: "orange" },
+  { icon: Gem, title: "Animated name effects", desc: "Pick a Premium color or flowing effect that follows your name across every Topfragg screen.", tone: "violet" },
+  { icon: Trophy, title: "Premium tournaments", desc: "Join Premium-only tournaments and unlock their exclusive prize pools instantly.", tone: "gold" },
+  { icon: Headset, title: "Instant live support", desc: "Premium support requests skip the normal 5-minute wait when a match needs staff.", tone: "cyan" },
+  { icon: RotateCcw, title: "Trophy reset", desc: "Reset one Gold, Silver or Bronze trophy counter once per Premium membership period.", tone: "rose" },
+  { icon: Crown, title: "Premium crown", desc: "Your profile and every player card show the Premium crown and badge automatically.", tone: "gold" },
+  { icon: ShoppingBag, title: "Marketplace savings", desc: "Pay lower platform fees and get access to Premium-only drops and cosmetics.", tone: "green" },
+  { icon: Sparkles, title: "Monthly drops", desc: "Receive seasonal profile items, cosmetics and member rewards as Premium evolves.", tone: "blue" },
 ];
 
 const comparison = [
@@ -103,7 +103,7 @@ export default function Premium() {
   };
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="premium-page min-h-screen py-8">
       <div className="mx-auto max-w-[1500px] space-y-6 px-4 lg:px-6">
         <PageHeader
           eyebrow="Topfragg membership"
@@ -118,7 +118,7 @@ export default function Premium() {
           )}
         />
 
-        <section className="premium-panel relative overflow-hidden rounded-3xl border border-orange/20">
+        <section className="premium-hero relative overflow-hidden rounded-3xl border border-orange/20">
           <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-orange/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-cyan/10 blur-3xl" />
           <div className="relative grid gap-8 p-6 lg:grid-cols-[1.08fr_.92fr] lg:p-10">
@@ -133,20 +133,20 @@ export default function Premium() {
               {premiumActive && <p className="mt-3 text-xs font-bold text-green">Premium active until {expiryText}.</p>}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="premium-hero-perks grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               {[
-                ["Profile signal", "Crown + Premium badge", Crown, "text-yellow-300"],
-                ["Wager identity", "Free name color", Palette, "text-cyan"],
-                ["Support access", "Instant live help", Headset, "text-green"],
-                ["Trophy case", "One free reset", RotateCcw, "text-orange"],
+                ["Profile signal", "Crown + Premium badge", Crown, "gold"],
+                ["Everywhere identity", "Animated name effects", Palette, "violet"],
+                ["Support access", "Instant live help", Headset, "cyan"],
+                ["Trophy case", "One free reset", RotateCcw, "orange"],
               ].map(([label, value, Icon, tone]) => (
-                <div key={label} className="premium-card flex items-center gap-3 rounded-2xl p-4"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] ${tone}`}><Icon className="h-5 w-5" /></span><div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</p><p className="mt-1 text-sm font-black text-white">{value}</p></div></div>
+                <div key={label} className={`premium-hero-perk premium-hero-perk--${tone} flex items-center gap-3 rounded-2xl p-4`}><span className="premium-hero-perk-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"><Icon className="h-5 w-5" /></span><div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</p><p className="mt-1 text-sm font-black text-white">{value}</p></div></div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="premium-panel relative overflow-hidden rounded-3xl border border-cyan/20 p-5 sm:p-7 lg:p-9">
+        <section className="premium-name-lab relative overflow-hidden rounded-3xl border border-cyan/20 p-5 sm:p-7 lg:p-9">
           <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_30%,rgba(34,211,238,.14),transparent_55%)]" />
           <div className="relative grid gap-6 xl:grid-cols-[.86fr_1.14fr] xl:items-center">
             <div>
@@ -154,7 +154,7 @@ export default function Premium() {
               <h2 className="mt-4 max-w-xl font-heading text-3xl font-black leading-[1.02] text-white sm:text-4xl">Not just a color.<br /><span className="text-cyan">A moving identity.</span></h2>
               <p className="mt-4 max-w-xl text-sm leading-6 text-vapor">Choose an effect in Edit Profile. It follows you through profiles, tournament rosters, wagers, matchrooms and leaderboards.</p>
 
-              <div className="mt-6 rounded-2xl border border-white/[0.09] bg-black/25 p-4 shadow-[0_18px_45px_rgba(0,0,0,.22)]">
+              <div className="premium-live-card mt-6 rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3"><span className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Live player-card preview</span><span className="inline-flex items-center gap-1 rounded-full border border-yellow-300/25 bg-yellow-300/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-yellow-200"><Crown className="h-3 w-3" /> Premium</span></div>
                 <div className="mt-4 flex items-center gap-4">
                   <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-cyan/35 bg-gradient-to-br from-cyan/20 via-secondary to-violet-500/15 font-heading text-2xl font-black text-cyan shadow-[0_0_28px_rgba(34,211,238,.14)]">T</div>
@@ -167,7 +167,7 @@ export default function Premium() {
             <div className="grid gap-2 sm:grid-cols-2">
               {nameEffectShowcase.map((effect) => {
                 const selected = effect.id === selectedEffect.id;
-                return <button key={effect.id} type="button" onClick={() => setSelectedEffectId(effect.id)} className={`group relative overflow-hidden rounded-2xl border p-4 text-left transition ${selected ? "border-cyan/60 bg-cyan/[0.11] shadow-[0_0_28px_rgba(34,211,238,.14)]" : "border-white/[0.09] bg-black/15 hover:border-cyan/30 hover:bg-cyan/[0.04]"}`}>
+                return <button key={effect.id} type="button" onClick={() => setSelectedEffectId(effect.id)} className={`premium-effect-choice group relative overflow-hidden rounded-2xl border p-4 text-left transition ${selected ? "is-selected" : ""}`}>
                   <span className={`pointer-events-none absolute -right-4 -top-5 h-20 w-20 rounded-full bg-gradient-to-br ${effect.tone} opacity-[.14] blur-2xl`} />
                   <span data-name-effect={effect.id} style={{ "--player-name-color": effect.id }} className="player-name-color relative block font-heading text-lg font-black tracking-tight">TOPFRAGG</span>
                   <span className="relative mt-2 block text-[10px] font-black uppercase tracking-wider text-white">{effect.label}</span>
@@ -179,12 +179,12 @@ export default function Premium() {
           </div>
         </section>
 
-        <section className="premium-panel rounded-2xl p-4 sm:p-5">
+        <section className="premium-plan-deck rounded-2xl p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Choose your membership</p><h2 className="mt-1 text-lg font-black text-white">Use your Topfragg wallet</h2><p className="mt-1 text-xs text-vapor">No external checkout. Your selected plan is charged from your available wallet balance.</p></div>
             <div className="grid w-full gap-2 sm:grid-cols-3 lg:max-w-[620px]">
               {plans.map((plan) => (
-                <button key={plan.id} type="button" onClick={() => setSelectedPlan(plan.id)} className={`relative rounded-xl border p-3 text-left transition ${selectedPlan === plan.id ? "border-orange/60 bg-orange/10 shadow-[0_0_24px_rgba(255,136,0,.10)]" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
+                <button key={plan.id} type="button" onClick={() => setSelectedPlan(plan.id)} className={`premium-plan relative rounded-xl border p-3 text-left transition ${selectedPlan === plan.id ? "is-selected" : ""}`}>
                   {plan.featured && <span className="absolute -top-2 right-2 rounded-full bg-orange px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-background">Popular</span>}
                   <span className="block text-[10px] font-black uppercase tracking-wider text-white">{plan.label}</span><span className="mt-1 block font-mono text-lg font-black text-orange">${plan.price}</span><span className="mt-1 block text-[10px] text-vapor">{plan.note}</span>
                 </button>
@@ -195,19 +195,19 @@ export default function Premium() {
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {benefits.map((benefit, index) => (
-            <motion.div key={benefit.title} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.035 }} className="premium-card group relative overflow-hidden rounded-2xl p-5 transition hover:-translate-y-0.5 hover:border-orange/25">
-              <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-orange/[0.06] blur-2xl transition group-hover:bg-orange/[0.12]" />
-              <div className="relative"><div className="flex h-10 w-10 items-center justify-center rounded-xl border border-orange/20 bg-orange/10 text-orange"><benefit.icon className="h-5 w-5" /></div><h3 className="mt-4 text-sm font-black text-white">{benefit.title}</h3><p className="mt-2 text-xs leading-5 text-vapor">{benefit.desc}</p></div>
+            <motion.div key={benefit.title} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.035 }} className={`premium-benefit premium-benefit--${benefit.tone} group relative overflow-hidden rounded-2xl p-5`}>
+              <div className="premium-benefit-orb absolute right-0 top-0 h-20 w-20 rounded-full blur-2xl transition" />
+              <div className="relative"><div className="premium-benefit-icon flex h-10 w-10 items-center justify-center rounded-xl"><benefit.icon className="h-5 w-5" /></div><h3 className="mt-4 text-sm font-black text-white">{benefit.title}</h3><p className="mt-2 text-xs leading-5 text-vapor">{benefit.desc}</p></div>
             </motion.div>
           ))}
         </section>
 
-        <section className="premium-panel overflow-hidden rounded-2xl p-5 sm:p-6">
+        <section className="premium-signal overflow-hidden rounded-2xl p-5 sm:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Your Premium signal</p><h2 className="mt-1 text-xl font-black text-white">One membership, visible everywhere</h2><p className="mt-2 max-w-2xl text-xs leading-5 text-vapor">When Premium is active, the crown and Premium badge are added automatically to your profile, roster rows, wager cards and tournament match rooms.</p></div><div className="flex items-center gap-3 rounded-2xl border border-yellow-300/20 bg-yellow-300/[0.06] px-4 py-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-300/15 text-yellow-300"><Crown className="h-6 w-6" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-yellow-200">Player card</p><p className="mt-1 text-sm font-black text-white">Premium member</p></div></div></div>
           {user && <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/[0.07] pt-4"><div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"><UserBadges user={user} size="sm" showMonitorCam={false} /><span className="text-xs font-bold text-white">Your live profile badges</span></div>{premiumActive ? <span className="inline-flex items-center gap-1.5 text-xs font-bold text-green"><CheckCircle2 className="h-4 w-4" /> Active until {expiryText}</span> : <span className="inline-flex items-center gap-1.5 text-xs text-vapor"><Clock3 className="h-4 w-4" /> Activate Premium to unlock the crown</span>}</div>}
         </section>
 
-        <section id="compare" className="premium-panel overflow-hidden rounded-2xl">
+        <section id="compare" className="premium-compare overflow-hidden rounded-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4"><div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Plan comparison</p><h2 className="mt-1 text-lg font-black text-white">Free vs Premium</h2></div><BadgeCheck className="h-6 w-6 text-orange" /></div>
           <div className="grid grid-cols-[1.6fr_.45fr_.55fr] border-b border-white/[0.06] px-5 py-3 text-[10px] font-black uppercase tracking-wider text-vapor sm:grid-cols-[1.8fr_.35fr_.45fr]"><span>Feature</span><span className="text-center">Free</span><span className="text-center text-orange">Premium</span></div>
           {comparison.map(([feature, free, premium]) => <div key={feature} className="grid grid-cols-[1.6fr_.45fr_.55fr] items-center border-b border-white/[0.05] px-5 py-3 last:border-0 sm:grid-cols-[1.8fr_.35fr_.45fr]"><span className="text-xs font-bold text-white sm:text-sm">{feature}</span><span className="text-center">{free ? <Check className="mx-auto h-4 w-4 text-green" /> : <span className="text-vapor">—</span>}</span><span className="text-center">{premium ? <Check className="mx-auto h-4 w-4 text-orange" /> : <span className="text-vapor">—</span>}</span></div>)}
