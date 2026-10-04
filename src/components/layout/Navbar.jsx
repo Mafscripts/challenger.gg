@@ -127,7 +127,7 @@ const activeTournamentStatuses = new Set([
   "score_conflict",
   "disputed",
 ]);
-const hiddenMatchTypes = new Set(["8s", "eights"]);
+const hiddenMatchTypes = new Set();
 let disputeAlertAudioContext = null;
 
 const unlockDisputeAlertAudio = async () => {
@@ -763,6 +763,7 @@ export default function Navbar() {
       const [
         hostedWagers,
         challengedWagers,
+        wagerParticipants,
         hostedRanked,
         challengedRanked,
         hostedXP,
@@ -771,6 +772,7 @@ export default function Navbar() {
       ] = await Promise.all([
         base44.entities.Wager[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
         base44.entities.Wager[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
+        base44.entities.WagerParticipant[fresh ? "filterFresh" : "filter"]({ user_id: user.id }).catch(() => []),
         base44.entities.RankedMatch[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
         base44.entities.RankedMatch[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
         base44.entities.XPMatch[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
@@ -779,7 +781,10 @@ export default function Navbar() {
       ]);
 
       const byId = new Map();
-      [...hostedWagers, ...challengedWagers]
+      const participantWagers = await Promise.all((wagerParticipants || []).map((participant) => (
+        base44.entities.Wager[fresh ? "getFresh" : "get"](participant.wager_id).catch(() => null)
+      )));
+      [...hostedWagers, ...challengedWagers, ...participantWagers.filter(Boolean)]
         .filter((match) => !hiddenMatchTypes.has(String(match.match_type || "").toLowerCase()))
         .forEach((match) => byId.set(`wager:${match.id}`, { ...match, entity_type: "wager" }));
       [...hostedRanked, ...challengedRanked].forEach((match) => byId.set(`ranked:${match.id}`, { ...match, entity_type: "ranked" }));
@@ -819,7 +824,7 @@ export default function Navbar() {
         .filter((match) => (
           match.entity_type === "tournament"
             ? activeTournamentStatuses.has(match.status) && !match.completed
-            : activeMatchStatuses.has(match.status)
+            : activeMatchStatuses.has(match.status) || (match.match_type === "8s" && match.status === "open")
         ))
         .sort((a, b) => new Date(b.match_started_date || b.assigned_date || b.created_date || 0) - new Date(a.match_started_date || a.assigned_date || a.created_date || 0))
         .slice(0, 5);
@@ -1118,6 +1123,7 @@ export default function Navbar() {
                               const route = isTournament ? `/tournament-match/${match.id}` :
                                            match.entity_type === 'ranked' ? `/ranked-match/${match.id}` :
                                            match.entity_type === 'xp' ? `/xp-match/${match.id}` :
+                                           match.match_type === '8s' ? `/8s-match/${match.id}` :
                                            `/wagers-match/${match.id}`;
                               const matchType = isTournament ? "tournament" : match.entity_type === 'ranked' ? 'ranked' : match.entity_type === 'xp' ? 'xp' : match.match_type;
                               const themeClasses = matchType === 'ranked' ? 'bg-cyan/10 text-cyan' :

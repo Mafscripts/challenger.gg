@@ -167,12 +167,8 @@ export default function EightsMatchRoom() {
     try {
       const report = await base44.functions.invoke("submitScore", { wager_id: id, team_alpha_score: submittedScoreA, team_bravo_score: submittedScoreB });
       if (!report.data?.success) throw new Error(report.data?.error || "Could not submit score");
-      if (report.data.ready_to_complete) {
-        const complete = await base44.functions.invoke("completeWager", { wager_id: id, winner_id: report.data.winner_id, team_alpha_score: submittedScoreA, team_bravo_score: submittedScoreB });
-        if (!complete.data?.success) throw new Error(complete.data?.error || "Could not complete match");
-      }
       setScoreOpen(false);
-      toast({ title: report.data.ready_to_complete ? "Match complete" : "Agreement recorded", description: report.data.ready_to_complete ? "XP and monthly standings are updated." : (report.data.message || `Waiting for ${requiredScoreVotes} player approvals.`) });
+      toast({ title: report.data.completed ? "Match complete" : "Agreement recorded", description: report.data.completed ? "XP and monthly standings are updated." : (report.data.message || `Waiting for ${requiredScoreVotes} player approvals.`) });
       await loadRoom(true);
     } catch (error) {
       toast({ title: "Score not submitted", description: error.message, variant: "destructive" });

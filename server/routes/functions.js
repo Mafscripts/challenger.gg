@@ -5333,8 +5333,8 @@ async function resolveTicket(req) {
 async function adminResolveMatchRoom(req) {
   assertStaff(req, "moderator");
   const matchType = normalizeMatchType(req.body.match_type);
-  if (!["wager", "tournament"].includes(matchType)) {
-    return { success: false, error: "Admin match resolution is only available for wagers and tournaments" };
+  if (!["wager", "8s", "tournament"].includes(matchType)) {
+    return { success: false, error: "Admin match resolution is only available for wagers, 8s, and tournaments" };
   }
 
   const action = req.body.action || req.body.decision;
@@ -6421,6 +6421,16 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
   });
 }
 
+function eightsTeamsNeedGeneration(wager, participants, requiredSize) {
+  if (!wager?.teams_generated_at) return true;
+  const alpha = participants.filter((participant) => participant.team === "host");
+  const bravo = participants.filter((participant) => participant.team === "challenger");
+  return alpha.length !== requiredSize
+    || bravo.length !== requiredSize
+    || !alpha.some((participant) => participant.user_id === wager.host_id)
+    || !bravo.some((participant) => participant.user_id === wager.challenger_id);
+}
+
 async function acceptWagerUnlocked(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
@@ -6620,7 +6630,7 @@ async function syncEightsLobby(req) {
   }
 
   let currentWager = wager;
-  if (!wager.teams_generated_at) {
+  if (eightsTeamsNeedGeneration(wager, participants, requiredSize)) {
     currentWager = await randomizeEightsTeams(wager, participants);
   }
   if (currentWager.roster_locked || currentWager.status === "in_progress") return { success: true, wager: currentWager, locked: true, full: true };
@@ -6654,7 +6664,8 @@ async function voteEightsReshuffle(req) {
     const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
     const participantIds = new Set(participants.map((participant) => participant.user_id).filter(Boolean));
     if (!participantIds.has(req.user.id)) return { success: false, error: "Only lobby players can vote to reshuffle" };
-    if (participants.length < 8) return { success: false, error: "The lobby needs 8 players before teams can be reshuffled" };
+    const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
+    if (participants.length < requiredSize * 2) return { success: false, error: `The lobby needs ${requiredSize * 2} players before teams can be reshuffled` };
 
     const deadline = new Date(wager.roster_lock_deadline || "");
     if (wager.roster_locked || wager.status === "in_progress" || Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
@@ -6694,7 +6705,8 @@ async function adminReshuffleEightsTeams(req) {
     const wager = await getEntity("Wager", wagerId);
     if (!wager || wager.match_type !== "8s") return { success: false, error: "8s lobby not found" };
     const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
-    if (participants.length < 8) return { success: false, error: "The lobby needs 8 players before teams can be reshuffled" };
+    const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
+    if (participants.length < requiredSize * 2) return { success: false, error: `The lobby needs ${requiredSize * 2} players before teams can be reshuffled` };
 
     const deadline = new Date(wager.roster_lock_deadline || "");
     if (wager.roster_locked || wager.status === "in_progress" || Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
@@ -6945,16 +6957,29 @@ async function submitScoreUnlocked(req) {
       confirmed_score_bravo: teamBravoScore,
       confirmed_score_date: nowIso(),
     };
-    await updateEntity("Wager", wager.id, approvedReport);
+    const approvedWager = await updateEntity("Wager", wager.id, approvedReport);
     await createMatchRoomSystemMessage(
       "wager",
-      { ...wager, ...approvedReport },
+      approvedWager,
       `Score report approved by ${requiredVotes} players: ${teamAlphaScore}-${teamBravoScore}.`,
       req.user,
     ).catch(() => null);
+    // Completion is server-owned so the final vote cannot leave an 8s lobby
+    // stranded if that player closes the room or loses their connection.
+    const completion = await completeWagerUnlocked({
+      ...req,
+      body: {
+        wager_id: wager.id,
+        winner_id,
+        team_alpha_score: teamAlphaScore,
+        team_bravo_score: teamBravoScore,
+      },
+    });
+    if (!completion?.success) return completion || { success: false, error: "Score was approved but the match could not be completed" };
     return {
       success: true,
-      ready_to_complete: true,
+      ready_to_complete: false,
+      completed: true,
       vote_pending: false,
       vote_count: voteIds.length,
       required_votes: requiredVotes,
@@ -6962,7 +6987,8 @@ async function submitScoreUnlocked(req) {
       winner_name,
       winner_score: Math.max(teamAlphaScore, teamBravoScore),
       loser_score: Math.min(teamAlphaScore, teamBravoScore),
-      message: `Score approved by ${requiredVotes} players.`,
+      message: `Score approved by ${requiredVotes} players and the match is complete.`,
+      wager: completion.wager,
     };
   }
   const reportingTeam = isHost ? "host" : "challenger";
