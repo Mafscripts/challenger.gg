@@ -1404,6 +1404,13 @@
     color: #fff !important;
   }
 
+  /* This must sit after the dark-panel white-title override: Premium player colors win. */
+  .app-content .player-name-color,
+  .app-content .dark-media .player-name-color,
+  .app-content .dark-focus .player-name-color {
+    color: var(--player-name-color) !important;
+  }
+
   .app-content .dark-media [class*="border-white"],
   .app-content .dark-focus [class*="border-white"] {
     border-color: rgb(255 255 255 / 0.1) !important;
