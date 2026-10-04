@@ -105,6 +105,7 @@ const issueVerificationChallenge = async (user, { enforceCooldown = false } = {}
   try {
     delivery = await sendVerificationEmail({ to: updated.email, code });
   } catch (cause) {
+    console.error("[email] Verification delivery failed:", cause?.message || cause);
     const error = new Error("Verification email delivery is temporarily unavailable");
     error.status = 503;
     error.cause = cause;
