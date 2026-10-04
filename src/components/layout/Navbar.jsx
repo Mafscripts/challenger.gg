@@ -404,6 +404,20 @@ export default function Navbar() {
     setProfileOpen(false);
   };
 
+  const closeMobileMenu = () => {
+    setMobileOpen(false);
+    closeDropdowns();
+  };
+
+  useEffect(() => {
+    const handleOutsidePointer = (event) => {
+      if (event.target instanceof Element && event.target.closest(".nav-dropdown-anchor")) return;
+      closeDropdowns();
+    };
+    document.addEventListener("pointerdown", handleOutsidePointer);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer);
+  }, []);
+
   const clearUserState = () => {
     setUser(null);
     setNotifications([]);
@@ -992,7 +1006,7 @@ export default function Navbar() {
                         aria-expanded={open}
                         onClick={() => {
                           cancelDropdownClose();
-                          setNavMenuOpen(group.label);
+                          setNavMenuOpen((current) => current === group.label ? null : group.label);
                         }}
                         className={`${navButtonClass} ${
                           active || open
@@ -1065,7 +1079,11 @@ export default function Navbar() {
                     aria-expanded={matchesOpen}
                     onClick={() => {
                       cancelDropdownClose();
-                      setMatchesOpen(true);
+                      setMatchesOpen((current) => !current);
+                      setNavMenuOpen(null);
+                      setNotifOpen(false);
+                      setMessagesOpen(false);
+                      setProfileOpen(false);
                       loadActiveMatches();
                     }}
                     className={`${navButtonClass} ${
@@ -1085,7 +1103,7 @@ export default function Navbar() {
                   </button>
 
                   {matchesOpen && (
-                      <div className="nav-popover nav-popover-enter absolute left-0 top-11 w-80 overflow-hidden rounded-xl">
+                      <div className="nav-popover nav-popover-enter absolute left-0 top-11 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-xl">
                         <div className="grid grid-cols-2 gap-2 p-2 border-b border-white/5">
                           <Link
                             to="/dashboard"
@@ -1214,7 +1232,16 @@ export default function Navbar() {
                 <button
                   type="button"
                   aria-label="Open notifications"
-                  className="topbar-icon-button topbar-notification-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-all"
+                  onClick={() => {
+                    cancelDropdownClose();
+                    setNotifOpen((current) => !current);
+                    setNavMenuOpen(null);
+                    setMatchesOpen(false);
+                    setMessagesOpen(false);
+                    setProfileOpen(false);
+                    loadNotifications({ fresh: true });
+                  }}
+                  className="topbar-icon-button topbar-notification-button relative flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl text-vapor transition-all"
                 >
                   <Bell className="w-4 h-4" />
                   {unreadNotifCount > 0 && (
@@ -1223,7 +1250,7 @@ export default function Navbar() {
                 </button>
 
                 {notifOpen && (
-                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl">
+                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-xl">
                       <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                         <h3 className="font-bold text-sm">Notifications</h3>
                         <Link to="/notifications" onClick={() => setNotifOpen(false)} className="text-xs text-cyan hover:underline">
@@ -1385,7 +1412,7 @@ export default function Navbar() {
                   type="button"
                   onClick={() => {
                     cancelDropdownClose();
-                    setProfileOpen(true);
+                    setProfileOpen((current) => !current);
                     setNavMenuOpen(null);
                     setMatchesOpen(false);
                     setNotifOpen(false);
@@ -1409,7 +1436,7 @@ export default function Navbar() {
                 </button>
 
                 {profileOpen && (
-                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 max-h-[calc(100dvh-5rem)] w-80 overflow-y-auto rounded-xl p-2.5">
+                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 max-h-[calc(100dvh-5rem)] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-xl p-2.5">
                       <div className="border-b border-white/5 px-1 pb-2">
                         <div className="flex items-center gap-2 px-2">
                           <Search className="h-4 w-4 shrink-0 text-vapor" />
@@ -1556,10 +1583,28 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {user && mobileOpen && (
-          <div className="mobile-menu-enter fixed inset-0 z-40 overflow-y-auto bg-background/98 pt-20 xl:hidden">
-            <div className="max-w-lg mx-auto px-6 py-4 space-y-1">
+          <div
+            className="mobile-menu-enter fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background/98 pt-20 touch-pan-y xl:hidden"
+            onClick={closeMobileMenu}
+          >
+            <div className="mx-auto max-w-lg space-y-1 px-4 pb-10 sm:px-6" onClick={(event) => event.stopPropagation()}>
+              <div className="mb-2 flex items-center justify-between rounded-2xl border border-white/[0.08] bg-card/80 px-4 py-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan">Topfragg menu</p>
+                  <p className="mt-0.5 text-xs text-vapor">Choose where you want to go</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMobileMenu}
+                  aria-label="Close menu"
+                  className="flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-vapor transition-colors hover:bg-white/[0.08] hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
               <Link
                 to="/dashboard"
+                onClick={closeMobileMenu}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
                   navItemIsActive(location.pathname, "/dashboard", location.hash) ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
                 }`}
@@ -1578,6 +1623,7 @@ export default function Navbar() {
                         <Link
                           key={link.path}
                           to={link.path}
+                          onClick={closeMobileMenu}
                           className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all
                             ${active ? "bg-cyan/10 text-cyan" : "text-vapor hover:text-foreground hover:bg-secondary"}`}
                         >
@@ -1594,6 +1640,7 @@ export default function Navbar() {
                 <div className="space-y-1">
                   <Link
                     to="/dashboard"
+                    onClick={closeMobileMenu}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all
                       text-vapor hover:text-foreground hover:bg-secondary`}
                   >
@@ -1602,6 +1649,7 @@ export default function Navbar() {
                   </Link>
                   <Link
                     to={matchHistoryPath}
+                    onClick={closeMobileMenu}
                     className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
                   >
                     <History className="w-5 h-5" />
@@ -1615,6 +1663,7 @@ export default function Navbar() {
                     {canSeeAdminLink && (
                       <Link
                         to="/admin"
+                        onClick={closeMobileMenu}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-pink-300 hover:bg-pink-400/10 transition-all"
                       >
                         <ShieldCheck className="w-5 h-5" />
@@ -1623,6 +1672,7 @@ export default function Navbar() {
                     )}
                     <Link
                       to={profilePath}
+                      onClick={closeMobileMenu}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
                     >
                       <User className="w-5 h-5" />
@@ -1630,6 +1680,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                       to="/my-tickets"
+                      onClick={closeMobileMenu}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
                     >
                       <Ticket className="w-5 h-5" />
@@ -1637,6 +1688,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                       to="/find-players"
+                      onClick={closeMobileMenu}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
                     >
                       <MessageSquare className="w-5 h-5" />
@@ -1644,6 +1696,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                       to="/rules"
+                      onClick={closeMobileMenu}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
                     >
                       <ShieldCheck className="w-5 h-5" />
@@ -1651,6 +1704,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                       to="/wallet"
+                      onClick={closeMobileMenu}
                       className="flex items-center gap-2 px-4 py-3 rounded-xl hover:bg-secondary transition-all"
                     >
                       <Wallet className="w-5 h-5 text-primary" />
@@ -1660,6 +1714,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                       to="/marketplace"
+                      onClick={closeMobileMenu}
                       className="flex items-center gap-2 rounded-xl px-4 py-3 transition-all hover:bg-secondary"
                     >
                       <Coins className="h-5 w-5 text-primary" />
@@ -1667,6 +1722,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                       to="/logout"
+                      onClick={closeMobileMenu}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-destructive hover:bg-destructive/10 transition-all"
                     >
                       <LogIn className="w-5 h-5" />
@@ -1677,6 +1733,7 @@ export default function Navbar() {
                   <div className="grid grid-cols-2 gap-3">
                     <Link
                       to="/login"
+                      onClick={closeMobileMenu}
                       className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-vapor bg-secondary hover:text-foreground transition-all font-semibold"
                     >
                       <LogIn className="w-4 h-4" />
@@ -1684,6 +1741,7 @@ export default function Navbar() {
                     </Link>
                     <Link
                       to="/register"
+                      onClick={closeMobileMenu}
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange px-4 py-3 font-bold text-background shadow-[0_0_24px_rgba(255,108,0,.16)] transition-all hover:bg-orange/90"
                     >
                       <UserPlus className="w-4 h-4" />

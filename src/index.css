@@ -414,6 +414,12 @@
     animation: mobile-menu-in 180ms cubic-bezier(.2, .8, .2, 1) both;
   }
 
+  .mobile-menu-enter a {
+    min-height: 3rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .topbar-primary-nav {
     --nav-hover-x: 0px;
     --nav-hover-width: 0px;
