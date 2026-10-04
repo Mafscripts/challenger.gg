@@ -272,7 +272,7 @@ export default function Profile() {
       setProfile(loadedProfile);
       setAvatarDraft(loadedProfile?.avatar_url || userRow?.avatar_url || "");
       setBioDraft(loadedProfile?.bio || "");
-      setNameColorDraft(userRow?.display_name_color || "");
+      setNameColorDraft(userRow?.display_name_color || loadedProfile?.display_name_color || "");
       setRankedStats(rankedRows[0] || null);
       setXpStats(xpRows[0] || null);
       setWallet(walletRows[0] || null);
@@ -313,7 +313,9 @@ export default function Profile() {
   const isPremium = Boolean(user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires).getTime() > Date.now()));
   const canUseNameColor = isVerifiedPlayer || isPremium;
   const hasStreamerBadge = Boolean(user?.streamer_badge || user?.is_streamer || badges.some((badge) => badge.type === "streamer"));
-  const activeNameColor = isOwnProfile ? nameColorDraft : (user?.display_name_color || "");
+  const activeNameColor = isOwnProfile
+    ? nameColorDraft
+    : (user?.display_name_color || profile?.display_name_color || "");
   const selectedNameColor = verifiedNameColors.some((color) => color.value === activeNameColor)
     ? activeNameColor
     : "";
@@ -365,6 +367,7 @@ export default function Profile() {
     try {
       let nextProfile = profile;
       const normalizedAvatar = normalizeImageSource(avatarDraft);
+      const nextNameColor = verifiedNameColors.some((color) => color.value === nameColorDraft) ? nameColorDraft : "";
       const profilePatch = {
         user_id: user.id,
         display_name: user.display_name || user.full_name || user.username || user.email,
@@ -372,17 +375,16 @@ export default function Profile() {
         handle: user.handle || user.username,
         avatar_url: normalizedAvatar,
         bio: bioDraft.trim().slice(0, 500),
+        display_name_color: canUseNameColor ? nextNameColor : "",
       };
-      if (profile?.id) nextProfile = await base44.entities.PlayerProfile.update(profile.id, profilePatch);
-      else nextProfile = await base44.entities.PlayerProfile.create(profilePatch);
-
-      const nextNameColor = verifiedNameColors.some((color) => color.value === nameColorDraft) ? nameColorDraft : "";
       const nextUser = await base44.auth.updateMe({
         display_name_color: canUseNameColor ? nextNameColor : "",
       });
+      if (profile?.id) nextProfile = await base44.entities.PlayerProfile.update(profile.id, profilePatch);
+      else nextProfile = await base44.entities.PlayerProfile.create(profilePatch);
       setProfile(nextProfile);
-      setUser((current) => ({ ...current, ...nextUser }));
-      window.dispatchEvent(new CustomEvent("topfragg:profile-updated", { detail: { avatarUrl: nextProfile?.avatar_url || "" } }));
+      setUser((current) => ({ ...current, ...nextUser, display_name_color: canUseNameColor ? nextNameColor : "" }));
+      window.dispatchEvent(new CustomEvent("topfragg:profile-updated", { detail: { avatarUrl: nextProfile?.avatar_url || "", displayNameColor: canUseNameColor ? nextNameColor : "" } }));
       setProfileResult({ success: true, message: "Profile saved." });
     } catch (error) {
       setProfileResult({ success: false, message: error.message || "Could not save profile." });
