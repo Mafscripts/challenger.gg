@@ -32,6 +32,7 @@ const safePlayer = (row) => ({
   id: row.id,
   username: row.username,
   display_name: row.display_name || row.full_name || row.username || "Competitor",
+  display_name_color: row.display_name_color || "",
   avatar_url: row.avatar_url || "",
   tournament_wins: number(row.tournament_wins),
   lifetime_earnings: number(row.lifetime_earnings || row.total_wager_earnings),
