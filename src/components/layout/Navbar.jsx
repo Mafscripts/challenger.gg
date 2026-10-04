@@ -69,9 +69,9 @@ const xpNavGroup = {
   label: "XP",
   icon: Zap,
   eyebrow: "Posted XP challenges",
-  tone: "purple",
+  tone: "cyan",
   items: [
-    { label: "XP Matches", description: "Post or accept XP challenges", path: "/xp", icon: Zap, tone: "purple" },
+    { label: "XP Matches", description: "Post or accept XP challenges", path: "/xp", icon: Zap, tone: "cyan" },
   ],
 };
 
