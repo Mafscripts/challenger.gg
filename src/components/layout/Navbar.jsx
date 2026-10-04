@@ -30,6 +30,7 @@ const navGroups = [
     tone: "green",
     items: [
       { label: "Cash Matches", description: "Post or accept a cash challenge", path: "/wagers", icon: Zap, tone: "green" },
+      { label: "Cash Matches Leaderboard", description: "See the top cash match earners", path: "/leaderboards?tab=wagers", icon: Trophy, tone: "green" },
     ],
   },
   {
@@ -88,15 +89,9 @@ const playNavGroup = {
   ],
 };
 
-const cashMatchesNavItem = {
-  label: "Cash Matches",
-  path: "/wagers",
-  icon: Zap,
-  tone: "green",
-};
-
 const mobileNavSections = [
   { label: "Play", items: playNavGroup.items },
+  { label: "Cash Matches", items: navGroups[1].items },
   { label: "Tournaments", items: navGroups[0].items },
   { label: "Teams", items: navGroups[3].items },
 ];
@@ -205,7 +200,8 @@ const tournamentMatchSideFor = (match, keys) => {
 };
 
 const navItemIsActive = (pathname, path, hash = "") => {
-  const [targetPath, targetHash] = String(path || "").split("#");
+  const [targetPathWithQuery, targetHash] = String(path || "").split("#");
+  const [targetPath] = targetPathWithQuery.split("?");
   const expectedHash = targetHash ? `#${targetHash}` : "";
 
   if (expectedHash) return pathname === targetPath && hash === expectedHash;
@@ -970,23 +966,7 @@ export default function Navbar() {
                   </span>
                   Home
                 </Link>
-                <Link
-                  to={cashMatchesNavItem.path}
-                  data-nav-item
-                  data-tone={cashMatchesNavItem.tone}
-                  data-active={navItemIsActive(location.pathname, cashMatchesNavItem.path, location.hash) ? "true" : "false"}
-                  className={`${navButtonClass} ${
-                    navItemIsActive(location.pathname, cashMatchesNavItem.path, location.hash)
-                      ? navTone.green.button
-                      : "border-transparent text-vapor hover:border-green/20 hover:bg-green/[0.07] hover:text-green"
-                  }`}
-                >
-                  <span className={`nav-primary-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, cashMatchesNavItem.path, location.hash) ? navTone.green.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
-                    <Zap className="h-3.5 w-3.5" />
-                  </span>
-                  {cashMatchesNavItem.label}
-                </Link>
-                {[playNavGroup, navGroups.find((group) => group.label === "Tournaments")].map((group) => {
+                {[playNavGroup, navGroups.find((group) => group.label === "Cash Matches"), navGroups.find((group) => group.label === "Tournaments")].map((group) => {
                   const GroupIcon = group.icon;
                   const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash));
                   const open = navMenuOpen === group.label;
@@ -1588,15 +1568,6 @@ export default function Navbar() {
               >
                 <House className="h-5 w-5" />
                 Home
-              </Link>
-              <Link
-                to={cashMatchesNavItem.path}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
-                  navItemIsActive(location.pathname, cashMatchesNavItem.path, location.hash) ? "bg-green/10 text-green" : "text-vapor hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                <Zap className="h-5 w-5" />
-                {cashMatchesNavItem.label}
               </Link>
               {mobileNavSections.map((section) => (
                 <div key={section.label} className="pt-3">

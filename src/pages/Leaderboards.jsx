@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { DollarSign, Flame, Trophy, TrendingUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -20,11 +20,18 @@ const playerName = (row) => row.username || row.display_name || row.full_name ||
 const playerSlug = (row) => row.username || row.user_id || row.id || "";
 
 export default function Leaderboards() {
-  const [activeTab, setActiveTab] = useState("elo");
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const validRequestedTab = tabs.some((tab) => tab.key === requestedTab) ? requestedTab : "elo";
+  const [activeTab, setActiveTab] = useState(validRequestedTab);
   const [region, setRegion] = useState("Global");
   const [rankedStats, setRankedStats] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setActiveTab(validRequestedTab);
+  }, [validRequestedTab]);
 
   useEffect(() => {
     loadData();
