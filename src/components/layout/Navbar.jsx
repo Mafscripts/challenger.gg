@@ -72,7 +72,6 @@ const xpNavGroup = {
   tone: "purple",
   items: [
     { label: "XP Matches", description: "Post or accept XP challenges", path: "/xp", icon: Zap, tone: "purple" },
-    { label: "XP Leaderboard", description: "See the XP standings", path: "/xp#standings", icon: Trophy, tone: "purple" },
   ],
 };
 
