@@ -2,6 +2,7 @@ import "dotenv/config";
 import {
   ActionRowBuilder,
   ActivityType,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
@@ -109,6 +110,80 @@ function isStaffMember(member) {
   return staffRoleNames.some((name) => member?.roles?.cache?.some((role) => role.name === name));
 }
 
+function ticketOwnerId(channel) {
+  return String(channel?.topic || "").match(/Topfragg ticket owner:(\d+)/)?.[1] || null;
+}
+
+function ticketControls({ closed = false } = {}) {
+  const controls = [
+    new ButtonBuilder()
+      .setCustomId("topfragg:support:close")
+      .setLabel(closed ? "Ticket closed" : "Close ticket")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(closed),
+    new ButtonBuilder()
+      .setCustomId("topfragg:support:transcript")
+      .setLabel("Download transcript")
+      .setStyle(ButtonStyle.Primary),
+  ];
+  if (closed) {
+    controls.splice(1, 0, new ButtonBuilder()
+      .setCustomId("topfragg:support:reopen")
+      .setLabel("Reopen ticket")
+      .setStyle(ButtonStyle.Success));
+  }
+  return new ActionRowBuilder().addComponents(controls);
+}
+
+function escapeTranscriptHtml(value) {
+  return String(value || "").replace(/[&<>\"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+  })[character]);
+}
+
+function ticketMessageText(message) {
+  const parts = [message.content];
+  for (const embed of message.embeds) {
+    if (embed.title) parts.push(embed.title);
+    if (embed.description) parts.push(embed.description);
+    for (const field of embed.fields || []) parts.push(`${field.name}: ${field.value}`);
+  }
+  return parts.filter(Boolean).join("\n\n");
+}
+
+async function buildTicketTranscript(channel) {
+  const messages = [];
+  let before;
+  while (messages.length < 1_000) {
+    const batch = await channel.messages.fetch({ limit: 100, before });
+    const batchMessages = [...batch.values()];
+    messages.push(...batchMessages);
+    if (batch.size < 100) break;
+    before = batchMessages.at(-1)?.id;
+    if (!before) break;
+  }
+
+  messages.sort((left, right) => left.createdTimestamp - right.createdTimestamp);
+  const entries = messages.map((message) => {
+    const name = message.member?.displayName || message.author?.username || "Unknown user";
+    const body = escapeTranscriptHtml(ticketMessageText(message)).replace(/\n/g, "<br>");
+    const attachments = [...message.attachments.values()]
+      .map((attachment) => `<li><a href="${escapeTranscriptHtml(attachment.url)}">${escapeTranscriptHtml(attachment.name || "Attachment")}</a></li>`)
+      .join("");
+    return `<article><header><strong>${escapeTranscriptHtml(name)}</strong><time>${escapeTranscriptHtml(new Date(message.createdTimestamp).toISOString())}</time></header>${body ? `<p>${body}</p>` : ""}${attachments ? `<ul>${attachments}</ul>` : ""}</article>`;
+  }).join("\n");
+
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escapeTranscriptHtml(channel.name)} transcript</title><style>body{margin:0;background:#0b111b;color:#e7edf7;font-family:Arial,sans-serif}main{max-width:900px;margin:0 auto;padding:36px 20px}h1{margin:0;color:#20d7ff;font-size:26px}p.meta{color:#96a4b7;margin:8px 0 24px}article{background:#182231;border:1px solid #314053;border-radius:10px;padding:14px 16px;margin:12px 0}header{display:flex;gap:12px;align-items:center;color:#fff}time{margin-left:auto;color:#96a4b7;font-size:12px}p{line-height:1.55;overflow-wrap:anywhere}a{color:#20d7ff}ul{padding-left:18px}</style></head><body><main><h1>Topfragg ticket transcript</h1><p class="meta">#${escapeTranscriptHtml(channel.name)} · ${messages.length} messages · exported ${escapeTranscriptHtml(new Date().toISOString())}</p>${entries || "<p>No messages were found in this ticket.</p>"}</main></body></html>`;
+}
+
+function canManageTicket(interaction) {
+  const ownerId = ticketOwnerId(interaction.channel);
+  return Boolean(ownerId) && (ownerId === interaction.user.id || isStaffMember(interaction.member));
+}
+
 function isPublicChatChannel(guild, channel) {
   return publicChatKeys.some((key) => findConfiguredChannel(guild, key)?.id === channel.id);
 }
@@ -126,7 +201,9 @@ async function removeSpamMessage(message, reason) {
 async function createSupportTicket(interaction, { subject, reason }) {
   const guild = interaction.guild;
   const suffix = interaction.user.id.slice(-6);
-  const existing = guild.channels.cache.find((channel) => channel.topic === `Topfragg ticket owner:${interaction.user.id}`);
+  const existing = guild.channels.cache.find((channel) => (
+    ticketOwnerId(channel) === interaction.user.id && !String(channel.topic || "").includes("status:closed")
+  ));
   if (existing) {
     await interaction.reply(ephemeral(`You already have an open ticket: ${existing}`));
     return;
@@ -196,14 +273,7 @@ async function createSupportTicket(interaction, { subject, reason }) {
         .addFields({ name: "Opened by", value: interaction.user.tag, inline: true })
         .setTimestamp(),
     ],
-    components: [
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("topfragg:support:close")
-          .setLabel("Close ticket")
-          .setStyle(ButtonStyle.Secondary),
-      ),
-    ],
+    components: [ticketControls()],
     allowedMentions: { users: [interaction.user.id] },
   });
   await interaction.reply(ephemeral(`Your private support ticket is ready: ${channel}`));
@@ -515,15 +585,71 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
     if (interaction.isButton() && interaction.customId === "topfragg:support:close") {
-      const isOwner = interaction.channel?.topic === `Topfragg ticket owner:${interaction.user.id}`;
-      const isStaff = staffRoleNames.some((name) => interaction.member.roles.cache.some((role) => role.name === name));
-      if (!isOwner && !isStaff) {
+      if (!canManageTicket(interaction)) {
         await interaction.reply(ephemeral("Only the ticket owner or Topfragg staff can close this ticket."));
         return;
       }
-      await interaction.reply(ephemeral("Ticket closed. This channel will be removed in a few seconds."));
+      const ownerId = ticketOwnerId(interaction.channel);
+      await interaction.channel.permissionOverwrites.edit(ownerId, {
+        SendMessages: false,
+      }, `Ticket closed by ${interaction.user.tag}`);
+      await interaction.channel.setTopic(`Topfragg ticket owner:${ownerId} | status:closed`);
+      await interaction.message.edit({ components: [ticketControls({ closed: true })] }).catch(() => null);
+      await interaction.channel.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(TOPFRAGG_COLORS.orange)
+            .setTitle("Ticket closed")
+            .setDescription("This ticket is archived, not deleted. The owner or Topfragg staff can reopen it at any time. A transcript can also be downloaded below.")
+            .setTimestamp(),
+        ],
+        components: [ticketControls({ closed: true })],
+      });
+      await interaction.reply(ephemeral("Ticket closed and archived. It can be reopened or exported whenever you need it."));
       await botLog(interaction.guild, `Support ticket ${interaction.channel.name} closed by ${interaction.user.tag}.`);
-      setTimeout(() => interaction.channel.delete(`Ticket closed by ${interaction.user.tag}`).catch(() => null), 3000);
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === "topfragg:support:reopen") {
+      if (!canManageTicket(interaction)) {
+        await interaction.reply(ephemeral("Only the ticket owner or Topfragg staff can reopen this ticket."));
+        return;
+      }
+      const ownerId = ticketOwnerId(interaction.channel);
+      await interaction.channel.permissionOverwrites.edit(ownerId, {
+        SendMessages: true,
+      }, `Ticket reopened by ${interaction.user.tag}`);
+      await interaction.channel.setTopic(`Topfragg ticket owner:${ownerId}`);
+      await interaction.message.edit({ components: [ticketControls()] }).catch(() => null);
+      await interaction.channel.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(TOPFRAGG_COLORS.green)
+            .setTitle("Ticket reopened")
+            .setDescription("This ticket is active again. Please send any extra details here and a staff member will help you.")
+            .setTimestamp(),
+        ],
+        components: [ticketControls()],
+      });
+      await interaction.reply(ephemeral("Ticket reopened."));
+      await botLog(interaction.guild, `Support ticket ${interaction.channel.name} reopened by ${interaction.user.tag}.`);
+      return;
+    }
+    if (interaction.isButton() && interaction.customId === "topfragg:support:transcript") {
+      if (!canManageTicket(interaction)) {
+        await interaction.reply(ephemeral("Only the ticket owner or Topfragg staff can download this transcript."));
+        return;
+      }
+      if (!interaction.channel?.isTextBased()) {
+        await interaction.reply(ephemeral("This ticket channel cannot be exported."));
+        return;
+      }
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const transcript = await buildTicketTranscript(interaction.channel);
+      const filename = `${interaction.channel.name.replace(/[^a-z0-9-]/gi, "-")}-transcript.html`;
+      await interaction.editReply({
+        content: "Your ticket transcript is ready.",
+        files: [new AttachmentBuilder(Buffer.from(transcript, "utf8"), { name: filename })],
+      });
       return;
     }
     if (!interaction.isChatInputCommand()) return;
