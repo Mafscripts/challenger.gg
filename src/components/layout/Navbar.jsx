@@ -84,14 +84,13 @@ const playNavGroup = {
   items: [
     ...rankedNavGroup.items,
     ...xpNavGroup.items,
-    { label: "Matchfinder", description: "Browse every open competition", path: "/matchfinder", icon: Search, tone: "gold" },
-    { label: "Leaderboards", description: "Compare the best competitors", path: "/leaderboards", icon: Trophy, tone: "gold" },
   ],
 };
 
 const mobileNavSections = [
   { label: "Play", items: playNavGroup.items },
   { label: "Cash Matches", items: navGroups[1].items },
+  { label: "Matchfinder", items: navGroups[2].items },
   { label: "Tournaments", items: navGroups[0].items },
   { label: "Teams", items: navGroups[3].items },
 ];
@@ -966,7 +965,7 @@ export default function Navbar() {
                   </span>
                   Home
                 </Link>
-                {[playNavGroup, navGroups.find((group) => group.label === "Cash Matches"), navGroups.find((group) => group.label === "Tournaments")].map((group) => {
+                {[playNavGroup, navGroups.find((group) => group.label === "Cash Matches"), navGroups.find((group) => group.label === "Matchfinder"), navGroups.find((group) => group.label === "Tournaments")].map((group) => {
                   const GroupIcon = group.icon;
                   const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash));
                   const open = navMenuOpen === group.label;
