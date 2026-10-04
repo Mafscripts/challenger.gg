@@ -445,7 +445,7 @@ export default function Profile() {
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 data-name-effect={selectedNameColor || undefined} className={`break-words font-heading text-3xl font-black leading-none text-white sm:text-4xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
+                  <h1 data-name-effect={selectedNameColor || undefined} className={`max-w-full shrink-0 break-words font-heading text-3xl font-black leading-none text-white sm:text-4xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
                   <RoleBadge role={user.role || "user"} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
                 </div>
