@@ -27,7 +27,9 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const log = (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`);
 
 const matchesSpecName = (actualName, spec) => (
-  actualName === spec.name || (spec.legacyNames || []).includes(actualName)
+  actualName === spec.name
+  || (spec.legacyNames || []).includes(actualName)
+  || (spec.key === "member-count" && /^👥・members:\s*[\d,]+$/u.test(actualName))
 );
 
 function roleIdsByName(guild) {
@@ -64,6 +66,17 @@ function overwriteForMode(guild, roles, configuredMode) {
     return [
       { id: everyone, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] },
       ...casterIds.map((id) => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak] })),
+    ];
+  }
+
+  if (mode === "counter") {
+    return [
+      {
+        id: everyone,
+        allow: [PermissionFlagsBits.ViewChannel],
+        deny: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak],
+      },
+      ...(botRuntimeId ? [{ id: botRuntimeId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels] }] : []),
     ];
   }
 

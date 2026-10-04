@@ -46,7 +46,11 @@ const matchesSpecName = (actualName, spec) => (
 
 function findConfiguredChannel(guild, key) {
   const spec = categorySpecs.flatMap((category) => category.channels).find((channel) => channel.key === key);
-  return spec && guild.channels.cache.find((channel) => matchesSpecName(channel.name, spec));
+  if (!spec) return null;
+  if (key === "member-count") {
+    return guild.channels.cache.find((channel) => /^👥・members:\s*[\d,]+$/u.test(channel.name));
+  }
+  return guild.channels.cache.find((channel) => matchesSpecName(channel.name, spec));
 }
 
 function findConfiguredCategory(guild, key) {
@@ -59,6 +63,15 @@ function findConfiguredCategory(guild, key) {
 async function botLog(guild, message) {
   const channel = findConfiguredChannel(guild, "bot-log");
   if (channel) await channel.send({ content: message, allowedMentions: { parse: [] } }).catch(() => null);
+}
+
+async function syncMemberCount(guild) {
+  const channel = findConfiguredChannel(guild, "member-count");
+  if (!channel) return;
+  const desiredName = `👥・members: ${Number(guild.memberCount || 0).toLocaleString("en-US")}`;
+  if (channel.name === desiredName) return;
+  await channel.setName(desiredName, "Keep Topfragg member counter current");
+  process.stdout.write(`[Topfragg Discord] Updated member counter: ${desiredName}\n`);
 }
 
 async function runTournamentDiscordSync(guild) {
@@ -341,7 +354,9 @@ client.once(Events.ClientReady, async (readyClient) => {
     return;
   }
   await runTournamentDiscordSync(guild);
+  await syncMemberCount(guild).catch((error) => console.error("[Topfragg Discord] Member counter sync failed:", error));
   setInterval(() => runTournamentDiscordSync(guild), 60_000);
+  setInterval(() => syncMemberCount(guild).catch((error) => console.error("[Topfragg Discord] Member counter sync failed:", error)), 60_000);
 });
 
 client.on(Events.MessageCreate, async (message) => {
