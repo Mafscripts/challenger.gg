@@ -73,8 +73,12 @@ function overwriteForMode(guild, roles, configuredMode) {
     return [
       {
         id: everyone,
-        allow: [PermissionFlagsBits.ViewChannel],
-        deny: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak],
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+        deny: [
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.CreatePublicThreads,
+          PermissionFlagsBits.CreatePrivateThreads,
+        ],
       },
       ...(botRuntimeId ? [{ id: botRuntimeId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels] }] : []),
     ];
@@ -309,45 +313,54 @@ async function ensureChannels(guild) {
     created.set(categorySpec.key, category);
 
     for (const channelSpec of categorySpec.channels) {
-      const existing = guild.channels.cache.find((channel) => (
+      let existing = guild.channels.cache.find((channel) => (
         channel.parentId === category.id && matchesSpecName(channel.name, channelSpec)
       ));
       const permissionOverwrites = overwriteForMode(guild, roles, channelSpec.mode || categorySpec.mode || "chat");
       if (existing) {
         if (existing.type !== channelSpec.type) {
-          log(`Skipped ${channelSpec.name}: an existing channel has a different type.`);
-          continue;
+          if (channelSpec.key === "member-count") {
+            await existing.delete("Replace voice member counter with read-only text counter");
+            guild.channels.cache.delete(existing.id);
+            existing = null;
+            log("Replaced voice member counter with a text member counter.");
+          } else {
+            log(`Skipped ${channelSpec.name}: an existing channel has a different type.`);
+            continue;
+          }
         }
-        if (categorySpec.mode === "staff" && !categoryRuntimeAccess) {
+        if (existing && categorySpec.mode === "staff" && !categoryRuntimeAccess) {
           log(`Skipped hidden channel without access: ${categorySpec.name}/${channelSpec.name}`);
           continue;
         }
-        try {
-          await existing.permissionOverwrites.set(
-            permissionOverwrites,
-            "Apply Topfragg channel access policy",
-          );
-          if (["read-only", "staff"].includes(channelSpec.mode || categorySpec.mode)) {
-            await grantRuntimeChannelAccess(existing, roles);
+        if (existing) {
+          try {
+            await existing.permissionOverwrites.set(
+              permissionOverwrites,
+              "Apply Topfragg channel access policy",
+            );
+            if (["read-only", "staff"].includes(channelSpec.mode || categorySpec.mode)) {
+              await grantRuntimeChannelAccess(existing, roles);
+            }
+            if (channelSpec.topic !== undefined) {
+              await existing.edit({
+                name: channelSpec.name,
+                topic: channelSpec.topic,
+                reason: "Topfragg server setup",
+              });
+            } else if (existing.name !== channelSpec.name) {
+              await existing.edit({ name: channelSpec.name, reason: "Topfragg channel styling" });
+            }
+          } catch (error) {
+            if ([50001, 50013].includes(error.code)) {
+              log(`Skipped channel without access: ${categorySpec.name}/${channelSpec.name}`);
+              continue;
+            }
+            throw error;
           }
-          if (channelSpec.topic !== undefined) {
-            await existing.edit({
-              name: channelSpec.name,
-              topic: channelSpec.topic,
-              reason: "Topfragg server setup",
-            });
-          } else if (existing.name !== channelSpec.name) {
-            await existing.edit({ name: channelSpec.name, reason: "Topfragg channel styling" });
-          }
-        } catch (error) {
-          if ([50001, 50013].includes(error.code)) {
-            log(`Skipped channel without access: ${categorySpec.name}/${channelSpec.name}`);
-            continue;
-          }
-          throw error;
+          log(`Updated channel: ${categorySpec.name}/${channelSpec.name}`);
+          continue;
         }
-        log(`Updated channel: ${categorySpec.name}/${channelSpec.name}`);
-        continue;
       }
       const channel = await guild.channels.create({
         name: channelSpec.name,

@@ -77,7 +77,7 @@ export const categorySpecs = [
     name: "👋 START HERE",
     legacyNames: ["START HERE"],
     channels: [
-      { key: "member-count", name: "👥・members: 0", legacyNames: ["members"], type: ChannelType.GuildVoice, mode: "counter" },
+      { key: "member-count", name: "👥・members: 0", legacyNames: ["members"], type: ChannelType.GuildText, mode: "counter" },
       { key: "welcome", name: "👋・welcome", legacyNames: ["welcome"], type: ChannelType.GuildText, mode: "read-only", topic: "Welcome to the official Topfragg.gg competitive community." },
       { key: "rules", name: "📜・rules", legacyNames: ["rules"], type: ChannelType.GuildText, mode: "read-only", topic: "The rules that keep Topfragg competitive, fair and fun." },
       { key: "announcements", name: "📢・announcements", legacyNames: ["announcements"], type: ChannelType.GuildText, mode: "read-only", topic: "Official Topfragg news, events and tournament announcements." },
