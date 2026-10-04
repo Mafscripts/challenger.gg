@@ -18,6 +18,7 @@ function PlayerRow({ player, teamColor }) {
         <div className="min-w-0">
           <p className={`text-[10px] font-bold ${teamColor === 'cyan' ? 'text-cyan' : 'text-orange'} truncate`}>
             <span
+              data-name-effect={player.display_name_color || undefined}
               style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined}
               className={player.display_name_color ? "player-name-color" : ""}
             >

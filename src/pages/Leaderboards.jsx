@@ -164,7 +164,7 @@ export default function Leaderboards() {
                         #{place}
                       </div>
                       <div className="mb-1 flex min-w-0 items-center justify-center gap-1.5">
-                        <Link to={`/profile/${row.slug}`} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`truncate text-xs font-bold transition-colors hover:text-primary sm:text-sm ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</Link>
+                        <Link to={`/profile/${row.slug}`} data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`truncate text-xs font-bold transition-colors hover:text-primary sm:text-sm ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</Link>
                         <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} showMonitorCam tooltipPlacement="bottom" />
                       </div>
                       <p className="mb-1 text-[10px] capitalize text-vapor sm:text-xs">{row.tier}</p>
@@ -192,7 +192,7 @@ export default function Leaderboards() {
                   >
                     <span className={`text-sm font-bold font-mono ${row.rank <= 3 ? "text-orange" : "text-vapor"}`}>#{row.rank}</span>
                     <div className="col-span-2 flex min-w-0 items-center gap-1.5">
-                      <Link to={`/profile/${row.slug}`} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`truncate text-sm font-semibold transition-colors duration-75 hover:text-cyan ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</Link>
+                      <Link to={`/profile/${row.slug}`} data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`truncate text-sm font-semibold transition-colors duration-75 hover:text-cyan ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</Link>
                       <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
                     </div>
                     <span className="text-sm text-vapor hidden md:block capitalize">{row.tier}</span>

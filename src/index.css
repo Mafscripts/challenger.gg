@@ -1411,6 +1411,35 @@
     color: var(--player-name-color) !important;
   }
 
+  .app-content .player-name-color[data-name-effect^="fx-"] {
+    display: inline-block;
+    color: transparent !important;
+    background-position: 0% 50%;
+    background-size: 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: player-name-spectrum 4.8s linear infinite;
+  }
+
+  .app-content .player-name-color[data-name-effect="fx-prism"] { background-image: linear-gradient(90deg, #ff4d6d, #ff9f1c, #ffe66d, #36f1cd, #4dabf7, #b197fc, #ff4d6d); }
+  .app-content .player-name-color[data-name-effect="fx-royal-frost"] { background-image: linear-gradient(90deg, #8b5cf6, #f8fafc, #c4b5fd, #ffffff, #7c3aed); }
+  .app-content .player-name-color[data-name-effect="fx-pink-noise"] { background-image: linear-gradient(90deg, #fb7185, #fdf2f8, #f472b6, #ffffff, #ec4899); }
+  .app-content .player-name-color[data-name-effect="fx-solar-circuit"] { background-image: linear-gradient(90deg, #22d3ee, #fb923c, #fef08a, #06b6d4, #f97316); }
+  .app-content .player-name-color[data-name-effect="fx-blue-mercury"] { background-image: linear-gradient(90deg, #60a5fa, #e5e7eb, #2563eb, #94a3b8, #93c5fd); }
+  .app-content .player-name-color[data-name-effect="fx-aurora-core"] { background-image: linear-gradient(90deg, #4ade80, #22d3ee, #a78bfa, #86efac, #67e8f9); }
+  .app-content .player-name-color[data-name-effect="fx-emberwave"] { background-image: linear-gradient(90deg, #fb923c, #fb7185, #fef3c7, #f43f5e, #f97316); }
+  .app-content .player-name-color[data-name-effect="fx-neon-eclipse"] { background-image: linear-gradient(90deg, #a3e635, #22d3ee, #c084fc, #d9f99d, #06b6d4); }
+
+  @keyframes player-name-spectrum {
+    from { background-position: 0% 50%; }
+    to { background-position: 260% 50%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-content .player-name-color[data-name-effect^="fx-"] { animation: none; }
+  }
+
   .app-content .dark-media [class*="border-white"],
   .app-content .dark-focus [class*="border-white"] {
     border-color: rgb(255 255 255 / 0.1) !important;

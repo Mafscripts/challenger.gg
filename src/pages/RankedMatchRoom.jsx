@@ -102,7 +102,7 @@ function RosterPlayerCard({ player, color, slot, slots }) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
-              <p style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`truncate text-base font-black tracking-tight text-white ${player.display_name_color ? "player-name-color" : ""}`}>{player.name}</p>
+              <p data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`truncate text-base font-black tracking-tight text-white ${player.display_name_color ? "player-name-color" : ""}`}>{player.name}</p>
               <UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
               <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[6px] font-black uppercase tracking-wider ${accentText} ${isAlpha ? "border-cyan/15 bg-cyan/[0.06]" : "border-orange/15 bg-orange/[0.06]"}`}>S{player.season || 1}</span>
             </div>
@@ -147,7 +147,7 @@ function RosterPlayerCard({ player, color, slot, slots }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2 pr-7">
             <div className="flex min-w-0 items-center gap-2">
-            <p style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`${roomy ? "text-lg" : "text-sm"} truncate font-black tracking-tight text-foreground ${player.display_name_color ? "player-name-color" : ""}`}>{player.name}</p>
+            <p data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`${roomy ? "text-lg" : "text-sm"} truncate font-black tracking-tight text-foreground ${player.display_name_color ? "player-name-color" : ""}`}>{player.name}</p>
               <UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
               <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider ${accentText} ${isAlpha ? "border-cyan/15 bg-cyan/[0.06]" : "border-orange/15 bg-orange/[0.06]"}`}>S{player.season || 1}</span>
             </div>

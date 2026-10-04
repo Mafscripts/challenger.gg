@@ -46,17 +46,28 @@ const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
 const verifiedNameColors = [
   { label: "Default", value: "" },
-  { label: "Red", value: "#f87171" },
-  { label: "Silver", value: "#9ca3af" },
-  { label: "Yellow", value: "#facc15" },
-  { label: "Green", value: "#22c55e" },
-  { label: "Purple", value: "#a78bfa" },
+  { label: "Crimson Viper", value: "#f87171" },
+  { label: "Ghost Silver", value: "#9ca3af" },
+  { label: "Solar Gold", value: "#facc15" },
+  { label: "Emerald Pulse", value: "#22c55e" },
+  { label: "Violet Reign", value: "#a78bfa" },
+  { label: "Cobalt Strike", value: "#3b82f6" },
+  { label: "Limewire", value: "#84cc16" },
   { label: "Graphite", value: "#6b7280" },
-  { label: "Blue", value: "#3b82f6" },
-  { label: "Lime", value: "#84cc16" },
   { label: "Stone", value: "#a8a29e" },
-  { label: "White", value: "#f8fafc" },
+  { label: "Lunar White", value: "#f8fafc" },
 ];
+const premiumNameEffects = [
+  { label: "Prism Protocol — Rainbow", value: "fx-prism" },
+  { label: "Royal Frost — Purple / White", value: "fx-royal-frost" },
+  { label: "Pink Noise — Pink / White", value: "fx-pink-noise" },
+  { label: "Solar Circuit — Cyan / Orange", value: "fx-solar-circuit" },
+  { label: "Blue Mercury — Blue / Silver", value: "fx-blue-mercury" },
+  { label: "Aurora Core — Green / Cyan / Violet", value: "fx-aurora-core" },
+  { label: "Emberwave — Orange / Rose", value: "fx-emberwave" },
+  { label: "Neon Eclipse — Lime / Cyan / Purple", value: "fx-neon-eclipse" },
+];
+const allNameColors = [...verifiedNameColors, ...premiumNameEffects];
 const inventoryCategoryLabels = {
   weapon_skin: "Weapon Skins",
   knife: "Knife Skins",
@@ -312,11 +323,12 @@ export default function Profile() {
   const isVerifiedPlayer = Boolean(user?.verified_player || user?.is_verified_player || badges.some((badge) => badge.type === "verified_player"));
   const isPremium = Boolean(user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires).getTime() > Date.now()));
   const canUseNameColor = isVerifiedPlayer || isPremium;
+  const availableNameColors = isPremium ? allNameColors : verifiedNameColors;
   const hasStreamerBadge = Boolean(user?.streamer_badge || user?.is_streamer || badges.some((badge) => badge.type === "streamer"));
   const activeNameColor = isOwnProfile
     ? nameColorDraft
     : (user?.display_name_color || profile?.display_name_color || "");
-  const selectedNameColor = verifiedNameColors.some((color) => color.value === activeNameColor)
+  const selectedNameColor = allNameColors.some((color) => color.value === activeNameColor)
     ? activeNameColor
     : "";
   const trophyCount = profileTrophyCount(user, inventory);
@@ -367,7 +379,7 @@ export default function Profile() {
     try {
       let nextProfile = profile;
       const normalizedAvatar = normalizeImageSource(avatarDraft);
-      const nextNameColor = verifiedNameColors.some((color) => color.value === nameColorDraft) ? nameColorDraft : "";
+      const nextNameColor = availableNameColors.some((color) => color.value === nameColorDraft) ? nameColorDraft : "";
       const profilePatch = {
         user_id: user.id,
         display_name: user.display_name || user.full_name || user.username || user.email,
@@ -433,7 +445,7 @@ export default function Profile() {
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 className={`break-words font-heading text-3xl font-black leading-none text-white sm:text-4xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
+                  <h1 data-name-effect={selectedNameColor || undefined} className={`break-words font-heading text-3xl font-black leading-none text-white sm:text-4xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
                   <RoleBadge role={user.role || "user"} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
                 </div>
@@ -471,7 +483,7 @@ export default function Profile() {
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span><input value={avatarDraft} onChange={(event) => setAvatarDraft(event.target.value)} onBlur={() => { try { setAvatarDraft(normalizeImageSource(avatarDraft)); } catch { /* Save displays validation. */ } }} placeholder="https://i.imgur.com/example.png" className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
                   <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Upload profile picture</span><input type="file" accept="image/*" onChange={handleAvatarFile} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
-                  {canUseNameColor && <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">{isPremium ? "Premium name color" : "Verified name color"}</span><select value={nameColorDraft} onChange={(event) => setNameColorDraft(event.target.value)} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40">{verifiedNameColors.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}</select></label>}
+                  {canUseNameColor && <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">{isPremium ? "Premium name effect" : "Verified name color"}</span><select value={nameColorDraft} onChange={(event) => setNameColorDraft(event.target.value)} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40">{verifiedNameColors.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}{isPremium && <optgroup label="Premium animated effects">{premiumNameEffects.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}</optgroup>}</select></label>}
                   <label className="space-y-1 md:col-span-2 xl:col-span-3"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Bio</span><textarea value={bioDraft} onChange={(event) => setBioDraft(event.target.value)} maxLength={500} rows={3} className="w-full resize-y rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /><span className="block text-right text-[9px] text-vapor">{bioDraft.length}/500</span></label>
                 </div>
                 <button onClick={handleSaveProfileVisuals} disabled={profileSaving} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-[10px] font-black uppercase tracking-wider text-background disabled:opacity-50">{profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />} Save</button>
@@ -558,7 +570,7 @@ function PlayerOverviewPanel({ user, profile, name, rank, elo, wins, losses, ear
               {profile?.avatar_url || user?.avatar_url ? <img src={profile?.avatar_url || user?.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
             </div>
             <div className="min-w-0">
-              <p style={user?.display_name_color ? { "--player-name-color": user.display_name_color } : undefined} className={`truncate text-sm font-black text-white ${user?.display_name_color ? "player-name-color" : ""}`}>{name}</p>
+              <p data-name-effect={user?.display_name_color || undefined} style={user?.display_name_color ? { "--player-name-color": user.display_name_color } : undefined} className={`truncate text-sm font-black text-white ${user?.display_name_color ? "player-name-color" : ""}`}>{name}</p>
               <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rank.name || rank.tier}</p>
             </div>
           </div>
