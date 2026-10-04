@@ -19,6 +19,7 @@
     "demo:tournament:entries": "node prisma/demoTournamentEntries.js",
     "discord:setup": "node discord/provision.js",
     "discord:announce": "node discord/announce-alpha-update.js",
+    "discord:announce:mobile": "node discord/announce-mobile-update.js",
     "discord:start": "node discord/bot.js",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview"
