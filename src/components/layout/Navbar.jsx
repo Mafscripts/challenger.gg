@@ -24,12 +24,12 @@ const navGroups = [
     ],
   },
   {
-    label: "Wagers",
+    label: "Cash Matches",
     icon: Zap,
     eyebrow: "Competitive stakes",
     tone: "green",
     items: [
-      { label: "Open Wagers", description: "Post or accept a challenge", path: "/wagers", icon: Zap, tone: "green" },
+      { label: "Cash Matches", description: "Post or accept a cash challenge", path: "/wagers", icon: Zap, tone: "green" },
     ],
   },
   {
@@ -83,10 +83,16 @@ const playNavGroup = {
   items: [
     ...rankedNavGroup.items,
     ...xpNavGroup.items,
-    { label: "Open Wagers", description: "Post or accept a challenge", path: "/wagers", icon: Zap, tone: "green" },
     { label: "Matchfinder", description: "Browse every open competition", path: "/matchfinder", icon: Search, tone: "gold" },
     { label: "Leaderboards", description: "Compare the best competitors", path: "/leaderboards", icon: Trophy, tone: "gold" },
   ],
+};
+
+const cashMatchesNavItem = {
+  label: "Cash Matches",
+  path: "/wagers",
+  icon: Zap,
+  tone: "green",
 };
 
 const mobileNavSections = [
@@ -964,6 +970,22 @@ export default function Navbar() {
                   </span>
                   Home
                 </Link>
+                <Link
+                  to={cashMatchesNavItem.path}
+                  data-nav-item
+                  data-tone={cashMatchesNavItem.tone}
+                  data-active={navItemIsActive(location.pathname, cashMatchesNavItem.path, location.hash) ? "true" : "false"}
+                  className={`${navButtonClass} ${
+                    navItemIsActive(location.pathname, cashMatchesNavItem.path, location.hash)
+                      ? navTone.green.button
+                      : "border-transparent text-vapor hover:border-green/20 hover:bg-green/[0.07] hover:text-green"
+                  }`}
+                >
+                  <span className={`nav-primary-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, cashMatchesNavItem.path, location.hash) ? navTone.green.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
+                    <Zap className="h-3.5 w-3.5" />
+                  </span>
+                  {cashMatchesNavItem.label}
+                </Link>
                 {[playNavGroup, navGroups.find((group) => group.label === "Tournaments")].map((group) => {
                   const GroupIcon = group.icon;
                   const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash));
@@ -1566,6 +1588,15 @@ export default function Navbar() {
               >
                 <House className="h-5 w-5" />
                 Home
+              </Link>
+              <Link
+                to={cashMatchesNavItem.path}
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
+                  navItemIsActive(location.pathname, cashMatchesNavItem.path, location.hash) ? "bg-green/10 text-green" : "text-vapor hover:bg-secondary hover:text-foreground"
+                }`}
+              >
+                <Zap className="h-5 w-5" />
+                {cashMatchesNavItem.label}
               </Link>
               {mobileNavSections.map((section) => (
                 <div key={section.label} className="pt-3">
