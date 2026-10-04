@@ -77,7 +77,6 @@ export default function Footer() {
           <p className="text-xs text-vapor">
             © 2026 Topfragg.gg — All rights reserved. Not affiliated with Activision or Call of Duty.
           </p>
-          <p className="text-xs text-vapor/50 font-mono">v2.0.0-alpha</p>
         </div>
       </div>
     </footer>
