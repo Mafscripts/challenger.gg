@@ -160,6 +160,31 @@ function WagerAdminTools({ wager, resolving, onResetDispute, onResolve, onCancel
   );
 }
 
+function WagerStartWindow({ startWindowExpired, hasStartDeadline, startSecondsRemaining }) {
+  return (
+    <div className={`relative mb-6 overflow-hidden rounded-xl border ${startWindowExpired ? "border-orange/35" : "border-border"}`}>
+      <div className="relative overflow-hidden bg-card px-5 py-5 sm:px-6">
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${startWindowExpired ? "bg-orange/12 text-orange" : "bg-cyan/12 text-cyan"}`}>
+              {startWindowExpired ? <Unlock className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
+            </span>
+            <div>
+              {!startWindowExpired && <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Match start window</p>}
+              <h2 className="mt-1 text-lg font-black text-foreground">{startWindowExpired ? "Admin support is now available" : "Your wager is ready — start now"}</h2>
+              {!startWindowExpired && <p className="mt-1 max-w-2xl text-sm leading-relaxed text-vapor">You have 15 minutes to enter the lobby and begin. Admin support and disputes unlock only when this timer reaches 00:00.</p>}
+            </div>
+          </div>
+          <div className="shrink-0 rounded-xl border border-border bg-secondary px-6 py-4 text-center">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">{hasStartDeadline ? "Time remaining" : "Waiting for schedule"}</p>
+            <p className={`mt-1 font-mono text-3xl font-black tabular-nums ${startWindowExpired ? "text-orange" : "text-cyan"}`}>{hasStartDeadline ? formatCountdown(startSecondsRemaining) : "--:--"}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MatchStatusCard({ match, onRefresh, adminTools = null }) {
   const items = [
     { label: "Status", value: matchPhaseFor(match), valueClass: "capitalize text-cyan" },
@@ -728,6 +753,12 @@ export default function WagersMatchRoom() {
     <div className="min-h-screen bg-obsidian py-6 sm:py-8">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         {isComplete && personalMoneyResult && !resultDismissed && <WagerMoneyResultOverlay wager={wager} result={personalMoneyResult} onContinue={dismissResult} />}
+        {!isComplete && canUseMatchRoom && <WagerStartWindow
+          startWindowExpired={startWindowExpired}
+          hasStartDeadline={hasStartDeadline}
+          startSecondsRemaining={startSecondsRemaining}
+        />}
+
         <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/50 via-white/10 to-orange/50" />
           <div className="p-5 sm:p-6">
@@ -756,39 +787,6 @@ export default function WagersMatchRoom() {
           </div>
         </section>
 
-        {!isComplete && canUseMatchRoom && (
-          <div className={`relative mb-6 overflow-hidden rounded-xl border ${startWindowExpired ? "border-orange/35" : "border-border"}`}>
-            <div className="relative overflow-hidden bg-card px-5 py-5 sm:px-6">
-              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-4">
-                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${startWindowExpired ? "bg-orange/12 text-orange" : "bg-cyan/12 text-cyan"}`}>
-                    {startWindowExpired ? <Unlock className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
-                  </span>
-                  <div>
-                    {!startWindowExpired && (
-                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Match start window</p>
-                    )}
-                    <h2 className="mt-1 text-lg font-black text-foreground">
-                      {startWindowExpired ? "Admin support is now available" : "Your wager is ready — start now"}
-                    </h2>
-                    {!startWindowExpired && (
-                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-vapor">
-                        You have 15 minutes to enter the lobby and begin. Admin support and disputes unlock only when this timer reaches 00:00.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="shrink-0 rounded-xl border border-border bg-secondary px-6 py-4 text-center">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">{hasStartDeadline ? "Time remaining" : "Waiting for schedule"}</p>
-                  <p className={`mt-1 font-mono text-3xl font-black tabular-nums ${startWindowExpired ? "text-orange" : "text-cyan"}`}>
-                    {hasStartDeadline ? formatCountdown(startSecondsRemaining) : "--:--"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {isComplete && (
           <div className="glass mb-6 flex items-center gap-3 rounded-xl border border-green/20 bg-green/5 p-5"><Trophy className="h-5 w-5 text-green" /><div><p className="font-bold text-green">Winner: {wager.winner_name || "Match completed"}</p><p className="text-xs text-vapor">Final score {wager.winner_score ?? scoreA}-{wager.loser_score ?? scoreB}</p></div></div>
         )}
@@ -813,8 +811,8 @@ export default function WagersMatchRoom() {
             </div>
             <MatchRulesPanel matchType="wager" gameMode={wager.game_mode} playRule={wager.play_rule} collapsible defaultOpen={false} />
 
-        <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center gap-3">
+        {(needsPayment || wager.admin_request_status || wager.requested_admin) && (
+          <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
             {needsPayment && (
               <button
                 onClick={handlePayEntry}
@@ -824,21 +822,20 @@ export default function WagersMatchRoom() {
                 {payingEntry ? "Paying..." : `Pay Entry ${formatMoney(wager.entry_fee || wager.amount || 0)}`}
               </button>
             )}
+            {(wager.admin_request_status || wager.requested_admin) && (
+              <p className={`${needsPayment ? "mt-3" : ""} text-xs text-vapor`}>
+                Admin request: {{
+                  waiting_for_admin: "Waiting for admin",
+                  admin_joined: wager.assigned_admin_name ? `${wager.assigned_admin_name} joined` : "Admin joined",
+                  waiting_for_user: "Waiting for user",
+                  escalated: "Escalated",
+                  resolved: "Resolved",
+                  closed: "Closed",
+                }[wager.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
+              </p>
+            )}
           </div>
-          {(wager.admin_request_status || wager.requested_admin) && (
-            <p className="mt-3 text-xs text-vapor">
-              Admin request: {{
-                waiting_for_admin: "Waiting for admin",
-                admin_joined: wager.assigned_admin_name ? `${wager.assigned_admin_name} joined` : "Admin joined",
-                waiting_for_user: "Waiting for user",
-                escalated: "Escalated",
-                resolved: "Resolved",
-                closed: "Closed",
-              }[wager.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}
-            </p>
-          )}
-        </div>
-            <button onClick={loadWager} className="inline-flex items-center gap-2 rounded-lg border border-white/5 bg-secondary/50 px-4 py-3 text-sm font-bold text-vapor hover:bg-secondary"><RefreshCw className="h-4 w-4" /> Refresh room</button>
+        )}
           </div>
         </div>
       </div>
