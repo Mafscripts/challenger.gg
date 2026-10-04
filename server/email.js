@@ -115,7 +115,15 @@ const smtpConfig = () => {
   };
 };
 
-export const isEmailConfigured = () => Boolean(smtpConfig());
+const resendConfig = () => {
+  const apiKey = env("RESEND_API_KEY");
+  const from = env("EMAIL_FROM") || env("SMTP_FROM");
+  if (!apiKey || !from) return null;
+
+  return { apiKey, from };
+};
+
+export const isEmailConfigured = () => Boolean(resendConfig() || smtpConfig());
 
 const buildVerificationMessage = ({ from, to, code }) => {
   const safeFrom = sanitizeHeader(from);
@@ -218,7 +226,91 @@ const buildResetPasswordMessage = ({ from, to, resetUrl }) => {
   ].join("\r\n");
 };
 
-const sendEmail = async ({ to, buildMessage }) => {
+const verificationContent = ({ code }) => ({
+  subject: "Your TopFragg verification code",
+  text: [
+    "Your TopFragg verification code is:",
+    "",
+    code,
+    "",
+    "Enter this code to finish creating your account.",
+    "The code expires in 10 minutes.",
+    "If you did not create this account, you can ignore this email.",
+  ].join("\n"),
+  html: [
+    '<div style="font-family:Arial,sans-serif;line-height:1.5;color:#111827">',
+    "<h2>Verify your TopFragg account</h2>",
+    "<p>Your verification code is:</p>",
+    '<p style="font-size:28px;font-weight:700;letter-spacing:6px">' + code + "</p>",
+    "<p>Enter this code to finish creating your account.</p>",
+    "<p>The code expires in 10 minutes.</p>",
+    "<p>If you did not create this account, you can ignore this email.</p>",
+    "</div>",
+  ].join(""),
+});
+
+const resetPasswordContent = ({ resetUrl }) => {
+  const safeResetUrl = String(resetUrl)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return {
+    subject: "Reset your TopFragg password",
+    text: [
+      "A password reset was requested for your TopFragg account.",
+      "",
+      resetUrl,
+      "",
+      "This link expires in 30 minutes and can only be used once.",
+      "If you did not request this, you can ignore this email.",
+    ].join("\n"),
+    html: [
+      '<div style="font-family:Arial,sans-serif;line-height:1.5;color:#111827">',
+      "<h2>Reset your TopFragg password</h2>",
+      "<p>A password reset was requested for your account.</p>",
+      '<p><a href="' + safeResetUrl + '" style="display:inline-block;padding:12px 18px;background:#06b6d4;color:#081018;text-decoration:none;border-radius:6px;font-weight:700">Reset password</a></p>',
+      "<p>This link expires in 30 minutes and can only be used once.</p>",
+      "<p>If you did not request this, you can ignore this email.</p>",
+      "</div>",
+    ].join(""),
+  };
+};
+
+const sendViaResend = async ({ to, buildContent }) => {
+  const config = resendConfig();
+  if (!config) return null;
+
+  const content = buildContent();
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + config.apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: config.from,
+      to: [extractAddress(to)],
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
+    }),
+    signal: AbortSignal.timeout(Number(process.env.EMAIL_API_TIMEOUT_MS || 10000)),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error("Resend API " + response.status + ": " + (body?.message || body?.name || "request failed"));
+  }
+
+  return { sent: true, provider: "resend", id: body?.id };
+};
+
+const sendEmail = async ({ to, buildMessage, buildContent }) => {
+  const resendResult = await sendViaResend({ to, buildContent });
+  if (resendResult) return resendResult;
+
   const config = smtpConfig();
   if (!config) {
     return { sent: false, reason: "not_configured" };
@@ -254,9 +346,11 @@ const sendEmail = async ({ to, buildMessage }) => {
 export const sendVerificationEmail = ({ to, code }) => sendEmail({
   to,
   buildMessage: (from) => buildVerificationMessage({ from, to, code }),
+  buildContent: () => verificationContent({ code }),
 });
 
 export const sendPasswordResetEmail = ({ to, resetUrl }) => sendEmail({
   to,
   buildMessage: (from) => buildResetPasswordMessage({ from, to, resetUrl }),
+  buildContent: () => resetPasswordContent({ resetUrl }),
 });
