@@ -389,7 +389,7 @@ export default function XPMatchRoom() {
   const isOpposingCaptain = user?.id === match?.challenger_id;
   const isStaff = isStaffUser(user);
   const scoreReportOpen = ["accepted", "in_progress", "awaiting_host_report", "awaiting_challenger_report", "awaiting_team_alpha_report", "awaiting_team_bravo_report"].includes(match?.status);
-  const ownScoreSubmitted = isHost ? match?.host_reported_score_by === user?.id : isOpposingCaptain ? match?.challenger_reported_score_by === user?.id : false;
+  const ownScoreSubmitted = (isHost || isOpposingCaptain) && match?.reported_score_by === user?.id;
   const canSubmitScore = (isHost || isOpposingCaptain || isStaff) && scoreReportOpen && roomRosterFull(match) && !ownScoreSubmitted;
   const scoreIsValid = validSeriesScore(match, scoreA, scoreB);
   const winsNeeded = winsNeededFor(match);

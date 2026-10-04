@@ -4027,7 +4027,9 @@ async function generateStreamerSwitchBracket(req) {
 
 async function advanceStreamerTournamentMatch(req) {
   const match = await getEntity("TournamentMatch", req.body.tournament_match_id || req.body.match_id);
+  if (!match) return { success: false, error: "Tournament match not found" };
   const tournament = await getEntity("Tournament", match.tournament_id);
+  if (!tournament) return { success: false, error: "Tournament not found" };
   if (!isStreamerTournament(tournament)) {
     return { success: false, error: "Streamer tournament not found" };
   }
@@ -4089,7 +4091,9 @@ async function advanceStreamerTournamentMatch(req) {
 
 async function overturnStreamerTournamentMatch(req) {
   const match = await getEntity("TournamentMatch", req.body.tournament_match_id || req.body.match_id);
+  if (!match) return { success: false, error: "Tournament match not found" };
   const tournament = await getEntity("Tournament", match.tournament_id);
+  if (!tournament) return { success: false, error: "Tournament not found" };
   if (!isStreamerTournament(tournament)) {
     return { success: false, error: "Streamer tournament not found" };
   }
@@ -4868,6 +4872,7 @@ async function ticketMatchContext(matchTypeInput, matchId) {
 
   const entityName = matchEntityFor(matchType);
   const match = await getEntity(entityName, matchId);
+  if (!match) return { matchType, match: null, entityName, actionUrl: "/admin", participantUserIds: [] };
   const [participantUserIds, chatLogs, matchHistory, disputes] = await Promise.all([
     matchParticipantIds(matchType, match).catch(() => []),
     listEntities("ChatMessage", { conversation_id: match.id }, "-created_date", 100).catch(() => []),
@@ -4962,6 +4967,7 @@ async function createTicket(req) {
 
 async function requestAdminAlert(req) {
   const context = await ticketMatchContext(req.body.match_type, req.body.match_id);
+  if (!context.match) return { success: false, error: "Match not found" };
   if (context.matchType === "tournament" && context.is_streamer_tournament) {
     return { success: false, error: "Streamer tournaments use host moderation instead of admin tickets" };
   }
@@ -5081,6 +5087,7 @@ async function requestAdminAlert(req) {
 async function joinTicket(req) {
   assertStaff(req, "moderator");
   const ticket = await getEntity("Ticket", req.body.ticket_id);
+  if (!ticket) return { success: false, error: "Ticket not found" };
   const matchType = normalizeMatchType(ticket.match_type);
   const entityName = matchEntityFor(matchType);
   const match = ticket.match_id ? await getEntity(entityName, ticket.match_id).catch(() => null) : null;
@@ -5107,7 +5114,7 @@ async function joinTicket(req) {
       admin_request_updated_date: nowIso(),
     }).catch(() => null);
   }
-  if (match && firstJoinForStaff && ["wager", "tournament", "ranked"].includes(matchType)) {
+  if (match && firstJoinForStaff && ["wager", "8s", "xp", "tournament", "ranked"].includes(matchType)) {
     await createMatchRoomSystemMessage(matchType, match, staffJoinMessageFor(req.user), req.user);
   }
   const alerts = await listEntities("AdminAlert", { ticket_id: ticket.id }, "-created_date", 20).catch(() => []);
@@ -5122,7 +5129,7 @@ async function joinTicket(req) {
 async function joinMatchRoomAsAdmin(req) {
   assertStaff(req, "moderator");
   const matchType = normalizeMatchType(req.body.match_type);
-  if (!["wager", "tournament", "ranked"].includes(matchType)) {
+  if (!["wager", "8s", "xp", "tournament", "ranked"].includes(matchType)) {
     return { success: false, error: "Admin room join is not available for this match type" };
   }
 
@@ -5181,6 +5188,7 @@ async function joinMatchRoomAsAdmin(req) {
 
 async function replyTicket(req) {
   const ticket = await getEntity("Ticket", req.body.ticket_id);
+  if (!ticket) return { success: false, error: "Ticket not found" };
   const isStaff = hasRole(req.user, "moderator");
   const canReply = isStaff || ticketNotifyUserIds(ticket).includes(req.user.id);
   if (!canReply) return { success: false, error: "You cannot reply to this ticket" };
@@ -5256,6 +5264,7 @@ async function replyTicket(req) {
 async function resolveTicket(req) {
   assertStaff(req, "moderator");
   const ticket = await getEntity("Ticket", req.body.ticket_id);
+  if (!ticket) return { success: false, error: "Ticket not found" };
   const action = req.body.action || req.body.decision;
   let actionResult = null;
 
@@ -5265,6 +5274,7 @@ async function resolveTicket(req) {
     } else {
       const matchType = normalizeMatchType(ticket.match_type);
       const match = await getEntity(matchEntityFor(matchType), ticket.match_id);
+      if (!match) return { success: false, error: "The match linked to this ticket no longer exists" };
       if (action === "force_replay") {
         actionResult = await updateEntity(matchEntityFor(matchType), match.id, {
           status: "in_progress",
@@ -5277,6 +5287,16 @@ async function resolveTicket(req) {
           ...req,
           body: {
             ranked_match_id: match.id,
+            team_alpha_score: action === "approve_team_a" ? 1 : 0,
+            team_bravo_score: action === "approve_team_b" ? 1 : 0,
+          },
+        });
+      } else if (matchType === "xp") {
+        actionResult = await completeXPMatch({
+          ...req,
+          body: {
+            xp_match_id: match.id,
+            winner_id: action === "approve_team_a" ? match.host_id : match.challenger_id,
             team_alpha_score: action === "approve_team_a" ? 1 : 0,
             team_bravo_score: action === "approve_team_b" ? 1 : 0,
           },
@@ -5333,8 +5353,8 @@ async function resolveTicket(req) {
 async function adminResolveMatchRoom(req) {
   assertStaff(req, "moderator");
   const matchType = normalizeMatchType(req.body.match_type);
-  if (!["wager", "8s", "tournament"].includes(matchType)) {
-    return { success: false, error: "Admin match resolution is only available for wagers, 8s, and tournaments" };
+  if (!["wager", "8s", "xp", "tournament"].includes(matchType)) {
+    return { success: false, error: "Admin match resolution is only available for wagers, 8s, XP, and tournaments" };
   }
 
   const action = req.body.action || req.body.decision;
@@ -5354,6 +5374,8 @@ async function adminResolveMatchRoom(req) {
 
   const entityName = matchEntityFor(matchType);
   const match = await getEntity(entityName, req.body.match_id);
+  if (!match) return { success: false, error: "Match not found" };
+  if (!match) return { success: false, error: "Match not found" };
   if (matchType === "tournament") {
     return adminCorrectTournamentMatch({
       ...req,
@@ -5382,16 +5404,27 @@ async function adminResolveMatchRoom(req) {
         proof_urls: [],
       },
     })
-    : await completeWager({
-      ...req,
-      body: {
-        wager_id: match.id,
-        winner_id: teamAWins ? match.host_id : match.challenger_id,
-        team_alpha_score: teamAScore,
-        team_bravo_score: teamBScore,
-        proof_urls: [],
-      },
-    });
+    : matchType === "xp"
+      ? await completeXPMatch({
+        ...req,
+        body: {
+          xp_match_id: match.id,
+          winner_id: teamAWins ? match.host_id : match.challenger_id,
+          team_alpha_score: teamAScore,
+          team_bravo_score: teamBScore,
+          proof_urls: [],
+        },
+      })
+      : await completeWager({
+        ...req,
+        body: {
+          wager_id: match.id,
+          winner_id: teamAWins ? match.host_id : match.challenger_id,
+          team_alpha_score: teamAScore,
+          team_bravo_score: teamBScore,
+          proof_urls: [],
+        },
+      });
 
   if (!result?.success) {
     return result || { success: false, error: "Could not resolve match" };
@@ -5735,6 +5768,7 @@ async function adminCorrectTournamentMatch(req) {
 async function reopenTicket(req) {
   assertStaff(req, "moderator");
   const ticket = await getEntity("Ticket", req.body.ticket_id);
+  if (!ticket) return { success: false, error: "Ticket not found" };
   const updated = await updateEntity("Ticket", ticket.id, {
     status: ticket.requested_admin ? "waiting_for_admin" : "open",
     reopened_by: req.user.id,
@@ -5760,6 +5794,7 @@ async function reopenTicket(req) {
 
 async function escalateTicket(req) {
   const ticket = await getEntity("Ticket", req.body.ticket_id);
+  if (!ticket) return { success: false, error: "Ticket not found" };
   const canEscalate = req.user.is_premium || hasRole(req.user, "moderator");
   if (!canEscalate) return { success: false, error: "Premium membership is required to escalate tickets" };
   if (ticket.premium_escalated && !hasRole(req.user, "moderator")) {
@@ -6221,6 +6256,7 @@ async function sendMatchRoomMessage(req) {
   }
 
   const match = await getEntity(matchEntityFor(matchType), matchId);
+  if (!match) return { success: false, error: "Match not found" };
   const participantIds = await matchParticipantIds(matchType, match);
   const participantIdSet = new Set(participantIds.map(String));
   const tournamentParticipantInfo = matchType === "tournament"
@@ -7108,6 +7144,9 @@ async function completeWagerUnlocked(req) {
   if (!wager || wager.status === "completed") {
     return { success: false, error: "Match is already completed" };
   }
+  if (wager.status === "cancelled") {
+    return { success: false, error: "A cancelled match cannot be completed" };
+  }
   if (!wager.challenger_id) {
     return { success: false, error: "Opponent has not joined yet" };
   }
@@ -7128,6 +7167,9 @@ async function completeWagerUnlocked(req) {
   }
   const teamAlphaScore = Number(req.body.team_alpha_score);
   const teamBravoScore = Number(req.body.team_bravo_score);
+  if (!Number.isInteger(teamAlphaScore) || !Number.isInteger(teamBravoScore) || teamAlphaScore < 0 || teamBravoScore < 0) {
+    return { success: false, error: "Scores must be valid whole numbers" };
+  }
   const reportsMatch = (
     Number(wager.host_reported_score_alpha) === Number(wager.challenger_reported_score_alpha) &&
     Number(wager.host_reported_score_bravo) === Number(wager.challenger_reported_score_bravo) &&
@@ -7139,6 +7181,10 @@ async function completeWagerUnlocked(req) {
   }
   if (teamAlphaScore === teamBravoScore) {
     return { success: false, error: "Scores cannot be tied" };
+  }
+  const scoreWinnerId = teamAlphaScore > teamBravoScore ? wager.host_id : wager.challenger_id;
+  if (winnerId !== scoreWinnerId) {
+    return { success: false, error: "Winner does not match the reported score" };
   }
 
   const loserId = winnerId === wager.host_id ? wager.challenger_id : wager.host_id;
@@ -7524,9 +7570,11 @@ async function createRankedMatch(req) {
   return { success: true, ranked_match: match, ranked_match_id: match.id };
 }
 
-async function acceptRankedMatch(req) {
+async function acceptRankedMatchUnlocked(req) {
   const id = req.body.ranked_match_id || req.body.id;
+  if (!id) return { success: false, error: "Ranked match is required" };
   const match = await getEntity("RankedMatch", id);
+  if (!match) return { success: false, error: "Ranked match not found" };
   if (match.status !== "open") return { success: false, error: "Ranked match is not open" };
   if (match.host_id === req.user.id) return { success: false, error: "You cannot accept your own ranked match" };
   const slotsPerTeam = rankedTeamSize(match);
@@ -7612,6 +7660,11 @@ async function acceptRankedMatch(req) {
   return { success: true, match: updated, roster_full: rosterFull };
 }
 
+async function acceptRankedMatch(req) {
+  const id = req.body.ranked_match_id || req.body.id;
+  return withTournamentMutationLock(`ranked-accept:${id}`, () => acceptRankedMatchUnlocked(req));
+}
+
 
 async function createXPMatch(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
@@ -7653,8 +7706,9 @@ async function createXPMatch(req) {
   return { success: true, xp_match: match, xp_match_id: match.id, match };
 }
 
-async function acceptXPMatch(req) {
+async function acceptXPMatchUnlocked(req) {
   const id = req.body.xp_match_id || req.body.match_id || req.body.id;
+  if (!id) return { success: false, error: "XP match is required" };
   const match = await getEntity("XPMatch", id);
   if (!match) return { success: false, error: "XP match not found" };
   if (match.status !== "open") return { success: false, error: "XP match is not open" };
@@ -7709,6 +7763,11 @@ async function acceptXPMatch(req) {
   return { success: true, xp_match_id: id, match: updated, roster_full: rosterFull };
 }
 
+async function acceptXPMatch(req) {
+  const id = req.body.xp_match_id || req.body.match_id || req.body.id;
+  return withTournamentMutationLock(`xp-accept:${id}`, () => acceptXPMatchUnlocked(req));
+}
+
 async function cancelXPMatch(req) {
   const id = req.body.xp_match_id || req.body.match_id || req.body.id;
   const match = await getEntity("XPMatch", id);
@@ -7728,7 +7787,7 @@ async function cancelXPMatch(req) {
 }
 
 
-async function completeXPMatch(req) {
+async function completeXPMatchUnlocked(req) {
   const id = req.body.xp_match_id || req.body.match_id || req.body.ranked_match_id;
   const match = await getEntity("XPMatch", id);
   if (!match) return { success: false, error: "XP match not found" };
@@ -7753,6 +7812,9 @@ async function completeXPMatch(req) {
   const staffOverride = hasRole(req.user, "moderator");
   if (!isHost && !isChallenger && !staffOverride) {
     return { success: false, error: "Only participants or staff can submit scores" };
+  }
+  if (["disputed", "score_conflict"].includes(match.status) && !staffOverride) {
+    return { success: false, error: "This XP match is under dispute review" };
   }
 
   const getOrCreateXPStats = async (userId) => {
@@ -7826,9 +7888,17 @@ async function completeXPMatch(req) {
   };
 
   const winnerId = alphaScore > bravoScore ? match.host_id : match.challenger_id;
-  if (req.body.winner_id && staffOverride) return finalize(req.body.winner_id);
+  if (req.body.winner_id && staffOverride) {
+    if (![match.host_id, match.challenger_id].includes(req.body.winner_id)) {
+      return { success: false, error: "Winner must be an XP match participant" };
+    }
+    if (req.body.winner_id !== winnerId) {
+      return { success: false, error: "Winner does not match the reported score" };
+    }
+    return finalize(req.body.winner_id);
+  }
 
-  if (!match.reported_score_by || match.reported_score_by === req.user.id) {
+  if (!match.reported_score_by) {
     const updated = await updateEntity("XPMatch", id, {
       status: isHost ? "awaiting_challenger_report" : "awaiting_host_report",
       reported_score_alpha: alphaScore,
@@ -7839,12 +7909,22 @@ async function completeXPMatch(req) {
     return { success: true, status: updated.status, match: updated, message: "Waiting for opponent confirmation." };
   }
 
+  if (match.reported_score_by === req.user.id) {
+    return { success: false, error: "You have already submitted this score. Wait for the opponent to confirm it." };
+  }
+
   if (Number(match.reported_score_alpha) !== alphaScore || Number(match.reported_score_bravo) !== bravoScore) {
     const updated = await updateEntity("XPMatch", id, { status: "score_conflict" });
     return { success: true, status: "score_conflict", match: updated };
   }
 
   return finalize(winnerId);
+}
+
+async function completeXPMatch(req) {
+  const id = req.body.xp_match_id || req.body.match_id || req.body.ranked_match_id;
+  if (!id) return { success: false, error: "XP match is required" };
+  return withTournamentMutationLock(`xp-report:${id}`, () => completeXPMatchUnlocked(req));
 }
 
 async function readyUpRankedMatch(req) {
@@ -7923,10 +8003,17 @@ async function ensureRankedMatchMap(req) {
   return { success: true, match: updated };
 }
 
-async function completeRankedMatch(req) {
-  const match = await getEntity("RankedMatch", req.body.ranked_match_id);
-  if (!match || match.status === "completed") {
+async function completeRankedMatchUnlocked(req) {
+  const id = req.body.ranked_match_id || req.body.match_id;
+  const match = await getEntity("RankedMatch", id);
+  if (!match) {
+    return { success: false, error: "Ranked match not found" };
+  }
+  if (match.status === "completed") {
     return { success: false, error: "Match is already completed" };
+  }
+  if (match.status === "cancelled") {
+    return { success: false, error: "A cancelled match cannot be completed" };
   }
   if (!match.challenger_id) {
     return { success: false, error: "Opponent has not joined yet" };
@@ -7971,6 +8058,12 @@ async function completeRankedMatch(req) {
     const otherTeam = isHost ? "challenger" : "host";
     const otherAlpha = match[`${otherTeam}_reported_score_alpha`];
     const otherBravo = match[`${otherTeam}_reported_score_bravo`];
+    const ownAlpha = match[`${reportingTeam}_reported_score_alpha`];
+    const ownBravo = match[`${reportingTeam}_reported_score_bravo`];
+    const ownHasReport = ownAlpha !== undefined && ownAlpha !== null && ownBravo !== undefined && ownBravo !== null;
+    if (ownHasReport && match[`${reportingTeam}_reported_score_by`] === req.user.id) {
+      return { success: false, error: "You have already submitted this score. Wait for the opponent to confirm it." };
+    }
     const otherHasReport = otherAlpha !== undefined && otherAlpha !== null && otherBravo !== undefined && otherBravo !== null;
     const report = {
       [`${reportingTeam}_reported_score_alpha`]: teamAlphaScore,
@@ -8066,9 +8159,16 @@ async function completeRankedMatch(req) {
   return { success: true, winner_id: winnerId, winner_name: winnerName, elo_changes: eloChanges, match: completedMatch };
 }
 
+async function completeRankedMatch(req) {
+  const id = req.body.ranked_match_id || req.body.match_id;
+  if (!id) return { success: false, error: "Ranked match is required" };
+  return withTournamentMutationLock(`ranked-report:${id}`, () => completeRankedMatchUnlocked(req));
+}
+
 async function cancelRankedMatch(req) {
   const id = req.body.ranked_match_id || req.body.id;
   const existing = await getEntity("RankedMatch", id);
+  if (!existing) return { success: false, error: "Ranked match not found" };
   const staff = hasRole(req.user, "moderator");
   const staffOverride = staff;
   if (req.user.id !== existing.host_id && !staffOverride) {
@@ -8103,6 +8203,7 @@ async function voteRankedCancellation(req) {
   const id = req.body.ranked_match_id || req.body.id;
   const action = String(req.body.action || "request").toLowerCase();
   const match = await getEntity("RankedMatch", id);
+  if (!match) return { success: false, error: "Ranked match not found" };
   if (["completed", "cancelled"].includes(match.status)) return { success: false, error: "This ranked match is already closed" };
   if (!["request", "approve", "reject", "withdraw"].includes(action)) {
     return { success: false, error: "Invalid cancellation vote action" };
@@ -9310,6 +9411,9 @@ async function completeTournamentMatchUnlocked(req, matchId) {
   if (!match || match.status === "completed" || match.completed) {
     return { success: false, error: "Match is already completed" };
   }
+  if (["cancelled", "closed"].includes(String(match.status || "").toLowerCase())) {
+    return { success: false, error: "A cancelled or closed match cannot be completed" };
+  }
   const { teamAUserIds, teamBUserIds, isParticipant, reportingSide, ambiguousTeamMembership } = await tournamentMatchParticipantInfo(match, req.user);
   const isStaff = hasRole(req.user, "moderator");
   if (ambiguousTeamMembership && !isStaff) {
@@ -9342,6 +9446,12 @@ async function completeTournamentMatchUnlocked(req, matchId) {
   }
 
   const otherSide = reportingSide === "team_a" ? "team_b" : "team_a";
+  const ownAlpha = match[`${reportingSide}_reported_score_alpha`];
+  const ownBravo = match[`${reportingSide}_reported_score_bravo`];
+  const ownHasReport = ownAlpha !== undefined && ownAlpha !== null && ownBravo !== undefined && ownBravo !== null;
+  if (ownHasReport) {
+    return { success: false, error: "Your team has already submitted this score. Wait for the other team to confirm it." };
+  }
   // Older match records only stored the generic reported_score_* fields.
   // If that legacy report belongs to the other side, use it as the opponent
   // report so a second matching submission can still confirm the result.
@@ -9412,12 +9522,11 @@ async function completeTournamentMatch(req) {
 }
 
 async function createDispute(req) {
-  const matchType = req.body.match_type || "wager";
-  const matchId = req.body.match_id || req.body.wager_id || req.body.ranked_match_id || req.body.tournament_match_id;
-  let match = null;
-  if (matchType === "ranked") match = await getEntity("RankedMatch", matchId);
-  else if (matchType === "tournament") match = await getEntity("TournamentMatch", matchId);
-  else match = await getEntity("Wager", matchId);
+  const matchType = normalizeMatchType(req.body.match_type || "wager");
+  const matchId = req.body.match_id || req.body.wager_id || req.body.ranked_match_id || req.body.xp_match_id || req.body.tournament_match_id;
+  if (!matchId) return { success: false, error: "Match ID is required" };
+  const match = await getEntity(matchEntityFor(matchType), matchId);
+  if (!match) return { success: false, error: "Match not found" };
 
   if (matchType === "tournament" && match?.tournament_id) {
     const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
@@ -9538,7 +9647,7 @@ async function createDispute(req) {
     created_date: nowIso(),
   });
 
-  const entityName = matchType === "ranked" ? "RankedMatch" : matchType === "tournament" ? "TournamentMatch" : "Wager";
+  const entityName = matchEntityFor(matchType);
   await updateEntity(entityName, match.id, {
     status: "disputed",
     dispute_id: dispute.id,
@@ -9560,6 +9669,7 @@ async function createDispute(req) {
 
 async function escalateDispute(req) {
   const dispute = await getEntity("Dispute", req.body.dispute_id);
+  if (!dispute) return { success: false, error: "Dispute not found" };
   if (!req.user.is_premium && !hasRole(req.user, "moderator")) {
     return { success: false, error: "Premium membership is required to escalate disputes" };
   }
@@ -9596,11 +9706,19 @@ async function escalateDispute(req) {
 async function moderateDispute(req) {
   assertStaff(req, "moderator");
   const dispute = await getEntity("Dispute", req.body.dispute_id);
+  if (!dispute) return { success: false, error: "Dispute not found" };
   const action = req.body.action || req.body.decision;
-  const matchType = dispute.match_type || (dispute.wager_id ? "wager" : "wager");
+  const matchType = normalizeMatchType(dispute.match_type || (dispute.wager_id ? "wager" : "wager"));
   const matchId = dispute.match_id || dispute.wager_id;
-  const entityName = matchType === "ranked" ? "RankedMatch" : matchType === "tournament" ? "TournamentMatch" : "Wager";
+  const entityName = matchType === "ranked"
+    ? "RankedMatch"
+    : matchType === "xp"
+      ? "XPMatch"
+      : matchType === "tournament"
+        ? "TournamentMatch"
+        : "Wager";
   const match = await getEntity(entityName, matchId);
+  if (!match) return { success: false, error: "The match linked to this dispute no longer exists" };
   let result = null;
 
   if (action === "approve_team_a" || action === "approve_team_b") {
@@ -9609,6 +9727,16 @@ async function moderateDispute(req) {
       const teamAlphaScore = action === "approve_team_a" ? 1 : 0;
       const teamBravoScore = action === "approve_team_b" ? 1 : 0;
       result = await completeRankedMatch({ ...req, body: { ranked_match_id: match.id, team_alpha_score: teamAlphaScore, team_bravo_score: teamBravoScore } });
+    } else if (matchType === "xp") {
+      result = await completeXPMatch({
+        ...req,
+        body: {
+          xp_match_id: match.id,
+          winner_id: action === "approve_team_a" ? match.host_id : match.challenger_id,
+          team_alpha_score: action === "approve_team_a" ? 1 : 0,
+          team_bravo_score: action === "approve_team_b" ? 1 : 0,
+        },
+      });
     } else if (matchType === "tournament") {
       result = await completeTournamentMatch({
         ...req,
@@ -9670,6 +9798,8 @@ async function moderateDispute(req) {
     type: "match",
     action_url: matchType === "ranked"
       ? `/ranked-match/${match.id}`
+      : matchType === "xp"
+        ? `/xp-match/${match.id}`
       : matchType === "tournament"
         ? `/tournament-match/${match.id}`
         : matchType === "8s" || match.match_type === "8s"
@@ -10141,6 +10271,76 @@ async function updateReferralProgram(req) {
   return { success: true, program, rewarded_users: await prisma.referralReward.count() };
 }
 
+const discordWebhookUrlIsValid = (value) => {
+  try {
+    const url = new URL(String(value || ""));
+    return url.protocol === "https:"
+      && ["discord.com", "discordapp.com"].includes(url.hostname)
+      && url.pathname.startsWith("/api/webhooks/");
+  } catch {
+    return false;
+  }
+};
+
+async function postDiscordCelebration(req) {
+  const body = req.body || {};
+  let title;
+  let description;
+  let color;
+
+  if (body.event_type === "test") {
+    title = "🔔 Discord Alerts Connected!";
+    description = `**${body.player_name || nameFor(req.user)}** — your Discord alerts are now active.`;
+    color = 0x06b6d4;
+  } else if (body.event_type === "tournament_win") {
+    title = "🏆 Major Tournament Victory!";
+    description = `**${body.player_name || nameFor(req.user)}** just won **${body.tournament_name || "a tournament"}**!`;
+    color = 0xf59e0b;
+  } else if (body.event_type === "knife_unlock") {
+    title = "🗡️ Exclusive Knife Unlocked!";
+    description = `**${body.player_name || nameFor(req.user)}** unlocked **${body.knife_name || "an exclusive knife"}**!`;
+    color = 0x06b6d4;
+  } else {
+    return { success: false, error: "Unknown Discord celebration event" };
+  }
+
+  if (body.event_type !== "test" && !hasRole(req.user, "moderator")) {
+    return { success: false, error: "Only staff can send community Discord celebrations" };
+  }
+
+  const currentUser = await prisma.user.findUnique({ where: { id: req.user.id } });
+  const requestedWebhook = String(body.webhook_url || "").trim();
+  const personalWebhook = currentUser?.metadata?.discord_alerts_enabled
+    ? String(currentUser?.metadata?.discord_webhook_url || "").trim()
+    : "";
+  const communityWebhook = String(process.env.DISCORD_WEBHOOK_URL || "").trim();
+  const configuredWebhooks = body.event_type === "test"
+    ? [requestedWebhook, personalWebhook]
+    : [requestedWebhook, personalWebhook, communityWebhook];
+  const webhookUrls = [...new Set(configuredWebhooks.filter(discordWebhookUrlIsValid))];
+  if (!webhookUrls.length) return { success: false, error: "No valid Discord webhook is configured" };
+
+  const payload = {
+    username: "Topfragg Alerts",
+    embeds: [{ title, description, color, timestamp: nowIso(), footer: { text: "Topfragg · Community Alerts" } }],
+  };
+  const sentTo = [];
+  for (const webhookUrl of webhookUrls) {
+    try {
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) sentTo.push(webhookUrl === requestedWebhook ? "test" : webhookUrl === personalWebhook ? "personal" : "community");
+    } catch {
+      // Continue so one unavailable webhook cannot prevent another delivery.
+    }
+  }
+  if (!sentTo.length) return { success: false, error: "Discord rejected the webhook message" };
+  return { success: true, posted: title, sentTo };
+}
+
 const handlers = {
   completeRegistration,
   createWallet: completeRegistration,
@@ -10271,7 +10471,7 @@ const handlers = {
     });
     return { success: true, action };
   },
-  postDiscordCelebration: async () => ({ success: true }),
+  postDiscordCelebration,
   subscribePremium: async (req) => {
     assertStaff(req, "admin");
     const targetId = String(req.body.user_id || req.user.id);

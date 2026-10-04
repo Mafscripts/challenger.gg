@@ -129,14 +129,17 @@ export default function DiscordSection({ user, onUserUpdate }) {
     setTesting(true);
     setTestResult(null);
     try {
-      await base44.functions.invoke("postDiscordCelebration", {
+      const response = await base44.functions.invoke("postDiscordCelebration", {
         event_type: "test",
         player_name: user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player",
         webhook_url: webhookUrl,
       });
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Discord rejected the webhook message");
+      }
       setTestResult({ success: true, message: "Test alert sent! Check your Discord channel." });
-    } catch {
-      setTestResult({ success: false, message: "Failed to send. Check your webhook URL." });
+    } catch (error) {
+      setTestResult({ success: false, message: error.message || "Failed to send. Check your webhook URL." });
     }
     setTesting(false);
   };
