@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
-  AlertTriangle, Clock, Check, ChevronDown, Gavel,
+  AlertTriangle, Check, ChevronDown, Clock3, Gavel, Unlock,
   AlertCircle, Award, Crown, DollarSign, Medal, RefreshCw, Shield, ShieldCheck, Sparkles, Trophy, X
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -20,6 +20,11 @@ import { isStaffUser } from "@/lib/roles";
 
 const formatStatus = (value) => String(value || "open").replace(/_/g, " ");
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatCountdown = (seconds) => {
+  const safeSeconds = Math.max(0, Number(seconds || 0));
+  const minutes = Math.floor(safeSeconds / 60);
+  return `${String(minutes).padStart(2, "0")}:${String(safeSeconds % 60).padStart(2, "0")}`;
+};
 const playerName = (player) => player?.full_name || player?.username || player?.user_name || "Open slot";
 const wagerMapText = (match, pendingText = "Map pending") => {
   const seriesMaps = Array.isArray(match?.series_maps) ? match.series_maps.filter(Boolean) : [];
@@ -247,7 +252,7 @@ export default function WagersMatchRoom() {
   const [teamAPlayers, setTeamAPlayers] = useState([]);
   const [teamBPlayers, setTeamBPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeRemaining, setTimeRemaining] = useState(null);
+  const [clockNow, setClockNow] = useState(Date.now());
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -311,9 +316,11 @@ export default function WagersMatchRoom() {
   };
 
   useEffect(() => {
-    const interval = setInterval(calculateTimeRemaining, 1000);
-    return () => clearInterval(interval);
-  }, [wager]);
+    if (!wager?.match_start_deadline || wager.status === "completed" || wager.status === "cancelled") return undefined;
+    setClockNow(Date.now());
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [wager?.match_start_deadline, wager?.status]);
 
   useEffect(() => {
     if (!wager?.id || !user?.id || !isStaffUser(user)) return;
@@ -357,23 +364,6 @@ export default function WagersMatchRoom() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const calculateTimeRemaining = () => {
-    if (!wager?.match_start_deadline) {
-      setTimeRemaining(null);
-      return;
-    }
-    const deadline = new Date(wager.match_start_deadline);
-    const now = new Date();
-    const diff = deadline - now;
-    if (diff <= 0) {
-      setTimeRemaining("EXPIRED");
-      return;
-    }
-    const minutes = Math.floor(diff / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-    setTimeRemaining(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
   };
 
   const handleReportScore = async () => {
@@ -489,6 +479,10 @@ export default function WagersMatchRoom() {
   };
 
   const handleCreateDispute = async () => {
+    if (!startWindowExpired && !isStaffUser(user)) {
+      toast({ title: "Disputes are still locked", description: "You can open a dispute after the 15-minute match start timer reaches 00:00." });
+      return;
+    }
     const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
     if (evidenceText === null) return;
     const evidenceUrls = evidenceText.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
@@ -641,14 +635,21 @@ export default function WagersMatchRoom() {
     && scoreReportingOpen
     && Boolean(currentReportPrefix)
     && !currentTeamHasReported;
+  const startDeadlineMs = new Date(wager.match_start_deadline || "").getTime();
+  const hasStartDeadline = Number.isFinite(startDeadlineMs);
+  const startSecondsRemaining = hasStartDeadline
+    ? Math.max(0, Math.ceil((startDeadlineMs - clockNow) / 1000))
+    : null;
+  const startWindowExpired = hasStartDeadline && startSecondsRemaining === 0;
   const wagerChatActions = (
     <div className="grid grid-cols-2 gap-2">
         <button type="button" onClick={() => handleRequestAdmin("Match room assistance requested.")} disabled={!canUseMatchRoom || requestingAdmin} className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45">
           <AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting…" : "Request admin"}
         </button>
-        <button type="button" onClick={handleCreateDispute} disabled={!canUseMatchRoom || requestingAdmin} className="flex items-center justify-center gap-1.5 rounded-lg border border-orange/25 bg-orange/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/20 disabled:cursor-not-allowed disabled:opacity-45">
+        <button type="button" onClick={handleCreateDispute} disabled={!canUseMatchRoom || (!startWindowExpired && !isStaff) || requestingAdmin} title={!startWindowExpired ? "Available after the 15-minute match start timer expires" : "Open a dispute with evidence"} className="flex items-center justify-center gap-1.5 rounded-lg border border-orange/25 bg-orange/10 px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/20 disabled:cursor-not-allowed disabled:opacity-45">
           <AlertCircle className="h-3.5 w-3.5" /> Submit dispute
         </button>
+        {!startWindowExpired && !isStaff && <p className="col-span-2 text-center text-[9px] leading-4 text-vapor">Admin help is available now. Disputes unlock when the start timer reaches 00:00.</p>}
     </div>
   );
 
@@ -755,15 +756,34 @@ export default function WagersMatchRoom() {
           </div>
         </section>
 
-        {!isComplete && timeRemaining && (
-          <div className={`relative mb-6 overflow-hidden rounded-2xl p-[1px] ${timeRemaining === "EXPIRED" ? "bg-gradient-to-r from-orange/45 via-red-400/20 to-orange/45" : "bg-gradient-to-r from-cyan/45 via-white/10 to-cyan/45"}`}>
-            <div className="rounded-[15px] bg-card px-5 py-5 sm:px-6">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-4">
-                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${timeRemaining === "EXPIRED" ? "bg-orange/10 text-orange" : "bg-cyan/10 text-cyan"}`}><Clock className="h-5 w-5" /></span>
-                  <div><p className={`text-[10px] font-black uppercase tracking-[0.22em] ${timeRemaining === "EXPIRED" ? "text-orange" : "text-cyan"}`}>Match start window</p><h2 className="mt-1 text-lg font-black">{timeRemaining === "EXPIRED" ? "Admin support is available" : "Your wager is ready — start now"}</h2><p className="mt-1 text-sm text-vapor">Enter the lobby and begin the match before the start window expires.</p></div>
+        {!isComplete && canUseMatchRoom && (
+          <div className={`relative mb-6 overflow-hidden rounded-xl border ${startWindowExpired ? "border-orange/35" : "border-border"}`}>
+            <div className="relative overflow-hidden bg-card px-5 py-5 sm:px-6">
+              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-4">
+                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${startWindowExpired ? "bg-orange/12 text-orange" : "bg-cyan/12 text-cyan"}`}>
+                    {startWindowExpired ? <Unlock className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
+                  </span>
+                  <div>
+                    {!startWindowExpired && (
+                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Match start window</p>
+                    )}
+                    <h2 className="mt-1 text-lg font-black text-foreground">
+                      {startWindowExpired ? "Admin support is now available" : "Your wager is ready — start now"}
+                    </h2>
+                    {!startWindowExpired && (
+                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-vapor">
+                        You have 15 minutes to enter the lobby and begin. Admin support and disputes unlock only when this timer reaches 00:00.
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="rounded-xl border border-border bg-secondary px-6 py-4 text-center"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Time remaining</p><p className={`mt-1 font-mono text-3xl font-black ${timeRemaining === "EXPIRED" ? "text-orange" : "text-cyan"}`}>{timeRemaining}</p></div>
+                <div className="shrink-0 rounded-xl border border-border bg-secondary px-6 py-4 text-center">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">{hasStartDeadline ? "Time remaining" : "Waiting for schedule"}</p>
+                  <p className={`mt-1 font-mono text-3xl font-black tabular-nums ${startWindowExpired ? "text-orange" : "text-cyan"}`}>
+                    {hasStartDeadline ? formatCountdown(startSecondsRemaining) : "--:--"}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
