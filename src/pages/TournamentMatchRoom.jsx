@@ -259,6 +259,7 @@ function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
     user_name: playerName(userRow || profileRow || player),
     username: userRow?.username || profileRow?.username || player?.username,
     handle: userRow?.handle || profileRow?.handle || player?.handle,
+    display_name_color: userRow?.display_name_color || profileRow?.display_name_color || player?.display_name_color || "",
     avatar_url: userRow?.avatar_url || profileRow?.avatar_url || player?.avatar_url || "",
     activision_id: userRow?.activision_id || player?.activision_id || "",
     badges: userRow?.badges || [],
@@ -517,7 +518,7 @@ function TeamCard({ label, name, color, seed, isFirstHost, players = [], isCompl
                       <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border font-mono text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} className={`truncate text-base font-black text-foreground transition-colors ${hoverToneClass}`}>{displayName}</Link> : <span className="truncate text-base font-black text-foreground">{displayName}</span>}
+                          {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} style={player.display_name_color ? { color: player.display_name_color } : undefined} className={`truncate text-base font-black text-foreground transition-colors ${hoverToneClass}`}>{displayName}</Link> : <span style={player.display_name_color ? { color: player.display_name_color } : undefined} className="truncate text-base font-black text-foreground">{displayName}</span>}
                           <TournamentRankBadge goldTrophies={player.trophies?.gold} />
                           <UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />
                         </div>
@@ -658,7 +659,7 @@ function TournamentTeamTable({ label, name, color, seed, isFirstHost, players = 
                   </span>
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} className={`truncate text-sm font-black text-white transition-colors ${hoverToneClass}`}>{displayName}</Link> : <span className="truncate text-sm font-black text-white">{displayName}</span>}
+                      {profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} style={player.display_name_color ? { color: player.display_name_color } : undefined} className={`truncate text-sm font-black text-white transition-colors ${hoverToneClass}`}>{displayName}</Link> : <span style={player.display_name_color ? { color: player.display_name_color } : undefined} className="truncate text-sm font-black text-white">{displayName}</span>}
                       <TournamentRankBadge goldTrophies={player.trophies?.gold} />
                       <UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />
                     </div>
@@ -1179,7 +1180,7 @@ export default function TournamentMatchRoom() {
         match_id: match.id,
         subject: `Tournament match admin request ${match.id}`,
         description: `Admin requested for tournament match ${match.id} in ${tournament?.name || "tournament"}.\n${match.team_a_name || "Open slot"} vs ${match.team_b_name || "Open slot"}`,
-        priority: "high",
+        priority: user?.is_premium ? "critical" : "high",
       });
 
       if (response.data?.success) {

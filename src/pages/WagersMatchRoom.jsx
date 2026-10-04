@@ -465,7 +465,7 @@ export default function WagersMatchRoom() {
         match_id: wager.id,
         subject: `Wager match admin request ${wager.id}`,
         description: `${reason}\n\nMatch: ${wager.id}\nPlayers: ${wager.host_name || "Host unavailable"} vs ${wager.challenger_name || "Opponent pending"}`,
-        priority: "high",
+        priority: user?.is_premium ? "critical" : "high",
       });
 
       if (response.data?.success) {
