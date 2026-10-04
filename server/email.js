@@ -226,28 +226,62 @@ const buildResetPasswordMessage = ({ from, to, resetUrl }) => {
   ].join("\r\n");
 };
 
-const verificationContent = ({ code }) => ({
-  subject: "Your TopFragg verification code",
-  text: [
-    "Your TopFragg verification code is:",
-    "",
-    code,
-    "",
-    "Enter this code to finish creating your account.",
-    "The code expires in 10 minutes.",
-    "If you did not create this account, you can ignore this email.",
-  ].join("\n"),
-  html: [
-    '<div style="font-family:Arial,sans-serif;line-height:1.5;color:#111827">',
-    "<h2>Verify your TopFragg account</h2>",
-    "<p>Your verification code is:</p>",
-    '<p style="font-size:28px;font-weight:700;letter-spacing:6px">' + code + "</p>",
-    "<p>Enter this code to finish creating your account.</p>",
-    "<p>The code expires in 10 minutes.</p>",
-    "<p>If you did not create this account, you can ignore this email.</p>",
-    "</div>",
-  ].join(""),
-});
+const appUrl = () => (env("APP_URL") || "https://www.topfragg.gg").replace(/\/+$/, "");
+
+const escapeHtml = (value) => String(value || "")
+  .replace(/&/g, "&amp;")
+  .replace(/"/g, "&quot;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;");
+
+const verificationContent = ({ code }) => {
+  const safeCode = escapeHtml(code);
+  const safeAppUrl = escapeHtml(appUrl());
+  const safeLogoUrl = escapeHtml(appUrl() + "/topfragg-mark.svg");
+
+  return {
+    subject: "Your TopFragg verification code",
+    text: [
+      "TOPFRAGG — Verify your account",
+      "",
+      "Your verification code is: " + code,
+      "",
+      "Enter this code to finish creating your account.",
+      "The code expires in 10 minutes.",
+      "If you did not create this account, you can ignore this email.",
+    ].join("\n"),
+    html: [
+      '<!doctype html><html><body style="margin:0;background:#050a10;color:#eafcff;font-family:Arial,Helvetica,sans-serif">',
+      '<div style="display:none;max-height:0;overflow:hidden;opacity:0">Your TopFragg verification code is ' + safeCode + ".</div>",
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#050a10"><tr><td align="center" style="padding:28px 14px">',
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#0b1520;border:1px solid #1b3545;border-radius:18px;overflow:hidden">',
+      '<tr><td style="height:4px;background:#14d8ff"></td></tr>',
+      '<tr><td style="padding:28px 32px 18px">',
+      '<a href="' + safeAppUrl + '" style="text-decoration:none;display:inline-block">',
+      '<img src="' + safeLogoUrl + '" width="48" height="48" alt="TopFragg" style="display:inline-block;vertical-align:middle;border:0;border-radius:12px">',
+      '<span style="display:inline-block;vertical-align:middle;margin-left:12px;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:1px">TOP<span style="color:#14d8ff">FRAGG</span></span>',
+      "</a>",
+      '<div style="margin-top:28px;color:#14d8ff;font-size:11px;font-weight:800;letter-spacing:2px">ACCOUNT SECURITY</div>',
+      '<h1 style="margin:9px 0 10px;color:#ffffff;font-size:32px;line-height:1.15">Verify your account</h1>',
+      '<p style="margin:0;color:#a9bdc9;font-size:16px;line-height:1.6">One final step and you are ready to compete on TopFragg.</p>',
+      "</td></tr>",
+      '<tr><td style="padding:4px 32px 30px">',
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#101f2d;border:1px solid #1d5265;border-radius:14px"><tr><td align="center" style="padding:24px 18px">',
+      '<div style="color:#8ea6b4;font-size:12px;font-weight:700;letter-spacing:1.5px">YOUR 6-DIGIT CODE</div>',
+      '<div style="margin-top:12px;color:#14d8ff;font-size:40px;line-height:1;font-weight:800;letter-spacing:10px">' + safeCode + "</div>",
+      '<div style="margin-top:14px;color:#8ea6b4;font-size:13px">Expires in 10 minutes</div>',
+      "</td></tr></table>",
+      '<p style="margin:24px 0 0;color:#c7d6de;font-size:15px;line-height:1.6">Enter this code in the TopFragg verification screen to activate your account.</p>',
+      '<p style="margin:20px 0 0;color:#718b99;font-size:13px;line-height:1.6">If you did not create this account, you can safely ignore this email.</p>',
+      "</td></tr>",
+      '<tr><td style="padding:20px 32px;border-top:1px solid #1b3545;color:#718b99;font-size:12px;line-height:1.6">TOPFRAGG<br><a href="',
+      safeAppUrl,
+      '" style="color:#14d8ff;text-decoration:none">www.topfragg.gg</a></td></tr>',
+      "</table></td></tr></table>",
+      "</body></html>",
+    ].join(""),
+  };
+};
 
 const resetPasswordContent = ({ resetUrl }) => {
   const safeResetUrl = String(resetUrl)
@@ -255,6 +289,8 @@ const resetPasswordContent = ({ resetUrl }) => {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+  const safeAppUrl = escapeHtml(appUrl());
+  const safeLogoUrl = escapeHtml(appUrl() + "/topfragg-mark.svg");
 
   return {
     subject: "Reset your TopFragg password",
@@ -267,13 +303,21 @@ const resetPasswordContent = ({ resetUrl }) => {
       "If you did not request this, you can ignore this email.",
     ].join("\n"),
     html: [
-      '<div style="font-family:Arial,sans-serif;line-height:1.5;color:#111827">',
-      "<h2>Reset your TopFragg password</h2>",
-      "<p>A password reset was requested for your account.</p>",
-      '<p><a href="' + safeResetUrl + '" style="display:inline-block;padding:12px 18px;background:#06b6d4;color:#081018;text-decoration:none;border-radius:6px;font-weight:700">Reset password</a></p>',
-      "<p>This link expires in 30 minutes and can only be used once.</p>",
-      "<p>If you did not request this, you can ignore this email.</p>",
-      "</div>",
+      '<!doctype html><html><body style="margin:0;background:#050a10;color:#eafcff;font-family:Arial,Helvetica,sans-serif">',
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#050a10"><tr><td align="center" style="padding:28px 14px">',
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#0b1520;border:1px solid #1b3545;border-radius:18px;overflow:hidden">',
+      '<tr><td style="height:4px;background:#14d8ff"></td></tr>',
+      '<tr><td style="padding:28px 32px 18px"><a href="' + safeAppUrl + '" style="text-decoration:none"><img src="' + safeLogoUrl + '" width="48" height="48" alt="TopFragg" style="vertical-align:middle;border:0;border-radius:12px"><span style="vertical-align:middle;margin-left:12px;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:1px">TOP<span style="color:#14d8ff">FRAGG</span></span></a>',
+      '<div style="margin-top:28px;color:#14d8ff;font-size:11px;font-weight:800;letter-spacing:2px">ACCOUNT SECURITY</div>',
+      '<h1 style="margin:9px 0 10px;color:#ffffff;font-size:32px;line-height:1.15">Reset your password</h1>',
+      '<p style="margin:0;color:#a9bdc9;font-size:16px;line-height:1.6">Use the secure button below to choose a new password.</p></td></tr>',
+      '<tr><td style="padding:4px 32px 30px"><a href="' + safeResetUrl + '" style="display:inline-block;padding:14px 22px;background:#14d8ff;color:#061018;text-decoration:none;border-radius:9px;font-size:15px;font-weight:800">RESET PASSWORD</a>',
+      '<p style="margin:24px 0 0;color:#c7d6de;font-size:15px;line-height:1.6">This link expires in 30 minutes and can only be used once.</p>',
+      '<p style="margin:20px 0 0;color:#718b99;font-size:13px;line-height:1.6">If you did not request this, you can safely ignore this email.</p></td></tr>',
+      '<tr><td style="padding:20px 32px;border-top:1px solid #1b3545;color:#718b99;font-size:12px;line-height:1.6">TOPFRAGG<br><a href="',
+      safeAppUrl,
+      '" style="color:#14d8ff;text-decoration:none">www.topfragg.gg</a></td></tr>',
+      "</table></td></tr></table></body></html>",
     ].join(""),
   };
 };
