@@ -409,6 +409,11 @@ export default function Navbar() {
     closeDropdowns();
   };
 
+  const supportsDesktopHover = () => (
+    typeof window === "undefined"
+    || window.matchMedia("(hover: hover) and (pointer: fine)").matches
+  );
+
   useEffect(() => {
     const handleOutsidePointer = (event) => {
       if (event.target instanceof Element && event.target.closest(".nav-dropdown-anchor")) return;
@@ -990,6 +995,7 @@ export default function Navbar() {
                       data-tone={group.tone}
                       className="nav-dropdown-anchor relative"
                       onMouseEnter={() => {
+                        if (!supportsDesktopHover()) return;
                         cancelDropdownClose();
                         setNavMenuOpen(group.label);
                         setMatchesOpen(false);
@@ -1062,6 +1068,7 @@ export default function Navbar() {
                   data-tone="purple"
                   className="nav-dropdown-anchor relative"
                   onMouseEnter={() => {
+                    if (!supportsDesktopHover()) return;
                     cancelDropdownClose();
                     setMatchesOpen(true);
                     setNavMenuOpen(null);
@@ -1219,6 +1226,7 @@ export default function Navbar() {
               <div
                 className="nav-dropdown-anchor relative"
                 onMouseEnter={() => {
+                  if (!supportsDesktopHover()) return;
                   cancelDropdownClose();
                   setNotifOpen(true);
                   setNavMenuOpen(null);
@@ -1311,6 +1319,7 @@ export default function Navbar() {
               <div
                 className="nav-dropdown-anchor relative hidden sm:block"
                 onMouseEnter={() => {
+                  if (!supportsDesktopHover()) return;
                   cancelDropdownClose();
                   setMessagesOpen(true);
                   setNavMenuOpen(null);
@@ -1399,6 +1408,7 @@ export default function Navbar() {
               <div
                 className="nav-dropdown-anchor relative"
                 onMouseEnter={() => {
+                  if (!supportsDesktopHover()) return;
                   cancelDropdownClose();
                   setProfileOpen(true);
                   setNavMenuOpen(null);
@@ -1417,10 +1427,6 @@ export default function Navbar() {
                     setMatchesOpen(false);
                     setNotifOpen(false);
                     setMessagesOpen(false);
-                  }}
-                  onFocus={() => {
-                    cancelDropdownClose();
-                    setProfileOpen(true);
                   }}
                   className={`topbar-profile flex h-11 items-center gap-2.5 rounded-xl border py-1 pl-1 pr-2 transition-colors ${profileOpen ? "is-open" : ""}`}
                 >
