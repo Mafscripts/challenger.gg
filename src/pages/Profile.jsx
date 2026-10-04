@@ -556,7 +556,7 @@ function PlayerOverviewPanel({ user, profile, name, rank, elo, wins, losses, ear
               {profile?.avatar_url || user?.avatar_url ? <img src={profile?.avatar_url || user?.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-black text-white">{name}</p>
+              <p style={user?.display_name_color ? { color: user.display_name_color } : undefined} className="truncate text-sm font-black text-white">{name}</p>
               <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rank.name || rank.tier}</p>
             </div>
           </div>
