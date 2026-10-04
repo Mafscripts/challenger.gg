@@ -75,23 +75,24 @@ const xpNavGroup = {
   ],
 };
 
+const playNavGroup = {
+  label: "Play",
+  icon: Swords,
+  eyebrow: "Choose your competition",
+  tone: "cyan",
+  items: [
+    ...rankedNavGroup.items,
+    ...xpNavGroup.items,
+    { label: "Open Wagers", description: "Post or accept a challenge", path: "/wagers", icon: Zap, tone: "green" },
+    { label: "Matchfinder", description: "Browse every open competition", path: "/matchfinder", icon: Search, tone: "gold" },
+    { label: "Leaderboards", description: "Compare the best competitors", path: "/leaderboards", icon: Trophy, tone: "gold" },
+  ],
+};
+
 const mobileNavSections = [
-  {
-    label: "Tournaments",
-    items: navGroups[0].items,
-  },
-  {
-    label: "Wagers",
-    items: navGroups[1].items,
-  },
-  {
-    label: "Matchfinder",
-    items: navGroups[2].items,
-  },
-  {
-    label: "Teams",
-    items: navGroups[3].items,
-  },
+  { label: "Play", items: playNavGroup.items },
+  { label: "Tournaments", items: navGroups[0].items },
+  { label: "Teams", items: navGroups[3].items },
 ];
 
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
@@ -963,7 +964,7 @@ export default function Navbar() {
                   </span>
                   Home
                 </Link>
-                {[rankedNavGroup, xpNavGroup, ...navGroups.filter((group) => group.label !== "Teams")].map((group) => {
+                {[playNavGroup, navGroups.find((group) => group.label === "Tournaments")].map((group) => {
                   const GroupIcon = group.icon;
                   const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash));
                   const open = navMenuOpen === group.label;
@@ -1005,7 +1006,7 @@ export default function Navbar() {
                       </button>
 
                       {open && (
-                          <div className="nav-popover nav-popover-enter absolute left-0 top-12 w-[310px] rounded-xl p-2.5">
+                          <div className="nav-popover nav-popover-enter absolute left-0 top-12 w-[340px] rounded-xl p-2.5">
                             <div className="mb-2 border-b border-white/[0.06] px-2 pb-2.5 pt-1">
                               <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${groupTone.icon.split(" ").at(-1)}`}>{group.eyebrow}</p>
                               <p className="mt-1 text-[11px] text-vapor">Choose where you want to go</p>
@@ -1167,32 +1168,33 @@ export default function Navbar() {
             <div className="topbar-actions flex shrink-0 items-center gap-2">
               {user ? (
                 <>
-              {/* Wallet */}
-              <div className="topbar-balance topbar-wallet hidden h-10 items-center overflow-hidden md:flex">
-                <Link to="/wallet" className="topbar-balance-main flex h-full items-center gap-2.5 px-2.5 transition-colors">
-                  <span className="topbar-balance-icon"><Wallet className="h-3.5 w-3.5" /></span>
-                  <span className="topbar-balance-copy">
-                    <span className="topbar-balance-kicker">Balance</span>
-                    <span className="font-mono text-[11px] font-black">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </span>
-                </Link>
-                <Link to="/wallet" title="Add funds" aria-label="Add funds" className="topbar-balance-add flex h-full w-8 items-center justify-center transition-colors">
-                  <Plus className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-
-              {/* Credits */}
-              <div className="topbar-balance topbar-credits hidden h-10 items-center overflow-hidden md:flex">
-                <Link to="/marketplace" title="Marketplace credits" className="topbar-balance-main flex h-full items-center gap-2.5 px-2.5 transition-colors">
-                  <span className="topbar-balance-icon"><Coins className="h-3.5 w-3.5" /></span>
-                  <span className="topbar-balance-copy">
-                    <span className="topbar-balance-kicker">Credits</span>
-                    <span className="font-mono text-[11px] font-black">{creditBalance.toLocaleString("en-US")}</span>
-                  </span>
-                </Link>
-                <Link to="/marketplace" title="Get credits" aria-label="Get credits" className="topbar-balance-add flex h-full w-8 items-center justify-center transition-colors">
-                  <Plus className="h-3.5 w-3.5" />
-                </Link>
+              {/* Wallet summary */}
+              <div className="topbar-wallet-summary hidden items-center rounded-xl border border-white/[0.06] bg-white/[0.025] px-1 md:flex">
+                <div className="topbar-balance topbar-wallet flex h-10 items-center overflow-hidden">
+                  <Link to="/wallet" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
+                    <span className="topbar-balance-icon"><Wallet className="h-3.5 w-3.5" /></span>
+                    <span className="topbar-balance-copy">
+                      <span className="topbar-balance-kicker">Balance</span>
+                      <span className="font-mono text-[11px] font-black">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </span>
+                  </Link>
+                  <Link to="/wallet" title="Add funds" aria-label="Add funds" className="topbar-balance-add flex h-full w-7 items-center justify-center transition-colors">
+                    <Plus className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+                <span aria-hidden="true" className="h-6 w-px bg-white/[0.08]" />
+                <div className="topbar-balance topbar-credits flex h-10 items-center overflow-hidden">
+                  <Link to="/marketplace" title="Marketplace credits" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
+                    <span className="topbar-balance-icon"><Coins className="h-3.5 w-3.5" /></span>
+                    <span className="topbar-balance-copy">
+                      <span className="topbar-balance-kicker">Credits</span>
+                      <span className="font-mono text-[11px] font-black">{creditBalance.toLocaleString("en-US")}</span>
+                    </span>
+                  </Link>
+                  <Link to="/marketplace" title="Get credits" aria-label="Get credits" className="topbar-balance-add flex h-full w-7 items-center justify-center transition-colors">
+                    <Plus className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </div>
 
               {/* Notifications */}
@@ -1565,34 +1567,13 @@ export default function Navbar() {
                 <House className="h-5 w-5" />
                 Home
               </Link>
-              <div className="pt-3">
-                <p className="px-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">{rankedNavGroup.label}</p>
-                <div className="space-y-1">
-                  {rankedNavGroup.items.map((link) => {
-                    const Icon = link.icon;
-                    const active = navItemIsActive(location.pathname, link.path, location.hash);
-                    return (
-                      <Link
-                        key={link.path}
-                        to={link.path}
-                        className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
-                          active ? "bg-cyan/10 text-cyan" : "text-vapor hover:bg-secondary hover:text-foreground"
-                        }`}
-                      >
-                        <Icon className="h-5 w-5" />
-                        {link.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
               {mobileNavSections.map((section) => (
                 <div key={section.label} className="pt-3">
                   <p className="px-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">{section.label}</p>
                   <div className="space-y-1">
                     {section.items.map((link) => {
                       const Icon = link.icon;
-                      const active = location.pathname === link.path;
+                      const active = navItemIsActive(location.pathname, link.path, location.hash);
                       return (
                         <Link
                           key={link.path}
@@ -1640,15 +1621,6 @@ export default function Navbar() {
                         Admin Console
                       </Link>
                     )}
-                    {canSeeStreamerShortcut && (
-                      <Link
-                        to="/streamer-tournaments"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:bg-white/[0.05] hover:text-foreground transition-all"
-                      >
-                        <Monitor className="w-5 h-5" />
-                        Streamer Tournaments
-                      </Link>
-                    )}
                     <Link
                       to={profilePath}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
@@ -1662,13 +1634,6 @@ export default function Navbar() {
                     >
                       <Ticket className="w-5 h-5" />
                       My Tickets
-                    </Link>
-                    <Link
-                      to="/teams"
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
-                    >
-                      <Users className="w-5 h-5" />
-                      Teams
                     </Link>
                     <Link
                       to="/find-players"
