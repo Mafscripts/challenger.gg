@@ -49,7 +49,7 @@ function findConfiguredChannel(guild, key) {
   const spec = categorySpecs.flatMap((category) => category.channels).find((channel) => channel.key === key);
   if (!spec) return null;
   if (key === "member-count") {
-    return guild.channels.cache.find((channel) => /^👥・members:\s*[\d,]+$/u.test(channel.name));
+    return guild.channels.cache.find((channel) => /^👥・members[-:]\s*[\d,]+$/u.test(channel.name));
   }
   return guild.channels.cache.find((channel) => matchesSpecName(channel.name, spec));
 }
@@ -69,7 +69,7 @@ async function botLog(guild, message) {
 async function syncMemberCount(guild) {
   const channel = findConfiguredChannel(guild, "member-count");
   if (!channel) return;
-  const desiredName = `👥・members: ${Number(guild.memberCount || 0).toLocaleString("en-US")}`;
+  const desiredName = `👥・members-${Number(guild.memberCount || 0).toLocaleString("en-US")}`;
   if (channel.name === desiredName) return;
   await channel.setName(desiredName, "Keep Topfragg member counter current");
   process.stdout.write(`[Topfragg Discord] Updated member counter: ${desiredName}\n`);

@@ -29,7 +29,7 @@ const log = (message) => process.stdout.write(`[Topfragg Discord] ${message}\n`)
 const matchesSpecName = (actualName, spec) => (
   actualName === spec.name
   || (spec.legacyNames || []).includes(actualName)
-  || (spec.key === "member-count" && /^👥・members:\s*[\d,]+$/u.test(actualName))
+  || (spec.key === "member-count" && /^👥・members[-:]\s*[\d,]+$/u.test(actualName))
 );
 
 function roleIdsByName(guild) {
