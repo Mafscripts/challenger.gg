@@ -97,8 +97,8 @@ export default function RankedEights() {
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
-            <button type="button" onClick={() => setQueueMode("ranked")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${!isMoney ? "bg-cyan text-background" : "text-vapor hover:bg-white/[0.06]"}`}><Shield className="h-4 w-4" /> Ranked 8s</button>
-            <button type="button" onClick={() => setQueueMode("money")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${isMoney ? "bg-green text-background" : "text-vapor hover:bg-white/[0.06]"}`}><DollarSign className="h-4 w-4" /> Money 8s</button>
+            <button type="button" onClick={() => setQueueMode("ranked")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${!isMoney ? "bg-cyan text-background" : "text-vapor hover:bg-white/[0.06]"}`}><Shield className="h-4 w-4" /> Free 8s</button>
+            <button type="button" onClick={() => setQueueMode("money")} className={`inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${isMoney ? "border-green/50 bg-green text-background shadow-lg shadow-green/20 ring-2 ring-green/20" : "border-green/25 bg-green/[0.08] text-green hover:bg-green/15"}`}><DollarSign className="h-4 w-4" /> Money 8s <span className="rounded bg-background/20 px-1.5 py-0.5 text-[8px]">WALLET</span></button>
           </div>
           {isMoney && <p className="px-2 text-xs text-vapor">Wallet entry fee · winner receives the prize pool</p>}
         </section>
@@ -117,7 +117,7 @@ export default function RankedEights() {
                     key={lobby.id}
                     game={lobby.game_mode_display || lobby.game_mode}
                     gameDetail={`4v4 · ${joined}/8 players`}
-                    competition={isMoney ? "Money 8s" : "Ranked 8s"}
+                    competition={isMoney ? "Money 8s" : "Free 8s"}
                     competitionDetail={`Hosted by ${lobby.host_name || "Player"} · BO${lobby.best_of || 3}`}
                     playRule={lobby.play_rule}
                     tone="orange"
