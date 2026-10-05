@@ -143,23 +143,23 @@ export default function RankedEights() {
         />
         <ActivisionIdNotice user={user} className="mb-6" />
 
-        {!isMoney && <section className="mb-6 overflow-hidden rounded-2xl border border-yellow-400/25 bg-gradient-to-r from-yellow-400/[0.11] via-card to-card">
+        <section className={`mb-6 overflow-hidden rounded-2xl border bg-gradient-to-r via-card to-card ${isMoney ? "border-green/25 from-green/[0.11]" : "border-yellow-400/25 from-yellow-400/[0.11]"}`}>
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-yellow-400/25 bg-yellow-400/10 text-yellow-300"><Crown className="h-6 w-6" /></div>
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${isMoney ? "border-green/25 bg-green/10 text-green" : "border-yellow-400/25 bg-yellow-400/10 text-yellow-300"}`}><Crown className="h-6 w-6" /></div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-300">{prizeActive ? "Monthly 8s race" : "8s prize announcement"}</p>
-                <h2 className="mt-1 text-2xl font-black">{prizeActive ? "#1 wins $100" : "$100 monthly prize starts October 1"}</h2>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-vapor">{prizeActive ? "Play at least one completed 8s match this month. Most wins takes the prize; monthly XP and rating break ties." : "Matches played before October 1 do not count toward the $100 prize. Starting in October, the player with the most monthly 8s wins takes the prize."}</p>
+                <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isMoney ? "text-green" : "text-yellow-300"}`}>{isMoney ? "Wallet-backed matches" : prizeActive ? "Monthly 8s race" : "8s prize announcement"}</p>
+                <h2 className="mt-1 text-2xl font-black">{isMoney ? "Play for the full prize pool" : prizeActive ? "#1 wins $100" : "$100 monthly prize starts October 1"}</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-vapor">{isMoney ? "Every player pays the selected entry fee from their wallet. The winning team shares the complete Money 8s pot." : prizeActive ? "Play at least one completed 8s match this month. Most wins takes the prize; monthly XP and rating break ties." : "Matches played before October 1 do not count toward the $100 prize. Starting in October, the player with the most monthly 8s wins takes the prize."}</p>
               </div>
             </div>
             <div className="rounded-xl border border-white/[0.08] bg-black/20 px-5 py-4 text-center">
               <CalendarDays className="mx-auto h-5 w-5 text-cyan" />
-              <p className="mt-2 font-mono text-2xl font-black">{prizeActive ? daysLeftInMonth() : daysUntilPrizeStarts()}</p>
-              <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{prizeActive ? "days remaining" : "days until launch"}</p>
+              <p className="mt-2 font-mono text-2xl font-black">{isMoney ? "8" : prizeActive ? daysLeftInMonth() : daysUntilPrizeStarts()}</p>
+              <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{isMoney ? "players per lobby" : prizeActive ? "days remaining" : "days until launch"}</p>
             </div>
           </div>
-        </section>}
+        </section>
 
       </div>
       <CreateLobbyModal isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} />
