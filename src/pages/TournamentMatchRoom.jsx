@@ -125,10 +125,11 @@ const trophySlots = [
 
 const tournamentRankFor = (goldTrophies) => {
   const gold = statNumber(goldTrophies);
+  if (gold < 3) return null;
   if (gold > 5) return { label: "Pro", className: "border-yellow-300/30 bg-yellow-300/[0.1] text-yellow-300" };
   if (gold === 5) return { label: "Semi Pro", className: "border-cyan/25 bg-cyan/[0.08] text-cyan" };
   if (gold >= 3) return { label: "Amateur", className: "border-amber-500/25 bg-amber-500/[0.08] text-amber-400" };
-  return { label: "Newb", className: "border-white/[0.09] bg-white/[0.04] text-vapor" };
+  return null;
 };
 
 const participantIds = (participant) => [
@@ -357,6 +358,7 @@ function TrophyCounts({ trophies, align = "end", compact = false }) {
 function TournamentRankBadge({ goldTrophies }) {
   const gold = statNumber(goldTrophies);
   const rank = tournamentRankFor(gold);
+  if (!rank) return null;
 
   return (
     <span

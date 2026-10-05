@@ -60,13 +60,12 @@ const socialUrl = (key, value) => {
 
 function TournamentRankBadge({ goldTrophies }) {
   const gold = number(goldTrophies);
+  if (gold < 3) return null;
   const rank = gold > 5
     ? { label: "Pro", className: "border-yellow-300/30 bg-yellow-300/[0.1] text-yellow-300" }
     : gold === 5
         ? { label: "Semi Pro", className: "border-cyan/25 bg-cyan/[0.08] text-cyan" }
-      : gold >= 3
-        ? { label: "Amateur", className: "border-amber-500/25 bg-amber-500/[0.08] text-amber-400" }
-        : { label: "Newb", className: "border-slate-200/25 bg-slate-300/[0.16] text-white" };
+      : { label: "Amateur", className: "border-amber-500/25 bg-amber-500/[0.08] text-amber-400" };
   return <span className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${rank.className}`}><Trophy className="h-2.5 w-2.5" />{rank.label}</span>;
 }
 
