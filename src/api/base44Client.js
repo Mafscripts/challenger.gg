@@ -149,8 +149,8 @@ const auth = {
     return meCache.promise;
   },
 
-  async loginViaEmailPassword(email, password) {
-    const result = await apiFetch("/auth/login", { method: "POST", body: { email, password }, dedupe: false });
+  async loginViaEmailPassword(identifier, password) {
+    const result = await apiFetch("/auth/login", { method: "POST", body: { identifier, password }, dedupe: false });
     setToken(result.access_token);
     meCache = { value: result.user, expiresAt: now() + ME_CACHE_MS, promise: null };
     return result;

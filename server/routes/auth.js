@@ -25,7 +25,11 @@ const VERIFICATION_MAX_RESENDS_PER_WINDOW = 5;
 const VERIFICATION_MAX_ATTEMPTS = 5;
 const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
 const REGISTRATION_MAX_PER_IP = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILURES = 10;
 const registrationAttempts = new Map();
+const loginFailures = new Map();
+const LOGIN_DUMMY_HASH = "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
 const verificationSecret = () => process.env.EMAIL_VERIFICATION_SECRET || process.env.JWT_SECRET || "dev-email-verification-secret";
 const verificationHash = (userId, code) => crypto
@@ -59,6 +63,49 @@ const consumeRegistrationAttempt = (ip) => {
     error.status = 429;
     throw error;
   }
+};
+
+const loginRateKeys = (ip, identifier) => [
+  `ip:${ip || "unknown"}`,
+  `account:${identifier || "unknown"}`,
+];
+
+const assertLoginAllowed = (ip, identifier) => {
+  const now = Date.now();
+  for (const key of loginRateKeys(ip, identifier)) {
+    const current = loginFailures.get(key);
+    if (!current) continue;
+    if (current.windowStartedAt + LOGIN_WINDOW_MS <= now) {
+      loginFailures.delete(key);
+      continue;
+    }
+    if (current.count >= LOGIN_MAX_FAILURES) {
+      const error = new Error("Too many login attempts. Please try again later.");
+      error.status = 429;
+      error.retryAfter = Math.ceil((current.windowStartedAt + LOGIN_WINDOW_MS - now) / 1000);
+      throw error;
+    }
+  }
+};
+
+const recordLoginFailure = (ip, identifier) => {
+  const now = Date.now();
+  if (loginFailures.size > 10_000) {
+    for (const [key, value] of loginFailures) {
+      if (value.windowStartedAt + LOGIN_WINDOW_MS <= now) loginFailures.delete(key);
+    }
+  }
+  loginRateKeys(ip, identifier).forEach((key) => {
+    const current = loginFailures.get(key);
+    const next = !current || current.windowStartedAt + LOGIN_WINDOW_MS <= now
+      ? { windowStartedAt: now, count: 1 }
+      : { ...current, count: current.count + 1 };
+    loginFailures.set(key, next);
+  });
+};
+
+const clearLoginFailures = (ip, identifier) => {
+  loginRateKeys(ip, identifier).forEach((key) => loginFailures.delete(key));
 };
 
 const issueVerificationChallenge = async (user, { enforceCooldown = false } = {}) => {
@@ -189,13 +236,29 @@ router.post("/register", registerHandler);
 
 router.post("/login", async (req, res, next) => {
   try {
-    const email = String(req.body?.email || "").trim().toLowerCase();
+    const identifier = String(req.body?.identifier || req.body?.email || "").trim().toLowerCase();
     const password = String(req.body?.password || "");
-    const user = await prisma.user.findUnique({ where: { email } });
+    const ip = requestIpAddress(req) || "unknown";
+    assertLoginAllowed(ip, identifier);
+    const user = identifier
+      ? await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: identifier },
+            { username: identifier },
+            { handle: identifier },
+          ],
+        },
+      })
+      : null;
 
-    if (!user?.password_hash || !await verifyPassword(password, user.password_hash)) {
+    const passwordMatches = await verifyPassword(password, user?.password_hash || LOGIN_DUMMY_HASH);
+    if (!user?.password_hash || !passwordMatches) {
+      recordLoginFailure(ip, identifier);
       return res.status(401).json({ error: "Invalid email or password" });
     }
+
+    clearLoginFailures(ip, identifier);
 
     if (user.email_verified !== true) {
       return res.status(403).json({
@@ -218,6 +281,7 @@ router.post("/login", async (req, res, next) => {
       password_change_required: Boolean(loginUser.metadata?.force_password_change),
     });
   } catch (error) {
+    if (error.retryAfter) res.set("Retry-After", String(error.retryAfter));
     next(error);
   }
 });

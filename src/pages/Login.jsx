@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { LogIn, UserRound, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { useAuth } from "@/lib/AuthContext";
@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/AuthContext";
 export default function Login() {
   const navigate = useNavigate();
   const { checkUserAuth, completeAuth } = useAuth();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,9 +22,9 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-      const result = await base44.auth.loginViaEmailPassword(normalizedEmail, password);
-      const currentUser = await bootstrapCurrentUser({ email: normalizedEmail, user: result?.user }).catch(() => result?.user || null);
+      const normalizedIdentifier = identifier.trim().toLowerCase();
+      const result = await base44.auth.loginViaEmailPassword(normalizedIdentifier, password);
+      const currentUser = await bootstrapCurrentUser({ identifier: normalizedIdentifier, user: result?.user }).catch(() => result?.user || null);
       if (currentUser?.id) {
         completeAuth(currentUser);
       } else {
@@ -33,7 +33,11 @@ export default function Login() {
       navigate(result?.password_change_required ? "/change-password" : "/dashboard", { replace: true });
     } catch (err) {
       if (err?.data?.code === "EMAIL_VERIFICATION_REQUIRED") {
-        const verificationEmail = err.data.email || email.trim().toLowerCase();
+        const verificationEmail = err.data.email || (identifier.includes("@") ? identifier.trim().toLowerCase() : "");
+        if (!verificationEmail) {
+          setError("Verify your email before logging in. Use the email address linked to this account to continue.");
+          return;
+        }
         navigate(`/verify-email?email=${encodeURIComponent(verificationEmail)}`);
         return;
       }
@@ -66,17 +70,17 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-vapor">Email</Label>
+          <Label htmlFor="identifier" className="text-xs font-bold uppercase tracking-wide text-vapor">Email or username</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
-              id="email"
-              type="email"
-              autoComplete="email"
+              id="identifier"
+              type="text"
+              autoComplete="username"
               autoFocus
-              placeholder="Enter email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email or username"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(210,214,220,0.10)]"
               required
             />
