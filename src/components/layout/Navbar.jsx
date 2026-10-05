@@ -210,7 +210,7 @@ const playDisputeAlertSound = async () => {
   return true;
 };
 
-const navButtonClass = "nav-primary-button relative inline-flex h-10 items-center gap-2 rounded-xl border px-2.5 text-[13px] font-bold";
+const navButtonClass = "nav-primary-button relative inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-2.5 text-[13px] font-bold";
 const navTone = {
   cyan: { button: "border-cyan/25 bg-cyan/10 text-cyan", icon: "border-cyan/20 bg-cyan/10 text-cyan" },
   gold: { button: "border-yellow-400/25 bg-yellow-400/10 text-yellow-300", icon: "border-yellow-400/20 bg-yellow-400/10 text-yellow-300" },

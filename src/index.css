@@ -2811,7 +2811,7 @@ img {
 /* 2026 navigation pass — quiet surfaces, one clear active state. */
 .app-topbar-v2.topbar-halloween .topbar-primary-nav,
 .app-topbar-v2.topbar-halloween .topbar-primary-nav:hover {
-  gap: .14rem;
+  gap: .22rem;
   border-color: rgb(255 255 255 / .075);
   border-radius: .78rem;
   background: rgb(10 11 20 / .42);
