@@ -95,6 +95,14 @@ export default function RankedEights() {
   return (
     <div className="min-h-screen py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+        <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setQueueMode("ranked")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${!isMoney ? "bg-cyan text-background" : "text-vapor hover:bg-white/[0.06]"}`}><Shield className="h-4 w-4" /> Ranked 8s</button>
+            <button type="button" onClick={() => setQueueMode("money")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${isMoney ? "bg-green text-background" : "text-vapor hover:bg-white/[0.06]"}`}><DollarSign className="h-4 w-4" /> Money 8s</button>
+          </div>
+          {isMoney && <p className="px-2 text-xs text-vapor">Wallet entry fee · winner receives the prize pool</p>}
+        </section>
+
         <CompetitionLadder
           mode="eights"
           currentUser={user}
@@ -134,14 +142,6 @@ export default function RankedEights() {
           )}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
-
-        <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setQueueMode("ranked")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${!isMoney ? "bg-cyan text-background" : "text-vapor hover:bg-white/[0.06]"}`}><Shield className="h-4 w-4" /> Ranked 8s</button>
-            <button type="button" onClick={() => setQueueMode("money")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${isMoney ? "bg-green text-background" : "text-vapor hover:bg-white/[0.06]"}`}><DollarSign className="h-4 w-4" /> Money 8s</button>
-          </div>
-          {isMoney && <p className="px-2 text-xs text-vapor">Wallet entry fee · winner receives the prize pool</p>}
-        </section>
 
         {!isMoney && <section className="mb-6 overflow-hidden rounded-2xl border border-yellow-400/25 bg-gradient-to-r from-yellow-400/[0.11] via-card to-card">
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
