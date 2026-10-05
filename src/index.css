@@ -1614,6 +1614,7 @@
   }
 
   .app-content .player-name-color[data-name-effect^="fx-"]:not(h1) {
+    display: inline-flex;
     position: relative;
     z-index: 0;
     isolation: isolate;
@@ -1621,6 +1622,11 @@
     padding-inline: 0.28em;
     border-radius: 0.35em;
     font-size: calc(1em + 1px);
+    min-width: 4rem;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.1;
   }
 
   .app-content .player-name-color[data-name-effect^="fx-"]:not(h1)::after {
