@@ -1610,6 +1610,7 @@
     background-size: 210px 210px;
     animation: none !important;
     -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.9);
+    paint-order: stroke fill;
   }
 
   .app-content .player-name-color[data-name-effect^="fx-"]:not(h1) {
