@@ -136,6 +136,24 @@ const matchResultFor = (match, userId) => {
     ? ["Win", "text-green", "border-green/25 bg-green/10"]
     : ["Loss", "text-red-300", "border-red-400/20 bg-red-500/10"];
 };
+const competitionLabelFor = (match) => {
+  const type = cleanKey(match?.match_type || match?.competition_type || match?.competition);
+  if (type === "money8s" || type === "money-8s" || type === "money 8s") return "Money 8s";
+  if (type === "8s" || type === "eights" || type === "free8s" || type === "free-8s") return "Free 8s";
+  if (type === "tournament" || type === "streamer_tournament" || type === "tournament_match" || match?.tournament_id) return "Tournament";
+  if (type === "xp" || type === "xp_match" || type === "xpmatch") return "XP Match";
+  if (type === "ranked" || type === "elo") return "Ranked";
+  if (type === "wager" || type === "wagers") return "Wager";
+  return "Match";
+};
+const competitionToneFor = (label) => {
+  if (label === "Money 8s") return "border-green/20 bg-green/10 text-green";
+  if (label === "Free 8s") return "border-cyan/20 bg-cyan/10 text-cyan";
+  if (label === "Tournament") return "border-orange/20 bg-orange/10 text-orange";
+  if (label === "XP Match") return "border-purple-300/20 bg-purple-300/10 text-purple-200";
+  if (label === "Ranked") return "border-yellow-400/20 bg-yellow-400/10 text-yellow-300";
+  return "border-white/10 bg-white/[0.04] text-vapor";
+};
 
 const premiumInventoryEffectClass = (item) => {
   const rarity = String(item?.item_rarity || "").toLowerCase();
@@ -791,6 +809,7 @@ function RecentMatchesPanel({ matches, userId, className = "", expanded = false 
         <div className="space-y-2">
           {matches.map((match) => {
             const [result, resultColor, resultClass] = matchResultFor(match, userId);
+            const competitionLabel = competitionLabelFor(match);
             return (
               <div
                 key={match.id}
@@ -798,7 +817,7 @@ function RecentMatchesPanel({ matches, userId, className = "", expanded = false 
               >
                 <span className={`grid h-9 w-9 place-items-center rounded-lg border ${resultClass}`}><Swords className={`h-4 w-4 ${resultColor}`} /></span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{match.game_mode_display || match.game_mode || match.match_type || "Match"}</p>
+                  <div className="flex min-w-0 items-center gap-2"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{match.game_mode_display || match.game_mode || "Match"}</p><span className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider ${competitionToneFor(competitionLabel)}`}>{competitionLabel}</span></div>
                   <p className="mt-1 truncate font-mono text-[8px] uppercase tracking-wider text-vapor">{formatDate(match.match_completed_date || match.completed_date || match.created_date)} · {match.final_map_name || match.map_name || "Map pending"}</p>
                 </div>
                 <p className="hidden font-mono text-xs font-black text-white sm:block">{matchScoreText(match)}</p>
