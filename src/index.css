@@ -1582,7 +1582,6 @@
     background-position: center;
     background-size: 210px 210px;
     filter: saturate(1.12) brightness(1.08);
-    animation: player-name-galaxy-texture 7s ease-in-out infinite;
   }
 
   .app-content .player-name-color[data-name-effect="fx-diamond-shine"] {
@@ -1595,46 +1594,40 @@
     animation: none !important;
   }
 
-  .app-content .player-name-color[data-name-effect="fx-topfragg-flames"] {
-    position: relative;
-    isolation: isolate;
-    background-image: repeating-linear-gradient(102deg, #ff5a1f 0 12px, #ff9d00 12px 24px, #ffe66d 24px 34px, #00d9ff 34px 48px, #0ea5e9 48px 62px, #ff5a1f 62px 80px);
-    background-size: 180px 180%;
-    filter: drop-shadow(0 0 0.08em rgb(255 90 31 / 0.7)) drop-shadow(0 0 0.12em rgb(0 217 255 / 0.28));
-    animation: player-name-flames 2.2s ease-in-out infinite;
+  .app-content .player-name-color[data-name-effect="fx-galaxy"],
+  .app-content .player-name-color[data-name-effect="fx-diamond-shine"],
+  .app-content .player-name-color[data-name-effect="fx-cosmic-nebula"],
+  .app-content .player-name-color[data-name-effect="fx-stellar-rush"],
+  .app-content .player-name-color[data-name-effect="fx-prism-mirage"],
+  .app-content .player-name-color[data-name-effect="fx-golden-dimension"] {
+    background-repeat: repeat;
+    background-position: center;
+    background-size: 210px 210px;
+    animation: none !important;
   }
 
-  /* Transparent animated fire sits outside the name instead of painting a
-     rectangular gradient behind it. The artwork scales cleanly for headings,
-     player cards and compact match-room names. */
-  .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::before,
-  .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    pointer-events: none;
-    background-repeat: repeat-x;
-    background-position: center bottom;
-    background-size: 3.35em 3.35em;
-    transform-origin: 50% 100%;
-    mix-blend-mode: screen;
+  .app-content .player-name-color[data-name-effect="fx-cosmic-nebula"] {
+    background-color: #160c34;
+    background-image: url("/assets/name-effects/cosmic-nebula.gif");
+    filter: saturate(1.1) brightness(1.04);
   }
 
-  .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::before {
-    inset: -1.1em -0.65em -0.72em;
-    opacity: 0.72;
-    background-image: url("/assets/name-effects/topfragg-flames-transparent.gif");
-    filter: drop-shadow(0 0 0.2em rgb(255 90 31 / 0.72));
-    animation: player-name-gif-flames 1.3s ease-in-out infinite alternate;
+  .app-content .player-name-color[data-name-effect="fx-stellar-rush"] {
+    background-color: #071b2c;
+    background-image: url("/assets/name-effects/stellar-rush.gif");
+    filter: saturate(1.08) brightness(1.06);
   }
 
-  .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::after {
-    inset: -0.62em -0.34em -0.38em;
-    opacity: 0.34;
-    background-size: 2.55em 2.55em;
-    background-image: url("/assets/name-effects/topfragg-flames-transparent.gif");
-    filter: hue-rotate(142deg) saturate(1.35) drop-shadow(0 0 0.16em rgb(0 217 255 / 0.68));
-    animation: player-name-gif-flames 1.7s ease-in-out -0.45s infinite alternate-reverse;
+  .app-content .player-name-color[data-name-effect="fx-prism-mirage"] {
+    background-color: #2b123c;
+    background-image: url("/assets/name-effects/prism-mirage.gif");
+    filter: saturate(1.05) brightness(1.02);
+  }
+
+  .app-content .player-name-color[data-name-effect="fx-golden-dimension"] {
+    background-color: #3b2205;
+    background-image: url("/assets/name-effects/golden-dimension.gif");
+    filter: saturate(1.08) brightness(1.04);
   }
 
   .app-content .player-name-color[data-name-effect="fx-lightning-gold"] {
@@ -1660,23 +1653,6 @@
     to { background-position: 220px 50%; }
   }
 
-  @keyframes player-name-galaxy-texture {
-    0%, 100% { background-position: center; filter: saturate(1.08) brightness(1.02); }
-    35% { background-position: 22px -8px; filter: saturate(1.2) brightness(1.16); }
-    68% { background-position: -18px 6px; filter: saturate(1.28) brightness(1.24); }
-  }
-
-  @keyframes player-name-flames {
-    0%, 100% { background-position: 0 100%; }
-    50% { background-position: 90px 0; }
-  }
-
-  @keyframes player-name-gif-flames {
-    0% { transform: translateY(0) scale(0.98, 0.96); }
-    42% { transform: translateY(-0.06em) scale(1.02, 1.05) skewX(-1deg); }
-    100% { transform: translateY(0.02em) scale(0.99, 1.01) skewX(1deg); }
-  }
-
   @keyframes player-name-lightning {
     from { background-position: 0 100%; }
     to { background-position: 140px 0; }
@@ -1684,8 +1660,6 @@
 
   @media (prefers-reduced-motion: reduce) {
     .app-content .player-name-color[data-name-effect^="fx-"] { animation: none; }
-    .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::before,
-    .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::after { animation: none; }
   }
 
   .app-content .dark-media [class*="border-white"],
