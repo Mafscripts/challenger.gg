@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AtSign, Award, Crown, Globe2, Medal, MessageCircle, Swords, Trophy, Twitch, Youtube } from "lucide-react";
+import { AtSign, Award, Crown, Globe2, Medal, MessageCircle, Trophy, Twitch, Youtube } from "lucide-react";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
 
@@ -19,7 +19,6 @@ const trophiesFor = (player) => player?.trophies || {
   gold: number(player?.gold_count),
   silver: number(player?.silver_count),
   bronze: number(player?.bronze_count),
-  invitational: number(player?.champion_count || player?.invitational_count),
   premium: number(player?.premium_count),
 };
 const socialsFor = (player) => player?.socials || {
@@ -39,7 +38,6 @@ const trophySlots = [
   { key: "gold", label: "Gold trophies", icon: Trophy, className: "border-yellow-400/20 bg-yellow-400/[0.08] text-yellow-300" },
   { key: "silver", label: "Silver trophies", icon: Medal, className: "border-slate-300/20 bg-slate-300/[0.07] text-slate-200" },
   { key: "bronze", label: "Bronze trophies", icon: Award, className: "border-amber-600/25 bg-amber-600/[0.09] text-amber-500" },
-  { key: "invitational", label: "Invitational trophies", icon: Swords, className: "border-cyan/20 bg-cyan/[0.07] text-cyan" },
   { key: "premium", label: "Premium trophies", icon: Crown, className: "border-purple-300/20 bg-purple-300/[0.07] text-purple-300" },
 ];
 

@@ -61,12 +61,11 @@ const statNumber = (value) => {
   const number = Number(value || 0);
   return Number.isFinite(number) ? number : 0;
 };
-const emptyTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, invitational: 0, premium: 0 });
+const emptyTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0 });
 const rosterTrophySlots = [
   { key: "gold", label: "Gold", icon: Trophy, tone: "text-yellow-400" },
   { key: "silver", label: "Silver", icon: Medal, tone: "text-gray-300" },
   { key: "bronze", label: "Bronze", icon: Award, tone: "text-amber-600" },
-  { key: "invitational", label: "Invitational", icon: Swords, tone: "text-cyan" },
   { key: "premium", label: "Premium", icon: Crown, tone: "text-purple-300" },
 ];
 const countInventoryTrophies = (items = []) => {
@@ -79,12 +78,12 @@ const countInventoryTrophies = (items = []) => {
       .toLowerCase();
     if (item.item_category !== "trophy" && !text.includes("trophy")) return;
 
+    if (text.includes("invit") || text.includes("champion")) return;
     if (text.includes("premium")) counts.premium += 1;
-    else if (text.includes("invit") || text.includes("champion")) counts.invitational += 1;
     else if (text.includes("gold")) counts.gold += 1;
     else if (text.includes("silver")) counts.silver += 1;
     else if (text.includes("bronze")) counts.bronze += 1;
-    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") counts.invitational += 1;
+    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") return;
     else if (item.item_rarity === "legendary" || item.item_rarity === "epic") counts.gold += 1;
     else if (item.item_rarity === "rare") counts.silver += 1;
     else counts.bronze += 1;
@@ -97,7 +96,6 @@ const trophyCountsFor = (user, inventoryRows = []) => {
     gold: statNumber(user?.gold_count) + inventory.gold,
     silver: statNumber(user?.silver_count) + inventory.silver,
     bronze: statNumber(user?.bronze_count) + inventory.bronze,
-    invitational: statNumber(user?.invitational_count || user?.invitation_count || user?.champion_count) + inventory.invitational,
     premium: statNumber(user?.premium_count) + inventory.premium,
   };
 };
@@ -986,7 +984,7 @@ function OverviewTab({ team, members, usersById, matches, nextMatch, tournaments
 function RosterTrophyCounts({ trophies }) {
   const counts = trophies || emptyTrophyCounts();
   return (
-    <div className="grid grid-cols-5 gap-1.5">
+    <div className="grid grid-cols-4 gap-1.5">
       {rosterTrophySlots.map(({ key, label, icon: Icon, tone }) => (
         <span key={key} title={`${label} trophies: ${statNumber(counts[key])}`} aria-label={`${label} trophies: ${statNumber(counts[key])}`} className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/[0.05] bg-background/45 px-1.5 py-2">
           <Icon className={`h-3.5 w-3.5 shrink-0 ${tone}`} />

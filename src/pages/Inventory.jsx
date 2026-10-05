@@ -48,7 +48,12 @@ export default function Inventory() {
       if (!user) return;
 
       const inventory = await base44.entities.UserInventory.filter({ user_id: user.id }, "-acquired_date", 100);
-      setOwnedItems(inventory.map(item => ({
+      const visibleInventory = inventory.filter((item) => {
+        const text = `${item.item_category || ""} ${item.item_name || ""} ${item.unlock_key || ""}`.toLowerCase();
+        const isTrophy = item.item_category === "trophy" || text.includes("trophy");
+        return !(isTrophy && (text.includes("invit") || text.includes("champion")));
+      });
+      setOwnedItems(visibleInventory.map(item => ({
         id: item.id,
         name: item.item_name,
         rarity: item.item_rarity,

@@ -1,5 +1,5 @@
 import React from "react";
-import { Trophy, Medal, Award, Crown, Target } from "lucide-react";
+import { Trophy, Medal, Award, Crown } from "lucide-react";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 
@@ -65,10 +65,6 @@ function PlayerRow({ player, teamColor }) {
         <div className="flex flex-col items-center gap-0.5">
           <Crown className="w-3 h-3 text-purple-400" />
           <p className="text-[9px] font-bold text-purple-400 leading-none">{player.premium_count || 0}</p>
-        </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <Target className="w-3 h-3 text-cyan-400" />
-          <p className="text-[9px] font-bold text-cyan-400 leading-none">{player.champion_count || 0}</p>
         </div>
       </div>
     </div>

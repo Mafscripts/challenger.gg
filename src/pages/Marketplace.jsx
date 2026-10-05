@@ -30,6 +30,12 @@ export const toMarketItem = (item) => ({
   stock: item.stock_quantity === undefined || item.stock_quantity === null || item.stock_quantity === "" ? null : Number(item.stock_quantity),
 });
 
+const isRemovedInvitationalTrophy = (item) => {
+  const text = `${item?.category || ""} ${item?.name || ""} ${item?.description || ""} ${item?.unlock_key || ""}`.toLowerCase();
+  const isTrophy = item?.category === "trophy" || text.includes("trophy");
+  return isTrophy && (text.includes("invit") || text.includes("champion"));
+};
+
 const categoryLabel = (value) => String(value || "cosmetic").replace(/_/g, " ");
 const marketplaceManagers = ["ceo", "super_admin", "admin"];
 
@@ -114,7 +120,7 @@ export default function Marketplace() {
       ]);
       setCurrentUser(syncedUser);
       setOwnedItemIds(new Set((inventory || []).map((entry) => entry.item_id).filter(Boolean)));
-      setItems(dedupeById((rows || []).map(toMarketItem).filter((item) => (
+      setItems(dedupeById((rows || []).filter((item) => !isRemovedInvitationalTrophy(item)).map(toMarketItem).filter((item) => (
         item.active && !["8s", "eights", "xp"].includes(String(item.unlockType || "").toLowerCase())
       ))));
     } catch (error) {

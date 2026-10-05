@@ -155,7 +155,7 @@ const profileTrophyCount = (user, inventory = []) => (
   Number(user?.trophies || 0)
   + (inventory || []).filter((item) => {
     const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
-    return text.includes("trophy");
+    return text.includes("trophy") && !text.includes("invit") && !text.includes("champion");
   }).length
 );
 
@@ -166,6 +166,7 @@ function countProfileInventoryTrophies(items = []) {
   (items || []).forEach((item) => {
     const text = cleanKey([item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method].filter(Boolean).join(" "));
     if (item.item_category !== "trophy" && !text.includes("trophy")) return;
+    if (text.includes("invit") || text.includes("champion")) return;
 
     if (text.includes("topfrag") || text.includes("topfragg")) counts.topfragg += 1;
     else if (text.includes("hosted") || text.includes("host trophy")) counts.hosted += 1;
@@ -173,7 +174,7 @@ function countProfileInventoryTrophies(items = []) {
     else if (text.includes("gold")) counts.gold += 1;
     else if (text.includes("silver")) counts.silver += 1;
     else if (text.includes("bronze")) counts.bronze += 1;
-    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") counts.premium += 1;
+    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") return;
     else if (item.item_rarity === "legendary" || item.item_rarity === "epic") counts.gold += 1;
     else if (item.item_rarity === "rare") counts.silver += 1;
     else counts.bronze += 1;
@@ -356,7 +357,7 @@ export default function Profile() {
   const trophyOverviewCards = trophyOverviewFor(user, profile, inventory, matches);
   const earnedTrophyItems = inventory.filter((item) => {
     const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
-    return item.item_category === "trophy" || text.includes("trophy");
+    return (item.item_category === "trophy" || text.includes("trophy")) && !text.includes("invit") && !text.includes("champion");
   }).slice(0, 12);
 
   const handleAvatarFile = async (event) => {

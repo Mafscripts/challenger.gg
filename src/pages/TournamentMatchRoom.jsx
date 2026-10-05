@@ -83,7 +83,7 @@ const statNumber = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 const moneyLabel = (value) => `$${statNumber(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-const emptyTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, invitational: 0, premium: 0 });
+const emptyTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0 });
 const tournamentBestOf = (match) => {
   const bestOf = Math.trunc(Number(match?.best_of || match?.map_sequence?.length || 3));
   return Number.isFinite(bestOf) && bestOf > 0 ? bestOf : 3;
@@ -120,7 +120,6 @@ const trophySlots = [
   { key: "gold", label: "Gold trophies", icon: Trophy, className: "border-yellow-400/20 bg-yellow-400/[0.08] text-yellow-300 hover:border-yellow-400/45 hover:bg-yellow-400/[0.14] hover:shadow-[0_0_16px_rgba(250,204,21,.12)]" },
   { key: "silver", label: "Silver trophies", icon: Medal, className: "border-slate-300/20 bg-slate-300/[0.07] text-slate-200 hover:border-slate-200/40 hover:bg-slate-200/[0.12] hover:shadow-[0_0_16px_rgba(203,213,225,.1)]" },
   { key: "bronze", label: "Bronze trophies", icon: Award, className: "border-amber-600/25 bg-amber-600/[0.09] text-amber-500 hover:border-amber-500/45 hover:bg-amber-500/[0.14] hover:shadow-[0_0_16px_rgba(217,119,6,.12)]" },
-  { key: "invitational", label: "Invitational trophies", icon: Swords, className: "border-cyan/20 bg-cyan/[0.07] text-cyan hover:border-cyan/40 hover:bg-cyan/[0.12] hover:shadow-[0_0_16px_rgba(20,216,255,.12)]" },
   { key: "premium", label: "Premium trophies", icon: Crown, className: "border-purple-300/20 bg-purple-300/[0.07] text-purple-300 hover:border-purple-300/40 hover:bg-purple-300/[0.12] hover:shadow-[0_0_16px_rgba(216,180,254,.12)]" },
 ];
 
@@ -223,12 +222,12 @@ function countInventoryTrophies(items = []) {
     const text = cleanKey([item.item_name, item.unlock_key, item.item_rarity, item.purchase_method].filter(Boolean).join(" "));
     if (item.item_category !== "trophy" && !text.includes("trophy")) return;
 
+    if (text.includes("invit") || text.includes("champion")) return;
     if (text.includes("premium")) counts.premium += 1;
-    else if (text.includes("invit") || text.includes("champion")) counts.invitational += 1;
     else if (text.includes("gold")) counts.gold += 1;
     else if (text.includes("silver")) counts.silver += 1;
     else if (text.includes("bronze")) counts.bronze += 1;
-    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") counts.invitational += 1;
+    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") return;
     else if (item.item_rarity === "legendary" || item.item_rarity === "epic") counts.gold += 1;
     else if (item.item_rarity === "rare") counts.silver += 1;
     else counts.bronze += 1;
@@ -242,7 +241,6 @@ function trophyCountsFor(userRow, inventoryRows) {
     gold: statNumber(userRow?.gold_count) + inventoryCounts.gold,
     silver: statNumber(userRow?.silver_count) + inventoryCounts.silver,
     bronze: statNumber(userRow?.bronze_count) + inventoryCounts.bronze,
-    invitational: statNumber(userRow?.invitational_count || userRow?.invitation_count || userRow?.champion_count) + inventoryCounts.invitational,
     premium: statNumber(userRow?.premium_count) + inventoryCounts.premium,
   };
 }

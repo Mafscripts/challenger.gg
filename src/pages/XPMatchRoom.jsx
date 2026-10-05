@@ -469,7 +469,6 @@ export default function XPMatchRoom() {
       silver_count: userRows?.silver_count || 0,
       bronze_count: userRows?.bronze_count || 0,
       premium_count: userRows?.premium_count || 0,
-      champion_count: userRows?.champion_count || userRows?.invitational_count || 0,
       socials: {
         discord: profile.discord || userRows?.discord || "",
         twitter: profile.twitter || profile.x || userRows?.twitter || userRows?.x || "",

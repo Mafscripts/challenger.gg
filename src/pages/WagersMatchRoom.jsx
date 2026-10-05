@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
   AlertTriangle, Check, ChevronDown, Clock3, Gavel, Unlock,
-  AlertCircle, Award, Crown, DollarSign, Medal, RefreshCw, Shield, ShieldCheck, Sparkles, Trophy, X
+  AlertCircle, Award, Crown, DollarSign, Medal, RefreshCw, Shield, ShieldCheck, Trophy, X
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
@@ -105,13 +105,12 @@ function SimpleRoster({ title, name, players, tone = "cyan", score, isComplete =
 
             <div className="mt-3">
               <p className="mb-2 text-[9px] font-black uppercase tracking-wider text-vapor">Trophy case</p>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-4 gap-1.5">
                 {[
                   ["Gold", player.gold_count, Trophy, "text-yellow-400 border-yellow-400/15 bg-yellow-400/5"],
                   ["Silver", player.silver_count, Medal, "text-slate-300 border-slate-300/15 bg-slate-300/5"],
                   ["Bronze", player.bronze_count, Award, "text-amber-600 border-amber-600/15 bg-amber-600/5"],
                   ["Premium", player.premium_count, Crown, "text-purple-300 border-purple-300/15 bg-purple-300/5"],
-                  ["Champion", player.champion_count, Sparkles, "text-cyan border-cyan/15 bg-cyan/5"],
                 ].map(([label, count, Icon, classes]) => (
                   <div key={label} title={`${label} trophies`} className={`rounded-lg border px-1 py-2 text-center ${classes}`}>
                     <Icon className="mx-auto h-3.5 w-3.5" />

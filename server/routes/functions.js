@@ -535,7 +535,8 @@ async function normalizeTournamentPlacementTrophyFields(source = {}) {
     .filter((item) => {
       const searchableText = `${item.name || ""} ${item.description || ""}`.toLowerCase();
       return String(item.category || "").toLowerCase() === "trophy"
-        && (searchableText.includes("premium") || searchableText.includes("invitational"));
+        && searchableText.includes("premium")
+        && !searchableText.includes("invit");
     });
   const trophyById = new Map(trophyItems.map((item) => [String(item.id), item]));
   const placementTrophyItemIds = {};
@@ -670,7 +671,12 @@ async function grantTournamentPlacementRewards(tournament, participantId, userId
   if (!participantId || (userIds || []).length === 0) return { standard: [], custom: [] };
   const standard = await grantStandardTournamentPlacementTrophy(tournament, participantId, userIds, placement);
   const customItemIds = placement === 1 ? tournamentPlacementTrophyItemIds(tournament, 1) : [];
-  const customItems = await marketplaceItemsByIds(customItemIds);
+  const customItems = (await marketplaceItemsByIds(customItemIds)).filter((item) => {
+    const searchableText = `${item.name || ""} ${item.description || ""}`.toLowerCase();
+    return String(item.category || "").toLowerCase() === "trophy"
+      && searchableText.includes("premium")
+      && !searchableText.includes("invit");
+  });
   const users = await Promise.all([...new Set(userIds.filter(Boolean))].map((userId) => userFor(userId)));
   const custom = await grantMarketplaceItemsToUsers(users.filter(Boolean), customItems, {
     tournament,

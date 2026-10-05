@@ -154,7 +154,6 @@ const defaultMarketplaceForm = {
 };
 const winnerSpecialTrophyTemplates = [
   { key: "premium", name: "Premium Tournament Trophy", rarity: "mythic", description: "A winner-only profile trophy for premium tournaments." },
-  { key: "invitational", name: "Invitational Tournament Trophy", rarity: "exclusive", description: "A winner-only profile trophy for invitational tournaments." },
 ];
 const defaultTournamentForm = {
   name: "",
@@ -275,7 +274,15 @@ const closedAdminAlertStatuses = new Set(["acknowledged", "resolved", "closed"])
 const isOpenAdminAlert = (alert) => !closedAdminAlertStatuses.has(alert?.status || "open");
 const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
 const isVisibleCompetitionRecord = (record) => !hiddenCompetitionTypes.has(String(record?.match_type || "").toLowerCase());
-const isVisibleMarketplaceItem = (item) => !hiddenCompetitionTypes.has(String(item?.unlock_type || "").toLowerCase());
+const isRemovedInvitationalTrophy = (item) => {
+  const text = `${item?.category || ""} ${item?.name || ""} ${item?.description || ""} ${item?.unlock_key || ""}`.toLowerCase();
+  const isTrophy = item?.category === "trophy" || text.includes("trophy");
+  return isTrophy && (text.includes("invit") || text.includes("champion"));
+};
+const isVisibleMarketplaceItem = (item) => (
+  !hiddenCompetitionTypes.has(String(item?.unlock_type || "").toLowerCase())
+  && !isRemovedInvitationalTrophy(item)
+);
 const adminAlertActionUrl = (alert, ticket) => {
   if (ticket?.action_url) return ticket.action_url;
   if (alert?.action_url) return alert.action_url;
@@ -657,7 +664,7 @@ export default function Admin() {
         wallets,
         withdrawals,
         marketplace: marketplace.filter(isVisibleMarketplaceItem),
-        inventory,
+        inventory: inventory.filter((item) => !isRemovedInvitationalTrophy(item)),
         adminActions,
         bans,
         systemLogs,
@@ -733,7 +740,7 @@ export default function Admin() {
   const winnerSpecialTrophyItems = useMemo(() => (
     tournamentTrophyItems.filter((item) => {
       const searchableText = `${item.name || ""} ${item.description || ""}`.toLowerCase();
-      return searchableText.includes("premium") || searchableText.includes("invitational");
+      return searchableText.includes("premium") && !searchableText.includes("invit");
     })
   ), [tournamentTrophyItems]);
 
@@ -1757,7 +1764,7 @@ export default function Admin() {
 
       const merged = [...created, ...data.marketplace.filter((item) => !created.some((entry) => entry.id === item.id))];
       setData((current) => ({ ...current, marketplace: merged }));
-      toast({ title: "Winner trophies ready", description: "Premium and Invitational are now available for tournament winners." });
+      toast({ title: "Winner trophy ready", description: "The Premium winner trophy is now available for tournament winners." });
     } catch (error) {
       toast({ title: "Trophy setup failed", description: error.message || "Could not create the trophy set.", variant: "destructive" });
     } finally {
@@ -3231,7 +3238,7 @@ export default function Admin() {
                         </button>
                         {winnerSpecialTrophyItems.map((item) => {
                           const selected = tournamentForm.placement_trophy_item_ids?.[1]?.[0] === item.id;
-                          const kind = `${item.name || ""} ${item.description || ""}`.toLowerCase().includes("premium") ? "Premium" : "Invitational";
+                          const kind = "Premium";
                           return (
                             <button
                               key={item.id}

@@ -15,16 +15,16 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
       const text = String([item.item_name, item.unlock_key, item.item_rarity, item.purchase_method].filter(Boolean).join(" ")).toLowerCase();
       if (item.item_category !== "trophy" && !text.includes("trophy")) return counts;
       if (text.includes("premium")) counts.premium += 1;
-      else if (text.includes("champion") || text.includes("invit")) counts.champion += 1;
+      else if (text.includes("champion") || text.includes("invit")) return counts;
       else if (text.includes("gold")) counts.gold += 1;
       else if (text.includes("silver")) counts.silver += 1;
       else if (text.includes("bronze")) counts.bronze += 1;
-      else if (["exclusive", "mythic"].includes(item.item_rarity)) counts.champion += 1;
+      else if (["exclusive", "mythic"].includes(item.item_rarity)) return counts;
       else if (["legendary", "epic"].includes(item.item_rarity)) counts.gold += 1;
       else if (item.item_rarity === "rare") counts.silver += 1;
       else counts.bronze += 1;
       return counts;
-    }, { gold: 0, silver: 0, bronze: 0, premium: 0, champion: 0 });
+    }, { gold: 0, silver: 0, bronze: 0, premium: 0 });
 
     return {
       id: participant.id,
@@ -51,7 +51,6 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
       silver_count: Number(userRow?.silver_count || 0) + inventoryTrophies.silver,
       bronze_count: Number(userRow?.bronze_count || 0) + inventoryTrophies.bronze,
       premium_count: Number(userRow?.premium_count || 0) + inventoryTrophies.premium,
-      champion_count: Number(userRow?.champion_count || userRow?.invitational_count || 0) + inventoryTrophies.champion,
       socials: {
         discord: userRow?.discord_username || profileRow.discord || userRow?.discord || "",
         twitter: profileRow.twitter || profileRow.x || userRow?.twitter || userRow?.x || "",
