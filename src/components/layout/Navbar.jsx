@@ -10,7 +10,6 @@ import {
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { toast } from "@/components/ui/use-toast";
 
 const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const isRecentAdminDispute = (item) => {
@@ -20,6 +19,41 @@ const isRecentAdminDispute = (item) => {
 const balancePopupKey = (item) => (
   `${item?.related_entity_type || "balance"}:${item?.related_entity_id || item?.id || "event"}:${Number(item?.balance_change || 0).toFixed(2)}`
 );
+
+function BalancePopup({ notification, onClose }) {
+  useEffect(() => {
+    if (!notification?.popup_id) return undefined;
+    const timer = window.setTimeout(onClose, 5200);
+    return () => window.clearTimeout(timer);
+  }, [notification?.popup_id, onClose]);
+
+  if (!notification) return null;
+  const amount = Number(notification.balance_change || 0);
+  const positive = amount > 0;
+  const absoluteAmount = Math.abs(amount);
+  const isWallet = notification.balance_type === "wallet";
+  const amountLabel = isWallet
+    ? `${positive ? "+" : "−"}$${absoluteAmount.toFixed(2)}`
+    : `${positive ? "+" : "−"}${absoluteAmount.toLocaleString()} Credits`;
+
+  return (
+    <div className="pointer-events-none fixed inset-x-4 top-20 z-[120] flex justify-center sm:left-auto sm:right-5 sm:inset-x-auto sm:w-[min(390px,calc(100vw-2.5rem))]">
+      <div className={`pointer-events-auto relative w-full overflow-hidden rounded-2xl border p-4 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-3 duration-300 ${positive ? "border-green/40 bg-[#071d1a]/95 shadow-[0_18px_48px_-20px_rgba(0,255,150,.8)]" : "border-red-400/40 bg-[#241317]/95 shadow-[0_18px_48px_-20px_rgba(255,80,100,.7)]"}`}>
+        <div className={`absolute inset-x-0 top-0 h-1 ${positive ? "bg-green" : "bg-red-400"}`} />
+        <button type="button" onClick={onClose} aria-label="Close balance notification" className="absolute right-2.5 top-2.5 rounded-lg p-1.5 text-vapor transition-colors hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></button>
+        <div className="flex items-center gap-3 pr-7">
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${positive ? "bg-green/15 text-green" : "bg-red-400/15 text-red-300"}`}><Wallet className="h-5 w-5" /></div>
+          <div className="min-w-0">
+            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${positive ? "text-green" : "text-red-300"}`}>{positive ? "Wallet credited" : "Wallet charged"}</p>
+            <p className="mt-0.5 font-mono text-2xl font-black text-white">{amountLabel}</p>
+          </div>
+        </div>
+        {notification.message && <p className="mt-3 text-xs leading-5 text-vapor">{notification.message}</p>}
+        <div className={`mt-3 h-0.5 origin-left animate-[balance-popup-progress_5.2s_linear_forwards] rounded-full ${positive ? "bg-green/60" : "bg-red-400/60"}`} />
+      </div>
+    </div>
+  );
+}
 
 const navGroups = [
   {
@@ -283,20 +317,12 @@ export default function Navbar() {
   const balancePopupsReady = useRef(false);
   const shownBalancePopupIds = useRef(new Set());
   const shownBalancePopupKeys = useRef(new Set());
+  const [balancePopup, setBalancePopup] = useState(null);
 
   const showBalancePopup = (notification) => {
     const amount = Number(notification?.balance_change || 0);
     if (!Number.isFinite(amount) || amount === 0) return;
-    const positive = amount > 0;
-    const absoluteAmount = Math.abs(amount);
-    toast({
-      title: notification.balance_type === "wallet"
-        ? `${positive ? "+" : "−"}$${absoluteAmount.toFixed(2)}`
-        : `${positive ? "+" : "−"}${absoluteAmount.toLocaleString()} Credits`,
-      description: notification.message,
-      variant: positive ? "default" : "destructive",
-      className: positive ? "border-green/40 bg-green/[0.12]" : undefined,
-    });
+    setBalancePopup({ ...notification, popup_id: `${balancePopupKey(notification)}:${Date.now()}` });
   };
 
   useEffect(() => {
@@ -490,6 +516,7 @@ export default function Navbar() {
     setUser(null);
     setNotifications([]);
     setNotificationsHydrated(false);
+    setBalancePopup(null);
     balancePopupsReady.current = false;
     shownBalancePopupIds.current.clear();
     shownBalancePopupKeys.current.clear();
@@ -965,6 +992,7 @@ export default function Navbar() {
 
   return (
     <>
+      <BalancePopup notification={balancePopup} onClose={() => setBalancePopup(null)} />
       {adminRequest && isStaffUser(user || authUser) && (() => {
         const matchId = adminRequest.match_id || adminRequest.related_entity_id;
         const matchType = String(adminRequest.match_type || "wager").toLowerCase();

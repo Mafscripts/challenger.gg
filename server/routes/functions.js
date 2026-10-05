@@ -6855,6 +6855,19 @@ async function leaveEightsLobby(req) {
       reference_type: "Wager",
       reference_id: wager.id,
     });
+    if (wager.match_type === "money8s") {
+      await notifyUser(leaving.user_id, {
+        title: "Money 8s entry refunded",
+        message: `$${leavingStake.toFixed(2)} was refunded to your wallet after leaving the Money 8s lobby.`,
+        type: "wallet",
+        show_balance_popup: true,
+        balance_type: "wallet",
+        balance_change: leavingStake,
+        action_url: "/wallet",
+        related_entity_id: wager.id,
+        related_entity_type: "Wager",
+      });
+    }
     await updateEntity("WagerParticipant", leaving.id, { escrow_released: true, escrow_released_date: nowIso() });
   }
 

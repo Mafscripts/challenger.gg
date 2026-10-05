@@ -207,6 +207,18 @@ export default function EightsMatchRoom() {
     try {
       const response = await base44.functions.invoke("leaveEightsLobby", { wager_id: id });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not leave lobby");
+      if (isMoneyEights && entryFee > 0) {
+        window.dispatchEvent(new CustomEvent("topfragg:balance-popup", {
+          detail: {
+            title: "Money 8s entry refunded",
+            message: `${formatMoney(entryFee)} was refunded to your wallet after leaving the Money 8s lobby.`,
+            balance_type: "wallet",
+            balance_change: entryFee,
+            related_entity_id: id,
+            related_entity_type: "Wager",
+          },
+        }));
+      }
       navigate("/ranked/8s", { replace: true });
     } catch (error) {
       toast({ title: "Could not leave", description: error.message, variant: "destructive" });
