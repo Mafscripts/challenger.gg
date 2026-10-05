@@ -37,8 +37,8 @@ function BalancePopup({ notification, onClose }) {
     : `${positive ? "+" : "−"}${absoluteAmount.toLocaleString()} Credits`;
 
   return (
-    <div className="pointer-events-none fixed inset-x-4 top-20 z-[120] flex justify-center sm:left-auto sm:right-5 sm:inset-x-auto sm:w-[min(390px,calc(100vw-2.5rem))]">
-      <div className={`pointer-events-auto relative w-full overflow-hidden rounded-2xl border p-4 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-3 duration-300 ${positive ? "border-green/40 bg-[#071d1a]/95 shadow-[0_18px_48px_-20px_rgba(0,255,150,.8)]" : "border-red-400/40 bg-[#241317]/95 shadow-[0_18px_48px_-20px_rgba(255,80,100,.7)]"}`}>
+    <div className="pointer-events-none fixed inset-x-0 top-20 z-[120] flex justify-center px-4">
+      <div className={`pointer-events-auto relative w-full max-w-[390px] overflow-hidden rounded-2xl border p-4 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-3 duration-300 ${positive ? "border-green/40 bg-[#071d1a]/95 shadow-[0_18px_48px_-20px_rgba(0,255,150,.8)]" : "border-red-400/40 bg-[#241317]/95 shadow-[0_18px_48px_-20px_rgba(255,80,100,.7)]"}`}>
         <div className={`absolute inset-x-0 top-0 h-1 ${positive ? "bg-green" : "bg-red-400"}`} />
         <button type="button" onClick={onClose} aria-label="Close balance notification" className="absolute right-2.5 top-2.5 rounded-lg p-1.5 text-vapor transition-colors hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></button>
         <div className="flex items-center gap-3 pr-7">
