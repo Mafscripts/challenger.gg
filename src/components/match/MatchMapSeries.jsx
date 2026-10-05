@@ -19,7 +19,7 @@ export default function MatchMapSeries({
   const columns = visibleMaps.length <= 1 ? "sm:grid-cols-1" : visibleMaps.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3";
 
   return (
-    <section className={`dark-focus dark-media h-full rounded-xl border border-white/[0.09] bg-[#202833] ${compact ? "p-4" : "p-5"}`}>
+    <section className={`dark-focus dark-media h-full rounded-xl border border-white/[0.09] bg-[#202328] ${compact ? "p-4" : "p-5"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
           <MapIcon className="h-4 w-4 text-cyan" /> {title}

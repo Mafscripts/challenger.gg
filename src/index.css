@@ -2224,13 +2224,13 @@
 }
 
 /* Match rooms share one surface hierarchy so the player tables do not sit beside
-   unrelated grey cards or gradients. Team tables keep their own darker row
-   treatment; every surrounding panel uses the same navy panel surface. */
+   unrelated blue cards or gradients. Team tables keep their own darker row
+   treatment; every surrounding panel uses the same charcoal surface. */
 .app-content .match-room-theme {
-  --match-room-shell: #1d2631;
-  --match-room-panel: #202833;
-  --match-room-card: #151e29;
-  --match-room-player: #121d29;
+  --match-room-shell: #25282d;
+  --match-room-panel: #202328;
+  --match-room-card: #1a1d22;
+  --match-room-player: #15181d;
 }
 
 .app-content .match-room-theme .glass,
@@ -2257,7 +2257,7 @@
 }
 
 .app-content .match-room-theme [class*="bg-secondary"] {
-  background-color: #26313d !important;
+  background-color: #2b2f35 !important;
 }
 
 @keyframes nav-popover-in {

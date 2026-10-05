@@ -92,9 +92,9 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
   const hoverToneClass = isOrange ? "hover:text-orange" : "hover:text-cyan";
 
   return (
-    <section className="relative overflow-visible rounded-xl border border-white/[0.075] bg-[#0f1823]">
+    <section className="relative overflow-visible rounded-xl border border-white/[0.075] bg-[#171a1f]">
       <div className={`absolute inset-x-10 top-0 h-px ${isOrange ? "bg-gradient-to-r from-transparent via-orange/70 to-transparent" : "bg-gradient-to-r from-transparent via-cyan/70 to-transparent"}`} />
-      <header className="flex flex-col gap-4 bg-[#0d1722] px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+      <header className="flex flex-col gap-4 bg-[#13161b] px-4 py-4 sm:flex-row sm:items-center sm:px-5">
         <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-mono text-base font-black ${tintClass} ${toneClass}`}>{teamMonogram(name || label)}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -119,12 +119,12 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
             const record = recordFor(player);
             const role = player.role || (captainId && String(userId) === String(captainId) ? "captain" : "member");
             return (
-              <article key={userId || `${displayName}-${index}`} className="grid gap-4 bg-[#121d29] px-4 py-4 transition-colors hover:bg-[#1b2a38] sm:px-5 xl:grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_105px_minmax(210px,1fr)_86px] xl:items-center xl:gap-3">
+              <article key={userId || `${displayName}-${index}`} className="grid gap-4 bg-[#191c21] px-4 py-4 transition-colors hover:bg-[#24282d] sm:px-5 xl:grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_105px_minmax(210px,1fr)_86px] xl:items-center xl:gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border font-mono text-sm font-black ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}</span>
                   <div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2">{profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`truncate text-sm font-black text-white transition-colors ${hoverToneClass} ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</Link> : <span data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`truncate text-sm font-black text-white ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</span>}<TournamentRankBadge goldTrophies={trophies.gold} /><UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" /></div><p className={`mt-1 truncate text-[9px] font-black uppercase ${role === "captain" ? "text-cyan" : "text-vapor"}`}>{role === "captain" ? "Captain" : "Member"}</p></div>
                 </div>
-                <div className="min-w-0"><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Gamertag</p><div className="inline-flex max-w-full rounded-lg border border-white/[0.18] bg-[#34404d] px-3 py-2"><ActivisionIdLabel user={player} className="max-w-full" /></div></div>
+                <div className="min-w-0"><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Gamertag</p><div className="inline-flex max-w-full rounded-lg border border-white/[0.18] bg-[#30343a] px-3 py-2"><ActivisionIdLabel user={player} className="max-w-full" /></div></div>
                 <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Record</p><p className="font-mono text-sm font-black"><span className="text-white">{record.wins}W</span><span className="mx-1.5 text-white/20">/</span><span className="text-vapor">{record.losses}L</span></p></div>
                 <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Earnings</p><p className="font-mono text-sm font-black text-green">{money(earningsFor(player))}</p></div>
                 <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Trophies</p><TrophyCounts trophies={trophies} /></div>
