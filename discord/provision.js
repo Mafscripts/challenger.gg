@@ -173,7 +173,12 @@ async function ensureMemberCountChannel(guild, roles) {
   );
   await channel.setPosition(0, { reason: "Keep the Topfragg member counter above the categories" });
   if (matchingChannels.size > 1) {
-    log(`Found ${matchingChannels.size} member counter channels; kept ${channel.name} at the server root and left extras untouched.`);
+    for (const duplicate of matchingChannels.values()) {
+      if (duplicate.id === channel.id) continue;
+      await duplicate.delete("Remove duplicate Topfragg member counter");
+      log(`Removed duplicate member counter: ${duplicate.name}`);
+    }
+    log(`Kept ${channel.name} as the only member counter at the server root.`);
   }
   return channel;
 }
