@@ -2908,3 +2908,25 @@ img {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
 }
+
+@keyframes balance-popup-enter {
+  from { opacity: 0; transform: translateY(-12px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes balance-popup-exit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-8px) scale(.98); }
+}
+
+.balance-popup-enter {
+  animation: balance-popup-enter 260ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.balance-popup-exit {
+  animation: balance-popup-exit 260ms ease-in both;
+}
+
+.balance-popup-progress {
+  animation: balance-popup-progress 5.2s linear both;
+}

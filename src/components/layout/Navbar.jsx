@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, Bell, MessageSquare, ChevronDown, User,
@@ -12,6 +12,8 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 
 const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const BALANCE_POPUP_DURATION_MS = 5200;
+const BALANCE_POPUP_EXIT_MS = 260;
 const isRecentAdminDispute = (item) => {
   const createdAt = Date.parse(item?.created_date || "");
   return !Number.isFinite(createdAt) || Date.now() - createdAt <= ADMIN_DISPUTE_POPUP_MAX_AGE_MS;
@@ -21,10 +23,17 @@ const balancePopupKey = (item) => (
 );
 
 function BalancePopup({ notification, onClose }) {
+  const [closing, setClosing] = useState(false);
+
   useEffect(() => {
     if (!notification?.popup_id) return undefined;
-    const timer = window.setTimeout(onClose, 5200);
-    return () => window.clearTimeout(timer);
+    setClosing(false);
+    const exitTimer = window.setTimeout(() => setClosing(true), BALANCE_POPUP_DURATION_MS - BALANCE_POPUP_EXIT_MS);
+    const closeTimer = window.setTimeout(onClose, BALANCE_POPUP_DURATION_MS);
+    return () => {
+      window.clearTimeout(exitTimer);
+      window.clearTimeout(closeTimer);
+    };
   }, [notification?.popup_id, onClose]);
 
   if (!notification) return null;
@@ -38,7 +47,7 @@ function BalancePopup({ notification, onClose }) {
 
   return (
     <div className="pointer-events-none fixed left-1/2 top-1/2 z-[120] w-[calc(100%-2rem)] max-w-[390px] -translate-x-1/2 -translate-y-1/2">
-      <div className={`pointer-events-auto relative w-full overflow-hidden rounded-2xl border p-4 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-3 duration-300 ${positive ? "border-green/40 bg-[#071d1a]/95 shadow-[0_18px_48px_-20px_rgba(0,255,150,.8)]" : "border-red-400/40 bg-[#241317]/95 shadow-[0_18px_48px_-20px_rgba(255,80,100,.7)]"}`}>
+      <div key={notification.popup_id} className={`pointer-events-auto relative w-full overflow-hidden rounded-2xl border p-4 shadow-2xl backdrop-blur-xl ${closing ? "balance-popup-exit" : "balance-popup-enter"} ${positive ? "border-green/40 bg-[#071d1a]/95 shadow-[0_18px_48px_-20px_rgba(0,255,150,.8)]" : "border-red-400/40 bg-[#241317]/95 shadow-[0_18px_48px_-20px_rgba(255,80,100,.7)]"}`}>
         <div className={`absolute inset-x-0 top-0 h-1 ${positive ? "bg-green" : "bg-red-400"}`} />
         <button type="button" onClick={onClose} aria-label="Close balance notification" className="absolute right-2.5 top-2.5 rounded-lg p-1.5 text-vapor transition-colors hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></button>
         <div className="flex items-center gap-3 pr-7">
@@ -49,7 +58,7 @@ function BalancePopup({ notification, onClose }) {
           </div>
         </div>
         {notification.message && <p className="mt-3 text-xs leading-5 text-vapor">{notification.message}</p>}
-        <div className={`mt-3 h-0.5 origin-left animate-[balance-popup-progress_5.2s_linear_forwards] rounded-full ${positive ? "bg-green/60" : "bg-red-400/60"}`} />
+        <div className={`balance-popup-progress mt-3 h-0.5 origin-left rounded-full ${positive ? "bg-green/60" : "bg-red-400/60"}`} />
       </div>
     </div>
   );
@@ -335,6 +344,8 @@ export default function Navbar() {
     if (!Number.isFinite(amount) || amount === 0) return;
     setBalancePopup({ ...notification, popup_id: `${balancePopupKey(notification)}:${Date.now()}` });
   };
+
+  const closeBalancePopup = useCallback(() => setBalancePopup(null), []);
 
   useEffect(() => {
     const unlockAndPlayPendingStaffAlert = async () => {
@@ -1005,7 +1016,7 @@ export default function Navbar() {
 
   return (
     <>
-      <BalancePopup notification={balancePopup} onClose={() => setBalancePopup(null)} />
+      <BalancePopup notification={balancePopup} onClose={closeBalancePopup} />
       {adminRequest && isStaffUser(user || authUser) && (() => {
         const matchId = adminRequest.match_id || adminRequest.related_entity_id;
         const matchType = String(adminRequest.match_type || "wager").toLowerCase();
