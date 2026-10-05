@@ -1609,25 +1609,28 @@
     position: absolute;
     z-index: -1;
     pointer-events: none;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 100% 100%;
+    background-repeat: repeat-x;
+    background-position: center bottom;
+    background-size: 3.35em 3.35em;
     transform-origin: 50% 100%;
     mix-blend-mode: screen;
   }
 
   .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::before {
-    inset: -0.48em -0.2em -0.28em;
-    opacity: 0.82;
-    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNjAgOTYiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZiIgeDE9IjAiIHkxPSIxIiB4Mj0iMCIgeTI9IjAiPjxzdG9wIHN0b3AtY29sb3I9IiNmZjVhMWYiLz48c3RvcCBvZmZzZXQ9Ii41MiIgc3RvcC1jb2xvcj0iI2ZmOWQwMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmZTY2ZCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9InVybCgjZikiIGQ9Ik0wIDk2VjYxYzEwLTggNy0yMiAxOS0zMyAyIDE2IDEzIDIwIDkgMzUgMTItMTIgMTktMjUgMTgtNDIgMTkgMTYgMTIgMzQgNyA0OSAxMy05IDI1LTE4IDMyLTM0IDExIDIzIDUgMzgtMiA2MEgwWiI+PGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIHZhbHVlcz0iLTMgMTkgOTY7MyAxOSA5NjstMiAxOSA5NjswIDE5IDk2IiBkdXI9IjEuMXMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIi8+PGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJzY2FsZSIgYWRkaXRpdmU9InN1bSIgdmFsdWVzPSIxIDE7MS4wMiAxLjA4OzAuOTggMC45NjsxIDEiIGR1cj0iMS4xcyIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiLz48L3BhdGg+PHBhdGggZmlsbD0idXJsKCNmKSIgZD0iTTg4IDk2YzgtMTYtMi0zMCAxMi00MyA1IDEwIDEzIDEzIDExIDI2IDEyLTkgMTctMTggMTctMzIgMTUgMTUgOSAzMSA2IDQ5aC00NloiPjxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiB2YWx1ZXM9IjMgMTExIDk2Oy00IDExMSA5NjsyIDExMSA5NjswIDExMSA5NiIgZHVyPSIuOTRzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPjxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0ic2NhbGUiIGFkZGl0aXZlPSJzdW0iIHZhbHVlcz0iMSAxOy45NyAxLjEyOzEuMDMgLjk0OzEgMSIgZHVyPSIuOTRzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPjwvcGF0aD48cGF0aCBmaWxsPSJ1cmwoI2YpIiBkPSJNMTY4IDk2VjUzYzEyLTEwIDctMjQgMjItMzkgMCAxOCAxNSAyMiAxMCAzOSAxMi0xMCAyMS0yMCAyMi0zOSAxOCAyMSA3IDM4LTEgNTcgMTYtOCAyOS0yMCAzNC0zNSA5IDI1IDcgNDItMSA2MGgtODZaIj48YW5pbWF0ZVRyYW5zZm9ybSBhdHRyaWJ1dGVOYW1lPSJ0cmFuc2Zvcm0iIHR5cGU9InJvdGF0ZSIgdmFsdWVzPSItMiAxOTAgOTY7NCAxOTAgOTY7LTMgMTkwIDk2OzAgMTkwIDk2IiBkdXI9IjEuMjVzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPjxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0ic2NhbGUiIGFkZGl0aXZlPSJzdW0iIHZhbHVlcz0iMSAxOzEuMDMgMS4xOy45OCAuOTU7MSAxIiBkdXI9IjEuMjVzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPjwvcGF0aD48cGF0aCBmaWxsPSJ1cmwoI2YpIiBkPSJNMjYwIDk2YzgtMTktMi0zMiAxMi00NyA1IDEyIDE0IDE1IDExIDI5IDEwLTEwIDE4LTIwIDE3LTM2IDE2IDE3IDEwIDM0IDUgNTRoLTQ1WiI+PGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIHZhbHVlcz0iNCAyODEgOTY7LTMgMjgxIDk2OzIgMjgxIDk2OzAgMjgxIDk2IiBkdXI9Ii44OHMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIi8+PGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJzY2FsZSIgYWRkaXRpdmU9InN1bSIgdmFsdWVzPSIxIDE7Ljk3IDEuMTsxLjAyIC45NjsxIDEiIGR1cj0iLjg4cyIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiLz48L3BhdGg+PHBhdGggZmlsbD0idXJsKCNmKSIgZD0iTTMzMCA5NmM4LTEzIDEtMjQgMTEtMzcgNCA4IDEwIDEyIDggMjIgNi04IDktMTQgOC0yNiA4IDEzIDMgMjcgMyA0MWgtMzBaIj48YW5pbWF0ZVRyYW5zZm9ybSBhdHRyaWJ1dGVOYW1lPSJ0cmFuc2Zvcm0iIHR5cGU9InJvdGF0ZSIgdmFsdWVzPSItNCAzNDUgOTY7MyAzNDUgOTY7LTEgMzQ1IDk2OzAgMzQ1IDk2IiBkdXI9IjEuMDJzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPjxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0ic2NhbGUiIGFkZGl0aXZlPSJzdW0iIHZhbHVlcz0iMSAxOzEuMDQgMS4wODsuOTggLjk1OzEgMSIgZHVyPSIxLjAycyIgcmVwZWF0Q291bnQ9ImluZGVmaW5pdGUiLz48L3BhdGg+PC9zdmc+");
-    animation: player-name-svg-flames 1.25s ease-in-out infinite;
+    inset: -1.1em -0.65em -0.72em;
+    opacity: 0.72;
+    background-image: url("/assets/name-effects/topfragg-flames.gif");
+    filter: drop-shadow(0 0 0.2em rgb(255 90 31 / 0.72));
+    animation: player-name-gif-flames 1.3s ease-in-out infinite alternate;
   }
 
   .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::after {
-    inset: -0.18em -0.12em -0.14em;
-    opacity: 0.66;
-    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNjAgOTYiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iYyIgeDE9IjAiIHkxPSIxIiB4Mj0iMCIgeTI9IjAiPjxzdG9wIHN0b3AtY29sb3I9IiMwZWE1ZTkiLz48c3RvcCBvZmZzZXQ9Ii41OCIgc3RvcC1jb2xvcj0iIzAwZDlmZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2RmZmJmZiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9InVybCgjYykiIGQ9Ik0xOCA5NmM4LTEzIDMtMjQgMTItMzUgMyA5IDggMTIgNyAyMCA4LTggMTItMTYgMTEtMjcgMTIgMTQgNiAyOSAzIDQySDE4WiI+PGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIHZhbHVlcz0iMyAzNyA5NjstMyAzNyA5NjsyIDM3IDk2OzAgMzcgOTYiIGR1cj0iMS4yOHMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIi8+PC9wYXRoPjxwYXRoIGZpbGw9InVybCgjYykiIGQ9Ik0xNDQgOTZjOC0xMSAzLTIxIDExLTMxIDMgOCA4IDExIDcgMTggNy03IDExLTE0IDExLTI0IDEwIDEyIDYgMjUgMyAzN2gtMzJaIj48YW5pbWF0ZVRyYW5zZm9ybSBhdHRyaWJ1dGVOYW1lPSJ0cmFuc2Zvcm0iIHR5cGU9InJvdGF0ZSIgdmFsdWVzPSItMiAxNjAgOTY7NCAxNjAgOTY7LTMgMTYwIDk2OzAgMTYwIDk2IiBkdXI9IjEuMDZzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIvPjwvcGF0aD48cGF0aCBmaWxsPSJ1cmwoI2MpIiBkPSJNMjg2IDk2YzctMTIgMy0yMiAxMS0zNCAzIDkgOCAxMiA3IDIxIDgtOCAxMi0xNiAxMS0yNyAxMiAxNCA2IDI4IDMgNDBoLTMyWiI+PGFuaW1hdGVUcmFuc2Zvcm0gYXR0cmlidXRlTmFtZT0idHJhbnNmb3JtIiB0eXBlPSJyb3RhdGUiIHZhbHVlcz0iNCAzMDIgOTY7LTMgMzAyIDk2OzIgMzAyIDk2OzAgMzAyIDk2IiBkdXI9Ii45MnMiIHJlcGVhdENvdW50PSJpbmRlZmluaXRlIi8+PC9wYXRoPjwvc3ZnPg==");
-    animation: player-name-svg-flames 1.55s ease-in-out -0.45s infinite reverse;
+    inset: -0.62em -0.34em -0.38em;
+    opacity: 0.34;
+    background-size: 2.55em 2.55em;
+    background-image: url("/assets/name-effects/topfragg-flames.gif");
+    filter: hue-rotate(142deg) saturate(1.35) drop-shadow(0 0 0.16em rgb(0 217 255 / 0.68));
+    animation: player-name-gif-flames 1.7s ease-in-out -0.45s infinite alternate-reverse;
   }
 
   .app-content .player-name-color[data-name-effect="fx-lightning-gold"] {
@@ -1681,10 +1684,10 @@
     50% { background-position: 90px 0; }
   }
 
-  @keyframes player-name-svg-flames {
-    0%, 100% { transform: translateY(0) scaleY(0.94); opacity: 0.62; }
-    35% { transform: translateY(-0.08em) scaleY(1.06) skewX(-1deg); opacity: 0.9; }
-    68% { transform: translateY(0.02em) scaleY(0.98) skewX(1deg); opacity: 0.72; }
+  @keyframes player-name-gif-flames {
+    0% { transform: translateY(0) scale(0.98, 0.96); }
+    42% { transform: translateY(-0.06em) scale(1.02, 1.05) skewX(-1deg); }
+    100% { transform: translateY(0.02em) scale(0.99, 1.01) skewX(1deg); }
   }
 
   @keyframes player-name-lightning {
