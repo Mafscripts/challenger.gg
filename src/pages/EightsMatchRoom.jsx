@@ -391,27 +391,23 @@ export default function EightsMatchRoom() {
                     </button>
                   </div>
                   {(match.admin_request_status || match.requested_admin) && <p className="mt-2 text-center text-[8px] font-bold text-red-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
+                  {isStaff && !closedStatuses.has(match.status) && <details className="group mt-3 border-t border-white/[0.06] pt-3">
+                    <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-blue-400/15 bg-blue-400/[0.05] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/10 [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5" /> Admin tools</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
+                      <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
+                      {isAdmin && <button type="button" onClick={adminReshuffleTeams} disabled={adminBusy || !reshuffleOpen} title={!reshuffleOpen ? "Available while the lobby is open and the reshuffle window is active" : "Randomize both teams again"} className="flex items-center justify-center gap-2 rounded-lg border border-purple-300/25 bg-purple-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-purple-200 transition-colors hover:bg-purple-300/15 disabled:opacity-40"><Shuffle className="h-3.5 w-3.5" /> Reshuffle teams</button>}
+                      <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 transition-colors hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
+                    </div>
+                  </details>}
                 </div>
               )}
             />
           </div>
         </div>
         </section>
-
-        {isStaff && !closedStatuses.has(match.status) && (
-          <details className="group mb-5 rounded-xl border border-blue-400/15 bg-card">
-            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[10px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/[0.05] [&::-webkit-details-marker]:hidden">
-              <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Admin tools</span>
-              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="grid gap-2 border-t border-white/[0.06] p-3 sm:grid-cols-4">
-              <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
-              <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
-              {isAdmin && <button type="button" onClick={adminReshuffleTeams} disabled={adminBusy || !reshuffleOpen} className="flex items-center justify-center gap-2 rounded-lg border border-purple-300/25 bg-purple-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-purple-200 hover:bg-purple-300/15 disabled:opacity-40"><Shuffle className="h-3.5 w-3.5" /> Reshuffle teams</button>}
-              <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
-            </div>
-          </details>
-        )}
 
         <div className="space-y-5"><MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} /><MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} /></div>
       </div>
