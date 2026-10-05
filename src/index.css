@@ -1619,6 +1619,7 @@
     margin-inline: -0.28em;
     padding-inline: 0.28em;
     border-radius: 0.35em;
+    font-size: calc(1em + 1px);
   }
 
   .app-content .player-name-color[data-name-effect^="fx-"]:not(h1)::after {
