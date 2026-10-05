@@ -152,7 +152,8 @@ const competitionToneFor = (label) => {
   if (label === "Tournament") return "border-orange/20 bg-orange/10 text-orange";
   if (label === "XP Match") return "border-purple-300/20 bg-purple-300/10 text-purple-200";
   if (label === "Ranked") return "border-yellow-400/20 bg-yellow-400/10 text-yellow-300";
-  return "border-white/10 bg-white/[0.04] text-vapor";
+  if (label === "Wager") return "border-orange/25 bg-orange/10 text-orange";
+  return "border-white/15 bg-white/[0.06] text-white";
 };
 
 const premiumInventoryEffectClass = (item) => {
@@ -817,7 +818,7 @@ function RecentMatchesPanel({ matches, userId, className = "", expanded = false 
               >
                 <span className={`grid h-9 w-9 place-items-center rounded-lg border ${resultClass}`}><Swords className={`h-4 w-4 ${resultColor}`} /></span>
                 <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{match.game_mode_display || match.game_mode || "Match"}</p><span className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider ${competitionToneFor(competitionLabel)}`}>{competitionLabel}</span></div>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{match.game_mode_display || match.game_mode || "Match"}</p><span className={`shrink-0 rounded-md border px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.12em] shadow-[inset_0_1px_0_rgba(255,255,255,.08)] ${competitionToneFor(competitionLabel)}`}>{competitionLabel}</span></div>
                   <p className="mt-1 truncate font-mono text-[8px] uppercase tracking-wider text-vapor">{formatDate(match.match_completed_date || match.completed_date || match.created_date)} · {match.final_map_name || match.map_name || "Map pending"}</p>
                 </div>
                 <p className="hidden font-mono text-xs font-black text-white sm:block">{matchScoreText(match)}</p>
