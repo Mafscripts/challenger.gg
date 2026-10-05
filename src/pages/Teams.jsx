@@ -34,6 +34,7 @@ import { toast } from "@/components/ui/use-toast";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
+import TrophyCounts from "@/components/ui/TrophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
 import { normalizeTeamRosterSize, teamRosterFormat } from "@/lib/teamFormats";
 
@@ -1000,6 +1001,10 @@ function RosterPanel({ team, members, usersById, isCaptain, busy, onInvite, onKi
               <MiniMetric label="Wager W-L" value={`${user.wager_wins || 0}-${user.wager_losses || 0}`} />
               <MiniMetric label="Region" value={String(user.region || team.region || "-").toUpperCase()} />
               <MiniMetric label="Earnings" value={formatMoney(playerEarnings(user))} />
+            </div>
+            <div className="mt-3 border-t border-white/[0.05] pt-3">
+              <div className="mb-2 flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Trophies</p><p className="text-[9px] font-bold text-vapor/60">Player card stats</p></div>
+              <TrophyCounts trophies={user.team_trophies} />
             </div>
           </article>
         );
