@@ -220,7 +220,7 @@ export default function EightsMatchRoom() {
           },
         }));
       }
-      navigate("/ranked/8s", { replace: true });
+      navigate(isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s", { replace: true });
     } catch (error) {
       toast({ title: "Could not leave", description: error.message, variant: "destructive" });
       loadRoom(true);
@@ -370,13 +370,13 @@ export default function EightsMatchRoom() {
   };
 
   if (loading && !match) return <PageLoader label="Loading 8s match" />;
-  if (!match) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="text-2xl font-black">Match not found</h1><Link to="/ranked/8s" className="mt-5 inline-flex text-cyan">Back to Ranked 8s</Link></div>;
+  if (!match) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="text-2xl font-black">Match not found</h1><Link to={isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s"} className="mt-5 inline-flex text-cyan">Back to {isMoneyEights ? "Money 8s" : "Ranked 8s"}</Link></div>;
 
   return (
     <div className="min-h-screen py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Link to="/ranked/8s" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> {roomLabel}</Link>
+          <Link to={isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s"} className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> {roomLabel}</Link>
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
