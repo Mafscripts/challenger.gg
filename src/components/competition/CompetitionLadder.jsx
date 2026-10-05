@@ -124,12 +124,12 @@ function rankTone(index) {
 
 export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride }) {
   const copy = modeCopy[mode] || modeCopy.xp;
-  const headerImage = "/assets/competition/topfragg-xp-header.png";
+  const headerImage = "/assets/competition/play-hero.png";
   const headerHeight = "min-h-[350px] lg:min-h-[370px]";
   return (
     <div className={`space-y-5 ${className}`}>
       <section className={`premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] ${headerHeight}`}>
-        <img src={headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-bottom opacity-90" />
+        <img src={headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-90" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.96)_0%,hsl(var(--background)/0.76)_23%,hsl(var(--background)/0.12)_44%,transparent_72%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(0deg,hsl(var(--background)/0.42)_0%,transparent_48%)]" />
         <div className="landing-bullet-field absolute inset-0 z-[5]" aria-hidden="true">

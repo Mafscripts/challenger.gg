@@ -257,7 +257,7 @@ export default function Matchfinder() {
     <main className="min-h-screen py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <section className="relative isolate h-[240px] overflow-hidden rounded-2xl border border-white/[0.1] bg-[#07111c] shadow-[0_18px_60px_rgba(0,0,0,.24)] sm:h-[300px] lg:h-[340px]" aria-labelledby="matchfinder-title">
-          <img src="/assets/competition/matchfinder-hero.png" alt="Topfragg Matchfinder competition hub" className="absolute inset-0 h-full w-full object-cover object-center" />
+          <img src="/assets/competition/play-hero.png" alt="Topfragg Play competition hub" className="absolute inset-0 h-full w-full object-cover object-center" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#07111c]/75 via-transparent to-[#07111c]/10" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#07111c]/20 via-transparent to-[#07111c]/35" />
           <h1 id="matchfinder-title" className="sr-only">Matchfinder</h1>

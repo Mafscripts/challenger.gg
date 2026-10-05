@@ -119,9 +119,6 @@ const usesBlackOps7Artwork = (tournament) => {
 const tournamentImageUrl = (tournament) => usesBlackOps7Artwork(tournament)
   ? blackOps7Artwork
   : tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || "";
-const tournamentBannerUrl = (tournament) => usesBlackOps7Artwork(tournament)
-  ? blackOps7Artwork
-  : tournament?.banner_url || tournament?.cover_image_url || tournament?.image_url || "";
 const isStreamerTournament = (tournament) => Boolean(
   tournament?.is_streamer_tournament
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
@@ -202,7 +199,7 @@ const currentMatchForUser = (matches, participantKeys, teamKeys) => {
 };
 
 function FeaturedTournamentHero({ tournament, now, onSelect, halloweenEvent = false }) {
-  const bannerUrl = tournamentBannerUrl(tournament);
+  const bannerUrl = "/assets/competition/play-hero.png";
   const entryInfo = tournamentEntryInfo(tournament);
   const actionLabel = ["open", "registration"].includes(tournament.status)
     ? "Enter tournament"
@@ -213,7 +210,7 @@ function FeaturedTournamentHero({ tournament, now, onSelect, halloweenEvent = fa
       animate={{ opacity: 1, y: 0 }}
       className="tournaments-featured-hero dark-media group relative mb-6 min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_28px_80px_-42px_rgba(0,0,0,.9)]"
     >
-      {bannerUrl && <img src={bannerUrl} alt={`${tournament.name} featured banner`} className="absolute inset-0 h-full w-full object-cover" />}
+      <img src={bannerUrl} alt="Topfragg Play competition hub" className="absolute inset-0 h-full w-full object-cover object-center" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,15,22,.98)_0%,rgba(11,15,22,.92)_48%,rgba(11,15,22,.5)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_10%,rgba(255,130,0,.12),transparent_34%),linear-gradient(180deg,transparent_30%,rgba(8,12,18,.88)_100%)]" />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-orange/70 via-cyan/30 to-transparent" />
