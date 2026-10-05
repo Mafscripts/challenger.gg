@@ -118,11 +118,40 @@ const socialLinksFor = (profile, user) => socialFields
     return value ? { ...field, value, url: socialUrlFor(field.label, value) } : null;
   })
   .filter(Boolean);
-const matchRouteFor = (match) => (
-  (match.entry_fee !== undefined || match.amount !== undefined)
-    ? `/wagers-match/${match.id}`
-    : `/ranked-match/${match.id}`
+const matchRouteFor = (match) => {
+  const type = cleanKey(match?.match_type || match?.competition_type || match?.competition);
+  if (match?.tournament_id || type === "tournament" || type === "tournament_match" || type === "streamer_tournament") {
+    return `/tournament-match/${match.id}`;
+  }
+  if (type === "xp" || type === "xp_match" || type === "xpmatch") return `/xp-match/${match.id}`;
+  if (type === "8s" || type === "eights" || type === "free8s" || type === "free-8s" || type === "free_8s" || type === "money8s" || type === "money-8s" || type === "money_8s") {
+    return `/8s-match/${match.id}`;
+  }
+  if (type === "wager" || type === "wagers" || match.entry_fee !== undefined || match.amount !== undefined) {
+    return `/wagers-match/${match.id}`;
+  }
+  return `/ranked-match/${match.id}`;
+};
+
+const participantBelongsToUser = (participant, userId) => (
+  participant?.captain_id === userId
+  || participant?.user_id === userId
+  || (participant?.members || []).some((member) => member?.user_id === userId)
 );
+
+const participantKeys = (participant) => [
+  participant?.id,
+  participant?.team_id,
+  participant?.user_id,
+  participant?.captain_id,
+].filter(Boolean).map(String);
+
+const tournamentMatchSideFor = (match, keys) => {
+  const keySet = keys instanceof Set ? keys : new Set(keys || []);
+  if ([match?.team_a_participant_id, match?.team_a_id].some((value) => value && keySet.has(String(value)))) return "team_a";
+  if ([match?.team_b_participant_id, match?.team_b_id].some((value) => value && keySet.has(String(value)))) return "team_b";
+  return null;
+};
 const matchScoreText = (match) => {
   const alpha = match.team_alpha_score ?? match.team_a_score ?? match.reported_score_alpha;
   const bravo = match.team_bravo_score ?? match.team_b_score ?? match.reported_score_bravo;
@@ -130,6 +159,8 @@ const matchScoreText = (match) => {
   return `${alpha} - ${bravo}`;
 };
 const matchResultFor = (match, userId) => {
+  if (match?.profile_result === "win") return ["Win", "text-green", "border-green/25 bg-green/10"];
+  if (match?.profile_result === "loss") return ["Loss", "text-red-300", "border-red-400/20 bg-red-500/10"];
   if (!match?.winner_id || !userId) return ["Pending", "text-vapor", "border-white/5 bg-background/25"];
   const won = String(match.winner_id) === String(userId);
   return won
@@ -138,8 +169,8 @@ const matchResultFor = (match, userId) => {
 };
 const competitionLabelFor = (match) => {
   const type = cleanKey(match?.match_type || match?.competition_type || match?.competition);
-  if (type === "money8s" || type === "money-8s" || type === "money 8s") return "Money 8s";
-  if (type === "8s" || type === "eights" || type === "free8s" || type === "free-8s") return "Free 8s";
+  if (type === "money8s" || type === "money-8s" || type === "money_8s" || type === "money 8s") return "Money 8s";
+  if (type === "8s" || type === "eights" || type === "free8s" || type === "free-8s" || type === "free_8s") return "Free 8s";
   if (type === "tournament" || type === "streamer_tournament" || type === "tournament_match" || match?.tournament_id) return "Tournament";
   if (type === "xp" || type === "xp_match" || type === "xpmatch") return "XP Match";
   if (type === "ranked" || type === "elo") return "Ranked";
@@ -286,8 +317,12 @@ export default function Profile() {
         teamMemberRows,
         hostedWagers,
         challengedWagers,
+        wagerParticipants,
         hostedRanked,
         challengedRanked,
+        hostedXp,
+        challengedXp,
+        tournamentParticipants,
       ] = await Promise.all([
         base44.entities.PlayerProfile.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
         base44.entities.RankedStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
@@ -297,8 +332,12 @@ export default function Profile() {
         base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
         base44.entities.Wager.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.Wager.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
+        base44.entities.WagerParticipant.filter({ user_id: userRow.id }, "-joined_date", 100).catch(() => []),
         base44.entities.RankedMatch.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.RankedMatch.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
+        base44.entities.XPMatch.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
+        base44.entities.XPMatch.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
+        base44.entities.TournamentParticipant.filter({}, "-registered_date", 500).catch(() => []),
       ]);
 
       const loadedProfile = profileRows[0] || null;
@@ -319,8 +358,57 @@ export default function Profile() {
         row.team && !hiddenCompetitionTypes.has(String(row.team.team_type || "").toLowerCase())
       )));
 
-      const combinedMatches = [...hostedWagers, ...challengedWagers, ...hostedRanked, ...challengedRanked]
-        .filter((match) => !hiddenCompetitionTypes.has(String(match.match_type || "").toLowerCase()))
+      const participantWagers = await Promise.all((wagerParticipants || []).map((participant) => (
+        participant?.wager_id
+          ? base44.entities.Wager.get(participant.wager_id).catch(() => null)
+          : null
+      )));
+      const participantRowsByWager = new Map();
+      (wagerParticipants || []).forEach((participant) => {
+        if (!participant?.wager_id) return;
+        const rows = participantRowsByWager.get(String(participant.wager_id)) || [];
+        rows.push(participant);
+        participantRowsByWager.set(String(participant.wager_id), rows);
+      });
+      const enrichWagerResult = (wager) => {
+        if (!wager) return wager;
+        const userTeam = (participantRowsByWager.get(String(wager.id)) || [])
+          .map((participant) => participant.team || participant.side)
+          .find(Boolean);
+        const winningTeam = wager.winner_id === wager.host_id
+          ? "host"
+          : wager.winner_id === wager.challenger_id
+            ? "challenger"
+            : null;
+        return {
+          ...wager,
+          profile_result: userTeam && winningTeam
+            ? (userTeam === winningTeam ? "win" : "loss")
+            : undefined,
+        };
+      };
+
+      const userTournamentParticipants = (tournamentParticipants || []).filter((participant) => (
+        participantBelongsToUser(participant, userRow.id)
+      ));
+      const tournamentParticipantKeySet = new Set(userTournamentParticipants.flatMap(participantKeys));
+      const tournamentIds = [...new Set(userTournamentParticipants.map((participant) => participant.tournament_id).filter(Boolean))];
+      const tournamentMatchRows = (await Promise.all(tournamentIds.map((tournamentId) => (
+        base44.entities.TournamentMatch.filter({ tournament_id: tournamentId }, "-created_date", 100).catch(() => [])
+      )))).flat()
+        .filter((match) => tournamentMatchSideFor(match, tournamentParticipantKeySet))
+        .map((match) => ({ ...match, match_type: "tournament" }));
+
+      const combinedMatches = [
+        ...hostedWagers.map(enrichWagerResult),
+        ...challengedWagers.map(enrichWagerResult),
+        ...participantWagers.filter(Boolean).map(enrichWagerResult),
+        ...hostedRanked,
+        ...challengedRanked,
+        ...hostedXp.map((match) => ({ ...match, match_type: match.match_type || "xp" })),
+        ...challengedXp.map((match) => ({ ...match, match_type: match.match_type || "xp" })),
+        ...tournamentMatchRows,
+      ]
         .filter((match, index, list) => list.findIndex((item) => item.id === match.id) === index)
         .sort((a, b) => new Date(b.match_completed_date || b.completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.completed_date || a.created_date || 0))
         .slice(0, 8);
