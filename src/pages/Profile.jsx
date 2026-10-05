@@ -267,6 +267,7 @@ export default function Profile() {
   const [rankedStats, setRankedStats] = useState(null);
   const [xpStats, setXpStats] = useState(null);
   const [wallet, setWallet] = useState(null);
+  const [animatedNameTrialActive, setAnimatedNameTrialActive] = useState(false);
   const [inventory, setInventory] = useState([]);
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
@@ -286,6 +287,7 @@ export default function Profile() {
     setEditingProfile(false);
     setWallet(null);
     setXpStats(null);
+    setAnimatedNameTrialActive(false);
     try {
       let userRow = null;
       const authUser = await base44.auth.me().catch(() => null);
@@ -302,6 +304,9 @@ export default function Profile() {
 
       setUser(userRow);
       if (!userRow?.id) return;
+
+      const freeTrialResponse = await base44.functions.invoke("getAnimatedNameFreeTrialStatus", {}).catch(() => null);
+      setAnimatedNameTrialActive(Boolean(freeTrialResponse?.data?.trial?.active));
 
       if (authUser?.id === userRow.id) {
         userRow = await bootstrapCurrentUser({ email: authUser.email, username: userRow.username }).catch(() => userRow);
@@ -434,8 +439,9 @@ export default function Profile() {
   const isOwnProfile = Boolean(currentUser?.id && user?.id && currentUser.id === user.id);
   const isVerifiedPlayer = Boolean(user?.verified_player || user?.is_verified_player || badges.some((badge) => badge.type === "verified_player"));
   const isPremium = Boolean(user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires).getTime() > Date.now()));
-  const canUseNameColor = isVerifiedPlayer || isPremium;
-  const availableNameColors = isPremium ? allNameColors : verifiedNameColors;
+  const canUseAnimatedEffects = isPremium || animatedNameTrialActive;
+  const canUseNameColor = isVerifiedPlayer || canUseAnimatedEffects;
+  const availableNameColors = canUseAnimatedEffects ? allNameColors : verifiedNameColors;
   const hasStreamerBadge = Boolean(user?.streamer_badge || user?.is_streamer || badges.some((badge) => badge.type === "streamer"));
   const activeNameColor = isOwnProfile
     ? nameColorDraft
@@ -602,7 +608,7 @@ export default function Profile() {
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span><input value={avatarDraft} onChange={(event) => setAvatarDraft(event.target.value)} onBlur={() => { try { setAvatarDraft(normalizeImageSource(avatarDraft)); } catch { /* Save displays validation. */ } }} placeholder="https://i.imgur.com/example.png" className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
                   <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Upload profile picture</span><input type="file" accept="image/*" onChange={handleAvatarFile} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
-                  {canUseNameColor && <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">{isPremium ? "Premium name effect" : "Verified name color"}</span><select value={nameColorDraft} onChange={(event) => setNameColorDraft(event.target.value)} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40">{verifiedNameColors.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}{isPremium && <optgroup label="Premium animated effects">{premiumNameEffects.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}</optgroup>}</select></label>}
+                  {canUseNameColor && <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">{canUseAnimatedEffects ? (isPremium ? "Premium name effect" : "Free trial animated effect") : "Verified name color"}</span><select value={nameColorDraft} onChange={(event) => setNameColorDraft(event.target.value)} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40">{verifiedNameColors.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}{canUseAnimatedEffects && <optgroup label="Animated name effects">{premiumNameEffects.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}</optgroup>}</select></label>}
                   <label className="space-y-1 md:col-span-2 xl:col-span-3"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Bio</span><textarea value={bioDraft} onChange={(event) => setBioDraft(event.target.value)} maxLength={500} rows={3} className="w-full resize-y rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /><span className="block text-right text-[9px] text-vapor">{bioDraft.length}/500</span></label>
                 </div>
                 <button onClick={handleSaveProfileVisuals} disabled={profileSaving} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-[10px] font-black uppercase tracking-wider text-background disabled:opacity-50">{profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />} Save</button>

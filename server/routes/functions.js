@@ -9,6 +9,7 @@ import { containsBlockedLanguage } from "../profanity-filter.js";
 import { issueRankedVoiceToken } from "../ranked-voice.js";
 import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
 import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
+import { ANIMATED_NAME_FREE_TRIAL_KEY, getAnimatedNameFreeTrial } from "../freeTrial.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -59,6 +60,7 @@ const RANKED_MAX_CHANGE = 40;
 const EIGHTS_RESHUFFLE_WINDOW_MS = 5 * 60 * 1000;
 const EIGHTS_RESHUFFLE_REQUIRED_VOTES = 5;
 const adminPremiumGrantDays = 30;
+const animatedNameFreeTrialDays = 30;
 const staffRoles = ["ceo", "super_admin", "admin", "moderator"];
 const findPlayersRoomId = "find-players";
 const findPlayersChatScope = "find_players_chat";
@@ -10206,6 +10208,77 @@ async function adminGrantPremium(req) {
   return { success: true, user: publicUser(user), premium_expires: endsAt.toISOString() };
 }
 
+async function getAnimatedNameFreeTrialStatus() {
+  return { success: true, trial: await getAnimatedNameFreeTrial() };
+}
+
+async function adminActivateAnimatedNameFreeTrial(req) {
+  assertStaff(req, "admin");
+  const startsAt = new Date();
+  const endsAt = new Date(startsAt.getTime() + (animatedNameFreeTrialDays * 24 * 60 * 60 * 1000));
+  const program = await prisma.freeTrialProgram.upsert({
+    where: { key: ANIMATED_NAME_FREE_TRIAL_KEY },
+    create: {
+      key: ANIMATED_NAME_FREE_TRIAL_KEY,
+      enabled: true,
+      starts_date: startsAt,
+      ends_date: endsAt,
+      stopped_date: null,
+      updated_by: req.user.id,
+      updated_by_name: nameFor(req.user),
+    },
+    update: {
+      enabled: true,
+      starts_date: startsAt,
+      ends_date: endsAt,
+      stopped_date: null,
+      updated_by: req.user.id,
+      updated_by_name: nameFor(req.user),
+    },
+  });
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "animated_name_free_trial_activated",
+    description: `Activated the ${animatedNameFreeTrialDays}-day animated name effects free trial for all users`,
+    details: { starts_date: startsAt.toISOString(), ends_date: endsAt.toISOString() },
+    created_date: nowIso(),
+  }).catch(() => null);
+  return { success: true, trial: (await getAnimatedNameFreeTrial()), program };
+}
+
+async function adminStopAnimatedNameFreeTrial(req) {
+  assertStaff(req, "admin");
+  const stoppedAt = new Date();
+  const program = await prisma.freeTrialProgram.upsert({
+    where: { key: ANIMATED_NAME_FREE_TRIAL_KEY },
+    create: {
+      key: ANIMATED_NAME_FREE_TRIAL_KEY,
+      enabled: false,
+      stopped_date: stoppedAt,
+      updated_by: req.user.id,
+      updated_by_name: nameFor(req.user),
+    },
+    update: {
+      enabled: false,
+      stopped_date: stoppedAt,
+      updated_by: req.user.id,
+      updated_by_name: nameFor(req.user),
+    },
+  });
+  await createEntity("AdminAction", {
+    admin_id: req.user.id,
+    admin_name: nameFor(req.user),
+    admin_role: req.user.role,
+    action_type: "animated_name_free_trial_stopped",
+    description: "Stopped the animated name effects free trial for all users",
+    details: { stopped_date: stoppedAt.toISOString() },
+    created_date: nowIso(),
+  }).catch(() => null);
+  return { success: true, trial: await getAnimatedNameFreeTrial(), program };
+}
+
 function banExpiration(duration) {
   if (!duration || duration === "permanent") return null;
   const hours = {
@@ -10604,6 +10677,9 @@ const handlers = {
   updateUserBadges,
   setUserTemporaryPassword,
   adminGrantPremium,
+  getAnimatedNameFreeTrialStatus,
+  adminActivateAnimatedNameFreeTrial,
+  adminStopAnimatedNameFreeTrial,
   moderateUser,
   changeDisplayName,
   getCompetitionTrophyCounts,

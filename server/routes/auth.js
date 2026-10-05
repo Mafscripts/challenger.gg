@@ -16,6 +16,7 @@ import { dataForEntity } from "../entity.js";
 import { isEmailConfigured, sendPasswordResetEmail, sendVerificationEmail } from "../email.js";
 import { evaluateAccess, requestIpAddress } from "../ban-enforcement.js";
 import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
+import { getAnimatedNameFreeTrial } from "../freeTrial.js";
 
 const router = Router();
 const VERIFICATION_TTL_MS = 10 * 60 * 1000;
@@ -314,6 +315,11 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "One or more account fields require an admin action" });
     }
     let user = current;
+    const requestedNameColor = String(rest.display_name_color || "").trim();
+    const isActivePremium = Boolean(current?.is_premium && (!current?.premium_expires || new Date(current.premium_expires).getTime() > Date.now()));
+    if (requestedNameColor.startsWith("fx-") && !isActivePremium && !(await getAnimatedNameFreeTrial()).active) {
+      return res.status(403).json({ error: "Animated name effects require Premium or an active Free Trial" });
+    }
     if (Object.keys(rest).length > 0) {
       user = await prisma.user.update({
         where: { id: req.user.id },

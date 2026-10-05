@@ -99,6 +99,18 @@ model ReferralProgram {
   updated_date   DateTime @updatedAt
 }
 
+model FreeTrialProgram {
+  key             String   @id @default("animated_name_effects")
+  enabled         Boolean  @default(false)
+  starts_date     DateTime?
+  ends_date       DateTime?
+  stopped_date    DateTime?
+  updated_by      String?
+  updated_by_name String?
+  created_date    DateTime @default(now())
+  updated_date    DateTime @updatedAt
+}
+
 model ReferralCode {
   id           String   @id @default(cuid())
   user_id      String   @unique

@@ -31,6 +31,7 @@ import {
   ShoppingBag,
   Save,
   Swords,
+  Sparkles,
   Trash2,
   Ticket,
   Trophy,
@@ -234,6 +235,7 @@ const tabs = [
   { id: "tournamentMatches", label: "Tournament Matches", icon: ClipboardList },
   { id: "wallets", label: "Wallets", icon: Wallet },
   { id: "referrals", label: "Referrals", icon: Gift },
+  { id: "freeTrials", label: "Free Trials", icon: Sparkles },
   { id: "withdrawals", label: "Withdrawals", icon: Landmark },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag },
   { id: "inventory", label: "Inventory", icon: Boxes },
@@ -551,6 +553,7 @@ export default function Admin() {
   const [seasonResetOpen, setSeasonResetOpen] = useState(false);
   const [seasonResetForm, setSeasonResetForm] = useState(() => createDefaultSeasonResetForm());
   const [referralProgram, setReferralProgram] = useState(null);
+  const [animatedNameFreeTrial, setAnimatedNameFreeTrial] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
 
   useEffect(() => {
@@ -670,6 +673,8 @@ export default function Admin() {
         systemLogs,
         messages,
       });
+      const freeTrialResponse = await base44.functions.invoke("getAnimatedNameFreeTrialStatus", {}).catch(() => null);
+      if (freeTrialResponse?.data?.trial) setAnimatedNameFreeTrial(freeTrialResponse.data.trial);
       const referralResponse = await base44.functions.invoke("getReferralProgram").catch(() => null);
       if (referralResponse?.data?.success) {
         setReferralProgram({ ...referralResponse.data.program, rewarded_users: referralResponse.data.rewarded_users });
@@ -1984,6 +1989,44 @@ export default function Admin() {
     }
   };
 
+  const handleActivateAnimatedNameFreeTrial = async () => {
+    if (!canManageWallets(currentRole)) {
+      toast({ title: "Not allowed", description: "Admin or higher is required to manage Free Trials.", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm("Activate one month of animated name effects for all users? This resets the trial to 30 days from now.")) return;
+    setBusyId("animated-name-free-trial:activate");
+    try {
+      const response = await base44.functions.invoke("adminActivateAnimatedNameFreeTrial", {});
+      if (!response.data?.success) throw new Error(response.data?.error || "Free Trial could not be activated");
+      setAnimatedNameFreeTrial(response.data.trial);
+      toast({ title: "Free Trial activated", description: "All users can use animated name effects for 30 days." });
+    } catch (error) {
+      toast({ title: "Free Trial activation failed", description: error.message || "Could not activate the Free Trial.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleStopAnimatedNameFreeTrial = async () => {
+    if (!canManageWallets(currentRole)) {
+      toast({ title: "Not allowed", description: "Admin or higher is required to manage Free Trials.", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm("Stop the animated name effects Free Trial for all users now?")) return;
+    setBusyId("animated-name-free-trial:stop");
+    try {
+      const response = await base44.functions.invoke("adminStopAnimatedNameFreeTrial", {});
+      if (!response.data?.success) throw new Error(response.data?.error || "Free Trial could not be stopped");
+      setAnimatedNameFreeTrial(response.data.trial);
+      toast({ title: "Free Trial stopped", description: "The animated name effects trial is no longer available." });
+    } catch (error) {
+      toast({ title: "Free Trial stop failed", description: error.message || "Could not stop the Free Trial.", variant: "destructive" });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) {
     return <PageLoader label="Loading admin console" />;
   }
@@ -2126,6 +2169,36 @@ export default function Admin() {
                   <button type="submit" disabled={busyId === "referral-program"} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-green px-4 py-2.5 text-xs font-black uppercase tracking-wider text-background hover:bg-green/90 disabled:opacity-50">{busyId === "referral-program" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save referral settings</button>
                 </form>
               ) : <p className="text-sm text-vapor">Referral controls are available to CEO and Super Admin accounts.</p>}
+            </div>
+          )}
+
+          {activeTab === "freeTrials" && (
+            <div className="p-6">
+              <div className="mb-6 flex items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-purple-300/25 bg-purple-300/[0.1] text-purple-200"><Sparkles className="h-5 w-5" /></span>
+                <div><h2 className="text-lg font-black">Free Trials</h2><p className="mt-1 text-sm text-vapor">Give every user access to the animated name effects for one month without requiring Premium.</p></div>
+              </div>
+              <section className="max-w-3xl rounded-xl border border-purple-300/20 bg-purple-300/[0.035] p-5">
+                <div className="flex flex-col gap-4 border-b border-white/5 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2"><p className="text-sm font-black text-white">Animated name effects</p><span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${animatedNameFreeTrial?.active ? "border-green/25 bg-green/10 text-green" : "border-white/10 bg-white/[0.05] text-vapor"}`}>{animatedNameFreeTrial?.active ? "Active" : "Inactive"}</span></div>
+                    <p className="mt-1 text-xs text-vapor">This is a global switch. Users do not receive Premium; only the animated name effect permission is opened.</p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    {!animatedNameFreeTrial?.active ? (
+                      <button type="button" onClick={handleActivateAnimatedNameFreeTrial} disabled={busyId === "animated-name-free-trial:activate" || !canManageWallets(currentRole)} className="inline-flex items-center gap-2 rounded-lg bg-purple-300 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-background hover:bg-purple-200 disabled:opacity-50">{busyId === "animated-name-free-trial:activate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Activate 30 days</button>
+                    ) : (
+                      <button type="button" onClick={handleStopAnimatedNameFreeTrial} disabled={busyId === "animated-name-free-trial:stop" || !canManageWallets(currentRole)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-red-300 hover:bg-red-400/20 disabled:opacity-50">{busyId === "animated-name-free-trial:stop" ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} Stop trial</button>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Users included</p><p className="mt-1 font-mono text-2xl font-black text-purple-200">{data.users.length}</p></div>
+                  <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Started</p><p className="mt-1 text-sm font-bold text-white">{animatedNameFreeTrial?.starts_date ? formatDate(animatedNameFreeTrial.starts_date) : "Not started"}</p></div>
+                  <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Ends</p><p className="mt-1 text-sm font-bold text-white">{animatedNameFreeTrial?.ends_date ? formatDate(animatedNameFreeTrial.ends_date) : "—"}</p></div>
+                </div>
+                {!canManageWallets(currentRole) && <p className="mt-4 text-xs text-vapor">Admin or higher is required to activate or stop this trial.</p>}
+              </section>
             </div>
           )}
 
