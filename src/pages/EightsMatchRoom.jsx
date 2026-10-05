@@ -6,6 +6,7 @@ import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import MatchRulesPanel from "@/components/match/MatchRulesPanel";
+import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
@@ -99,6 +100,7 @@ export default function EightsMatchRoom() {
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [resultDismissed, setResultDismissed] = useState(false);
   const joinedAdminRooms = useRef(new Set());
 
   const hydrateProgression = useCallback(async (players) => Promise.all(players.map(async (player) => {
@@ -179,6 +181,7 @@ export default function EightsMatchRoom() {
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
   const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || countdown === 0);
   const isComplete = match?.status === "completed";
+  const personalMoneyResult = match?.wallet_changes?.[user?.id] || null;
   const alphaWinner = isComplete && match?.winner_id === match?.host_id;
   const bravoWinner = isComplete && match?.winner_id === match?.challenger_id;
   const scoreVoteIds = Array.isArray(match?.eights_score_vote_user_ids) ? match.eights_score_vote_user_ids : [];
@@ -201,6 +204,10 @@ export default function EightsMatchRoom() {
       ? { name: map, mode: seriesModeName(match?.series_modes?.[index]) }
       : map
   ));
+  const dismissResult = () => {
+    setResultDismissed(true);
+    navigate(isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s", { replace: true });
+  };
 
   const leave = async () => {
     setBusy(true);
@@ -375,6 +382,14 @@ export default function EightsMatchRoom() {
   return (
     <div className="min-h-screen py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+        {isMoneyEights && isComplete && personalMoneyResult && !resultDismissed && (
+          <WagerMoneyResultOverlay
+            result={{ ...personalMoneyResult, score: `${match.confirmed_score_alpha ?? (match.winner_id === match.host_id ? match.winner_score : match.loser_score) ?? 0} - ${match.confirmed_score_bravo ?? (match.winner_id === match.challenger_id ? match.winner_score : match.loser_score) ?? 0}` }}
+            matchLabel="Money 8s"
+            continueLabel="Continue to Money 8s"
+            onContinue={dismissResult}
+          />
+        )}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Link to={isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s"} className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> {roomLabel}</Link>
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>

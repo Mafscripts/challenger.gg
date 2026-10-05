@@ -1161,14 +1161,17 @@ async function releaseWagerEscrow(wager, winnerId) {
       reference_id: wager.id,
     });
 
-    if (wager.match_type === "money8s" && payout > 0) {
+    if (wager.match_type === "money8s") {
+      const balanceChange = payout > 0 ? payout : -stake;
       await notifyUser(participant.user_id, {
-        title: "Money 8s winnings",
-        message: `$${payout.toFixed(2)} was added to your wallet from this Money 8s match.`,
+        title: payout > 0 ? "Money 8s winnings" : "Money 8s loss",
+        message: payout > 0
+          ? `$${payout.toFixed(2)} was added to your wallet from this Money 8s match.`
+          : `$${stake.toFixed(2)} was lost from your entry in this Money 8s match.`,
         type: "wallet",
         show_balance_popup: true,
         balance_type: "wallet",
-        balance_change: payout,
+        balance_change: balanceChange,
         action_url: "/wallet",
         related_entity_id: wager.id,
         related_entity_type: "Wager",
