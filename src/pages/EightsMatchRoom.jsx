@@ -395,7 +395,7 @@ export default function EightsMatchRoom() {
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
-        <section className="relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#202833] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
+        <section className="relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#1d2631] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
         <header className="relative border-b border-white/[0.06] p-6 lg:p-8">
           <div className="absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/50 via-white/10 to-orange/50" />
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -422,7 +422,7 @@ export default function EightsMatchRoom() {
           </section>
         )}
 
-        <div className="grid min-w-0 gap-5 border-t border-white/[0.07] bg-[#202833] p-4 xl:grid-cols-[minmax(0,1fr)_410px] xl:p-5">
+        <div className="grid min-w-0 gap-5 border-t border-white/[0.07] bg-[#1d2631] p-4 xl:grid-cols-[minmax(0,1fr)_410px] xl:p-5">
           <div className="min-w-0 space-y-4">
             <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
             <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
