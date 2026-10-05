@@ -460,7 +460,6 @@ export default function Profile() {
                   <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">{region}</span>
                   <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">Joined {joinedDate}</span>
                 </div>
-                <ProfileTrophyCount trophies={trophyOverviewCards} total={trophyCount} />
               </div>
             </div>
 
@@ -474,15 +473,13 @@ export default function Profile() {
                   <Link to={`/messages?compose=${encodeURIComponent(user.id)}`} className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-3 text-[9px] font-black uppercase tracking-wider text-cyan"><MessageSquare className="h-3.5 w-3.5" /> Message</Link>
                 ) : null}
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-cyan/15 bg-cyan/[0.045] px-3 py-2.5">
-                <div><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">Competitive rating</p><p className="mt-1 font-mono text-lg font-black text-cyan">{elo.toLocaleString()} ELO</p></div>
-                <div className="flex items-center gap-2.5">
+              <div className="rounded-xl border border-cyan/15 bg-cyan/[0.045] px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">TopFragg rank</p><p className="mt-1 text-sm font-black text-white">{topfraggRankLabel}</p></div>
                   {hasXpMatches ? <RankBadge rank={rank.tier} size="sm" showLabel={false} animated={false} /> : <span className="grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.04] font-mono text-lg font-black text-vapor">?</span>}
-                  <div className="text-right"><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">TopFragg rank</p><p className="mt-1 text-sm font-black text-white">{topfraggRankLabel}</p></div>
                 </div>
+                <ProfileTrophyCount trophies={trophyOverviewCards} total={trophyCount} />
               </div>
-              <ProgressBar value={hasXpMatches ? rankProgress : 0} tone="from-cyan to-orange" className="mt-3 h-1.5" />
-              <div className="mt-2 flex justify-between font-mono text-[8px] font-bold uppercase tracking-wider text-vapor"><span>{hasXpMatches ? `${rankProgress}% progress` : "No XP matches yet"}</span><span>{hasXpMatches ? (nextRank ? `Next ${nextRank.name}` : "Top rank") : "Play an XP match"}</span></div>
             </div>
           </div>
 
