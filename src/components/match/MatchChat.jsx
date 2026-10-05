@@ -208,14 +208,14 @@ export default function MatchChat({
   };
 
   return (
-    <div className={`glass overflow-hidden rounded-xl border border-white/10 flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
-      <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} shrink-0 bg-secondary/50 border-b border-white/5 flex items-center justify-between`}>
+    <div className={`glass overflow-hidden rounded-xl border border-white/[0.09] bg-[#202833] flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
+      <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} shrink-0 bg-[#1c2631] border-b border-white/[0.07] flex items-center justify-between`}>
         <h3 className="font-bold text-sm flex items-center gap-2">
           <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> {title}
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
-      <div ref={chatBodyRef} className={`min-h-0 flex-1 overflow-y-auto ${compact ? "p-3" : "p-4"}`}>
+      <div ref={chatBodyRef} className={`min-h-0 flex-1 overflow-y-auto bg-[#202833] ${compact ? "p-3" : "p-4"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
@@ -291,11 +291,11 @@ export default function MatchChat({
         })}
       </div>
       {inputActions && (
-        <div className={`${compact ? "px-2.5 pt-2.5" : "px-3 pt-3"} shrink-0 border-t border-white/5 bg-secondary/30`}>
+        <div className={`${compact ? "px-2.5 pt-2.5" : "px-3 pt-3"} shrink-0 border-t border-white/[0.07] bg-[#1c2631]`}>
           {inputActions}
         </div>
       )}
-      <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} ${inputActions ? "pt-2" : "border-t border-white/5"} shrink-0 bg-secondary/30 flex items-center gap-2`}>
+      <form onSubmit={handleSend} className={`${compact ? "p-2.5" : "p-3"} ${inputActions ? "pt-2" : "border-t border-white/[0.07]"} shrink-0 bg-[#1c2631] flex items-center gap-2`}>
         <label htmlFor={`match-chat-${conversationId}`} className="sr-only">Write a chat message</label>
         <input
           id={`match-chat-${conversationId}`}

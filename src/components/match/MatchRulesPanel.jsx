@@ -64,7 +64,7 @@ export default function MatchRulesPanel({
   );
 
   return (
-    <section className="dark-focus dark-media rounded-xl border border-cyan/20 p-5 sm:p-6">
+    <section className="dark-focus dark-media rounded-xl border border-cyan/20 bg-[#202833] p-5 sm:p-6">
       <div className={`flex items-center justify-between gap-4 ${isOpen ? "border-b border-white/5 pb-4" : ""}`}>
         {heading}
         <div className="flex shrink-0 items-center gap-4">
