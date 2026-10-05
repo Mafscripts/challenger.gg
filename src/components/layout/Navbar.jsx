@@ -12,7 +12,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 
-const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const isRecentAdminDispute = (item) => {
   const createdAt = Date.parse(item?.created_date || "");
   return !Number.isFinite(createdAt) || Date.now() - createdAt <= ADMIN_DISPUTE_POPUP_MAX_AGE_MS;
