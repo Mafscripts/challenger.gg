@@ -1600,7 +1600,7 @@
     animation: player-name-flames 2.2s ease-in-out infinite;
   }
 
-  /* Transparent vector flames sit outside the name instead of painting a
+  /* Transparent animated fire sits outside the name instead of painting a
      rectangular gradient behind it. The artwork scales cleanly for headings,
      player cards and compact match-room names. */
   .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::before,
@@ -1619,7 +1619,7 @@
   .app-content .player-name-color[data-name-effect="fx-topfragg-flames"]::before {
     inset: -1.1em -0.65em -0.72em;
     opacity: 0.72;
-    background-image: url("/assets/name-effects/topfragg-flames.gif");
+    background-image: url("/assets/name-effects/topfragg-flames-transparent.gif");
     filter: drop-shadow(0 0 0.2em rgb(255 90 31 / 0.72));
     animation: player-name-gif-flames 1.3s ease-in-out infinite alternate;
   }
@@ -1628,7 +1628,7 @@
     inset: -0.62em -0.34em -0.38em;
     opacity: 0.34;
     background-size: 2.55em 2.55em;
-    background-image: url("/assets/name-effects/topfragg-flames.gif");
+    background-image: url("/assets/name-effects/topfragg-flames-transparent.gif");
     filter: hue-rotate(142deg) saturate(1.35) drop-shadow(0 0 0.16em rgb(0 217 255 / 0.68));
     animation: player-name-gif-flames 1.7s ease-in-out -0.45s infinite alternate-reverse;
   }
