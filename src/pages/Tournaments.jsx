@@ -662,7 +662,7 @@ export default function Tournaments() {
             <Link to="/teams" className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-background/70 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-vapor backdrop-blur-sm transition-colors hover:border-cyan/30 hover:text-cyan">
               <Users className="h-3.5 w-3.5" /> My Teams
             </Link>
-            <button type="button" onClick={() => openTournamentTeamCreator()} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-cyan/90">
+            <button type="button" onClick={() => openTournamentTeamCreator()} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-orange px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90">
               <Plus className="h-3.5 w-3.5" /> Create Tournament Team
             </button>
             {isAdmin && (
@@ -905,7 +905,7 @@ export default function Tournaments() {
                         ))}
                       </select>
                       {compatibleTeamsFor(selectedTournament).length === 0 && (
-                        <button type="button" onClick={() => openTournamentTeamCreator(selectedTournament)} className="inline-flex items-center gap-1.5 rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/20">
+                        <button type="button" onClick={() => openTournamentTeamCreator(selectedTournament)} className="inline-flex items-center gap-1.5 rounded-lg border border-orange/25 bg-orange/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-orange hover:bg-orange/20">
                           <Plus className="h-3 w-3" /> Create Team
                         </button>
                       )}

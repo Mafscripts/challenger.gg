@@ -452,7 +452,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                       }
                     }}
                     disabled={!selectedGameMode}
-                    className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
+                    className="px-6 py-2.5 bg-orange text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange/90 hover:shadow-lg hover:shadow-orange/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
                     Next <ChevronRight className="w-4 h-4" />
                   </button>
@@ -528,7 +528,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     {isRanked && (
                       <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/5 pt-3">
                         <p className="text-[10px] leading-4 text-vapor">Parties stay together. Duo pairs with duo; trio leaves one solo slot.</p>
-                        <Link to="/teams?create=ranked" className="shrink-0 text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">Create team</Link>
+                        <Link to="/teams?create=ranked" className="shrink-0 text-[10px] font-black uppercase tracking-wider text-orange hover:underline">Create team</Link>
                       </div>
                     )}
                     {!isRanked && selectedTeam && selectedTeam.members.length < requiredPlayers && (
@@ -548,7 +548,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   <button
                     onClick={() => setStep(3)}
                     disabled={!selectedTeamSize || !selectedTeamIsEligible}
-                    className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
+                    className="px-6 py-2.5 bg-orange text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange/90 hover:shadow-lg hover:shadow-orange/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
                     Next <ChevronRight className="w-4 h-4" />
                   </button>
@@ -738,7 +738,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   <button
                     onClick={() => isMoneyEights ? setStep(4) : handleCreate()}
                     disabled={isCreating}
-                    className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
+                    className="px-6 py-2.5 bg-orange text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange/90 hover:shadow-lg hover:shadow-orange/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
                     <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isMoneyEights ? "Open Money 8s Lobby" : isEights ? "Open 8s Lobby" : "Create XP Match"}
                   </button>

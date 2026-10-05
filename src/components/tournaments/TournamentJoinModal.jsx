@@ -142,7 +142,7 @@ export default function TournamentJoinModal({
                 </div>
               </div>
 
-              <button type="button" onClick={onCreateTeam} className="flex w-full items-center justify-center gap-2 rounded-xl border border-cyan/20 bg-cyan/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan transition-colors hover:bg-cyan/[0.12]">
+                      <button type="button" onClick={onCreateTeam} className="flex w-full items-center justify-center gap-2 rounded-xl border border-orange/25 bg-orange/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-orange transition-colors hover:bg-orange/[0.12]">
                 <Plus className="h-3.5 w-3.5" /> Create a new tournament team
               </button>
 

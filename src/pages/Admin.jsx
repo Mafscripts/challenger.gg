@@ -514,7 +514,7 @@ function TournamentRewardPicker({ title, description, selectedIds = [], items = 
         <button
           type="button"
           onClick={onCreate}
-          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/15"
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.07] px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15"
         >
           <Plus className="h-3.5 w-3.5" /> {createLabel}
         </button>
@@ -3012,7 +3012,7 @@ export default function Admin() {
                       <button
                         type="submit"
                         disabled={busyId === "tournament:create"}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-cyan text-background text-xs font-bold rounded-lg hover:shadow-lg hover:shadow-cyan/20 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-orange text-background text-xs font-bold rounded-lg hover:bg-orange/90 hover:shadow-lg hover:shadow-orange/20 disabled:opacity-50"
                       >
                         {busyId === "tournament:create" ? <Loader2 className="w-4 h-4 animate-spin" /> : editingTournamentId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                         {editingTournamentId ? "Save" : "Create"}
@@ -3190,7 +3190,7 @@ export default function Admin() {
                           <ShoppingBag className="h-3.5 w-3.5" /> All Marketplace Items
                         </button>
                         {!hasCompleteWinnerSpecialTrophySet && (
-                          <button type="button" onClick={handleCreateWinnerSpecialTrophySet} disabled={busyId === "marketplace:trophy-templates"} className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-white hover:bg-blue-400 disabled:opacity-50">
+                          <button type="button" onClick={handleCreateWinnerSpecialTrophySet} disabled={busyId === "marketplace:trophy-templates"} className="inline-flex items-center gap-2 rounded-lg bg-orange px-3 py-2 text-[10px] font-black uppercase tracking-wider text-background hover:bg-orange/90 disabled:opacity-50">
                             {busyId === "marketplace:trophy-templates" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Create Winner Trophies
                           </button>
                         )}
@@ -3592,7 +3592,7 @@ export default function Admin() {
                       <button
                         type="submit"
                         disabled={busyId === "marketplace:create" || busyId === `marketplace:update:${editingMarketplaceId}`}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-cyan text-background text-xs font-bold rounded-lg hover:shadow-lg hover:shadow-cyan/20 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-orange text-background text-xs font-bold rounded-lg hover:bg-orange/90 hover:shadow-lg hover:shadow-orange/20 disabled:opacity-50"
                       >
                         {busyId === "marketplace:create" || busyId === `marketplace:update:${editingMarketplaceId}` ? (
                           <Loader2 className="w-4 h-4 animate-spin" />

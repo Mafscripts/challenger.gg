@@ -168,7 +168,7 @@ export default function Marketplace() {
             <ShoppingBag className="w-12 h-12 text-vapor/30 mx-auto mb-3" />
             <p className="text-sm text-vapor">No marketplace items are visible.</p>
             {canManageMarketplace && (
-              <Link to="/admin" className="inline-flex items-center gap-2 mt-5 px-4 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all">
+              <Link to="/admin" className="inline-flex items-center gap-2 mt-5 px-4 py-2 bg-orange/10 text-orange text-xs font-bold rounded-lg border border-orange/20 hover:bg-orange/20 transition-all">
                 Create items in Admin
               </Link>
             )}

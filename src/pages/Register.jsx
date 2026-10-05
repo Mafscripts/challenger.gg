@@ -187,7 +187,7 @@ export default function Register() {
         </div>
         <Button
           type="submit"
-          className="h-11 w-full bg-primary font-black uppercase tracking-wide text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md"
+          className="h-11 w-full bg-orange font-black uppercase tracking-wide text-background shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-orange/90 hover:shadow-md"
           disabled={loading}
         >
           {loading ? (

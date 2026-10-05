@@ -144,7 +144,7 @@ export default function RankedEights() {
               Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
             </Link>
           ) : (
-            <button onClick={() => setCreateOpen(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background hover:bg-cyan/90">
+            <button onClick={() => setCreateOpen(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background hover:bg-orange/90">
               <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
           )}

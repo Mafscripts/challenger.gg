@@ -185,7 +185,7 @@ export default function CreateTeamModal({
 
         <div className="flex shrink-0 justify-end gap-3 border-t border-white/5 bg-card px-6 py-4">
           <button type="button" onClick={onClose} className="rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-vapor transition-colors hover:bg-white/10">Cancel</button>
-          <button type="submit" disabled={creating} className="rounded-lg bg-cyan px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-background transition-colors hover:bg-cyan/90 disabled:opacity-50">{creating ? "Creating..." : "Create Team"}</button>
+          <button type="submit" disabled={creating} className="rounded-lg bg-orange px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-background transition-colors hover:bg-orange/90 disabled:opacity-50">{creating ? "Creating..." : "Create Team"}</button>
         </div>
           </motion.form>
         </motion.div>
