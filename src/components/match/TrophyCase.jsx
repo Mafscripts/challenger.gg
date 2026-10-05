@@ -22,10 +22,11 @@ export default function TrophyCase({ teamAPlayers, teamBPlayers }) {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
         {trophies.map(({ label, value, icon: Icon, tone, tint }) => (
-          <div key={label} className={`premium-card rounded-2xl p-4 text-center ${tint}`}>
+          <div key={label} title={`${label}: ${value}`} className={`group/trophy relative premium-card rounded-2xl p-4 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-20px_currentColor] ${tint}`}>
             <Icon className={`mx-auto mb-3 h-6 w-6 ${tone}`} />
             <p className="font-mono text-2xl font-black text-white">{value}</p>
             <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-vapor">{label}</p>
+            <span className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg border border-white/[0.12] bg-[#111821] px-2.5 py-2 text-[10px] font-bold text-white opacity-0 shadow-[0_14px_36px_rgba(0,0,0,.65)] transition-all duration-150 group-hover/trophy:visible group-hover/trophy:translate-y-0 group-hover/trophy:opacity-100">{label}: {value}</span>
           </div>
         ))}
       </div>

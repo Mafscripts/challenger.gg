@@ -50,19 +50,19 @@ function PlayerRow({ player, teamColor }) {
       
       {/* Trophies */}
       <div className="flex items-center gap-1 ml-auto shrink-0">
-        <div className="flex flex-col items-center gap-0.5">
+        <div title={`Gold trophies: ${player.gold_count || 0}`} className="group/trophy relative flex cursor-default flex-col items-center gap-0.5">
           <Trophy className="w-3 h-3 text-yellow-400" />
           <p className="text-[9px] font-bold text-yellow-400 leading-none">{player.gold_count || 0}</p>
         </div>
-        <div className="flex flex-col items-center gap-0.5">
+        <div title={`Silver trophies: ${player.silver_count || 0}`} className="group/trophy relative flex cursor-default flex-col items-center gap-0.5">
           <Medal className="w-3 h-3 text-gray-300" />
           <p className="text-[9px] font-bold text-gray-300 leading-none">{player.silver_count || 0}</p>
         </div>
-        <div className="flex flex-col items-center gap-0.5">
+        <div title={`Bronze trophies: ${player.bronze_count || 0}`} className="group/trophy relative flex cursor-default flex-col items-center gap-0.5">
           <Award className="w-3 h-3 text-amber-600" />
           <p className="text-[9px] font-bold text-amber-600 leading-none">{player.bronze_count || 0}</p>
         </div>
-        <div className="flex flex-col items-center gap-0.5">
+        <div title={`Premium trophies: ${player.premium_count || 0}`} className="group/trophy relative flex cursor-default flex-col items-center gap-0.5">
           <Crown className="w-3 h-3 text-purple-400" />
           <p className="text-[9px] font-bold text-purple-400 leading-none">{player.premium_count || 0}</p>
         </div>
