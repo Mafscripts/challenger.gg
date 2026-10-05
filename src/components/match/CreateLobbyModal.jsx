@@ -110,7 +110,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const isWager = mode === "wager";
   const isRanked = mode === "ranked" || mode === "xp";
   const isEights = mode === "eights";
-  const modeChoices = isEights ? eightsSeriesFormats : gameModes;
+  const isMoneyEights = mode === "money8s";
+  const isEightsLobby = isEights || isMoneyEights;
+  const modeChoices = isEightsLobby ? eightsSeriesFormats : gameModes;
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
@@ -175,13 +177,13 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
       setIsCreating(true);
       try {
         const selectedMode = modeChoices.find(gm => gm.id === selectedGameMode);
-        const gameModeObj = isEights
+        const gameModeObj = isEightsLobby
           ? { id: selectedMode.gameMode, name: selectedMode.name }
           : selectedMode;
         const teamSizeObj = teamSizes.find(ts => ts.id === selectedTeamSize);
         let createdResult = {};
         
-        const matchType = isEights ? '8s' : mode === 'xp' ? 'xp' : mode === 'ranked' ? 'ranked' : 'wagers';
+        const matchType = isMoneyEights ? 'money8s' : isEights ? '8s' : mode === 'xp' ? 'xp' : mode === 'ranked' ? 'ranked' : 'wagers';
         
         if (isWager) {
           const response = await base44.functions.invoke('createWager', {
@@ -283,17 +285,17 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           const response = await base44.functions.invoke('createWager', {
             game_mode: gameModeObj.id,
             game_mode_display: gameModeObj.name,
-            team_size: isEights ? "4v4" : selectedTeamSize,
-            amount: 0,
-            max_players: isEights ? 8 : teamSizeObj.players,
-            best_of: isEights ? 3 : 1,
+            team_size: isEightsLobby ? "4v4" : selectedTeamSize,
+            amount: isMoneyEights ? enteredAmount : 0,
+            max_players: isEightsLobby ? 8 : teamSizeObj.players,
+            best_of: isEightsLobby ? 3 : 1,
             team_id: selectedTeamId || undefined,
             host_banned_map: null,
             host_banned_map_name: "",
             final_map: "",
             final_map_name: "",
-            series_format: isEights ? selectedMode.id : undefined,
-            series_modes: isEights ? selectedMode.modes : undefined,
+            series_format: isEightsLobby ? selectedMode.id : undefined,
+            series_modes: isEightsLobby ? selectedMode.modes : undefined,
             play_rule: selectedPlayRule,
             match_type: matchType,
           });
@@ -309,8 +311,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           }
 
           toast({
-            title: isEights ? "8s lobby created!" : "Lobby created!",
-            description: `Created ${isEights ? "4v4" : selectedTeamSize} ${gameModeObj.name}`,
+            title: isMoneyEights ? "Money 8s lobby created!" : isEights ? "8s lobby created!" : "Lobby created!",
+            description: `${isMoneyEights ? `$${enteredAmount.toFixed(2)} entry · ` : ""}Created ${isEightsLobby ? "4v4" : selectedTeamSize} ${gameModeObj.name}`,
           });
           createdResult = {
             wager_id: response.data.wager_id || response.data.id || response.data.wager?.id,
@@ -321,7 +323,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         onCreate({
           gameMode: selectedGameMode,
           teamSize: selectedTeamSize,
-          amount: isWager ? enteredAmount : 0,
+          amount: isWager || isMoneyEights ? enteredAmount : 0,
           ...createdResult,
         });
         setStep(1);
@@ -378,8 +380,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
             <div>
-              <h2 className="text-xl font-black">{isEights ? "Create 8s Lobby" : isRanked ? "Create XP Match" : "Create Wager"}</h2>
-              <p className="text-xs text-vapor mt-0.5">{isEights ? "Pick a BO3 series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
+              <h2 className="text-xl font-black">{isMoneyEights ? "Create Money 8s Lobby" : isEights ? "Create 8s Lobby" : isRanked ? "Create XP Match" : "Create Wager"}</h2>
+              <p className="text-xs text-vapor mt-0.5">{isEightsLobby ? "Pick a BO3 series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-vapor" />
@@ -394,9 +396,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">1</span>
-                  {isEights ? "Select BO3 Series" : "Select Game Mode"}
+                  {isEightsLobby ? "Select BO3 Series" : "Select Game Mode"}
                 </h3>
-                <div className={`grid gap-4 ${isEights ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+                <div className={`grid gap-4 ${isEightsLobby ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                   {modeChoices.map((mode) => {
                     const Icon = mode.icon;
                     const isSelected = selectedGameMode === mode.id;
@@ -428,7 +430,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => {
-                      if (isEights) {
+                      if (isEightsLobby) {
                         setSelectedTeamSize("4v4");
                         setStep(3);
                       } else {
@@ -590,11 +592,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             )}
 
             {/* Step 4: Wager Amount (Wagers only) */}
-            {step === 4 && isWager && (
+            {step === 4 && (isWager || isMoneyEights) && (
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">4</span>
-                  Enter Wager Amount
+                  {isMoneyEights ? "Set Money 8s Entry" : "Enter Wager Amount"}
                 </h3>
                 <div className="mb-4">
                   <label className="text-xs text-vapor mb-2 block">Your Wallet: ${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</label>
@@ -669,7 +671,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 </div>
                 <div className="mt-6 flex justify-between">
                   <button
-                    onClick={() => setStep(3)}
+                    onClick={() => setStep(isMoneyEights ? 3 : 3)}
                     className="px-6 py-2.5 bg-secondary text-vapor font-bold text-xs rounded-lg hover:bg-white/10 transition-all uppercase tracking-wider"
                   >
                     Back
@@ -679,7 +681,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     disabled={!enteredAmount || enteredAmount <= 0 || paymentTotal > walletBalance || isCreating}
                     className="px-6 py-2.5 bg-green text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-green/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
-                    <Swords className="w-4 h-4" /> {isCreating ? "Posting..." : "Post Wager"}
+                    <Swords className="w-4 h-4" /> {isCreating ? "Posting..." : isMoneyEights ? "Open Money 8s Lobby" : "Post Wager"}
                   </button>
                 </div>
               </div>
@@ -698,11 +700,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     </div>
                     <div>
                       <p className="font-bold text-sm">{modeChoices.find(gm => gm.id === selectedGameMode)?.name}</p>
-                      {isEights && <p className="mt-0.5 text-[10px] text-cyan">{modeChoices.find(gm => gm.id === selectedGameMode)?.description}</p>}
-                      <p className="text-xs text-vapor">{isEights ? "4v4 · 8 solo players" : teamSizes.find(ts => ts.id === selectedTeamSize)?.name}</p>
+                      {isEightsLobby && <p className="mt-0.5 text-[10px] text-cyan">{modeChoices.find(gm => gm.id === selectedGameMode)?.description}</p>}
+                      <p className="text-xs text-vapor">{isEightsLobby ? "4v4 · 8 solo players" : teamSizes.find(ts => ts.id === selectedTeamSize)?.name}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-green font-bold">{isEights ? "FREE · RANDOM TEAMS · XP ENABLED" : "FREE TO PLAY"}</p>
+                  <p className="text-xs text-green font-bold">{isMoneyEights ? `$${enteredAmount.toFixed(2)} ENTRY · WALLET ESCROW · RANDOM TEAMS` : isEights ? "FREE · RANDOM TEAMS · XP ENABLED" : "FREE TO PLAY"}</p>
                   {selectedTeam && (
                     <p className="text-xs text-vapor mt-2">
                       XP match party: {selectedTeam.name} ({selectedTeam.members.length} players)
@@ -710,21 +712,21 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   )}
                 </div>
                 <div className="mb-6">
-                  <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel={isEights ? "8s lobby" : "XP match"} />
+                  <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel={isMoneyEights ? "Money 8s lobby" : isEights ? "8s lobby" : "XP match"} />
                 </div>
                 <div className="flex justify-between">
                   <button
-                    onClick={() => setStep(isEights ? 1 : 2)}
+                    onClick={() => setStep(isEightsLobby ? 1 : 2)}
                     className="px-6 py-2.5 bg-secondary text-vapor font-bold text-xs rounded-lg hover:bg-white/10 transition-all uppercase tracking-wider"
                   >
                     Back
                   </button>
                   <button
-                    onClick={handleCreate}
+                    onClick={() => isMoneyEights ? setStep(4) : handleCreate()}
                     disabled={isCreating}
                     className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2"
                   >
-                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isEights ? "Open 8s Lobby" : "Create XP Match"}
+                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isMoneyEights ? "Open Money 8s Lobby" : isEights ? "Open 8s Lobby" : "Create XP Match"}
                   </button>
                 </div>
               </div>

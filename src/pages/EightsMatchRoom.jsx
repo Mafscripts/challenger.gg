@@ -90,7 +90,7 @@ export default function EightsMatchRoom() {
       const currentUser = user || await base44.auth.me();
       const sync = await base44.functions.invoke("syncEightsLobby", { wager_id: id }).catch(() => null);
       const latest = sync?.data?.wager || await base44.entities.Wager.getFresh(id);
-      if (latest?.match_type !== "8s") throw new Error("This is not an 8s match");
+      if (!['8s', 'money8s'].includes(latest?.match_type)) throw new Error("This is not an 8s match");
       const rows = await base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 8);
       const rosters = await loadWagerParticipants(base44, latest, { participantRows: rows, fresh: true });
       const [alpha, bravo] = await Promise.all([hydrateProgression(rosters.teamAPlayers), hydrateProgression(rosters.teamBPlayers)]);
@@ -113,6 +113,8 @@ export default function EightsMatchRoom() {
   }, [loadRoom]);
 
   const allPlayers = useMemo(() => [...teamAlpha, ...teamBravo], [teamAlpha, teamBravo]);
+  const isMoneyEights = match?.match_type === "money8s";
+  const roomLabel = isMoneyEights ? "Money 8s" : "Ranked 8s";
   const isParticipant = allPlayers.some((player) => player.user_id === user?.id);
   const isStaff = isStaffUser(user);
   const isAdmin = ["ceo", "super_admin", "admin"].includes(user?.role) || ["ceo", "super_admin", "admin"].includes(user?.admin_role) || user?.is_admin === true;
@@ -179,10 +181,10 @@ export default function EightsMatchRoom() {
     setRequestingAdmin(true);
     try {
       const response = await base44.functions.invoke("requestAdminAlert", {
-        match_type: "8s",
+        match_type: isMoneyEights ? "money8s" : "8s",
         match_id: match.id,
-        subject: `8s match admin request ${match.id}`,
-        description: `A player requested admin support from 8s match room ${match.id}.`,
+        subject: `${roomLabel} match admin request ${match.id}`,
+        description: `A player requested admin support from ${roomLabel} match room ${match.id}.`,
         priority: "high",
       });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not request admin");
@@ -237,11 +239,11 @@ export default function EightsMatchRoom() {
     setDisputing(true);
     try {
       const response = await base44.functions.invoke("createDispute", {
-        match_type: "8s",
+        match_type: isMoneyEights ? "money8s" : "8s",
         match_id: match.id,
         wager_id: match.id,
         reason: "score_dispute",
-        description: `Dispute submitted from 8s match room ${match.id}.`,
+        description: `Dispute submitted from ${roomLabel} match room ${match.id}.`,
         reported_against: onAlpha ? match.challenger_id : match.host_id,
         reported_against_name: onAlpha ? (match.challenger_name || "Team Bravo") : (match.host_name || "Team Alpha"),
         evidence_urls: evidenceUrls,
@@ -263,7 +265,7 @@ export default function EightsMatchRoom() {
     setAdminBusy(true);
     try {
       const response = await base44.functions.invoke("adminResolveMatchRoom", {
-        match_type: "8s",
+        match_type: isMoneyEights ? "money8s" : "8s",
         match_id: match.id,
         ticket_id: match.admin_request_ticket_id,
         action,
@@ -280,7 +282,7 @@ export default function EightsMatchRoom() {
   };
 
   const adminCancelMatch = async () => {
-    if (typeof window !== "undefined" && !window.confirm("Cancel this 8s match? This cannot be undone.")) return;
+    if (typeof window !== "undefined" && !window.confirm(`Cancel this ${roomLabel} match? This cannot be undone.`)) return;
     setAdminBusy(true);
     try {
       const response = await base44.functions.invoke("refundWager", {
@@ -304,7 +306,7 @@ export default function EightsMatchRoom() {
     <div className="min-h-screen py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Link to="/ranked/8s" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> Ranked 8s</Link>
+          <Link to="/ranked/8s" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> {roomLabel}</Link>
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
@@ -312,7 +314,7 @@ export default function EightsMatchRoom() {
         <header className="relative border-b border-white/[0.06] p-6 lg:p-8">
           <div className="absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/50 via-white/10 to-orange/50" />
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan"><Shield className="h-4 w-4" /> Ranked 8s match room</p><h1 className="mt-3 text-3xl font-black sm:text-4xl">Team Alpha <span className="text-vapor">vs</span> Team Bravo</h1><p className="mt-2 text-sm text-vapor">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3} · Match #{String(match.id).slice(-8).toUpperCase()}</p></div>
+            <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan"><Shield className="h-4 w-4" /> {roomLabel} match room</p><h1 className="mt-3 text-3xl font-black sm:text-4xl">Team Alpha <span className="text-vapor">vs</span> Team Bravo</h1><p className="mt-2 text-sm text-vapor">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3} · Match #{String(match.id).slice(-8).toUpperCase()}{isMoneyEights ? ` · $${Number(match.entry_fee ?? match.amount ?? 0).toFixed(2)} entry · $${Number(match.total_prize_pool ?? (Number(match.entry_fee ?? match.amount ?? 0) * 8)).toFixed(2)} prize pool` : ""}</p></div>
             <div className="flex flex-wrap gap-2">
               {!locked && isParticipant && !closedStatuses.has(match.status) && <button onClick={leave} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><LogOut className="h-4 w-4" /> Leave lobby</button>}
               {isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && <button onClick={() => setScoreOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit Score</button>}

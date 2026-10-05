@@ -1015,7 +1015,7 @@ async function escrowWagerStake({ userId, wagerId, entryFee, team }) {
 
 async function releaseWagerEscrow(wager, winnerId) {
   const entryFee = money(wager.entry_fee ?? wager.amount);
-  const isPaidWager = (wager.match_type || "wagers") === "wagers" && entryFee > 0;
+  const isPaidWager = entryFee > 0 && ((wager.match_type || "wagers") === "wagers" || isEightsMatchType(wager.match_type));
   if (!isPaidWager || !winnerId) return { totalPot: 0, winnerProfit: 0, walletChanges: {} };
 
   const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 10).catch(() => []);
@@ -2854,7 +2854,7 @@ async function matchParticipantIds(matchType, match) {
     ]);
     return [...new Set([...teamAUserIds, ...teamBUserIds].filter(Boolean))];
   }
-  if (matchType === "wager" || matchType === "8s") {
+  if (matchType === "wager" || matchType === "8s" || matchType === "money8s") {
     const participants = await listEntities("WagerParticipant", { wager_id: match.id }, "-joined_date", 100).catch(() => []);
     return [...new Set([
       match.host_id,
@@ -4782,8 +4782,13 @@ function normalizeMatchType(matchType) {
   if (value === "ranked") return "ranked";
   if (value === "xp") return "xp";
   if (value === "tournament") return "tournament";
+  if (value === "money8s" || value === "money_8s" || value === "money-8s") return "money8s";
   if (value === "8s" || value === "eights") return "8s";
   return "wager";
+}
+
+function isEightsMatchType(matchType) {
+  return matchType === "8s" || matchType === "money8s";
 }
 
 function matchEntityFor(matchType) {
@@ -4797,7 +4802,7 @@ function matchRouteFor(matchType, match) {
   if (matchType === "ranked") return `/ranked-match/${match.id}`;
   if (matchType === "xp") return `/xp-match/${match.id}`;
   if (matchType === "tournament") return `/tournament-match/${match.id}`;
-  if (match.match_type === "8s") return `/8s-match/${match.id}`;
+  if (isEightsMatchType(match.match_type)) return `/8s-match/${match.id}`;
   if (match.match_type === "xp") return `/match-room/${match.id}`;
   if (match.match_type === "ranked") return `/match-room/${match.id}`;
   return `/wagers-match/${match.id}`;
@@ -6280,7 +6285,7 @@ async function sendMatchRoomMessage(req) {
     : tournamentParticipantInfo?.reportingSide === "team_b"
       ? "b"
       : null;
-  if (!teamSide && (matchType === "wager" || matchType === "8s")) {
+  if (!teamSide && (matchType === "wager" || isEightsMatchType(matchType))) {
     const participant = await firstEntity("WagerParticipant", {
       wager_id: match.id,
       user_id: req.user.id,
@@ -6318,7 +6323,8 @@ async function createWager(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const entryFee = money(req.body.entry_fee ?? req.body.amount);
-  const matchType = req.body.match_type === "8s" ? "8s" : req.body.match_type === "xp" ? "xp" : "wagers";
+  const requestedMatchType = String(req.body.match_type || "").toLowerCase();
+  const matchType = isEightsMatchType(requestedMatchType) ? requestedMatchType : requestedMatchType === "xp" ? "xp" : "wagers";
   const requiredSize = requiredRosterSize(req.body.team_size);
   const isTeamMatch = matchType === "wagers";
   const paymentMode = paymentModeFor(req.body.payment_mode);
@@ -6349,7 +6355,9 @@ async function createWager(req) {
     }
   }
 
-  const totalPrizePool = isTeamMatch ? roundedMoney(entryFee * requiredSize * 2) : roundedMoney(entryFee * 2);
+  const totalPrizePool = matchType === "money8s"
+    ? roundedMoney(entryFee * requiredSize * 2)
+    : isTeamMatch ? roundedMoney(entryFee * requiredSize * 2) : roundedMoney(entryFee * 2);
   const wager = await createEntity("Wager", {
     ...req.body,
     host_id: req.user.id,
@@ -6481,7 +6489,7 @@ async function acceptWagerUnlocked(req) {
     return { success: false, error: "Wager is not open" };
   }
   const existingParticipant = await firstEntity("WagerParticipant", { wager_id: wager.id, user_id: req.user.id }).catch(() => null);
-  if (existingParticipant && wager.match_type === "8s") {
+  if (existingParticipant && isEightsMatchType(wager.match_type)) {
     return { success: true, wager, wager_id: wager.id, rejoined: true };
   }
   if (wager.host_id === req.user.id) {
@@ -6501,7 +6509,7 @@ async function acceptWagerUnlocked(req) {
   let challengerTeam = null;
   let challengerRoster = null;
   const enrolledParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
-  const isIndividualEights = wagerMatchType === "8s";
+  const isIndividualEights = isEightsMatchType(wagerMatchType);
   const playerCapacity = requiredSize * 2;
   if (isIndividualEights && enrolledParticipants.length >= playerCapacity) {
     return { success: false, error: "This 8s lobby is full" };
@@ -6630,10 +6638,10 @@ async function acceptWagerUnlocked(req) {
     .map((participant) => participant.user_id)
     .filter(Boolean);
   await notifyUsers(hostUserIds, {
-    title: wagerMatchType === "8s" ? "8s lobby joined" : "Wager accepted",
+    title: isEightsMatchType(wagerMatchType) ? (wagerMatchType === "money8s" ? "Money 8s lobby joined" : "8s lobby joined") : "Wager accepted",
     message: `${challengerTeam?.name || nameFor(req.user)} joined your ${wager.team_size || "1v1"} ${wager.game_mode_display || wager.game_mode || "match"}. Open the match room to begin.`,
-    type: wagerMatchType === "8s" ? "8s" : "wager",
-    action_url: wagerMatchType === "8s" ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`,
+    type: isEightsMatchType(wagerMatchType) ? "8s" : "wager",
+    action_url: isEightsMatchType(wagerMatchType) ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`,
     related_entity_id: wager.id,
     related_entity_type: "Wager",
   });
@@ -6649,7 +6657,7 @@ async function acceptWager(req) {
 
 async function syncEightsLobby(req) {
   const wager = await getEntity("Wager", req.body.wager_id || req.body.id);
-  if (!wager || wager.match_type !== "8s") return { success: false, error: "8s lobby not found" };
+  if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
   const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
   const participant = participants.some((row) => row.user_id === req.user.id);
   if (!participant && !hasRole(req.user, "moderator")) return { success: false, error: "Only lobby players can sync this room" };
@@ -6701,7 +6709,7 @@ async function voteEightsReshuffle(req) {
   const wagerId = req.body.wager_id || req.body.id;
   return withTournamentMutationLock(`eights-reshuffle:${wagerId}`, async () => {
     const wager = await getEntity("Wager", wagerId);
-    if (!wager || wager.match_type !== "8s") return { success: false, error: "8s lobby not found" };
+    if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
 
     const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
     const participantIds = new Set(participants.map((participant) => participant.user_id).filter(Boolean));
@@ -6745,7 +6753,7 @@ async function adminReshuffleEightsTeams(req) {
 
   return withTournamentMutationLock(`eights-reshuffle:${wagerId}`, async () => {
     const wager = await getEntity("Wager", wagerId);
-    if (!wager || wager.match_type !== "8s") return { success: false, error: "8s lobby not found" };
+    if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
     const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
     const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
     if (participants.length < requiredSize * 2) return { success: false, error: `The lobby needs ${requiredSize * 2} players before teams can be reshuffled` };
@@ -6763,7 +6771,7 @@ async function adminReshuffleEightsTeams(req) {
 
 async function leaveEightsLobby(req) {
   const wager = await getEntity("Wager", req.body.wager_id || req.body.id);
-  if (!wager || wager.match_type !== "8s") return { success: false, error: "8s lobby not found" };
+  if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
   const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
   const leaving = participants.find((row) => row.user_id === req.user.id);
   if (!leaving) return { success: false, error: "You are not in this lobby" };
@@ -6773,6 +6781,26 @@ async function leaveEightsLobby(req) {
       await updateEntity("Wager", wager.id, { status: "in_progress", roster_locked: true, match_started_date: wager.match_started_date || nowIso() });
     }
     return { success: false, error: "The roster is locked. This match can no longer be left." };
+  }
+
+  const leavingStake = money(leaving.entry_fee_paid);
+  if (leavingStake > 0 && leaving.escrow_released !== true && (leaving.escrowed === true || leaving.escrow_transaction_id)) {
+    const wallet = await walletFor(leaving.user_id);
+    const updatedWallet = await updateEntity("Wallet", wallet.id, {
+      available_balance: roundedMoney(money(wallet.available_balance) + leavingStake),
+      withdrawable_balance: roundedMoney(money(wallet.withdrawable_balance) + leavingStake),
+      pending_balance: roundedMoney(Math.max(0, money(wallet.pending_balance) - leavingStake)),
+      escrow_balance: roundedMoney(Math.max(0, money(wallet.escrow_balance) - leavingStake)),
+    });
+    await syncUserWalletBalance(leaving.user_id, updatedWallet);
+    await createWalletTransaction(leaving.user_id, updatedWallet, {
+      type: "wager_refund",
+      amount: leavingStake,
+      description: "Money 8s entry refunded after leaving the lobby",
+      reference_type: "Wager",
+      reference_id: wager.id,
+    });
+    await updateEntity("WagerParticipant", leaving.id, { escrow_released: true, escrow_released_date: nowIso() });
   }
 
   await deleteEntity("WagerParticipant", leaving.id);
@@ -6895,11 +6923,11 @@ async function submitScoreUnlocked(req) {
   if (!wager.challenger_id) {
     return { success: false, error: "Opponent has not joined yet" };
   }
-  const isEights = wager.match_type === "8s";
+  const isEights = isEightsMatchType(wager.match_type);
   const isHost = req.user.id === wager.host_id;
   const isChallenger = req.user.id === wager.challenger_id;
   const eightsParticipantIds = isEights
-    ? await matchParticipantIds("8s", wager)
+    ? await matchParticipantIds(wager.match_type, wager)
     : [];
   if (isEights ? !eightsParticipantIds.includes(req.user.id) : (!isHost && !isChallenger)) {
     return { success: false, error: "Only match participants can report scores" };
@@ -7062,8 +7090,8 @@ async function submitScoreUnlocked(req) {
   };
 
   if (otherHasReport && !scoresMatch) {
-    const disputeMatchType = wager.match_type === "8s" ? "8s" : "wager";
-    const disputeActionUrl = disputeMatchType === "8s" ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`;
+    const disputeMatchType = isEightsMatchType(wager.match_type) ? wager.match_type : "wager";
+    const disputeActionUrl = isEightsMatchType(disputeMatchType) ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`;
     const existingDisputes = await listEntities("Dispute", { match_id: wager.id }, "-created_date", 20).catch(() => []);
     const existingOpenDispute = existingDisputes.find((row) => !["resolved", "rejected", "closed"].includes(row.status));
     const dispute = existingOpenDispute || await createEntity("Dispute", {
@@ -7156,8 +7184,8 @@ async function completeWagerUnlocked(req) {
   if (!wager.challenger_id) {
     return { success: false, error: "Opponent has not joined yet" };
   }
-  const isParticipant = wager.match_type === "8s"
-    ? (await matchParticipantIds("8s", wager)).includes(req.user.id)
+  const isParticipant = isEightsMatchType(wager.match_type)
+    ? (await matchParticipantIds(wager.match_type, wager)).includes(req.user.id)
     : req.user.id === wager.host_id || req.user.id === wager.challenger_id;
   const isStaff = hasRole(req.user, "moderator");
   if (!isParticipant && !isStaff) {
@@ -7224,7 +7252,7 @@ async function completeWagerUnlocked(req) {
     completed_date: new Date().toISOString(),
   });
 
-  const isPaidWager = (wager.match_type || "wagers") === "wagers" && entryFee > 0;
+  const isPaidWager = entryFee > 0 && ((wager.match_type || "wagers") === "wagers" || isEightsMatchType(wager.match_type));
   await Promise.all(winnerUserIds.map(async (userId) => {
     const winner = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
     if (!winner) return;
@@ -7242,7 +7270,7 @@ async function completeWagerUnlocked(req) {
     ? await releaseWagerEscrow(wager, winnerId)
     : { totalPot: 0, winnerProfit: 0, walletChanges: {} };
   const xpChanges = await applyParticipantRewards(winnerUserIds, loserUserIds);
-  if ((wager.match_type || "wagers") === "8s") {
+  if (isEightsMatchType(wager.match_type)) {
     await Promise.all([
       ...winnerUserIds.map((userId) => updateEightsOutcome(userId, true)),
       ...loserUserIds.map((userId) => updateEightsOutcome(userId, false)),
@@ -7259,7 +7287,7 @@ async function completeWagerUnlocked(req) {
     title: "Match completed",
     message: `${winnerName} won ${wager.game_mode_display || wager.game_mode || "the match"}.`,
     type: "match",
-    action_url: (wager.match_type || "wagers") === "8s" ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`,
+    action_url: isEightsMatchType(wager.match_type) ? `/8s-match/${wager.id}` : `/wagers-match/${wager.id}`,
     related_entity_id: wager.id,
     related_entity_type: "Wager",
   });
@@ -9808,7 +9836,7 @@ async function moderateDispute(req) {
         ? `/xp-match/${match.id}`
       : matchType === "tournament"
         ? `/tournament-match/${match.id}`
-        : matchType === "8s" || match.match_type === "8s"
+        : isEightsMatchType(matchType) || isEightsMatchType(match.match_type)
           ? `/8s-match/${match.id}`
           : `/wagers-match/${match.id}`,
     related_entity_id: dispute.id,

@@ -53,7 +53,7 @@ const playerEarnings = (user) => Math.max(
 );
 const formatDate = (value) => value ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "TBD";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "TBD";
-const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
+const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
 const teamTypeLabel = (team) => ({ ranked: "Ranked", wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
 const titleCase = (value) => String(value || "pending").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const teamBannerMaxBytes = 1.5 * 1024 * 1024;

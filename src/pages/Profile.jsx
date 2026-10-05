@@ -43,7 +43,7 @@ const statNumber = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
-const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
+const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
 const verifiedNameColors = [
   { label: "Default", value: "" },
   { label: "Crimson Viper", value: "#f87171" },

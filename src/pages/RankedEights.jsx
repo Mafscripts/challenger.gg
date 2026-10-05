@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, CalendarDays, Crown, Plus } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, DollarSign, Plus, Shield } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
@@ -29,18 +29,21 @@ export default function RankedEights() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [queueMode, setQueueMode] = useState("ranked");
+  const isMoney = queueMode === "money";
+  const lobbyMatchType = isMoney ? "money8s" : "8s";
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
       const currentUser = await base44.auth.me();
       const [openRows, memberships] = await Promise.all([
-        base44.entities.Wager.filterFresh({ match_type: "8s", status: "open" }, "-created_date", 30),
+        base44.entities.Wager.filterFresh({ match_type: lobbyMatchType, status: "open" }, "-created_date", 30),
         base44.entities.WagerParticipant.filterFresh({ user_id: currentUser.id }, "-joined_date", 50),
       ]);
       const activeMemberships = (memberships || []).filter(Boolean);
       const activeMatches = await Promise.all(activeMemberships.map((row) => base44.entities.Wager.getFresh(row.wager_id).catch(() => null)));
-      const current = activeMatches.filter((row) => row?.match_type === "8s" && activeStatuses.has(row.status)).sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
+      const current = activeMatches.filter((row) => row?.match_type === lobbyMatchType && activeStatuses.has(row.status)).sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
       const participantLists = await Promise.all((openRows || []).map((row) => base44.entities.WagerParticipant.filterFresh({ wager_id: row.id }, "joined_date", 8).catch(() => [])));
       setUser(currentUser);
       setLobbies(openRows || []);
@@ -48,20 +51,20 @@ export default function RankedEights() {
       setCounts(Object.fromEntries((openRows || []).map((row, index) => [row.id, participantLists[index]?.length || 0])));
     } catch (error) {
       console.error("Failed to load 8s:", error);
-      toast({ title: "8s unavailable", description: error.message || "Please try again.", variant: "destructive" });
+      toast({ title: isMoney ? "Money 8s unavailable" : "8s unavailable", description: error.message || "Please try again.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isMoney, lobbyMatchType]);
 
   useEffect(() => {
-    if (monthKey() > EIGHTS_PRIZE_START_MONTH) {
+    if (!isMoney && monthKey() > EIGHTS_PRIZE_START_MONTH) {
       base44.functions.invoke("settleEightsMonthlyPrize", {}).catch(() => null);
     }
     load();
     const interval = window.setInterval(() => load(true), 6000);
     return () => window.clearInterval(interval);
-  }, [load]);
+  }, [isMoney, load]);
 
   const prizeActive = monthKey() >= EIGHTS_PRIZE_START_MONTH;
 
@@ -97,7 +100,7 @@ export default function RankedEights() {
           currentUser={user}
           openCount={lobbies.length}
           matchfinder={(
-            <CompetitionMatchfinder loading={loading} emptyMessage="No 8s lobbies are open right now.">
+            <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : "No 8s lobbies are open right now."}>
               {lobbies.map((lobby) => {
                 const joined = counts[lobby.id] || 0;
                 const alreadyIn = activeLobby?.id === lobby.id;
@@ -106,13 +109,13 @@ export default function RankedEights() {
                     key={lobby.id}
                     game={lobby.game_mode_display || lobby.game_mode}
                     gameDetail={`4v4 · ${joined}/8 players`}
-                    competition="Ranked 8s"
+                    competition={isMoney ? "Money 8s" : "Ranked 8s"}
                     competitionDetail={`Hosted by ${lobby.host_name || "Player"} · BO${lobby.best_of || 3}`}
                     playRule={lobby.play_rule}
                     tone="orange"
                     action={user ? (
                       <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || joined >= 8} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
-                        {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? "Finish active 8s first" : "Accept This Match"}
+                        {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? `Finish active ${isMoney ? "Money 8s" : "8s"} first` : "Accept This Match"}
                       </button>
                     ) : null}
                   />
@@ -122,17 +125,25 @@ export default function RankedEights() {
           )}
           action={activeLobby ? (
             <Link to={`/8s-match/${activeLobby.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background">
-              Return to your 8s <ArrowRight className="h-4 w-4" />
+              Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
             </Link>
           ) : (
             <button onClick={() => setCreateOpen(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background hover:bg-cyan/90">
-              <Plus className="h-4 w-4" /> Create 8s lobby
+              <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
           )}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
 
-        <section className="mb-6 overflow-hidden rounded-2xl border border-yellow-400/25 bg-gradient-to-r from-yellow-400/[0.11] via-card to-card">
+        <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setQueueMode("ranked")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${!isMoney ? "bg-cyan text-background" : "text-vapor hover:bg-white/[0.06]"}`}><Shield className="h-4 w-4" /> Ranked 8s</button>
+            <button type="button" onClick={() => setQueueMode("money")} className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-wider transition ${isMoney ? "bg-green text-background" : "text-vapor hover:bg-white/[0.06]"}`}><DollarSign className="h-4 w-4" /> Money 8s</button>
+          </div>
+          {isMoney && <p className="px-2 text-xs text-vapor">Wallet entry fee · winner receives the prize pool</p>}
+        </section>
+
+        {!isMoney && <section className="mb-6 overflow-hidden rounded-2xl border border-yellow-400/25 bg-gradient-to-r from-yellow-400/[0.11] via-card to-card">
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-yellow-400/25 bg-yellow-400/10 text-yellow-300"><Crown className="h-6 w-6" /></div>
@@ -148,10 +159,10 @@ export default function RankedEights() {
               <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{prizeActive ? "days remaining" : "days until launch"}</p>
             </div>
           </div>
-        </section>
+        </section>}
 
       </div>
-      <CreateLobbyModal isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode="eights" />
+      <CreateLobbyModal isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} />
     </div>
   );
 }

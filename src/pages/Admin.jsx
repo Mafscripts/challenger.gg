@@ -272,7 +272,7 @@ const statusText = (value) => String(value || "unknown").replace(/_/g, " ");
 const userName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unknown";
 const closedAdminAlertStatuses = new Set(["acknowledged", "resolved", "closed"]);
 const isOpenAdminAlert = (alert) => !closedAdminAlertStatuses.has(alert?.status || "open");
-const hiddenCompetitionTypes = new Set(["8s", "eights", "xp"]);
+const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
 const isVisibleCompetitionRecord = (record) => !hiddenCompetitionTypes.has(String(record?.match_type || "").toLowerCase());
 const isRemovedInvitationalTrophy = (item) => {
   const text = `${item?.category || ""} ${item?.name || ""} ${item?.description || ""} ${item?.unlock_key || ""}`.toLowerCase();

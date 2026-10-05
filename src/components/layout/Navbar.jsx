@@ -844,7 +844,7 @@ export default function Navbar() {
         .filter((match) => (
           match.entity_type === "tournament"
             ? activeTournamentStatuses.has(match.status) && !match.completed
-            : activeMatchStatuses.has(match.status) || (match.match_type === "8s" && match.status === "open")
+            : activeMatchStatuses.has(match.status) || ((match.match_type === "8s" || match.match_type === "money8s") && match.status === "open")
         ))
         .sort((a, b) => new Date(b.match_started_date || b.assigned_date || b.created_date || 0) - new Date(a.match_started_date || a.assigned_date || a.created_date || 0))
         .slice(0, 5);
@@ -1149,7 +1149,7 @@ export default function Navbar() {
                               const route = isTournament ? `/tournament-match/${match.id}` :
                                            match.entity_type === 'ranked' ? `/ranked-match/${match.id}` :
                                            match.entity_type === 'xp' ? `/xp-match/${match.id}` :
-                                           match.match_type === '8s' ? `/8s-match/${match.id}` :
+                                           (match.match_type === '8s' || match.match_type === 'money8s') ? `/8s-match/${match.id}` :
                                            `/wagers-match/${match.id}`;
                               const matchType = isTournament ? "tournament" : match.entity_type === 'ranked' ? 'ranked' : match.entity_type === 'xp' ? 'xp' : match.match_type;
                               const themeClasses = matchType === 'ranked' ? 'bg-cyan/10 text-cyan' :

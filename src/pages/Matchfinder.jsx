@@ -87,7 +87,7 @@ export default function Matchfinder() {
   const matches = useMemo(() => ({
     xp: xpMatches,
     elo: rankedMatches,
-    eights: wagerMatches.filter((match) => wagerType(match) === "8s"),
+    eights: wagerMatches.filter((match) => ["8s", "money8s"].includes(wagerType(match))),
     wagers: wagerMatches.filter((match) => wagerType(match) === "wagers"),
     tournaments,
   }), [xpMatches, rankedMatches, tournaments, wagerMatches]);
