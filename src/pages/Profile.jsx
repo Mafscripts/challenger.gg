@@ -583,7 +583,7 @@ function PlayerOverviewPanel({ user, profile, name, rank, elo, wins, losses, ear
             <p className="mb-2 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Trophies</p>
             <div className="flex flex-wrap items-center gap-2">
               {(trophies || []).map((trophy) => (
-                <span key={trophy.key} title={`${trophy.label}: ${trophy.value}`} className={`group/trophy relative inline-flex cursor-help items-center gap-1 rounded-md p-1 transition-all duration-200 hover:-translate-y-0.5 hover:bg-current/10 ${trophy.tone}`}>
+                <span key={trophy.key} title={`${trophy.label}: ${trophy.value}`} className={`group/trophy relative inline-flex cursor-default items-center gap-1 rounded-md p-1 transition-all duration-200 hover:-translate-y-0.5 hover:bg-current/10 ${trophy.tone}`}>
                   <img src={trophy.image} alt={trophy.label} className="h-5 w-5 object-contain" />
                   <span className="font-mono text-[9px] font-black">{trophy.value}</span>
                   <span className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg border border-white/[0.12] bg-[#111821] px-2.5 py-2 text-[10px] font-bold text-white opacity-0 shadow-[0_14px_36px_rgba(0,0,0,.65)] transition-all duration-150 group-hover/trophy:visible group-hover/trophy:translate-y-0 group-hover/trophy:opacity-100">{trophy.label}: {trophy.value}</span>

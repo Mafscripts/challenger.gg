@@ -337,7 +337,7 @@ function TrophyCounts({ trophies, align = "end", compact = false }) {
           <span
             key={key}
             aria-label={`${label}: ${count}`}
-            className={`group/trophy relative inline-flex cursor-help select-none items-center justify-center rounded-md border font-black transition-all duration-200 hover:-translate-y-0.5 ${compact ? "h-8 min-w-10 gap-1.5 px-2 text-[11px]" : "h-8 min-w-10 gap-1.5 px-2 text-[11px]"} ${count === 0 ? "opacity-70" : "ring-1 ring-current/10 shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_5px_18px_-10px_currentColor]"} ${className}`}
+            className={`group/trophy relative inline-flex cursor-default select-none items-center justify-center rounded-md border font-black transition-all duration-200 hover:-translate-y-0.5 ${compact ? "h-8 min-w-10 gap-1.5 px-2 text-[11px]" : "h-8 min-w-10 gap-1.5 px-2 text-[11px]"} ${count === 0 ? "opacity-70" : "ring-1 ring-current/10 shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_5px_18px_-10px_currentColor]"} ${className}`}
           >
             <span className="flex h-4 w-4 items-center justify-center rounded-full bg-current/10">
               <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
