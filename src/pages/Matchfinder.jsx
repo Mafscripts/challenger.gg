@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { CalendarDays, Clock3, DollarSign, Gamepad2, Search, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
+import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { toast } from "@/components/ui/use-toast";
@@ -256,19 +256,14 @@ export default function Matchfinder() {
   return (
     <main className="min-h-screen py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        <section className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-card px-6 py-7 sm:px-8">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-yellow-300/80 to-transparent" />
-          <div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,.10),transparent_58%)]" />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.24em] text-yellow-300"><Search className="h-3.5 w-3.5" /> Competition hub</div>
-              <h1 className="mt-3 font-heading text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">Matchfinder</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-vapor">Find every open match and scheduled tournament from one clean overview.</p>
-            </div>
-            <div className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-background/55 px-4 py-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-yellow-300/20 bg-yellow-300/10 text-yellow-300"><Gamepad2 className="h-5 w-5" /></span>
-              <div><p className="font-mono text-xl font-black text-white">{totalOpen}</p><p className="text-[8px] font-black uppercase tracking-[0.17em] text-vapor">Available now</p></div>
-            </div>
+        <section className="relative isolate h-[240px] overflow-hidden rounded-2xl border border-white/[0.1] bg-[#07111c] shadow-[0_18px_60px_rgba(0,0,0,.24)] sm:h-[300px] lg:h-[340px]" aria-labelledby="matchfinder-title">
+          <img src="/assets/competition/matchfinder-hero.png" alt="Topfragg Matchfinder competition hub" className="absolute inset-0 h-full w-full object-cover object-center" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07111c]/75 via-transparent to-[#07111c]/10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#07111c]/20 via-transparent to-[#07111c]/35" />
+          <h1 id="matchfinder-title" className="sr-only">Matchfinder</h1>
+          <div className="absolute right-4 top-4 flex items-center gap-3 rounded-xl border border-white/[0.12] bg-[#07111c]/75 px-3 py-2.5 shadow-xl backdrop-blur-md sm:right-6 sm:top-6 sm:px-4 sm:py-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-yellow-300/20 bg-yellow-300/10 text-yellow-300"><Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" /></span>
+            <div><p className="font-mono text-lg font-black leading-none text-white sm:text-xl">{totalOpen}</p><p className="mt-1 text-[8px] font-black uppercase tracking-[0.17em] text-vapor">Available now</p></div>
           </div>
         </section>
 
