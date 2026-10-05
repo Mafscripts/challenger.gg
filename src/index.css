@@ -1599,7 +1599,12 @@
   .app-content .player-name-color[data-name-effect="fx-cosmic-nebula"],
   .app-content .player-name-color[data-name-effect="fx-stellar-rush"],
   .app-content .player-name-color[data-name-effect="fx-prism-mirage"],
-  .app-content .player-name-color[data-name-effect="fx-golden-dimension"] {
+  .app-content .player-name-color[data-name-effect="fx-golden-dimension"],
+  .app-content .player-name-color[data-name-effect="fx-tesla-arc"],
+  .app-content .player-name-color[data-name-effect="fx-tempest-core"],
+  .app-content .player-name-color[data-name-effect="fx-astral-forge"],
+  .app-content .player-name-color[data-name-effect="fx-celestial-halo"],
+  .app-content .player-name-color[data-name-effect="fx-violet-cosmos"] {
     background-repeat: repeat;
     background-position: center;
     background-size: 210px 210px;
@@ -1628,6 +1633,36 @@
     background-color: #3b2205;
     background-image: url("/assets/name-effects/golden-dimension.gif");
     filter: saturate(1.08) brightness(1.04);
+  }
+
+  .app-content .player-name-color[data-name-effect="fx-tesla-arc"] {
+    background-color: #071323;
+    background-image: url("/assets/name-effects/tesla-arc.gif");
+    filter: saturate(1.05) brightness(1.1);
+  }
+
+  .app-content .player-name-color[data-name-effect="fx-tempest-core"] {
+    background-color: #061a2b;
+    background-image: url("/assets/name-effects/tempest-core.gif");
+    filter: saturate(1.1) brightness(1.02);
+  }
+
+  .app-content .player-name-color[data-name-effect="fx-astral-forge"] {
+    background-color: #1b0f1b;
+    background-image: url("/assets/name-effects/astral-forge.gif");
+    filter: saturate(1.08) brightness(1.03);
+  }
+
+  .app-content .player-name-color[data-name-effect="fx-celestial-halo"] {
+    background-color: #12100b;
+    background-image: url("/assets/name-effects/celestial-halo.gif");
+    filter: saturate(1.08) brightness(1.05);
+  }
+
+  .app-content .player-name-color[data-name-effect="fx-violet-cosmos"] {
+    background-color: #241039;
+    background-image: url("/assets/name-effects/violet-cosmos.gif");
+    filter: saturate(1.08) brightness(1.05);
   }
 
   .app-content .player-name-color[data-name-effect="fx-lightning-gold"] {
