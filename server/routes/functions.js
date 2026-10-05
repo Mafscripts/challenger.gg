@@ -9,7 +9,7 @@ import { containsBlockedLanguage } from "../profanity-filter.js";
 import { issueRankedVoiceToken } from "../ranked-voice.js";
 import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
 import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
-import { ANIMATED_NAME_FREE_TRIAL_KEY, getAnimatedNameFreeTrial } from "../freeTrial.js";
+import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTrial.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -10216,25 +10216,13 @@ async function adminActivateAnimatedNameFreeTrial(req) {
   assertStaff(req, "admin");
   const startsAt = new Date();
   const endsAt = new Date(startsAt.getTime() + (animatedNameFreeTrialDays * 24 * 60 * 60 * 1000));
-  const program = await prisma.freeTrialProgram.upsert({
-    where: { key: ANIMATED_NAME_FREE_TRIAL_KEY },
-    create: {
-      key: ANIMATED_NAME_FREE_TRIAL_KEY,
-      enabled: true,
-      starts_date: startsAt,
-      ends_date: endsAt,
-      stopped_date: null,
-      updated_by: req.user.id,
-      updated_by_name: nameFor(req.user),
-    },
-    update: {
-      enabled: true,
-      starts_date: startsAt,
-      ends_date: endsAt,
-      stopped_date: null,
-      updated_by: req.user.id,
-      updated_by_name: nameFor(req.user),
-    },
+  const program = await upsertAnimatedNameFreeTrial({
+    enabled: true,
+    startsAt,
+    endsAt,
+    stoppedAt: null,
+    updatedBy: req.user.id,
+    updatedByName: nameFor(req.user),
   });
   await createEntity("AdminAction", {
     admin_id: req.user.id,
@@ -10251,21 +10239,11 @@ async function adminActivateAnimatedNameFreeTrial(req) {
 async function adminStopAnimatedNameFreeTrial(req) {
   assertStaff(req, "admin");
   const stoppedAt = new Date();
-  const program = await prisma.freeTrialProgram.upsert({
-    where: { key: ANIMATED_NAME_FREE_TRIAL_KEY },
-    create: {
-      key: ANIMATED_NAME_FREE_TRIAL_KEY,
-      enabled: false,
-      stopped_date: stoppedAt,
-      updated_by: req.user.id,
-      updated_by_name: nameFor(req.user),
-    },
-    update: {
-      enabled: false,
-      stopped_date: stoppedAt,
-      updated_by: req.user.id,
-      updated_by_name: nameFor(req.user),
-    },
+  const program = await upsertAnimatedNameFreeTrial({
+    enabled: false,
+    stoppedAt,
+    updatedBy: req.user.id,
+    updatedByName: nameFor(req.user),
   });
   await createEntity("AdminAction", {
     admin_id: req.user.id,
