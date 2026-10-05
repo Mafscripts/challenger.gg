@@ -77,6 +77,18 @@ export default function RankedEights() {
     try {
       const response = await base44.functions.invoke("acceptWager", { wager_id: lobby.id });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not join this lobby");
+      if (isMoney && Number(lobby.entry_fee || lobby.amount || 0) > 0) {
+        window.dispatchEvent(new CustomEvent("topfragg:balance-popup", {
+          detail: {
+            title: "Money 8s entry secured",
+            message: `$${Number(lobby.entry_fee || lobby.amount).toFixed(2)} was deducted from your wallet for this Money 8s lobby.`,
+            balance_type: "wallet",
+            balance_change: -Number(lobby.entry_fee || lobby.amount),
+            related_entity_id: lobby.id,
+            related_entity_type: "Wager",
+          },
+        }));
+      }
       navigate(`/8s-match/${lobby.id}`);
     } catch (error) {
       toast({ title: "Could not join", description: error.message, variant: "destructive" });

@@ -1161,6 +1161,20 @@ async function releaseWagerEscrow(wager, winnerId) {
       reference_id: wager.id,
     });
 
+    if (wager.match_type === "money8s" && payout > 0) {
+      await notifyUser(participant.user_id, {
+        title: "Money 8s winnings",
+        message: `$${payout.toFixed(2)} was added to your wallet from this Money 8s match.`,
+        type: "wallet",
+        show_balance_popup: true,
+        balance_type: "wallet",
+        balance_change: payout,
+        action_url: "/wallet",
+        related_entity_id: wager.id,
+        related_entity_type: "Wager",
+      });
+    }
+
     if (participant.id) {
       await updateEntity("WagerParticipant", participant.id, {
         escrow_released: true,

@@ -240,7 +240,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             setIsCreating(false);
             return;
           }
-          
+
           toast({
             title: "XP match created!",
             description: `Created ${selectedTeamSize} ${gameModeObj.name}`,
@@ -308,6 +308,19 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             });
             setIsCreating(false);
             return;
+          }
+
+          if (isMoneyEights && enteredAmount > 0) {
+            window.dispatchEvent(new CustomEvent("topfragg:balance-popup", {
+              detail: {
+                title: "Money 8s entry secured",
+                message: `$${enteredAmount.toFixed(2)} was deducted from your wallet for this Money 8s lobby.`,
+                balance_type: "wallet",
+                balance_change: -Number(enteredAmount),
+                related_entity_id: response.data.wager_id || response.data.wager?.id,
+                related_entity_type: "Wager",
+              },
+            }));
           }
 
           toast({

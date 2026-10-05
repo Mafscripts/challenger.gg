@@ -17,6 +17,9 @@ const isRecentAdminDispute = (item) => {
   const createdAt = Date.parse(item?.created_date || "");
   return !Number.isFinite(createdAt) || Date.now() - createdAt <= ADMIN_DISPUTE_POPUP_MAX_AGE_MS;
 };
+const balancePopupKey = (item) => (
+  `${item?.related_entity_type || "balance"}:${item?.related_entity_id || item?.id || "event"}:${Number(item?.balance_change || 0).toFixed(2)}`
+);
 
 const navGroups = [
   {
@@ -279,6 +282,22 @@ export default function Navbar() {
   const notificationsLoadedAt = useRef(0);
   const balancePopupsReady = useRef(false);
   const shownBalancePopupIds = useRef(new Set());
+  const shownBalancePopupKeys = useRef(new Set());
+
+  const showBalancePopup = (notification) => {
+    const amount = Number(notification?.balance_change || 0);
+    if (!Number.isFinite(amount) || amount === 0) return;
+    const positive = amount > 0;
+    const absoluteAmount = Math.abs(amount);
+    toast({
+      title: notification.balance_type === "wallet"
+        ? `${positive ? "+" : "−"}$${absoluteAmount.toFixed(2)}`
+        : `${positive ? "+" : "−"}${absoluteAmount.toLocaleString()} Credits`,
+      description: notification.message,
+      variant: positive ? "default" : "destructive",
+      className: positive ? "border-green/40 bg-green/[0.12]" : undefined,
+    });
+  };
 
   useEffect(() => {
     const unlockAndPlayPendingStaffAlert = async () => {
@@ -371,24 +390,47 @@ export default function Navbar() {
     if (!notificationsHydrated) return;
     const balanceNotifications = notifications.filter((notification) => notification.show_balance_popup === true);
     if (!balancePopupsReady.current) {
-      balanceNotifications.forEach((notification) => shownBalancePopupIds.current.add(notification.id));
+      balanceNotifications.forEach((notification) => {
+        shownBalancePopupIds.current.add(notification.id);
+        shownBalancePopupKeys.current.add(balancePopupKey(notification));
+      });
       balancePopupsReady.current = true;
       return;
     }
 
-    const unseen = balanceNotifications.filter((notification) => !shownBalancePopupIds.current.has(notification.id));
+    const unseen = balanceNotifications.filter((notification) => (
+      !shownBalancePopupIds.current.has(notification.id)
+      && !shownBalancePopupKeys.current.has(balancePopupKey(notification))
+    ));
     if (unseen.length === 0) return;
     unseen.slice().reverse().forEach((notification) => {
       shownBalancePopupIds.current.add(notification.id);
-      const amount = Math.abs(Number(notification.balance_change || 0));
-      toast({
-        title: notification.balance_type === "wallet" ? `−$${amount.toFixed(2)}` : `−${amount.toLocaleString()} Credits`,
-        description: notification.message,
-        variant: "destructive",
-      });
+      shownBalancePopupKeys.current.add(balancePopupKey(notification));
+      showBalancePopup(notification);
     });
     loadUser(null, { fresh: true });
   }, [notifications, notificationsHydrated]);
+
+  useEffect(() => {
+    const handleBalancePopup = (event) => {
+      const detail = event.detail || {};
+      const change = Number(detail.balance_change || 0);
+      if (!Number.isFinite(change) || change === 0) return;
+      const notification = {
+        ...detail,
+        balance_change: change,
+        balance_type: detail.balance_type || "wallet",
+      };
+      const key = balancePopupKey(notification);
+      if (shownBalancePopupKeys.current.has(key)) return;
+      shownBalancePopupKeys.current.add(key);
+      showBalancePopup(notification);
+      loadUser(null, { fresh: true });
+    };
+
+    window.addEventListener("topfragg:balance-popup", handleBalancePopup);
+    return () => window.removeEventListener("topfragg:balance-popup", handleBalancePopup);
+  }, []);
 
   const cancelDropdownClose = () => {
     if (!dropdownCloseTimer.current) return;
@@ -450,6 +492,7 @@ export default function Navbar() {
     setNotificationsHydrated(false);
     balancePopupsReady.current = false;
     shownBalancePopupIds.current.clear();
+    shownBalancePopupKeys.current.clear();
     setMessages([]);
     setUnreadNotifCount(0);
     setUnreadMessagesCount(0);
