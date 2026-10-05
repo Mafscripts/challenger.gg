@@ -100,11 +100,11 @@ function PlayerSocials({ player }) {
   const available = socialDefinitions.filter(({ key }) => socials?.[key]);
   if (available.length === 0) return <span className="text-xs text-vapor/45">&mdash;</span>;
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="grid w-full max-w-[86px] grid-cols-4 gap-1">
       {available.map(({ key, label, icon: Icon }) => {
         const href = socialUrl(key, socials[key]);
-        const classes = "inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-black/20 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan";
-        return href ? <a key={key} href={href} target="_blank" rel="noreferrer" title={label} className={classes}><Icon className="h-3.5 w-3.5" /></a> : <span key={key} title={`${label}: ${socials[key]}`} className={classes}><Icon className="h-3.5 w-3.5" /></span>;
+        const classes = "inline-flex h-5 w-full min-w-0 items-center justify-center rounded-md border border-white/[0.08] bg-black/20 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan";
+        return href ? <a key={key} href={href} target="_blank" rel="noreferrer" title={label} className={classes}><Icon className="h-3 w-3" /></a> : <span key={key} title={`${label}: ${socials[key]}`} className={classes}><Icon className="h-3 w-3" /></span>;
       })}
     </div>
   );
