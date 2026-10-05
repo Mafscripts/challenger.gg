@@ -113,7 +113,7 @@ function rankTone(index) {
   return "text-vapor";
 }
 
-export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "" }) {
+export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride }) {
   const copy = modeCopy[mode] || modeCopy.xp;
   const headerImage = "/assets/competition/topfragg-xp-header.png";
   const headerHeight = "min-h-[350px] lg:min-h-[370px]";
@@ -142,9 +142,9 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
         </div>
         <div className={`relative z-10 grid gap-8 p-7 md:p-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end ${headerHeight}`}>
           <div>
-            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.28em] ${copy.accent}`}><span className={`h-1.5 w-1.5 ${copy.line}`} /> {copy.eyebrow}</div>
-            <h1 className="mt-4 max-w-xl font-heading text-4xl font-black uppercase leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,.75)] sm:text-5xl">{copy.title}</h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-white/75">{copy.description}</p>
+            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.28em] ${copy.accent}`}><span className={`h-1.5 w-1.5 ${copy.line}`} /> {eyebrowOverride || copy.eyebrow}</div>
+            <h1 className="mt-4 max-w-xl font-heading text-4xl font-black uppercase leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,.75)] sm:text-5xl">{titleOverride || copy.title}</h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-white/75">{descriptionOverride || copy.description}</p>
             <div className="mt-5 flex flex-wrap gap-2">
               <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">Cross platform</span>
               <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{monthLabel()}</span>
@@ -179,7 +179,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
   );
 }
 
-export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder }) {
+export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -360,7 +360,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
 
   return (
     <div className="mb-7 space-y-5">
-      <CompetitionHeader mode={mode} playerCount={standings.length} action={action} />
+      <CompetitionHeader mode={mode} playerCount={standings.length} action={action} titleOverride={headerTitle} eyebrowOverride={headerEyebrow} descriptionOverride={headerDescription} />
 
       <div className={`grid gap-3 sm:grid-cols-2 ${mode === "wagers" ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {summary.map(({ label, value, detail, icon: Icon, tone }) => (

@@ -107,6 +107,9 @@ export default function RankedEights() {
           mode="eights"
           currentUser={user}
           openCount={lobbies.length}
+          headerEyebrow={isMoney ? "Wallet-backed 8s" : "Free 8s ladder"}
+          headerTitle={isMoney ? "Money 8s" : "Free 8s"}
+          headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : "Join free, get shuffled into a 4v4 team and climb the monthly standings."}
           matchfinder={(
             <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : "No 8s lobbies are open right now."}>
               {lobbies.map((lobby) => {
