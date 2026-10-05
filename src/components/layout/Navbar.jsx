@@ -12,6 +12,12 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 
+const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const isRecentAdminDispute = (item) => {
+  const createdAt = Date.parse(item?.created_date || "");
+  return !Number.isFinite(createdAt) || Date.now() - createdAt <= ADMIN_DISPUTE_POPUP_MAX_AGE_MS;
+};
+
 const navGroups = [
   {
     label: "Tournaments",
@@ -345,7 +351,10 @@ export default function Navbar() {
       }
     }
     const disputeNotification = notifications.find((notification) => (
-      notification.type === "dispute" && !notification.is_read && !notification.popup_suppressed
+      notification.type === "dispute"
+      && !notification.is_read
+      && !notification.popup_suppressed
+      && isRecentAdminDispute(notification)
     ));
     if (!disputeNotification) return;
     const disputeId = disputeNotification.related_entity_id || disputeNotification.id;
@@ -668,6 +677,7 @@ export default function Navbar() {
           const pendingDisputes = (rows || []).filter((dispute) => (
             ["pending", "under_review", "escalated"].includes(dispute.status)
             && dispute.admin_popup_suppressed !== true
+            && isRecentAdminDispute(dispute)
             && !hiddenMatchTypes.has(String(dispute.match_type || "").toLowerCase())
           ));
           const pendingIds = new Set(pendingDisputes.map((dispute) => dispute.id));
