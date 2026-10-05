@@ -120,9 +120,9 @@ export default function EightsMatchRoom() {
   const isStaff = isStaffUser(user);
   const isAdmin = ["ceo", "super_admin", "admin"].includes(user?.role) || ["ceo", "super_admin", "admin"].includes(user?.admin_role) || user?.is_admin === true;
   const joined = allPlayers.length;
-  const entryFee = Math.max(0, Number(match.entry_fee ?? match.amount ?? 0));
+  const entryFee = Math.max(0, Number(match?.entry_fee ?? match?.amount ?? 0));
   const livePrizePool = isMoneyEights ? entryFee * joined : 0;
-  const fullPrizePool = isMoneyEights ? Number(match.total_prize_pool ?? (entryFee * 8)) : 0;
+  const fullPrizePool = isMoneyEights ? Number(match?.total_prize_pool ?? (entryFee * 8)) : 0;
   const openSpots = Math.max(0, 8 - joined);
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
   const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || countdown === 0);
