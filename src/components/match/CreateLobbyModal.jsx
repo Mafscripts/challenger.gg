@@ -313,6 +313,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           if (isMoneyEights && enteredAmount > 0) {
             window.dispatchEvent(new CustomEvent("topfragg:balance-popup", {
               detail: {
+                balance_popup_event_id: `money8s-create:${response.data.wager_id || response.data.wager?.id}:${Date.now()}:${Math.random()}`,
                 title: "Money 8s entry secured",
                 message: `$${enteredAmount.toFixed(2)} was deducted from your wallet for this Money 8s lobby.`,
                 balance_type: "wallet",

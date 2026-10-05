@@ -80,6 +80,7 @@ export default function RankedEights() {
       if (isMoney && Number(lobby.entry_fee || lobby.amount || 0) > 0) {
         window.dispatchEvent(new CustomEvent("topfragg:balance-popup", {
           detail: {
+            balance_popup_event_id: `money8s-join:${lobby.id}:${Date.now()}:${Math.random()}`,
             title: "Money 8s entry secured",
             message: `$${Number(lobby.entry_fee || lobby.amount).toFixed(2)} was deducted from your wallet for this Money 8s lobby.`,
             balance_type: "wallet",

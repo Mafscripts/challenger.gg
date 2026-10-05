@@ -319,6 +319,11 @@ export default function Navbar() {
   const shownBalancePopupKeys = useRef(new Set());
   const [balancePopup, setBalancePopup] = useState(null);
 
+  const rememberBalancePopupKey = (key) => {
+    shownBalancePopupKeys.current.add(key);
+    window.setTimeout(() => shownBalancePopupKeys.current.delete(key), 15000);
+  };
+
   const showBalancePopup = (notification) => {
     const amount = Number(notification?.balance_change || 0);
     if (!Number.isFinite(amount) || amount === 0) return;
@@ -418,7 +423,6 @@ export default function Navbar() {
     if (!balancePopupsReady.current) {
       balanceNotifications.forEach((notification) => {
         shownBalancePopupIds.current.add(notification.id);
-        shownBalancePopupKeys.current.add(balancePopupKey(notification));
       });
       balancePopupsReady.current = true;
       return;
@@ -431,7 +435,7 @@ export default function Navbar() {
     if (unseen.length === 0) return;
     unseen.slice().reverse().forEach((notification) => {
       shownBalancePopupIds.current.add(notification.id);
-      shownBalancePopupKeys.current.add(balancePopupKey(notification));
+      rememberBalancePopupKey(balancePopupKey(notification));
       showBalancePopup(notification);
     });
     loadUser(null, { fresh: true });
@@ -448,8 +452,11 @@ export default function Navbar() {
         balance_type: detail.balance_type || "wallet",
       };
       const key = balancePopupKey(notification);
-      if (shownBalancePopupKeys.current.has(key)) return;
-      shownBalancePopupKeys.current.add(key);
+      if (detail.balance_popup_event_id) {
+        if (shownBalancePopupIds.current.has(detail.balance_popup_event_id)) return;
+        shownBalancePopupIds.current.add(detail.balance_popup_event_id);
+      } else if (shownBalancePopupKeys.current.has(key)) return;
+      rememberBalancePopupKey(key);
       showBalancePopup(notification);
       loadUser(null, { fresh: true });
     };

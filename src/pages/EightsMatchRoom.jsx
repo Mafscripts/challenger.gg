@@ -210,6 +210,7 @@ export default function EightsMatchRoom() {
       if (isMoneyEights && entryFee > 0) {
         window.dispatchEvent(new CustomEvent("topfragg:balance-popup", {
           detail: {
+            balance_popup_event_id: `money8s-leave:${id}:${Date.now()}:${Math.random()}`,
             title: "Money 8s entry refunded",
             message: `${formatMoney(entryFee)} was refunded to your wallet after leaving the Money 8s lobby.`,
             balance_type: "wallet",
