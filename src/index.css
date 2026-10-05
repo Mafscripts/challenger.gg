@@ -1610,7 +1610,6 @@
     background-size: 210px 210px;
     animation: none !important;
     -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.9);
-    text-shadow: 0 0 4px rgba(255, 255, 255, 0.28);
   }
 
   .app-content .player-name-color[data-name-effect="fx-cosmic-nebula"] {
