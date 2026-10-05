@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Clock3,
   Coins,
+  DollarSign,
   Flame,
   Gamepad2,
   Medal,
@@ -21,6 +22,7 @@ const navigation = [
   { key: "xp", label: "XP Matches", to: "/xp", icon: Zap },
   { key: "wagers", label: "Wagers", to: "/wagers", icon: Coins },
   { key: "eights", label: "8s", to: "/ranked/8s", icon: Users },
+  { key: "money8s", label: "Money 8s", to: "/ranked/8s?mode=money", icon: DollarSign },
   { key: "tournaments", label: "Upcoming Tournaments", to: "/tournaments", icon: Trophy },
 ];
 
@@ -52,6 +54,13 @@ const modeCopy = {
     description: "Join solo, get shuffled into a 4v4 team and climb the monthly standings.",
     accent: "text-orange",
     line: "bg-orange",
+  },
+  money8s: {
+    eyebrow: "Money 8s ladder",
+    title: "Money 8s",
+    description: "Play for the pot, track your winnings and climb the Money 8s standings.",
+    accent: "text-green",
+    line: "bg-green",
   },
   tournaments: {
     eyebrow: "Tournament center",
@@ -159,7 +168,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
         </div>
       </section>
 
-      <nav className="grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 lg:grid-cols-5">
+      <nav className="grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 lg:grid-cols-6">
         {navigation.map(({ key, label, to, icon: Icon }) => {
           const active = key === mode;
           return (
@@ -186,6 +195,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const [xpRows, setXpRows] = useState([]);
   const [rankedRows, setRankedRows] = useState([]);
   const [eightsRows, setEightsRows] = useState([]);
+  const [moneyRows, setMoneyRows] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [leaderboardTrophies, setLeaderboardTrophies] = useState({});
   const [loading, setLoading] = useState(true);
@@ -197,11 +207,12 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     let active = true;
     const load = async () => {
       setLoading(true);
-      const [userData, xpData, rankedData, eightsData, tournamentData] = await Promise.all([
+      const [userData, xpData, rankedData, eightsData, moneyData, tournamentData] = await Promise.all([
         base44.entities.User.filter({}, mode === "wagers" ? "-total_wager_earnings" : "-created_date", 500).catch(() => []),
         base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []),
         mode === "ranked" ? base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []) : Promise.resolve([]),
         mode === "eights" ? base44.entities.EightsStats.filter({}, "-monthly_wins", 500).catch(() => []) : Promise.resolve([]),
+        mode === "money8s" ? base44.functions.invoke("getMoneyEightsStandings", {}).catch(() => ({ data: { rows: [] } })) : Promise.resolve({ data: { rows: [] } }),
         base44.entities.Tournament.filter({}, "start_date", 100).catch(() => []),
       ]);
       if (!active) return;
@@ -209,6 +220,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
       setXpRows(xpData || []);
       setRankedRows(rankedData || []);
       setEightsRows(eightsData || []);
+      setMoneyRows(moneyData?.data?.rows || []);
       setTournaments((tournamentData || []).filter((row) => ["open", "registration"].includes(row.status)));
       setLoading(false);
     };
@@ -264,6 +276,28 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         .slice(0, 50);
     }
 
+    if (mode === "money8s") {
+      return moneyRows
+        .map((row) => {
+          const user = usersById.get(String(row.user_id));
+          return {
+            id: row.user_id,
+            userId: row.user_id,
+            user,
+            name: playerName(user, row),
+            slug: playerSlug(user, row),
+            wins: number(row.wins),
+            losses: number(row.losses),
+            streak: 0,
+            xp: number(xpByUser.get(String(row.user_id))?.total_xp),
+            score: number(row.winnings),
+            trophies: trophyCount(user),
+          };
+        })
+        .sort((a, b) => b.score - a.score || b.wins - a.wins || a.losses - b.losses)
+        .slice(0, 50);
+    }
+
     if (mode === "xp") {
       return xpRows
         .map((xp) => {
@@ -310,7 +344,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
       .filter((row) => row.wins + row.losses + row.xp + row.score > 0)
       .sort((a, b) => b.xp - a.xp || b.wins - a.wins || b.score - a.score)
       .slice(0, 50);
-  }, [eightsRows, mode, rankedRows, users, usersById, xpByUser, xpRows]);
+  }, [eightsRows, mode, moneyRows, rankedRows, users, usersById, xpByUser, xpRows]);
 
   const standingsUserIds = useMemo(() => standings.map((row) => String(row.userId || "")).filter(Boolean).join("|"), [standings]);
 
@@ -351,6 +385,11 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     { label: "Open lobbies", value: openCount, detail: "4v4 random teams", icon: Gamepad2, tone: "text-cyan" },
     { label: "Players", value: standings.length, detail: "On this month's ladder", icon: Users, tone: "text-purple-300" },
     { label: "Season", value: monthLabel(), detail: "Monthly standings", icon: Clock3, tone: "text-orange" },
+  ] : mode === "money8s" ? [
+    { label: "Money 8s matches", value: standings.reduce((sum, row) => sum + row.wins + row.losses, 0), detail: "Completed matches", icon: Gamepad2, tone: "text-cyan" },
+    { label: "Players", value: standings.length, detail: "On the Money 8s ladder", icon: Users, tone: "text-purple-300" },
+    { label: "Total winnings", value: `$${totalScore.toFixed(2)}`, detail: "Prize money won", icon: DollarSign, tone: "text-green" },
+    { label: "Prize format", value: "8-player pot", detail: "Wallet-backed matches", icon: Trophy, tone: "text-orange" },
   ] : [
     { label: "Total XP", value: standings.reduce((sum, row) => sum + row.xp, 0).toLocaleString(), detail: "Across the XP ladder", icon: Sparkles, tone: "text-purple-300" },
     { label: "Open matches", value: openCount, detail: "Ready to join", icon: Gamepad2, tone: "text-cyan" },
@@ -383,7 +422,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         {activeTab === "matchfinder" ? matchfinder : <div className="overflow-x-auto">
           <div className="min-w-[1080px]">
             <div className="grid grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] gap-3 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor">
-              <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span><span className="text-center">XP</span><span>Trophies</span><span className="text-right">{mode === "wagers" ? "Winnings" : mode === "eights" ? "Rating" : "ELO"}</span>
+              <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span><span className="text-center">XP</span><span>Trophies</span><span className="text-right">{mode === "wagers" || mode === "money8s" ? "Winnings" : mode === "eights" ? "Rating" : "ELO"}</span>
             </div>
             {loading ? (
               <div className="space-y-px" aria-label={`Loading ${copy.title} standings`}>
@@ -405,7 +444,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
                 <span className="text-center font-mono font-black"><Flame className="mr-1 inline h-3.5 w-3.5 text-orange" />{row.streak}</span>
                 <span className="text-center font-mono font-black text-purple-300">{row.xp.toLocaleString()}</span>
                 <span className="flex items-center gap-2">{trophyTypes.map((trophy) => <span key={trophy.key} title={trophy.label} className="inline-flex items-center gap-0.5"><img src={trophy.image} alt="" className="h-4 w-4 object-contain" /><b className="font-mono text-[8px] text-vapor">{trophy.fields.reduce((best, field) => Math.max(best, number(row.user?.[field])), 0) + number(leaderboardTrophies[row.userId]?.[trophy.key])}</b></span>)}</span>
-                <span className={`text-right font-mono font-black ${mode === "wagers" ? "text-green" : "text-cyan"}`}>{mode === "wagers" ? `$${row.score.toLocaleString()}` : row.score.toLocaleString()}</span>
+                <span className={`text-right font-mono font-black ${mode === "wagers" || mode === "money8s" ? "text-green" : "text-cyan"}`}>{mode === "wagers" || mode === "money8s" ? `$${row.score.toFixed(2)}` : row.score.toLocaleString()}</span>
               </div>
             ))}
           </div>

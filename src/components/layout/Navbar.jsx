@@ -5,7 +5,7 @@ import {
   Menu, X, House, Swords, Trophy, ShoppingBag,
   Users, Zap,
   Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket, Ghost, Crown
+  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, DollarSign, Search, ArrowRight, Ticket, Ghost, Crown
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
@@ -104,7 +104,8 @@ const rankedNavGroup = {
   tone: "cyan",
   items: [
     { label: "Ranked", description: "Queue for ranked matchmaking", path: "/ranked", icon: Swords, tone: "cyan" },
-    { label: "8s", description: "Join the 8-player competitive queue", path: "/ranked/8s", icon: Users, tone: "cyan" },
+    { label: "Free 8s", description: "Join the free 8-player competitive queue", path: "/ranked/8s", icon: Users, tone: "cyan" },
+    { label: "Money 8s", description: "Play 8s for a wallet-backed prize pool", path: "/ranked/8s?mode=money", icon: DollarSign, tone: "green" },
   ],
 };
 
@@ -240,13 +241,18 @@ const tournamentMatchSideFor = (match, keys) => {
   return null;
 };
 
-const navItemIsActive = (pathname, path, hash = "") => {
+const navItemIsActive = (pathname, path, hash = "", search = "") => {
   const [targetPathWithQuery, targetHash] = String(path || "").split("#");
-  const [targetPath] = targetPathWithQuery.split("?");
+  const [targetPath, targetQuery] = targetPathWithQuery.split("?");
   const expectedHash = targetHash ? `#${targetHash}` : "";
+  const expectedSearch = targetQuery ? `?${targetQuery}` : "";
 
-  if (expectedHash) return pathname === targetPath && hash === expectedHash;
-  if (pathname === targetPath) return targetPath !== "/ranked" || hash !== "#standings";
+  if (expectedHash) return pathname === targetPath && hash === expectedHash && (!expectedSearch || search === expectedSearch);
+  if (pathname === targetPath) {
+    if (expectedSearch) return search === expectedSearch;
+    if (targetPath === "/ranked/8s" && search) return false;
+    return targetPath !== "/ranked" || hash !== "#standings";
+  }
 
   return (targetPath === "/tournaments" && pathname.startsWith("/tournament-match/"))
     || (targetPath === "/streamer-tournaments" && pathname.startsWith("/streamer-tournament/"))
@@ -1093,22 +1099,22 @@ export default function Navbar() {
                   to="/dashboard"
                   data-nav-item
                   data-tone="orange"
-                  data-active={navItemIsActive(location.pathname, "/dashboard", location.hash) ? "true" : "false"}
+                  data-active={navItemIsActive(location.pathname, "/dashboard", location.hash, location.search) ? "true" : "false"}
                   onMouseEnter={closeDropdowns}
                   className={`${navButtonClass} nav-dashboard-link ${
-                    navItemIsActive(location.pathname, "/dashboard", location.hash)
+                    navItemIsActive(location.pathname, "/dashboard", location.hash, location.search)
                       ? navTone.orange.button
                       : "border-transparent text-vapor hover:border-orange/20 hover:bg-orange/[0.07] hover:text-orange"
                   }`}
                 >
-                  <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard", location.hash) ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
+                  <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard", location.hash, location.search) ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
                     <House className="h-3.5 w-3.5" />
                   </span>
                   Home
                 </Link>
                 {[playNavGroup, navGroups.find((group) => group.label === "Cash Matches"), navGroups.find((group) => group.label === "Matchfinder"), navGroups.find((group) => group.label === "Tournaments")].map((group) => {
                   const GroupIcon = group.icon;
-                  const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash));
+                  const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash, location.search));
                   const open = navMenuOpen === group.label;
                   const groupTone = navTone[group.tone] || navTone.cyan;
 
@@ -1156,7 +1162,7 @@ export default function Navbar() {
                             </div>
                             {group.items.map((item) => {
                               const ItemIcon = item.icon;
-                              const itemActive = navItemIsActive(location.pathname, item.path, location.hash);
+                              const itemActive = navItemIsActive(location.pathname, item.path, location.hash, location.search);
                               const itemTone = navTone[item.tone] || navTone.cyan;
 
                               return (
@@ -1735,7 +1741,7 @@ export default function Navbar() {
                 to="/dashboard"
                 onClick={closeMobileMenu}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
-                  navItemIsActive(location.pathname, "/dashboard", location.hash) ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
+                  navItemIsActive(location.pathname, "/dashboard", location.hash, location.search) ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
                 }`}
               >
                 <House className="h-5 w-5" />
@@ -1747,7 +1753,7 @@ export default function Navbar() {
                   <div className="space-y-1">
                     {section.items.map((link) => {
                       const Icon = link.icon;
-                      const active = navItemIsActive(location.pathname, link.path, location.hash);
+                      const active = navItemIsActive(location.pathname, link.path, location.hash, location.search);
                       return (
                         <Link
                           key={link.path}

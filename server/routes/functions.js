@@ -6902,6 +6902,61 @@ async function leaveEightsLobby(req) {
   return { success: true, wager: reopened };
 }
 
+async function getMoneyEightsStandings() {
+  const [wagers, participants] = await Promise.all([
+    listEntities("Wager", { match_type: "money8s", status: "completed" }, "-match_completed_date", 500).catch(() => []),
+    listEntities("WagerParticipant", {}, "-joined_date", 500).catch(() => []),
+  ]);
+  const participantsByWager = new Map();
+  participants.forEach((participant) => {
+    const wagerId = String(participant.wager_id || "");
+    if (!wagerId) return;
+    const rows = participantsByWager.get(wagerId) || [];
+    rows.push(participant);
+    participantsByWager.set(wagerId, rows);
+  });
+  const stats = new Map();
+  const ensure = (userId) => {
+    const id = String(userId || "");
+    if (!id) return null;
+    if (!stats.has(id)) stats.set(id, { user_id: id, wins: 0, losses: 0, matches: 0, winnings: 0, net_earnings: 0 });
+    return stats.get(id);
+  };
+
+  wagers.forEach((wager) => {
+    const rows = participantsByWager.get(String(wager.id)) || [];
+    const winnerId = String(wager.winner_id || "");
+    const winnerSide = winnerId && winnerId === String(wager.host_id || "") ? "host" : winnerId ? "challenger" : "";
+    const changes = wager.wallet_changes && typeof wager.wallet_changes === "object" ? wager.wallet_changes : {};
+    const userIds = [...new Set([
+      ...rows.map((row) => row.user_id),
+      wager.host_id,
+      wager.challenger_id,
+    ].filter(Boolean).map(String))];
+
+    userIds.forEach((userId) => {
+      const userRows = rows.filter((row) => String(row.user_id) === userId);
+      const change = changes[userId] || {};
+      const stat = ensure(userId);
+      const won = userRows.length > 0
+        ? userRows.some((row) => winnerSide && row.team === winnerSide)
+        : userId === winnerId;
+      stat.matches += 1;
+      if (won) stat.wins += 1;
+      else stat.losses += 1;
+      stat.winnings = roundedMoney(stat.winnings + Math.max(0, money(change.match_delta)));
+      stat.net_earnings = roundedMoney(stat.net_earnings + money(change.match_delta));
+    });
+  });
+
+  return {
+    success: true,
+    rows: [...stats.values()].sort((a, b) => (
+      b.winnings - a.winnings || b.wins - a.wins || a.losses - b.losses
+    )),
+  };
+}
+
 function previousMonthKey() {
   const date = new Date();
   date.setUTCDate(1);
@@ -10475,6 +10530,7 @@ const handlers = {
   voteEightsReshuffle,
   adminReshuffleEightsTeams,
   leaveEightsLobby,
+  getMoneyEightsStandings,
   settleEightsMonthlyPrize,
   payWagerEntry,
   submitScore,
