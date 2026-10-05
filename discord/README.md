@@ -108,7 +108,7 @@ For anti-spam, enable **Message Content Intent** in Discord Developer Portal →
 Discord roles now have a clear purpose:
 
 - **CEO, Admin, Tournament Admin, Moderator, Support, Caster, Streamer**: staff-managed roles. Assign these manually in Discord.
-- **Verified Player**: assigned after a player connects Discord through Topfragg. It also unlocks the verified-only community and competition channels.
+- **Verified Player**: assigned after a player connects Discord through Topfragg. Public community and competition channels are visible to everyone; verification unlocks account-linked features and verified-only actions such as giveaway entries.
 - **Premium**: assigned while the linked Topfragg account has active Premium access.
 - **Team Captain**: assigned while the linked player is captain of an active Topfragg team.
 - **Tournament Participant**: assigned while the linked player is registered in an active tournament.
