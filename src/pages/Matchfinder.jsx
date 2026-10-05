@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { CalendarDays, Clock3, Gamepad2, Search, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
+import { CalendarDays, Clock3, DollarSign, Gamepad2, Search, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { toast } from "@/components/ui/use-toast";
@@ -8,7 +8,8 @@ import { toast } from "@/components/ui/use-toast";
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", active: "border-cyan/35 bg-cyan/10 text-cyan", dot: "bg-cyan" },
   { key: "elo", label: "ELO", icon: Shield, tone: "cyan", active: "border-purple-400/35 bg-purple-400/10 text-purple-300", dot: "bg-purple-400" },
-  { key: "eights", label: "8s", icon: Users, tone: "orange", active: "border-orange/35 bg-orange/10 text-orange", dot: "bg-orange" },
+  { key: "eights", label: "Free 8s", icon: Users, tone: "orange", active: "border-orange/35 bg-orange/10 text-orange", dot: "bg-orange" },
+  { key: "money8s", label: "Money 8s", icon: DollarSign, tone: "green", active: "border-green/35 bg-green/10 text-green", dot: "bg-green" },
   { key: "wagers", label: "Wagers", icon: Zap, tone: "green", active: "border-green/35 bg-green/10 text-green", dot: "bg-green" },
   { key: "tournaments", label: "Scheduled tournaments", icon: Trophy, tone: "orange", active: "border-red-400/35 bg-red-400/10 text-red-300", dot: "bg-red-400" },
 ];
@@ -87,7 +88,8 @@ export default function Matchfinder() {
   const matches = useMemo(() => ({
     xp: xpMatches,
     elo: rankedMatches,
-    eights: wagerMatches.filter((match) => ["8s", "money8s"].includes(wagerType(match))),
+    eights: wagerMatches.filter((match) => wagerType(match) === "8s"),
+    money8s: wagerMatches.filter((match) => wagerType(match) === "money8s"),
     wagers: wagerMatches.filter((match) => wagerType(match) === "wagers"),
     tournaments,
   }), [xpMatches, rankedMatches, tournaments, wagerMatches]);
@@ -106,7 +108,7 @@ export default function Matchfinder() {
   const roomPath = (category, item) => {
     if (category === "xp") return `/xp-match/${item.id}`;
     if (category === "elo") return `/ranked-match/${item.id}`;
-    if (category === "eights") return `/8s-match/${item.id}`;
+    if (["eights", "money8s"].includes(category)) return `/8s-match/${item.id}`;
     if (category === "wagers") return `/wagers-match/${item.id}`;
     if (category === "tournaments") return `/tournaments/${item.id}`;
     return `/match-room/${item.id}`;
@@ -270,7 +272,7 @@ export default function Matchfinder() {
           </div>
         </section>
 
-        <nav className="mt-5 grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 xl:grid-cols-5" aria-label="Matchfinder categories">
+        <nav className="mt-5 grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 xl:grid-cols-6" aria-label="Matchfinder categories">
           {categories.map((category) => {
             const Icon = category.icon;
             const active = activeCategory === category.key;
@@ -303,9 +305,9 @@ export default function Matchfinder() {
                 <CompetitionMatchfinderRow
                   key={item.id}
                   game={isTournament ? item.name : displayMode(item)}
-                  gameDetail={isTournament ? `${item.team_size || "Team format"} · ${item.game || "Call of Duty"}` : `${item.team_size || "1v1"} · ${activeCategory === "eights" ? "8-player lobby" : `${joined}/${slots} players`}`}
-                  competition={activeCategory === "xp" ? "XP Match" : activeCategory === "elo" ? "ELO Ranked" : activeCategory === "eights" ? "Ranked 8s" : activeCategory === "wagers" ? `$${amount} Wager` : "Official Tournament"}
-                  competitionDetail={isTournament ? `${item.current_teams || item.registered_teams || 0}/${item.max_teams || item.team_limit || "—"} teams registered` : `Hosted by ${item.host_name || "Player"} · BO${item.best_of || 1}`}
+                  gameDetail={isTournament ? `${item.team_size || "Team format"} · ${item.game || "Call of Duty"}` : `${item.team_size || "1v1"} · ${["eights", "money8s"].includes(activeCategory) ? "8-player lobby" : `${joined}/${slots} players`}`}
+                  competition={activeCategory === "xp" ? "XP Match" : activeCategory === "elo" ? "ELO Ranked" : activeCategory === "eights" ? "Free 8s" : activeCategory === "money8s" ? "Money 8s" : activeCategory === "wagers" ? `$${amount} Wager` : "Official Tournament"}
+                  competitionDetail={isTournament ? `${item.current_teams || item.registered_teams || 0}/${item.max_teams || item.team_limit || "—"} teams registered` : `${activeCategory === "money8s" ? `$${amount.toFixed(2)} entry · ` : ""}Hosted by ${item.host_name || "Player"} · BO${item.best_of || 1}`}
                   playRule={item.play_rule}
                   starting={isTournament ? formatStart(item.start_date) : "Available now"}
                   tone={currentCategory.tone}
