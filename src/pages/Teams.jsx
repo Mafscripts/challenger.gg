@@ -986,7 +986,7 @@ function RosterTrophyCounts({ trophies }) {
   return (
     <div className="grid grid-cols-4 gap-1.5">
       {rosterTrophySlots.map(({ key, label, icon: Icon, tone }) => (
-        <span key={key} title={`${label} trophies: ${statNumber(counts[key])}`} aria-label={`${label} trophies: ${statNumber(counts[key])}`} className="group/trophy relative flex min-h-9 min-w-10 cursor-default items-center justify-center gap-1 rounded-lg border border-white/[0.05] bg-background/45 px-2 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-current/30 hover:bg-current/[0.08]">
+        <span key={key} aria-label={`${label} trophies: ${statNumber(counts[key])}`} className="group/trophy relative flex min-h-9 min-w-10 cursor-default items-center justify-center gap-1 rounded-lg border border-white/[0.05] bg-background/45 px-2 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-current/30 hover:bg-current/[0.08]">
           <Icon className={`h-3.5 w-3.5 shrink-0 ${tone}`} />
           <span className="font-mono text-[10px] font-black text-white">{statNumber(counts[key])}</span>
           <span className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg border border-white/[0.12] bg-[#111821] px-2.5 py-2 text-[10px] font-bold text-white opacity-0 shadow-[0_14px_36px_rgba(0,0,0,.65)] transition-all duration-150 group-hover/trophy:visible group-hover/trophy:translate-y-0 group-hover/trophy:opacity-100">{label}: {statNumber(counts[key])}</span>

@@ -112,7 +112,7 @@ function SimpleRoster({ title, name, players, tone = "cyan", score, isComplete =
                   ["Bronze", player.bronze_count, Award, "text-amber-600 border-amber-600/15 bg-amber-600/5"],
                   ["Premium", player.premium_count, Crown, "text-purple-300 border-purple-300/15 bg-purple-300/5"],
                 ].map(([label, count, Icon, classes]) => (
-                  <div key={label} title={`${label}: ${Number(count || 0)}`} className={`group/trophy relative rounded-lg border px-1 py-2 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-12px_currentColor] ${classes}`}>
+                  <div key={label} aria-label={`${label}: ${Number(count || 0)}`} className={`group/trophy relative rounded-lg border px-1 py-2 text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-12px_currentColor] ${classes}`}>
                     <Icon className="mx-auto h-3.5 w-3.5" />
                     <p className="mt-1 font-mono text-xs font-black">{Number(count || 0)}</p>
                     <p className="mt-0.5 truncate text-[7px] font-bold uppercase tracking-tight">{label}</p>
