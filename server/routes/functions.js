@@ -5170,7 +5170,7 @@ async function joinTicket(req) {
 async function joinMatchRoomAsAdmin(req) {
   assertStaff(req, "moderator");
   const matchType = normalizeMatchType(req.body.match_type);
-  if (!["wager", "8s", "xp", "tournament", "ranked"].includes(matchType)) {
+  if (!["wager", "8s", "money8s", "xp", "tournament", "ranked"].includes(matchType)) {
     return { success: false, error: "Admin room join is not available for this match type" };
   }
 

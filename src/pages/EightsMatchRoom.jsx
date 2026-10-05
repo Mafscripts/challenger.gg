@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, DollarSign, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -99,6 +99,7 @@ export default function EightsMatchRoom() {
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [now, setNow] = useState(Date.now());
+  const joinedAdminRooms = useRef(new Set());
 
   const hydrateProgression = useCallback(async (players) => Promise.all(players.map(async (player) => {
     const [xpRows, statRows] = await Promise.all([
@@ -148,6 +149,27 @@ export default function EightsMatchRoom() {
   const entryFee = Math.max(0, Number(match?.entry_fee ?? match?.amount ?? 0));
   const livePrizePool = isMoneyEights ? entryFee * joined : 0;
   const fullPrizePool = isMoneyEights ? Number(match?.total_prize_pool ?? (entryFee * 8)) : 0;
+
+  useEffect(() => {
+    if (!match?.id || !user?.id || !isStaff) return;
+    if (joinedAdminRooms.current.has(match.id)) return;
+    const hasOpenRequest = Boolean(match.requested_admin && match.admin_request_ticket_id)
+      && !["admin_joined", "resolved", "closed"].includes(match.admin_request_status);
+    if (!hasOpenRequest) return;
+
+    joinedAdminRooms.current.add(match.id);
+    base44.functions.invoke("joinMatchRoomAsAdmin", {
+      match_type: isMoneyEights ? "money8s" : "8s",
+      match_id: match.id,
+      ticket_id: match.admin_request_ticket_id,
+    }).then((response) => {
+      if (response.data?.success && response.data?.match) setMatch(response.data.match);
+    }).catch((error) => {
+      joinedAdminRooms.current.delete(match.id);
+      console.error("Failed to join 8s room as admin:", error);
+    });
+  }, [isMoneyEights, isStaff, match?.admin_request_status, match?.admin_request_ticket_id, match?.id, match?.requested_admin, user?.id]);
+
   const openSpots = Math.max(0, 8 - joined);
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
   const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || countdown === 0);
