@@ -35,6 +35,11 @@ const nameEffectShowcase = [
   { id: "fx-aurora-core", label: "Aurora Core", detail: "Green / Cyan / Violet", tone: "from-green-400 via-cyan to-violet-400" },
   { id: "fx-emberwave", label: "Emberwave", detail: "Orange / Rose", tone: "from-orange via-rose-400 to-orange" },
   { id: "fx-neon-eclipse", label: "Neon Eclipse", detail: "Lime / Cyan / Purple", tone: "from-lime-300 via-cyan to-violet-400" },
+  { id: "fx-galaxy", label: "Galaxy Drift", detail: "Deep Space / Starlight", tone: "from-indigo-950 via-violet-500 to-cyan-300" },
+  { id: "fx-topfragg-flames", label: "TopFragg Flames", detail: "Orange / Cyan", tone: "from-orange via-yellow-300 to-cyan" },
+  { id: "fx-lightning-gold", label: "Gold Lightning", detail: "Yellow / White", tone: "from-yellow-100 via-yellow-400 to-amber-500" },
+  { id: "fx-lightning-gold-red", label: "Goldflare Lightning", detail: "Yellow / Red", tone: "from-yellow-200 via-orange to-red-500" },
+  { id: "fx-lightning-blue-white", label: "Frostbolt Lightning", detail: "Blue / White", tone: "from-white via-cyan to-blue-500" },
 ];
 
 const benefits = [
