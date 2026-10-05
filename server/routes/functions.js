@@ -6458,7 +6458,7 @@ async function createWager(req) {
       escrow_transaction_id: escrow.transaction?.id,
       joined_date: new Date().toISOString(),
     });
-    if (entryFee > 0) {
+    if (entryFee > 0 && !isEightsMatchType(matchType)) {
       await notifyUser(req.user.id, {
         title: "Wager money secured",
         message: `$${entryFee.toFixed(2)} was deducted from your available balance and secured for this wager.`,
@@ -6623,7 +6623,7 @@ async function acceptWagerUnlocked(req) {
       escrow_transaction_id: escrow.transaction?.id,
       joined_date: new Date().toISOString(),
     });
-    if (entryFee > 0) {
+    if (entryFee > 0 && !isIndividualEights) {
       await notifyUser(req.user.id, {
         title: "Wager money secured",
         message: `$${entryFee.toFixed(2)} was deducted from your available balance and secured for this wager.`,
