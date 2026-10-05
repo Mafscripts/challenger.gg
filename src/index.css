@@ -1615,29 +1615,11 @@
 
   .app-content .player-name-color[data-name-effect^="fx-"]:not(h1) {
     display: inline-flex;
-    position: relative;
-    z-index: 0;
-    isolation: isolate;
-    margin-inline: -0.28em;
-    padding-inline: 0.28em;
-    border-radius: 0.35em;
     font-size: calc(1em + 1px);
-    min-width: 4rem;
     align-items: center;
     justify-content: center;
     text-align: center;
     line-height: 1.1;
-  }
-
-  .app-content .player-name-color[data-name-effect^="fx-"]:not(h1)::after {
-    content: "";
-    position: absolute;
-    inset: -0.16em -0.12em;
-    z-index: -1;
-    border: 1px solid rgba(255, 255, 255, 0.13);
-    border-radius: 0.42em;
-    background: rgba(5, 12, 24, 0.74);
-    pointer-events: none;
   }
 
   .app-content .player-name-color[data-name-effect="fx-cosmic-nebula"] {
