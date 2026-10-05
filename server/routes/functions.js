@@ -5408,8 +5408,8 @@ async function resolveTicket(req) {
 async function adminResolveMatchRoom(req) {
   assertStaff(req, "moderator");
   const matchType = normalizeMatchType(req.body.match_type);
-  if (!["wager", "8s", "xp", "tournament"].includes(matchType)) {
-    return { success: false, error: "Admin match resolution is only available for wagers, 8s, XP, and tournaments" };
+  if (!["wager", "8s", "money8s", "xp", "tournament"].includes(matchType)) {
+    return { success: false, error: "Admin match resolution is only available for wagers, 8s, Money 8s, XP, and tournaments" };
   }
 
   const action = req.body.action || req.body.decision;
