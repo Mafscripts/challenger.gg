@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Award,
   ArrowLeft,
   ArrowRight,
   Camera,
@@ -13,7 +12,6 @@ import {
   Globe2,
   Lock,
   LogOut,
-  Medal,
   Plus,
   Radio,
   Save,
@@ -62,12 +60,6 @@ const statNumber = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 const emptyTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0 });
-const rosterTrophySlots = [
-  { key: "gold", label: "Gold", icon: Trophy, tone: "text-yellow-400" },
-  { key: "silver", label: "Silver", icon: Medal, tone: "text-gray-300" },
-  { key: "bronze", label: "Bronze", icon: Award, tone: "text-amber-600" },
-  { key: "premium", label: "Premium", icon: Crown, tone: "text-purple-300" },
-];
 const countInventoryTrophies = (items = []) => {
   const counts = emptyTrophyCounts();
   (items || []).forEach((item) => {
@@ -981,21 +973,6 @@ function OverviewTab({ team, members, usersById, matches, nextMatch, tournaments
   );
 }
 
-function RosterTrophyCounts({ trophies }) {
-  const counts = trophies || emptyTrophyCounts();
-  return (
-    <div className="grid grid-cols-4 gap-1.5">
-      {rosterTrophySlots.map(({ key, label, icon: Icon, tone }) => (
-        <span key={key} aria-label={`${label} trophies: ${statNumber(counts[key])}`} className="group/trophy relative flex min-h-9 min-w-10 cursor-default items-center justify-center gap-1 rounded-lg border border-white/[0.05] bg-background/45 px-2 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-current/30 hover:bg-current/[0.08]">
-          <Icon className={`h-3.5 w-3.5 shrink-0 ${tone}`} />
-          <span className="font-mono text-[10px] font-black text-white">{statNumber(counts[key])}</span>
-          <span className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] left-1/2 z-[70] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg border border-white/[0.12] bg-[#111821] px-2.5 py-2 text-[10px] font-bold text-white opacity-0 shadow-[0_14px_36px_rgba(0,0,0,.65)] transition-all duration-150 group-hover/trophy:visible group-hover/trophy:translate-y-0 group-hover/trophy:opacity-100">{label}: {statNumber(counts[key])}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function RosterPanel({ team, members, usersById, isCaptain, busy, onInvite, onKick, compact = false }) {
   const limit = normalizeTeamRosterSize(team.roster_size);
   const openSlots = Math.max(0, limit - members.length);
@@ -1023,10 +1000,6 @@ function RosterPanel({ team, members, usersById, isCaptain, busy, onInvite, onKi
               <MiniMetric label="Wager W-L" value={`${user.wager_wins || 0}-${user.wager_losses || 0}`} />
               <MiniMetric label="Region" value={String(user.region || team.region || "-").toUpperCase()} />
               <MiniMetric label="Earnings" value={formatMoney(playerEarnings(user))} />
-            </div>
-            <div className="mt-3 border-t border-white/[0.05] pt-3">
-              <div className="mb-2 flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Trophies</p><p className="text-[9px] font-bold text-vapor/60">Match room stats</p></div>
-              <RosterTrophyCounts trophies={user.team_trophies} />
             </div>
           </article>
         );
