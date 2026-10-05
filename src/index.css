@@ -2223,6 +2223,43 @@
   }
 }
 
+/* Match rooms share one surface hierarchy so the player tables do not sit beside
+   unrelated grey cards or gradients. Team tables keep their own darker row
+   treatment; every surrounding panel uses the same navy panel surface. */
+.app-content .match-room-theme {
+  --match-room-shell: #1d2631;
+  --match-room-panel: #202833;
+  --match-room-card: #151e29;
+  --match-room-player: #121d29;
+}
+
+.app-content .match-room-theme .glass,
+.app-content .match-room-theme .dark-focus,
+.app-content .match-room-theme [class*="bg-card"] {
+  background-color: var(--match-room-panel) !important;
+  background-image: none !important;
+}
+
+.app-content .match-room-theme [class*="bg-gradient-to-br"] {
+  background-color: var(--match-room-player) !important;
+  background-image: none !important;
+}
+
+.app-content .match-room-theme [class*="bg-white/[0.025]"],
+.app-content .match-room-theme [class*="bg-white/[0.018]"],
+.app-content .match-room-theme [class*="bg-white/[0.04]"] {
+  background-color: var(--match-room-player) !important;
+}
+
+.app-content .match-room-theme [class*="bg-[#111821]"] {
+  background-color: var(--match-room-shell) !important;
+  background-image: none !important;
+}
+
+.app-content .match-room-theme [class*="bg-secondary"] {
+  background-color: #26313d !important;
+}
+
 @keyframes nav-popover-in {
   from {
     opacity: 0;

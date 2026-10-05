@@ -380,7 +380,7 @@ export default function EightsMatchRoom() {
   if (!match) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="text-2xl font-black">Match not found</h1><Link to={isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s"} className="mt-5 inline-flex text-cyan">Back to {isMoneyEights ? "Money 8s" : "Ranked 8s"}</Link></div>;
 
   return (
-    <div className="min-h-screen py-6">
+    <div className="match-room-theme min-h-screen py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         {isMoneyEights && isComplete && personalMoneyResult && !resultDismissed && (
           <WagerMoneyResultOverlay

@@ -803,7 +803,7 @@ export default function RankedMatchRoom() {
   const bravoWinner = isComplete && String(match.winner_id || "") === String(match.challenger_id || "");
 
   return (
-    <div className="min-h-screen bg-obsidian py-6">
+    <div className="match-room-theme min-h-screen bg-obsidian py-6">
       <div className="max-w-[1740px] mx-auto px-4 lg:px-6">
         <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/55 via-white/10 to-orange/55" />

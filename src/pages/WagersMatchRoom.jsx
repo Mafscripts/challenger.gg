@@ -701,7 +701,7 @@ export default function WagersMatchRoom() {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian py-6 sm:py-8">
+    <div className="match-room-theme min-h-screen bg-obsidian py-6 sm:py-8">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         {isComplete && personalMoneyResult && !resultDismissed && <WagerMoneyResultOverlay result={{ ...personalMoneyResult, score: `${wager.confirmed_score_alpha ?? (wager.winner_id === wager.host_id ? wager.winner_score : wager.loser_score) ?? 0} - ${wager.confirmed_score_bravo ?? (wager.winner_id === wager.challenger_id ? wager.winner_score : wager.loser_score) ?? 0}` }} onContinue={dismissResult} />}
         {!isComplete && canUseMatchRoom && <WagerStartWindow

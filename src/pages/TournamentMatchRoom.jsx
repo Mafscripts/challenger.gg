@@ -1373,7 +1373,7 @@ export default function TournamentMatchRoom() {
     || cleanKey(match.winner_name) === cleanKey(match.team_b_name)
   );
   return (
-    <div className="min-h-screen bg-obsidian py-6 sm:py-8">
+    <div className="match-room-theme min-h-screen bg-obsidian py-6 sm:py-8">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         {!isComplete && match.team_a_id && match.team_b_id && (
           <div className={`relative mb-6 overflow-hidden rounded-xl border ${startWindowExpired ? "border-orange/35" : "border-border"}`}>
