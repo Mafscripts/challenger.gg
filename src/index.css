@@ -1637,7 +1637,6 @@
     border: 1px solid rgba(255, 255, 255, 0.13);
     border-radius: 0.42em;
     background: rgba(5, 12, 24, 0.74);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
     pointer-events: none;
   }
 
