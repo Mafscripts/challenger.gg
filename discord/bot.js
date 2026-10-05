@@ -32,7 +32,12 @@ import { syncTwitchLiveStreams } from "./streams.js";
 
 const config = discordEnvironment();
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 let tournamentSyncRunning = false;
 const recentPublicMessages = new Map();
@@ -74,6 +79,14 @@ async function syncMemberCount(guild) {
   await channel.setName(desiredName, "Keep Topfragg member counter current");
   process.stdout.write(`[Topfragg Discord] Updated member counter: ${desiredName}\n`);
 }
+
+const syncMemberCountFromEvent = (member) => {
+  const guild = member?.guild;
+  if (!guild || guild.id !== config.guildId) return;
+  syncMemberCount(guild).catch((error) => {
+    console.error("[Topfragg Discord] Member counter event sync failed:", error);
+  });
+};
 
 async function runTournamentDiscordSync(guild) {
   if (tournamentSyncRunning) return;
@@ -464,6 +477,9 @@ client.once(Events.ClientReady, async (readyClient) => {
   setInterval(() => runTournamentDiscordSync(guild), 60_000);
   setInterval(() => syncMemberCount(guild).catch((error) => console.error("[Topfragg Discord] Member counter sync failed:", error)), 60_000);
 });
+
+client.on(Events.GuildMemberAdd, syncMemberCountFromEvent);
+client.on(Events.GuildMemberRemove, syncMemberCountFromEvent);
 
 client.on(Events.MessageCreate, async (message) => {
   if (!message.guild || message.guild.id !== config.guildId || message.author.bot) return;
