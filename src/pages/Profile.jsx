@@ -69,6 +69,7 @@ const premiumNameEffects = [
   { label: "Emberwave — Orange / Rose", value: "fx-emberwave" },
   { label: "Neon Eclipse — Lime / Cyan / Purple", value: "fx-neon-eclipse" },
   { label: "Galaxy Drift — Deep Space / Starlight", value: "fx-galaxy" },
+  { label: "Diamond Shine — Crystal / Prism", value: "fx-diamond-shine" },
   { label: "TopFragg Flames — Orange / Cyan", value: "fx-topfragg-flames" },
   { label: "Gold Lightning — Yellow / White", value: "fx-lightning-gold" },
   { label: "Goldflare Lightning — Yellow / Red", value: "fx-lightning-gold-red" },

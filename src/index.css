@@ -1585,6 +1585,16 @@
     animation: player-name-galaxy-texture 7s ease-in-out infinite;
   }
 
+  .app-content .player-name-color[data-name-effect="fx-diamond-shine"] {
+    background-color: #dbeafe;
+    background-image: url("/assets/name-effects/diamond-shine.gif");
+    background-repeat: repeat;
+    background-position: center;
+    background-size: 210px 210px;
+    filter: saturate(1.08) brightness(1.06);
+    animation: none !important;
+  }
+
   .app-content .player-name-color[data-name-effect="fx-topfragg-flames"] {
     position: relative;
     isolation: isolate;
