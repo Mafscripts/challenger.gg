@@ -1161,22 +1161,9 @@ async function releaseWagerEscrow(wager, winnerId) {
       reference_id: wager.id,
     });
 
-    if (wager.match_type === "money8s") {
-      const balanceChange = payout > 0 ? payout : -stake;
-      await notifyUser(participant.user_id, {
-        title: payout > 0 ? "Money 8s winnings" : "Money 8s loss",
-        message: payout > 0
-          ? `$${payout.toFixed(2)} was added to your wallet from this Money 8s match.`
-          : `$${stake.toFixed(2)} was lost from your entry in this Money 8s match.`,
-        type: "wallet",
-        show_balance_popup: true,
-        balance_type: "wallet",
-        balance_change: balanceChange,
-        action_url: "/wallet",
-        related_entity_id: wager.id,
-        related_entity_type: "Wager",
-      });
-    }
+    // Money 8s renders the single full-screen result overlay in the match room.
+    // Do not also enqueue a second wallet balance popup here: the overlay already
+    // shows the net result (+$1 on a $1 entry, or -$1 for a loss).
 
     if (participant.id) {
       await updateEntity("WagerParticipant", participant.id, {
