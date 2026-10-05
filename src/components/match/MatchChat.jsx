@@ -208,7 +208,7 @@ export default function MatchChat({
   };
 
   return (
-    <div className={`glass overflow-hidden rounded-xl border border-white/[0.09] bg-[#202328] flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
+    <div className={`match-chat-panel glass overflow-hidden rounded-xl border border-white/[0.09] bg-[#202328] flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
       <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} shrink-0 bg-[#25282d] border-b border-white/[0.07] flex items-center justify-between`}>
         <h3 className="font-bold text-sm flex items-center gap-2">
           <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> {title}
