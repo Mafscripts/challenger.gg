@@ -163,7 +163,12 @@ export default function EightsMatchRoom() {
       match_id: match.id,
       ticket_id: match.admin_request_ticket_id,
     }).then((response) => {
-      if (response.data?.success && response.data?.match) setMatch(response.data.match);
+      if (response.data?.success && response.data?.match) {
+        setMatch(response.data.match);
+        window.dispatchEvent(new CustomEvent("topfragg:admin-request-acknowledged", {
+          detail: { matchId: match.id },
+        }));
+      }
     }).catch((error) => {
       joinedAdminRooms.current.delete(match.id);
       console.error("Failed to join 8s room as admin:", error);

@@ -592,6 +592,20 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    const handleAdminRequestAcknowledged = (event) => {
+      const matchId = String(event.detail?.matchId || "");
+      const activeMatchId = String(adminRequest?.match_id || adminRequest?.related_entity_id || "");
+      if (!matchId || !activeMatchId || matchId !== activeMatchId) return;
+      dismissedAdminRequests.current.add(adminRequest.id);
+      activeAdminRequestId.current = null;
+      setAdminRequest(null);
+    };
+
+    window.addEventListener("topfragg:admin-request-acknowledged", handleAdminRequestAcknowledged);
+    return () => window.removeEventListener("topfragg:admin-request-acknowledged", handleAdminRequestAcknowledged);
+  }, [adminRequest?.id, adminRequest?.match_id, adminRequest?.related_entity_id]);
+
+  useEffect(() => {
     if (!isAuthenticated) return undefined;
     const interval = window.setInterval(() => loadNotifications({ fresh: true }), 15000);
     return () => window.clearInterval(interval);
