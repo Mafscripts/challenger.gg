@@ -91,9 +91,9 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
   const hoverToneClass = isOrange ? "hover:text-orange" : "hover:text-cyan";
 
   return (
-    <section className="match-team-card relative overflow-visible rounded-xl border border-white/[0.075] bg-[#171a1f]">
+    <section className="match-team-card relative overflow-visible rounded-xl border border-white/[0.075] bg-[#1c2025]">
       <div className={`absolute inset-x-10 top-0 h-px ${isOrange ? "bg-gradient-to-r from-transparent via-orange/70 to-transparent" : "bg-gradient-to-r from-transparent via-cyan/70 to-transparent"}`} />
-      <header className="flex flex-col gap-4 bg-[#13161b] px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+      <header className="flex flex-col gap-4 bg-[#202328] px-4 py-4 sm:flex-row sm:items-center sm:px-5">
         <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-mono text-base font-black ${tintClass} ${toneClass}`}>{teamMonogram(name || label)}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -107,7 +107,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
         {isComplete && name ? <div className="min-w-28 shrink-0 rounded-xl border border-white/[0.08] bg-black/20 px-5 py-2.5 text-center"><p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Final score</p><p className={`mt-1 font-mono text-2xl font-black tabular-nums ${toneClass}`}>{finalScore ?? 0}</p></div> : null}
       </header>
 
-      <div className="hidden grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_105px_minmax(210px,1fr)_86px] gap-3 border-y border-white/[0.07] bg-[#26313d] px-5 py-3 text-[8px] font-black uppercase tracking-[0.18em] text-vapor xl:grid"><span>User</span><span>Gamertag</span><span>Record</span><span>Earnings</span><span>Trophies</span><span>Socials</span></div>
+      <div className="hidden grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_105px_minmax(210px,1fr)_86px] gap-3 border-y border-white/[0.07] bg-[#2a2d33] px-5 py-3 text-[8px] font-black uppercase tracking-[0.18em] text-vapor xl:grid"><span>User</span><span>Gamertag</span><span>Record</span><span>Earnings</span><span>Trophies</span><span>Socials</span></div>
       {players.length === 0 ? <div className="flex min-h-28 items-center justify-center border-t border-white/[0.06] text-xs text-vapor">Roster unavailable</div> : (
         <div className="divide-y divide-white/[0.055]">
           {players.map((player, index) => {
