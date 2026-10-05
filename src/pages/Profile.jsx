@@ -17,6 +17,7 @@ import {
   Pencil,
   Save,
   Shield,
+  Settings,
   Sparkles,
   Star,
   Swords,
@@ -440,7 +441,7 @@ export default function Profile() {
           {profile?.banner_url && <img src={profile.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_5%,rgba(20,216,255,.1),transparent_28%),radial-gradient(circle_at_15%_100%,rgba(255,110,0,.1),transparent_26%),linear-gradient(90deg,rgba(10,16,25,.97),rgba(12,18,28,.78))]" />
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
-          <div className="relative flex min-h-[210px] flex-col justify-end gap-7 p-5 sm:p-7 lg:flex-row lg:items-end lg:justify-between lg:p-8">
+          <div className="relative flex min-h-[210px] flex-col justify-start gap-7 p-5 sm:p-7 lg:flex-row lg:items-start lg:justify-between lg:p-8">
             <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
               <div className="relative shrink-0">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-3xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)] sm:h-28 sm:w-28">
@@ -463,22 +464,27 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="w-full lg:w-[310px]">
-              <div className="mb-5 flex justify-start gap-2 lg:justify-end">
-                {isOwnProfile ? (
-                  <button type="button" onClick={() => { setProfileResult(null); setEditingProfile((current) => !current); }} className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[9px] font-black uppercase tracking-wider ${editingProfile ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-white/10 bg-black/20 text-white hover:border-cyan/30 hover:text-cyan"}`}>
-                    <Pencil className="h-3.5 w-3.5" /> Edit profile
-                  </button>
-                ) : currentUser?.id ? (
-                  <Link to={`/messages?compose=${encodeURIComponent(user.id)}`} className="inline-flex h-9 items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-3 text-[9px] font-black uppercase tracking-wider text-cyan"><MessageSquare className="h-3.5 w-3.5" /> Message</Link>
-                ) : null}
-              </div>
+            <div className="w-full lg:w-[360px]">
               <div className="rounded-xl border border-cyan/15 bg-cyan/[0.045] px-3 py-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">TopFragg rank</p><p className="mt-1 text-sm font-black text-white">{topfraggRankLabel}</p></div>
                   {hasXpMatches ? <RankBadge rank={rank.tier} size="sm" showLabel={false} animated={false} /> : <span className="grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.04] font-mono text-lg font-black text-vapor">?</span>}
                 </div>
                 <ProfileTrophyCount trophies={trophyOverviewCards} total={trophyCount} />
+              </div>
+              <div className="mt-3 flex gap-2">
+                {isOwnProfile ? (
+                  <>
+                    <button type="button" onClick={() => { setProfileResult(null); setEditingProfile((current) => !current); }} className={`inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-[9px] font-black uppercase tracking-wider ${editingProfile ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-white/10 bg-black/20 text-white hover:border-cyan/30 hover:text-cyan"}`}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit profile
+                    </button>
+                    <Link to="/settings" className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 text-[9px] font-black uppercase tracking-wider text-white hover:border-cyan/30 hover:text-cyan">
+                      <Settings className="h-3.5 w-3.5" /> Settings
+                    </Link>
+                  </>
+                ) : currentUser?.id ? (
+                  <Link to={`/messages?compose=${encodeURIComponent(user.id)}`} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-3 text-[9px] font-black uppercase tracking-wider text-cyan"><MessageSquare className="h-3.5 w-3.5" /> Message</Link>
+                ) : null}
               </div>
             </div>
           </div>
@@ -566,13 +572,13 @@ function ProfileTrophyCount({ trophies = [], total = 0 }) {
   const visibleTrophies = trophies.filter((trophy) => ["gold", "silver", "bronze", "premium"].includes(trophy.key));
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-2.5 py-2">
+    <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/[0.08] bg-black/15 px-2 py-2 lg:flex-nowrap">
       <div className="mr-1 shrink-0">
         <p className="font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Trophy count</p>
         <p className="mt-0.5 font-mono text-sm font-black leading-none text-white">{total}</p>
       </div>
       {visibleTrophies.map((trophy) => (
-        <div key={trophy.key} className={`flex h-9 items-center gap-1 rounded-lg border border-white/[0.08] px-1.5 ${trophy.tint}`} title={`${trophy.label}: ${trophy.value}`}>
+        <div key={trophy.key} className={`flex h-9 shrink-0 items-center gap-1 rounded-lg border border-white/[0.08] px-1.5 ${trophy.tint}`} title={`${trophy.label}: ${trophy.value}`}>
           <img src={trophy.image} alt={`${trophy.label} trophy`} className="h-7 w-7 object-contain drop-shadow-[0_3px_5px_rgba(0,0,0,.45)]" loading="lazy" decoding="async" />
           <span className={`font-mono text-[10px] font-black ${trophy.tone}`}>{trophy.value}</span>
         </div>
