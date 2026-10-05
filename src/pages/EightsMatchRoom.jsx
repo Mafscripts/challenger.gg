@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, DollarSign, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
@@ -19,6 +19,7 @@ const displayStatus = (value) => ({ open: "Lobby open", in_progress: "Match live
 const playerName = (player) => player?.full_name || player?.user_name || player?.username || "Open slot";
 const seriesModeName = (mode) => ({ hp: "Hardpoint", snd: "Search & Destroy" }[mode] || mode || "Mode pending");
 const formatCountdown = (seconds) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, "0")}`;
+const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
 
 function PlayerCard({ player, captain, tone }) {
   const cyan = tone === "cyan";
@@ -119,6 +120,10 @@ export default function EightsMatchRoom() {
   const isStaff = isStaffUser(user);
   const isAdmin = ["ceo", "super_admin", "admin"].includes(user?.role) || ["ceo", "super_admin", "admin"].includes(user?.admin_role) || user?.is_admin === true;
   const joined = allPlayers.length;
+  const entryFee = Math.max(0, Number(match.entry_fee ?? match.amount ?? 0));
+  const livePrizePool = isMoneyEights ? entryFee * joined : 0;
+  const fullPrizePool = isMoneyEights ? Number(match.total_prize_pool ?? (entryFee * 8)) : 0;
+  const openSpots = Math.max(0, 8 - joined);
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
   const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || countdown === 0);
   const isComplete = match?.status === "completed";
@@ -344,8 +349,23 @@ export default function EightsMatchRoom() {
             <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
           </div>
           <div className="flex min-w-0 flex-col gap-4">
-            <div className="rounded-xl border border-white/[0.07] bg-black/15 p-4 text-center">
-              <Swords className="mx-auto h-6 w-6 text-cyan" /><p className="mt-3 text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Randomized 4v4</p><p className="mt-2 text-2xl font-black">{match.game_mode_display || match.game_mode}</p><div className="my-4 h-px bg-white/[0.06]" /><p className="text-[9px] font-black uppercase text-vapor">XP rewards</p><div className="mt-2 flex justify-center gap-2"><span className="rounded-lg border border-green/15 bg-green/5 px-3 py-2 font-mono text-xs font-black text-green">+150 WIN</span><span className="rounded-lg border border-white/[0.08] px-3 py-2 font-mono text-xs font-black">+50 PLAY</span></div>{isComplete && <div className="mt-4 rounded-xl border border-yellow-300/20 bg-yellow-300/[0.07] p-3 text-yellow-300"><Trophy className="mx-auto h-5 w-5" /><p className="mt-1 text-xs font-black">{match.winner_name || "Winner"}</p></div>}
+            <div className="rounded-xl border border-white/[0.07] bg-black/15 p-4">
+              <div className="flex items-center gap-3 border-b border-white/[0.06] pb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan/20 bg-cyan/[0.08] text-cyan"><Swords className="h-5 w-5" /></div>
+                <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-vapor">Lobby overview</p><p className="mt-1 text-lg font-black">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3}</p></div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Format</p><p className="mt-1 text-sm font-black">Randomized 4v4</p></div>
+                <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Players</p><p className="mt-1 flex items-center gap-1.5 font-mono text-sm font-black text-cyan"><Users className="h-3.5 w-3.5" />{joined}/8</p></div>
+                <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Open spots</p><p className="mt-1 text-sm font-black">{openSpots}</p></div>
+                <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2.5"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Entry</p><p className={`mt-1 flex items-center gap-1 font-mono text-sm font-black ${isMoneyEights ? "text-green" : "text-vapor"}`}><DollarSign className="h-3.5 w-3.5" />{isMoneyEights ? formatMoney(entryFee) : "Free"}</p></div>
+              </div>
+              <div className={`mt-3 rounded-xl border p-4 text-center ${isMoneyEights ? "border-green/35 bg-green/[0.09] shadow-[0_12px_34px_-18px_rgba(0,255,150,.9)]" : "border-yellow-300/20 bg-yellow-300/[0.06]"}`}>
+                <div className={`flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] ${isMoneyEights ? "text-green" : "text-yellow-300"}`}><Trophy className="h-4 w-4" />{isMoneyEights ? "Live prize pool" : "Monthly ladder prize"}</div>
+                <p className={`mt-1 font-mono text-3xl font-black ${isMoneyEights ? "text-green" : "text-yellow-300"}`}>{isMoneyEights ? formatMoney(livePrizePool) : "$100"}</p>
+                <p className="mt-1 text-[9px] text-vapor">{isMoneyEights ? `${joined} player${joined === 1 ? "" : "s"} × ${formatMoney(entryFee)} · full lobby ${formatMoney(fullPrizePool)}` : "Earned through the monthly 8s standings"}</p>
+              </div>
+              {isComplete && <div className="mt-3 rounded-xl border border-yellow-300/20 bg-yellow-300/[0.07] p-3 text-center text-yellow-300"><Trophy className="mx-auto h-5 w-5" /><p className="mt-1 text-xs font-black">{match.winner_name || "Winner"}</p></div>}
             </div>
             <MatchRoomChat
               conversationId={match.id}
