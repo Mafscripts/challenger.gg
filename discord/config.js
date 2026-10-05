@@ -90,7 +90,7 @@ export const categorySpecs = [
     name: "💬 COMMUNITY",
     legacyNames: ["COMMUNITY"],
     channels: [
-      { key: "general", name: "💬・general", legacyNames: ["general"], type: ChannelType.GuildText, mode: "verified-chat", topic: "Talk Topfragg, competition and gaming with the community." },
+      { key: "general", name: "💬・general", legacyNames: ["general"], type: ChannelType.GuildText, mode: "chat", topic: "Talk Topfragg, competition and gaming with the community." },
       { key: "looking-for-team", name: "🔎・looking-for-team", legacyNames: ["looking-for-team"], type: ChannelType.GuildText, mode: "verified-chat", topic: "Find teammates and complete your next winning roster." },
       { key: "clips-and-content", name: "🎬・clips-and-content", legacyNames: ["clips-and-content"], type: ChannelType.GuildText, mode: "verified-chat", topic: "Share your best plays, streams, highlights and videos." },
       { key: "off-topic", name: "🎮・off-topic", legacyNames: ["off-topic"], type: ChannelType.GuildText, mode: "verified-chat", topic: "Relax and talk about life outside the competition." },
