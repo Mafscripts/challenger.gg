@@ -349,7 +349,7 @@ export default function Wagers() {
               <Link to="/teams?create=wager" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-orange/25 bg-orange/5 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-orange transition-colors hover:border-orange/40 hover:bg-orange/10">
                 <Users className="h-[18px] w-[18px]" /> Create Wager Team
               </Link>
-              <button onClick={() => setIsCreateModalOpen(true)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-orange px-6 py-3.5 text-sm font-black uppercase tracking-wider text-background shadow-[0_10px_30px_hsl(var(--orange)/0.18)] transition-all hover:-translate-y-0.5 hover:bg-orange/90 hover:shadow-[0_14px_36px_hsl(var(--orange)/0.26)]">
+              <button onClick={() => setIsCreateModalOpen(true)} className="create-cta inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-black uppercase tracking-wider transition-all hover:-translate-y-0.5">
                 <Plus className="h-[18px] w-[18px]" /> Post a wager
               </button>
             </div>

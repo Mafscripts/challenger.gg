@@ -657,7 +657,7 @@ export default function Teams() {
         )}
 
         {teams.length === 0 ? (
-          <EmptyState icon={Users} title="Your first roster starts here" description="Create a Solo, Duo, Trio or Squad team, then invite the players you want to compete with." action={<button onClick={() => setCreateOpen(true)} className="rounded-lg bg-orange px-4 py-2.5 text-xs font-black uppercase text-background hover:bg-orange/90">Create Team</button>} />
+          <EmptyState icon={Users} title="Your first roster starts here" description="Create a Solo, Duo, Trio or Squad team, then invite the players you want to compete with." action={<button onClick={() => setCreateOpen(true)} className="create-cta rounded-lg px-4 py-2.5 text-xs font-black uppercase transition-all">Create Team</button>} />
         ) : view === "my_teams" ? (
           <section className="min-w-0">
             <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-card/55 p-3 lg:flex-row lg:items-center lg:justify-between">
@@ -778,7 +778,7 @@ function TeamsCommandHero({ overview, onCreate }) {
             <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Your Teams</h1>
             <p className="mt-1 text-xs text-vapor">Manage squads, roster readiness and upcoming matches.</p>
           </div>
-          <button onClick={onCreate} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-orange px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90">
+          <button onClick={onCreate} className="create-cta inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-black uppercase tracking-wider transition-all">
             <Plus className="h-3.5 w-3.5" /> Create Team
           </button>
         </div>

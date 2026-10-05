@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .create-cta {
+    border: 1px solid hsl(var(--orange) / 0.34);
+    background: linear-gradient(135deg, hsl(var(--orange) / 0.16), hsl(var(--orange) / 0.06));
+    color: hsl(var(--orange));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09), 0 8px 24px hsl(var(--orange) / 0.1);
+    backdrop-filter: blur(12px);
+  }
+
+  .create-cta:hover {
+    border-color: hsl(var(--orange) / 0.58);
+    background: linear-gradient(135deg, hsl(var(--orange) / 0.24), hsl(var(--orange) / 0.1));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 10px 30px hsl(var(--orange) / 0.18);
+  }
+}
+
+@layer components {
+  .create-cta {
+    border: 1px solid hsl(var(--orange) / 0.34);
+    background: linear-gradient(135deg, hsl(var(--orange) / 0.16), hsl(var(--orange) / 0.06));
+    color: hsl(var(--orange));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09), 0 8px 24px hsl(var(--orange) / 0.1);
+    backdrop-filter: blur(12px);
+  }
+
+  .create-cta:hover {
+    border-color: hsl(var(--orange) / 0.58);
+    background: linear-gradient(135deg, hsl(var(--orange) / 0.24), hsl(var(--orange) / 0.1));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 10px 30px hsl(var(--orange) / 0.18);
+  }
+}
+
 @layer base {
   :root,
   .dark {

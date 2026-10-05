@@ -286,7 +286,7 @@ export default function Ranked() {
               ) : (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-orange bg-orange px-6 py-3 text-sm font-black uppercase tracking-wider text-background shadow-[0_8px_24px_hsl(var(--orange)/0.2)] transition-all hover:bg-orange/90 hover:shadow-lg hover:shadow-orange/30"
+                  className="create-cta inline-flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-black uppercase tracking-wider transition-all"
                 >
                   <Plus className="w-4 h-4" /> Create Ranked Match
                 </button>

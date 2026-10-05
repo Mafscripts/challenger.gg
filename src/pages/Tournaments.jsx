@@ -662,7 +662,7 @@ export default function Tournaments() {
             <Link to="/teams" className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-background/70 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-vapor backdrop-blur-sm transition-colors hover:border-cyan/30 hover:text-cyan">
               <Users className="h-3.5 w-3.5" /> My Teams
             </Link>
-            <button type="button" onClick={() => openTournamentTeamCreator()} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-orange px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90">
+            <button type="button" onClick={() => openTournamentTeamCreator()} className="create-cta inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wider transition-all">
               <Plus className="h-3.5 w-3.5" /> Create Tournament Team
             </button>
             {isAdmin && (
