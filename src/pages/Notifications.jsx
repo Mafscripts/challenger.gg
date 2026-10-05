@@ -17,6 +17,15 @@ export default function Notifications() {
     window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail }));
   };
 
+  const acknowledgeDisputeNotification = async (notification) => {
+    if (notification?.type !== "dispute" || !notification.related_entity_id) return;
+    await base44.functions.invoke("acknowledgeDispute", {
+      dispute_id: notification.related_entity_id,
+    }).catch((error) => {
+      console.error("Failed to acknowledge dispute popup:", error);
+    });
+  };
+
   useEffect(() => {
     loadNotifications();
   }, []);
@@ -42,10 +51,16 @@ export default function Notifications() {
 
   const markAsRead = async (id) => {
     try {
+      const notification = notifications.find(n => n.id === id);
       await base44.entities.Notification.update(id, { is_read: true });
+      await acknowledgeDisputeNotification(notification);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
       const wasUnread = notifications.some(n => n.id === id && !n.is_read);
-      syncNotificationBell({ unreadCount: Math.max(0, unreadCount - (wasUnread ? 1 : 0)), readId: id });
+      syncNotificationBell({
+        unreadCount: Math.max(0, unreadCount - (wasUnread ? 1 : 0)),
+        readId: id,
+        disputeId: notification?.type === "dispute" ? notification.related_entity_id : undefined,
+      });
       toast({ title: "Marked as read", description: "Notification marked as read" });
     } catch (error) {
       console.error('Failed to mark as read:', error);
@@ -56,6 +71,7 @@ export default function Notifications() {
     try {
       const unread = notifications.filter(n => !n.is_read);
       await Promise.all(unread.map(n => base44.entities.Notification.update(n.id, { is_read: true })));
+      await Promise.all(unread.map(acknowledgeDisputeNotification));
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       syncNotificationBell({ unreadCount: 0, markAllRead: true });
       toast({ title: "All marked as read", description: `${unread.length} notifications marked as read` });
@@ -66,12 +82,15 @@ export default function Notifications() {
 
   const deleteNotification = async (id) => {
     try {
+      const notification = notifications.find(n => n.id === id);
       await base44.entities.Notification.delete(id);
+      await acknowledgeDisputeNotification(notification);
       setNotifications(prev => prev.filter(n => n.id !== id));
       const removedWasUnread = notifications.some(n => n.id === id && !n.is_read);
       syncNotificationBell({
         unreadCount: Math.max(0, unreadCount - (removedWasUnread ? 1 : 0)),
         removedId: id,
+        disputeId: notification?.type === "dispute" ? notification.related_entity_id : undefined,
       });
       toast({ title: "Deleted", description: "Notification deleted" });
     } catch (error) {
@@ -95,6 +114,9 @@ export default function Notifications() {
           500
         );
         if (!rows?.length) break;
+
+        const disputeNotifications = rows.filter((notification) => notification.type === "dispute");
+        await Promise.all(disputeNotifications.map(acknowledgeDisputeNotification));
 
         for (let index = 0; index < rows.length; index += 25) {
           const batch = rows.slice(index, index + 25);

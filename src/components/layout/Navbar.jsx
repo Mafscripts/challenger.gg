@@ -345,7 +345,7 @@ export default function Navbar() {
       }
     }
     const disputeNotification = notifications.find((notification) => (
-      notification.type === "dispute" && !notification.is_read
+      notification.type === "dispute" && !notification.is_read && !notification.popup_suppressed
     ));
     if (!disputeNotification) return;
     const disputeId = disputeNotification.related_entity_id || disputeNotification.id;
@@ -407,6 +407,18 @@ export default function Navbar() {
   const closeMobileMenu = () => {
     setMobileOpen(false);
     closeDropdowns();
+  };
+
+  const acknowledgeAdminDispute = (disputeId) => {
+    if (!disputeId) return;
+    setNotifications(prev => prev.map(notification => (
+      notification.related_entity_id === disputeId
+        ? { ...notification, popup_suppressed: true }
+        : notification
+    )));
+    base44.functions.invoke("acknowledgeDispute", { dispute_id: disputeId }).catch((error) => {
+      console.error("Failed to acknowledge dispute popup:", error);
+    });
   };
 
   const supportsDesktopHover = () => (
@@ -556,6 +568,13 @@ export default function Navbar() {
       } else if (detail.removedId) {
         setNotifications(prev => prev.filter(notification => notification.id !== detail.removedId));
       }
+      if (detail.disputeId) {
+        setNotifications(prev => prev.map(notification => (
+          notification.related_entity_id === detail.disputeId
+            ? { ...notification, popup_suppressed: true }
+            : notification
+        )));
+      }
       notificationsLoadedAt.current = 0;
     };
 
@@ -648,6 +667,7 @@ export default function Navbar() {
           if (!active) return;
           const pendingDisputes = (rows || []).filter((dispute) => (
             ["pending", "under_review", "escalated"].includes(dispute.status)
+            && dispute.admin_popup_suppressed !== true
             && !hiddenMatchTypes.has(String(dispute.match_type || "").toLowerCase())
           ));
           const pendingIds = new Set(pendingDisputes.map((dispute) => dispute.id));
@@ -922,6 +942,7 @@ export default function Navbar() {
         const teamA = details.host_team_name || details.host_name || details.team_a_name || adminDispute.reported_by_name || "Team Alpha";
         const teamB = details.challenger_team_name || details.challenger_name || details.team_b_name || adminDispute.reported_against_name || "Team Bravo";
         const dismiss = () => {
+          acknowledgeAdminDispute(adminDispute.id);
           dismissedAdminDisputes.current.add(adminDispute.id);
           activeAdminDisputeId.current = null;
           setAdminDispute(null);

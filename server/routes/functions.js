@@ -400,6 +400,36 @@ async function notifyStaff(notification) {
   return notifyUsers(staff.filter((user) => !excludeIds.has(user.id)).map((user) => user.id), payload);
 }
 
+async function suppressDisputePopups(disputeId, admin) {
+  const id = String(disputeId || "").trim();
+  if (!id) return null;
+
+  const dispute = await getEntity("Dispute", id).catch(() => null);
+  if (!dispute) return null;
+
+  const suppression = {
+    admin_popup_suppressed: true,
+    admin_popup_suppressed_by: admin?.id || null,
+    admin_popup_suppressed_by_name: admin ? nameFor(admin) : null,
+    admin_popup_suppressed_date: nowIso(),
+  };
+  const updated = await updateEntity("Dispute", id, suppression);
+  const notifications = await listEntities("Notification", {
+    type: "dispute",
+    related_entity_id: id,
+  }, "-created_date", 500).catch(() => []);
+
+  await Promise.all(notifications.map((notification) => (
+    updateEntity("Notification", notification.id, {
+      popup_suppressed: true,
+      popup_suppressed_by: admin?.id || null,
+      popup_suppressed_date: suppression.admin_popup_suppressed_date,
+    }).catch(() => null)
+  )));
+
+  return updated;
+}
+
 async function tournamentParticipants(tournamentId) {
   return listEntities("TournamentParticipant", { tournament_id: tournamentId }, "seed", 500);
 }
@@ -5464,6 +5494,7 @@ async function adminResolveMatchRoom(req) {
     admin_resolved_by: req.user.id,
     admin_resolved_by_name: nameFor(req.user),
   }).catch(() => null);
+  await suppressDisputePopups(match.dispute_id, req.user).catch(() => null);
 
   await createEntity("AdminAction", {
     admin_id: req.user.id,
@@ -5851,6 +5882,16 @@ async function createNotification(req) {
     created_date: new Date().toISOString(),
   });
   return { success: true, notification };
+}
+
+async function acknowledgeDispute(req) {
+  assertStaff(req, "moderator");
+  const disputeId = req.body.dispute_id || req.body.id;
+  if (!disputeId) return { success: false, error: "Dispute id is required" };
+
+  const dispute = await suppressDisputePopups(disputeId, req.user);
+  if (!dispute) return { success: false, error: "Dispute not found" };
+  return { success: true, dispute };
 }
 
 async function sendMessage(req) {
@@ -9820,6 +9861,7 @@ async function moderateDispute(req) {
     resolved_by_name: nameFor(req.user),
     resolved_date: nowIso(),
   });
+  await suppressDisputePopups(dispute.id, req.user).catch(() => null);
 
   const notifyIds = [
     dispute.reported_by,
@@ -10482,6 +10524,7 @@ const handlers = {
   completeTournamentMatch,
   completeTournament: async (req) => ({ success: true, tournament: await completeTournament(req.body.tournament_id, req.body.winner_id, req.body.winner_name) }),
   createDispute,
+  acknowledgeDispute,
   escalateDispute,
   moderateDispute,
   updateUserRole,
