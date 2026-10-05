@@ -52,10 +52,11 @@ const matchesSpecName = (actualName, spec) => (
 
 function findConfiguredChannel(guild, key) {
   const spec = categorySpecs.flatMap((category) => category.channels).find((channel) => channel.key === key);
-  if (!spec) return null;
   if (key === "member-count") {
-    return guild.channels.cache.find((channel) => /^👥・members[-:]\s*[\d,]+$/u.test(channel.name));
+    const counters = guild.channels.cache.filter((channel) => /^👥・members[-:]\s*[\d,]+$/u.test(channel.name));
+    return counters.find((channel) => !channel.parentId) || counters.first() || null;
   }
+  if (!spec) return null;
   return guild.channels.cache.find((channel) => matchesSpecName(channel.name, spec));
 }
 

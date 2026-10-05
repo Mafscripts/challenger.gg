@@ -15,6 +15,7 @@ import {
   botRuntimeRoleSpec,
   categorySpecs,
   commandSpecs,
+  memberCountSpec,
   discordEnvironment,
   roleSpecs,
   staffRoleNames,
@@ -143,6 +144,38 @@ function overwriteForMode(guild, roles, configuredMode) {
     },
     ...(muted ? [{ id: muted, deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.AddReactions] }] : []),
   ];
+}
+
+async function ensureMemberCountChannel(guild, roles) {
+  const matchingChannels = guild.channels.cache.filter((channel) => (
+    channel.type === memberCountSpec.type && matchesSpecName(channel.name, memberCountSpec)
+  ));
+  let channel = matchingChannels.find((candidate) => !candidate.parentId) || matchingChannels.first();
+
+  if (!channel) {
+    channel = await guild.channels.create({
+      name: memberCountSpec.name,
+      type: memberCountSpec.type,
+      permissionOverwrites: overwriteForMode(guild, roles, memberCountSpec.mode),
+      reason: "Create the Topfragg member counter above the categories",
+    });
+    await channel.setPosition(0, { reason: "Keep the Topfragg member counter above the categories" });
+    log(`Created root member counter: ${channel.name}`);
+    return channel;
+  }
+
+  if (channel.parentId) {
+    await channel.setParent(null, { lockPermissions: false, reason: "Keep the Topfragg member counter above the categories" });
+  }
+  await channel.permissionOverwrites.set(
+    overwriteForMode(guild, roles, memberCountSpec.mode),
+    "Apply Topfragg member counter access policy",
+  );
+  await channel.setPosition(0, { reason: "Keep the Topfragg member counter above the categories" });
+  if (matchingChannels.size > 1) {
+    log(`Found ${matchingChannels.size} member counter channels; kept ${channel.name} at the server root and left extras untouched.`);
+  }
+  return channel;
 }
 
 async function grantRuntimeChannelAccess(channel, roles) {
@@ -283,6 +316,7 @@ async function ensureChannels(guild) {
   await guild.channels.fetch();
   const roles = roleIdsByName(guild);
   const created = new Map();
+  created.set(memberCountSpec.key, await ensureMemberCountChannel(guild, roles));
 
   for (const categorySpec of categorySpecs) {
     let categoryRuntimeAccess = true;
@@ -387,7 +421,7 @@ async function ensureCategoryOrder(guild) {
     ));
     if (!category) continue;
     try {
-      await category.setPosition(index, "Keep Topfragg server categories in the intended order");
+      await category.setPosition(index + 1, "Keep the Topfragg member counter above the categories");
       log(`Positioned category: ${spec.name}`);
     } catch (error) {
       if ([50001, 50013].includes(error.code)) {
