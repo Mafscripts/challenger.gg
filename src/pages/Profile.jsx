@@ -197,10 +197,10 @@ function trophyOverviewFor(user, profile, inventory = [], matches = []) {
   };
 
   return [
-    { key: "gold", label: "Gold", value: counts.gold, image: "/assets/trophies/compact/gold.png", tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
-    { key: "silver", label: "Silver", value: counts.silver, image: "/assets/trophies/compact/silver.png", tone: "text-gray-200", tint: "bg-gray-200/10", border: "group-hover:border-gray-200/20" },
-    { key: "bronze", label: "Bronze", value: counts.bronze, image: "/assets/trophies/compact/bronze.png", tone: "text-orange", tint: "bg-orange/10", border: "group-hover:border-orange/25" },
-    { key: "premium", label: "Premium", value: counts.premium, image: "/assets/trophies/compact/premium.png", tone: "text-purple-300", tint: "bg-purple-400/10", border: "group-hover:border-purple-300/25" },
+    { key: "gold", label: "Gold", value: counts.gold, image: "/assets/trophies/profile/gold.png", tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
+    { key: "silver", label: "Silver", value: counts.silver, image: "/assets/trophies/profile/silver.png", tone: "text-gray-200", tint: "bg-gray-200/10", border: "group-hover:border-gray-200/20" },
+    { key: "bronze", label: "Bronze", value: counts.bronze, image: "/assets/trophies/profile/bronze.png", tone: "text-orange", tint: "bg-orange/10", border: "group-hover:border-orange/25" },
+    { key: "premium", label: "Premium", value: counts.premium, image: "/assets/trophies/profile/premium.png", tone: "text-purple-300", tint: "bg-purple-400/10", border: "group-hover:border-purple-300/25" },
     { key: "topfragg", label: "TopFragg", value: counts.topfragg, image: "/assets/trophies/compact/topfragg.png", tone: "text-cyan", tint: "bg-cyan/10", border: "group-hover:border-cyan/25" },
     { key: "hosted", label: "Hosted", value: counts.hosted, image: "/assets/trophies/compact/hosted.png", tone: "text-green", tint: "bg-green/10", border: "group-hover:border-green/25" },
   ];
@@ -314,6 +314,8 @@ export default function Profile() {
   const rank = getRankForElo(rankedStats?.elo || profile?.elo || 0);
   const rankedWins = Number(rankedStats?.wins ?? 0);
   const rankedLosses = Number(rankedStats?.losses ?? 0);
+  const xpMatchesPlayed = Number(rankedStats?.matches_played ?? 0);
+  const hasXpMatches = xpMatchesPlayed > 0 || rankedWins + rankedLosses > 0;
   const wagerWins = Number(user?.wager_wins ?? 0);
   const wagerLosses = Number(user?.wager_losses ?? 0);
   const wins = Math.max(Number(profile?.total_wins ?? 0), rankedWins + wagerWins, rankedWins, wagerWins);
@@ -338,6 +340,7 @@ export default function Profile() {
   const elo = Number(rankedStats?.elo || profile?.elo || 0);
   const nextRank = getNextRankForElo(elo);
   const rankProgress = getRankProgress(elo);
+  const topfraggRankLabel = hasXpMatches ? (rank.name || `${rank.tier} ${rank.division || ""}`).trim() : "Unranked";
   const currentStreak = Number(rankedStats?.win_streak || user?.current_win_streak || 0);
   const earnedMoney = Math.max(
     statNumber(wallet?.total_earnings),
@@ -353,7 +356,7 @@ export default function Profile() {
     { label: "Win Streak", value: currentStreak, icon: Flame, tone: "text-orange" },
     { label: "Trophy Case", value: trophyCount, icon: Trophy, tone: "text-green" },
     { label: "Verified", value: isVerifiedPlayer ? "Yes" : "No", icon: BadgeCheck, tone: "text-green" },
-    { label: "Ranked", value: rank.name || `${rank.tier} ${rank.division || ""}`.trim(), icon: Medal, tone: "text-cyan" },
+    { label: "Ranked", value: topfraggRankLabel, icon: Medal, tone: "text-cyan" },
   ];
   const trophyOverviewCards = trophyOverviewFor(user, profile, inventory, matches);
   const earnedTrophyItems = inventory.filter((item) => {
@@ -457,6 +460,7 @@ export default function Profile() {
                   <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">{region}</span>
                   <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">Joined {joinedDate}</span>
                 </div>
+                <ProfileTrophyCount trophies={trophyOverviewCards} total={trophyCount} />
               </div>
             </div>
 
@@ -472,10 +476,10 @@ export default function Profile() {
               </div>
               <div className="flex items-end justify-between gap-4">
                 <div><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">Competitive rating</p><p className="mt-1 font-mono text-lg font-black text-cyan">{elo.toLocaleString()} ELO</p></div>
-                <p className="text-right text-xs font-black text-white">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
+                <div className="text-right"><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">TopFragg rank</p><p className="mt-1 text-xs font-black text-white">{topfraggRankLabel}</p></div>
               </div>
-              <ProgressBar value={rankProgress} tone="from-cyan to-orange" className="mt-3 h-1.5" />
-              <div className="mt-2 flex justify-between font-mono text-[8px] font-bold uppercase tracking-wider text-vapor"><span>{rankProgress}% progress</span><span>{nextRank ? `Next ${nextRank.name}` : "Top rank"}</span></div>
+              <ProgressBar value={hasXpMatches ? rankProgress : 0} tone="from-cyan to-orange" className="mt-3 h-1.5" />
+              <div className="mt-2 flex justify-between font-mono text-[8px] font-bold uppercase tracking-wider text-vapor"><span>{hasXpMatches ? `${rankProgress}% progress` : "No XP matches yet"}</span><span>{hasXpMatches ? (nextRank ? `Next ${nextRank.name}` : "Top rank") : "Play an XP match"}</span></div>
             </div>
           </div>
 
@@ -507,12 +511,12 @@ export default function Profile() {
         {tab === "overview" && (
           <div className="mt-5 space-y-6">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <ProfileStatCard icon={Trophy} label="Rank" value={rank.name || rank.tier} tone="text-orange" />
+              <ProfileStatCard icon={Trophy} label="Rank" value={topfraggRankLabel} tone="text-orange" />
               <ProfileStatCard icon={Target} label="Record" value={`${wins}W - ${losses}L`} tone="text-green" />
               <ProfileStatCard icon={Flame} label="Win ratio" value={`${winRate}%`} tone="text-cyan" />
               <ProfileStatCard icon={DollarSign} label="Lifetime earnings" value={formatMoney(earnedMoney)} tone="text-green" />
             </div>
-            <PlayerOverviewPanel user={user} profile={profile} name={name} rank={rank} elo={elo} wins={wins} losses={losses} earnedMoney={earnedMoney} trophies={trophyOverviewCards} socialLinks={socialLinks} />
+            <PlayerOverviewPanel user={user} profile={profile} name={name} rank={rank} rankLabel={topfraggRankLabel} elo={elo} wins={wins} losses={losses} earnedMoney={earnedMoney} trophies={trophyOverviewCards} socialLinks={socialLinks} />
             <SeasonRecordPanel rankedStats={rankedStats} wins={wins} losses={losses} winRate={winRate} currentStreak={currentStreak} earnedMoney={earnedMoney} />
             <RecentMatchesPanel matches={matches.slice(0, 6)} userId={user.id} />
           </div>
@@ -521,7 +525,7 @@ export default function Profile() {
         {tab === "statistics" && (
           <div className="mt-5 space-y-6">
             <XpProgressPanel xpStats={xpStats} user={user} />
-            <RankProgressPanel rank={rank} elo={elo} rankProgress={rankProgress} rankJourneyIndex={rankJourneyIndex} />
+            <RankProgressPanel rank={rank} rankLabel={topfraggRankLabel} elo={elo} rankProgress={hasXpMatches ? rankProgress : 0} rankJourneyIndex={hasXpMatches ? rankJourneyIndex : -1} />
             <TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} />
             <div className="grid gap-6 xl:grid-cols-2"><AchievementsPanel achievements={achievementCards} badges={badges} expanded /><AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} /></div>
           </div>
@@ -558,7 +562,26 @@ function ProfileStatCard({ icon: Icon, label, value, tone = "text-cyan" }) {
   );
 }
 
-function PlayerOverviewPanel({ user, profile, name, rank, elo, wins, losses, earnedMoney, trophies, socialLinks }) {
+function ProfileTrophyCount({ trophies = [], total = 0 }) {
+  const visibleTrophies = trophies.filter((trophy) => ["gold", "silver", "bronze", "premium"].includes(trophy.key));
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-2.5 py-2">
+      <div className="mr-1 shrink-0">
+        <p className="font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Trophy count</p>
+        <p className="mt-0.5 font-mono text-sm font-black leading-none text-white">{total}</p>
+      </div>
+      {visibleTrophies.map((trophy) => (
+        <div key={trophy.key} className={`flex h-9 items-center gap-1 rounded-lg border border-white/[0.08] px-1.5 ${trophy.tint}`} title={`${trophy.label}: ${trophy.value}`}>
+          <img src={trophy.image} alt={`${trophy.label} trophy`} className="h-7 w-7 object-contain drop-shadow-[0_3px_5px_rgba(0,0,0,.45)]" loading="lazy" decoding="async" />
+          <span className={`font-mono text-[10px] font-black ${trophy.tone}`}>{trophy.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PlayerOverviewPanel({ user, profile, name, rank, rankLabel, elo, wins, losses, earnedMoney, trophies, socialLinks }) {
   return (
     <section>
       <ProfileSectionTitle title="Player overview" count="1 player" />
@@ -573,7 +596,7 @@ function PlayerOverviewPanel({ user, profile, name, rank, elo, wins, losses, ear
             </div>
             <div className="min-w-0">
               <p data-name-effect={user?.display_name_color || undefined} style={user?.display_name_color ? { "--player-name-color": user.display_name_color } : undefined} className={`truncate text-sm font-black text-white ${user?.display_name_color ? "player-name-color" : ""}`}>{name}</p>
-              <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rank.name || rank.tier}</p>
+              <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rankLabel || rank.name || rank.tier}</p>
             </div>
           </div>
           <div className="min-w-0 lg:px-1"><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Gamertag</p><span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] text-white"><Gamepad2 className="h-3 w-3 text-cyan" /><span className="truncate">{activisionIdFor(user) || user?.handle || user?.username || "Not set"}</span></span></div>
@@ -784,7 +807,7 @@ function RecentMatchesPanel({ matches, userId, className = "", expanded = false 
   );
 }
 
-function RankProgressPanel({ rank, elo, rankProgress, rankJourneyIndex, className = "" }) {
+function RankProgressPanel({ rank, rankLabel, elo, rankProgress, rankJourneyIndex, className = "" }) {
   return (
     <SectionCard className={`p-6 sm:p-7 ${className}`}>
       <SectionHeader title="Rank Progress" action="Leaderboard" to="/leaderboards" />
@@ -798,7 +821,7 @@ function RankProgressPanel({ rank, elo, rankProgress, rankJourneyIndex, classNam
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Current rank</p>
-                <p className="mt-1 text-lg font-black text-cyan">{rank.name || `${rank.tier} ${rank.division || ""}`}</p>
+                <p className="mt-1 text-lg font-black text-cyan">{rankLabel || rank.name || `${rank.tier} ${rank.division || ""}`}</p>
               </div>
               <p className="font-mono text-2xl font-black tracking-tight text-white">{elo.toLocaleString()} <span className="text-[10px] tracking-[0.12em] text-vapor">ELO</span></p>
             </div>
@@ -814,7 +837,7 @@ function RankProgressPanel({ rank, elo, rankProgress, rankJourneyIndex, classNam
         <div className="pointer-events-none absolute left-[6%] right-[6%] top-[7px] hidden h-px bg-gradient-to-r from-green/50 via-cyan/25 to-white/10 sm:block" />
         {rankJourney.map((step, index) => {
           const active = index <= rankJourneyIndex;
-          const current = step.tier === rank.tier;
+          const current = rankLabel !== "Unranked" && step.tier === rank.tier;
           return (
             <div key={step.tier} className="relative text-center">
               <div className={`relative z-[1] mx-auto mb-3 h-3.5 w-3.5 rounded-full ring-4 ring-background ${current ? "bg-cyan shadow-[0_0_18px_rgba(210,214,220,0.38)]" : active ? "bg-green/90" : "bg-white/15"}`} />
