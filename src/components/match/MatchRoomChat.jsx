@@ -1,7 +1,7 @@
 import React from "react";
 import MatchChat from "@/components/match/MatchChat";
 
-export default function MatchRoomChat({ conversationId, matchType, teamAPlayers = [], teamBPlayers = [], inputActions = null, heightClass = "h-[520px] xl:h-[680px]", pollIntervalMs = 1000, messageLimit = 100 }) {
+export default function MatchRoomChat({ conversationId, matchType, teamAPlayers = [], teamBPlayers = [], inputActions = null, heightClass = "h-[420px] xl:h-[480px]", pollIntervalMs = 1000, messageLimit = 100 }) {
   return (
     <MatchChat
       conversationId={conversationId}
