@@ -21,6 +21,18 @@ const playerName = (player) => player?.full_name || player?.user_name || player?
 const seriesModeName = (mode) => ({ hp: "Hardpoint", snd: "Search & Destroy" }[mode] || mode || "Mode pending");
 const formatCountdown = (seconds) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, "0")}`;
 const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
+const eightsLiveUrl = (path, token) => {
+  const configured = String(import.meta.env.VITE_API_URL || "/api");
+  const base = /^https?:\/\//i.test(configured)
+    ? new URL(configured)
+    : ["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "4000"
+      ? new URL("http://localhost:4000")
+      : new URL(window.location.origin);
+  base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
+  base.pathname = path;
+  base.search = new URLSearchParams({ token }).toString();
+  return base.toString();
+};
 const playersFromLobbyRows = (rows, team) => (rows || [])
   .filter((row) => row.team === team)
   .map((row) => ({
@@ -184,6 +196,41 @@ export default function EightsMatchRoom() {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => { window.clearInterval(poll); window.clearInterval(timer); };
   }, [loadRoom]);
+
+  useEffect(() => {
+    let closed = false;
+    let socket = null;
+    let retryTimer = null;
+
+    const connect = async () => {
+      try {
+        const response = await base44.functions.invoke("getEightsLiveUpdatesToken", { wager_id: id });
+        if (!response.data?.success || closed) return;
+        socket = new WebSocket(eightsLiveUrl(response.data.path, response.data.token));
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === "eights-lobby-updated" && String(message.wager_id) === String(id)) loadRoom(true);
+          } catch {
+            // Ignore malformed transient messages; the regular sync remains a fallback.
+          }
+        };
+        socket.onclose = () => {
+          if (!closed) retryTimer = window.setTimeout(connect, 2000);
+        };
+        socket.onerror = () => socket?.close();
+      } catch {
+        if (!closed) retryTimer = window.setTimeout(connect, 5000);
+      }
+    };
+
+    connect();
+    return () => {
+      closed = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, "Leaving 8s room");
+    };
+  }, [id, loadRoom]);
 
   const allPlayers = useMemo(() => [...teamAlpha, ...teamBravo], [teamAlpha, teamBravo]);
   const isMoneyEights = match?.match_type === "money8s";

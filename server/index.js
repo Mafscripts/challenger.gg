@@ -9,6 +9,7 @@ import discordRoutes from "./routes/discord.js";
 import twitchRoutes from "./routes/twitch.js";
 import { disconnectPrisma } from "./prisma.js";
 import { attachRankedVoiceServer } from "./ranked-voice.js";
+import { attachEightsLiveServer } from "./eights-live.js";
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -61,6 +62,7 @@ const server = app.listen(port, () => {
   console.log(`API listening on http://localhost:${port}`);
 });
 attachRankedVoiceServer(server);
+attachEightsLiveServer(server);
 
 const shutdown = async () => {
   server.close(async () => {

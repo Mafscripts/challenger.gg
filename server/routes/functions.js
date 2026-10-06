@@ -7,6 +7,7 @@ import { hasRole, rolePower } from "../roles.js";
 import { knownUserIpAddresses } from "../ban-enforcement.js";
 import { containsBlockedLanguage } from "../profanity-filter.js";
 import { issueRankedVoiceToken } from "../ranked-voice.js";
+import { issueEightsLiveToken, publishEightsLobbyUpdate } from "../eights-live.js";
 import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
 import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTrial.js";
@@ -6495,7 +6496,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     });
   }));
   const selectedMaps = preserveSeries ? null : randomEightsSeriesMaps(wager);
-  return updateEntity("Wager", wager.id, {
+  const updated = await updateEntity("Wager", wager.id, {
     host_id: alpha[0]?.user_id || "",
     host_name: alpha[0]?.user_name || "Team Alpha Captain",
     host_team_name: "Team Alpha",
@@ -6519,6 +6520,8 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     status: "open",
     accepted_date: nowIso(),
   });
+  publishEightsLobbyUpdate(wager.id, "teams-reshuffled");
+  return updated;
 }
 
 function eightsTeamsNeedGeneration(wager, participants, requiredSize) {
@@ -6695,6 +6698,7 @@ async function acceptWagerUnlocked(req) {
     related_entity_id: wager.id,
     related_entity_type: "Wager",
   });
+  if (isIndividualEights) publishEightsLobbyUpdate(wager.id, "player-joined");
   return { success: true, wager: startState.wager, ready: startState.ready, final_map_name: startState.wager.final_map_name };
 }
 
@@ -6703,6 +6707,20 @@ async function acceptWager(req) {
     `wager-accept:${req.body.wager_id}`,
     () => acceptWagerUnlocked(req),
   );
+}
+
+async function getEightsLiveUpdatesToken(req) {
+  const wagerId = req.body.wager_id || req.body.id;
+  const wager = await getEntity("Wager", wagerId);
+  if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
+  const isStaff = hasRole(req.user, "moderator");
+  const participants = isStaff
+    ? []
+    : await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
+  if (!isStaff && !participants.some((participant) => participant.user_id === req.user.id)) {
+    return { success: false, error: "Only lobby players can receive live updates" };
+  }
+  return { success: true, ...await issueEightsLiveToken(req.user.id, wager.id, isStaff) };
 }
 
 async function syncEightsLobby(req) {
@@ -6813,6 +6831,7 @@ async function voteEightsReshuffle(req) {
       eights_reshuffle_vote_status: voteIds.length ? "pending" : null,
       eights_reshuffle_vote_started_date: voteIds.length ? (wager.eights_reshuffle_vote_started_date || nowIso()) : null,
     });
+    publishEightsLobbyUpdate(wager.id, "reshuffle-vote");
     return { success: true, wager: updated, reshuffled: false, voted: !alreadyVoted, vote_count: voteIds.length, required_votes: EIGHTS_RESHUFFLE_REQUIRED_VOTES };
   });
 }
@@ -6902,6 +6921,7 @@ async function adminResetEightsLobby(req) {
       `${nameFor(req.user)} reset the lobby${full ? ". The five-minute reshuffle window has restarted." : ". The lobby is open until all eight players are present."}`,
       req.user,
     ).catch(() => null);
+    publishEightsLobbyUpdate(wager.id, "lobby-reset");
     return { success: true, wager: reset, full, seconds_remaining: full ? Math.ceil(EIGHTS_RESHUFFLE_WINDOW_MS / 1000) : null };
   });
 }
@@ -10705,6 +10725,7 @@ const handlers = {
   manageTeam,
   createWager,
   acceptWager,
+  getEightsLiveUpdatesToken,
   syncEightsLobby,
   voteEightsReshuffle,
   adminReshuffleEightsTeams,
