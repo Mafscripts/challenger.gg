@@ -12,7 +12,6 @@ import {
   Gavel,
   Globe2,
   LayoutGrid,
-  Map as MapIcon,
   Medal,
   MessageCircle,
   RefreshCw,
@@ -29,6 +28,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
+import MatchMapSeries from "@/components/match/MatchMapSeries";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import PageLoader from "@/components/ui/PageLoader";
@@ -43,21 +43,8 @@ const bracketLabels = {
 
 const statusLabel = (value) => String(value || "pending").replace(/_/g, " ");
 const adminCorrectionRoles = new Set(["ceo", "super_admin", "admin"]);
-const defaultMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const seedLabel = (seed) => seed ? `#${seed}` : "#-";
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
-const tournamentMapImages = {
-  colossus: "/assets/maps/colossus.jpg",
-  colosses: "/assets/maps/colossus.jpg",
-  den: "/assets/maps/den.jpg",
-  raid: "/assets/maps/raid.jpg",
-  fringe: "/assets/maps/fringe.jpg",
-  scar: "/assets/maps/scar.jpg",
-  gridlock: "/assets/maps/gridlock.jpg",
-  hacienda: "/assets/maps/hacienda.jpg",
-  sake: "/assets/maps/sake.png",
-};
-const tournamentMapImage = (name) => tournamentMapImages[cleanKey(name).replace(/[^a-z0-9]/g, "")] || null;
 const isStreamerTournament = (tournament) => Boolean(
   tournament?.is_streamer_tournament
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
@@ -760,94 +747,6 @@ function TournamentChatColumn({
   );
 }
 
-function MapSeries({ match, stacked = false }) {
-  const maps = Array.isArray(match.maps) ? match.maps : [];
-  const pool = Array.isArray(match.map_pool) && match.map_pool.length ? match.map_pool : defaultMapPool;
-  const bestOf = Math.max(1, Number(match.best_of || match.map_sequence?.length || maps.length || 3));
-
-  return (
-    <section className="dark-focus dark-media rounded-xl border border-white/[0.09] p-4 sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
-          <MapIcon className="h-4 w-4 text-cyan" /> Map Series
-        </h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2 text-[9px] font-black uppercase tracking-wider text-cyan">
-            BO{bestOf} · {match.game_mode || `Best of ${bestOf}`}
-          </span>
-          <span className="rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2 text-[9px] font-bold text-vapor">
-            First host <strong className="ml-1 text-white">{match.first_host_team_name || "TBD"}</strong>
-            {match.first_host_seed ? <span className="ml-1 text-cyan">{seedLabel(match.first_host_seed)}</span> : null}
-          </span>
-        </div>
-      </div>
-
-      <div className={`mt-4 grid gap-2 ${stacked ? "grid-cols-1" : "sm:grid-cols-3"}`}>
-        {maps.length === 0 ? (
-          <div className={`rounded-lg border border-white/[0.06] bg-black/15 p-4 text-sm text-vapor ${stacked ? "" : "sm:col-span-3"}`}>
-            Maps are being generated.
-          </div>
-        ) : maps.map((map) => {
-          const image = tournamentMapImage(map.map);
-
-          return (
-            <article
-              key={`${map.game}-${map.game_mode || map.mode}-${map.map}`}
-              className={`group relative isolate overflow-hidden rounded-xl border border-white/[0.1] bg-black/25 shadow-[0_12px_28px_rgba(0,0,0,0.2)] ${stacked ? "min-h-[112px]" : "min-h-[156px]"}`}
-            >
-              {image ? (
-                <img
-                  src={image}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
-                />
-              ) : null}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#070b11] via-[#070b11]/45 to-[#070b11]/60" />
-              <div className={`relative flex flex-col justify-between p-3.5 ${stacked ? "min-h-[112px]" : "min-h-[156px]"}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="rounded-md border border-cyan/25 bg-[#07121b]/85 px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-cyan backdrop-blur-sm">
-                    Map {map.game}
-                  </p>
-                  <span className="max-w-[68%] truncate rounded-md border border-white/15 bg-[#080c12]/80 px-2 py-1 text-[7px] font-black uppercase tracking-wider text-white/85 backdrop-blur-sm">
-                    {map.mode || "Search and Destroy"}
-                  </span>
-                </div>
-
-                <div>
-                  <h3
-                    className="inline-block max-w-full truncate rounded-md border border-white/10 bg-[#080c12]/85 px-2 py-1 text-lg font-black leading-none text-white shadow-lg backdrop-blur-sm"
-                    title={map.map}
-                  >
-                    {map.map}
-                  </h3>
-                  <p className="mt-1.5 inline-flex max-w-full items-center rounded-md border border-white/10 bg-[#080c12]/80 px-2 py-1 text-[9px] text-white/75 backdrop-blur-sm">
-                    <span>Host</span>
-                    <strong className="ml-1.5 truncate text-cyan">{map.host_team_name || "TBD"}</strong>
-                    {map.host_seed ? <span className="ml-1 text-white/60">{seedLabel(map.host_seed)}</span> : null}
-                  </p>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 border-t border-white/[0.06] pt-3">
-        <p className="mb-2 text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">Available map pool</p>
-        <div className="flex flex-wrap gap-1.5">
-          {pool.map((map) => (
-            <span key={map} className="rounded-md border border-white/[0.06] bg-black/15 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-vapor">
-              {map}
-            </span>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function BracketPreview({ matches, currentId, tournament }) {
   if (matches.length === 0) return null;
   return <TournamentBracket matches={matches} currentId={currentId} tournament={tournament} />;
@@ -1492,8 +1391,8 @@ export default function TournamentMatchRoom() {
                 finalScore={match.team_b_score || 0}
               />
             </div>
-            {canChat && (
-              <div className="min-w-0 space-y-4">
+            <div className="min-w-0 space-y-4">
+              {canChat && (
                 <TournamentChatColumn
                   match={match}
                   teamAPlayers={teamAPlayers}
@@ -1507,10 +1406,21 @@ export default function TournamentMatchRoom() {
                   onRequestAdmin={handleRequestAdmin}
                   onCreateDispute={handleCreateDispute}
                 />
-                <MapSeries match={match} stacked />
-              </div>
-            )}
-            {!canChat && <MapSeries match={match} stacked />}
+              )}
+              <MatchMapSeries
+                maps={Array.isArray(match.maps) ? match.maps : []}
+                mode={match.game_mode || match.tournament_game_mode || "Tournament match"}
+                host={match.first_host_team_name || "TBD"}
+                hostLabel="First host"
+                context={`${tournament?.name || "Tournament"} · Round ${match.round || "-"} · Match ${match.match_number || "-"}`}
+                mapPool={Array.isArray(match.map_pool) ? match.map_pool : []}
+                poolLabel="Tournament map pool"
+                bestOf={bestOf}
+                compact
+                stacked
+                emptyText={isComplete ? "No saved map picks for this match." : "Map picks are being generated."}
+              />
+            </div>
           </div>
         </section>
 

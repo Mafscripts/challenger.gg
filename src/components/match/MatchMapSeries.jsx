@@ -3,7 +3,7 @@ import { Map as MapIcon } from "lucide-react";
 import { getMapImage } from "@/lib/cdlMaps";
 
 const mapName = (map) => typeof map === "string" ? map : (map?.map || map?.name || "Map pending");
-const mapMode = (map, fallback) => typeof map === "string" ? fallback : (map?.mode || map?.game_mode_display || fallback);
+const mapMode = (map, fallback) => typeof map === "string" ? fallback : (map?.mode || map?.game_mode_display || map?.game_mode || fallback);
 const mapHost = (map, fallback) => typeof map === "string" ? fallback : (map?.host_team_name || map?.host_name || fallback);
 
 export default function MatchMapSeries({
@@ -11,6 +11,10 @@ export default function MatchMapSeries({
   title = "Map Series",
   mode = "Search and Destroy",
   host = "TBD",
+  hostLabel = "Host",
+  context = "",
+  mapPool = [],
+  poolLabel = "Available map pool",
   bestOf,
   compact = false,
   stacked = false,
@@ -27,7 +31,8 @@ export default function MatchMapSeries({
         </h2>
         <div className="flex flex-wrap items-center gap-2">
           {bestOf ? <span className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2 text-[9px] font-black uppercase tracking-wider text-cyan">BO{bestOf} · {mode}</span> : null}
-          {host ? <span className="rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2 text-[9px] font-bold text-vapor">Host <strong className="ml-1 text-white">{host}</strong></span> : null}
+          {host ? <span className="rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2 text-[9px] font-bold text-vapor">{hostLabel} <strong className="ml-1 text-white">{host}</strong></span> : null}
+          {context ? <span className="max-w-full truncate rounded-lg border border-orange/15 bg-orange/[0.05] px-3 py-2 text-[9px] font-bold text-vapor" title={context}>{context}</span> : null}
         </div>
       </div>
 
@@ -58,6 +63,17 @@ export default function MatchMapSeries({
           );
         })}
       </div>
+
+      {Array.isArray(mapPool) && mapPool.length > 0 ? (
+        <div className="mt-4 border-t border-white/[0.06] pt-3">
+          <p className="mb-2 text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">{poolLabel}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {mapPool.filter(Boolean).map((map) => (
+              <span key={map} className="rounded-md border border-white/[0.06] bg-black/15 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-vapor">{map}</span>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
