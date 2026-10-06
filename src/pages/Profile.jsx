@@ -621,7 +621,7 @@ export default function Profile() {
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 data-name-effect={selectedNameColor || undefined} className={`max-w-full shrink-0 break-words font-heading text-3xl font-black leading-none text-white sm:text-4xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
+                  <h1 data-name-effect={selectedNameColor || undefined} className={`player-name-wrap shrink-0 font-heading text-3xl font-black leading-tight text-white sm:text-4xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
                   <RoleBadge role={user.role || "user"} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
                 </div>
@@ -771,7 +771,7 @@ function PlayerOverviewPanel({ user, profile, name, rank, rankLabel, elo, wins, 
               {profile?.avatar_url || user?.avatar_url ? <img src={profile?.avatar_url || user?.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
             </div>
             <div className="min-w-0">
-              <p data-name-effect={user?.display_name_color || undefined} style={user?.display_name_color ? { "--player-name-color": user.display_name_color } : undefined} className={`truncate text-sm font-black text-white ${user?.display_name_color ? "player-name-color" : ""}`}>{name}</p>
+              <p data-name-effect={user?.display_name_color || undefined} style={user?.display_name_color ? { "--player-name-color": user.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white ${user?.display_name_color ? "player-name-color" : ""}`}>{name}</p>
               <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rankLabel || rank.name || rank.tier}</p>
             </div>
           </div>

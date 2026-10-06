@@ -287,7 +287,7 @@ export default function MatchChat({
                     <span
                       data-name-effect={!staff && senderNameEffect ? senderNameEffect : undefined}
                       style={!staff && senderNameEffect ? { "--player-name-color": senderNameEffect } : undefined}
-                      className={`truncate text-[13px] font-black ${!staff && senderNameEffect ? "player-name-color" : staff ? "text-red-200" : teamTone?.name || "text-white"}`}
+                      className={`player-name-wrap text-[13px] font-black ${!staff && senderNameEffect ? "player-name-color" : staff ? "text-red-200" : teamTone?.name || "text-white"}`}
                     >{senderName}</span>
                     <span className="text-[9px] font-medium text-vapor/65">• {formatDate(message.created_date)}</span>
                   </div>

@@ -375,6 +375,16 @@
     color: var(--player-name-color) !important;
   }
 
+  .player-name-wrap {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+    vertical-align: middle;
+  }
+
   .dark-media .text-vapor,
   .dark-focus .text-vapor {
     color: hsl(var(--vapor)) !important;
@@ -1550,6 +1560,10 @@
 
   .app-content .player-name-color[data-name-effect^="fx-"] {
     display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    text-decoration: none;
     color: transparent !important;
     background-position: 0 50%;
     background-repeat: repeat-x;
@@ -1561,9 +1575,8 @@
   }
 
   .app-content h1.player-name-color[data-name-effect^="fx-"] {
-    line-height: 1.16 !important;
-    padding-block: 0.06em;
-    margin-block: -0.06em;
+    line-height: 1.2 !important;
+    padding-block: 0.1em;
   }
 
   .app-content .player-name-color[data-name-effect="fx-prism"] { background-image: linear-gradient(90deg, #ff4d6d, #ff9f1c, #ffe66d, #36f1cd, #4dabf7, #b197fc, #ff4d6d); }
@@ -1614,12 +1627,11 @@
   }
 
   .app-content .player-name-color[data-name-effect^="fx-"]:not(h1) {
-    display: inline-flex;
+    display: inline-block;
     font-size: calc(1em + 1px);
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1.1;
+    line-height: 1.35;
+    padding-block: 0.08em;
+    vertical-align: middle;
   }
 
   .app-content .player-name-color[data-name-effect="fx-cosmic-nebula"] {

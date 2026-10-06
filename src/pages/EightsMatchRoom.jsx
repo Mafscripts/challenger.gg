@@ -81,7 +81,7 @@ function PlayerCard({ player, captain, tone }) {
       <div className="flex items-center gap-3">
         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-black text-background ${cyan ? "bg-cyan" : "bg-orange"}`}>{playerName(player).charAt(0).toUpperCase()}</div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2"><p data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`truncate text-sm font-black ${player.display_name_color ? "player-name-color" : ""}`}>{playerName(player)}</p>{captain && <Crown className="h-3.5 w-3.5 text-yellow-300" />}<UserBadges user={player} size="xs" iconOnly /></div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2"><p data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black ${player.display_name_color ? "player-name-color" : ""}`}>{playerName(player)}</p>{captain && <Crown className="h-3.5 w-3.5 text-yellow-300" />}<UserBadges user={player} size="xs" iconOnly /></div>
           <ActivisionIdLabel user={player} className="mt-1 max-w-full" />
         </div>
         <div className="text-right"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Level</p><p className={`font-mono text-lg font-black ${cyan ? "text-cyan" : "text-orange"}`}>{player.xp_level || 1}</p></div>
