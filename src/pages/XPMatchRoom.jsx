@@ -810,7 +810,7 @@ export default function XPMatchRoom() {
       <div className="max-w-[1740px] mx-auto px-4 lg:px-6">
         <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/55 via-white/10 to-orange/55" />
-          <div className="flex flex-col gap-4 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="match-room-header flex flex-col gap-4 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div className="min-w-0">
               <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan"><Swords className="h-4 w-4" /> XP match · {formatStatus(match.status)}</p>
               <h1 className="mt-1.5 text-lg font-black">{match.team_size} {match.game_mode_display || match.game_mode}</h1>
@@ -822,7 +822,7 @@ export default function XPMatchRoom() {
               <Link to="/xp" className="rounded-lg border border-white/[0.08] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor hover:text-white">XP</Link>
             </div>
           </div>
-          <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_410px] xl:p-5">
+          <div className="grid gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_410px]">
             <div className="min-w-0 space-y-4">
               <MatchTeamTable label="Team Alpha" name={match.host_name || "Team Alpha"} color="orange" players={visibleAlphaPlayers} captainId={match.host_id} finalScore={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} />
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-3 py-2">

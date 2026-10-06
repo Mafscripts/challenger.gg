@@ -1429,7 +1429,7 @@ export default function TournamentMatchRoom() {
 
         <section className="dark-focus dark-media relative mb-6 overflow-visible rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-accent/40 via-white/10 to-cyan/40" />
-          <div className="flex flex-col gap-4 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="match-room-header flex flex-col gap-4 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-orange">
                 <Trophy className="h-4 w-4" /> Tournament match
@@ -1460,7 +1460,7 @@ export default function TournamentMatchRoom() {
               </Link>
             </div>
           </div>
-          <div className={`grid gap-5 p-4 sm:p-5 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_410px]" : ""}`}>
+          <div className={`grid gap-4 p-3 sm:p-4 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_410px]" : ""}`}>
             <div className="min-w-0 space-y-4">
               <MatchTeamTable
                 label="Team A"

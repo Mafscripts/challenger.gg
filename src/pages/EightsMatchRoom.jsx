@@ -112,17 +112,18 @@ function TeamPanel({ label, players, captainId, tone, score, winner, embedded = 
 
 function LobbyOverviewCard({ match, isMoneyEights, joined, openSpots, entryFee, livePrizePool, fullPrizePool, isComplete }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#1a1d22] p-3">
+    <div className="match-room-overview-strip relative overflow-hidden rounded-xl border border-white/[0.09] bg-[#0d131a] p-3 sm:p-4">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-cyan/60 via-white/10 to-orange/55" />
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex items-center gap-2.5 lg:min-w-48">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan/20 bg-cyan/[0.08] text-cyan"><Swords className="h-4 w-4" /></div>
           <div><p className="text-[8px] font-black uppercase tracking-[0.18em] text-vapor">Lobby overview</p><p className="mt-0.5 text-base font-black">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3}</p></div>
         </div>
         <div className="grid flex-1 grid-cols-2 gap-1.5 sm:grid-cols-4">
-          <div className="rounded-lg border border-white/[0.08] bg-[#2a2d33] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Format</p><p className="mt-0.5 text-xs font-black">Randomized 4v4</p></div>
-          <div className="rounded-lg border border-white/[0.08] bg-[#2a2d33] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Players</p><p className="mt-0.5 flex items-center gap-1 font-mono text-xs font-black text-cyan"><Users className="h-3 w-3" />{joined}/8</p></div>
-          <div className="rounded-lg border border-white/[0.08] bg-[#2a2d33] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Open spots</p><p className="mt-0.5 text-xs font-black">{openSpots}</p></div>
-          <div className="rounded-lg border border-white/[0.08] bg-[#2a2d33] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Entry</p><p className={`mt-0.5 flex items-center gap-1 font-mono text-xs font-black ${isMoneyEights ? "text-green" : "text-vapor"}`}><DollarSign className="h-3 w-3" />{isMoneyEights ? formatMoney(entryFee) : "Free"}</p></div>
+          <div className="rounded-lg border border-white/[0.08] bg-[#151c25] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Format</p><p className="mt-0.5 text-xs font-black">Randomized 4v4</p></div>
+          <div className="rounded-lg border border-white/[0.08] bg-[#151c25] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Players</p><p className="mt-0.5 flex items-center gap-1 font-mono text-xs font-black text-cyan"><Users className="h-3 w-3" />{joined}/8</p></div>
+          <div className="rounded-lg border border-white/[0.08] bg-[#151c25] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Open spots</p><p className="mt-0.5 text-xs font-black">{openSpots}</p></div>
+          <div className="rounded-lg border border-white/[0.08] bg-[#151c25] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Entry</p><p className={`mt-0.5 flex items-center gap-1 font-mono text-xs font-black ${isMoneyEights ? "text-green" : "text-vapor"}`}><DollarSign className="h-3 w-3" />{isMoneyEights ? formatMoney(entryFee) : "Free"}</p></div>
         </div>
         <div className={`rounded-lg border p-3 text-center lg:min-w-48 ${isMoneyEights ? "border-green/35 bg-green/[0.09] shadow-[0_12px_34px_-18px_rgba(0,255,150,.9)]" : "border-yellow-300/20 bg-yellow-300/[0.06]"}`}>
           <div className={`flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] ${isMoneyEights ? "text-green" : "text-yellow-300"}`}><Trophy className="h-3.5 w-3.5" />{isMoneyEights ? "Live prize pool" : "Monthly ladder prize"}</div>
@@ -578,7 +579,7 @@ export default function EightsMatchRoom() {
   if (!match) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="text-2xl font-black">Match not found</h1><Link to={isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s"} className="mt-5 inline-flex text-cyan">Back to {isMoneyEights ? "Money 8s" : "Ranked 8s"}</Link></div>;
 
   return (
-    <div className="match-room-theme min-h-screen py-6">
+    <div className="match-room-theme min-h-screen bg-[#0b1016] py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         {isMoneyEights && isComplete && personalMoneyResult && !resultDismissed && (
           <WagerMoneyResultOverlay
@@ -593,20 +594,24 @@ export default function EightsMatchRoom() {
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
-        <section className="relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#25282d] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
-        <header className="relative border-b border-white/[0.06] p-6 lg:p-8">
-          <div className="absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/50 via-white/10 to-orange/50" />
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <section className="relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#11171f] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
+        <header className="match-room-header relative border-b border-white/[0.07] p-4 sm:p-5 lg:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-1 flex-col gap-5">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan"><Shield className="h-4 w-4" /> {roomLabel} match room</p><h1 className="mt-3 text-3xl font-black sm:text-4xl">Team Alpha <span className="text-vapor">vs</span> Team Bravo</h1><p className="mt-2 text-sm text-vapor">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3} · Match #{String(match.id).slice(-8).toUpperCase()}{isMoneyEights ? ` · $${Number(match.entry_fee ?? match.amount ?? 0).toFixed(2)} entry · $${Number(match.total_prize_pool ?? (Number(match.entry_fee ?? match.amount ?? 0) * 8)).toFixed(2)} prize pool` : ""}</p></div>
             <div className="flex flex-wrap gap-2">
               {!locked && isParticipant && !closedStatuses.has(match.status) && <button onClick={leave} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><LogOut className="h-4 w-4" /> Leave lobby</button>}
               {isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && <button onClick={() => setScoreOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit Score</button>}
             </div>
+            </div>
+            <LobbyOverviewCard match={match} isMoneyEights={isMoneyEights} joined={joined} openSpots={openSpots} entryFee={entryFee} livePrizePool={livePrizePool} fullPrizePool={fullPrizePool} isComplete={isComplete} />
+            </div>
           </div>
         </header>
 
         {!locked && !closedStatuses.has(match.status) && (
-          <section className="m-4 rounded-xl border border-purple-300/25 bg-[#2b2e40] p-5">
+          <section className="m-3 rounded-xl border border-purple-300/20 bg-[#171722] p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Shuffle className="h-5 w-5" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-purple-300">Automatic team generator</p><p className="mt-1 font-black">{joined < 8 ? `Waiting for ${8 - joined} more ${8 - joined === 1 ? "player" : "players"}` : "Teams shuffled · veto window open"}</p></div></div>
               <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"><Users className="h-4 w-4 text-cyan" /><span className="font-mono font-black">{joined}/8</span>{countdown !== null && joined === 8 && <><span className="text-vapor">·</span><Clock3 className="h-4 w-4 text-yellow-300" /><span className="font-mono font-black text-yellow-300">{formatCountdown(countdown)}</span></>}</div>
@@ -620,12 +625,11 @@ export default function EightsMatchRoom() {
           </section>
         )}
 
-        <div className="grid min-w-0 gap-5 border-t border-white/[0.07] bg-[#25282d] p-4 xl:grid-cols-[minmax(0,1fr)_410px] xl:p-5">
+        <div className="grid min-w-0 gap-4 bg-[#11171f] p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_410px] xl:gap-4">
           <div className="min-w-0 space-y-4">
             <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
             <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
             <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
-            <LobbyOverviewCard match={match} isMoneyEights={isMoneyEights} joined={joined} openSpots={openSpots} entryFee={entryFee} livePrizePool={livePrizePool} fullPrizePool={fullPrizePool} isComplete={isComplete} />
           </div>
           <div className="flex min-w-0 flex-col gap-4">
             <MatchRoomChat

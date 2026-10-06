@@ -712,7 +712,7 @@ export default function WagersMatchRoom() {
 
         <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/50 via-white/10 to-orange/50" />
-          <div className="p-5 sm:p-6">
+          <div className="match-room-header p-4 sm:p-5">
           <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
             <div>
               <div className="mb-2 flex items-center gap-3">
@@ -728,7 +728,7 @@ export default function WagersMatchRoom() {
             </div>
           </div>
           </div>
-          <div className="grid gap-5 border-t border-white/[0.06] p-4 lg:p-5 xl:grid-cols-[minmax(0,1fr)_410px]">
+          <div className="grid gap-4 border-t border-white/[0.06] p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_410px]">
             <div className="min-w-0 space-y-4">
               <MatchTeamTable label="Team Alpha" name={hostDisplayName} color="orange" players={teamAPlayers} captainId={wager.host_id} finalScore={wager.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={hostWinner} />
               <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
