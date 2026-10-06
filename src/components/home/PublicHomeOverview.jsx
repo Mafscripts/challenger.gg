@@ -98,7 +98,7 @@ export default function PublicHomeOverview() {
     <div className="landing-arena relative overflow-hidden py-20 sm:py-24">
       <div className="landing-arena-glow landing-arena-glow-cyan" aria-hidden="true" />
       <div className="landing-arena-glow landing-arena-glow-orange" aria-hidden="true" />
-      <div className="relative mx-auto max-w-[1540px] space-y-16 px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-[1600px] space-y-16 px-4 lg:px-6">
         <section className="halloween-feature landing-season-card relative isolate min-h-[430px] overflow-hidden rounded-2xl border border-white/10 bg-card sm:min-h-[440px]">
           <img src="/assets/home/halloween-special.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,17,.98)_0%,rgba(5,10,17,.9)_38%,rgba(5,10,17,.25)_78%)]" />

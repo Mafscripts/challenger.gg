@@ -451,7 +451,7 @@ export default function Dashboard() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1540px] space-y-8 px-3 pb-12 pt-4 sm:px-5 lg:space-y-10 lg:px-7">
+    <main className="mx-auto w-full max-w-[1600px] space-y-8 px-4 pb-12 pt-4 lg:space-y-10 lg:px-6">
       <FeaturedNews />
       <StatsStrip stats={stats} />
       <TournamentRows tournaments={upcoming} now={now} loading={loading} />
