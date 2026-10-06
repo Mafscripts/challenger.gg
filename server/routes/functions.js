@@ -9527,16 +9527,51 @@ async function ensureTournamentMatchSetup(req) {
     getEntity("Tournament", match.tournament_id).catch(() => null),
     tournamentMatchParticipantInfo(match, req.user),
   ]);
+  // Completed rooms still need their map cards. Keep saved picks and results
+  // untouched; older records without picks receive a read-only schedule.
+  if (match.winner_id || (match.completed && match.status === "completed")) {
+    const hasSavedMaps = [match.maps, match.series_maps, match.map_series, match.maps_played, match.selected_maps, match.map_sequence].some((candidate) => {
+      let rows = candidate;
+      if (typeof rows === "string") {
+        try { rows = JSON.parse(rows); } catch { rows = rows.split(/[\n,]+/); }
+      }
+      if (rows && !Array.isArray(rows) && typeof rows === "object") {
+        rows = rows.map || rows.name || rows.title ? [rows] : Object.values(rows);
+      }
+      return Array.isArray(rows) && rows.some((row) => (
+        typeof row === "string" ? Boolean(row.trim()) : Boolean(row?.map || row?.name || row?.title)
+      ));
+    }) || Boolean(match.final_map_name || match.map_name);
+    if (hasSavedMaps) return { success: true, match };
+
+    const scheduleTournament = {
+      ...tournament,
+      game_mode: match.tournament_game_mode || (match.game_mode ? `BO${match.best_of || 3} ${match.game_mode}` : tournament?.game_mode),
+      game_modes: Array.isArray(match.tournament_game_modes) && match.tournament_game_modes.length
+        ? match.tournament_game_modes
+        : tournament?.game_modes,
+    };
+    const schedule = isStreamerTournament(tournament)
+      ? streamerMatchSetupPatch(match, scheduleTournament, participants)
+      : tournamentMatchSetupPatch(match, participants, scheduleTournament);
+    return {
+      success: true,
+      match: {
+        ...match,
+        maps: schedule.maps,
+        map_pool: schedule.map_pool,
+        best_of: match.best_of || schedule.best_of,
+        game_mode: match.game_mode || schedule.game_mode,
+        first_host_team_id: match.first_host_team_id || schedule.first_host_team_id,
+        first_host_team_name: match.first_host_team_name || schedule.first_host_team_name,
+        map_display_source: "tournament_schedule",
+      },
+    };
+  }
+
   const isStaff = hasRole(req.user, "moderator");
   if (!isStaff && !participantInfo.isParticipant) {
     return { success: false, error: "Only match participants or staff can sync match setup" };
-  }
-
-  // Never rewrite the setup of a completed result. The room may still be
-  // opened after completion, but its historical map/host data must remain
-  // immutable for bracket and dispute records.
-  if (match.winner_id || (match.completed && match.status === "completed")) {
-    return { success: true, match };
   }
 
   const patch = isStreamerTournament(tournament)

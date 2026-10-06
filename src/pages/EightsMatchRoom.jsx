@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
+import MatchRoomShell from "@/components/match/MatchRoomShell";
 import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
@@ -593,8 +594,7 @@ export default function EightsMatchRoom() {
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
-        <section className="relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#11171f] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
-        <header className="match-room-header relative border-b border-white/[0.07] p-4 sm:p-5 lg:p-6">
+        <MatchRoomShell header={(
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex flex-1 flex-col gap-5">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -608,8 +608,8 @@ export default function EightsMatchRoom() {
             <LobbyOverviewCard match={match} isMoneyEights={isMoneyEights} joined={joined} openSpots={openSpots} entryFee={entryFee} livePrizePool={livePrizePool} fullPrizePool={fullPrizePool} isComplete={isComplete} />
             </div>
           </div>
-        </header>
-
+        )} beforeTeams={(
+          <>
         {!locked && !closedStatuses.has(match.status) && (
           <section className="m-3 rounded-xl border border-purple-300/20 bg-[#171722] p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -625,13 +625,15 @@ export default function EightsMatchRoom() {
           </section>
         )}
 
-        <div className="grid min-w-0 gap-4 bg-[#11171f] p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_410px] xl:gap-4">
-          <div className="min-w-0 space-y-4">
+          </>
+        )} teams={(
+          <>
             <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
             <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
             <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
-          </div>
-          <div className="flex min-w-0 flex-col gap-4">
+          </>
+        )} sidebar={(
+          <>
             <MatchRoomChat
               conversationId={match.id}
               matchType="wager"
@@ -666,9 +668,8 @@ export default function EightsMatchRoom() {
               )}
             />
             <MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} compact stacked />
-          </div>
-        </div>
-        </section>
+          </>
+        )} />
 
       </div>
 
