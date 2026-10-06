@@ -315,14 +315,21 @@ export default function TournamentOverview() {
   const loadPage = async () => {
     try {
       setLoading(true);
-      const [currentUser, tournamentRow, participantRows, matchRows] = await Promise.all([
-        base44.auth.me().catch(() => null),
-        base44.entities.Tournament.get(id),
-        base44.entities.TournamentParticipant.filterFresh({ tournament_id: id }, "seed", 256).catch(() => []),
-        base44.entities.TournamentMatch.filterFresh({ tournament_id: id }, "round", 256).catch(() => []),
+      const currentUserPromise = base44.auth.me().catch(() => null);
+      const participantRowsPromise = base44.entities.TournamentParticipant.filterFresh({ tournament_id: id }, "seed", 256).catch(() => []);
+      const matchRowsPromise = base44.entities.TournamentMatch.filterFresh({ tournament_id: id }, "round", 256).catch(() => []);
+      const tournamentRow = await base44.entities.Tournament.get(id);
+      setTournament(tournamentRow);
+      // Team memberships and bracket data are useful after the first paint,
+      // but should not keep the tournament header behind a full-page loader.
+      setLoading(false);
+
+      const [currentUser, participantRows, matchRows] = await Promise.all([
+        currentUserPromise,
+        participantRowsPromise,
+        matchRowsPromise,
       ]);
       setUser(currentUser);
-      setTournament(tournamentRow);
       setParticipants(participantRows || []);
       setMatches(matchRows || []);
       const availableTeams = await loadTeams(currentUser);

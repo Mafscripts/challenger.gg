@@ -340,18 +340,42 @@ export default function Tournaments() {
     refreshInFlightRef.current = true;
     try {
       if (!silent) setLoading(true);
-      if (!silent) {
-        await base44.functions.invoke("syncTournamentLifecycle", {}).catch(() => null);
-      }
-      const [currentUser, tournamentRows] = await Promise.all([
-        silent ? Promise.resolve(null) : base44.auth.me().catch(() => null),
-        base44.entities.Tournament.filterFresh({}, "-start_date", 100),
-      ]);
+      const currentUserPromise = silent ? Promise.resolve(null) : base44.auth.me().catch(() => null);
+      const tournamentRows = await base44.entities.Tournament.filterFresh({}, "-start_date", 100);
       const rows = tournamentRows || [];
       const officialRows = rows.filter((tournament) => !isStreamerTournament(tournament));
 
-      if (!silent) setUser(currentUser);
       setTournaments(rows);
+
+      const currentSelectedId = selectedTournamentIdRef.current;
+      const requestedTournamentId = typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("tournament")
+        : null;
+      const nextSelectedId = officialRows.some((tournament) => tournament.id === currentSelectedId)
+        ? currentSelectedId
+        : officialRows.some((tournament) => tournament.id === requestedTournamentId)
+          ? requestedTournamentId
+          : officialRows[0]?.id;
+
+      if (nextSelectedId && nextSelectedId !== currentSelectedId) {
+        selectedTournamentIdRef.current = nextSelectedId;
+        setSelectedTournamentId(nextSelectedId);
+      } else if (!nextSelectedId) {
+        selectedTournamentIdRef.current = null;
+        setSelectedTournamentId(null);
+      }
+
+      // Show the schedule as soon as the main request is ready. The rest of
+      // the data below only affects join controls and live match details.
+      if (!silent) setLoading(false);
+      if (!silent) {
+        // Run lifecycle maintenance after the first list request so it cannot
+        // compete with the data needed for the initial render.
+        base44.functions.invoke("syncTournamentLifecycle", {}).catch(() => null);
+      }
+
+      const currentUser = await currentUserPromise;
+      if (!silent) setUser(currentUser);
       if (!silent && currentUser?.id) {
         const [allParticipants, memberships] = await Promise.all([
           base44.entities.TournamentParticipant.filterFresh({}, "-registered_date", 500).catch(() => []),
@@ -374,24 +398,6 @@ export default function Tournaments() {
       } else if (!silent) {
         setJoinedTournamentIds(new Set());
         setUserTeams([]);
-      }
-
-      const currentSelectedId = selectedTournamentIdRef.current;
-      const requestedTournamentId = typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("tournament")
-        : null;
-      const nextSelectedId = officialRows.some((tournament) => tournament.id === currentSelectedId)
-        ? currentSelectedId
-        : officialRows.some((tournament) => tournament.id === requestedTournamentId)
-          ? requestedTournamentId
-          : officialRows[0]?.id;
-
-      if (nextSelectedId && nextSelectedId !== currentSelectedId) {
-        selectedTournamentIdRef.current = nextSelectedId;
-        setSelectedTournamentId(nextSelectedId);
-      } else if (!nextSelectedId) {
-        selectedTournamentIdRef.current = null;
-        setSelectedTournamentId(null);
       }
 
       const tournamentIdsToRefresh = new Set([
