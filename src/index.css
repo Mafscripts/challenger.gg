@@ -2628,6 +2628,7 @@ img {
 }
 
 @keyframes page-logo-orbit {
+  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
@@ -2660,8 +2661,9 @@ img {
   border-radius: 9999px;
   background: conic-gradient(from 90deg, transparent 0 42%, hsl(var(--cyan)) 58%, hsl(var(--orange)) 70%, transparent 84%);
   animation: page-logo-orbit 1.45s linear infinite;
+  animation-play-state: running;
   will-change: transform;
-  transform: translateZ(0);
+  transform-origin: center;
   mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
 }
@@ -2683,10 +2685,9 @@ img {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-logo-loader-orbit,
-  .page-logo-loader-glow {
-    animation: none !important;
-  }
+  /* The page loader is functional feedback, so keep its progress cue moving. */
+  .page-logo-loader-orbit { animation-play-state: running !important; }
+  .page-logo-loader-glow { animation-play-state: running !important; }
 }
 
 /* Calm, compact competition navigation. Accent colors identify destinations without moving labels. */
