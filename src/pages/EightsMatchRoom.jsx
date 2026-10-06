@@ -229,8 +229,18 @@ export default function EightsMatchRoom() {
         hydratingRosterRef.current = rosterSignature;
         const hydrate = () => {
           hydrationTimerRef.current = null;
-          void loadWagerParticipants(base44, latest, { participantRows: rows, fresh: true })
+          void loadWagerParticipants(base44, latest, {
+            participantRows: rows,
+            fresh: true,
+            includeInventory: false,
+            includeProfile: false,
+          })
             .then(async (rosters) => {
+              if (rosterSignatureRef.current !== rosterSignature) return;
+              // User records contain the gamertag and core card identity. Show
+              // those as soon as they arrive; stats are a secondary pass.
+              setTeamAlpha(rosters.teamAPlayers);
+              setTeamBravo(rosters.teamBPlayers);
               const [alpha, bravo] = await Promise.all([
                 hydrateProgression(rosters.teamAPlayers),
                 hydrateProgression(rosters.teamBPlayers),
@@ -622,6 +632,7 @@ export default function EightsMatchRoom() {
               teamAPlayers={teamAlpha}
               teamBPlayers={teamBravo}
               pollIntervalMs={3500}
+              messageLimit={50}
               inputActions={(
                 <div>
                   <div className="grid grid-cols-2 gap-2">

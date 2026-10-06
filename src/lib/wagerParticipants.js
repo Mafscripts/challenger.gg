@@ -6,8 +6,12 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
   const hydratedPlayers = await Promise.all((participantRows || []).map(async (participant) => {
     const [userRow, inventoryRows, profileRows] = await Promise.all([
       base44.entities.User[options.fresh ? "getFresh" : "get"](participant.user_id).catch(() => null),
-      base44.entities.UserInventory[options.fresh ? "filterFresh" : "filter"]({ user_id: participant.user_id }, "-acquired_date", 200).catch(() => []),
-      base44.entities.PlayerProfile[options.fresh ? "filterFresh" : "filter"]({ user_id: participant.user_id }, "-created_date", 1).catch(() => []),
+      options.includeInventory === false
+        ? Promise.resolve([])
+        : base44.entities.UserInventory[options.fresh ? "filterFresh" : "filter"]({ user_id: participant.user_id }, "-acquired_date", 200).catch(() => []),
+      options.includeProfile === false
+        ? Promise.resolve([])
+        : base44.entities.PlayerProfile[options.fresh ? "filterFresh" : "filter"]({ user_id: participant.user_id }, "-created_date", 1).catch(() => []),
     ]);
     const profileRow = profileRows?.[0] || {};
 

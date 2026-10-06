@@ -93,6 +93,7 @@ export default function MatchChat({
   teamBPlayerIds = [],
   teamAColor = "cyan",
   teamBColor = "orange",
+  messageLimit = 100,
 }) {
   const [messages, setMessages] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -146,7 +147,7 @@ export default function MatchChat({
 
       if (showLoading) setLoading(true);
       const rows = await base44.entities.ChatMessage
-        .filterFresh({ conversation_id: conversationId }, "-created_date", 100)
+        .filterFresh({ conversation_id: conversationId }, "-created_date", messageLimit)
         .catch(() => []);
 
       if (mounted) {
@@ -179,7 +180,7 @@ export default function MatchChat({
       window.removeEventListener("focus", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [conversationId, live, pollIntervalMs]);
+  }, [conversationId, live, messageLimit, pollIntervalMs]);
 
   const handleSend = async (event) => {
     event.preventDefault();
