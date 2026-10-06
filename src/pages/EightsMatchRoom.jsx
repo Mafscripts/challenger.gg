@@ -21,6 +21,19 @@ const playerName = (player) => player?.full_name || player?.user_name || player?
 const seriesModeName = (mode) => ({ hp: "Hardpoint", snd: "Search & Destroy" }[mode] || mode || "Mode pending");
 const formatCountdown = (seconds) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, "0")}`;
 const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
+const playersFromLobbyRows = (rows, team) => (rows || [])
+  .filter((row) => row.team === team)
+  .map((row) => ({
+    id: row.id,
+    user_id: row.user_id,
+    user_name: row.user_name || "Unnamed player",
+    full_name: row.user_name || "Unnamed player",
+    team: row.team,
+    role: row.is_captain ? "captain" : "member",
+    entry_fee_paid: row.entry_fee_paid,
+    payment_status: row.payment_status,
+    paid_by: row.paid_by,
+  }));
 
 function PlayerCard({ player, captain, tone }) {
   const cyan = tone === "cyan";
@@ -102,6 +115,10 @@ export default function EightsMatchRoom() {
   const [now, setNow] = useState(Date.now());
   const [resultDismissed, setResultDismissed] = useState(false);
   const joinedAdminRooms = useRef(new Set());
+  const currentUserRef = useRef(null);
+  const rosterSignatureRef = useRef("");
+  const hydratingRosterRef = useRef("");
+  const hydratedRosterRef = useRef("");
 
   const hydrateProgression = useCallback(async (players) => Promise.all(players.map(async (player) => {
     const [xpRows, statRows] = await Promise.all([
@@ -116,23 +133,50 @@ export default function EightsMatchRoom() {
   const loadRoom = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const currentUser = user || await base44.auth.me();
+      const currentUser = currentUserRef.current || await base44.auth.me();
       const sync = await base44.functions.invoke("syncEightsLobby", { wager_id: id }).catch(() => null);
       const latest = sync?.data?.wager || await base44.entities.Wager.getFresh(id);
       if (!['8s', 'money8s'].includes(latest?.match_type)) throw new Error("This is not an 8s match");
       const rows = await base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 8);
-      const rosters = await loadWagerParticipants(base44, latest, { participantRows: rows, fresh: true });
-      const [alpha, bravo] = await Promise.all([hydrateProgression(rosters.teamAPlayers), hydrateProgression(rosters.teamBPlayers)]);
+      const rosterSignature = (rows || [])
+        .map((row) => [row.id, row.user_id, row.team, row.is_captain, row.updated_date].join(":"))
+        .sort()
+        .join("|");
+
+      // Show the room as soon as the roster is available. The richer player
+      // profile, trophy, and stat data is useful, but must not hold up F5.
+      if (rosterSignature !== rosterSignatureRef.current) {
+        rosterSignatureRef.current = rosterSignature;
+        setTeamAlpha(playersFromLobbyRows(rows, "host"));
+        setTeamBravo(playersFromLobbyRows(rows, "challenger"));
+      }
+      if (hydratedRosterRef.current !== rosterSignature && hydratingRosterRef.current !== rosterSignature) {
+        hydratingRosterRef.current = rosterSignature;
+        void loadWagerParticipants(base44, latest, { participantRows: rows, fresh: true })
+          .then(async (rosters) => {
+            const [alpha, bravo] = await Promise.all([
+              hydrateProgression(rosters.teamAPlayers),
+              hydrateProgression(rosters.teamBPlayers),
+            ]);
+            if (rosterSignatureRef.current !== rosterSignature) return;
+            setTeamAlpha(alpha);
+            setTeamBravo(bravo);
+            hydratedRosterRef.current = rosterSignature;
+          })
+          .catch((error) => console.error("Could not hydrate 8s player details:", error))
+          .finally(() => {
+            if (hydratingRosterRef.current === rosterSignature) hydratingRosterRef.current = "";
+          });
+      }
+      currentUserRef.current = currentUser;
       setUser(currentUser);
       setMatch(latest);
-      setTeamAlpha(alpha);
-      setTeamBravo(bravo);
     } catch (error) {
       if (!quiet) toast({ title: "Match room unavailable", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [hydrateProgression, id, user]);
+  }, [hydrateProgression, id]);
 
   useEffect(() => { loadRoom(); }, [loadRoom]);
   useEffect(() => {
