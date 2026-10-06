@@ -286,6 +286,12 @@ const entityClient = (entity) => ({
 
 export const base44 = {
   profile: {
+    async trophyCounts(userIds) {
+      requireToken();
+      const ids = [...new Set((userIds || []).filter(Boolean))].sort();
+      if (!ids.length) return Promise.resolve({});
+      return apiFetch(`/profile/trophies${toQuery({ user_ids: ids })}`);
+    },
     tournamentParticipants(userId) {
       requireToken();
       return apiFetch(`/profile/${encodeURIComponent(userId)}/tournament-participants`);

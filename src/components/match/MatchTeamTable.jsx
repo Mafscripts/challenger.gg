@@ -16,7 +16,7 @@ const teamMonogram = (name) => {
   if (words.length > 1) return words.slice(0, 2).map((word) => word.charAt(0)).join("").toUpperCase();
   return String(words[0] || "--").slice(0, 2).toUpperCase();
 };
-const trophiesFor = (player) => player?.trophies || {
+const trophiesFor = (player) => (player?.trophies && typeof player.trophies === "object") ? player.trophies : {
   gold: number(player?.gold_count),
   silver: number(player?.silver_count),
   bronze: number(player?.bronze_count),

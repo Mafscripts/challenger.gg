@@ -234,7 +234,6 @@ export default function EightsMatchRoom() {
           void loadWagerParticipants(base44, latest, {
             participantRows: rows,
             fresh: true,
-            includeInventory: false,
             includeProfile: false,
           })
             .then(async (rosters) => {

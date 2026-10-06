@@ -37,6 +37,7 @@ import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import PageLoader from "@/components/ui/PageLoader";
 import TournamentBracket from "@/components/tournaments/TournamentBracket";
 import { effectiveRoleForUser, isStaffUser } from "@/lib/roles";
+import { trophyCountsFor } from "@/lib/trophyCounts";
 
 const bracketLabels = {
   winner: "Winner Bracket",
@@ -245,36 +246,7 @@ function rosterPlayerMatchesUser(player, user) {
   return identityKeys(player).some((key) => userKeys.has(cleanKey(key)));
 }
 
-function countInventoryTrophies(items = []) {
-  const counts = emptyTrophyCounts();
-  (items || []).forEach((item) => {
-    const text = cleanKey([item.item_name, item.unlock_key, item.item_rarity, item.purchase_method].filter(Boolean).join(" "));
-    if (item.item_category !== "trophy" && !text.includes("trophy")) return;
-
-    if (text.includes("invit") || text.includes("champion")) return;
-    if (text.includes("premium")) counts.premium += 1;
-    else if (text.includes("gold")) counts.gold += 1;
-    else if (text.includes("silver")) counts.silver += 1;
-    else if (text.includes("bronze")) counts.bronze += 1;
-    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") return;
-    else if (item.item_rarity === "legendary" || item.item_rarity === "epic") counts.gold += 1;
-    else if (item.item_rarity === "rare") counts.silver += 1;
-    else counts.bronze += 1;
-  });
-  return counts;
-}
-
-function trophyCountsFor(userRow, inventoryRows) {
-  const inventoryCounts = countInventoryTrophies(inventoryRows);
-  return {
-    gold: statNumber(userRow?.gold_count) + inventoryCounts.gold,
-    silver: statNumber(userRow?.silver_count) + inventoryCounts.silver,
-    bronze: statNumber(userRow?.bronze_count) + inventoryCounts.bronze,
-    premium: statNumber(userRow?.premium_count) + inventoryCounts.premium,
-  };
-}
-
-function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
+function playerWithStats(player, userRow, profileRow) {
   const wagerWins = statNumber(userRow?.wager_wins);
   const wagerLosses = statNumber(userRow?.wager_losses);
   const profileWins = statNumber(profileRow?.total_wins);
@@ -298,7 +270,7 @@ function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
     monitor_cam_required: userRow?.monitor_cam_required || userRow?.required_monitor_cam || userRow?.moni_cam_required || false,
     wins: Math.max(profileWins, wagerWins),
     losses: Math.max(profileLosses, wagerLosses),
-    trophies: trophyCountsFor(userRow, inventoryRows),
+    trophies: trophyCountsFor(userRow, profileRow),
     earnings,
     socials: {
       discord: profileRow?.discord || userRow?.discord || "",
@@ -311,15 +283,17 @@ function playerWithStats(player, userRow, profileRow, inventoryRows = []) {
 }
 
 async function enrichRosterPlayers(players) {
-  return Promise.all((players || []).map(async (player) => {
-    if (!player.user_id) return playerWithStats(player, null, null, []);
-    const [userRow, profileRows, inventoryRows] = await Promise.all([
+  const trophyCountsPromise = base44.profile.trophyCounts((players || []).map((player) => player.user_id)).catch(() => ({}));
+  const playersPromise = Promise.all((players || []).map(async (player) => {
+    if (!player.user_id) return playerWithStats(player, null, null);
+    const [userRow, profileRows] = await Promise.all([
       base44.entities.User.get(player.user_id).catch(() => null),
       base44.entities.PlayerProfile.filterFresh({ user_id: player.user_id }, "-created_date", 1).catch(() => []),
-      base44.entities.UserInventory.filterFresh({ user_id: player.user_id }, "-acquired_date", 100).catch(() => []),
     ]);
-    return playerWithStats(player, userRow, profileRows?.[0] || null, inventoryRows);
+    return playerWithStats(player, userRow, profileRows?.[0] || null);
   }));
+  const [enriched, counts] = await Promise.all([playersPromise, trophyCountsPromise]);
+  return enriched.map((player) => ({ ...player, trophies: counts[player.user_id] || player.trophies }));
 }
 
 async function activeMembersForTeam(teamId) {

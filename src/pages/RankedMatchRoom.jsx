@@ -30,6 +30,7 @@ import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import PageLoader from "@/components/ui/PageLoader";
 import { getRankForElo, getRankProgress } from "@/lib/ranks";
 import { isStaffUser } from "@/lib/roles";
+import { trophyCountsFor, trophyFields } from "@/lib/trophyCounts";
 
 const playerName = (user, fallback = "Unnamed player") => (
   user?.display_name || user?.full_name || user?.username || user?.email || fallback
@@ -461,10 +462,7 @@ export default function RankedMatchRoom() {
       wins: stats.wins || 0,
       losses: stats.losses || 0,
       lifetime_earnings: Math.max(Number(userRows?.lifetime_earnings || 0), Number(userRows?.total_wager_earnings || 0)),
-      gold_count: userRows?.gold_count || 0,
-      silver_count: userRows?.silver_count || 0,
-      bronze_count: userRows?.bronze_count || 0,
-      premium_count: userRows?.premium_count || 0,
+      ...trophyFields(trophyCountsFor(userRows, profile)),
       socials: {
         discord: profile.discord || userRows?.discord || "",
         twitter: profile.twitter || profile.x || userRows?.twitter || userRows?.x || "",
@@ -491,11 +489,15 @@ export default function RankedMatchRoom() {
     const bravoIds = roomRosterIds(matchData, "bravo");
     const alphaNames = roomRosterNames(matchData, "alpha");
     const bravoNames = roomRosterNames(matchData, "bravo");
-    const [alpha, bravo] = await Promise.all([
+    const [alpha, bravo, counts] = await Promise.all([
       Promise.all(alphaIds.map((playerId, index) => loadPlayer(playerId, alphaNames[index]))),
       Promise.all(bravoIds.map((playerId, index) => loadPlayer(playerId, bravoNames[index]))),
+      base44.profile.trophyCounts([...alphaIds, ...bravoIds]).catch(() => ({})),
     ]);
-    return { alpha: alpha.filter(Boolean), bravo: bravo.filter(Boolean) };
+    const withTrophies = (players) => players.filter(Boolean).map((player) => counts[player.id]
+      ? { ...player, trophies: counts[player.id], ...trophyFields(counts[player.id]) }
+      : player);
+    return { alpha: withTrophies(alpha), bravo: withTrophies(bravo) };
   };
 
   const loadRoom = async () => {

@@ -36,6 +36,7 @@ import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { activisionIdFor } from "@/lib/activision";
 import { normalizeImageSource, prepareImageFile } from "@/lib/images";
+import { trophyCountsFor } from "@/lib/trophyCounts";
 
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
@@ -228,41 +229,9 @@ const profileTrophyCount = (user, inventory = []) => (
   }).length
 );
 
-const emptyProfileTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0, topfragg: 0, hosted: 0 });
-
-function countProfileInventoryTrophies(items = []) {
-  const counts = emptyProfileTrophyCounts();
-  (items || []).forEach((item) => {
-    const text = cleanKey([item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method].filter(Boolean).join(" "));
-    if (item.item_category !== "trophy" && !text.includes("trophy")) return;
-    if (text.includes("invit") || text.includes("champion")) return;
-
-    if (text.includes("topfrag") || text.includes("topfragg")) counts.topfragg += 1;
-    else if (text.includes("hosted") || text.includes("host trophy")) counts.hosted += 1;
-    else if (text.includes("premium")) counts.premium += 1;
-    else if (text.includes("gold")) counts.gold += 1;
-    else if (text.includes("silver")) counts.silver += 1;
-    else if (text.includes("bronze")) counts.bronze += 1;
-    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") return;
-    else if (item.item_rarity === "legendary" || item.item_rarity === "epic") counts.gold += 1;
-    else if (item.item_rarity === "rare") counts.silver += 1;
-    else counts.bronze += 1;
-  });
-  return counts;
-}
-
-function trophyOverviewFor(user, profile, inventory = [], matches = []) {
-  const inventoryCounts = countProfileInventoryTrophies(inventory);
-  const hostedBase = statNumber(user?.hosted_count ?? user?.hosted_trophies ?? profile?.hosted_count ?? profile?.hosted_trophies);
-  const hostedMatches = matches.filter((match) => String(match.host_id || "") === String(user?.id || "")).length;
-  const counts = {
-    gold: statNumber(user?.gold_count ?? profile?.gold_count) + inventoryCounts.gold,
-    silver: statNumber(user?.silver_count ?? profile?.silver_count) + inventoryCounts.silver,
-    bronze: statNumber(user?.bronze_count ?? profile?.bronze_count) + inventoryCounts.bronze,
-    premium: statNumber(user?.premium_count ?? user?.premium_trophies ?? profile?.premium_count ?? profile?.premium_trophies) + inventoryCounts.premium,
-    topfragg: statNumber(user?.topfragg_count ?? user?.topfrag_count ?? user?.topfragg_trophies ?? profile?.topfragg_count ?? profile?.topfrag_count ?? profile?.topfragg_trophies) + inventoryCounts.topfragg,
-    hosted: hostedBase + inventoryCounts.hosted + (hostedBase || inventoryCounts.hosted ? 0 : hostedMatches),
-  };
+function trophyOverviewFor(user, profile, inventory = [], matches = [], publicCounts) {
+  const localCounts = trophyCountsFor(user, profile, inventory, matches);
+  const counts = publicCounts ? { ...publicCounts, hosted: publicCounts.hosted || localCounts.hosted } : localCounts;
 
   return [
     { key: "gold", label: "Gold", value: counts.gold, image: "/assets/trophies/profile/gold.png", tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
@@ -287,6 +256,7 @@ export default function Profile() {
   const [wallet, setWallet] = useState(null);
   const [animatedNameTrialActive, setAnimatedNameTrialActive] = useState(false);
   const [inventory, setInventory] = useState([]);
+  const [publicTrophyCounts, setPublicTrophyCounts] = useState(null);
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [avatarDraft, setAvatarDraft] = useState("");
@@ -310,6 +280,7 @@ export default function Profile() {
     setProfile(null);
     setRankedStats(null);
     setInventory([]);
+    setPublicTrophyCounts(null);
     setTeams([]);
     setMatches([]);
     setWallet(null);
@@ -336,6 +307,11 @@ export default function Profile() {
       if (!userRow?.id) return;
 
       const isOwn = authUser?.id === userRow.id;
+      if (authUser) {
+        void base44.profile.trophyCounts([userRow.id])
+          .then((counts) => { if (isActive()) setPublicTrophyCounts(counts[userRow.id] || null); })
+          .catch(() => {});
+      }
 
       const [
         profileRows,
@@ -529,7 +505,7 @@ export default function Profile() {
     { label: "Verified", value: isVerifiedPlayer ? "Yes" : "No", icon: BadgeCheck, tone: "text-green" },
     { label: "Ranked", value: topfraggRankLabel, icon: Medal, tone: "text-cyan" },
   ];
-  const trophyOverviewCards = trophyOverviewFor(user, profile, inventory, matches);
+  const trophyOverviewCards = trophyOverviewFor(user, profile, inventory, matches, publicTrophyCounts);
   const earnedTrophyItems = inventory.filter((item) => {
     const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
     return (item.item_category === "trophy" || text.includes("trophy")) && !text.includes("invit") && !text.includes("champion");
