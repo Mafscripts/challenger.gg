@@ -725,6 +725,7 @@ export default function WagersMatchRoom() {
             <div className="flex flex-wrap items-center gap-2">
               {canReportScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
               <Link to="/wagers" className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-bold text-vapor transition-all hover:border-primary/30 hover:text-primary">Back to wagers</Link>
+              <Link to="/rules" className="inline-flex items-center gap-2 rounded-full border border-cyan/25 bg-cyan/[0.07] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.12em] text-cyan transition-colors hover:border-cyan/45 hover:bg-cyan/[0.12]"><ShieldCheck className="h-3.5 w-3.5" /> Rules</Link>
             </div>
           </div>
           </div>

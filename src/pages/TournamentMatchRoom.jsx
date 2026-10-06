@@ -1458,6 +1458,9 @@ export default function TournamentMatchRoom() {
               <Link to="/tournaments" className="inline-flex flex-1 items-center justify-center rounded-lg border border-white/[0.06] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor transition-colors hover:bg-white/10 hover:text-white sm:flex-none">
                 Tournaments
               </Link>
+              <Link to="/rules" className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-cyan/25 bg-cyan/[0.07] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.12em] text-cyan transition-colors hover:border-cyan/45 hover:bg-cyan/[0.12] sm:flex-none">
+                <ShieldCheck className="h-3.5 w-3.5" /> Rules
+              </Link>
             </div>
           </div>
           <div className={`grid gap-4 p-3 sm:p-4 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_410px]" : ""}`}>

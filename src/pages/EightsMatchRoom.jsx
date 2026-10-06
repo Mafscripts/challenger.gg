@@ -603,6 +603,7 @@ export default function EightsMatchRoom() {
             <div className="flex flex-wrap gap-2">
               {!locked && isParticipant && !closedStatuses.has(match.status) && <button onClick={leave} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><LogOut className="h-4 w-4" /> Leave lobby</button>}
               {isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && <button onClick={() => setScoreOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit Score</button>}
+              <Link to="/rules" className="inline-flex items-center gap-2 rounded-full border border-cyan/25 bg-cyan/[0.07] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.12em] text-cyan transition-colors hover:border-cyan/45 hover:bg-cyan/[0.12]"><ShieldCheck className="h-3.5 w-3.5" /> Rules</Link>
             </div>
             </div>
             <LobbyOverviewCard match={match} isMoneyEights={isMoneyEights} joined={joined} openSpots={openSpots} entryFee={entryFee} livePrizePool={livePrizePool} fullPrizePool={fullPrizePool} isComplete={isComplete} />
