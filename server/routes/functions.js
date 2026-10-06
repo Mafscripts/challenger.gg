@@ -5438,8 +5438,11 @@ async function adminResolveMatchRoom(req) {
   const teamAWins = action === "approve_team_a";
   const winnerName = teamAWins ? teamA : teamB;
   const loserName = teamAWins ? teamB : teamA;
-  const teamAScore = teamAWins ? 1 : 0;
-  const teamBScore = teamAWins ? 0 : 1;
+  // An override is final immediately, but still store a score that is valid
+  // for the series format so the completed 8s room is internally consistent.
+  const winsNeeded = Math.floor(Math.max(1, Number(match.best_of || 1)) / 2) + 1;
+  const teamAScore = teamAWins ? winsNeeded : 0;
+  const teamBScore = teamAWins ? 0 : winsNeeded;
 
   const result = matchType === "tournament"
     ? await completeTournamentMatch({
@@ -6703,58 +6706,78 @@ async function acceptWager(req) {
 }
 
 async function syncEightsLobby(req) {
-  const wager = await getEntity("Wager", req.body.wager_id || req.body.id);
-  if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
-  const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
-  const participant = participants.some((row) => row.user_id === req.user.id);
-  if (!participant && !hasRole(req.user, "moderator")) return { success: false, error: "Only lobby players can sync this room" };
-  if (["completed", "cancelled"].includes(wager.status)) return { success: true, wager, locked: true };
+  const wagerId = req.body.wager_id || req.body.id;
+  // Every player in the room polls this endpoint.  Serializing this transition
+  // prevents two polls from independently generating different teams or
+  // resetting each other's reshuffle timers.
+  return withTournamentMutationLock(`wager-accept:${wagerId}`, async () => {
+    const wager = await getEntity("Wager", wagerId);
+    if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
+    const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
+    const participant = participants.some((row) => row.user_id === req.user.id);
+    if (!participant && !hasRole(req.user, "moderator")) return { success: false, error: "Only lobby players can sync this room" };
+    if (["completed", "cancelled"].includes(wager.status)) return { success: true, wager, locked: true };
 
-  const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
-  const full = participants.length >= requiredSize * 2;
-  if (!full) {
-    if (!wager.roster_lock_deadline && !wager.roster_locked) return { success: true, wager, locked: false, full: false };
-    const reopened = await updateEntity("Wager", wager.id, {
-      status: "open",
-      roster_locked: false,
-      roster_lock_deadline: "",
-      match_started_date: "",
-      final_map_id: "",
-      final_map_name: "",
-      series_maps: [],
+    // Score reporting, disputes, and an already-live match are no longer lobby
+    // states.  A stale room poll must never turn one back into an open lobby.
+    if (wager.status !== "open" && wager.status !== "in_progress") {
+      return { success: true, wager, locked: true, full: true };
+    }
+    if (wager.status === "in_progress" || wager.roster_locked) {
+      return { success: true, wager, locked: true, full: true };
+    }
+
+    const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
+    const full = participants.length >= requiredSize * 2;
+    if (!full) {
+      if (!wager.roster_lock_deadline && !wager.roster_locked) return { success: true, wager, locked: false, full: false };
+      const reopened = await updateEntity("Wager", wager.id, {
+        status: "open",
+        roster_locked: false,
+        roster_lock_deadline: "",
+        match_started_date: "",
+        final_map_id: "",
+        final_map_name: "",
+        series_maps: [],
+        teams_generated_at: "",
+        eights_reshuffle_vote_user_ids: [],
+        eights_reshuffle_vote_count: 0,
+        eights_reshuffle_vote_status: null,
+        eights_reshuffle_vote_started_date: null,
+      });
+      return { success: true, wager: reopened, locked: false, full: false };
+    }
+
+    let currentWager = wager;
+    if (eightsTeamsNeedGeneration(wager, participants, requiredSize)) {
+      currentWager = await randomizeEightsTeams(wager, participants);
+    }
+    if (currentWager.roster_locked || currentWager.status === "in_progress") return { success: true, wager: currentWager, locked: true, full: true };
+    const deadline = currentWager.roster_lock_deadline ? new Date(currentWager.roster_lock_deadline) : null;
+    if (!deadline || Number.isNaN(deadline.getTime())) {
+      const pending = await updateEntity("Wager", wager.id, {
+        roster_lock_deadline: new Date(Date.now() + EIGHTS_RESHUFFLE_WINDOW_MS).toISOString(),
+        roster_locked: false,
+        status: "open",
+      });
+      return { success: true, wager: pending, locked: false, full: true };
+    }
+    if (deadline.getTime() > Date.now()) {
+      return { success: true, wager: currentWager, locked: false, full: true, seconds_remaining: Math.ceil((deadline.getTime() - Date.now()) / 1000) };
+    }
+
+    const locked = await updateEntity("Wager", currentWager.id, {
+      status: "in_progress",
+      roster_locked: true,
+      match_started_date: currentWager.match_started_date || nowIso(),
     });
-    return { success: true, wager: reopened, locked: false, full: false };
-  }
-
-  let currentWager = wager;
-  if (eightsTeamsNeedGeneration(wager, participants, requiredSize)) {
-    currentWager = await randomizeEightsTeams(wager, participants);
-  }
-  if (currentWager.roster_locked || currentWager.status === "in_progress") return { success: true, wager: currentWager, locked: true, full: true };
-  const deadline = currentWager.roster_lock_deadline ? new Date(currentWager.roster_lock_deadline) : null;
-  if (!deadline || Number.isNaN(deadline.getTime())) {
-    const pending = await updateEntity("Wager", wager.id, {
-      roster_lock_deadline: new Date(Date.now() + EIGHTS_RESHUFFLE_WINDOW_MS).toISOString(),
-      roster_locked: false,
-      status: "open",
-    });
-    return { success: true, wager: pending, locked: false, full: true };
-  }
-  if (deadline.getTime() > Date.now()) {
-    return { success: true, wager: currentWager, locked: false, full: true, seconds_remaining: Math.ceil((deadline.getTime() - Date.now()) / 1000) };
-  }
-
-  const locked = await updateEntity("Wager", currentWager.id, {
-    status: "in_progress",
-    roster_locked: true,
-    match_started_date: currentWager.match_started_date || nowIso(),
+    return { success: true, wager: locked, locked: true, full: true };
   });
-  return { success: true, wager: locked, locked: true, full: true };
 }
 
 async function voteEightsReshuffle(req) {
   const wagerId = req.body.wager_id || req.body.id;
-  return withTournamentMutationLock(`eights-reshuffle:${wagerId}`, async () => {
+  return withTournamentMutationLock(`wager-accept:${wagerId}`, async () => {
     const wager = await getEntity("Wager", wagerId);
     if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
 
@@ -6765,7 +6788,7 @@ async function voteEightsReshuffle(req) {
     if (participants.length < requiredSize * 2) return { success: false, error: `The lobby needs ${requiredSize * 2} players before teams can be reshuffled` };
 
     const deadline = new Date(wager.roster_lock_deadline || "");
-    if (wager.roster_locked || wager.status === "in_progress" || Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
+    if (wager.status !== "open" || wager.roster_locked || Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
       return { success: false, error: "The reshuffle window has closed" };
     }
 
@@ -6798,7 +6821,7 @@ async function adminReshuffleEightsTeams(req) {
   const wagerId = req.body.wager_id || req.body.id;
   if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access is required" };
 
-  return withTournamentMutationLock(`eights-reshuffle:${wagerId}`, async () => {
+  return withTournamentMutationLock(`wager-accept:${wagerId}`, async () => {
     const wager = await getEntity("Wager", wagerId);
     if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
     const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
@@ -6806,7 +6829,7 @@ async function adminReshuffleEightsTeams(req) {
     if (participants.length < requiredSize * 2) return { success: false, error: `The lobby needs ${requiredSize * 2} players before teams can be reshuffled` };
 
     const deadline = new Date(wager.roster_lock_deadline || "");
-    if (wager.roster_locked || wager.status === "in_progress" || Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
+    if (wager.status !== "open" || wager.roster_locked || Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
       return { success: false, error: "The reshuffle window has closed" };
     }
 
@@ -6816,7 +6839,7 @@ async function adminReshuffleEightsTeams(req) {
   });
 }
 
-async function leaveEightsLobby(req) {
+async function leaveEightsLobbyUnlocked(req) {
   const wager = await getEntity("Wager", req.body.wager_id || req.body.id);
   if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
   const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
@@ -6892,6 +6915,14 @@ async function leaveEightsLobby(req) {
     teams_generated_at: "",
   });
   return { success: true, wager: reopened };
+}
+
+async function leaveEightsLobby(req) {
+  const wagerId = req.body.wager_id || req.body.id;
+  return withTournamentMutationLock(
+    `wager-accept:${wagerId}`,
+    () => leaveEightsLobbyUnlocked(req),
+  );
 }
 
 async function getMoneyEightsStandings() {
@@ -7283,7 +7314,7 @@ async function submitScoreUnlocked(req) {
 
 async function submitScore(req) {
   return withTournamentMutationLock(
-    `wager-report:${req.body.wager_id}`,
+    `wager-accept:${req.body.wager_id}`,
     () => submitScoreUnlocked(req),
   );
 }
@@ -7354,6 +7385,18 @@ async function completeWagerUnlocked(req) {
     winner_score: Math.max(Number(req.body.team_alpha_score), Number(req.body.team_bravo_score)),
     loser_score: Math.min(Number(req.body.team_alpha_score), Number(req.body.team_bravo_score)),
     match_completed_date: new Date().toISOString(),
+    ...(isEightsMatchType(wager.match_type) ? {
+      // Completion (including a staff override) must always release every
+      // player from the score-agreement state before the response is sent.
+      roster_locked: true,
+      roster_lock_deadline: "",
+      eights_score_vote_status: "completed",
+      eights_score_vote_count: 0,
+      eights_score_vote_user_ids: [],
+      eights_reshuffle_vote_status: null,
+      eights_reshuffle_vote_count: 0,
+      eights_reshuffle_vote_user_ids: [],
+    } : {}),
   });
 
   await createEntity("WagerMatch", {
@@ -7398,7 +7441,10 @@ async function completeWagerUnlocked(req) {
     winner_profit: payoutResult.winnerProfit,
   });
   await resolveOpenMatchDisputes(wager.id, "Match result resolved", req.user);
-  await notifyUsers([winnerId, loserId], {
+  const completionRecipientIds = isEightsMatchType(wager.match_type)
+    ? matchParticipants.map((participant) => participant.user_id).filter(Boolean)
+    : [winnerId, loserId];
+  await notifyUsers(completionRecipientIds, {
     title: "Match completed",
     message: `${winnerName} won ${wager.game_mode_display || wager.game_mode || "the match"}.`,
     type: "match",
@@ -7412,24 +7458,27 @@ async function completeWagerUnlocked(req) {
 
 async function completeWager(req) {
   return withTournamentMutationLock(
-    `wager-complete:${req.body.wager_id}`,
+    `wager-accept:${req.body.wager_id}`,
     () => completeWagerUnlocked(req),
   );
 }
 
-async function refundWager(req) {
+async function refundWagerUnlocked(req) {
   const wager = await getEntity("Wager", req.body.wager_id);
   if (!wager) return { success: false, error: "Wager not found" };
   if (!hasRole(req.user, "moderator") && req.user.id !== wager.host_id && req.user.id !== wager.challenger_id) {
     return { success: false, error: "Only participants or staff can refund this wager" };
   }
-  if (wager.status === "completed") {
-    return { success: false, error: "Completed wagers cannot be refunded" };
+  if (["completed", "cancelled"].includes(wager.status)) {
+    return { success: false, error: wager.status === "completed" ? "Completed wagers cannot be refunded" : "This wager has already been cancelled" };
   }
   if (!hasRole(req.user, "moderator") && wager.status === "open" && req.user.id !== wager.host_id) {
     return { success: false, error: "Only the host can cancel an open wager" };
   }
 
+  const participants = isEightsMatchType(wager.match_type)
+    ? await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => [])
+    : [];
   await refundWagerEscrow(wager, req.body.reason || "Wager refunded");
   const updated = await updateEntity("Wager", wager.id, {
     status: "cancelled",
@@ -7437,9 +7486,24 @@ async function refundWager(req) {
     cancelled_by: req.user.id,
     cancelled_by_name: nameFor(req.user),
     cancelled_date: nowIso(),
+    ...(isEightsMatchType(wager.match_type) ? {
+      // Do not leave a cancelled 8s match looking like an unresolved score
+      // vote to the lobby finder or any already-open client.
+      roster_locked: true,
+      roster_lock_deadline: "",
+      eights_score_vote_status: "cancelled",
+      eights_score_vote_count: 0,
+      eights_score_vote_user_ids: [],
+      eights_reshuffle_vote_status: null,
+      eights_reshuffle_vote_count: 0,
+      eights_reshuffle_vote_user_ids: [],
+    } : {}),
   });
   await resolveOpenMatchDisputes(wager.id, "Match cancelled and refunded", req.user);
-  await notifyUsers([wager.host_id, wager.challenger_id], {
+  const recipientIds = isEightsMatchType(wager.match_type)
+    ? participants.map((participant) => participant.user_id).filter(Boolean)
+    : [wager.host_id, wager.challenger_id];
+  await notifyUsers(recipientIds, {
     title: "Wager refunded",
     message: `${wager.game_mode_display || wager.game_mode || "Match"} was cancelled and escrow was returned.`,
     type: "match",
@@ -7448,6 +7512,13 @@ async function refundWager(req) {
     related_entity_type: "Wager",
   });
   return { success: true, wager: updated };
+}
+
+async function refundWager(req) {
+  return withTournamentMutationLock(
+    `wager-accept:${req.body.wager_id}`,
+    () => refundWagerUnlocked(req),
+  );
 }
 
 const RANKED_MAPS_BY_MODE = {
