@@ -5186,6 +5186,24 @@ async function joinMatchRoomAsAdmin(req) {
   if (matchType === "ranked" && req.body.silent_join === true) {
     return { success: true, match, silent_join: true };
   }
+  if ((matchType === "8s" || matchType === "money8s") && req.body.direct_join === true) {
+    const joinedStaffIds = new Set([...(match.joined_staff_ids || []), match.assigned_admin_id].filter(Boolean));
+    const firstJoinForStaff = !joinedStaffIds.has(req.user.id);
+    joinedStaffIds.add(req.user.id);
+    const updatedMatch = await updateEntity(entityName, match.id, {
+      assigned_admin_id: req.user.id,
+      assigned_admin_name: nameFor(req.user),
+      assigned_admin_role: effectiveChatRole(req.user),
+      joined_staff_ids: [...joinedStaffIds],
+      admin_request_status: "admin_joined",
+      admin_request_updated_date: nowIso(),
+    });
+    if (firstJoinForStaff) {
+      await createMatchRoomSystemMessage(matchType, updatedMatch, staffJoinMessageFor(req.user), req.user);
+    }
+    publishEightsLobbyUpdate(match.id, "admin-joined");
+    return { success: true, match: updatedMatch, silent_join: true };
+  }
   const ticket = await openMatchAdminTicket(match.id, req.body.ticket_id || match.admin_request_ticket_id);
   if (!ticket) {
     // Ranked staff may observe a room without a player request. This deliberately

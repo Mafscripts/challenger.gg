@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, DollarSign, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
@@ -137,6 +137,7 @@ function LobbyOverviewCard({ match, isMoneyEights, joined, openSpots, entryFee, 
 
 export default function EightsMatchRoom() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [match, setMatch] = useState(null);
   const [user, setUser] = useState(null);
@@ -332,13 +333,14 @@ export default function EightsMatchRoom() {
     if (joinedAdminRooms.current.has(match.id)) return;
     const hasOpenRequest = Boolean(match.requested_admin && match.admin_request_ticket_id)
       && !["admin_joined", "resolved", "closed"].includes(match.admin_request_status);
-    if (!hasOpenRequest) return;
+    const directAdminJoin = new URLSearchParams(location.search).get("admin") === "1";
+    if (!hasOpenRequest && !directAdminJoin) return;
 
     joinedAdminRooms.current.add(match.id);
     base44.functions.invoke("joinMatchRoomAsAdmin", {
       match_type: isMoneyEights ? "money8s" : "8s",
       match_id: match.id,
-      ticket_id: match.admin_request_ticket_id,
+      ...(hasOpenRequest ? { ticket_id: match.admin_request_ticket_id } : { direct_join: true }),
     }).then((response) => {
       if (response.data?.success && response.data?.match) {
         setMatch(response.data.match);
@@ -350,7 +352,7 @@ export default function EightsMatchRoom() {
       joinedAdminRooms.current.delete(match.id);
       console.error("Failed to join 8s room as admin:", error);
     });
-  }, [isMoneyEights, isStaff, match?.admin_request_status, match?.admin_request_ticket_id, match?.id, match?.requested_admin, user?.id]);
+  }, [isMoneyEights, isStaff, location.search, match?.admin_request_status, match?.admin_request_ticket_id, match?.id, match?.requested_admin, user?.id]);
 
   const openSpots = Math.max(0, 8 - joined);
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;

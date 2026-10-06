@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Plus,
   RefreshCw,
+  Radio,
   RotateCcw,
   ScrollText,
   Search,
@@ -230,6 +231,7 @@ const tabs = [
   { id: "tickets", label: "Tickets", icon: Ticket },
   { id: "disputes", label: "Disputes", icon: Gavel },
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
+  { id: "live8s", label: "Live 8s Rooms", icon: Radio },
   { id: "ranked", label: "Ranked Management", icon: Swords },
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "tournamentMatches", label: "Tournament Matches", icon: ClipboardList },
@@ -253,6 +255,7 @@ const initialData = {
   tickets: [],
   disputes: [],
   wagers: [],
+  eightsMatches: [],
   rankedMatches: [],
   rankedStats: [],
   tournaments: [],
@@ -276,6 +279,11 @@ const closedAdminAlertStatuses = new Set(["acknowledged", "resolved", "closed"])
 const isOpenAdminAlert = (alert) => !closedAdminAlertStatuses.has(alert?.status || "open");
 const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
 const isVisibleCompetitionRecord = (record) => !hiddenCompetitionTypes.has(String(record?.match_type || "").toLowerCase());
+const eightsCompetitionTypes = new Set(["8s", "money8s"]);
+const isLiveEightsLobby = (record) => (
+  eightsCompetitionTypes.has(String(record?.match_type || "").toLowerCase())
+  && !["completed", "cancelled", "closed"].includes(String(record?.status || "").toLowerCase())
+);
 const isRemovedInvitationalTrophy = (item) => {
   const text = `${item?.category || ""} ${item?.name || ""} ${item?.description || ""} ${item?.unlock_key || ""}`.toLowerCase();
   const isTrophy = item?.category === "trophy" || text.includes("trophy");
@@ -583,6 +591,30 @@ export default function Admin() {
     return undefined;
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab !== "live8s" || !currentUser?.id) return undefined;
+    let mounted = true;
+    const refreshLiveEights = async () => {
+      const [freeMatches, moneyMatches] = await Promise.all([
+        base44.entities.Wager.filterFresh({ match_type: "8s" }, "-created_date", 100).catch(() => []),
+        base44.entities.Wager.filterFresh({ match_type: "money8s" }, "-created_date", 100).catch(() => []),
+      ]);
+      if (!mounted) return;
+      setData((current) => ({
+        ...current,
+        eightsMatches: [...(freeMatches || []), ...(moneyMatches || [])]
+          .filter(isLiveEightsLobby)
+          .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0)),
+      }));
+    };
+    refreshLiveEights();
+    const timer = window.setInterval(refreshLiveEights, 4000);
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+    };
+  }, [activeTab, currentUser?.id]);
+
   const safeList = async (entityName) => {
     try {
       return await base44.entities[entityName].filter({}, "-created_date", 500);
@@ -659,6 +691,7 @@ export default function Admin() {
         tickets,
         disputes: disputes.filter(isVisibleCompetitionRecord),
         wagers: wagers.filter(isVisibleCompetitionRecord),
+        eightsMatches: wagers.filter(isLiveEightsLobby),
         rankedMatches,
         rankedStats,
         tournaments,
@@ -2145,6 +2178,43 @@ export default function Admin() {
                     </form>
                   )}
                 </section>
+              )}
+            </div>
+          )}
+
+          {activeTab === "live8s" && (
+            <div className="p-6">
+              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2"><Radio className="h-5 w-5 text-cyan" /><h2 className="text-lg font-black">Live 8s rooms</h2></div>
+                  <p className="mt-1 text-xs text-vapor">Free 8s and Money 8s lobbies update automatically. Join a room to chat and use staff controls.</p>
+                </div>
+                <span className="inline-flex items-center gap-2 rounded-lg border border-green/20 bg-green/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-green"><span className="h-2 w-2 animate-pulse rounded-full bg-green" /> Live · {data.eightsMatches.length}</span>
+              </div>
+              {data.eightsMatches.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-background/25 px-5 py-12 text-center text-sm text-vapor">No active Free 8s or Money 8s lobbies.</div>
+              ) : (
+                <div className="grid gap-3 xl:grid-cols-2">
+                  {data.eightsMatches.map((match) => {
+                    const money8s = match.match_type === "money8s";
+                    return (
+                      <article key={match.id} className={`rounded-xl border p-4 ${money8s ? "border-green/25 bg-green/[0.035]" : "border-cyan/20 bg-cyan/[0.035]"}`}>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2"><span className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${money8s ? "border-green/25 bg-green/10 text-green" : "border-cyan/25 bg-cyan/10 text-cyan"}`}>{money8s ? "Money 8s" : "Free 8s"}</span><StatusPill status={match.status} /></div>
+                            <h3 className="mt-2 text-sm font-black">{match.host_name || "Team Alpha"} <span className="text-vapor">vs</span> {match.challenger_name || "Lobby filling"}</h3>
+                            <p className="mt-1 text-[10px] text-vapor">{match.game_mode_display || match.game_mode || "Mode pending"} · BO{match.best_of || 3} · created {formatDate(match.created_date)}</p>
+                          </div>
+                          <Link to={`/8s-match/${match.id}?admin=1`} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-3.5 py-2.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-cyan/90"><Shield className="h-3.5 w-3.5" /> Join room</Link>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-2 text-[10px]">
+                          <div className="rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2"><span className="block uppercase tracking-wider text-vapor">Status</span><span className="mt-1 block font-black text-white">{statusText(match.status)}</span></div>
+                          <div className="rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2"><span className="block uppercase tracking-wider text-vapor">Entry</span><span className={`mt-1 block font-mono font-black ${money8s ? "text-green" : "text-white"}`}>{money8s ? formatMoney(match.entry_fee || match.amount) : "Free"}</span></div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
