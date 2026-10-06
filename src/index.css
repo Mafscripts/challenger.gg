@@ -2681,7 +2681,13 @@ img {
 .page-logo-loader-stage > :last-child {
   position: relative;
   z-index: 1;
-  filter: drop-shadow(0 8px 22px rgb(0 0 0 / .48));
+  /* Keep the SVG logo on its native sharp rendering surface. A CSS filter
+     forces the browser to rasterize it into a softened offscreen layer. */
+  filter: none;
+}
+
+.page-logo-loader-stage > :last-child svg {
+  shape-rendering: geometricPrecision;
 }
 
 @media (prefers-reduced-motion: reduce) {
