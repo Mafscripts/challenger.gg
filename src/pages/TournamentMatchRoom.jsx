@@ -45,6 +45,44 @@ const statusLabel = (value) => String(value || "pending").replace(/_/g, " ");
 const adminCorrectionRoles = new Set(["ceo", "super_admin", "admin"]);
 const seedLabel = (seed) => seed ? `#${seed}` : "#-";
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
+const tournamentMapLabel = (value) => (
+  typeof value === "string" ? value.trim() : String(value?.map || value?.name || value?.title || "").trim()
+);
+const tournamentMapPoolItems = (value) => (
+  Array.isArray(value) ? value : typeof value === "string" ? value.split(/[\n,]+/) : []
+);
+const tournamentMapPoolForMatch = (match, tournament) => {
+  const matchPool = Array.isArray(match?.map_pool) ? match.map_pool.map(tournamentMapLabel).filter(Boolean) : [];
+  if (matchPool.length) return [...new Map(matchPool.map((map) => [cleanKey(map), map])).values()];
+
+  const pools = tournament?.map_pools && typeof tournament.map_pools === "object" ? tournament.map_pools : {};
+  const modeText = [match?.tournament_game_mode, match?.game_mode].filter(Boolean).join(" ").toLowerCase();
+  const configuredModes = Array.isArray(match?.tournament_game_modes) ? match.tournament_game_modes : [];
+  const inferredModes = [
+    /\b(?:hp|hardpoint)\b/.test(modeText) ? "hp" : null,
+    /\b(?:snd|search\s*(?:&|and)\s*destroy)\b/.test(modeText) ? "snd" : null,
+    /\boverload\b/.test(modeText) ? "overload" : null,
+  ].filter(Boolean);
+  const modes = [...new Set([...configuredModes, ...inferredModes])];
+  const matchingPools = modes.flatMap((mode) => tournamentMapPoolItems(pools[mode]));
+  const allConfiguredPools = Object.values(pools).flatMap(tournamentMapPoolItems);
+  const legacyPools = [
+    tournament?.maps,
+    tournament?.streamer_maps,
+    tournament?.snd_map_pool,
+    tournament?.hp_map_pool,
+    tournament?.overload_map_pool,
+    tournament?.snd_maps,
+    tournament?.hp_maps,
+    tournament?.overload_maps,
+  ]
+    .flatMap(tournamentMapPoolItems);
+
+  const labels = (matchingPools.length ? matchingPools : [...allConfiguredPools, ...legacyPools])
+    .map(tournamentMapLabel)
+    .filter(Boolean);
+  return [...new Map(labels.map((map) => [cleanKey(map), map])).values()];
+};
 const isStreamerTournament = (tournament) => Boolean(
   tournament?.is_streamer_tournament
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
@@ -800,7 +838,7 @@ function AdminTools({ match, canAdminCorrect, canAdminResolve, resolving, onRese
   );
 }
 
-function MatchStateBar({ match, onRefresh, onOpenBracket, adminTools = null }) {
+function TournamentMatchOverview({ match, onRefresh, onOpenBracket, adminTools = null }) {
   const items = [
     { label: "Status", value: statusLabel(match.status), valueClass: "capitalize text-cyan" },
     { label: "Bracket", value: bracketLabels[match.bracket] || match.bracket || "Tournament" },
@@ -810,10 +848,10 @@ function MatchStateBar({ match, onRefresh, onOpenBracket, adminTools = null }) {
   ];
 
   return (
-    <section className="dark-focus dark-media h-full rounded-xl border border-white/[0.09] p-5">
+    <section className="dark-focus dark-media rounded-xl border border-white/[0.09] bg-[#11171f] p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
-          <Shield className="h-4 w-4 text-orange" /> Match State
+          <Trophy className="h-4 w-4 text-orange" /> Tournament Overview
         </h2>
         <div className="flex items-center gap-2">
           <button
@@ -834,9 +872,9 @@ function MatchStateBar({ match, onRefresh, onOpenBracket, adminTools = null }) {
           </button>
         </div>
       </div>
-      <dl className="mt-4 grid grid-cols-2 gap-2">
+      <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
         {items.map((item) => (
-          <div key={item.label} className={`rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2 ${item.label === "Admin" ? "col-span-2" : ""}`}>
+          <div key={item.label} className="min-w-0 rounded-lg border border-white/[0.06] bg-black/15 px-3 py-2">
             <dt className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor/65">{item.label}</dt>
             <dd className={`mt-1 truncate text-[11px] font-bold ${item.valueClass || "text-white"}`} title={item.value}>
               {item.value}
@@ -844,13 +882,13 @@ function MatchStateBar({ match, onRefresh, onOpenBracket, adminTools = null }) {
           </div>
         ))}
       </dl>
-      <div className="mt-4 border-t border-white/[0.06] pt-3">
-        <p className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-vapor">
+      <div className="mt-3 flex flex-col gap-2 border-t border-white/[0.06] pt-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-vapor">
           <Swords className="h-3.5 w-3.5 text-cyan" /> Advancement
         </p>
-        <div className="space-y-1.5 text-[11px]">
-          <div className="flex items-center justify-between gap-3"><span className="text-vapor">Winner</span><span className="truncate font-mono text-cyan">{match.next_match_id ? `#${match.next_match_id.slice(-8)}` : "Tournament result"}</span></div>
-          <div className="flex items-center justify-between gap-3"><span className="text-vapor">Loser</span><span className="truncate font-mono text-orange">{match.loser_match_id ? `#${match.loser_match_id.slice(-8)}` : "Elimination"}</span></div>
+        <div className="flex flex-wrap gap-2 text-[10px]">
+          <span className="rounded-md border border-cyan/15 bg-cyan/[0.05] px-2.5 py-1.5 text-vapor">Winner <strong className="ml-1 font-mono text-cyan">{match.next_match_id ? `#${match.next_match_id.slice(-8)}` : "Tournament result"}</strong></span>
+          <span className="rounded-md border border-orange/15 bg-orange/[0.05] px-2.5 py-1.5 text-vapor">Loser <strong className="ml-1 font-mono text-orange">{match.loser_match_id ? `#${match.loser_match_id.slice(-8)}` : "Elimination"}</strong></span>
         </div>
       </div>
       {adminTools}
@@ -1264,6 +1302,7 @@ export default function TournamentMatchRoom() {
   const canAdminCorrect = adminCorrectionRoles.has(effectiveRoleForUser(user)) && match?.team_a_id && match?.team_b_id;
   const canAdminResolve = isStaff && canSubmit && !canAdminCorrect;
   const isStreamerMatch = isStreamerTournament(tournament);
+  const tournamentMapPool = tournamentMapPoolForMatch(match, tournament);
   const isTeamAWinner = isComplete && (
     String(match.winner_id || "") === String(match.team_a_id || "")
     || cleanKey(match.winner_name) === cleanKey(match.team_a_name)
@@ -1361,6 +1400,24 @@ export default function TournamentMatchRoom() {
               </Link>
             </div>
           </div>
+          <div className="match-room-overview-strip border-b border-white/[0.06] p-3 sm:p-4">
+            <TournamentMatchOverview
+              match={match}
+              onRefresh={loadRoom}
+              onOpenBracket={handleOpenBracket}
+              adminTools={isStaff ? (
+                <AdminTools
+                  match={match}
+                  canAdminCorrect={canAdminCorrect}
+                  canAdminResolve={canAdminResolve}
+                  resolving={resolvingAdmin}
+                  onResetDispute={handleAdminResetDispute}
+                  onCorrection={handleAdminCorrection}
+                  onResolve={handleAdminResolve}
+                />
+              ) : null}
+            />
+          </div>
           <div className={`grid gap-4 p-3 sm:p-4 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_410px]" : ""}`}>
             <div className="min-w-0 space-y-4">
               <MatchTeamTable
@@ -1413,12 +1470,16 @@ export default function TournamentMatchRoom() {
                 host={match.first_host_team_name || "TBD"}
                 hostLabel="First host"
                 context={`${tournament?.name || "Tournament"} · Round ${match.round || "-"} · Match ${match.match_number || "-"}`}
-                mapPool={Array.isArray(match.map_pool) ? match.map_pool : []}
+                mapPool={tournamentMapPool}
                 poolLabel="Tournament map pool"
                 bestOf={bestOf}
                 compact
                 stacked
-                emptyText={isComplete ? "No saved map picks for this match." : "Map picks are being generated."}
+                emptyText={isComplete
+                  ? tournamentMapPool.length
+                    ? "No saved map picks for this match; the tournament pool is shown below."
+                    : "No saved map picks or tournament map pool are available for this match."
+                  : "Map picks are being generated."}
               />
             </div>
           </div>
@@ -1500,26 +1561,6 @@ export default function TournamentMatchRoom() {
             </div>
           </div>
         )}
-
-        <div className="min-w-0 space-y-6">
-          <MatchStateBar
-                match={match}
-                onRefresh={loadRoom}
-                onOpenBracket={handleOpenBracket}
-                adminTools={isStaff ? (
-                  <AdminTools
-                    match={match}
-                    canAdminCorrect={canAdminCorrect}
-                    canAdminResolve={canAdminResolve}
-                    resolving={resolvingAdmin}
-                    onResetDispute={handleAdminResetDispute}
-                    onCorrection={handleAdminCorrection}
-                    onResolve={handleAdminResolve}
-                  />
-                ) : null}
-          />
-
-        </div>
 
         {bracketMatches.length > 0 && (
           <details ref={bracketRef} id="tournament-bracket" className="group dark-focus dark-media mt-6 scroll-mt-6 rounded-xl border border-white/[0.09]">
