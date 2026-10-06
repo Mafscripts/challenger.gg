@@ -21,6 +21,33 @@ const playerName = (player) => player?.full_name || player?.user_name || player?
 const seriesModeName = (mode) => ({ hp: "Hardpoint", snd: "Search & Destroy" }[mode] || mode || "Mode pending");
 const formatCountdown = (seconds) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, "0")}`;
 const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
+const lobbyMatchSnapshot = (value) => JSON.stringify([
+  value?.id,
+  value?.match_type,
+  value?.status,
+  value?.roster_lock_deadline,
+  value?.roster_locked,
+  value?.eights_reshuffle_vote_count,
+  value?.eights_reshuffle_vote_required,
+  value?.eights_reshuffle_vote_user_ids,
+  value?.eights_score_vote_count,
+  value?.eights_score_vote_required,
+  value?.eights_score_vote_user_ids,
+  value?.eights_score_vote_alpha,
+  value?.eights_score_vote_bravo,
+  value?.eights_score_vote_status,
+  value?.requested_admin,
+  value?.admin_request_status,
+  value?.admin_request_ticket_id,
+  value?.winner_id,
+  value?.winner_score,
+  value?.loser_score,
+  value?.confirmed_score_alpha,
+  value?.confirmed_score_bravo,
+  value?.wallet_changes,
+  value?.series_maps,
+  value?.series_modes,
+]);
 const eightsLiveUrl = (path, token) => {
   const configured = String(import.meta.env.VITE_API_URL || "/api");
   const base = /^https?:\/\//i.test(configured)
@@ -131,6 +158,8 @@ export default function EightsMatchRoom() {
   const rosterSignatureRef = useRef("");
   const hydratingRosterRef = useRef("");
   const hydratedRosterRef = useRef("");
+  const syncInFlightRef = useRef(null);
+  const hydrationTimerRef = useRef(null);
 
   const hydrateProgression = useCallback(async (players) => Promise.all(players.map(async (player) => {
     const [xpRows, statRows] = await Promise.all([
@@ -145,11 +174,45 @@ export default function EightsMatchRoom() {
   const loadRoom = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const currentUser = currentUserRef.current || await base44.auth.me();
-      const sync = await base44.functions.invoke("syncEightsLobby", { wager_id: id }).catch(() => null);
-      const latest = sync?.data?.wager || await base44.entities.Wager.getFresh(id);
+      const syncLobby = () => {
+        if (syncInFlightRef.current) return syncInFlightRef.current;
+        const request = base44.functions.invoke("syncEightsLobby", { wager_id: id })
+          .then((response) => response?.data?.wager || null)
+          .catch(() => null)
+          .finally(() => {
+            syncInFlightRef.current = null;
+          });
+        syncInFlightRef.current = request;
+        return request;
+      };
+      const currentUserPromise = currentUserRef.current
+        ? Promise.resolve(currentUserRef.current)
+        : base44.auth.me().catch(() => null);
+      const [directLatest, rows] = await Promise.all([
+        base44.entities.Wager.getFresh(id).catch(() => null),
+        base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 8).catch(() => []),
+      ]);
+      const currentUser = currentUserRef.current;
+      void currentUserPromise.then((resolvedUser) => {
+        if (!resolvedUser || currentUserRef.current) return;
+        currentUserRef.current = resolvedUser;
+        setUser(resolvedUser);
+      });
+      let latest = directLatest;
+      const syncPromise = syncLobby();
+      if (!latest || !["8s", "money8s"].includes(latest.match_type)) {
+        latest = await syncPromise;
+      } else {
+        void syncPromise.then((synced) => {
+          if (synced?.id && String(synced.id) === String(id)) {
+            setMatch((previous) => {
+              const merged = previous ? { ...previous, ...synced } : synced;
+              return lobbyMatchSnapshot(previous) === lobbyMatchSnapshot(merged) ? previous : merged;
+            });
+          }
+        });
+      }
       if (!['8s', 'money8s'].includes(latest?.match_type)) throw new Error("This is not an 8s match");
-      const rows = await base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 8);
       const rosterSignature = (rows || [])
         .map((row) => [row.id, row.user_id, row.team, row.is_captain, row.updated_date].join(":"))
         .sort()
@@ -164,31 +227,41 @@ export default function EightsMatchRoom() {
       }
       if (hydratedRosterRef.current !== rosterSignature && hydratingRosterRef.current !== rosterSignature) {
         hydratingRosterRef.current = rosterSignature;
-        void loadWagerParticipants(base44, latest, { participantRows: rows, fresh: true })
-          .then(async (rosters) => {
-            const [alpha, bravo] = await Promise.all([
-              hydrateProgression(rosters.teamAPlayers),
-              hydrateProgression(rosters.teamBPlayers),
-            ]);
-            if (rosterSignatureRef.current !== rosterSignature) return;
-            setTeamAlpha(alpha);
-            setTeamBravo(bravo);
-            hydratedRosterRef.current = rosterSignature;
-          })
-          .catch((error) => console.error("Could not hydrate 8s player details:", error))
-          .finally(() => {
-            if (hydratingRosterRef.current === rosterSignature) hydratingRosterRef.current = "";
-          });
+        const hydrate = () => {
+          hydrationTimerRef.current = null;
+          void loadWagerParticipants(base44, latest, { participantRows: rows, fresh: true })
+            .then(async (rosters) => {
+              const [alpha, bravo] = await Promise.all([
+                hydrateProgression(rosters.teamAPlayers),
+                hydrateProgression(rosters.teamBPlayers),
+              ]);
+              if (rosterSignatureRef.current !== rosterSignature) return;
+              setTeamAlpha(alpha);
+              setTeamBravo(bravo);
+              hydratedRosterRef.current = rosterSignature;
+            })
+            .catch((error) => console.error("Could not hydrate 8s player details:", error))
+            .finally(() => {
+              if (hydratingRosterRef.current === rosterSignature) hydratingRosterRef.current = "";
+            });
+        };
+        hydrationTimerRef.current = window.setTimeout(hydrate, 180);
       }
-      currentUserRef.current = currentUser;
-      setUser(currentUser);
-      setMatch(latest);
+      if (currentUser) {
+        currentUserRef.current = currentUser;
+        setUser(currentUser);
+      }
+      setMatch((previous) => lobbyMatchSnapshot(previous) === lobbyMatchSnapshot(latest) ? previous : latest);
     } catch (error) {
       if (!quiet) toast({ title: "Match room unavailable", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   }, [hydrateProgression, id]);
+
+  useEffect(() => () => {
+    if (hydrationTimerRef.current) window.clearTimeout(hydrationTimerRef.current);
+  }, []);
 
   useEffect(() => { loadRoom(); }, [loadRoom]);
   useEffect(() => {
@@ -224,9 +297,10 @@ export default function EightsMatchRoom() {
       }
     };
 
-    connect();
+    const connectTimer = window.setTimeout(connect, 250);
     return () => {
       closed = true;
+      window.clearTimeout(connectTimer);
       if (retryTimer) window.clearTimeout(retryTimer);
       if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, "Leaving 8s room");
     };
@@ -547,6 +621,7 @@ export default function EightsMatchRoom() {
               matchType="wager"
               teamAPlayers={teamAlpha}
               teamBPlayers={teamBravo}
+              pollIntervalMs={3500}
               inputActions={(
                 <div>
                   <div className="grid grid-cols-2 gap-2">

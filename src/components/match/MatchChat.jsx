@@ -156,9 +156,11 @@ export default function MatchChat({
     }
 
     async function initialize() {
-      const user = await base44.auth.me().catch(() => null);
+      const userPromise = base44.auth.me().catch(() => null);
+      const messagesPromise = loadMessages(true);
+      const user = await userPromise;
       if (mounted) setCurrentUser(user);
-      await loadMessages(true);
+      await messagesPromise;
       if (mounted && live) {
         intervalId = window.setInterval(() => loadMessages(false), pollIntervalMs);
       }

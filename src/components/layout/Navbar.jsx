@@ -739,9 +739,13 @@ export default function Navbar() {
     const idleHandle = "requestIdleCallback" in window
       ? window.requestIdleCallback(loadWhenIdle, { timeout: 3500 })
       : window.setTimeout(loadWhenIdle, 1500);
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") loadActiveMatches({ fresh: true });
+    }, 15000);
     return () => {
       if ("cancelIdleCallback" in window) window.cancelIdleCallback(idleHandle);
       else window.clearTimeout(idleHandle);
+      window.clearInterval(refreshInterval);
     };
   }, [isAuthenticated, authUser?.id]);
 
@@ -750,7 +754,6 @@ export default function Navbar() {
     let active = true;
     const refreshLiveHeader = () => {
       if (!active || document.visibilityState === "hidden") return;
-      loadActiveMatches({ fresh: true });
       loadNotifications({ fresh: true, userId: authUser.id });
       if (isStaffUser(user || authUser)) {
         base44.entities.AdminAlert.filterFresh({ status: "open" }, "-created_date", 50).then(async (rows) => {
