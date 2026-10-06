@@ -6839,6 +6839,73 @@ async function adminReshuffleEightsTeams(req) {
   });
 }
 
+async function adminResetEightsLobby(req) {
+  const wagerId = req.body.wager_id || req.body.id;
+  if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access is required" };
+
+  return withTournamentMutationLock(`wager-accept:${wagerId}`, async () => {
+    const wager = await getEntity("Wager", wagerId);
+    if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
+    if (["completed", "cancelled"].includes(wager.status)) {
+      return { success: false, error: "Completed or cancelled 8s matches cannot be reset" };
+    }
+
+    const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
+    const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
+    const full = participants.length >= requiredSize * 2;
+    const reset = await updateEntity("Wager", wager.id, {
+      status: "open",
+      roster_locked: false,
+      roster_lock_deadline: full ? new Date(Date.now() + EIGHTS_RESHUFFLE_WINDOW_MS).toISOString() : "",
+      match_started_date: "",
+      host_reported_score_alpha: null,
+      host_reported_score_bravo: null,
+      host_reported_score_by: null,
+      host_reported_score_date: null,
+      challenger_reported_score_alpha: null,
+      challenger_reported_score_bravo: null,
+      challenger_reported_score_by: null,
+      challenger_reported_score_date: null,
+      reported_score_alpha: null,
+      reported_score_bravo: null,
+      reported_score_by: null,
+      reported_score_date: null,
+      confirmed_score_alpha: null,
+      confirmed_score_bravo: null,
+      confirmed_score_date: null,
+      scores_confirmed: false,
+      eights_score_vote_alpha: null,
+      eights_score_vote_bravo: null,
+      eights_score_vote_user_ids: [],
+      eights_score_vote_count: 0,
+      eights_score_vote_required: null,
+      eights_score_vote_status: null,
+      eights_score_vote_started_by: null,
+      eights_score_vote_started_by_name: null,
+      eights_score_vote_started_date: null,
+      eights_reshuffle_vote_user_ids: [],
+      eights_reshuffle_vote_count: 0,
+      eights_reshuffle_vote_required: EIGHTS_RESHUFFLE_REQUIRED_VOTES,
+      eights_reshuffle_vote_status: null,
+      eights_reshuffle_vote_started_date: null,
+      dispute_id: null,
+      score_conflict_date: null,
+      disputed_date: null,
+      reset_by: req.user.id,
+      reset_by_name: nameFor(req.user),
+      reset_date: nowIso(),
+    });
+    await resolveOpenMatchDisputes(wager.id, "8s lobby reset by staff", req.user);
+    await createMatchRoomSystemMessage(
+      wager.match_type,
+      reset,
+      `${nameFor(req.user)} reset the lobby${full ? ". The five-minute reshuffle window has restarted." : ". The lobby is open until all eight players are present."}`,
+      req.user,
+    ).catch(() => null);
+    return { success: true, wager: reset, full, seconds_remaining: full ? Math.ceil(EIGHTS_RESHUFFLE_WINDOW_MS / 1000) : null };
+  });
+}
+
 async function leaveEightsLobbyUnlocked(req) {
   const wager = await getEntity("Wager", req.body.wager_id || req.body.id);
   if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
@@ -10641,6 +10708,7 @@ const handlers = {
   syncEightsLobby,
   voteEightsReshuffle,
   adminReshuffleEightsTeams,
+  adminResetEightsLobby,
   leaveEightsLobby,
   getMoneyEightsStandings,
   settleEightsMonthlyPrize,

@@ -308,6 +308,27 @@ export default function EightsMatchRoom() {
     }
   };
 
+  const adminResetLobby = async () => {
+    if (typeof window !== "undefined" && !window.confirm("Reset this 8s lobby? Any pending score agreement will be cleared and the five-minute reshuffle window will restart.")) return;
+    setAdminBusy(true);
+    try {
+      const response = await base44.functions.invoke("adminResetEightsLobby", { wager_id: id });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not reset the lobby");
+      setMatch(response.data.wager || match);
+      toast({
+        title: "Lobby reset",
+        description: response.data.full
+          ? "The five-minute reshuffle window restarted."
+          : "The lobby is open until all eight players are present.",
+      });
+      await loadRoom(true);
+    } catch (error) {
+      toast({ title: "Reset failed", description: error.message, variant: "destructive" });
+    } finally {
+      setAdminBusy(false);
+    }
+  };
+
   const createDispute = async () => {
     const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
     if (evidenceText === null) return;
@@ -454,6 +475,7 @@ export default function EightsMatchRoom() {
                       <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
                       <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
                       {isAdmin && <button type="button" onClick={adminReshuffleTeams} disabled={adminBusy || !reshuffleOpen} title={!reshuffleOpen ? "Available while the lobby is open and the reshuffle window is active" : "Randomize both teams again"} className="flex items-center justify-center gap-2 rounded-lg border border-purple-300/25 bg-purple-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-purple-200 transition-colors hover:bg-purple-300/15 disabled:opacity-40"><Shuffle className="h-3.5 w-3.5" /> Reshuffle teams</button>}
+                      {isAdmin && <button type="button" onClick={adminResetLobby} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-yellow-300/25 bg-yellow-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-yellow-200 transition-colors hover:bg-yellow-300/15 disabled:opacity-40"><Clock3 className="h-3.5 w-3.5" /> Reset 5 min timer</button>}
                       <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 transition-colors hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
                     </div>
                   </details>}
