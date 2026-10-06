@@ -230,12 +230,6 @@ const navTone = {
   red: { button: "border-red-400/25 bg-red-400/10 text-red-300", icon: "border-red-400/20 bg-red-400/10 text-red-300" },
 };
 
-const participantBelongsToUser = (participant, userId) => (
-  participant?.captain_id === userId
-  || participant?.user_id === userId
-  || (participant?.members || []).some((member) => member?.user_id === userId)
-);
-
 const participantKeys = (participant) => [
   participant?.id,
   participant?.team_id,
@@ -955,12 +949,15 @@ export default function Navbar() {
         base44.entities.RankedMatch[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
         base44.entities.XPMatch[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
         base44.entities.XPMatch[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
-        base44.entities.TournamentParticipant.filter({}, "-registered_date", 500).catch(() => []),
+        base44.profile.tournamentParticipants(user.id).catch(() => []),
       ]);
 
       const byId = new Map();
-      const participantWagers = await Promise.all((wagerParticipants || []).map((participant) => (
-        base44.entities.Wager[fresh ? "getFresh" : "get"](participant.wager_id).catch(() => null)
+      const knownWagerIds = new Set([...hostedWagers, ...challengedWagers].map((match) => String(match.id)));
+      const participantWagerIds = [...new Set((wagerParticipants || []).map((participant) => participant?.wager_id).filter(Boolean))]
+        .filter((id) => !knownWagerIds.has(String(id)));
+      const participantWagers = await Promise.all(participantWagerIds.map((id) => (
+        base44.entities.Wager[fresh ? "getFresh" : "get"](id).catch(() => null)
       )));
       [...hostedWagers, ...challengedWagers, ...participantWagers.filter(Boolean)]
         .filter((match) => !hiddenMatchTypes.has(String(match.match_type || "").toLowerCase()))
@@ -970,9 +967,8 @@ export default function Navbar() {
         .filter((match) => match.status !== "open")
         .forEach((match) => byId.set(`xp:${match.id}`, { ...match, entity_type: "xp", match_type: "xp" }));
 
-      const userParticipants = (tournamentParticipants || []).filter((participant) => participantBelongsToUser(participant, user.id));
-      const participantKeySet = new Set(userParticipants.flatMap(participantKeys));
-      const tournamentIds = [...new Set(userParticipants.map((participant) => participant.tournament_id).filter(Boolean))];
+      const participantKeySet = new Set((tournamentParticipants || []).flatMap(participantKeys));
+      const tournamentIds = [...new Set((tournamentParticipants || []).map((participant) => participant.tournament_id).filter(Boolean))];
       const [tournamentMatchesByTournament, tournaments] = await Promise.all([
         Promise.all(tournamentIds.map((tournamentId) => (
           base44.entities.TournamentMatch.filter({ tournament_id: tournamentId }, "-created_date", 256).catch(() => [])
@@ -1004,7 +1000,10 @@ export default function Navbar() {
             ? activeTournamentStatuses.has(match.status) && !match.completed
             : activeMatchStatuses.has(match.status) || ((match.match_type === "8s" || match.match_type === "money8s") && match.status === "open")
         ))
-        .sort((a, b) => new Date(b.match_started_date || b.assigned_date || b.created_date || 0) - new Date(a.match_started_date || a.assigned_date || a.created_date || 0))
+        .sort((a, b) => (
+          (new Date(b.match_started_date || b.assigned_date || b.created_date || 0).getTime() || 0)
+          - (new Date(a.match_started_date || a.assigned_date || a.created_date || 0).getTime() || 0)
+        ))
         .slice(0, 5);
       
       setActiveMatches(active);

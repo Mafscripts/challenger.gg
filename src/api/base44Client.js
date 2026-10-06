@@ -19,6 +19,11 @@ const API_BASE = (() => {
 const TOKEN_KEYS = ["auth_token", "base44_access_token", "token"];
 const ENTITY_CACHE_MS = 15_000;
 const ME_CACHE_MS = 60_000;
+const readOnlyFunctions = new Set([
+  "getDirectMessages",
+  "searchMessageRecipients",
+  "getAnimatedNameFreeTrialStatus",
+]);
 
 const inflight = new Map();
 const entityCache = new Map();
@@ -343,8 +348,10 @@ export const base44 = {
       }
       requireToken();
       const data = await apiFetch(`/functions/${name}`, { method: "POST", body: payload, dedupe: false });
-      entityCache.clear();
-      invalidateMeCache();
+      if (!readOnlyFunctions.has(name)) {
+        entityCache.clear();
+        invalidateMeCache();
+      }
       if (["completeRegistration", "createWallet"].includes(name)) {
         meCache = { value: data.user || data, expiresAt: now() + ME_CACHE_MS, promise: null };
       }

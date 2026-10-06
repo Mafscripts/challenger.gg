@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Check, Clock, Package, RefreshCw, Send, X } from "lucide-react";
+import { Clock, Package, RefreshCw } from "lucide-react";
 import RarityBadge from "@/components/ui/RarityBadge";
 import { base44 } from "@/api/base44Client";
-import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
 import PageHeader from "@/components/ui/PageHeader";
 import PageLoader from "@/components/ui/PageLoader";
@@ -15,7 +14,6 @@ export default function Trading() {
   const [tab, setTab] = useState("incoming");
   const [user, setUser] = useState(null);
   const [offers, setOffers] = useState([]);
-  const [busyId, setBusyId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,22 +52,6 @@ export default function Trading() {
     history: offers.filter((offer) => offer.status !== "pending"),
   }), [offers, user]);
 
-  const updateOfferStatus = async (offer, status) => {
-    setBusyId(`${offer.id}:${status}`);
-    try {
-      await base44.entities.TradeOffer.update(offer.id, {
-        status,
-        response_date: new Date().toISOString(),
-      });
-      toast({ title: `Trade ${status}` });
-      loadTrades();
-    } catch (error) {
-      toast({ title: "Trade update failed", description: error.message || "Could not update offer.", variant: "destructive" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
   if (loading) {
     return <PageLoader label="Loading trades" />;
   }
@@ -80,9 +62,10 @@ export default function Trading() {
         <PageHeader
           eyebrow="Player marketplace"
           title="Trading"
-          description="Send, receive and manage trade offers with other players."
-          action={<button className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:-translate-y-0.5 hover:bg-blue-400 hover:shadow-lg hover:shadow-cyan/25"><Send className="h-3.5 w-3.5" /> New Trade</button>}
+          description="View your trade offer history."
+          action={null}
         />
+        <div className="mb-6 rounded-xl border border-orange/20 bg-orange/10 px-4 py-3 text-sm text-orange">Trading is temporarily unavailable. Existing offers remain visible.</div>
 
         <div className="flex gap-2 mb-6">
           {[
@@ -110,8 +93,6 @@ export default function Trading() {
             tab={tab}
             offers={grouped[tab]}
             userId={user.id}
-            busyId={busyId}
-            onStatus={updateOfferStatus}
           />
         )}
       </div>
@@ -119,7 +100,7 @@ export default function Trading() {
   );
 }
 
-function TradeList({ tab, offers, userId, busyId, onStatus }) {
+function TradeList({ tab, offers, userId }) {
   if (offers.length === 0) {
     return <div className="glass rounded-xl border border-white/5 px-6 py-9 text-center"><Package className="mx-auto mb-3 h-9 w-9 text-vapor/35" /><h2 className="text-base font-black">No {tab} trades</h2><p className="mt-1 text-sm text-vapor">Trade offers will appear here when they are available.</p></div>;
   }
@@ -161,23 +142,6 @@ function TradeList({ tab, offers, userId, busyId, onStatus }) {
               <ItemPanel title="You Receive" tone="green" items={receiveItems || []} credits={receiveCredits || 0} />
               <ItemPanel title="You Give" tone="red" items={giveItems || []} credits={giveCredits || 0} />
             </div>
-
-            {tab === "incoming" && (
-              <div className="flex gap-3">
-                <button onClick={() => onStatus(offer, "accepted")} disabled={busyId === `${offer.id}:accepted`} className="flex-1 py-2 bg-green/10 text-green font-bold text-xs rounded-lg border border-green/20 hover:bg-green/20 transition-all uppercase tracking-wider disabled:opacity-50">
-                  <Check className="w-3.5 h-3.5 inline mr-1" /> Accept
-                </button>
-                <button onClick={() => onStatus(offer, "declined")} disabled={busyId === `${offer.id}:declined`} className="flex-1 py-2 bg-red-500/10 text-red-400 font-bold text-xs rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all uppercase tracking-wider disabled:opacity-50">
-                  <X className="w-3.5 h-3.5 inline mr-1" /> Decline
-                </button>
-              </div>
-            )}
-
-            {tab === "outgoing" && (
-              <button onClick={() => onStatus(offer, "cancelled")} disabled={busyId === `${offer.id}:cancelled`} className="w-full py-2 bg-secondary text-vapor font-bold text-xs rounded-lg border border-white/5 hover:bg-white/10 transition-all uppercase tracking-wider disabled:opacity-50">
-                Cancel Offer
-              </button>
-            )}
 
             {tab === "history" && (
               <span className={`text-xs font-bold uppercase ${offer.status === "accepted" ? "text-green" : "text-red-400"}`}>{offer.status}</span>

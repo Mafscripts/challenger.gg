@@ -121,12 +121,21 @@ const redactIpData = (value) => {
 };
 
 const protectIpVisibility = (req, value) => hasRole(req.user, "admin") ? value : redactIpData(value);
+const belongsToMessageUser = (row, userId) => (
+  String(row?.sender_id || "") === String(userId)
+  || String(row?.recipient_id || "") === String(userId)
+);
+const belongsToTradeUser = (row, userId) => (
+  String(row?.sender_id || "") === String(userId)
+  || String(row?.recipient_id || "") === String(userId)
+);
 
 const parseFilter = (value) => {
   if (!value) return {};
-  if (typeof value === "object") return value;
+  if (typeof value === "object") return Array.isArray(value) ? {} : value;
   try {
-    return JSON.parse(value);
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
   } catch {
     return {};
   }
@@ -268,6 +277,9 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "Moderator access required" });
     }
     const filter = parseFilter(req.query.filter);
+    if (req.params.entity === "Notification" && !hasRole(req.user, "admin")) {
+      filter.user_id = req.user.id;
+    }
     const rows = await listEntities(
       req.params.entity,
       filter,
@@ -277,6 +289,12 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
     if (["Wallet", "UserInventory", "Inventory", "Purchase"].includes(req.params.entity) && !hasRole(req.user, "admin")) {
       const userScopedRows = rows.filter((row) => String(row.user_id || "") === String(req.user.id));
       return res.json(protectIpVisibility(req, userScopedRows));
+    }
+    if (req.params.entity === "Message" && !hasRole(req.user, "admin")) {
+      return res.json(protectIpVisibility(req, rows.filter((row) => belongsToMessageUser(row, req.user.id))));
+    }
+    if (req.params.entity === "TradeOffer" && !hasRole(req.user, "admin")) {
+      return res.json(protectIpVisibility(req, rows.filter((row) => belongsToTradeUser(row, req.user.id))));
     }
     if (req.params.entity === "TournamentParticipant") {
       return res.json(protectIpVisibility(req, await visibleTournamentParticipants(req, rows, filter)));
@@ -308,6 +326,15 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "Moderator access required" });
     }
     const row = await getEntity(req.params.entity, req.params.id);
+    if (req.params.entity === "Notification" && !hasRole(req.user, "admin") && String(row.user_id || "") !== String(req.user.id)) {
+      return res.status(403).json({ error: "You cannot view this notification" });
+    }
+    if (req.params.entity === "Message" && !hasRole(req.user, "admin") && !belongsToMessageUser(row, req.user.id)) {
+      return res.status(403).json({ error: "You cannot view this message" });
+    }
+    if (req.params.entity === "TradeOffer" && !hasRole(req.user, "admin") && !belongsToTradeUser(row, req.user.id)) {
+      return res.status(403).json({ error: "You cannot view this trade" });
+    }
     if (["Wallet", "UserInventory", "Inventory", "Purchase"].includes(req.params.entity)
       && !hasRole(req.user, "admin")
       && String(row?.user_id || "") !== String(req.user.id)) {
@@ -333,6 +360,9 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
 
 router.post("/:entity", requireAuth, async (req, res, next) => {
   try {
+    if (["Message", "Notification", "TradeOffer"].includes(req.params.entity)) {
+      return res.status(403).json({ error: "Use a protected action for this record" });
+    }
     if (req.params.entity === "ChatMessage") {
       return res.status(403).json({ error: "Use the protected chat message action" });
     }
@@ -359,6 +389,19 @@ router.post("/:entity", requireAuth, async (req, res, next) => {
 
 router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
+    if (req.params.entity === "TradeOffer") {
+      return res.status(403).json({ error: "Trading actions are unavailable" });
+    }
+    if (["Message", "Notification"].includes(req.params.entity) && !hasRole(req.user, "admin")) {
+      const row = await getEntity(req.params.entity, req.params.id);
+      const ownerId = req.params.entity === "Message" ? row.recipient_id : row.user_id;
+      const payload = req.body || {};
+      if (String(ownerId || "") !== String(req.user.id)
+        || Object.keys(payload).length !== 1
+        || payload.is_read !== true) {
+        return res.status(403).json({ error: "Only the recipient can mark this record as read" });
+      }
+    }
     if (req.params.entity === "ChatMessage") {
       return res.status(403).json({ error: "Chat messages cannot be edited directly" });
     }
@@ -395,6 +438,15 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
 
 router.delete("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
+    if (["Message", "TradeOffer"].includes(req.params.entity)) {
+      return res.status(403).json({ error: "This record cannot be deleted directly" });
+    }
+    if (req.params.entity === "Notification" && !hasRole(req.user, "admin")) {
+      const row = await getEntity("Notification", req.params.id);
+      if (String(row.user_id || "") !== String(req.user.id)) {
+        return res.status(403).json({ error: "You cannot delete this notification" });
+      }
+    }
     if (req.params.entity === "ChatMessage") {
       return res.status(403).json({ error: "Use a protected moderation action" });
     }

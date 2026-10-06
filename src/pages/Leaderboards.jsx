@@ -56,13 +56,21 @@ export default function Leaderboards() {
     const userById = new Map(users.map(user => [user.id, user]));
     const enrich = (row) => {
       const linkedUser = userById.get(row.user_id) || userById.get(row.id) || null;
-      return linkedUser ? { ...row, ...linkedUser, id: row.id, user_id: row.user_id || linkedUser.id } : row;
+      return linkedUser ? {
+        ...row,
+        ...linkedUser,
+        id: row.id,
+        user_id: row.user_id || linkedUser.id,
+        elo: row.elo,
+        win_streak: row.win_streak,
+        region: linkedUser.region || row.region,
+      } : row;
     };
 
     if (activeTab === "elo") {
       return rankedStats
-        .filter(regionFilter)
         .map(enrich)
+        .filter(regionFilter)
         .map((row) => ({
           id: row.id,
           name: playerName(row),
@@ -73,7 +81,8 @@ export default function Leaderboards() {
           value: Number(row.elo || 0),
           display: Number(row.elo || 0).toLocaleString(),
           user: userById.get(row.user_id) || null,
-        }));
+        }))
+        .sort((a, b) => b.value - a.value);
     }
 
     const userRows = users.filter(regionFilter);

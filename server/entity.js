@@ -82,12 +82,15 @@ const userFields = new Set([
 
 const toDate = (value) => value ? new Date(value) : null;
 const directEntityFields = new Set(["id", "created_date", "updated_date"]);
-const profileMetadataEntities = new Set([
+const metadataFilterEntities = new Set([
   "PlayerProfile", "RankedStats", "XPStats", "Wallet", "UserInventory",
   "TeamMember", "Wager", "WagerParticipant", "RankedMatch", "XPMatch",
-  "TournamentParticipant", "TournamentMatch",
+  "TournamentParticipant", "TournamentMatch", "Message", "ChatMessage", "TradeOffer",
 ]);
-const profileMetadataFilterKeys = ["user_id", "host_id", "challenger_id", "tournament_id", "team_id", "wager_id"];
+const metadataFilterKeys = [
+  "user_id", "host_id", "challenger_id", "tournament_id", "team_id", "wager_id",
+  "sender_id", "recipient_id", "conversation_id",
+];
 
 const sortRows = (rows, order) => {
   if (!order) return rows;
@@ -179,13 +182,13 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
   const take = Math.min(Number(limit) || 100, 500);
   const delegate = delegateFor(entity);
   const orderBy = orderByFor(entity, order);
-  const metadataFilterKey = profileMetadataEntities.has(entity)
-    ? profileMetadataFilterKeys.find((key) => typeof filter?.[key] === "string" && filter[key])
-    : null;
+  const metadataFilters = metadataFilterEntities.has(entity)
+    ? metadataFilterKeys.filter((key) => typeof filter?.[key] === "string" && filter[key])
+    : [];
   const where = entity === "User" && typeof filter?.username === "string"
     ? { username: filter.username }
-    : metadataFilterKey
-      ? { metadata: { path: [metadataFilterKey], equals: filter[metadataFilterKey] } }
+    : metadataFilters.length
+      ? { AND: metadataFilters.map((key) => ({ metadata: { path: [key], equals: filter[key] } })) }
       : undefined;
   const rows = entity === "Notification"
     ? await delegate.findMany({

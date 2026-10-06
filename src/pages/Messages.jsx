@@ -68,6 +68,7 @@ export default function Messages() {
   const chatEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const activePlayerIdRef = useRef(activePlayerId);
+  const directMessagesLoadingRef = useRef(false);
 
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
@@ -83,6 +84,8 @@ export default function Messages() {
   };
 
   const loadDirectMessages = async ({ initial = false, viewerId = "" } = {}) => {
+    if (directMessagesLoadingRef.current) return;
+    directMessagesLoadingRef.current = true;
     try {
       const response = await base44.functions.invoke("getDirectMessages");
       const data = response.data || {};
@@ -98,6 +101,8 @@ export default function Messages() {
       }
     } catch (error) {
       if (initial) toast({ title: "Messages unavailable", description: error.message, variant: "destructive" });
+    } finally {
+      directMessagesLoadingRef.current = false;
     }
   };
 
@@ -109,7 +114,8 @@ export default function Messages() {
         if (!active) return;
         setCurrentUser(user);
         await Promise.all([loadDirectMessages({ initial: true, viewerId: user.id }), loadInvitations(user.id)]);
-
+      } catch (error) {
+        if (active) toast({ title: "Messages unavailable", description: error.message, variant: "destructive" });
       } finally {
         if (active) setLoading(false);
       }
@@ -149,20 +155,22 @@ export default function Messages() {
     const query = playerQuery.trim();
     if (!composerOpen || query.length < 2) {
       setSearchResults([]);
+      setSearching(false);
       return undefined;
     }
+    let active = true;
     const timer = window.setTimeout(async () => {
       setSearching(true);
       try {
         const response = await base44.functions.invoke("searchMessageRecipients", { query });
-        setSearchResults(response.data?.users || []);
+        if (active) setSearchResults(response.data?.users || []);
       } catch {
-        setSearchResults([]);
+        if (active) setSearchResults([]);
       } finally {
-        setSearching(false);
+        if (active) setSearching(false);
       }
     }, 250);
-    return () => window.clearTimeout(timer);
+    return () => { active = false; window.clearTimeout(timer); };
   }, [composerOpen, playerQuery]);
 
   const conversations = useMemo(() => {
@@ -177,7 +185,8 @@ export default function Messages() {
       grouped.set(otherId, previous);
     });
     return [...grouped.values()].sort((a, b) => (
-      new Date(b.lastMessage.created_date || 0) - new Date(a.lastMessage.created_date || 0)
+      (new Date(b.lastMessage.created_date || 0).getTime() || 0)
+      - (new Date(a.lastMessage.created_date || 0).getTime() || 0)
     ));
   }, [currentUser?.id, directMessages]);
 
