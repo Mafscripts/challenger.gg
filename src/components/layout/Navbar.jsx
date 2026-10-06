@@ -250,7 +250,7 @@ const tournamentMatchSideFor = (match, keys) => {
   return null;
 };
 
-const navItemIsActive = (pathname, path, hash = "", search = "") => {
+const navItemIsActive = (pathname, path, hash = "", search = "", activeEightMatchType = "") => {
   const [targetPathWithQuery, targetHash] = String(path || "").split("#");
   const [targetPath, targetQuery] = targetPathWithQuery.split("?");
   const expectedHash = targetHash ? `#${targetHash}` : "";
@@ -263,11 +263,17 @@ const navItemIsActive = (pathname, path, hash = "", search = "") => {
     return targetPath !== "/ranked" || hash !== "#standings";
   }
 
+  if (targetPath === "/ranked/8s" && pathname.startsWith("/8s-match/")) {
+    if (!activeEightMatchType) return false;
+    return expectedSearch === "?mode=money"
+      ? activeEightMatchType === "money8s"
+      : activeEightMatchType === "8s";
+  }
+
   return (targetPath === "/tournaments" && pathname.startsWith("/tournament-match/"))
     || (targetPath === "/streamer-tournaments" && pathname.startsWith("/streamer-tournament/"))
     || (targetPath === "/ranked" && pathname.startsWith("/ranked-match/"))
     || (targetPath === "/xp" && pathname.startsWith("/xp-match/"))
-    || (targetPath === "/ranked/8s" && pathname.startsWith("/8s-match/"))
     || (targetPath === "/wagers" && pathname.startsWith("/wagers-match/"))
     || (targetPath === "/dashboard" && pathname.startsWith("/match-room/"));
 };
@@ -395,6 +401,17 @@ export default function Navbar() {
   const dropdownCloseTimer = useRef(null);
   const location = useLocation();
   const { isAuthenticated, user: authUser } = useAuth();
+  const activeEightMatchType = activeMatches.find((match) => (
+    (match?.match_type === "8s" || match?.match_type === "money8s")
+      && location.pathname === `/8s-match/${match.id}`
+  ))?.match_type || "";
+  const isCurrentNavItemActive = (path) => navItemIsActive(
+    location.pathname,
+    path,
+    location.hash,
+    location.search,
+    activeEightMatchType,
+  );
   const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
   const accountName = user?.display_name || user?.full_name || user?.username || user?.email || "Account";
   const canSeeAdminLink = isStaffUser(user || authUser);
@@ -1110,22 +1127,22 @@ export default function Navbar() {
                   to="/dashboard"
                   data-nav-item
                   data-tone="orange"
-                  data-active={navItemIsActive(location.pathname, "/dashboard", location.hash, location.search) ? "true" : "false"}
+                  data-active={isCurrentNavItemActive("/dashboard") ? "true" : "false"}
                   onMouseEnter={closeDropdowns}
                   className={`${navButtonClass} nav-dashboard-link ${
-                    navItemIsActive(location.pathname, "/dashboard", location.hash, location.search)
+                    isCurrentNavItemActive("/dashboard")
                       ? navTone.orange.button
                       : "border-transparent text-vapor hover:border-orange/20 hover:bg-orange/[0.07] hover:text-orange"
                   }`}
                 >
-                  <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${navItemIsActive(location.pathname, "/dashboard", location.hash, location.search) ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
+                  <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${isCurrentNavItemActive("/dashboard") ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
                     <House className="h-3.5 w-3.5" />
                   </span>
                   Home
                 </Link>
                 {[playNavGroup, navGroups.find((group) => group.label === "Cash Matches"), navGroups.find((group) => group.label === "Matchfinder"), navGroups.find((group) => group.label === "Tournaments")].map((group) => {
                   const GroupIcon = group.icon;
-                  const active = group.items.some((item) => navItemIsActive(location.pathname, item.path, location.hash, location.search));
+                  const active = group.items.some((item) => isCurrentNavItemActive(item.path));
                   const open = navMenuOpen === group.label;
                   const groupTone = navTone[group.tone] || navTone.cyan;
 
@@ -1173,7 +1190,7 @@ export default function Navbar() {
                             </div>
                             {group.items.map((item) => {
                               const ItemIcon = item.icon;
-                              const itemActive = navItemIsActive(location.pathname, item.path, location.hash, location.search);
+                              const itemActive = isCurrentNavItemActive(item.path);
                               const itemTone = navTone[item.tone] || navTone.cyan;
 
                               return (
@@ -1752,7 +1769,7 @@ export default function Navbar() {
                 to="/dashboard"
                 onClick={closeMobileMenu}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
-                  navItemIsActive(location.pathname, "/dashboard", location.hash, location.search) ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
+                  isCurrentNavItemActive("/dashboard") ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
                 }`}
               >
                 <House className="h-5 w-5" />
@@ -1764,7 +1781,7 @@ export default function Navbar() {
                   <div className="space-y-1">
                     {section.items.map((link) => {
                       const Icon = link.icon;
-                      const active = navItemIsActive(location.pathname, link.path, location.hash, location.search);
+                      const active = isCurrentNavItemActive(link.path);
                       return (
                         <Link
                           key={link.path}
