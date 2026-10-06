@@ -181,6 +181,9 @@ const matchResultFor = (match, userId) => {
     ? ["Win", "text-green", "border-green/25 bg-green/10"]
     : ["Loss", "text-red-300", "border-red-400/20 bg-red-500/10"];
 };
+const matchDateMs = (match) => new Date(
+  match.match_completed_date || match.completed_date || match.accepted_date || match.created_date || 0
+).getTime() || 0;
 const competitionLabelFor = (match) => {
   const type = cleanKey(match?.match_type || match?.competition_type || match?.competition);
   if (type === "money8s" || type === "money-8s" || type === "money_8s" || type === "money 8s") return "Money 8s";
@@ -275,6 +278,7 @@ export default function Profile() {
   const { username } = useParams();
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -293,46 +297,91 @@ export default function Profile() {
   const [profileResult, setProfileResult] = useState(null);
 
   useEffect(() => {
-    loadProfile();
+    let active = true;
+    loadProfile(() => active);
+    return () => { active = false; };
   }, [username]);
 
-  const loadProfile = async () => {
+  const loadProfile = async (isActive) => {
     setLoading(true);
+    setHistoryLoading(true);
     setEditingProfile(false);
+    setUser(null);
+    setProfile(null);
+    setRankedStats(null);
+    setInventory([]);
+    setTeams([]);
+    setMatches([]);
     setWallet(null);
     setXpStats(null);
     setAnimatedNameTrialActive(false);
     try {
       let userRow = null;
       const authUser = await base44.auth.me().catch(() => null);
+      if (!isActive()) return;
       setCurrentUser(authUser);
       if (username) {
-        const byUsername = await base44.entities.User.filter({ username }, "-created_date", 1).catch(() => []);
-        userRow = byUsername[0] || await base44.entities.User.get(username).catch(() => null);
-        if (!userRow && authUser && (username === authUser.username || username === authUser.id)) {
-          userRow = await bootstrapCurrentUser({ email: authUser.email }).catch(() => authUser);
+        if (authUser && (username === authUser.username || username === authUser.id)) {
+          userRow = authUser;
+        } else {
+          const byUsername = await base44.entities.User.filter({ username }, "-created_date", 1).catch(() => []);
+          userRow = byUsername[0] || await base44.entities.User.get(username).catch(() => null);
         }
       } else {
-        userRow = await bootstrapCurrentUser({ email: authUser?.email }).catch(() => authUser);
+        userRow = authUser;
       }
 
+      if (!isActive()) return;
       setUser(userRow);
       if (!userRow?.id) return;
 
-      const freeTrialResponse = await base44.functions.invoke("getAnimatedNameFreeTrialStatus", {}).catch(() => null);
-      setAnimatedNameTrialActive(Boolean(freeTrialResponse?.data?.trial?.active));
-
-      if (authUser?.id === userRow.id) {
-        userRow = await bootstrapCurrentUser({ email: authUser.email, username: userRow.username }).catch(() => userRow);
-        setUser(userRow);
-      }
+      const isOwn = authUser?.id === userRow.id;
 
       const [
         profileRows,
         rankedRows,
         xpRows,
-        walletRows,
-        inventoryRows,
+      ] = await Promise.all([
+        base44.entities.PlayerProfile.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
+        base44.entities.RankedStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
+        base44.entities.XPStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
+      ]);
+
+      if (!isActive()) return;
+      const loadedProfile = profileRows[0] || null;
+      setProfile(loadedProfile);
+      setAvatarDraft(loadedProfile?.avatar_url || userRow?.avatar_url || "");
+      setBioDraft(loadedProfile?.bio || "");
+      setNameColorDraft(userRow?.display_name_color || loadedProfile?.display_name_color || "");
+      setRankedStats(rankedRows[0] || null);
+      setXpStats(xpRows[0] || null);
+
+      // The header and stats can render while match history and teams finish.
+      setLoading(false);
+      if (isOwn) {
+        const bootstrap = !userRow.username || !loadedProfile
+          ? bootstrapCurrentUser({ user: authUser, email: authUser?.email }).catch(() => null)
+          : Promise.resolve(null);
+        bootstrap.then(async (updatedUser) => {
+          if (!isActive()) return;
+          if (updatedUser) setUser(updatedUser);
+          const [freshProfileRows, walletRows, inventoryRows] = await Promise.all([
+            updatedUser && !loadedProfile
+              ? base44.entities.PlayerProfile.filterFresh({ user_id: userRow.id }, "-created_date", 1).catch(() => [])
+              : Promise.resolve([]),
+            base44.entities.Wallet.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
+            base44.entities.UserInventory.filter({ user_id: userRow.id }, "-acquired_date", 200).catch(() => []),
+          ]);
+          if (!isActive()) return;
+          if (freshProfileRows[0]) setProfile(freshProfileRows[0]);
+          setWallet(walletRows[0] || null);
+          setInventory(inventoryRows || []);
+        }).catch(() => {});
+        base44.functions.invoke("getAnimatedNameFreeTrialStatus", {})
+          .then((response) => { if (isActive()) setAnimatedNameTrialActive(Boolean(response?.data?.trial?.active)); })
+          .catch(() => {});
+      }
+      const [
         teamMemberRows,
         hostedWagers,
         challengedWagers,
@@ -343,44 +392,32 @@ export default function Profile() {
         challengedXp,
         tournamentParticipants,
       ] = await Promise.all([
-        base44.entities.PlayerProfile.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
-        base44.entities.RankedStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
-        base44.entities.XPStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
-        base44.entities.Wallet.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
-        base44.entities.UserInventory.filter({ user_id: userRow.id }, "-acquired_date", 200).catch(() => []),
         base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
         base44.entities.Wager.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.Wager.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
-        base44.entities.WagerParticipant.filter({ user_id: userRow.id }, "-joined_date", 100).catch(() => []),
+        base44.entities.WagerParticipant.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
         base44.entities.RankedMatch.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.RankedMatch.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.XPMatch.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.XPMatch.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
-        base44.entities.TournamentParticipant.filter({}, "-registered_date", 500).catch(() => []),
+        base44.profile.tournamentParticipants(userRow.id).catch(() => []),
       ]);
-
-      const loadedProfile = profileRows[0] || null;
-      setProfile(loadedProfile);
-      setAvatarDraft(loadedProfile?.avatar_url || userRow?.avatar_url || "");
-      setBioDraft(loadedProfile?.bio || "");
-      setNameColorDraft(userRow?.display_name_color || loadedProfile?.display_name_color || "");
-      setRankedStats(rankedRows[0] || null);
-      setXpStats(xpRows[0] || null);
-      setWallet(walletRows[0] || null);
-      setInventory(inventoryRows || []);
+      if (!isActive()) return;
 
       const loadedTeams = await Promise.all((teamMemberRows || []).map(async (membership) => {
         const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
         return { ...membership, team };
       }));
+      if (!isActive()) return;
       setTeams(loadedTeams.filter((row) => (
         row.team && !hiddenCompetitionTypes.has(String(row.team.team_type || "").toLowerCase())
       )));
 
-      const participantWagers = await Promise.all((wagerParticipants || []).map((participant) => (
-        participant?.wager_id
-          ? base44.entities.Wager.get(participant.wager_id).catch(() => null)
-          : null
+      const knownWagerIds = new Set([...hostedWagers, ...challengedWagers].map((wager) => String(wager.id)));
+      const participantWagerIds = [...new Set((wagerParticipants || []).map((participant) => participant?.wager_id).filter(Boolean))]
+        .filter((id) => !knownWagerIds.has(String(id)));
+      const participantWagers = await Promise.all(participantWagerIds.map((id) => (
+        base44.entities.Wager.get(id).catch(() => null)
       )));
       const participantRowsByWager = new Map();
       (wagerParticipants || []).forEach((participant) => {
@@ -429,11 +466,17 @@ export default function Profile() {
         ...tournamentMatchRows,
       ]
         .filter((match, index, list) => list.findIndex((item) => item.id === match.id) === index)
-        .sort((a, b) => new Date(b.match_completed_date || b.completed_date || b.accepted_date || b.created_date || 0) - new Date(a.match_completed_date || a.completed_date || a.created_date || 0))
+        .sort((a, b) => matchDateMs(b) - matchDateMs(a))
         .slice(0, 8);
+      if (!isActive()) return;
       setMatches(combinedMatches);
+    } catch (error) {
+      console.error("Could not load profile", error);
     } finally {
-      setLoading(false);
+      if (isActive()) {
+        setLoading(false);
+        setHistoryLoading(false);
+      }
     }
   };
 
@@ -651,7 +694,7 @@ export default function Profile() {
             </div>
             <PlayerOverviewPanel user={user} profile={profile} name={name} rank={rank} rankLabel={topfraggRankLabel} elo={elo} wins={wins} losses={losses} earnedMoney={earnedMoney} trophies={trophyOverviewCards} socialLinks={socialLinks} />
             <SeasonRecordPanel rankedStats={rankedStats} wins={wins} losses={losses} winRate={winRate} currentStreak={currentStreak} earnedMoney={earnedMoney} />
-            <RecentMatchesPanel matches={matches.slice(0, 6)} userId={user.id} />
+            <RecentMatchesPanel matches={matches.slice(0, 6)} userId={user.id} loading={historyLoading} />
           </div>
         )}
 
@@ -663,8 +706,8 @@ export default function Profile() {
             <div className="grid gap-6 xl:grid-cols-2"><AchievementsPanel achievements={achievementCards} badges={badges} expanded /><AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} /></div>
           </div>
         )}
-        {tab === "matches" && <div className="mt-5"><RecentMatchesPanel matches={matches} userId={user.id} expanded /></div>}
-        {tab === "teams" && <div className="mt-5"><TeamsList teams={profileTeams} /></div>}
+        {tab === "matches" && <div className="mt-5"><RecentMatchesPanel matches={matches} userId={user.id} loading={historyLoading} expanded /></div>}
+        {tab === "teams" && <div className="mt-5"><TeamsList teams={profileTeams} loading={historyLoading} /></div>}
       </div>
     </div>
   );
@@ -908,11 +951,13 @@ function TrophyOverview({ trophies, items = [] }) {
   );
 }
 
-function RecentMatchesPanel({ matches, userId, className = "", expanded = false }) {
+function RecentMatchesPanel({ matches, userId, className = "", expanded = false, loading = false }) {
   return (
     <section className={className}>
       <ProfileSectionTitle title={expanded ? "Match history" : "Recent matches"} count={`${matches.length} ${matches.length === 1 ? "match" : "matches"}`} />
-      {matches.length === 0 ? (
+      {loading ? (
+        <div role="status" className="rounded-xl border border-white/10 bg-card p-5 text-sm text-vapor">Loading matches...</div>
+      ) : matches.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-card p-5"><EmptyPanel icon={Gamepad2} text="No matches found." /></div>
       ) : (
         <div className="space-y-2">
@@ -1156,7 +1201,7 @@ function InventoryShowcase({ items }) {
   );
 }
 
-function TeamsList({ teams }) {
+function TeamsList({ teams, loading = false }) {
   return (
     <SectionCard className="p-5 sm:p-6">
       <div className="mb-6">
@@ -1164,7 +1209,9 @@ function TeamsList({ teams }) {
         <h3 className="mt-1 text-xl font-black text-white">Teams</h3>
         <p className="mt-1 text-sm text-vapor">Open a team to view its roster, results and tournaments.</p>
       </div>
-      {teams.length === 0 ? (
+      {loading ? (
+        <div role="status" className="text-sm text-vapor">Loading teams...</div>
+      ) : teams.length === 0 ? (
         <EmptyPanel icon={Users} text="No teams joined yet." />
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">

@@ -280,6 +280,12 @@ const entityClient = (entity) => ({
 });
 
 export const base44 = {
+  profile: {
+    tournamentParticipants(userId) {
+      requireToken();
+      return apiFetch(`/profile/${encodeURIComponent(userId)}/tournament-participants`);
+    },
+  },
   public: {
     homeOverview() {
       return apiFetch("/public/home-overview");
