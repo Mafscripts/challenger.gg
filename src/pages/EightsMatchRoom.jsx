@@ -665,11 +665,12 @@ export default function EightsMatchRoom() {
                 </div>
               )}
             />
+            <MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} compact stacked />
           </div>
         </div>
         </section>
 
-        <div className="space-y-5"><MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} /><MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} /></div>
+        <div className="mt-5"><MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} /></div>
       </div>
 
       {scoreOpen && isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && (

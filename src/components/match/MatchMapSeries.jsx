@@ -13,10 +13,11 @@ export default function MatchMapSeries({
   host = "TBD",
   bestOf,
   compact = false,
+  stacked = false,
   emptyText = "Maps are being generated.",
 }) {
   const visibleMaps = (Array.isArray(maps) ? maps : [maps]).filter(Boolean);
-  const columns = visibleMaps.length <= 1 ? "sm:grid-cols-1" : visibleMaps.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3";
+  const columns = stacked ? "grid-cols-1" : visibleMaps.length <= 1 ? "sm:grid-cols-1" : visibleMaps.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3";
 
   return (
     <section className={`dark-focus dark-media h-full rounded-xl border border-white/[0.09] bg-[#202328] ${compact ? "p-4" : "p-5"}`}>
@@ -40,10 +41,10 @@ export default function MatchMapSeries({
           const currentHost = mapHost(map, host);
 
           return (
-            <article key={`${name}-${mapNumber}`} className={`group relative isolate overflow-hidden rounded-xl border border-white/[0.1] bg-black/25 shadow-[0_12px_28px_rgba(0,0,0,0.2)] ${compact ? "min-h-[126px]" : "min-h-[156px]"}`}>
+            <article key={`${name}-${mapNumber}`} className={`group relative isolate overflow-hidden rounded-xl border border-white/[0.1] bg-black/25 shadow-[0_12px_28px_rgba(0,0,0,0.2)] ${compact || stacked ? "min-h-[112px]" : "min-h-[156px]"}`}>
               {image ? <img src={image} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]" /> : null}
               <div className="absolute inset-0 bg-gradient-to-t from-[#070b11] via-[#070b11]/45 to-[#070b11]/60" />
-              <div className={`relative flex h-full flex-col justify-between ${compact ? "min-h-[126px] p-3" : "min-h-[156px] p-3.5"}`}>
+              <div className={`relative flex h-full flex-col justify-between ${compact || stacked ? "min-h-[112px] p-3" : "min-h-[156px] p-3.5"}`}>
                 <div className="flex items-start justify-between gap-2">
                   <span className="rounded-md border border-cyan/25 bg-[#07121b]/85 px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-cyan backdrop-blur-sm">Map {mapNumber}</span>
                   <span className="max-w-[68%] truncate rounded-md border border-white/15 bg-[#080c12]/80 px-2 py-1 text-[7px] font-black uppercase tracking-wider text-white/85 backdrop-blur-sm">{mapMode(map, mode)}</span>

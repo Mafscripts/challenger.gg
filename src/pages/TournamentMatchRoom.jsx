@@ -761,13 +761,13 @@ function TournamentChatColumn({
   );
 }
 
-function MapSeries({ match }) {
+function MapSeries({ match, stacked = false }) {
   const maps = Array.isArray(match.maps) ? match.maps : [];
   const pool = Array.isArray(match.map_pool) && match.map_pool.length ? match.map_pool : defaultMapPool;
   const bestOf = Math.max(1, Number(match.best_of || match.map_sequence?.length || maps.length || 3));
 
   return (
-    <section className="dark-focus dark-media h-full rounded-xl border border-white/[0.09] p-5">
+    <section className="dark-focus dark-media rounded-xl border border-white/[0.09] p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
           <MapIcon className="h-4 w-4 text-cyan" /> Map Series
@@ -783,9 +783,9 @@ function MapSeries({ match }) {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+      <div className={`mt-4 grid gap-2 ${stacked ? "grid-cols-1" : "sm:grid-cols-3"}`}>
         {maps.length === 0 ? (
-          <div className="rounded-lg border border-white/[0.06] bg-black/15 p-4 text-sm text-vapor sm:col-span-3">
+          <div className={`rounded-lg border border-white/[0.06] bg-black/15 p-4 text-sm text-vapor ${stacked ? "" : "sm:col-span-3"}`}>
             Maps are being generated.
           </div>
         ) : maps.map((map) => {
@@ -794,7 +794,7 @@ function MapSeries({ match }) {
           return (
             <article
               key={`${map.game}-${map.game_mode || map.mode}-${map.map}`}
-              className="group relative isolate min-h-[156px] overflow-hidden rounded-xl border border-white/[0.1] bg-black/25 shadow-[0_12px_28px_rgba(0,0,0,0.2)]"
+              className={`group relative isolate overflow-hidden rounded-xl border border-white/[0.1] bg-black/25 shadow-[0_12px_28px_rgba(0,0,0,0.2)] ${stacked ? "min-h-[112px]" : "min-h-[156px]"}`}
             >
               {image ? (
                 <img
@@ -806,7 +806,7 @@ function MapSeries({ match }) {
                 />
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-t from-[#070b11] via-[#070b11]/45 to-[#070b11]/60" />
-              <div className="relative flex min-h-[156px] flex-col justify-between p-3.5">
+              <div className={`relative flex flex-col justify-between p-3.5 ${stacked ? "min-h-[112px]" : "min-h-[156px]"}`}>
                 <div className="flex items-start justify-between gap-2">
                   <p className="rounded-md border border-cyan/25 bg-[#07121b]/85 px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-cyan backdrop-blur-sm">
                     Map {map.game}
@@ -1491,20 +1491,24 @@ export default function TournamentMatchRoom() {
               />
             </div>
             {canChat && (
-              <TournamentChatColumn
-                match={match}
-                teamAPlayers={teamAPlayers}
-                teamBPlayers={teamBPlayers}
-                isStreamerMatch={isStreamerMatch}
-                isMatchParticipant={isMatchParticipant}
-                adminSupportUnlocked={adminSupportUnlocked}
-                supportWindowUnlocked={supportWindowUnlocked}
-                requestingAdmin={requestingAdmin}
-                disputing={disputing}
-                onRequestAdmin={handleRequestAdmin}
-                onCreateDispute={handleCreateDispute}
-              />
+              <div className="min-w-0 space-y-4">
+                <TournamentChatColumn
+                  match={match}
+                  teamAPlayers={teamAPlayers}
+                  teamBPlayers={teamBPlayers}
+                  isStreamerMatch={isStreamerMatch}
+                  isMatchParticipant={isMatchParticipant}
+                  adminSupportUnlocked={adminSupportUnlocked}
+                  supportWindowUnlocked={supportWindowUnlocked}
+                  requestingAdmin={requestingAdmin}
+                  disputing={disputing}
+                  onRequestAdmin={handleRequestAdmin}
+                  onCreateDispute={handleCreateDispute}
+                />
+                <MapSeries match={match} stacked />
+              </div>
             )}
+            {!canChat && <MapSeries match={match} stacked />}
           </div>
         </section>
 
@@ -1585,11 +1589,8 @@ export default function TournamentMatchRoom() {
           </div>
         )}
 
-        <div className="min-w-0">
-          <div className="min-w-0 space-y-6">
-            <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(285px,0.8fr)]">
-              <MapSeries match={match} />
-              <MatchStateBar
+        <div className="min-w-0 space-y-6">
+          <MatchStateBar
                 match={match}
                 onRefresh={loadRoom}
                 onOpenBracket={handleOpenBracket}
@@ -1604,8 +1605,7 @@ export default function TournamentMatchRoom() {
                     onResolve={handleAdminResolve}
                   />
                 ) : null}
-              />
-            </div>
+          />
 
             <MatchRulesPanel
               matchType="tournament"
@@ -1615,7 +1615,6 @@ export default function TournamentMatchRoom() {
               collapsible
               defaultOpen={false}
             />
-          </div>
         </div>
 
         {bracketMatches.length > 0 && (

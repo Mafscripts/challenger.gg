@@ -734,7 +734,10 @@ export default function WagersMatchRoom() {
               <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
               <MatchTeamTable label="Team Bravo" name={challengerDisplayName} color="cyan" players={teamBPlayers} captainId={wager.challenger_id} finalScore={wager.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={challengerWinner} />
             </div>
-            <aside className="min-w-0"><MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} inputActions={wagerChatActions} /></aside>
+            <aside className="min-w-0 space-y-4">
+              <MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} inputActions={wagerChatActions} />
+              <MatchMapSeries maps={Array.isArray(wager.series_maps) && wager.series_maps.length ? wager.series_maps : (wager.final_map_name ? [wager.final_map_name] : [])} mode={wager.game_mode_display || wager.game_mode} host={wager.host_name || hostDisplayName} bestOf={bestOf} compact stacked />
+            </aside>
           </div>
         </section>
 
@@ -744,8 +747,7 @@ export default function WagersMatchRoom() {
 
         <div>
           <div className="min-w-0 space-y-6">
-            <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(285px,0.8fr)]">
-              <MatchMapSeries maps={Array.isArray(wager.series_maps) && wager.series_maps.length ? wager.series_maps : (wager.final_map_name ? [wager.final_map_name] : [])} mode={wager.game_mode_display || wager.game_mode} host={wager.host_name || hostDisplayName} bestOf={bestOf} compact />
+            <div className="space-y-4">
               <MatchStatusCard
                 match={wager}
                 onRefresh={loadWager}
