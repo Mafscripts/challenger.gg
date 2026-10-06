@@ -29,6 +29,7 @@ import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
+import { CDL_2026_MAPS } from "@/lib/cdlMaps";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import PageLoader from "@/components/ui/PageLoader";
@@ -48,37 +49,74 @@ const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const tournamentMapLabel = (value) => (
   typeof value === "string" ? value.trim() : String(value?.map || value?.name || value?.title || "").trim()
 );
-const tournamentMapPoolItems = (value) => (
-  Array.isArray(value) ? value : typeof value === "string" ? value.split(/[\n,]+/) : []
-);
+const tournamentMapPoolItems = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (text.startsWith("[") || text.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed !== value) return tournamentMapPoolItems(parsed);
+      } catch {
+        // Legacy map lists are sometimes plain newline/comma-separated text.
+      }
+    }
+    return text.split(/[\n,]+/);
+  }
+  if (value && typeof value === "object") {
+    return value.map || value.name || value.title ? [value] : Object.values(value);
+  }
+  return [];
+};
+const tournamentMapPicksForMatch = (match) => {
+  const candidates = [match?.maps, match?.series_maps, match?.map_series, match?.maps_played, match?.selected_maps, match?.map_sequence];
+  for (const candidate of candidates) {
+    const rows = tournamentMapPoolItems(candidate).filter((map) => tournamentMapLabel(map));
+    if (rows.length) return rows;
+  }
+  const finalMap = tournamentMapLabel(match?.final_map_name || match?.map_name);
+  return finalMap ? [finalMap] : [];
+};
 const tournamentMapPoolForMatch = (match, tournament) => {
-  const matchPool = Array.isArray(match?.map_pool) ? match.map_pool.map(tournamentMapLabel).filter(Boolean) : [];
+  const matchPool = tournamentMapPoolItems(match?.map_pool).map(tournamentMapLabel).filter(Boolean);
   if (matchPool.length) return [...new Map(matchPool.map((map) => [cleanKey(map), map])).values()];
 
   const pools = tournament?.map_pools && typeof tournament.map_pools === "object" ? tournament.map_pools : {};
-  const modeText = [match?.tournament_game_mode, match?.game_mode].filter(Boolean).join(" ").toLowerCase();
-  const configuredModes = Array.isArray(match?.tournament_game_modes) ? match.tournament_game_modes : [];
+  const modeText = [match?.tournament_game_mode, match?.game_mode, tournament?.game_mode]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/[_-]+/g, " ")
+    .toLowerCase();
+  const configuredModes = [
+    ...(Array.isArray(match?.tournament_game_modes) ? match.tournament_game_modes : []),
+    ...(Array.isArray(tournament?.game_modes) ? tournament.game_modes : []),
+  ];
   const inferredModes = [
     /\b(?:hp|hardpoint)\b/.test(modeText) ? "hp" : null,
     /\b(?:snd|search\s*(?:&|and)\s*destroy)\b/.test(modeText) ? "snd" : null,
     /\boverload\b/.test(modeText) ? "overload" : null,
   ].filter(Boolean);
-  const modes = [...new Set([...configuredModes, ...inferredModes])];
-  const matchingPools = modes.flatMap((mode) => tournamentMapPoolItems(pools[mode]));
-  const allConfiguredPools = Object.values(pools).flatMap(tournamentMapPoolItems);
-  const legacyPools = [
-    tournament?.maps,
-    tournament?.streamer_maps,
-    tournament?.snd_map_pool,
-    tournament?.hp_map_pool,
-    tournament?.overload_map_pool,
-    tournament?.snd_maps,
-    tournament?.hp_maps,
-    tournament?.overload_maps,
-  ]
-    .flatMap(tournamentMapPoolItems);
+  const modes = [...new Set([...configuredModes, ...inferredModes].map((mode) => {
+    const key = cleanKey(mode).replace(/[_-]+/g, " ");
+    if (key === "hp" || key.includes("hardpoint")) return "hp";
+    if (key === "overload") return "overload";
+    if (key === "snd" || key.includes("search") || key.includes("destroy")) return "snd";
+    return null;
+  }).filter(Boolean))];
+  const legacyPools = {
+    snd: tournament?.snd_map_pool || tournament?.snd_maps || tournament?.maps,
+    hp: tournament?.hp_map_pool || tournament?.hp_maps,
+    overload: tournament?.overload_map_pool || tournament?.overload_maps,
+  };
+  const selectedModes = modes.length ? modes : ["snd"];
+  const modePools = selectedModes.flatMap((mode) => {
+    const configured = tournamentMapPoolItems(pools[mode] || legacyPools[mode]);
+    const streamerPool = tournamentMapPoolItems(tournament?.streamer_maps);
+    const defaults = (CDL_2026_MAPS[mode] || []).map((map) => map.name);
+    return configured.length ? configured : streamerPool.length ? streamerPool : defaults;
+  });
 
-  const labels = (matchingPools.length ? matchingPools : [...allConfiguredPools, ...legacyPools])
+  const labels = modePools
     .map(tournamentMapLabel)
     .filter(Boolean);
   return [...new Map(labels.map((map) => [cleanKey(map), map])).values()];
@@ -1302,6 +1340,7 @@ export default function TournamentMatchRoom() {
   const canAdminCorrect = adminCorrectionRoles.has(effectiveRoleForUser(user)) && match?.team_a_id && match?.team_b_id;
   const canAdminResolve = isStaff && canSubmit && !canAdminCorrect;
   const isStreamerMatch = isStreamerTournament(tournament);
+  const tournamentMapPicks = tournamentMapPicksForMatch(match);
   const tournamentMapPool = tournamentMapPoolForMatch(match, tournament);
   const isTeamAWinner = isComplete && (
     String(match.winner_id || "") === String(match.team_a_id || "")
@@ -1400,24 +1439,6 @@ export default function TournamentMatchRoom() {
               </Link>
             </div>
           </div>
-          <div className="match-room-overview-strip border-b border-white/[0.06] p-3 sm:p-4">
-            <TournamentMatchOverview
-              match={match}
-              onRefresh={loadRoom}
-              onOpenBracket={handleOpenBracket}
-              adminTools={isStaff ? (
-                <AdminTools
-                  match={match}
-                  canAdminCorrect={canAdminCorrect}
-                  canAdminResolve={canAdminResolve}
-                  resolving={resolvingAdmin}
-                  onResetDispute={handleAdminResetDispute}
-                  onCorrection={handleAdminCorrection}
-                  onResolve={handleAdminResolve}
-                />
-              ) : null}
-            />
-          </div>
           <div className={`grid gap-4 p-3 sm:p-4 ${canChat ? "xl:grid-cols-[minmax(0,1fr)_410px]" : ""}`}>
             <div className="min-w-0 space-y-4">
               <MatchTeamTable
@@ -1448,7 +1469,7 @@ export default function TournamentMatchRoom() {
                 finalScore={match.team_b_score || 0}
               />
             </div>
-            <div className="min-w-0 space-y-4">
+            <aside className="min-w-0 space-y-4">
               {canChat && (
                 <TournamentChatColumn
                   match={match}
@@ -1465,7 +1486,7 @@ export default function TournamentMatchRoom() {
                 />
               )}
               <MatchMapSeries
-                maps={Array.isArray(match.maps) ? match.maps : []}
+                maps={tournamentMapPicks}
                 mode={match.game_mode || match.tournament_game_mode || "Tournament match"}
                 host={match.first_host_team_name || "TBD"}
                 hostLabel="First host"
@@ -1481,9 +1502,28 @@ export default function TournamentMatchRoom() {
                     : "No saved map picks or tournament map pool are available for this match."
                   : "Map picks are being generated."}
               />
-            </div>
+            </aside>
           </div>
         </section>
+
+        <div className="match-room-overview-strip mb-6">
+          <TournamentMatchOverview
+            match={match}
+            onRefresh={loadRoom}
+            onOpenBracket={handleOpenBracket}
+            adminTools={isStaff ? (
+              <AdminTools
+                match={match}
+                canAdminCorrect={canAdminCorrect}
+                canAdminResolve={canAdminResolve}
+                resolving={resolvingAdmin}
+                onResetDispute={handleAdminResetDispute}
+                onCorrection={handleAdminCorrection}
+                onResolve={handleAdminResolve}
+              />
+            ) : null}
+          />
+        </div>
 
         {scoreModalOpen && canSubmit && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="submit-score-title">
