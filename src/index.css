@@ -2660,7 +2660,8 @@ img {
   border-radius: 9999px;
   background: conic-gradient(from 90deg, transparent 0 42%, hsl(var(--cyan)) 58%, hsl(var(--orange)) 70%, transparent 84%);
   animation: page-logo-orbit 1.45s linear infinite;
-  animation-delay: var(--page-loader-animation-offset, 0ms);
+  will-change: transform;
+  transform: translateZ(0);
   mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
 }
@@ -2672,7 +2673,7 @@ img {
   background: hsl(var(--cyan) / .09);
   box-shadow: 0 0 42px hsl(var(--cyan) / .16), 18px 0 34px hsl(var(--orange) / .07);
   animation: page-logo-breathe 2s ease-in-out infinite;
-  animation-delay: var(--page-loader-animation-offset, 0ms);
+  will-change: transform, opacity;
 }
 
 .page-logo-loader-stage > :last-child {

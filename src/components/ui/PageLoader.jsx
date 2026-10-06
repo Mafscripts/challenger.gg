@@ -2,12 +2,9 @@ import React from "react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 
 export default function PageLoader({ label = "Loading page", fullscreen = false, className = "" }) {
-  const animationOffset = typeof performance === "undefined" ? "0ms" : `-${Math.round(performance.now())}ms`;
-
   return (
     <div
       className={`page-logo-loader ${fullscreen ? "fixed inset-0 z-[100] min-h-screen" : "min-h-[calc(100svh-4rem)]"} ${className}`}
-      style={{ "--page-loader-animation-offset": animationOffset }}
       role="status"
       aria-live="polite"
       aria-label={label}
