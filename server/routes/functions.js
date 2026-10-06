@@ -5965,6 +5965,7 @@ const messageUserSummary = async (user) => {
   return {
     id: user.id,
     name: nameFor(user),
+    display_name_color: user.display_name_color || profile?.display_name_color || "",
     username: user.username || "",
     handle: user.handle || user.username || "",
     avatar_url: profile?.avatar_url || user.avatar_url || "",

@@ -36,6 +36,19 @@ function PlayerAvatar({ player, size = "md" }) {
   );
 }
 
+function PlayerName({ player, className = "" }) {
+  const effect = player?.display_name_color || "";
+  return (
+    <span
+      data-name-effect={effect || undefined}
+      style={effect ? { "--player-name-color": effect } : undefined}
+      className={`${className} ${effect ? "player-name-color" : ""}`.trim()}
+    >
+      {player?.name || "Player"}
+    </span>
+  );
+}
+
 export default function Messages() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentUser, setCurrentUser] = useState(null);
@@ -312,7 +325,10 @@ export default function Messages() {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
                         <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate text-sm font-black">{player?.name || conversation.lastMessage.sender_name}</span>
+                          <PlayerName
+                            player={player || { name: conversation.lastMessage.sender_name }}
+                            className="truncate text-sm font-black"
+                          />
                           <UserBadges user={player} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" className="shrink-0" />
                         </span>
                         <span className="text-[9px] text-vapor">{messageDate(conversation.lastMessage.created_date)}</span>
@@ -373,7 +389,7 @@ export default function Messages() {
                   <PlayerAvatar player={activePlayer} size="lg" />
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <p className="truncate text-base font-black">{activePlayer.name}</p>
+                      <PlayerName player={activePlayer} className="truncate text-base font-black" />
                       <UserBadges user={activePlayer} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" className="shrink-0" />
                     </div>
                     <p className="truncate text-xs text-vapor">@{activePlayer.handle || activePlayer.username || "player"}</p>
@@ -472,7 +488,7 @@ export default function Messages() {
                 ) : searchResults.map(player => (
                   <button key={player.id} onClick={() => selectPlayer(player)} className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-white/[0.05]">
                     <PlayerAvatar player={player} />
-                    <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><span className="truncate text-sm font-black">{player.name}</span><UserBadges user={player} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></span><span className="block truncate text-xs text-vapor">@{player.handle || player.username || "player"}</span></span>
+                    <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><PlayerName player={player} className="truncate text-sm font-black" /><UserBadges user={player} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></span><span className="block truncate text-xs text-vapor">@{player.handle || player.username || "player"}</span></span>
                     <ArrowRight className="h-4 w-4 text-vapor" />
                   </button>
                 ))}
