@@ -86,10 +86,13 @@ const metadataFilterEntities = new Set([
   "PlayerProfile", "RankedStats", "XPStats", "Wallet", "UserInventory",
   "TeamMember", "Wager", "WagerParticipant", "RankedMatch", "XPMatch",
   "TournamentParticipant", "TournamentMatch", "Message", "ChatMessage", "TradeOffer",
+  "WalletTransaction", "CreditTransaction", "CreditPurchase",
+  "Tournament", "TeamInvite", "AdminAlert",
 ]);
 const metadataFilterKeys = [
   "user_id", "host_id", "challenger_id", "tournament_id", "team_id", "wager_id",
   "sender_id", "recipient_id", "conversation_id",
+  "status", "match_type", "invited_user_id",
 ];
 
 const sortRows = (rows, order) => {

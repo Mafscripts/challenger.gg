@@ -56,6 +56,11 @@ export default function Wallet() {
   const pendingWagers = walletData?.pending_balance || 0;
   const withdrawable = Number(walletData?.withdrawable_balance ?? walletBalance);
   const totalEarnings = walletData?.total_earnings || user?.lifetime_earnings || 0;
+  const wagerWins = Number(user?.wager_wins || 0);
+  const wagerLosses = Number(user?.wager_losses || 0);
+  const wagerWinRate = wagerWins + wagerLosses > 0
+    ? Math.round((wagerWins / (wagerWins + wagerLosses)) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-obsidian py-6">
@@ -212,16 +217,16 @@ export default function Wallet() {
                   <div className="bg-secondary/50 rounded-lg p-4 border border-white/5">
                     <div className="flex items-center gap-2 mb-2">
                       <DollarSign className="w-4 h-4 text-green" />
-                      <span className="text-xs text-vapor uppercase">Avg. Win Rate</span>
+                      <span className="text-xs text-vapor uppercase">Wager Win Rate</span>
                     </div>
-                    <p className="text-2xl font-bold text-green font-mono">67%</p>
+                    <p className="text-2xl font-bold text-green font-mono">{wagerWins + wagerLosses > 0 ? `${wagerWinRate}%` : "N/A"}</p>
                   </div>
                   <div className="bg-secondary/50 rounded-lg p-4 border border-white/5">
                     <div className="flex items-center gap-2 mb-2">
                       <Shield className="w-4 h-4 text-orange" />
-                      <span className="text-xs text-vapor uppercase">Protected Balance</span>
+                      <span className="text-xs text-vapor uppercase">Wager Record</span>
                     </div>
-                    <p className="text-2xl font-bold text-orange font-mono">100%</p>
+                    <p className="text-2xl font-bold text-orange font-mono">{wagerWins}W / {wagerLosses}L</p>
                   </div>
                 </div>
 

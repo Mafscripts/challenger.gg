@@ -382,7 +382,7 @@ export default function Dashboard() {
     rankedMatches: [],
     tournamentMatches: [],
     xpStats: [],
-    transactions: [],
+    cashPaidOut: 0,
   });
 
   useEffect(() => {
@@ -395,13 +395,14 @@ export default function Dashboard() {
         base44.entities.RankedMatch.filter({}, "-created_date", 500),
         base44.entities.TournamentMatch.filter({}, "-created_date", 500),
         base44.entities.XPStats.filter({}, "-total_xp", 500),
-        base44.entities.WalletTransaction.filter({ status: "completed" }, "-created_date", 500),
+        base44.public.homeOverview(),
       ]);
       if (cancelled) return;
       const rows = requests.map((result) => result.status === "fulfilled" && Array.isArray(result.value) ? result.value : []);
       setData({
         tournaments: rows[0], users: rows[1], wagers: rows[2], rankedMatches: rows[3],
-        tournamentMatches: rows[4], xpStats: rows[5], transactions: rows[6],
+        tournamentMatches: rows[4], xpStats: rows[5],
+        cashPaidOut: requests[6].status === "fulfilled" ? number(requests[6].value?.stats?.cash_paid_out) : 0,
       });
       setLoading(false);
     };
@@ -437,14 +438,10 @@ export default function Dashboard() {
   ].sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime()).slice(0, 8), [data.wagers, data.rankedMatches]);
 
   const stats = useMemo(() => {
-    const paidTypes = new Set(["wager_payout", "tournament_prize", "prize", "payout", "eights_monthly_prize"]);
-    const cashPaidOut = data.transactions
-      .filter((transaction) => paidTypes.has(String(transaction.type || transaction.transaction_type || "").toLowerCase()))
-      .reduce((sum, transaction) => sum + Math.abs(number(transaction.amount)), 0);
     return {
       matchesPlayed: data.wagers.filter(isCompleted).length + data.rankedMatches.filter(isCompleted).length + data.tournamentMatches.filter(isCompleted).length,
       tournaments: data.tournaments.filter((tournament) => String(tournament.status || "").toLowerCase() !== "draft").length,
-      cashPaidOut,
+      cashPaidOut: data.cashPaidOut,
       totalXp: data.xpStats.reduce((sum, row) => sum + number(row.total_xp ?? row.xp), 0),
     };
   }, [data]);

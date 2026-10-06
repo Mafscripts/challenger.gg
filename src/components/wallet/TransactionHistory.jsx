@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 export default function TransactionHistory({ type = "all" }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     loadTransactions();
@@ -13,14 +14,15 @@ export default function TransactionHistory({ type = "all" }) {
 
   const loadTransactions = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const user = await base44.auth.me();
       if (!user) return;
 
       const [walletTransactions, creditTransactions, creditPurchases] = await Promise.all([
-        base44.entities.WalletTransaction.filter({ user_id: user.id }),
-        base44.entities.CreditTransaction.filter({ user_id: user.id }),
-        base44.entities.CreditPurchase.filter({ user_id: user.id })
+        base44.entities.WalletTransaction.filter({ user_id: user.id }, "-created_date", 500),
+        base44.entities.CreditTransaction.filter({ user_id: user.id }, "-created_date", 500),
+        base44.entities.CreditPurchase.filter({ user_id: user.id }, "-created_date", 500)
       ]);
       
       const formattedWallet = walletTransactions
@@ -54,9 +56,12 @@ export default function TransactionHistory({ type = "all" }) {
         description: `Credit Purchase - ${purchase.credits} Credits`,
       }));
 
-      setTransactions([...formattedWallet, ...formattedCredits, ...formattedPurchases].sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setTransactions([...formattedWallet, ...formattedCredits, ...formattedPurchases].sort((a, b) => (
+        (new Date(b.date || 0).getTime() || 0) - (new Date(a.date || 0).getTime() || 0)
+      )));
     } catch (error) {
       console.error("Failed to load transactions:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -100,6 +105,10 @@ export default function TransactionHistory({ type = "all" }) {
         <p className="text-vapor text-sm">Loading transactions...</p>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div role="alert" className="py-12 text-center text-sm text-vapor">Transactions could not be loaded. <button type="button" onClick={loadTransactions} className="font-bold text-cyan hover:underline">Retry</button></div>;
   }
 
   if (transactions.length === 0) {

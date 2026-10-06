@@ -67,6 +67,7 @@ const sensitiveReadEntities = new Set([
   "WithdrawalRequest",
   "PremiumMembership",
 ]);
+const ownTransactionReadEntities = new Set(["WalletTransaction", "CreditTransaction", "CreditPurchase"]);
 
 const cleanName = (value) => String(value || "").trim().toLowerCase();
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
@@ -121,6 +122,15 @@ const redactIpData = (value) => {
 };
 
 const protectIpVisibility = (req, value) => hasRole(req.user, "admin") ? value : redactIpData(value);
+const privateOtherUserFields = new Set([
+  "email", "email_verified", "credits", "wallet_balance", "discord_user_id",
+  "twitch_user_id", "ban_reason", "email_verification_code", "email_verification_code_hash",
+  "email_verification_expires_at", "password_reset_token_hash", "password_reset_expires_at",
+]);
+const visibleUser = (req, row) => {
+  if (!row || hasRole(req.user, "admin") || String(row.id) === String(req.user.id)) return row;
+  return Object.fromEntries(Object.entries(row).filter(([key]) => !privateOtherUserFields.has(key)));
+};
 const belongsToMessageUser = (row, userId) => (
   String(row?.sender_id || "") === String(userId)
   || String(row?.recipient_id || "") === String(userId)
@@ -268,7 +278,7 @@ const visibleTickets = (req, rows) => {
 
 router.get("/:entity", requireAuth, async (req, res, next) => {
   try {
-    if (sensitiveReadEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
+    if (sensitiveReadEntities.has(req.params.entity) && !ownTransactionReadEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
       // User-scoped wallet/inventory data is exposed through the authenticated
       // bootstrap/API instead of the unrestricted entity listing endpoint.
       return res.status(403).json({ error: "Admin access required" });
@@ -277,6 +287,9 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "Moderator access required" });
     }
     const filter = parseFilter(req.query.filter);
+    if (ownTransactionReadEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
+      filter.user_id = req.user.id;
+    }
     if (req.params.entity === "Notification" && !hasRole(req.user, "admin")) {
       filter.user_id = req.user.id;
     }
@@ -295,6 +308,9 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
     }
     if (req.params.entity === "TradeOffer" && !hasRole(req.user, "admin")) {
       return res.json(protectIpVisibility(req, rows.filter((row) => belongsToTradeUser(row, req.user.id))));
+    }
+    if (req.params.entity === "User") {
+      return res.json(protectIpVisibility(req, rows.map((row) => visibleUser(req, row))));
     }
     if (req.params.entity === "TournamentParticipant") {
       return res.json(protectIpVisibility(req, await visibleTournamentParticipants(req, rows, filter)));
@@ -319,13 +335,16 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
 
 router.get("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
-    if (sensitiveReadEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
+    if (sensitiveReadEntities.has(req.params.entity) && !ownTransactionReadEntities.has(req.params.entity) && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Admin access required" });
     }
     if (["Ban", "AdminAction", "AdminAlert"].includes(req.params.entity) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Moderator access required" });
     }
     const row = await getEntity(req.params.entity, req.params.id);
+    if (ownTransactionReadEntities.has(req.params.entity) && !hasRole(req.user, "admin") && String(row.user_id || "") !== String(req.user.id)) {
+      return res.status(403).json({ error: "You cannot view this transaction" });
+    }
     if (req.params.entity === "Notification" && !hasRole(req.user, "admin") && String(row.user_id || "") !== String(req.user.id)) {
       return res.status(403).json({ error: "You cannot view this notification" });
     }
@@ -352,7 +371,7 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
     if (req.params.entity === "ChatMessage" && row.match_type === "tournament" && !await canViewTournamentChat(req, row.conversation_id)) {
       return res.status(403).json({ error: "Only tournament match participants can view this chat" });
     }
-    res.json(protectIpVisibility(req, row));
+    res.json(protectIpVisibility(req, req.params.entity === "User" ? visibleUser(req, row) : row));
   } catch (error) {
     next(error);
   }
