@@ -8,7 +8,6 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
-import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
@@ -763,8 +762,6 @@ export default function WagersMatchRoom() {
                 ) : null}
               />
             </div>
-            <MatchRulesPanel matchType="wager" gameMode={wager.game_mode} playRule={wager.play_rule} collapsible defaultOpen={false} />
-
         {(needsPayment || wager.admin_request_status || wager.requested_admin) && (
           <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
             {needsPayment && (

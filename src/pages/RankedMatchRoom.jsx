@@ -23,7 +23,6 @@ import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
-import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import RankedVoicePanel from "@/components/match/RankedVoicePanel";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
@@ -883,8 +882,6 @@ export default function RankedMatchRoom() {
         <div className="mb-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
           <MapVetoVertical wager={match} ranked compact />
           <div className="space-y-4">
-            <MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} />
-
             {isParticipant && !["completed", "cancelled"].includes(match.status) && (
               <section className="rounded-xl border border-red-500/15 bg-card p-4">
                 <div className="flex items-start justify-between gap-4">

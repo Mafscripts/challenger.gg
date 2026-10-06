@@ -29,7 +29,6 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
-import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import PageLoader from "@/components/ui/PageLoader";
@@ -1610,14 +1609,6 @@ export default function TournamentMatchRoom() {
                 ) : null}
           />
 
-            <MatchRulesPanel
-              matchType="tournament"
-              gameMode={match.game_mode_display || match.game_mode}
-              playRule=""
-              customRules={tournament?.rules || tournament?.rules_text || ""}
-              collapsible
-              defaultOpen={false}
-            />
         </div>
 
         {bracketMatches.length > 0 && (

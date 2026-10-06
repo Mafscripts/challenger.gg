@@ -5,7 +5,6 @@ import { base44 } from "@/api/base44Client";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
-import MatchRulesPanel from "@/components/match/MatchRulesPanel";
 import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
@@ -671,7 +670,6 @@ export default function EightsMatchRoom() {
         </div>
         </section>
 
-        <div className="mt-5"><MatchRulesPanel matchType="ranked" gameMode={match.game_mode_display || match.game_mode} collapsible defaultOpen={false} /></div>
       </div>
 
       {scoreOpen && isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && (
