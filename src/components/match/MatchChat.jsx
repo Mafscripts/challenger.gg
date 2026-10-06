@@ -244,7 +244,11 @@ export default function MatchChat({
           const teamTone = teamSide === "a" ? teamStyles[teamAColor] : teamSide === "b" ? teamStyles[teamBColor] : null;
           const isOwnMessage = String(currentUser?.id || "") === senderId;
           const isTeamB = teamSide === "b";
-          const senderPlayer = playersById.get(senderId);
+          const senderPlayer = playersById.get(senderId) || (isOwnMessage ? currentUser : null);
+          const senderNameEffect = message.display_name_color
+            || message.sender_name_color
+            || senderPlayer?.display_name_color
+            || "";
           const senderAvatar = message.sender_avatar_url || senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "") || "";
           const previousMessage = messages[messageIndex - 1];
           const groupedWithPrevious = Boolean(
@@ -280,7 +284,11 @@ export default function MatchChat({
                   <div className={`mb-1 flex min-w-0 flex-wrap items-center gap-1.5 ${isTeamB ? "justify-end" : "justify-start"}`}>
                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${staff ? "bg-red-400" : teamTone?.dot || "bg-vapor/40"}`} />
                     {teamSide && <span className={`rounded border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.12em] ${teamTone?.border} ${teamTone?.background} ${teamTone?.name}`}>Team {teamSide.toUpperCase()}</span>}
-                    <span className={`truncate text-[13px] font-black ${staff ? "text-red-200" : teamTone?.name || "text-white"}`}>{senderName}</span>
+                    <span
+                      data-name-effect={!staff && senderNameEffect ? senderNameEffect : undefined}
+                      style={!staff && senderNameEffect ? { "--player-name-color": senderNameEffect } : undefined}
+                      className={`truncate text-[13px] font-black ${!staff && senderNameEffect ? "player-name-color" : staff ? "text-red-200" : teamTone?.name || "text-white"}`}
+                    >{senderName}</span>
                     <span className="text-[9px] font-medium text-vapor/65">• {formatDate(message.created_date)}</span>
                   </div>
                 )}
