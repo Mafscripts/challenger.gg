@@ -318,7 +318,6 @@ function MatchChatView({
                 )}
                 <div className={`w-fit max-w-full rounded-lg border px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_2px_6px_rgba(0,0,0,0.18)] ${isTeamB ? "ml-auto rounded-br-sm" : "mr-auto rounded-bl-sm"} ${staff ? "border-red-400/25 bg-red-500/[0.06]" : teamTone ? `${teamTone.border} ${teamTone.background}` : "border-white/[0.07] bg-white/[0.045]"} ${isOwnMessage && !staff ? "ring-1 ring-white/[0.08]" : ""}`}>
                   <p className={`${compact ? "text-[13px]" : "text-[15px]"} whitespace-pre-wrap break-words text-left leading-relaxed text-foreground/90`}>{displayMessageContent(message, staff)}</p>
-                  {message.sending && <p role="status" className="mt-1 text-[10px] text-vapor">Sending…</p>}
                 </div>
               </div>
               {isTeamB && avatar}
