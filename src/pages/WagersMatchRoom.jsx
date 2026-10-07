@@ -7,6 +7,8 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
+import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
+import { useRoomRecord } from "@/components/match/useRoomRecord";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay";
@@ -221,8 +223,13 @@ function MatchStatusCard({ match, onRefresh, adminTools = null }) {
 
 export default function WagersMatchRoom() {
   const { id } = useParams();
+  return <WagersMatchRoomView key={id} />;
+}
+
+function WagersMatchRoomView() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [wager, setWager] = useState(null);
+  const [wager, setWager] = useRoomRecord();
   const [user, setUser] = useState(null);
   const [teamAPlayers, setTeamAPlayers] = useState([]);
   const [teamBPlayers, setTeamBPlayers] = useState([]);
@@ -324,6 +331,7 @@ export default function WagersMatchRoom() {
         base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 20).catch(() => []),
       ]);
       setWager(wagerData);
+      if (wagerData.status === "cancelled") return;
 
       const { teamAPlayers, teamBPlayers } = await loadWagerParticipants(base44, wagerData, { participantRows, fresh: true });
       rosterSignatureRef.current = (participantRows || []).map((participant) => `${participant.user_id}:${participant.team}:${participant.payment_status}`).sort().join("|");
@@ -539,6 +547,7 @@ export default function WagersMatchRoom() {
       if (response.data?.success) {
         setWager(response.data.wager || { ...wager, status: "cancelled" });
         toast({ title: "Match cancelled", description: "All paid entries were refunded." });
+        navigate("/wagers", { replace: true });
       } else {
         toast({ title: "Cancel failed", description: response.data?.error || "Could not cancel match.", variant: "destructive" });
       }
@@ -573,6 +582,7 @@ export default function WagersMatchRoom() {
     }
   };
 
+  if (wager?.status === "cancelled") return <CancelledMatchRedirect match={wager} matchType="wager" />;
   if (loading) {
     return <PageLoader label="Loading wager match" />;
   }
@@ -627,32 +637,6 @@ export default function WagersMatchRoom() {
         {!startWindowExpired && !isStaff && <p className="col-span-2 text-center text-[9px] leading-4 text-vapor">Admin help is available now. Disputes unlock when the start timer reaches 00:00.</p>}
     </div>
   );
-
-  if (wager.status === "cancelled") {
-    return (
-      <div className="min-h-screen bg-obsidian py-8">
-        <div className="mx-auto max-w-2xl px-4 lg:px-6">
-          <section className="glass overflow-hidden rounded-2xl border border-orange/20">
-            <div className="border-b border-white/5 bg-gradient-to-r from-orange/10 via-secondary/60 to-red-500/5 p-7 text-center sm:p-10">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-orange/20 bg-orange/10 text-orange">
-                <RefreshCw className="h-6 w-6" />
-              </div>
-              <p className="mt-5 text-[10px] font-black uppercase tracking-[0.22em] text-orange">Wager cancelled</p>
-              <h1 className="mt-2 text-3xl font-black">Entry refunded</h1>
-              <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-vapor">
-                This wager is no longer active. Any reserved entry funds have been returned to the players' wallets.
-              </p>
-              {wager.cancel_reason && <p className="mt-3 text-xs text-vapor">Reason: {wager.cancel_reason}</p>}
-            </div>
-            <div className="flex flex-col gap-3 p-5 sm:flex-row sm:justify-center">
-              <Link to="/wallet" className="rounded-lg bg-green px-6 py-3 text-center text-xs font-black uppercase tracking-wider text-background">View Wallet</Link>
-              <Link to="/wagers" className="rounded-lg border border-white/10 bg-secondary px-6 py-3 text-center text-xs font-black uppercase tracking-wider text-vapor hover:text-white">Back to Wagers</Link>
-            </div>
-          </section>
-        </div>
-      </div>
-    );
-  }
 
   if (isWaitingForOpponent) {
     return (

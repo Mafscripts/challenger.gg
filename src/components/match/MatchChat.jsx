@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, Send, Shield } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/AuthContext";
+import { createMatchChatFeed } from "@/lib/matchChatFeed";
 
 const chatAccent = {
   icon: "text-blue-400",
@@ -76,7 +78,11 @@ const teamStyles = {
   },
 };
 
-export default function MatchChat({
+export default function MatchChat(props) {
+  return <MatchChatView key={`${props.matchType || "wager"}:${props.conversationId || ""}`} {...props} />;
+}
+
+function MatchChatView({
   conversationId,
   matchType = "wager",
   accent = "cyan",
@@ -96,13 +102,18 @@ export default function MatchChat({
   messageLimit = 100,
 }) {
   const [messages, setMessages] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
+  const { user: currentUser } = useAuth();
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const chatBodyRef = useRef(null);
   const inputRef = useRef(null);
-  const previousMessageCountRef = useRef(0);
+  const followingChatRef = useRef(true);
+  const feedRef = useRef(null);
+  const refreshRef = useRef(null);
+  const sendInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
   const tone = accents[accent] || accents.cyan;
   const teamAIds = useMemo(() => new Set(teamAPlayerIds.flatMap(playerIdentifiers)), [teamAPlayerIds]);
   const teamBIds = useMemo(() => new Set(teamBPlayerIds.flatMap(playerIdentifiers)), [teamBPlayerIds]);
@@ -124,58 +135,42 @@ export default function MatchChat({
   };
 
   useEffect(() => {
-    previousMessageCountRef.current = 0;
-  }, [conversationId]);
-
-  useEffect(() => {
-    if (loading) return;
-    const behavior = previousMessageCountRef.current === 0 ? "auto" : "smooth";
-    previousMessageCountRef.current = messages.length;
-    scrollChatToBottom(behavior);
-  }, [messages.length, loading]);
+    if (!loading && followingChatRef.current) scrollChatToBottom("auto");
+  }, [messages, loading]);
 
   useEffect(() => {
     let mounted = true;
-    let intervalId = null;
-
-    async function loadMessages(showLoading = false) {
-      if (!conversationId) {
-        setMessages([]);
-        setLoading(false);
-        return;
-      }
-
-      if (showLoading) setLoading(true);
-      const rows = await base44.entities.ChatMessage
-        .filterFresh({ conversation_id: conversationId }, "-created_date", messageLimit)
-        .catch(() => []);
-
+    mountedRef.current = true;
+    const feed = createMatchChatFeed({
+      conversationId,
+      limit: messageLimit,
+      read: () => conversationId ? base44.entities.ChatMessage.filterFresh({ conversation_id: conversationId }, "-created_date", messageLimit) : Promise.resolve([]),
+      onChange: (rows) => { if (mounted) setMessages(rows); },
+      onError: () => { if (mounted) setLoadError(true); },
+    });
+    feedRef.current = feed;
+    const refresh = async () => {
+      const success = await feed.refresh();
       if (mounted) {
-        setMessages((rows || []).slice().reverse());
+        if (success) setLoadError(false);
         setLoading(false);
       }
-    }
-
-    async function initialize() {
-      const userPromise = base44.auth.me().catch(() => null);
-      const messagesPromise = loadMessages(true);
-      const user = await userPromise;
-      if (mounted) setCurrentUser(user);
-      await messagesPromise;
-      if (mounted && live) {
-        intervalId = window.setInterval(() => loadMessages(false), pollIntervalMs);
-      }
-    }
+    };
+    refreshRef.current = refresh;
 
     const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") loadMessages(false);
+      if (document.visibilityState === "visible") void refresh();
     };
 
-    initialize();
+    void refresh();
+    const intervalId = live ? window.setInterval(refreshWhenVisible, Math.max(1000, pollIntervalMs)) : null;
     window.addEventListener("focus", refreshWhenVisible);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       mounted = false;
+      mountedRef.current = false;
+      feed.dispose();
+      if (feedRef.current === feed) feedRef.current = null;
       if (intervalId) window.clearInterval(intervalId);
       window.removeEventListener("focus", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
@@ -185,8 +180,10 @@ export default function MatchChat({
   const handleSend = async (event) => {
     event.preventDefault();
     const content = messageText.trim();
-    if (!content || !conversationId || !currentUser?.id) return;
+    if (!content || !conversationId || !currentUser?.id || disabledReason || sendInFlightRef.current) return;
 
+    sendInFlightRef.current = true;
+    const feed = feedRef.current;
     setSending(true);
     try {
       const response = await base44.functions.invoke("sendMatchRoomMessage", {
@@ -195,18 +192,24 @@ export default function MatchChat({
         conversation_id: conversationId,
         content,
       });
+      if (!mountedRef.current || feedRef.current !== feed) return;
       if (!response.data?.success) {
         toast({ title: "Message failed", description: response.data?.error || "Could not send chat message.", variant: "destructive" });
         return;
       }
       const created = response.data.message;
-      setMessages((current) => [...current, created]);
+      followingChatRef.current = true;
+      feed?.addConfirmed(created);
+      scrollChatToBottom("auto");
       setMessageText("");
     } catch (error) {
-      toast({ title: "Message failed", description: error.message || "Could not send chat message.", variant: "destructive" });
+      if (mountedRef.current) toast({ title: "Message failed", description: error.message || "Could not send chat message.", variant: "destructive" });
     } finally {
-      setSending(false);
-      window.requestAnimationFrame(() => inputRef.current?.focus());
+      sendInFlightRef.current = false;
+      if (mountedRef.current) {
+        setSending(false);
+        window.requestAnimationFrame(() => inputRef.current?.focus());
+      }
     }
   };
 
@@ -218,13 +221,14 @@ export default function MatchChat({
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
       </div>
-      <div ref={chatBodyRef} className={`min-h-0 flex-1 overflow-y-auto bg-[#191c21] ${compact ? "p-3" : "p-4"}`}>
+      {loadError && <div role="status" className="flex shrink-0 items-center justify-between gap-2 border-b border-orange/20 px-3 py-2 text-[11px] text-orange"><span>{live ? "Chat connection interrupted. Retrying..." : "Could not load chat."}</span><button type="button" onClick={() => refreshRef.current?.()} className="shrink-0 font-bold underline">Retry</button></div>}
+      <div ref={chatBodyRef} onScroll={(event) => { const body = event.currentTarget; followingChatRef.current = body.scrollHeight - body.scrollTop - body.clientHeight < 96; }} className={`min-h-0 flex-1 overflow-y-auto bg-[#191c21] ${compact ? "p-3" : "p-4"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center">
             <MessageSquare className="w-8 h-8 text-vapor/30 mb-3" />
-            <p className="text-sm text-vapor">No chat messages yet.</p>
+            <p className="text-sm text-vapor">{loadError ? "Chat unavailable. Use Retry to load messages." : "No chat messages yet."}</p>
           </div>
         ) : messages.map((message, messageIndex) => {
           const staff = isStaffMessage(message);

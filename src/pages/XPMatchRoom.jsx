@@ -22,6 +22,8 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
+import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
+import { useRoomRecord } from "@/components/match/useRoomRecord";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import RankBadge from "@/components/ui/RankBadge";
 import UserBadges from "@/components/ui/UserBadges";
@@ -299,8 +301,13 @@ function RankedResultOverlay({ match, result, onContinue }) {
 
 export default function XPMatchRoom() {
   const { id } = useParams();
+  return <XPMatchRoomView key={id} />;
+}
+
+function XPMatchRoomView() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [match, setMatch] = useState(null);
+  const [match, setMatch] = useRoomRecord();
   const [user, setUser] = useState(null);
   const [alphaPlayers, setAlphaPlayers] = useState([]);
   const [bravoPlayers, setBravoPlayers] = useState([]);
@@ -373,7 +380,6 @@ export default function XPMatchRoom() {
 
   useEffect(() => {
     if (match?.status === "cancelled") {
-      navigate("/xp", { replace: true });
       return;
     }
     if (match?.status === "open" && user?.id === match?.host_id) {
@@ -509,9 +515,13 @@ export default function XPMatchRoom() {
       setLoading(true);
       const [currentUser, loadedMatch] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.entities.XPMatch.get(id),
+        base44.entities.XPMatch.getFresh(id),
       ]);
       let matchData = loadedMatch;
+      if (matchData.status === "cancelled") {
+        setMatch(matchData);
+        return;
+      }
 
       if (!matchData.final_map_name && roomRosterFull(matchData)) {
         const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
@@ -529,7 +539,6 @@ export default function XPMatchRoom() {
     } catch (error) {
       console.error("Failed to load ranked match:", error);
       toast({ title: "Error loading match", description: error.message || "Match not found", variant: "destructive" });
-      setMatch(null);
     } finally {
       setLoading(false);
     }
@@ -707,7 +716,7 @@ export default function XPMatchRoom() {
 
       if (response.data?.success) {
         toast({ title: "XP match cancelled" });
-        navigate("/xp");
+        navigate("/xp", { replace: true });
       } else {
         toast({ title: "Cancel failed", description: response.data?.error || "Could not cancel match.", variant: "destructive" });
       }
@@ -765,7 +774,8 @@ export default function XPMatchRoom() {
     }
   };
 
-  if (loading) {
+  if (match?.status === "cancelled") return <CancelledMatchRedirect match={match} matchType="xp" />;
+  if (loading && !match) {
     return (
       <>
         <PageLoader label="Loading ranked match" />

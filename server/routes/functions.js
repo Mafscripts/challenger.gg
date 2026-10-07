@@ -13,6 +13,7 @@ import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTrial.js";
 import { freeEightsDiscordJoinError, freeEightsVoiceLog } from "../free-eights-discord.js";
 import { completeFreeEightsWithElo } from "../free-eights-elo.js";
+import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -6341,6 +6342,11 @@ async function sendMatchRoomMessage(req) {
 
   const match = await getEntity(matchEntityFor(matchType), matchId);
   if (!match) return { success: false, error: "Match not found" };
+  if (match.status === "cancelled") return { success: false, error: "This match has been cancelled. Return to matchfinder to join another match.", code: "MATCH_CANCELLED" };
+  if (matchType === "tournament") {
+    const tournament = await getEntity("Tournament", match.tournament_id);
+    if (tournament.status === "cancelled") return { success: false, error: "This tournament has been cancelled.", code: "MATCH_CANCELLED" };
+  }
   const participantIds = await matchParticipantIds(matchType, match);
   const participantIdSet = new Set(participantIds.map(String));
   const tournamentParticipantInfo = matchType === "tournament"
@@ -7625,6 +7631,7 @@ async function refundWagerUnlocked(req) {
       eights_reshuffle_vote_user_ids: [],
     } : {}),
   });
+  if (isEightsMatchType(wager.match_type)) publishEightsLobbyUpdate(wager.id, "cancelled");
   await resolveOpenMatchDisputes(wager.id, "Match cancelled and refunded", req.user);
   const recipientIds = isEightsMatchType(wager.match_type)
     ? participants.map((participant) => participant.user_id).filter(Boolean)
@@ -10800,6 +10807,8 @@ const handlers = {
   createWager,
   acceptWager,
   getEightsLiveUpdatesToken,
+  getFreeEightsOverview: async (req) => ({ ...await getFreeEightsOverview(prisma, req.user.id), current_user: req.user }),
+  getFreeEightsPlayerStats: (req) => getFreeEightsPlayerStats(prisma, req.body.wager_id),
   syncEightsLobby,
   voteEightsReshuffle,
   adminReshuffleEightsTeams,

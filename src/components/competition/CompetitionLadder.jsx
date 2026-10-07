@@ -214,7 +214,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         mode === "ranked" ? base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []) : Promise.resolve([]),
         mode === "eights" ? base44.entities.EightsStats.filter({}, "-monthly_wins", 500).catch(() => []) : Promise.resolve([]),
         mode === "money8s" ? base44.functions.invoke("getMoneyEightsStandings", {}).catch(() => ({ data: { rows: [] } })) : Promise.resolve({ data: { rows: [] } }),
-        base44.entities.Tournament.filter({}, "start_date", 100).catch(() => []),
+        mode === "eights" ? Promise.resolve([]) : base44.entities.Tournament.filter({}, "start_date", 100).catch(() => []),
       ]);
       if (!active) return;
       setUsers(userData || []);

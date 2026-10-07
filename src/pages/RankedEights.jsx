@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, CalendarDays, Crown, Plus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/AuthContext";
+import { loadFreeEightsOverview } from "@/lib/freeEightsData";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
@@ -24,19 +27,40 @@ const daysUntilPrizeStarts = () => Math.max(0, Math.ceil((EIGHTS_PRIZE_START_DAT
 export default function RankedEights() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [user, setUser] = useState(null);
-  const [lobbies, setLobbies] = useState([]);
-  const [counts, setCounts] = useState({});
-  const [activeLobby, setActiveLobby] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user: authenticatedUser } = useAuth();
+  const [moneyUser, setUser] = useState(null);
+  const [moneyLobbies, setLobbies] = useState([]);
+  const [moneyCounts, setCounts] = useState({});
+  const [moneyActiveLobby, setActiveLobby] = useState(null);
+  const [moneyLoading, setLoading] = useState(true);
   const [joining, setJoining] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [discordPromptOpen, setDiscordPromptOpen] = useState(false);
   const discordPromptTrigger = useRef(null);
   const isMoney = searchParams.get("mode") === "money";
   const lobbyMatchType = isMoney ? "money8s" : "8s";
+  const freeOverview = useQuery({
+    queryKey: ["free-eights-overview", authenticatedUser?.id],
+    queryFn: () => loadFreeEightsOverview(base44),
+    enabled: !isMoney && Boolean(authenticatedUser?.id),
+    staleTime: 0,
+    refetchInterval: 6000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
+  const user = isMoney ? moneyUser : freeOverview.data?.current_user || authenticatedUser;
+  const lobbies = isMoney ? moneyLobbies : freeOverview.data?.lobbies || [];
+  const counts = isMoney ? moneyCounts : freeOverview.data?.counts || {};
+  const activeLobby = isMoney ? moneyActiveLobby : freeOverview.data?.active_lobby || null;
+  const loading = isMoney ? moneyLoading : freeOverview.isPending;
+  const refreshFreeOverview = freeOverview.refetch;
+
+  useEffect(() => {
+    if (!isMoney && freeOverview.error) toast({ title: "8s unavailable", description: freeOverview.error.message || "Please try again.", variant: "destructive" });
+  }, [isMoney, freeOverview.error]);
 
   const load = useCallback(async (quiet = false) => {
+    if (!isMoney) return refreshFreeOverview();
     if (!quiet) setLoading(true);
     try {
       const currentUser = await base44.auth.me();
@@ -58,12 +82,15 @@ export default function RankedEights() {
     } finally {
       setLoading(false);
     }
-  }, [isMoney, lobbyMatchType]);
+  }, [isMoney, lobbyMatchType, refreshFreeOverview]);
 
   useEffect(() => {
     if (!isMoney && monthKey() > EIGHTS_PRIZE_START_MONTH) {
       base44.functions.invoke("settleEightsMonthlyPrize", {}).catch(() => null);
     }
+    // React Query owns Free 8s refreshes, deduplicates overlapping requests,
+    // preserves visible data and pauses polling while the tab is hidden.
+    if (!isMoney) return;
     load();
     const interval = window.setInterval(() => load(true), 6000);
     return () => window.clearInterval(interval);
@@ -155,7 +182,11 @@ export default function RankedEights() {
               })}
             </CompetitionMatchfinder>
           )}
-          action={activeLobby ? (
+          action={!isMoney && !freeOverview.data ? (
+            <button type="button" disabled={!freeOverview.error} onClick={() => refreshFreeOverview()} className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 px-6 py-3.5 text-xs font-black text-vapor disabled:opacity-50">
+              {freeOverview.error ? "Retry loading Free 8s" : "Loading Free 8s..."}
+            </button>
+          ) : activeLobby ? (
             <Link to={`/8s-match/${activeLobby.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background">
               Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
             </Link>

@@ -29,6 +29,8 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
+import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
+import { useRoomRecord } from "@/components/match/useRoomRecord";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
@@ -858,8 +860,13 @@ function TournamentMatchOverview({ match, tournament, isComplete }) {
 
 export default function TournamentMatchRoom() {
   const { id } = useParams();
-  const [match, setMatch] = useState(null);
-  const [tournament, setTournament] = useState(null);
+  return <TournamentMatchRoomView key={id} />;
+}
+
+function TournamentMatchRoomView() {
+  const { id } = useParams();
+  const [match, setMatch] = useRoomRecord();
+  const [tournament, setTournament] = useRoomRecord();
   const [bracketMatches, setBracketMatches] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -880,6 +887,31 @@ export default function TournamentMatchRoom() {
   useEffect(() => {
     loadRoom();
   }, [id]);
+
+  useEffect(() => {
+    let active = true;
+    let refreshing = false;
+    const refresh = async () => {
+      if (refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
+      try {
+        const [latest, parent] = await Promise.all([
+          base44.entities.TournamentMatch.getFresh(id),
+          match?.tournament_id ? base44.entities.Tournament.getFresh(match.tournament_id) : Promise.resolve(null),
+        ]);
+        if (!active) return;
+        setMatch(latest);
+        if (parent) setTournament(parent);
+      } catch (error) {
+        console.error("Failed to refresh tournament match:", error);
+      } finally {
+        refreshing = false;
+      }
+    };
+    const timer = window.setInterval(refresh, 3000);
+    window.addEventListener("focus", refresh);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, [id, match?.tournament_id]);
 
   // A completed flag without a winner is a stale/reset record, not a result.
   // Treating that state as complete produced the misleading "Winner:" / 0-0
@@ -952,9 +984,13 @@ export default function TournamentMatchRoom() {
       setLoading(true);
       const [currentUser, matchData] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.entities.TournamentMatch.get(id),
+        base44.entities.TournamentMatch.getFresh(id),
       ]);
       let activeMatch = matchData;
+      if (activeMatch.status === "cancelled") {
+        setMatch(activeMatch);
+        return;
+      }
       if (activeMatch.team_a_id && activeMatch.team_b_id) {
         // Sync active rooms and retrieve a read-only schedule for older
         // completed rooms without saved maps. Stored historical picks stay intact.
@@ -966,7 +1002,7 @@ export default function TournamentMatchRoom() {
         }
       }
       const [tournamentData, matchesData, rosters] = await Promise.all([
-        base44.entities.Tournament.get(activeMatch.tournament_id),
+        base44.entities.Tournament.getFresh(activeMatch.tournament_id),
         base44.entities.TournamentMatch.filterFresh({ tournament_id: activeMatch.tournament_id }, "round", 500).catch(() => []),
         matchRosters(activeMatch),
       ]);
@@ -982,9 +1018,10 @@ export default function TournamentMatchRoom() {
     } catch (error) {
       console.error("Failed to load tournament match:", error);
       toast({ title: "Error loading match", description: error.message || "Match not found.", variant: "destructive" });
-      setMatch(null);
-      setTeamAPlayers([]);
-      setTeamBPlayers([]);
+      if (!match) {
+        setTeamAPlayers([]);
+        setTeamBPlayers([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -1240,7 +1277,8 @@ export default function TournamentMatchRoom() {
     }
   };
 
-  if (loading) {
+  if (match?.status === "cancelled" || tournament?.status === "cancelled") return <CancelledMatchRedirect match={match} matchType="tournament" tournament={tournament} />;
+  if (loading && !match) {
     return <PageLoader label="Loading tournament match" />;
   }
 

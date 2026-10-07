@@ -22,6 +22,8 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
+import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
+import { useRoomRecord } from "@/components/match/useRoomRecord";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import RankedVoicePanel from "@/components/match/RankedVoicePanel";
 import RankBadge from "@/components/ui/RankBadge";
@@ -300,8 +302,13 @@ function RankedResultOverlay({ match, result, onContinue }) {
 
 export default function RankedMatchRoom() {
   const { id } = useParams();
+  return <RankedMatchRoomView key={id} />;
+}
+
+function RankedMatchRoomView() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [match, setMatch] = useState(null);
+  const [match, setMatch] = useRoomRecord();
   const [user, setUser] = useState(null);
   const [alphaPlayers, setAlphaPlayers] = useState([]);
   const [bravoPlayers, setBravoPlayers] = useState([]);
@@ -371,12 +378,6 @@ export default function RankedMatchRoom() {
     calculateTimeRemaining();
     return () => clearInterval(interval);
   }, [match?.match_start_deadline, match?.created_date]);
-
-  useEffect(() => {
-    if (match?.status === "cancelled") {
-      navigate("/ranked", { replace: true });
-    }
-  }, [match?.status, navigate]);
 
   const isParticipant = useMemo(() => (
     user?.id && (roomRosterIds(match, "alpha").includes(user.id) || roomRosterIds(match, "bravo").includes(user.id))
@@ -505,9 +506,13 @@ export default function RankedMatchRoom() {
       setLoading(true);
       const [currentUser, loadedMatch] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.entities.RankedMatch.get(id),
+        base44.entities.RankedMatch.getFresh(id),
       ]);
       let matchData = loadedMatch;
+      if (matchData.status === "cancelled") {
+        setMatch(matchData);
+        return;
+      }
 
       if (!matchData.final_map_name && roomRosterFull(matchData)) {
         const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
@@ -525,7 +530,6 @@ export default function RankedMatchRoom() {
     } catch (error) {
       console.error("Failed to load ranked match:", error);
       toast({ title: "Error loading match", description: error.message || "Match not found", variant: "destructive" });
-      setMatch(null);
     } finally {
       setLoading(false);
     }
@@ -704,7 +708,7 @@ export default function RankedMatchRoom() {
 
       if (response.data?.success) {
         toast({ title: "Ranked match cancelled" });
-        navigate("/ranked");
+        navigate("/ranked", { replace: true });
       } else {
         toast({ title: "Cancel failed", description: response.data?.error || "Could not cancel match.", variant: "destructive" });
       }
@@ -762,7 +766,8 @@ export default function RankedMatchRoom() {
     }
   };
 
-  if (loading) {
+  if (match?.status === "cancelled") return <CancelledMatchRedirect match={match} matchType="ranked" />;
+  if (loading && !match) {
     return (
       <>
         <PageLoader label="Loading ranked match" />

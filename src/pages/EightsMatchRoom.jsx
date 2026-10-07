@@ -10,10 +10,13 @@ import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay"
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
+import { loadFreeEightsProgression } from "@/lib/freeEightsData";
 import { isStaffUser } from "@/lib/roles";
 import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
 import { FreeEightsVoiceStatus } from "@/components/competition/FreeEightsDiscord";
+import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
+import { useRoomRecord } from "@/components/match/useRoomRecord";
 
 const closedStatuses = new Set(["completed", "cancelled"]);
 const scoreStatuses = new Set(["in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion"]);
@@ -140,9 +143,14 @@ function LobbyOverviewCard({ match, isMoneyEights, joined, openSpots, entryFee, 
 
 export default function EightsMatchRoom() {
   const { id } = useParams();
+  return <EightsMatchRoomView key={id} />;
+}
+
+function EightsMatchRoomView() {
+  const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const [match, setMatch] = useState(null);
+  const [match, setMatch] = useRoomRecord();
   const [user, setUser] = useState(null);
   const [teamAlpha, setTeamAlpha] = useState([]);
   const [teamBravo, setTeamBravo] = useState([]);
@@ -203,6 +211,10 @@ export default function EightsMatchRoom() {
         setUser(resolvedUser);
       });
       let latest = directLatest;
+      if (latest?.status === "cancelled") {
+        setMatch(latest);
+        return;
+      }
       const syncPromise = syncLobby();
       if (!latest || !["8s", "money8s"].includes(latest.match_type)) {
         latest = await syncPromise;
@@ -210,6 +222,7 @@ export default function EightsMatchRoom() {
         void syncPromise.then((synced) => {
           if (synced?.id && String(synced.id) === String(id)) {
             setMatch((previous) => {
+              if (previous?.status === "cancelled") return previous;
               const merged = previous ? { ...previous, ...synced } : synced;
               return lobbyMatchSnapshot(previous) === lobbyMatchSnapshot(merged) ? previous : merged;
             });
@@ -230,6 +243,7 @@ export default function EightsMatchRoom() {
         setTeamBravo(playersFromLobbyRows(rows, "challenger"));
       }
       if (hydratedRosterRef.current !== rosterSignature && hydratingRosterRef.current !== rosterSignature) {
+        if (latest.match_type === "8s" && hydrationTimerRef.current) window.clearTimeout(hydrationTimerRef.current);
         hydratingRosterRef.current = rosterSignature;
         const hydrate = () => {
           hydrationTimerRef.current = null;
@@ -244,10 +258,10 @@ export default function EightsMatchRoom() {
               // those as soon as they arrive; stats are a secondary pass.
               setTeamAlpha(rosters.teamAPlayers);
               setTeamBravo(rosters.teamBPlayers);
-              const [alpha, bravo] = await Promise.all([
-                hydrateProgression(rosters.teamAPlayers),
-                hydrateProgression(rosters.teamBPlayers),
-              ]);
+              const [alpha, bravo] = latest.match_type === "8s"
+                ? await loadFreeEightsProgression(base44, latest.id, [...rosters.teamAPlayers, ...rosters.teamBPlayers])
+                  .then((players) => [players.filter((player) => player.team === "host"), players.filter((player) => player.team === "challenger")])
+                : await Promise.all([hydrateProgression(rosters.teamAPlayers), hydrateProgression(rosters.teamBPlayers)]);
               if (rosterSignatureRef.current !== rosterSignature) return;
               setTeamAlpha(alpha);
               setTeamBravo(bravo);
@@ -264,7 +278,7 @@ export default function EightsMatchRoom() {
         currentUserRef.current = currentUser;
         setUser(currentUser);
       }
-      setMatch((previous) => lobbyMatchSnapshot(previous) === lobbyMatchSnapshot(latest) ? previous : latest);
+      setMatch((previous) => previous?.status === "cancelled" || lobbyMatchSnapshot(previous) === lobbyMatchSnapshot(latest) ? previous : latest);
     } catch (error) {
       if (!quiet) toast({ title: "Match room unavailable", description: error.message, variant: "destructive" });
     } finally {
@@ -569,6 +583,7 @@ export default function EightsMatchRoom() {
       if (!response.data?.success) throw new Error(response.data?.error || "Could not cancel match");
       setMatch(response.data.wager || { ...match, status: "cancelled" });
       toast({ title: "Match cancelled" });
+      navigate(isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s", { replace: true });
     } catch (error) {
       toast({ title: "Cancel failed", description: error.message, variant: "destructive" });
     } finally {
@@ -576,6 +591,7 @@ export default function EightsMatchRoom() {
     }
   };
 
+  if (match?.status === "cancelled") return <CancelledMatchRedirect match={match} matchType="8s" />;
   if (loading && !match) return <PageLoader label="Loading 8s match" />;
   if (!match) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="text-2xl font-black">Match not found</h1><Link to={isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s"} className="mt-5 inline-flex text-cyan">Back to {isMoneyEights ? "Money 8s" : "Ranked 8s"}</Link></div>;
 
