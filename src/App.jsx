@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-d
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageLoader from '@/components/ui/PageLoader';
+import { FreeEightsLoadingProvider } from '@/components/competition/FreeEightsLoading';
 import ScrollToTop from './components/ScrollToTop';
 import Ranked from '@/pages/Ranked';
 import RankedEights from '@/pages/RankedEights';
@@ -172,7 +173,9 @@ function App() {
     <AuthProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ScrollToTop />
-        <AuthenticatedApp />
+        <FreeEightsLoadingProvider>
+          <AuthenticatedApp />
+        </FreeEightsLoadingProvider>
       </Router>
       <DeferredToaster />
     </AuthProvider>

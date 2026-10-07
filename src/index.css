@@ -2766,10 +2766,26 @@ img {
   shape-rendering: geometricPrecision;
 }
 
+/* Free 8s opts into a steady ring across successive loading stages. */
+.page-logo-loader--continuous .page-logo-loader-orbit {
+  animation-delay: var(--page-loader-orbit-delay, 0ms);
+}
+
+.page-logo-loader--continuous .page-logo-loader-glow {
+  animation: none;
+  transform: none;
+  opacity: .85;
+  will-change: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* The page loader is functional feedback, so keep its progress cue moving. */
   .page-logo-loader-orbit { animation-play-state: running !important; }
   .page-logo-loader-glow { animation-play-state: running !important; }
+  .page-logo-loader--continuous .page-logo-loader-orbit {
+    animation: none !important;
+    will-change: auto;
+  }
 }
 
 /* Calm, compact competition navigation. Accent colors identify destinations without moving labels. */
