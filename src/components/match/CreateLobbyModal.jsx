@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { ConnectFreeEightsDiscord, hasFreeEightsDiscordLink } from "@/components/competition/FreeEightsDiscord";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
@@ -168,6 +169,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   }, [isOpen]);
 
   const handleCreate = async () => {
+    if (isEights && !hasFreeEightsDiscordLink(user)) {
+      toast({ title: "Connect Discord to join Free 8s", variant: "destructive" });
+      return;
+    }
     if (!hasActivisionId(user)) {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
@@ -735,13 +740,13 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   >
                     Back
                   </button>
-                  <button
+                  {isEights && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> : <button
                     onClick={() => isMoneyEights ? setStep(4) : handleCreate()}
                     disabled={isCreating}
                     className="create-cta px-6 py-2.5 font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider flex items-center gap-2"
                   >
                     <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isMoneyEights ? "Open Money 8s Lobby" : isEights ? "Open 8s Lobby" : "Create XP Match"}
-                  </button>
+                  </button>}
                 </div>
               </div>
             )}

@@ -6,6 +6,7 @@ import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
+import { ConnectFreeEightsDiscord, FreeEightsDiscordNotice, hasFreeEightsDiscordLink } from "@/components/competition/FreeEightsDiscord";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
 
@@ -69,6 +70,10 @@ export default function RankedEights() {
   const prizeActive = monthKey() >= EIGHTS_PRIZE_START_MONTH;
 
   const joinLobby = async (lobby) => {
+    if (!isMoney && !hasFreeEightsDiscordLink(user)) {
+      toast({ title: "Connect Discord to join Free 8s", variant: "destructive" });
+      return;
+    }
     if (!hasActivisionId(user)) {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
@@ -130,6 +135,7 @@ export default function RankedEights() {
                     playRule={lobby.play_rule}
                     tone="orange"
                     action={user ? (
+                      !isMoney && !alreadyIn && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> :
                       <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || joined >= 8} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
                         {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? `Finish active ${isMoney ? "Money 8s" : "8s"} first` : "Accept This Match"}
                       </button>
@@ -143,13 +149,14 @@ export default function RankedEights() {
             <Link to={`/8s-match/${activeLobby.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background">
               Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
             </Link>
-          ) : (
+          ) : !isMoney && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> : (
             <button onClick={() => setCreateOpen(true)} className="create-cta inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-xs font-black uppercase tracking-wider transition-all">
               <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
           )}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
+        {!isMoney && <FreeEightsDiscordNotice user={user} />}
 
         <section className={`mb-6 overflow-hidden rounded-2xl border bg-gradient-to-r via-card to-card ${isMoney ? "border-green/25 from-green/[0.11]" : "border-yellow-400/25 from-yellow-400/[0.11]"}`}>
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">

@@ -4,6 +4,7 @@ import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Use
 import { base44 } from "@/api/base44Client";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { toast } from "@/components/ui/use-toast";
+import { ConnectFreeEightsDiscord, FreeEightsDiscordNotice, hasFreeEightsDiscordLink } from "@/components/competition/FreeEightsDiscord";
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", active: "border-cyan/35 bg-cyan/10 text-cyan", dot: "bg-cyan" },
@@ -32,7 +33,7 @@ export default function Matchfinder() {
   const requestedWagerId = searchParams.get("accept");
   const requestedTeamId = searchParams.get("team");
   const autoOpenedWagerId = useRef("");
-  const [activeCategory, setActiveCategory] = useState("xp");
+  const [activeCategory, setActiveCategory] = useState(() => searchParams.get("category") === "eights" ? "eights" : "xp");
   const [user, setUser] = useState(null);
   const [xpMatches, setXpMatches] = useState([]);
   const [rankedMatches, setRankedMatches] = useState([]);
@@ -233,6 +234,10 @@ export default function Matchfinder() {
   };
 
   const acceptMatch = async (category, match) => {
+    if (category === "eights" && !hasFreeEightsDiscordLink(user)) {
+      toast({ title: "Connect Discord to join Free 8s", variant: "destructive" });
+      return;
+    }
     if (category === "wagers") {
       await openWagerAccept(match);
       return;
@@ -267,6 +272,9 @@ export default function Matchfinder() {
     }
     if (ownsMatch(item)) {
       return <button type="button" onClick={() => navigate(roomPath(activeCategory, item))} className="min-w-44 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open Match Room</button>;
+    }
+    if (activeCategory === "eights" && !hasFreeEightsDiscordLink(user)) {
+      return <ConnectFreeEightsDiscord returnTo="/matchfinder?category=eights" />;
     }
     return (
       <button type="button" disabled={acceptingId === item.id} onClick={() => acceptMatch(activeCategory, item)} className="min-w-44 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-wait disabled:opacity-50">
@@ -303,6 +311,7 @@ export default function Matchfinder() {
           })}
         </nav>
 
+        {activeCategory === "eights" && <FreeEightsDiscordNotice user={user} returnTo="/matchfinder?category=eights" />}
         <section className="mt-5 overflow-hidden rounded-2xl border border-white/[0.08] bg-card">
           <header className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

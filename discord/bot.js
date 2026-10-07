@@ -29,17 +29,31 @@ import { syncTournamentDiscord } from "./announcements.js";
 import { syncManagedDiscordRoles } from "./managed-roles.js";
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 import { syncTwitchLiveStreams } from "./streams.js";
+import { syncFreeEightsVoice } from "./free-eights-voice.js";
 
 const config = discordEnvironment();
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
 });
 let tournamentSyncRunning = false;
+let freeEightsVoiceSyncRunning = false;
+async function runFreeEightsVoiceSync(guild) {
+  if (freeEightsVoiceSyncRunning) return;
+  freeEightsVoiceSyncRunning = true;
+  try {
+    await syncFreeEightsVoice(guild);
+  } catch (error) {
+    console.error("[Topfragg Free 8s Discord] sync-failed:", error.message);
+  } finally {
+    freeEightsVoiceSyncRunning = false;
+  }
+}
 const recentPublicMessages = new Map();
 const publicChatKeys = ["general", "looking-for-team", "clips-and-content", "off-topic", "tournament-signups"];
 const spamPhrases = [/discord\.gift/i, /free\s+nitro/i, /claim\s+(your\s+)?airdrop/i, /send\s+(me\s+)?(your\s+)?token/i];
@@ -473,6 +487,8 @@ client.once(Events.ClientReady, async (readyClient) => {
     return;
   }
   await runTournamentDiscordSync(guild);
+  await runFreeEightsVoiceSync(guild);
+  setInterval(() => runFreeEightsVoiceSync(guild), 5000);
   await addControlsToExistingTickets(guild).catch((error) => console.error("[Topfragg Discord] Ticket control sync failed:", error));
   await syncMemberCount(guild).catch((error) => console.error("[Topfragg Discord] Member counter sync failed:", error));
   setInterval(() => runTournamentDiscordSync(guild), 60_000);
@@ -481,6 +497,11 @@ client.once(Events.ClientReady, async (readyClient) => {
 
 client.on(Events.GuildMemberAdd, syncMemberCountFromEvent);
 client.on(Events.GuildMemberRemove, syncMemberCountFromEvent);
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+  if (newState.guild.id === config.guildId && oldState.channelId !== newState.channelId) {
+    void runFreeEightsVoiceSync(newState.guild);
+  }
+});
 
 client.on(Events.MessageCreate, async (message) => {
   if (!message.guild || message.guild.id !== config.guildId || message.author.bot) return;

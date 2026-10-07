@@ -92,6 +92,7 @@ async function apiFetch(path, options = {}) {
 
   const request = fetch(`${API_BASE}${path}`, {
     method,
+    ...(options.credentials ? { credentials: options.credentials } : {}),
     headers: {
       "Content-Type": "application/json",
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
@@ -304,9 +305,13 @@ export const base44 = {
   },
   auth,
   discord: {
-    connect() {
+    connect(returnTo) {
       requireToken();
-      return apiFetch("/discord/connect", { method: "POST", dedupe: false });
+      return apiFetch("/discord/connect", { method: "POST", body: { return_to: returnTo }, credentials: "include", dedupe: false });
+    },
+    freeEightsVoice(wagerId) {
+      requireToken();
+      return apiFetch(`/discord/free-eights${wagerId ? `/${encodeURIComponent(wagerId)}` : ""}`, { dedupe: false });
     },
     status() {
       requireToken();

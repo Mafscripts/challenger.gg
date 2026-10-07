@@ -11,6 +11,7 @@ import { issueEightsLiveToken, publishEightsLobbyUpdate } from "../eights-live.j
 import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
 import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTrial.js";
+import { freeEightsDiscordJoinError, freeEightsVoiceLog } from "../free-eights-discord.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -6397,6 +6398,8 @@ async function createWager(req) {
   const entryFee = money(req.body.entry_fee ?? req.body.amount);
   const requestedMatchType = String(req.body.match_type || "").toLowerCase();
   const matchType = isEightsMatchType(requestedMatchType) ? requestedMatchType : requestedMatchType === "xp" ? "xp" : "wagers";
+  const discordError = freeEightsDiscordJoinError(matchType, req.userRow);
+  if (discordError) return discordError;
   const requiredSize = requiredRosterSize(req.body.team_size);
   const isTeamMatch = matchType === "wagers";
   const paymentMode = paymentModeFor(req.body.payment_mode);
@@ -6499,6 +6502,7 @@ async function createWager(req) {
       });
     }
   }
+  if (matchType === "8s") freeEightsVoiceLog("queue-join", { match_id: wager.id, user_id: req.user.id, action: "create" });
   return { success: true, wager, wager_id: wager.id };
 }
 
@@ -6508,6 +6512,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
   const shuffled = shuffledCopy(participantRows).slice(0, requiredSize * 2);
   const alpha = shuffled.slice(0, requiredSize);
   const bravo = shuffled.slice(requiredSize, requiredSize * 2);
+  if (wager.match_type === "8s") freeEightsVoiceLog("eight-players-found", { match_id: wager.id, players: shuffled.length });
   await Promise.all(shuffled.map((participant) => {
     const team = alpha.some((row) => row.id === participant.id) ? "host" : "challenger";
     return updateEntity("WagerParticipant", participant.id, {
@@ -6542,6 +6547,9 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     accepted_date: nowIso(),
   });
   publishEightsLobbyUpdate(wager.id, "teams-reshuffled");
+  if (wager.match_type === "8s") freeEightsVoiceLog("teams-generated", {
+    match_id: wager.id, team_a: alpha.map((row) => row.user_id), team_b: bravo.map((row) => row.user_id),
+  });
   return updated;
 }
 
@@ -6562,6 +6570,8 @@ async function acceptWagerUnlocked(req) {
   if (!wager || wager.status !== "open") {
     return { success: false, error: "Wager is not open" };
   }
+  const discordError = freeEightsDiscordJoinError(wager.match_type, req.userRow);
+  if (discordError) return discordError;
   const existingParticipant = await firstEntity("WagerParticipant", { wager_id: wager.id, user_id: req.user.id }).catch(() => null);
   if (existingParticipant && isEightsMatchType(wager.match_type)) {
     return { success: true, wager, wager_id: wager.id, rejoined: true };
@@ -6720,6 +6730,7 @@ async function acceptWagerUnlocked(req) {
     related_entity_type: "Wager",
   });
   if (isIndividualEights) publishEightsLobbyUpdate(wager.id, "player-joined");
+  if (wager.match_type === "8s") freeEightsVoiceLog("queue-join", { match_id: wager.id, user_id: req.user.id, action: "join" });
   return { success: true, wager: startState.wager, ready: startState.ready, final_map_name: startState.wager.final_map_name };
 }
 

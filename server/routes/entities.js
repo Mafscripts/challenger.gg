@@ -22,6 +22,7 @@ const protectedMutationEntities = new Set([
   "Purchase",
   "UserInventory",
   "Inventory",
+  "DiscordEventDispatch",
   "PremiumMembership",
 ]);
 
@@ -60,6 +61,7 @@ const discordIdentityFields = new Set([
   "discord_connected_at",
 ]);
 const sensitiveReadEntities = new Set([
+  "DiscordEventDispatch",
   "WalletTransaction",
   "CreditTransaction",
   "CreditPurchase",

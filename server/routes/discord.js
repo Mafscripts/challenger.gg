@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
+import { hasRole } from "../roles.js";
+import { freeEightsDiscordConfig, freeEightsVoiceClosed, freeEightsVoiceKey, publicFreeEightsVoiceStatus } from "../free-eights-discord.js";
 import {
   discordAvatarUrl,
   removeDiscordVerifiedRole,
@@ -47,16 +49,22 @@ const stateSignature = (payload, secret) => crypto
   .update(payload)
   .digest("base64url");
 
-const createState = (userId, secret) => {
+export const safeDiscordReturnTo = (path) => {
+  if (path === "/ranked/8s" || path === "/matchfinder?category=eights" || /^\/8s-match\/[a-zA-Z0-9_-]{1,100}$/.test(String(path || ""))) return path;
+  return "/settings";
+};
+
+export const createState = (userId, secret, returnTo = "/settings") => {
   const payload = Buffer.from(JSON.stringify({
     userId,
     nonce: crypto.randomBytes(16).toString("hex"),
     expiresAt: Date.now() + STATE_TTL_MS,
+    returnTo: safeDiscordReturnTo(returnTo),
   })).toString("base64url");
   return `${payload}.${stateSignature(payload, secret)}`;
 };
 
-const readState = (state, secret) => {
+export const readState = (state, secret) => {
   const [payload, signature] = String(state || "").split(".");
   if (!payload || !signature) return null;
   const expected = stateSignature(payload, secret);
@@ -67,17 +75,25 @@ const readState = (state, secret) => {
   }
   try {
     const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    if (!parsed.userId || Number(parsed.expiresAt) <= Date.now()) return null;
+    if (!parsed.userId || !Number.isFinite(Number(parsed.expiresAt)) || Number(parsed.expiresAt) <= Date.now()) return null;
     return parsed;
   } catch {
     return null;
   }
 };
 
-const settingsRedirect = (res, origin, status) => {
-  const url = new URL("/settings", origin);
+const settingsRedirect = (res, origin, status, returnTo = "/settings") => {
+  const url = new URL(safeDiscordReturnTo(returnTo), origin);
   url.searchParams.set("discord", status);
   res.redirect(302, url.toString());
+};
+
+const activeFreeEightsMembership = async (userId) => {
+  const rows = await prisma.wagerParticipant.findMany({ where: { metadata: { path: ["user_id"], equals: userId } } });
+  const ids = rows.map((row) => row.metadata?.wager_id).filter(Boolean);
+  if (!ids.length) return false;
+  const matches = await prisma.wager.findMany({ where: { id: { in: ids }, metadata: { path: ["match_type"], equals: "8s" } } });
+  return matches.some((row) => !freeEightsVoiceClosed.has(row.metadata?.status));
 };
 
 const exchangeCode = async ({ code, clientId, clientSecret, redirectUri }) => {
@@ -119,13 +135,19 @@ const currentDiscordUser = async (accessToken) => {
 router.post("/connect", requireAuth, async (req, res, next) => {
   try {
     const config = oauthConfig(req);
+    const state = createState(req.user.id, config.stateSecret, req.body?.return_to);
+    // Bind the signed account state to the browser that initiated linking.
+    res.cookie("topfragg_discord_oauth", stateSignature(state, config.stateSecret), {
+      httpOnly: true, secure: config.redirectUri.startsWith("https:"), sameSite: "lax",
+      path: "/api/discord/callback", maxAge: STATE_TTL_MS,
+    });
     const authorizationUrl = new URL("https://discord.com/oauth2/authorize");
     authorizationUrl.search = new URLSearchParams({
       client_id: config.clientId,
       response_type: "code",
       redirect_uri: config.redirectUri,
       scope: "identify",
-      state: createState(req.user.id, config.stateSecret),
+      state,
       prompt: "consent",
     }).toString();
     res.json({ authorization_url: authorizationUrl.toString() });
@@ -136,11 +158,18 @@ router.post("/connect", requireAuth, async (req, res, next) => {
 
 router.get("/callback", async (req, res) => {
   let config;
+  let returnTo = "/settings";
   try {
     config = oauthConfig(req);
-    if (req.query.error) return settingsRedirect(res, config.origin, "cancelled");
     const state = readState(req.query.state, config.stateSecret);
-    if (!state || !req.query.code) return settingsRedirect(res, config.origin, "invalid");
+    const cookie = String(req.headers.cookie || "").split(";").map((part) => part.trim()).find((part) => part.startsWith("topfragg_discord_oauth="))?.split("=")[1];
+    const expectedCookie = stateSignature(String(req.query.state || ""), config.stateSecret);
+    res.clearCookie("topfragg_discord_oauth", { path: "/api/discord/callback", httpOnly: true, sameSite: "lax", secure: config.redirectUri.startsWith("https:") });
+    if (!state || !cookie || cookie.length !== expectedCookie.length
+      || !crypto.timingSafeEqual(Buffer.from(cookie), Buffer.from(expectedCookie))) return settingsRedirect(res, config.origin, "invalid");
+    returnTo = safeDiscordReturnTo(state.returnTo);
+    if (req.query.error) return settingsRedirect(res, config.origin, "cancelled", returnTo);
+    if (!req.query.code) return settingsRedirect(res, config.origin, "invalid", returnTo);
 
     const accessToken = await exchangeCode({
       code: String(req.query.code),
@@ -151,10 +180,13 @@ router.get("/callback", async (req, res) => {
     const discordUser = await currentDiscordUser(accessToken);
     const existing = await prisma.user.findUnique({ where: { discord_user_id: discordUser.id } });
     if (existing && existing.id !== state.userId) {
-      return settingsRedirect(res, config.origin, "already-linked");
+      return settingsRedirect(res, config.origin, "already-linked", returnTo);
     }
     const topfraggUser = await prisma.user.findUnique({ where: { id: state.userId } });
-    if (!topfraggUser) return settingsRedirect(res, config.origin, "invalid");
+    if (!topfraggUser) return settingsRedirect(res, config.origin, "invalid", returnTo);
+    if (topfraggUser.discord_user_id && topfraggUser.discord_user_id !== discordUser.id && await activeFreeEightsMembership(topfraggUser.id)) {
+      return settingsRedirect(res, config.origin, "active-free-8s", returnTo);
+    }
 
     await prisma.user.update({
       where: { id: topfraggUser.id },
@@ -175,12 +207,32 @@ router.get("/callback", async (req, res) => {
       console.error("Discord role sync failed after OAuth:", error.message);
       callbackStatus = "connected-role-pending";
     }
-    return settingsRedirect(res, config.origin, callbackStatus);
+    return settingsRedirect(res, config.origin, callbackStatus, returnTo);
   } catch (error) {
     console.error("Discord OAuth callback failed:", error.message);
     const origin = config?.origin || String(process.env.TOPFRAGG_PUBLIC_URL || "https://topfragg.gg");
-    return settingsRedirect(res, origin, "error");
+    return settingsRedirect(res, origin, error.code === "P2002" ? "already-linked" : "error", returnTo);
   }
+});
+
+router.get("/free-eights/:wagerId", requireAuth, async (req, res, next) => {
+  try {
+    const row = await prisma.wager.findUnique({ where: { id: req.params.wagerId } });
+    if (row?.metadata?.match_type !== "8s") return res.status(404).json({ error: "Free 8s lobby not found" });
+    const rows = await prisma.wagerParticipant.findMany({ where: { metadata: { path: ["wager_id"], equals: row.id } } });
+    const participants = rows.map((participant) => participant.metadata);
+    if (!participants.some((participant) => participant.user_id === req.user.id) && !hasRole(req.user, "moderator")) {
+      return res.status(403).json({ error: "Only lobby players or staff can view voice readiness" });
+    }
+    const dispatch = await prisma.discordEventDispatch.findUnique({ where: { event_key: freeEightsVoiceKey(row.id) } });
+    res.json(publicFreeEightsVoiceStatus(freeEightsDiscordConfig(), row.metadata, participants, dispatch?.metadata));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/free-eights", requireAuth, (_req, res) => {
+  res.json(publicFreeEightsVoiceStatus(freeEightsDiscordConfig(), {}, [], null));
 });
 
 router.get("/status", requireAuth, async (req, res, next) => {
@@ -214,6 +266,9 @@ router.post("/sync", requireAuth, async (req, res, next) => {
 
 router.delete("/connection", requireAuth, async (req, res, next) => {
   try {
+    if (await activeFreeEightsMembership(req.user.id)) {
+      return res.status(409).json({ error: "Finish or leave your active Free 8s lobby before disconnecting Discord" });
+    }
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (user?.discord_user_id) {
       await removeDiscordVerifiedRole(user.discord_user_id).catch((error) => {

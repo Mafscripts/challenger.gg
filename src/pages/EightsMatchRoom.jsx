@@ -13,6 +13,7 @@ import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import { isStaffUser } from "@/lib/roles";
 import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
+import { FreeEightsVoiceStatus } from "@/components/competition/FreeEightsDiscord";
 
 const closedStatuses = new Set(["completed", "cancelled"]);
 const scoreStatuses = new Set(["in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion"]);
@@ -609,6 +610,7 @@ export default function EightsMatchRoom() {
           </div>
         )} beforeTeams={(
           <>
+        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} />}
         {!locked && !closedStatuses.has(match.status) && (
           <section className="m-3 rounded-xl border border-purple-300/20 bg-[#171722] p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -21,6 +21,7 @@ const callbackMessages = {
   cancelled: { success: false, message: "Discord connection was cancelled." },
   invalid: { success: false, message: "The Discord connection link expired. Please try again." },
   "already-linked": { success: false, message: "That Discord account is already connected to another Topfragg account." },
+  "active-free-8s": { success: false, message: "Finish or leave your active Free 8s lobby before changing Discord accounts." },
   error: { success: false, message: "Discord could not be connected. Please try again." },
 };
 
