@@ -124,7 +124,7 @@ export default function RankedEights() {
                   <CompetitionMatchfinderRow
                     key={lobby.id}
                     game={lobby.game_mode_display || lobby.game_mode}
-                    gameDetail={`4v4 · ${joined}/8 players`}
+                    gameDetail={`4v4 · ${joined}/8 joined`}
                     competition={isMoney ? "Money 8s" : "Free 8s"}
                     competitionDetail={`Hosted by ${lobby.host_name || "Player"} · BO${lobby.best_of || 3}`}
                     playRule={lobby.play_rule}

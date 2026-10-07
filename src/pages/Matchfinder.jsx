@@ -37,6 +37,7 @@ export default function Matchfinder() {
   const [xpMatches, setXpMatches] = useState([]);
   const [rankedMatches, setRankedMatches] = useState([]);
   const [wagerMatches, setWagerMatches] = useState([]);
+  const [eightsCounts, setEightsCounts] = useState({});
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState("");
@@ -76,6 +77,27 @@ export default function Matchfinder() {
   useEffect(() => {
     loadMatches();
   }, []);
+
+  useEffect(() => {
+    if (!["eights", "money8s"].includes(activeCategory)) return;
+    const matchType = activeCategory === "money8s" ? "money8s" : "8s";
+    const lobbies = wagerMatches.filter((match) => wagerType(match) === matchType);
+    if (!lobbies.length) return;
+    let cancelled = false;
+    const refreshCounts = async () => {
+      const counts = await Promise.all(lobbies.map(async (lobby) => {
+        const participants = await base44.entities.WagerParticipant.filterFresh({ wager_id: lobby.id }, "joined_date", 8).catch(() => null);
+        return [lobby.id, participants?.length ?? null];
+      }));
+      if (!cancelled) setEightsCounts(Object.fromEntries(counts));
+    };
+    refreshCounts();
+    const interval = window.setInterval(refreshCounts, 6000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [activeCategory, wagerMatches]);
 
   useEffect(() => {
     if (!requestedWagerId || autoOpenedWagerId.current === requestedWagerId) return;
@@ -300,7 +322,7 @@ export default function Matchfinder() {
                 <CompetitionMatchfinderRow
                   key={item.id}
                   game={isTournament ? item.name : displayMode(item)}
-                  gameDetail={isTournament ? `${item.team_size || "Team format"} · ${item.game || "Call of Duty"}` : `${item.team_size || "1v1"} · ${["eights", "money8s"].includes(activeCategory) ? "8-player lobby" : `${joined}/${slots} players`}`}
+                  gameDetail={isTournament ? `${item.team_size || "Team format"} · ${item.game || "Call of Duty"}` : ["eights", "money8s"].includes(activeCategory) ? `4v4 · ${eightsCounts[item.id] ?? "—"}/8 joined` : `${item.team_size || "1v1"} · ${joined}/${slots} players`}
                   competition={activeCategory === "xp" ? "XP Match" : activeCategory === "elo" ? "ELO Ranked" : activeCategory === "eights" ? "Free 8s" : activeCategory === "money8s" ? "Money 8s" : activeCategory === "wagers" ? `$${amount} Wager` : "Official Tournament"}
                   competitionDetail={isTournament ? `${item.current_teams || item.registered_teams || 0}/${item.max_teams || item.team_limit || "—"} teams registered` : `${activeCategory === "money8s" ? `$${amount.toFixed(2)} entry · ` : ""}Hosted by ${item.host_name || "Player"} · BO${item.best_of || 1}`}
                   playRule={item.play_rule}
