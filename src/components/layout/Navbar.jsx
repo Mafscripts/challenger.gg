@@ -10,6 +10,7 @@ import {
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
 
 const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const BALANCE_POPUP_DURATION_MS = 5200;
@@ -324,6 +325,8 @@ export default function Navbar() {
   const soundedAdminRequests = useRef(new Set());
   const pendingAdminRequestSoundId = useRef(null);
   const activeMatchesLoadedAt = useRef(0);
+  const activeMatchesRequestId = useRef(0);
+  const cancelledHeaderMatches = useRef(new Set());
   const activeAdminDisputeId = useRef(null);
   const dismissedAdminDisputes = useRef(new Set());
   const soundedAdminDisputes = useRef(new Set());
@@ -562,6 +565,9 @@ export default function Navbar() {
     setCreditBalance(0);
     setProfileAvatar("");
     setActiveMatches([]);
+    activeMatchesLoadedAt.current = 0;
+    activeMatchesRequestId.current += 1;
+    cancelledHeaderMatches.current.clear();
     setAdminRequest(null);
     activeAdminRequestId.current = null;
     dismissedAdminRequests.current.clear();
@@ -741,6 +747,21 @@ export default function Navbar() {
       else window.clearTimeout(idleHandle);
       window.clearInterval(refreshInterval);
     };
+  }, [isAuthenticated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    const handleCancelled = (event) => {
+      const { entityType, id } = event.detail || {};
+      if (!id || !["wager", "ranked", "xp", "tournament", "tournament-parent"].includes(entityType)) return;
+      const key = `${entityType}:${id}`;
+      if (cancelledHeaderMatches.current.has(key)) return;
+      cancelledHeaderMatches.current.add(key);
+      setActiveMatches((matches) => excludeCancelledHeaderMatches(matches, cancelledHeaderMatches.current));
+      void loadActiveMatches({ fresh: true, force: true });
+    };
+    window.addEventListener(matchCancelledEvent, handleCancelled);
+    return () => window.removeEventListener(matchCancelledEvent, handleCancelled);
   }, [isAuthenticated, authUser?.id]);
 
   useEffect(() => {
@@ -925,9 +946,10 @@ export default function Navbar() {
     }
   };
 
-  const loadActiveMatches = async ({ fresh = false } = {}) => {
-    if (Date.now() - activeMatchesLoadedAt.current < 12000) return;
+  const loadActiveMatches = async ({ fresh = false, force = false } = {}) => {
+    if (!force && Date.now() - activeMatchesLoadedAt.current < 12000) return;
     activeMatchesLoadedAt.current = Date.now();
+    const requestId = ++activeMatchesRequestId.current;
     try {
       const user = await base44.auth.me();
       if (!user) return;
@@ -971,15 +993,17 @@ export default function Navbar() {
       const tournamentIds = [...new Set((tournamentParticipants || []).map((participant) => participant.tournament_id).filter(Boolean))];
       const [tournamentMatchesByTournament, tournaments] = await Promise.all([
         Promise.all(tournamentIds.map((tournamentId) => (
-          base44.entities.TournamentMatch.filter({ tournament_id: tournamentId }, "-created_date", 256).catch(() => [])
+          base44.entities.TournamentMatch[fresh ? "filterFresh" : "filter"]({ tournament_id: tournamentId }, "-created_date", 256).catch(() => [])
         ))),
         Promise.all(tournamentIds.map((tournamentId) => (
-          base44.entities.Tournament.get(tournamentId).catch(() => null)
+          base44.entities.Tournament[fresh ? "getFresh" : "get"](tournamentId).catch(() => null)
         ))),
       ]);
       const tournamentNames = Object.fromEntries(tournaments.filter(Boolean).map((tournament) => [tournament.id, tournament.name]));
+      const cancelledTournamentIds = new Set(tournaments.filter((row) => row?.status === "cancelled").map((row) => row.id));
 
       tournamentMatchesByTournament.flat().forEach((match) => {
+        if (cancelledTournamentIds.has(match.tournament_id)) return;
         const side = tournamentMatchSideFor(match, participantKeySet);
         if (!side) return;
         if (match.completed || !activeTournamentStatuses.has(match.status)) return;
@@ -994,7 +1018,7 @@ export default function Navbar() {
         });
       });
 
-      const active = [...byId.values()]
+      const active = excludeCancelledHeaderMatches([...byId.values()], cancelledHeaderMatches.current)
         .filter((match) => (
           match.entity_type === "tournament"
             ? activeTournamentStatuses.has(match.status) && !match.completed
@@ -1006,9 +1030,9 @@ export default function Navbar() {
         ))
         .slice(0, 5);
       
-      setActiveMatches(active);
+      if (requestId === activeMatchesRequestId.current) setActiveMatches(active);
     } catch (error) {
-      activeMatchesLoadedAt.current = 0;
+      if (requestId === activeMatchesRequestId.current) activeMatchesLoadedAt.current = 0;
       console.error('Failed to load active matches:', error);
     }
   };

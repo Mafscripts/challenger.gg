@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import { createMatchChatFeed } from "../src/lib/matchChatFeed.js";
-import { cancelledMatchDestination, latestRoomRecord } from "../src/lib/cancelledMatchRoom.js";
+import { cancelledMatchDestination, excludeCancelledHeaderMatches, latestRoomRecord, matchCancelledEvent, notifyCancelledMatch, notifyCancelledMatchResponse } from "../src/lib/cancelledMatchRoom.js";
 import functionRoutes from "./routes/functions.js";
 import { prisma } from "./prisma.js";
 import { signUser } from "./auth.js";
@@ -13,6 +13,49 @@ function deferred() {
   const promise = new Promise((done) => { resolve = done; });
   return { promise, resolve };
 }
+
+test("confirmed cancellations update My Matches for each room type; failed requests and unfinished votes do not", (t) => {
+  const originalWindow = globalThis.window;
+  const browser = new EventTarget();
+  globalThis.window = browser;
+  t.after(() => { if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow; });
+  const events = [];
+  browser.addEventListener(matchCancelledEvent, (event) => events.push(event.detail));
+  for (const matchType of ["8s", "money8s", "wager"]) {
+    notifyCancelledMatchResponse({ success: true, wager: { id: matchType, match_type: matchType, status: "cancelled" } }, "refundWager");
+  }
+  for (const [name, entityType] of [["cancelRankedMatch", "ranked"], ["voteRankedCancellation", "ranked"], ["cancelXPMatch", "xp"], ["cancelTournamentMatch", "tournament"]]) {
+    notifyCancelledMatchResponse({ success: true, match: { id: name, status: "cancelled" } }, name);
+    assert.deepEqual(events.at(-1), { entityType, id: name });
+  }
+  notifyCancelledMatchResponse({ success: true, tournament: { id: "parent", status: "cancelled" } }, "cancelTournament");
+  assert.deepEqual(events.at(-1), { entityType: "tournament-parent", id: "parent" });
+  assert.deepEqual(events.slice(0, 3), ["8s", "money8s", "wager"].map((id) => ({ entityType: "wager", id })));
+  const count = events.length;
+  notifyCancelledMatchResponse({ success: false, wager: { id: "failed", status: "cancelled" } }, "refundWager");
+  notifyCancelledMatchResponse({ success: true, cancelled: false, match: { id: "vote", status: "in_progress" } }, "voteRankedCancellation");
+  notifyCancelledMatch({ id: "unknown", status: "cancelled" }, "User");
+  assert.equal(events.length, count);
+});
+
+test("My Matches cannot restore a cancellation from a late poll or remove another room with the same ID", async () => {
+  const cancellations = new Set();
+  const rows = [
+    { id: "shared", entity_type: "wager", status: "in_progress" },
+    { id: "shared", entity_type: "ranked", status: "in_progress" },
+    { id: "a", entity_type: "tournament", tournament_id: "parent" },
+    { id: "b", entity_type: "tournament", tournament_id: "other" },
+  ];
+  const oldPoll = deferred();
+  const result = oldPoll.promise.then((matches) => excludeCancelledHeaderMatches(matches, cancellations));
+  cancellations.add("wager:shared");
+  cancellations.add("tournament-parent:parent");
+  assert.deepEqual(excludeCancelledHeaderMatches(rows, cancellations), [rows[1], rows[3]]);
+  oldPoll.resolve(rows);
+  assert.deepEqual(await result, [rows[1], rows[3]]);
+  cancellations.add("tournament:b");
+  assert.deepEqual(excludeCancelledHeaderMatches(rows, cancellations), [rows[1]]);
+});
 function fixture(read, options = {}) {
   const changes = [], errors = [];
   const feed = createMatchChatFeed({ conversationId: "room", read, onChange: (rows) => changes.push(rows), onError: (error) => errors.push(error), ...options });

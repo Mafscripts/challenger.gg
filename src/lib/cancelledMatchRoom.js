@@ -18,3 +18,31 @@ export function latestRoomRecord(previous, incoming) {
   const newTime = Date.parse(incoming.updated_date);
   return Number.isFinite(oldTime) && Number.isFinite(newTime) && newTime < oldTime ? previous : incoming;
 }
+
+export const matchCancelledEvent = "topfragg:match-cancelled";
+const cancellationTypes = {
+  Wager: "wager", RankedMatch: "ranked", XPMatch: "xp",
+  TournamentMatch: "tournament", Tournament: "tournament-parent",
+};
+
+export function notifyCancelledMatch(match, entity) {
+  const entityType = cancellationTypes[entity];
+  if (match?.status !== "cancelled" || !match.id || !entityType || typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(matchCancelledEvent, { detail: { entityType, id: String(match.id) } }));
+}
+
+export function notifyCancelledMatchResponse(data, functionName) {
+  if (data?.success === false) return;
+  notifyCancelledMatch(data?.wager, "Wager");
+  notifyCancelledMatch(data?.tournament, "Tournament");
+  const entity = /ranked/i.test(functionName) ? "RankedMatch"
+    : /xp/i.test(functionName) ? "XPMatch"
+      : /tournament/i.test(functionName) ? "TournamentMatch" : null;
+  notifyCancelledMatch(data?.match, entity);
+}
+
+// Keep a confirmed cancellation excluded even when an older request finishes later.
+export function excludeCancelledHeaderMatches(matches, cancellations) {
+  return matches.filter((match) => !cancellations.has(`${match.entity_type}:${match.id}`)
+    && !(match.entity_type === "tournament" && cancellations.has(`tournament-parent:${match.tournament_id}`)));
+}

@@ -3,6 +3,7 @@ import {
   commerceUnavailableMessage,
   publicCommerceEnabled,
 } from "@/lib/commerce";
+import { notifyCancelledMatch, notifyCancelledMatchResponse } from "@/lib/cancelledMatchRoom";
 
 const normalizeApiBase = (value) => String(value || "").replace(/\/+$/, "");
 
@@ -271,6 +272,7 @@ const entityClient = (entity) => ({
     requireToken();
     const value = await apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`, { method: "PATCH", body: payload, dedupe: false });
     entityCache.clear();
+    notifyCancelledMatch(value, entity);
     if (entity === "Wallet" || entity === "WalletTransaction") invalidateMeCache();
     if (entity === "User" && meCache.value?.id === id) {
       meCache = { value, expiresAt: now() + ME_CACHE_MS, promise: null };
@@ -365,6 +367,7 @@ export const base44 = {
         entityCache.clear();
         invalidateMeCache();
       }
+      notifyCancelledMatchResponse(data, name);
       if (["completeRegistration", "createWallet"].includes(name)) {
         meCache = { value: data.user || data, expiresAt: now() + ME_CACHE_MS, promise: null };
       }
