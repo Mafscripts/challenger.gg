@@ -46,6 +46,7 @@ const lobbyMatchSnapshot = (value) => JSON.stringify([
   value?.confirmed_score_alpha,
   value?.confirmed_score_bravo,
   value?.wallet_changes,
+  value?.free_eights_elo_changes,
   value?.series_maps,
   value?.series_modes,
 ]);
@@ -171,7 +172,7 @@ export default function EightsMatchRoom() {
     ]);
     const xp = xpRows?.[0];
     const stats = statRows?.[0];
-    return { ...player, xp_level: xp?.level || 1, eights_rating: stats?.rating || 1000, eights_wins: stats?.wins || 0, eights_losses: stats?.losses || 0, monthly_wins: stats?.monthly_wins || 0 };
+    return { ...player, xp_level: xp?.level || 1, free_eights_elo: stats?.free_eights_elo ?? 0, eights_rating: stats?.rating || 1000, eights_wins: stats?.wins || 0, eights_losses: stats?.losses || 0, monthly_wins: stats?.monthly_wins || 0 };
   })), []);
 
   const loadRoom = useCallback(async (quiet = false) => {
@@ -216,7 +217,7 @@ export default function EightsMatchRoom() {
         });
       }
       if (!['8s', 'money8s'].includes(latest?.match_type)) throw new Error("This is not an 8s match");
-      const rosterSignature = (rows || [])
+      const rosterSignature = `${latest.match_type === "8s" ? latest.free_eights_elo_applied_at || "" : ""}|` + (rows || [])
         .map((row) => [row.id, row.user_id, row.team, row.is_captain, row.updated_date].join(":"))
         .sort()
         .join("|");
@@ -629,9 +630,9 @@ export default function EightsMatchRoom() {
           </>
         )} teams={(
           <>
-            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
+            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} freeEights={match.match_type === "8s"} eloChanges={match.free_eights_elo_changes} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
             <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
-            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
+            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} freeEights={match.match_type === "8s"} eloChanges={match.free_eights_elo_changes} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
           </>
         )} sidebar={(
           <>

@@ -83,7 +83,7 @@ const userFields = new Set([
 const toDate = (value) => value ? new Date(value) : null;
 const directEntityFields = new Set(["id", "created_date", "updated_date"]);
 const metadataFilterEntities = new Set([
-  "PlayerProfile", "RankedStats", "XPStats", "Wallet", "UserInventory",
+  "PlayerProfile", "RankedStats", "XPStats", "EightsStats", "Wallet", "UserInventory",
   "TeamMember", "Wager", "WagerParticipant", "RankedMatch", "XPMatch",
   "TournamentParticipant", "TournamentMatch", "Message", "ChatMessage", "TradeOffer",
   "WalletTransaction", "CreditTransaction", "CreditPurchase",

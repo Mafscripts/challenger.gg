@@ -12,6 +12,7 @@ import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
 import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTrial.js";
 import { freeEightsDiscordJoinError, freeEightsVoiceLog } from "../free-eights-discord.js";
+import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -7497,7 +7498,7 @@ async function completeWagerUnlocked(req) {
   if (winnerUserIds.length === 0 && winnerId) winnerUserIds.push(winnerId);
   if (loserUserIds.length === 0 && loserId) loserUserIds.push(loserId);
 
-  await updateEntity("Wager", wager.id, {
+  const completion = {
     status: "completed",
     winner_id: winnerId,
     winner_name: winnerName,
@@ -7516,7 +7517,13 @@ async function completeWagerUnlocked(req) {
       eights_reshuffle_vote_count: 0,
       eights_reshuffle_vote_user_ids: [],
     } : {}),
-  });
+  };
+  if (wager.match_type === "8s") {
+    const result = await completeFreeEightsWithElo(prisma, wager.id, completion);
+    if (!result.applied) return { success: false, error: "Match is already completed" };
+  } else {
+    await updateEntity("Wager", wager.id, completion);
+  }
 
   await createEntity("WagerMatch", {
     wager_id: wager.id,

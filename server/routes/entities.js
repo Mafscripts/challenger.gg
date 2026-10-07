@@ -8,6 +8,7 @@ const protectedMutationEntities = new Set([
   // routing and must only be changed through their server-side actions.
   "Wager",
   "WagerParticipant",
+  "EightsStats",
   "RankedMatch",
   "RankedParticipant",
   "TournamentMatch",

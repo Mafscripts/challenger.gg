@@ -2,6 +2,15 @@
   "name": "Wager",
   "type": "object",
   "properties": {
+    "free_eights_elo_changes": {
+      "type": "object",
+      "title": "Free 8s ELO changes by user ID"
+    },
+    "free_eights_elo_applied_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Free 8s ELO committed at"
+    },
     "host_id": {
       "type": "string",
       "title": "Host User ID"

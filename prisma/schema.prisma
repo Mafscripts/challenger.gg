@@ -549,6 +549,7 @@ model EightsLobbyParticipant {
 
 model EightsStats {
   id           String   @id @default(cuid())
+  free_eights_elo Int    @default(0)
   created_date DateTime @default(now())
   updated_date DateTime @updatedAt
   metadata     Json     @default("{}")

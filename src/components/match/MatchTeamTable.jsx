@@ -4,6 +4,8 @@ import { AtSign, Globe2, MessageCircle, Trophy, Twitch, Youtube } from "lucide-r
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
+import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
+import { normalizeFreeEightsElo } from "@/lib/freeEightsRanks";
 
 const number = (value) => {
   const parsed = Number(value || 0);
@@ -84,7 +86,7 @@ function PlayerSocials({ player }) {
   );
 }
 
-export default function MatchTeamTable({ label, name, color = "cyan", seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0 }) {
+export default function MatchTeamTable({ label, name, color = "cyan", seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, eloChanges = {} }) {
   const isOrange = color === "orange";
   const toneClass = isOrange ? "text-orange" : "text-cyan";
   const tintClass = isOrange ? "border-orange/30 bg-orange/10" : "border-cyan/30 bg-cyan/10";
@@ -107,7 +109,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
         {isComplete && name ? <div className="min-w-28 shrink-0 rounded-xl border border-white/[0.08] bg-black/20 px-5 py-2.5 text-center"><p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Final score</p><p className={`mt-1 font-mono text-2xl font-black tabular-nums ${toneClass}`}>{finalScore ?? 0}</p></div> : null}
       </header>
 
-      <div className="hidden grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_105px_minmax(210px,1fr)_86px] gap-3 border-y border-white/[0.07] bg-[#141a22] px-5 py-3 text-[8px] font-black uppercase tracking-[0.18em] text-vapor xl:grid"><span>User</span><span>Gamertag</span><span>Record</span><span>Earnings</span><span>Trophies</span><span>Socials</span></div>
+      <div className="hidden grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_105px_minmax(210px,1fr)_86px] gap-3 border-y border-white/[0.07] bg-[#141a22] px-5 py-3 text-[8px] font-black uppercase tracking-[0.18em] text-vapor xl:grid"><span>User</span><span>Gamertag</span><span>Record</span><span>{freeEights ? "Free 8s ELO" : "Earnings"}</span><span>Trophies</span><span>Socials</span></div>
       {players.length === 0 ? <div className="flex min-h-28 items-center justify-center border-t border-white/[0.06] text-xs text-vapor">Roster unavailable</div> : (
         <div className="divide-y divide-white/[0.055]">
           {players.map((player, index) => {
@@ -121,11 +123,11 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
               <article key={userId || `${displayName}-${index}`} className="match-player-card grid gap-4 bg-[#0e1319] px-4 py-4 transition-colors hover:bg-[#151c25] sm:px-5 xl:grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_105px_minmax(210px,1fr)_86px] xl:items-center xl:gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border font-mono text-sm font-black ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}</span>
-                  <div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2">{profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white transition-colors ${hoverToneClass} ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</Link> : <span data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</span>}<TournamentRankBadge goldTrophies={trophies.gold} /><UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" /></div><p className={`mt-1 truncate text-[9px] font-black uppercase ${role === "captain" ? "text-cyan" : "text-vapor"}`}>{role === "captain" ? "Captain" : "Member"}</p></div>
+                  <div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2">{profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white transition-colors ${hoverToneClass} ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</Link> : <span data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</span>}{freeEights ? <FreeEightsRankBadge elo={player.free_eights_elo} /> : <TournamentRankBadge goldTrophies={trophies.gold} />}<UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" /></div><p className={`mt-1 truncate text-[9px] font-black uppercase ${role === "captain" ? "text-cyan" : "text-vapor"}`}>{role === "captain" ? "Captain" : "Member"}</p></div>
                 </div>
                 <div className="min-w-0"><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Gamertag</p><div className="inline-flex max-w-full rounded-lg border border-white/[0.18] bg-[#30343a] px-3 py-2"><ActivisionIdLabel user={player} className="max-w-full" /></div></div>
                 <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Record</p><p className="font-mono text-sm font-black"><span className="text-white">{record.wins}W</span><span className="mx-1.5 text-white/20">/</span><span className="text-vapor">{record.losses}L</span></p></div>
-                <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Earnings</p><p className="font-mono text-sm font-black text-green">{money(earningsFor(player))}</p></div>
+                {freeEights ? <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Free 8s ELO</p><p className="font-mono text-sm font-black text-cyan">{normalizeFreeEightsElo(player.free_eights_elo).toLocaleString()}</p>{isComplete && eloChanges?.[userId] && <p className={`mt-1 text-[9px] font-bold ${eloChanges[userId].delta > 0 ? "text-green" : "text-vapor"}`}>{eloChanges[userId].delta > 0 ? "+" : ""}{eloChanges[userId].delta} this match</p>}</div> : <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Earnings</p><p className="font-mono text-sm font-black text-green">{money(earningsFor(player))}</p></div>}
                 <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Trophies</p><TrophyCounts trophies={trophies} /></div>
                 <div><p className="mb-1 text-[8px] font-black uppercase tracking-wider text-vapor xl:hidden">Socials</p><PlayerSocials player={player} /></div>
               </article>

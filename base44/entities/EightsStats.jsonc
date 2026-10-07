@@ -2,6 +2,11 @@
   "name": "EightsStats",
   "type": "object",
   "properties": {
+    "free_eights_elo": {
+      "type": "number",
+      "default": 0,
+      "title": "Free 8s ELO (separate ladder)"
+    },
     "user_id": {
       "type": "string",
       "title": "User ID"
