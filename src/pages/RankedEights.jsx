@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, CalendarDays, Crown, Plus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -6,7 +6,7 @@ import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
-import { ConnectFreeEightsDiscord, FreeEightsDiscordNotice, hasFreeEightsDiscordLink } from "@/components/competition/FreeEightsDiscord";
+import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordNotice, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
 
@@ -31,6 +31,8 @@ export default function RankedEights() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [discordPromptOpen, setDiscordPromptOpen] = useState(false);
+  const discordPromptTrigger = useRef(null);
   const isMoney = searchParams.get("mode") === "money";
   const lobbyMatchType = isMoney ? "money8s" : "8s";
 
@@ -70,8 +72,9 @@ export default function RankedEights() {
   const prizeActive = monthKey() >= EIGHTS_PRIZE_START_MONTH;
 
   const joinLobby = async (lobby) => {
+    discordPromptTrigger.current = document.activeElement;
     if (!isMoney && !hasFreeEightsDiscordLink(user)) {
-      toast({ title: "Connect Discord to join Free 8s", variant: "destructive" });
+      setDiscordPromptOpen(true);
       return;
     }
     if (!hasActivisionId(user)) {
@@ -81,6 +84,10 @@ export default function RankedEights() {
     setJoining(lobby.id);
     try {
       const response = await base44.functions.invoke("acceptWager", { wager_id: lobby.id });
+      if (!isMoney && isFreeEightsDiscordRequired(response.data)) {
+        setDiscordPromptOpen(true);
+        return;
+      }
       if (!response.data?.success) throw new Error(response.data?.error || "Could not join this lobby");
       if (isMoney && Number(lobby.entry_fee || lobby.amount || 0) > 0) {
         window.dispatchEvent(new CustomEvent("topfragg:balance-popup", {
@@ -97,6 +104,10 @@ export default function RankedEights() {
       }
       navigate(`/8s-match/${lobby.id}`);
     } catch (error) {
+      if (!isMoney && isFreeEightsDiscordRequired(error)) {
+        setDiscordPromptOpen(true);
+        return;
+      }
       toast({ title: "Could not join", description: error.message, variant: "destructive" });
       await load(true);
     } finally {
@@ -135,7 +146,6 @@ export default function RankedEights() {
                     playRule={lobby.play_rule}
                     tone="orange"
                     action={user ? (
-                      !isMoney && !alreadyIn && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> :
                       <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || joined >= 8} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
                         {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? `Finish active ${isMoney ? "Money 8s" : "8s"} first` : "Accept This Match"}
                       </button>
@@ -178,6 +188,7 @@ export default function RankedEights() {
 
       </div>
       <CreateLobbyModal isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} />
+      {!isMoney && <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} />}
     </div>
   );
 }

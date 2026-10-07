@@ -4,7 +4,7 @@ import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Use
 import { base44 } from "@/api/base44Client";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { toast } from "@/components/ui/use-toast";
-import { ConnectFreeEightsDiscord, FreeEightsDiscordNotice, hasFreeEightsDiscordLink } from "@/components/competition/FreeEightsDiscord";
+import { FreeEightsDiscordDialog, FreeEightsDiscordNotice, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", active: "border-cyan/35 bg-cyan/10 text-cyan", dot: "bg-cyan" },
@@ -42,6 +42,8 @@ export default function Matchfinder() {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState("");
+  const [discordPromptOpen, setDiscordPromptOpen] = useState(false);
+  const discordPromptTrigger = useRef(null);
   const [wagerToAccept, setWagerToAccept] = useState(null);
   const [wagerTeams, setWagerTeams] = useState([]);
   const [selectedWagerTeamId, setSelectedWagerTeamId] = useState("");
@@ -234,8 +236,9 @@ export default function Matchfinder() {
   };
 
   const acceptMatch = async (category, match) => {
+    if (category === "eights") discordPromptTrigger.current = document.activeElement;
     if (category === "eights" && !hasFreeEightsDiscordLink(user)) {
-      toast({ title: "Connect Discord to join Free 8s", variant: "destructive" });
+      setDiscordPromptOpen(true);
       return;
     }
     if (category === "wagers") {
@@ -253,9 +256,17 @@ export default function Matchfinder() {
         : category === "elo"
           ? await base44.functions.invoke("acceptRankedMatch", { ranked_match_id: match.id })
           : await base44.functions.invoke("acceptWager", { wager_id: match.id });
+      if (category === "eights" && isFreeEightsDiscordRequired(response.data)) {
+        setDiscordPromptOpen(true);
+        return;
+      }
       if (!response.data?.success) throw new Error(response.data?.error || "This match could not be accepted.");
       navigate(roomPath(category, match));
     } catch (error) {
+      if (category === "eights" && isFreeEightsDiscordRequired(error)) {
+        setDiscordPromptOpen(true);
+        return;
+      }
       toast({ title: "Could not accept match", description: error.message || "Please try again.", variant: "destructive" });
       await loadMatches();
     } finally {
@@ -273,9 +284,6 @@ export default function Matchfinder() {
     if (ownsMatch(item)) {
       return <button type="button" onClick={() => navigate(roomPath(activeCategory, item))} className="min-w-44 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open Match Room</button>;
     }
-    if (activeCategory === "eights" && !hasFreeEightsDiscordLink(user)) {
-      return <ConnectFreeEightsDiscord returnTo="/matchfinder?category=eights" />;
-    }
     return (
       <button type="button" disabled={acceptingId === item.id} onClick={() => acceptMatch(activeCategory, item)} className="min-w-44 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-wait disabled:opacity-50">
         {acceptingId === item.id ? "Accepting..." : "Accept This Match"}
@@ -285,6 +293,7 @@ export default function Matchfinder() {
 
   return (
     <main className="min-h-screen py-8">
+      <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} returnTo="/matchfinder?category=eights" />
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <section className="relative isolate min-h-[350px] overflow-hidden rounded-2xl border border-white/[0.1] bg-[#07111c] shadow-[0_18px_60px_rgba(0,0,0,.24)] lg:min-h-[370px]" aria-labelledby="matchfinder-title">
           <img src="/assets/competition/matchfinder-hero.png" alt="Topfragg Matchfinder competition hub" className="absolute inset-0 h-full w-full object-cover object-center" />

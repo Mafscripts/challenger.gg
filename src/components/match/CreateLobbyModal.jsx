@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { ConnectFreeEightsDiscord, hasFreeEightsDiscordLink } from "@/components/competition/FreeEightsDiscord";
+import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
@@ -107,6 +107,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const [selectedPlayRule, setSelectedPlayRule] = useState("controller_only");
   const [step, setStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
+  const [discordPromptOpen, setDiscordPromptOpen] = useState(false);
 
   const isWager = mode === "wager";
   const isRanked = mode === "ranked" || mode === "xp";
@@ -170,7 +171,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
   const handleCreate = async () => {
     if (isEights && !hasFreeEightsDiscordLink(user)) {
-      toast({ title: "Connect Discord to join Free 8s", variant: "destructive" });
+      setDiscordPromptOpen(true);
       return;
     }
     if (!hasActivisionId(user)) {
@@ -305,6 +306,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             match_type: matchType,
           });
 
+          if (isEights && isFreeEightsDiscordRequired(response.data)) {
+            setDiscordPromptOpen(true);
+            setIsCreating(false);
+            return;
+          }
           if (response.data.error) {
             toast({
               title: "Failed to create lobby",
@@ -356,6 +362,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         setIsCreating(false);
         onClose();
       } catch (error) {
+        if (isEights && isFreeEightsDiscordRequired(error)) {
+          setDiscordPromptOpen(true);
+          setIsCreating(false);
+          return;
+        }
         console.error("Failed to create lobby:", error);
         toast({
           title: "Error",
@@ -376,12 +387,15 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     setSelectedTeamId("");
     setPaymentMode("own");
     setSelectedPlayRule("controller_only");
+    setDiscordPromptOpen(false);
     onClose();
   };
 
   if (!isOpen || typeof document === "undefined") return null;
 
   return createPortal(
+      <>
+      {isEights && <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} />}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -753,7 +767,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
           </div>
         </motion.div>
-      </motion.div>,
+      </motion.div>
+      </>,
       document.body,
   );
 }

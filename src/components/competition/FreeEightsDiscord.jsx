@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Link2, Loader2, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { toast } from "@/components/ui/use-toast";
+import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export const hasFreeEightsDiscordLink = (user) => /^\d{17,20}$/.test(String(user?.discord_user_id || "")) && Boolean(user?.discord_connected_at);
+export const isFreeEightsDiscordRequired = (result) => result?.code === "FREE_EIGHTS_DISCORD_REQUIRED"
+  || result?.data?.code === "FREE_EIGHTS_DISCORD_REQUIRED"
+  || (result?.error || result?.message) === "Connect Discord to join Free 8s";
 
 const voiceLabels = {
   checking: "Checking voice…",
@@ -14,19 +19,60 @@ const voiceLabels = {
   move_failed: "Voice move failed · bot will retry",
 };
 
-export function ConnectFreeEightsDiscord({ returnTo = "/ranked/8s" }) {
+export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranked/8s", trigger, returnFocusTo }) {
   const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState("");
+  const connectButton = useRef(null);
+  const opener = useRef(null);
+  useEffect(() => { if (open) setError(""); }, [open]);
   const connect = async () => {
+    if (connecting) return;
     setConnecting(true);
+    setError("");
     try {
       const result = await base44.discord.connect(returnTo);
       window.location.assign(result.authorization_url);
     } catch (error) {
-      toast({ title: "Discord connection unavailable", description: error.message, variant: "destructive" });
+      setError(error.message || "Discord could not be connected. Please try again.");
       setConnecting(false);
     }
   };
-  return <button type="button" onClick={connect} disabled={connecting} className="rounded-lg border border-purple-300/30 bg-purple-300/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-purple-200 disabled:opacity-50">{connecting ? "Connecting…" : "Connect Discord to join Free 8s"}</button>;
+  return <Dialog open={open} onOpenChange={(value) => { if (value) setError(""); onOpenChange?.(value); }}>
+    {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+    <DialogPortal>
+      <DialogOverlay className="z-[110] bg-black/70 backdrop-blur-sm" />
+      <DialogPrimitive.Content
+        className="fixed left-1/2 top-1/2 z-[120] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-purple-400/25 bg-card p-6 text-foreground shadow-[0_24px_80px_rgba(0,0,0,.6)] sm:p-7"
+        onOpenAutoFocus={(event) => { opener.current = document.activeElement; event.preventDefault(); connectButton.current?.focus(); }}
+        onCloseAutoFocus={(event) => { event.preventDefault(); const target = returnFocusTo?.current || opener.current; if (target?.isConnected) target.focus(); }}
+      >
+        <DialogClose asChild><button type="button" aria-label="Close Discord connection popup" className="absolute right-4 top-4 rounded-lg p-1.5 text-vapor transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"><X className="h-5 w-5" /></button></DialogClose>
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-purple-400/25 bg-purple-400/15 text-purple-300"><ShieldCheck className="h-6 w-6" /></div>
+        <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-purple-300">Free 8s · Discord connection</p>
+        <DialogTitle className="pr-5 text-2xl font-black leading-tight text-white">Connect Discord to join Free 8s</DialogTitle>
+        <DialogDescription className="mt-3 text-sm leading-6 text-vapor">Discord linking is required so Topfragg can identify you and move you into your team’s voice channel when teams are ready.</DialogDescription>
+        <div className="mt-5 rounded-xl border border-white/[0.08] bg-black/20 p-4">
+          <p className="text-xs font-bold text-white">What happens next?</p>
+          <ol className="mt-2 list-decimal space-y-2 pl-4 text-xs leading-5 text-vapor">
+            <li>Connect Discord securely, then return here and accept the match.</li>
+            <li>Join the <span className="font-bold text-white">8s Waiting Room</span> yourself.</li>
+            <li>Once both team channels are ready, the bot moves players connected to the waiting room into their assigned team voice.</li>
+          </ol>
+        </div>
+        <p className="mt-4 text-xs leading-5 text-vapor"><span className="font-bold text-white">Without linking, you cannot create or join Free 8s.</span> You can close this popup and connect later. During this voice test, missing voice players do not cancel the match.</p>
+        <p className="mt-3 text-[11px] leading-5 text-vapor">Discord asks you to approve access to your basic profile. Your Discord password is never shared with Topfragg.</p>
+        {error && <p role="alert" className="mt-4 rounded-lg border border-orange/25 bg-orange/5 px-3 py-2 text-xs leading-5 text-orange">{error}</p>}
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
+          <button ref={connectButton} type="button" onClick={connect} disabled={connecting} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#5865F2] px-5 py-3 text-xs font-black text-white transition hover:bg-[#4752C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60">{connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}{connecting ? "Connecting…" : "Connect Discord"}</button>
+          <DialogClose asChild><button type="button" className="rounded-xl border border-white/10 px-5 py-3 text-xs font-bold text-vapor transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">Not now</button></DialogClose>
+        </div>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  </Dialog>;
+}
+
+export function ConnectFreeEightsDiscord({ returnTo = "/ranked/8s" }) {
+  return <FreeEightsDiscordDialog returnTo={returnTo} trigger={<button type="button" className="rounded-lg border border-purple-300/30 bg-purple-300/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-purple-200">Connect Discord to join Free 8s</button>} />;
 }
 
 export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
