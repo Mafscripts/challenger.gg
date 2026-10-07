@@ -105,6 +105,11 @@ const participantIdentityValues = (participant) => {
 };
 
 const router = Router();
+router.use("/:entity", (req, res, next) => {
+  if (String(req.params.entity).toLowerCase() === "rankverification") return res.status(403).json({ error: "Use the protected rank verification endpoints" });
+  if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method) && Object.hasOwn(req.body || {}, "screenshot_rank")) return res.status(403).json({ error: "Use rank verification or admin rank review" });
+  next();
+});
 const sensitiveIpFields = new Set([
   "ip",
   "ip_address",

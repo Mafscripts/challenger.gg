@@ -31,6 +31,7 @@ import RoleBadge from "@/components/ui/RoleBadge";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
+import { ScreenshotRankPill, ScreenshotRankUpload } from "@/components/profile/ScreenshotRank";
 import { base44 } from "@/api/base44Client";
 import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
@@ -599,6 +600,7 @@ export default function Profile() {
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h1 data-name-effect={selectedNameColor || undefined} className={`player-name-wrap shrink-0 font-heading text-3xl font-black leading-tight text-white sm:text-4xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
                   <RoleBadge role={user.role || "user"} />
+                  <ScreenshotRankPill rank={user.screenshot_rank} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
                 </div>
                 <p className="mt-2 max-w-2xl text-sm text-vapor">{profile?.bio || "No bio added yet."}</p>
@@ -650,6 +652,8 @@ export default function Profile() {
             </div>
           )}
         </section>
+
+        {isOwnProfile && <ScreenshotRankUpload key={user.id} userId={user.id} onRankChange={(rank) => setUser((current) => current?.id === user.id ? { ...current, screenshot_rank: rank } : current)} />}
 
         <nav className="mt-4 grid grid-cols-4 overflow-hidden rounded-xl border border-white/10 bg-card">
           {tabs.map(({ id, label, icon: Icon }) => (

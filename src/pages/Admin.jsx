@@ -49,6 +49,7 @@ import RankBadge from "@/components/ui/RankBadge";
 import PageHeader from "@/components/ui/PageHeader";
 import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
+import RankVerificationAdmin from "@/components/admin/RankVerificationAdmin";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
@@ -233,6 +234,7 @@ const tabs = [
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
   { id: "live8s", label: "Live 8s Rooms", icon: Radio },
   { id: "ranked", label: "Ranked Management", icon: Swords },
+  { id: "verifyRank", label: "Verify Rank", icon: UserCheck },
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "tournamentMatches", label: "Tournament Matches", icon: ClipboardList },
   { id: "wallets", label: "Wallets", icon: Wallet },
@@ -2140,6 +2142,7 @@ export default function Admin() {
         </div>
 
         <div className="admin-workspace glass overflow-hidden rounded-xl border">
+          {activeTab === "verifyRank" && <RankVerificationAdmin users={data.users} />}
           {activeTab === "dashboard" && (
             <div className="p-6">
               <h2 className="text-lg font-bold mb-4">Operational Overview</h2>

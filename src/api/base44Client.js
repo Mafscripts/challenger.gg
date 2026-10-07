@@ -290,6 +290,24 @@ const entityClient = (entity) => ({
 });
 
 export const base44 = {
+  rankVerification: {
+    me() { requireToken(); return apiFetch("/rank-verification/me", { dedupe: false }); },
+    async submit(image) {
+      requireToken();
+      const result = await apiFetch("/rank-verification/submit", { method: "POST", body: { image }, dedupe: false });
+      invalidateApiCache();
+      return result;
+    },
+    list(status, cursor) { requireToken(); return apiFetch(`/rank-verification/admin${toQuery({ status, cursor })}`, { dedupe: false }); },
+    player(userId) { requireToken(); return apiFetch(`/rank-verification/admin/${encodeURIComponent(userId)}`, { dedupe: false }); },
+    image(userId, attemptId) { requireToken(); return apiFetch(`/rank-verification/image/${encodeURIComponent(userId)}/${encodeURIComponent(attemptId)}`, { dedupe: false }); },
+    async review(userId, payload) {
+      requireToken();
+      const result = await apiFetch(`/rank-verification/admin/${encodeURIComponent(userId)}`, { method: "POST", body: payload, dedupe: false });
+      invalidateApiCache();
+      return result;
+    },
+  },
   profile: {
     async trophyCounts(userIds) {
       requireToken();

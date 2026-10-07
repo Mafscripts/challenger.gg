@@ -90,6 +90,20 @@ model UserSettings {
   metadata     Json     @default("{}")
 }
 
+model RankVerification {
+  user_id          String   @id
+  status           String   @default("idle")
+  failed_attempts  Int      @default(0)
+  attempts         Json     @default("[]")
+  last_submitted_at DateTime?
+  reviewed_by      String?
+  review_reason    String?
+  created_date     DateTime @default(now())
+  updated_date     DateTime @updatedAt
+
+  @@index([status, updated_date])
+}
+
 model ReferralProgram {
   key            String   @id @default("default")
   enabled        Boolean  @default(true)
