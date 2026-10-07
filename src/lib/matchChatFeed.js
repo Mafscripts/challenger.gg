@@ -6,10 +6,19 @@ export function createMatchChatFeed({ conversationId, read, onChange, onError, l
   let signature = "";
   let messages = [];
   const pending = new Map();
+  const optimistic = new Map();
   const belongs = (row) => row?.id && (!row.conversation_id || String(row.conversation_id) === String(conversationId));
+  const acknowledges = (server, local) => !server.sending && server.client_message_id === local.client_message_id
+    && String(server.sender_id) === String(local.sender_id) && belongs(server);
   const publish = (rows) => {
     const byId = new Map(rows.filter(belongs).map((row) => [String(row.id), row]));
     for (const [id, row] of pending) if (!byId.has(id)) byId.set(id, row);
+    for (const [id, row] of optimistic) {
+      if ([...byId.values()].some((server) => acknowledges(server, row))) {
+        optimistic.delete(id);
+        byId.delete(id);
+      } else byId.set(id, row);
+    }
     const next = [...byId.values()].sort((a, b) => {
       const date = (Date.parse(a.created_date) || 0) - (Date.parse(b.created_date) || 0);
       return date || String(a.id).localeCompare(String(b.id));
@@ -47,6 +56,29 @@ export function createMatchChatFeed({ conversationId, read, onChange, onError, l
       publish([...messages.filter((row) => String(row.id) !== String(message.id)), message]);
       return true;
     },
-    dispose() { disposed = true; pending.clear(); },
+    beginSend(message) {
+      if (disposed || !belongs(message) || !message.client_message_id) return false;
+      const local = { ...message, sending: true };
+      optimistic.set(String(local.id), local);
+      publish([...messages, local]);
+      return true;
+    },
+    confirmSend(localId, message) {
+      if (disposed || !belongs(message)) return false;
+      optimistic.delete(String(localId));
+      pending.set(String(message.id), message);
+      publish([...messages.filter((row) => String(row.id) !== String(localId)), message]);
+      return true;
+    },
+    failSend(localId) {
+      if (disposed) return false;
+      // A poll can confirm the write before its HTTP response arrives or fails.
+      // In that case do not restore the draft and encourage a duplicate send.
+      if (!optimistic.has(String(localId))) return false;
+      optimistic.delete(String(localId));
+      publish(messages.filter((row) => String(row.id) !== String(localId)));
+      return true;
+    },
+    dispose() { disposed = true; pending.clear(); optimistic.clear(); },
   };
 }

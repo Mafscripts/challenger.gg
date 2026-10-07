@@ -68,6 +68,65 @@ test("a transient error preserves messages and the next read recovers", async ()
   assert.equal(f.changes.length, 1);
 });
 
+test("send appears immediately before the network replies and stale polls retain its pending status", async () => {
+  const gate = deferred();
+  const f = fixture(() => gate.promise);
+  const polling = f.feed.refresh();
+  const local = { ...message(2), id: "sending:abc", sender_id: "me", client_message_id: "abc" };
+  assert.equal(f.feed.beginSend(local), true);
+  assert.equal(f.changes.at(-1)[0].content, 2);
+  assert.equal(f.changes.at(-1)[0].sending, true);
+  gate.resolve([message(1)]);
+  await polling;
+  assert.equal(f.changes.at(-1).length, 2);
+  const created = { ...message(2), sender_id: "me", client_message_id: "abc" };
+  f.feed.confirmSend(local.id, created);
+  assert.deepEqual(f.changes.at(-1).map((row) => row.id), ["1", "2"]);
+  assert.equal(f.changes.at(-1)[1].sending, undefined);
+});
+
+test("poll acknowledgement before send response replaces the local message exactly once", async () => {
+  const local = { ...message(2), id: "sending:abc", sender_id: "me", client_message_id: "abc" };
+  const created = { ...message(2), sender_id: "me", client_message_id: "abc" };
+  const f = fixture(() => [created]);
+  f.feed.beginSend(local);
+  await f.feed.refresh();
+  assert.deepEqual(f.changes.at(-1), [created]);
+  assert.equal(f.feed.failSend(local.id), false);
+  const changes = f.changes.length;
+  f.feed.confirmSend(local.id, created);
+  assert.equal(f.changes.length, changes);
+});
+
+test("rejected send rolls back only its pending bubble and does not lose existing history", async () => {
+  const f = fixture(() => [message(1)]);
+  await f.feed.refresh();
+  f.feed.beginSend({ ...message(2), id: "sending:abc", sender_id: "me", client_message_id: "abc" });
+  assert.equal(f.feed.failSend("sending:abc"), true);
+  assert.deepEqual(f.changes.at(-1), [message(1)]);
+});
+
+test("another sender cannot acknowledge a pending message using the same correlation ID", async () => {
+  const created = { ...message(2), sender_id: "other", client_message_id: "abc" };
+  const f = fixture(() => [created]);
+  f.feed.beginSend({ ...message(3), id: "sending:abc", sender_id: "me", client_message_id: "abc" });
+  await f.feed.refresh();
+  assert.equal(f.changes.at(-1).length, 2);
+  assert.equal(f.changes.at(-1).at(-1).sending, true);
+  assert.equal(f.feed.failSend("sending:abc"), true);
+  assert.deepEqual(f.changes.at(-1), [created]);
+});
+
+test("leaving a room discards pending sends and their late confirmations", async () => {
+  const f = fixture(() => []);
+  f.feed.beginSend({ ...message(1), id: "sending:abc", sender_id: "me", client_message_id: "abc" });
+  const changes = f.changes.length;
+  f.feed.dispose();
+  assert.equal(f.feed.confirmSend("sending:abc", message(1)), false);
+  assert.equal(f.feed.failSend("sending:abc"), false);
+  assert.equal(f.changes.length, changes);
+});
+
 test("disposed room ignores late reads and late sends; new room stays isolated", async () => {
   const gate = deferred();
   const f = fixture(() => gate.promise);
@@ -214,4 +273,49 @@ test("Free 8s cancellation persists once and a stale lobby sync cannot reopen it
   assert.equal(synced.success, true);
   assert.equal(synced.wager.status, "cancelled");
   assert.equal(updates, 1);
+});
+
+test("send overlaps profile and match reads, reuses one wager roster and keeps server identity authoritative", async (t) => {
+  const profileGate = deferred();
+  const matchRead = deferred();
+  let rosterReads = 0;
+  let creates = 0;
+  const user = { id: "member", role: "user", full_name: "Actual Player", email_verified: true, metadata: {} };
+  const override = (target, name, implementation) => {
+    const previous = target[name]; target[name] = implementation;
+    t.after(() => { target[name] = previous; });
+  };
+  override(prisma.user, "findUnique", async () => user);
+  override(prisma.ban, "findMany", async () => []);
+  override(prisma.playerProfile, "findMany", async () => profileGate.promise);
+  override(prisma.wager, "findUnique", async () => { matchRead.resolve(); return { id: "room", metadata: { match_type: "8s", status: "in_progress", host_id: "host" } }; });
+  override(prisma.wagerParticipant, "findMany", async () => { rosterReads++; return [{ id: "p1", metadata: { user_id: "member", wager_id: "room", team: "challenger" } }]; });
+  override(prisma.chatMessage, "create", async ({ data }) => { creates++; return { id: "server-message", ...data }; });
+  const app = express();
+  app.use(express.json()); app.use("/api/functions", functionRoutes);
+  app.use((error, _req, res, _next) => res.status(error.status || 500).json({ error: error.message }));
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise((resolve) => server.once("listening", resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const pending = fetch(`http://127.0.0.1:${server.address().port}/api/functions/sendMatchRoomMessage`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${signUser(user)}` }, body: JSON.stringify({ match_type: "8s", match_id: "room", content: "hello", client_message_id: "abc-123", sender_id: "attacker", sender_role: "ceo", team_side: "a" }) });
+  // The match read must begin while the profile read is still unresolved.
+  let timeout;
+  try {
+    await Promise.race([matchRead.promise, new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error("Match read waited for profile")), 2000); })]);
+  } finally {
+    clearTimeout(timeout);
+    profileGate.resolve([{ metadata: { user_id: "member", avatar_url: "/avatar.png" } }]);
+  }
+  const response = await pending;
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.success, true);
+  assert.equal(result.message.sender_id, "member");
+  assert.equal(result.message.sender_role, "user");
+  assert.equal(result.message.sender_name, "Actual Player");
+  assert.equal(result.message.team_side, "b");
+  assert.equal(result.message.client_message_id, "abc-123");
+  assert.equal(result.message.sender_avatar_url, "/avatar.png");
+  assert.equal(rosterReads, 1);
+  assert.equal(creates, 1);
 });

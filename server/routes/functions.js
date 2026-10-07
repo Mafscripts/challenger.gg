@@ -6301,6 +6301,10 @@ async function sendMatchRoomMessage(req) {
   const matchType = normalizeMatchType(req.body.match_type);
   const matchId = req.body.match_id || req.body.conversation_id;
   const content = String(req.body.content || req.body.message || "").trim();
+  // Correlation only: identity, role, team and permission still come from the
+  // authenticated account and stored roster. Older clients may omit this ID.
+  const clientMessageId = typeof req.body.client_message_id === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(req.body.client_message_id)
+    ? req.body.client_message_id : undefined;
 
   if (!matchId) return { success: false, error: matchType === "streamer_tournament" ? "Tournament id is required" : "Match id is required" };
   if (!content) return { success: false, error: "Message is required" };
@@ -6310,8 +6314,7 @@ async function sendMatchRoomMessage(req) {
   if (!hasRole(req.user, "moderator") && Date.now() - previousMessageAt < 750) {
     return { success: false, error: "Please wait a moment before sending another message" };
   }
-  const senderProfile = await firstEntity("PlayerProfile", { user_id: req.user.id }).catch(() => null);
-  const senderAvatarUrl = senderProfile?.avatar_url || req.user.avatar_url || "";
+  const senderProfilePromise = firstEntity("PlayerProfile", { user_id: req.user.id }).catch(() => null);
 
   if (matchType === "streamer_tournament") {
     const tournament = await getEntity("Tournament", matchId);
@@ -6321,17 +6324,19 @@ async function sendMatchRoomMessage(req) {
     if (streamerTournamentBanEntry(tournament, req.user.id) && !canModerateStreamerTournament(req.user, tournament)) {
       return { success: false, error: "You are banned from this streamer lobby chat" };
     }
+    const senderProfile = await senderProfilePromise;
 
     const message = await createEntity("ChatMessage", {
       conversation_id: tournament.id,
       sender_id: req.user.id,
       sender_name: nameFor(req.user),
       display_name_color: req.user.display_name_color || "",
-      sender_avatar_url: senderAvatarUrl,
+      sender_avatar_url: senderProfile?.avatar_url || req.user.avatar_url || "",
       sender_role: effectiveChatRole(req.user),
       recipient_id: tournament.id,
       recipient_name: "Streamer tournament lobby",
       content,
+      ...(clientMessageId ? { client_message_id: clientMessageId } : {}),
       is_read: false,
       match_type: matchType,
       created_date: nowIso(),
@@ -6347,11 +6352,16 @@ async function sendMatchRoomMessage(req) {
     const tournament = await getEntity("Tournament", match.tournament_id);
     if (tournament.status === "cancelled") return { success: false, error: "This tournament has been cancelled.", code: "MATCH_CANCELLED" };
   }
-  const participantIds = await matchParticipantIds(matchType, match);
+  const wagerChat = matchType === "wager" || isEightsMatchType(matchType);
+  const [wagerParticipants, otherParticipantIds, tournamentParticipantInfo] = await Promise.all([
+    wagerChat ? listEntities("WagerParticipant", { wager_id: match.id }, "-joined_date", 100).catch(() => []) : [],
+    wagerChat ? [] : matchParticipantIds(matchType, match),
+    matchType === "tournament" ? tournamentMatchParticipantInfo(match, req.user) : null,
+  ]);
+  const participantIds = wagerChat
+    ? [...new Set([match.host_id, match.challenger_id, ...wagerParticipants.map((row) => row.user_id)].filter(Boolean))]
+    : otherParticipantIds;
   const participantIdSet = new Set(participantIds.map(String));
-  const tournamentParticipantInfo = matchType === "tournament"
-    ? await tournamentMatchParticipantInfo(match, req.user)
-    : null;
   const isTournamentParticipant = Boolean(tournamentParticipantInfo?.isParticipant);
   if (!hasRole(req.user, "moderator") && !participantIdSet.has(String(req.user.id)) && !isTournamentParticipant) {
     return { success: false, error: "Only match participants can chat in this room" };
@@ -6365,10 +6375,7 @@ async function sendMatchRoomMessage(req) {
       ? "b"
       : null;
   if (!teamSide && (matchType === "wager" || isEightsMatchType(matchType))) {
-    const participant = await firstEntity("WagerParticipant", {
-      wager_id: match.id,
-      user_id: req.user.id,
-    }).catch(() => null);
+    const participant = wagerParticipants.find((row) => String(row.user_id) === String(req.user.id));
     if (participant?.team === "host" || String(match.host_id || "") === String(req.user.id)) teamSide = "a";
     if (participant?.team === "challenger" || String(match.challenger_id || "") === String(req.user.id)) teamSide = "b";
   } else if (!teamSide && (matchType === "ranked" || matchType === "xp")) {
@@ -6378,16 +6385,18 @@ async function sendMatchRoomMessage(req) {
     if (bravoIds.includes(String(req.user.id)) || String(match.challenger_id || "") === String(req.user.id)) teamSide = "b";
   }
 
+  const senderProfile = await senderProfilePromise;
   const message = await createEntity("ChatMessage", {
     conversation_id: match.id,
     sender_id: req.user.id,
     sender_name: nameFor(req.user),
     display_name_color: req.user.display_name_color || "",
-    sender_avatar_url: senderAvatarUrl,
+    sender_avatar_url: senderProfile?.avatar_url || req.user.avatar_url || "",
     sender_role: effectiveChatRole(req.user),
     recipient_id: match.id,
     recipient_name: "Match room",
     content,
+    ...(clientMessageId ? { client_message_id: clientMessageId } : {}),
     is_read: false,
     match_type: matchType,
     team_side: teamSide,

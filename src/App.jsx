@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -170,15 +172,17 @@ function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <ScrollToTop />
-        <FreeEightsLoadingProvider>
-          <AuthenticatedApp />
-        </FreeEightsLoadingProvider>
-      </Router>
-      <DeferredToaster />
-    </AuthProvider>
+    <QueryClientProvider client={queryClientInstance}>
+      <AuthProvider>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ScrollToTop />
+          <FreeEightsLoadingProvider>
+            <AuthenticatedApp />
+          </FreeEightsLoadingProvider>
+        </Router>
+        <DeferredToaster />
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }
 

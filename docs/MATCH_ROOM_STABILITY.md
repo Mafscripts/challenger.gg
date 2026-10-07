@@ -25,6 +25,8 @@ Cancelled matches remain stored for history, refunds and audit records. This upd
 - Chat reuses the authenticated account context instead of adding an authentication request before it can be used.
 - Ranked, XP and tournament background reloads retain the visible room and chat; only the initial room load uses the full-page loading screen. Failed background reloads retain the last valid room.
 - Free 8s read-only functions no longer clear authentication/entity caches after every refresh.
+- Sending shows a local bubble immediately with "Sending…". Server confirmation replaces it using a correlation ID plus the authenticated sender, including when polling sees the write first. Rejected sends remove the pending bubble and restore the text if no newer draft was typed. The input stays available for composing the next message; only sending again waits for confirmation.
+- The server overlaps profile loading with match/permission reads and reuses one wager/8s roster query for both authorization and team-side assignment. Sender identity, roles and team assignments remain server-owned. No database migration is needed for the optional correlation metadata.
 
 ## Files changed in this update
 
@@ -64,5 +66,6 @@ Manual browser checks after deployment:
 6. Read older messages while another player sends. Confirm your scroll position is not forced to the bottom. At the bottom, confirm new messages remain visible even after reaching the message limit.
 7. Switch rooms during a slow load or send. Confirm the new room has its own messages/draft.
 8. Refresh a room or submit a normal ready/score action. Confirm the chat stays mounted and your unsent draft remains present.
+9. Throttle the connection and send. Confirm the bubble appears immediately with "Sending…", then becomes confirmed once. Type the next draft before confirmation and verify it remains intact. Reject a send and confirm it does not appear as successfully sent.
 
 Production database latency, real browser history/scroll behavior and actual Discord moves still require the manual/live checks above.
