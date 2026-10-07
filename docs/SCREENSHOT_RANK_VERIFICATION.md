@@ -5,6 +5,11 @@ Diamond, Crimson, Iridescent and Top 250. This is a separate screenshot rank:
 existing Topfragg ELO, Free 8s ELO and match results are unchanged. No username,
 Activision ID, or screenshot ownership check is performed.
 
+Approved screenshot ranks also supply the Free 8s player-card pill below 600
+Free 8s ELO and are used when balancing those teams. At 600+, Free 8s Challenger
+or Topfragger takes priority on the cards. The main profile screenshot pill
+remains unchanged. See `FREE_8S_ELO.md` for the balancing policy and weights.
+
 ## Recognition
 
 The four user-provided images are stored in `server/rank-references/`. The server

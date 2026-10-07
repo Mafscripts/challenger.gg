@@ -8,12 +8,12 @@
 - Overview refreshes retain visible data, use a separate query key per account and pause interval polling while the browser tab is hidden. Returning to the tab triggers a fresh request.
 - The overview returns the current authenticated account record so Discord and Activision checks reflect account changes without a separate authentication request.
 - Create/join entry actions wait for the initial overview, including its active-match check. A failed initial overview has a retry action.
-- A full Free 8s roster loads XP and ELO progression with one request instead of 16. Only public fields for that match's stored roster are returned.
+- A full Free 8s roster loads XP, ELO and approved screenshot ranks with one request instead of 16. The stats read uses four batched queries (roster, XP, account ranks, ELO), plus its match lookup. Only public fields for that match's stored roster are returned.
 - Failed progression reads propagate errors, leaving hydration eligible for retry on the next room refresh. They no longer permanently replace real ELO with zero. Missing stat records still correctly start at zero.
 - A pending Free 8s roster hydration timer is cleared when a newer roster is scheduled.
 - Free 8s does not fetch tournament data that its overview does not display.
 
-These changes affect reads and Free 8s presentation. Match generation, results, ELO calculation, wallet flows and Discord provisioning are unchanged. Money 8s keeps its previous loading path.
+These loading changes affect reads and Free 8s presentation. The separate Free 8s balancing update is described in `FREE_8S_ELO.md`. Results, ELO calculation, wallet flows and Discord provisioning keep their existing behavior. Money 8s keeps its previous loading path.
 
 ## Changed files
 
@@ -46,7 +46,7 @@ Deploy frontend and backend together and restart the API process: the updated fr
 
 1. Open and refresh Free 8s. Confirm the lobby list, joined counts and your active-match action load correctly. While the first read is pending, the create action should say "Loading Free 8s...".
 2. Accept a match without Discord linked. Confirm the centered Discord linking popup still opens.
-3. Open a Free 8s match with eight players. Confirm both teams, names, XP and Free 8s ELO/ranks match the stored data. A player at 0 ELO must remain Newb.
+3. Open a Free 8s match with eight players. Confirm both teams, names, XP and Free 8s ELO/ranks match the stored data. A player at 0 ELO without an approved screenshot rank shows Newb; approved screenshot ranks supply the pill below Challenger, as described in `FREE_8S_ELO.md`.
 4. In browser network tools, verify one `getFreeEightsOverview` request per overview refresh and one `getFreeEightsPlayerStats` request per roster hydration. Other requests for standings, player identity, chat and voice remain expected.
 5. Throttle the connection and temporarily fail a stats request. Confirm the room remains visible and stats recover after the next refresh. Fail the initial overview request and try the retry action.
 6. Switch Free 8s → Money 8s → Free 8s. Confirm lobby lists and the active-match action belong to the selected mode. Switch tabs away and back; check that the Free 8s overview refreshes on return.

@@ -2,6 +2,10 @@
   "name": "Wager",
   "type": "object",
   "properties": {
+    "free_eights_team_balance": {
+      "type": "object",
+      "title": "Free 8s team generation rank and strength audit"
+    },
     "free_eights_elo_changes": {
       "type": "object",
       "title": "Free 8s ELO changes by user ID"

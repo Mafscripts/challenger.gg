@@ -57,6 +57,15 @@
       "type": "string",
       "title": "Escrow Transaction ID"
     },
+    "free_eights_elo": {
+      "type": "number",
+      "title": "Free 8s ELO snapshot at team generation"
+    },
+    "screenshot_rank": {
+      "type": ["string", "null"],
+      "enum": ["diamond", "crimson", "iridescent", "top250", null],
+      "title": "Approved screenshot rank snapshot at Free 8s team generation"
+    },
     "joined_date": {
       "type": "string",
       "format": "date-time",

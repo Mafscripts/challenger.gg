@@ -20,6 +20,8 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
     return {
       id: participant.id,
       user_id: participant.user_id,
+      free_eights_elo: participant.free_eights_elo,
+      screenshot_rank: userRow ? userRow.screenshot_rank ?? null : participant.screenshot_rank ?? null,
       full_name: userRow?.display_name || userRow?.full_name || userRow?.username || participant.user_name || "Unnamed player",
       display_name_color: userRow?.display_name_color || profileRow?.display_name_color || "",
       avatar_url: userRow?.avatar_url || profileRow?.avatar_url || profileRow?.profile_picture_url || participant.avatar_url || "",

@@ -14,6 +14,7 @@ import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTr
 import { freeEightsDiscordJoinError, freeEightsVoiceLog } from "../free-eights-discord.js";
 import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
+import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -6526,8 +6527,10 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
   const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
   if ((participantRows || []).length < requiredSize * 2) return wager;
   const shuffled = shuffledCopy(participantRows).slice(0, requiredSize * 2);
-  const alpha = shuffled.slice(0, requiredSize);
-  const bravo = shuffled.slice(requiredSize, requiredSize * 2);
+  const { alpha, bravo, balance } = wager.match_type === "8s"
+    ? await generateBalancedFreeEightsTeams(prisma, shuffled)
+    : { alpha: shuffled.slice(0, requiredSize), bravo: shuffled.slice(requiredSize, requiredSize * 2) };
+  const skillsByParticipant = new Map([...alpha, ...bravo].map((row) => [row.id, row]));
   if (wager.match_type === "8s") freeEightsVoiceLog("eight-players-found", { match_id: wager.id, players: shuffled.length });
   await Promise.all(shuffled.map((participant) => {
     const team = alpha.some((row) => row.id === participant.id) ? "host" : "challenger";
@@ -6535,6 +6538,10 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
       team,
       team_name: team === "host" ? "Team Alpha" : "Team Bravo",
       is_captain: participant.id === alpha[0]?.id || participant.id === bravo[0]?.id,
+      ...(wager.match_type === "8s" ? {
+        free_eights_elo: skillsByParticipant.get(participant.id).free_eights_elo,
+        screenshot_rank: skillsByParticipant.get(participant.id).screenshot_rank,
+      } : {}),
     });
   }));
   const selectedMaps = preserveSeries ? null : randomEightsSeriesMaps(wager);
@@ -6554,6 +6561,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     roster_lock_deadline: new Date(Date.now() + EIGHTS_RESHUFFLE_WINDOW_MS).toISOString(),
     roster_locked: false,
     teams_generated_at: nowIso(),
+    ...(balance ? { free_eights_team_balance: balance } : {}),
     eights_reshuffle_vote_user_ids: [],
     eights_reshuffle_vote_count: 0,
     eights_reshuffle_vote_required: EIGHTS_RESHUFFLE_REQUIRED_VOTES,
@@ -6565,6 +6573,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
   publishEightsLobbyUpdate(wager.id, "teams-reshuffled");
   if (wager.match_type === "8s") freeEightsVoiceLog("teams-generated", {
     match_id: wager.id, team_a: alpha.map((row) => row.user_id), team_b: bravo.map((row) => row.user_id),
+    balance,
   });
   return updated;
 }

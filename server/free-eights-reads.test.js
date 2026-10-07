@@ -20,7 +20,7 @@ function fixture(data = {}) {
     return Array.isArray(value?.in) ? value.in.includes(row[key]) : row[key] === value;
   });
   const db = {};
-  for (const name of ["wager", "wagerParticipant", "xPStats", "eightsStats"]) {
+  for (const name of ["wager", "wagerParticipant", "xPStats", "eightsStats", "user"]) {
     db[name] = {
       findMany: async (query) => {
         calls.push({ name, query });
@@ -67,14 +67,16 @@ test("empty Free 8s overview skips empty batch queries", async () => {
 
 test("batch stats preserve zero ELO, latest records, roster isolation and public field whitelist", async () => {
   const f = fixture({ wager: [match("free")], wagerParticipant: [participant("p1", "a", "free"), participant("p2", "b", "free"), participant("p3", "outsider", "other")],
+    user: [{ id: "a", metadata: { screenshot_rank: "diamond", rank_review_secret: "hidden" } }, { id: "outsider", metadata: { screenshot_rank: "top250" } }],
     xPStats: [stat("a", { level: 3 }), stat("a", { level: 7 }, 2), stat("outsider", { level: 99 })],
     eightsStats: [stat("a", { rating: 1500, wins: 5, internal_secret: "hidden" }, 2, 0), stat("a", { wins: 2 }, 1, 900), stat("outsider", { wins: 99 }, 1, 999)] });
   const result = await getFreeEightsPlayerStats(f.db, "free");
   assert.deepEqual(Object.keys(result.stats), ["a", "b"]);
-  assert.deepEqual(result.stats.a, { xp_level: 7, free_eights_elo: 0, eights_rating: 1500, eights_wins: 5, eights_losses: 0, monthly_wins: 0 });
+  assert.deepEqual(result.stats.a, { xp_level: 7, free_eights_elo: 0, screenshot_rank: "diamond", eights_rating: 1500, eights_wins: 5, eights_losses: 0, monthly_wins: 0 });
   assert.equal(result.stats.b.free_eights_elo, 0);
   assert.equal(result.stats.b.xp_level, 1);
-  assert.equal(f.calls.length, 3);
+  assert.equal(result.stats.b.screenshot_rank, null);
+  assert.equal(f.calls.length, 4);
 });
 
 test("batch stats reject invalid, missing and Money 8s matches", async () => {
@@ -133,7 +135,7 @@ test("read endpoints require authentication and ignore forged user/roster IDs", 
   };
   override(prisma.user, "findUnique", async () => user);
   override(prisma.ban, "findMany", async () => []);
-  for (const name of Object.keys(f.db)) for (const method of ["findMany", "findUnique"]) override(prisma[name], method, f.db[name][method]);
+  for (const name of Object.keys(f.db)) for (const method of name === "user" ? ["findMany"] : ["findMany", "findUnique"]) override(prisma[name], method, f.db[name][method]);
   const app = express();
   app.use(express.json());
   app.use("/api/functions", functionRoutes);

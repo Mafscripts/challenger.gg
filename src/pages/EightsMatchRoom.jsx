@@ -70,6 +70,8 @@ const playersFromLobbyRows = (rows, team) => (rows || [])
   .map((row) => ({
     id: row.id,
     user_id: row.user_id,
+    free_eights_elo: row.free_eights_elo,
+    screenshot_rank: row.screenshot_rank,
     user_name: row.user_name || "Unnamed player",
     full_name: row.user_name || "Unnamed player",
     team: row.team,

@@ -1,4 +1,5 @@
 import { serializeRow } from "./entity.js";
+import { loadFreeEightsSkills } from "./free-eights-teams.js";
 
 const activeStatuses = ["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"];
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
@@ -39,9 +40,9 @@ export async function getFreeEightsPlayerStats(db, matchId) {
   const ids = [...new Set(roster.map((row) => row.metadata?.user_id).filter((id) => typeof id === "string" && id))];
   if (!ids.length) return { success: true, stats: {} };
   const where = { OR: ids.map((id) => field("user_id", id)) };
-  const [xpRows, eightsRows] = await Promise.all([
+  const [xpRows, skills] = await Promise.all([
     db.xPStats.findMany({ where, orderBy: { created_date: "desc" }, select: { metadata: true } }),
-    db.eightsStats.findMany({ where, orderBy: { created_date: "desc" }, select: { metadata: true, free_eights_elo: true } }),
+    loadFreeEightsSkills(db, ids),
   ]);
   const latestByUser = (rows) => {
     const result = new Map();
@@ -49,19 +50,12 @@ export async function getFreeEightsPlayerStats(db, matchId) {
     return result;
   };
   const xp = latestByUser(xpRows);
-  const eights = latestByUser(eightsRows);
   // Only public progression fields for this match's roster are returned.
   // Missing records have defaults; database failures propagate for retry.
   return { success: true, stats: Object.fromEntries(ids.map((id) => {
-    const row = eights.get(id);
-    const stats = row?.metadata;
     return [id, {
       xp_level: xp.get(id)?.metadata?.level || 1,
-      free_eights_elo: row?.free_eights_elo ?? 0,
-      eights_rating: stats?.rating || 1000,
-      eights_wins: stats?.wins || 0,
-      eights_losses: stats?.losses || 0,
-      monthly_wins: stats?.monthly_wins || 0,
+      ...skills[id],
     }];
   })) };
 }
