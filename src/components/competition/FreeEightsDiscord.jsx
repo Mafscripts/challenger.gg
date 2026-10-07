@@ -101,26 +101,33 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
 }
 
 export function FreeEightsVoiceStatus({ matchId, players, user }) {
-  const [voice, setVoice] = useState(null);
+  const [voiceResult, setVoiceResult] = useState(null);
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
     const refresh = () => base44.discord.freeEightsVoice(matchId)
-      .then((data) => { if (!cancelled) setVoice(data); })
-      .catch(() => { if (!cancelled) setVoice(null); });
+      .then((data) => { if (!cancelled) setVoiceResult({ matchId, userId: user.id, data }); })
+      .catch(() => { if (!cancelled) setVoiceResult({ matchId, userId: user.id, data: null }); });
     refresh();
     const timer = window.setInterval(refresh, 5000);
     return () => { cancelled = true; window.clearInterval(timer); };
   }, [matchId, user?.id]);
+  const checking = !voiceResult || voiceResult.matchId !== matchId || voiceResult.userId !== user?.id;
+  const voice = checking ? null : voiceResult.data;
   const statuses = Object.fromEntries((voice?.players || []).map((player) => [player.user_id, player]));
   const stale = !voice?.fresh || Date.now() - new Date(voice.checked_at).getTime() >= 20_000;
   const available = voice?.enabled && voice?.configured && !stale;
   const playerStates = players.map((player) => {
     const current = statuses[player.user_id];
-    const status = available && current?.team === player.team ? current.status : "unavailable";
+    const status = checking ? "checking" : available && current?.team === player.team ? current.status : "unavailable";
     return { ...player, status, ready: ["in_waiting_room", "in_team_voice"].includes(status) };
   });
   const readyCount = playerStates.filter((player) => player.ready).length;
+  const warning = !checking && (!available || Boolean(voice?.error));
+  const summary = checking ? "Checking Discord voice status…"
+    : voice?.error || (!available ? "Voice status unavailable. The bot may be offline or voice setup may be incomplete."
+      : "Discord voice status is up to date.");
+  const SummaryIcon = checking ? Loader2 : warning ? AlertTriangle : CheckCircle2;
   return <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-[#171b26] shadow-[0_8px_30px_rgba(0,0,0,.12)] sm:m-4" aria-label="Free 8s Discord voice readiness">
     <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
     <div className="relative flex flex-col gap-4 bg-gradient-to-r from-[#5865F2]/[0.09] via-transparent to-transparent p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -134,26 +141,28 @@ export function FreeEightsVoiceStatus({ matchId, players, user }) {
           <p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">Join the waiting room. When teams are ready, the bot moves you into your team’s private voice channel.</p>
         </div>
       </div>
-      <div className="shrink-0">
-        {!hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord returnTo={`/8s-match/${matchId}`} /> : voice?.waiting_room_url && <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#5865F2] px-4 py-3 text-[11px] font-black text-white shadow-[0_4px_16px_rgba(88,101,242,.2)] transition hover:bg-[#4752C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-card lg:w-auto"><Headphones className="h-4 w-4" aria-hidden="true" />Join 8s Waiting Room<ExternalLink className="ml-1 h-3.5 w-3.5 opacity-75" aria-hidden="true" /></a>}
+      <div className="min-h-[42px] shrink-0">
+        {!hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord returnTo={`/8s-match/${matchId}`} /> : voice?.waiting_room_url ? <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#5865F2] px-4 py-3 text-[11px] font-black text-white shadow-[0_4px_16px_rgba(88,101,242,.2)] transition hover:bg-[#4752C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-card lg:w-auto"><Headphones className="h-4 w-4" aria-hidden="true" />Join 8s Waiting Room<ExternalLink className="ml-1 h-3.5 w-3.5 opacity-75" aria-hidden="true" /></a> : <button type="button" disabled className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[11px] font-black text-vapor lg:w-auto"><Headphones className="h-4 w-4" aria-hidden="true" />Join 8s Waiting Room<ExternalLink className="ml-1 h-3.5 w-3.5 opacity-75" aria-hidden="true" /></button>}
       </div>
     </div>
     <div className="border-t border-white/[0.06] bg-black/[0.12] p-4 sm:px-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Player voice status</p>
-        {available && players.length > 0 && <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${readyCount === players.length ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{readyCount}/{players.length} voice ready</span>}
+        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${available && readyCount === players.length ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{available ? `${readyCount}/${players.length} voice ready` : checking ? "Checking voice…" : "Status unavailable"}</span>
       </div>
-      {!available && <div className="mb-3 flex items-start gap-2 rounded-xl border border-orange/15 bg-orange/5 px-3 py-2.5 text-xs leading-5 text-vapor"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange" aria-hidden="true" /><p><span className="font-bold text-orange">Voice status unavailable.</span> The test bot may be disabled, unconfigured, or offline.</p></div>}
-      {voice?.error && <p role="status" className="mb-3 rounded-xl border border-orange/20 bg-orange/5 px-3 py-2.5 text-xs leading-5 text-orange">{voice.error}</p>}
+      <div role="status" className={`mb-3 flex h-16 items-center gap-2 rounded-xl border px-3 text-xs leading-5 sm:h-11 ${warning ? "border-orange/20 bg-orange/5 text-orange" : "border-white/[0.06] bg-white/[0.025] text-vapor"}`}>
+        <SummaryIcon className={`h-4 w-4 shrink-0 ${checking ? "animate-spin" : available && !warning ? "text-green" : ""}`} aria-hidden="true" />
+        <p className="line-clamp-2 min-w-0" title={summary}>{summary}</p>
+      </div>
       <ul className="grid gap-2 md:grid-cols-2">
         {playerStates.map((player) => {
           const name = player.full_name || player.user_name || "Player";
           const unavailable = ["unavailable", "checking"].includes(player.status);
-          const StatusIcon = player.ready ? CheckCircle2 : player.status === "not_linked" ? Link2 : player.status === "move_failed" ? AlertTriangle : MicOff;
+          const StatusIcon = player.status === "checking" ? Loader2 : player.ready ? CheckCircle2 : player.status === "not_linked" ? Link2 : player.status === "move_failed" ? AlertTriangle : MicOff;
           const badgeStyle = player.ready ? "border-green/20 bg-green/[0.08] text-green" : unavailable ? "border-white/[0.08] bg-white/[0.03] text-vapor" : "border-orange/20 bg-orange/[0.08] text-orange";
-          return <li key={player.user_id} className="flex flex-col items-start justify-between gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          return <li key={player.user_id} className="flex flex-col items-start justify-between gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3 sm:flex-row sm:items-center sm:gap-3">
             <div className="flex min-w-0 w-full items-center gap-2.5 sm:w-auto sm:flex-1"><span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-purple-300/10 bg-purple-300/[0.08] text-xs font-black text-purple-200">{name.slice(0, 1).toUpperCase()}</span><span className="min-w-0 break-words text-xs font-bold text-white">{name}</span></div>
-            <span className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold ${badgeStyle}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{voiceLabels[player.status] || voiceLabels.checking}</span>
+            <span title={voiceLabels[player.status] || voiceLabels.checking} className={`inline-flex h-8 w-full shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[10px] font-bold sm:w-[220px] ${badgeStyle}`}><StatusIcon className={`h-3.5 w-3.5 shrink-0 ${player.status === "checking" ? "animate-spin" : ""}`} aria-hidden="true" /><span className="truncate">{voiceLabels[player.status] || voiceLabels.checking}</span></span>
           </li>;
         })}
       </ul>
