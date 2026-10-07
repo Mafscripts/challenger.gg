@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Link2, Loader2, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Headphones, Link2, Loader2, Mic, MicOff, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -114,20 +114,50 @@ export function FreeEightsVoiceStatus({ matchId, players, user }) {
   }, [matchId, user?.id]);
   const statuses = Object.fromEntries((voice?.players || []).map((player) => [player.user_id, player]));
   const stale = !voice?.fresh || Date.now() - new Date(voice.checked_at).getTime() >= 20_000;
-  return <section className="m-3 rounded-xl border border-purple-300/20 bg-purple-300/5 p-4 sm:m-4" aria-label="Free 8s Discord voice readiness">
-    <p className="text-sm font-black text-white">Free 8s · Discord voice test</p>
-    <p className="mt-1 text-xs leading-5 text-vapor">Join the 8s Waiting Room yourself. The bot moves players already connected there into Team A (Alpha) or Team B (Bravo). Missing voice players do not block this test match.</p>
-    {voice?.waiting_room_url && <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-bold text-cyan underline">Open 8s Waiting Room</a>}
-    {!hasFreeEightsDiscordLink(user) && <div className="mt-3"><ConnectFreeEightsDiscord returnTo={`/8s-match/${matchId}`} /></div>}
-    {(!voice?.enabled || !voice?.configured || stale) && <p className="mt-2 text-xs text-orange">Voice status unavailable. The test bot may be disabled, unconfigured, or offline.</p>}
-    {voice?.error && <p role="status" className="mt-2 text-xs text-orange">{voice.error}</p>}
-    <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-      {players.map((player) => {
-        const current = statuses[player.user_id];
-        const status = !stale && current?.team === player.team ? current.status : "unavailable";
-        const ready = ["in_waiting_room", "in_team_voice"].includes(status);
-        return <li key={player.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-black/20 px-3 py-2 text-xs"><span className="font-bold text-white">{player.full_name || player.user_name || "Player"}</span><span className={ready ? "text-green" : "text-orange"}>{voiceLabels[status] || voiceLabels.checking}</span></li>;
-      })}
-    </ul>
+  const available = voice?.enabled && voice?.configured && !stale;
+  const playerStates = players.map((player) => {
+    const current = statuses[player.user_id];
+    const status = available && current?.team === player.team ? current.status : "unavailable";
+    return { ...player, status, ready: ["in_waiting_room", "in_team_voice"].includes(status) };
+  });
+  const readyCount = playerStates.filter((player) => player.ready).length;
+  return <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-[#171b26] shadow-[0_8px_30px_rgba(0,0,0,.12)] sm:m-4" aria-label="Free 8s Discord voice readiness">
+    <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
+    <div className="relative flex flex-col gap-4 bg-gradient-to-r from-[#5865F2]/[0.09] via-transparent to-transparent p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#5865F2]/30 bg-[#5865F2]/15 text-purple-200"><Headphones className="h-5 w-5" aria-hidden="true" /></div>
+        <div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h3 className="text-sm font-black text-white sm:text-base">Discord team voice</h3>
+            <span className="rounded-md border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-purple-200">Free 8s · Test</span>
+          </div>
+          <p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">Join the waiting room. When teams are ready, the bot moves you into your team’s private voice channel.</p>
+        </div>
+      </div>
+      <div className="shrink-0">
+        {!hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord returnTo={`/8s-match/${matchId}`} /> : voice?.waiting_room_url && <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#5865F2] px-4 py-3 text-[11px] font-black text-white shadow-[0_4px_16px_rgba(88,101,242,.2)] transition hover:bg-[#4752C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-card lg:w-auto"><Headphones className="h-4 w-4" aria-hidden="true" />Join 8s Waiting Room<ExternalLink className="ml-1 h-3.5 w-3.5 opacity-75" aria-hidden="true" /></a>}
+      </div>
+    </div>
+    <div className="border-t border-white/[0.06] bg-black/[0.12] p-4 sm:px-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Player voice status</p>
+        {available && players.length > 0 && <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${readyCount === players.length ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{readyCount}/{players.length} voice ready</span>}
+      </div>
+      {!available && <div className="mb-3 flex items-start gap-2 rounded-xl border border-orange/15 bg-orange/5 px-3 py-2.5 text-xs leading-5 text-vapor"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange" aria-hidden="true" /><p><span className="font-bold text-orange">Voice status unavailable.</span> The test bot may be disabled, unconfigured, or offline.</p></div>}
+      {voice?.error && <p role="status" className="mb-3 rounded-xl border border-orange/20 bg-orange/5 px-3 py-2.5 text-xs leading-5 text-orange">{voice.error}</p>}
+      <ul className="grid gap-2 md:grid-cols-2">
+        {playerStates.map((player) => {
+          const name = player.full_name || player.user_name || "Player";
+          const unavailable = ["unavailable", "checking"].includes(player.status);
+          const StatusIcon = player.ready ? CheckCircle2 : player.status === "not_linked" ? Link2 : player.status === "move_failed" ? AlertTriangle : MicOff;
+          const badgeStyle = player.ready ? "border-green/20 bg-green/[0.08] text-green" : unavailable ? "border-white/[0.08] bg-white/[0.03] text-vapor" : "border-orange/20 bg-orange/[0.08] text-orange";
+          return <li key={player.user_id} className="flex flex-col items-start justify-between gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+            <div className="flex min-w-0 w-full items-center gap-2.5 sm:w-auto sm:flex-1"><span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-purple-300/10 bg-purple-300/[0.08] text-xs font-black text-purple-200">{name.slice(0, 1).toUpperCase()}</span><span className="min-w-0 break-words text-xs font-bold text-white">{name}</span></div>
+            <span className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-bold ${badgeStyle}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{voiceLabels[player.status] || voiceLabels.checking}</span>
+          </li>;
+        })}
+      </ul>
+      <p className="mt-3 text-[10px] leading-5 text-vapor">Join Discord voice yourself before you can be moved. Missing voice players do not block this test match.</p>
+    </div>
   </section>;
 }
