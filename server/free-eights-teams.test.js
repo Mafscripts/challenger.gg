@@ -179,7 +179,7 @@ test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s a
   assert.equal(pendingReset.seconds_remaining, null);
   assert.equal(pendingReset.wager.roster_lock_deadline, "", "admin reset cannot bypass the voice gate");
   const config = freeEightsDiscordConfig();
-  const state = { guild_id: config.guildId, waiting_room_id: config.waitingRoomId, category_id: config.categoryId,
+  const state = { match_id: "8s", guild_id: config.guildId, waiting_room_id: "300000000000000001", channels: { waiting: "300000000000000001" }, category_id: config.categoryId,
     checked_at: new Date().toISOString(), roster_signature: voiceRosterSignature(matches.get("8s").metadata, rosters.get("8s").map((row) => row.metadata)),
     players: Object.fromEntries(input.map((player) => [player.user_id, { status: "in_waiting_room" }])) };
   state.players.u7.status = "not_in_waiting_room";
@@ -238,14 +238,14 @@ test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s a
 
 test("map readiness requires all eight in the exact waiting room with a fresh bot snapshot", () => {
   const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003" };
-  const match = { match_type: "8s" }, participants = mixedRoster();
+  const match = { id: "test-lobby", match_type: "8s" }, participants = mixedRoster();
   const now = Date.now();
-  const state = { checked_at: new Date(now).toISOString(), guild_id: config.guildId, waiting_room_id: config.waitingRoomId, category_id: config.categoryId,
+  const state = { match_id: match.id, checked_at: new Date(now).toISOString(), guild_id: config.guildId, waiting_room_id: "300000000000000001", channels: { waiting: "300000000000000001" }, category_id: config.categoryId,
     roster_signature: voiceRosterSignature(match, participants), players: Object.fromEntries(participants.map((row) => [row.user_id, { status: "in_waiting_room" }])) };
   assert.equal(freeEightsWaitingRoomReady(config, match, participants, state, now), true);
   assert.equal(freeEightsWaitingRoomReady({ ...config, enabled: false }, match, participants, state, now), false);
   for (const override of [{ checked_at: new Date(now - 20000).toISOString() }, { checked_at: new Date(now + 1000).toISOString() },
-    { guild_id: "other" }, { waiting_room_id: "other" }, { category_id: "other" }, { roster_signature: "another match" }]) {
+    { match_id: "other-lobby" }, { guild_id: "other" }, { waiting_room_id: config.waitingRoomId }, { channels: {} }, { category_id: "other" }, { roster_signature: "another match" }]) {
     assert.equal(freeEightsWaitingRoomReady(config, match, participants, { ...state, ...override }, now), false);
   }
   for (const status of ["in_team_voice", "not_in_waiting_room", "move_failed", "not_linked", "checking", "unavailable"]) {

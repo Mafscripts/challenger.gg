@@ -233,7 +233,7 @@ router.get("/free-eights/:wagerId", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "Only lobby players or staff can view voice readiness" });
     }
     const dispatch = await prisma.discordEventDispatch.findUnique({ where: { event_key: freeEightsVoiceKey(row.id) } });
-    res.json(publicFreeEightsVoiceStatus(freeEightsDiscordConfig(), row.metadata, participants, dispatch?.metadata));
+    res.json(publicFreeEightsVoiceStatus(freeEightsDiscordConfig(), { ...row.metadata, id: row.id }, participants, dispatch?.metadata));
   } catch (error) {
     next(error);
   }

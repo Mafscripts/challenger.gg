@@ -81,7 +81,7 @@ export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranke
           <p className="text-xs font-bold text-white">What happens next?</p>
           <ol className="mt-2 list-decimal space-y-2 pl-4 text-xs leading-5 text-vapor">
             <li>Connect Discord securely. If you are not a member, you will go directly to the Topfragg server invitation. Join using your linked Discord account, then return here and accept the match.</li>
-            <li>Join the <span className="font-bold text-white">8s Waiting Room</span> yourself.</li>
+            <li>Use the lobby’s join button to enter its private <span className="font-bold text-white">8s Waiting Room</span>.</li>
             <li>Once both team channels are ready, the bot moves players connected to the waiting room into their assigned team voice.</li>
           </ol>
         </div>
@@ -139,13 +139,6 @@ export function FreeEightsDiscordServerDialog({ result, onOpenChange, returnFocu
 }
 
 export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
-  const [voice, setVoice] = useState(null);
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    base44.discord.freeEightsVoice().then((data) => { if (!cancelled) setVoice(data); }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [user?.id]);
   const linked = hasFreeEightsDiscordLink(user);
   const callbackStatus = new URLSearchParams(window.location.search).get("discord");
   const callbackError = {
@@ -157,9 +150,9 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
   }[callbackStatus];
   return <div className="my-4 rounded-xl border border-purple-300/20 bg-purple-300/5 p-4">
     <p className="text-sm font-bold text-white">{linked ? "Discord connected · Free 8s voice test" : "Connect Discord to join Free 8s"}</p>
-    <p className="mt-1 text-xs leading-5 text-vapor">{linked ? "You must be a member of the Topfragg server. Join the 8s Waiting Room; all eight players must be there before maps are generated and the bot moves you into team voice." : "Link your Discord account and join the Topfragg server before creating or joining a Free 8s lobby."}</p>
+    <p className="mt-1 text-xs leading-5 text-vapor">{linked ? "Each lobby gets a private 8s Waiting Room for its eight players. Create or join a lobby, then use its join button. All eight players must be there before maps are generated and the bot moves you into team voice." : "Link your Discord account and join the Topfragg server before creating or joining a Free 8s lobby."}</p>
     {callbackError && <p role="alert" className="mt-2 text-xs text-orange">{callbackError}</p>}
-    <div className="mt-3">{!linked ? <ConnectFreeEightsDiscord returnTo={returnTo} /> : voice?.waiting_room_url ? <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="text-xs font-bold text-cyan underline">Open 8s Waiting Room</a> : <p className="text-xs text-vapor">The Discord waiting room has not been configured yet.</p>}</div>
+    {!linked && <div className="mt-3"><ConnectFreeEightsDiscord returnTo={returnTo} /></div>}
     {linked && <a href={topfraggDiscordInviteUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-purple-200">Join Topfragg Discord <ExternalLink className="h-3.5 w-3.5" /></a>}
   </div>;
 }
@@ -183,7 +176,7 @@ export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, v
             <span className="rounded-md border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-purple-200">Free 8s · Test</span>
             <span role="status" className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${available && readyCount === 8 ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{available ? `${readyCount}/8 voice ready` : checking ? "Checking voice…" : "Status unavailable"}</span>
           </div>
-          <p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">All eight players must join the Waiting Room before maps are generated. The bot then moves you into your team’s private voice channel.</p>
+          <p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">This lobby has its own private Waiting Room for eight players. Join it before maps are generated; the bot then moves you into your team’s private voice channel.</p>
         </div>
       </div>
       <div className="min-h-[42px] shrink-0">

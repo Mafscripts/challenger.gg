@@ -25,21 +25,28 @@ new webhook, bot, bot secret or public event receiver.
 
 In the existing Topfragg guild, create:
 
-1. A regular voice channel named **8s Waiting Room**. Linked players must be able
-   to view and connect to it. Copy its channel ID.
-2. An existing category such as **ACTIVE 8s** for temporary voices. Copy its ID.
-   Each match gets `<full-match-id> • Team A` and `<full-match-id> • Team B`.
+1. An existing category such as **ACTIVE 8s** for temporary voices. Copy its ID.
+   When a lobby is created, the bot creates `<full-match-id> • 8s Waiting Room`.
+   It is private to that lobby's linked players and has an eight-player limit.
+   Generated teams additionally get `<full-match-id> • Team A` and `<full-match-id> • Team B`.
    Names are display labels only; ownership and cleanup always use stored IDs.
+2. Optionally, a public return voice channel for players after a match or leave.
+   The former shared Waiting Room can be reused for this purpose. Its ID remains
+   `DISCORD_FREE_8S_WAITING_ROOM_ID`; it never counts toward readiness and is never
+   used by a lobby's join button. Leave it empty to disconnect players on cleanup.
+   A deleted/unavailable return voice also falls back to disconnecting them.
 3. Optionally, additional existing categories for overflow. Discord allows at most
-   50 children in a category, so an otherwise empty category holds 25 match pairs.
-   Other channels reduce that capacity. A match's pair stays in the same category;
-   full categories leave players waiting and report capacity without blocking the match.
+   50 children in a category, so an otherwise empty category holds 16 complete
+   three-channel lobbies. Other channels reduce that capacity. A lobby's channels
+   stay together. Full categories report capacity; an existing waiting room stays
+   available until team capacity opens. A move to an available overflow category
+   recreates only that lobby's owned channels; players follow its updated join link.
 
 Add these variables to both the backend and existing bot environments:
 
 ```dotenv
 DISCORD_FREE_8S_VOICE_ENABLED="true"
-DISCORD_FREE_8S_WAITING_ROOM_ID="<waiting-voice-channel-id>"
+DISCORD_FREE_8S_WAITING_ROOM_ID="<optional-public-return-voice-id>"
 DISCORD_FREE_8S_VOICE_CATEGORY_ID="<dedicated-category-id>"
 DISCORD_FREE_8S_VOICE_OVERFLOW_CATEGORY_IDS="<optional-category-id>,<optional-second-category-id>"
 ```
@@ -56,7 +63,9 @@ change, and no live channels are changed until the existing bot runs this code.
 The default in `.env.example` is `DISCORD_FREE_8S_VOICE_ENABLED="false"`.
 **Discord linking is mandatory for Free 8s regardless of that switch.** Turning
 the switch off stops assignments and cleans up managed channels while the bot
-continues running. Keep the old channel/category IDs until cleanup finishes.
+continues running. Keep the old category IDs until cleanup finishes. Existing
+team voices are safely reused during upgrade; the bot adds a private lobby room.
+Legacy shared-room snapshots cannot release the map-readiness gate.
 New full Free 8s lobbies also wait for a fresh bot snapshot showing all eight
 players in the Waiting Room before generating teams/maps or starting the timer.
 With voice disabled, unconfigured or offline, those lobbies remain waiting.
@@ -68,8 +77,9 @@ recovery. It needs **View Channel**, **Connect**, **Move Members**, **Manage Cha
 and **Manage Roles** (to manage channel permission overwrites) in the test category
 and every overflow category and relevant voice. Its existing Verified Player role sync also needs Manage
 Roles, with the bot role above the Verified Player role. Players need View Channel,
-Connect and Speak in the waiting room. Team channels explicitly grant these to
-their team's linked identities and deny View Channel/Connect to `@everyone`.
+Connect and Speak in their lobby's waiting room. Waiting rooms explicitly grant
+these to the lobby's linked identities; team channels grant them to their team's
+linked identities. Both deny View Channel/Connect to `@everyone`.
 Discord administrators retain Discord's normal permission bypass.
 
 Give the bot Manage Roles through its server role, not through a per-channel
@@ -102,7 +112,9 @@ join voice or transmit audio.
    access tokens, user IDs or backend secrets. OAuth still requests only `identify`;
    joining is confirmed by the player in Discord. Changing/removing an identity is blocked during an active Free 8s
    membership; finish or leave the lobby first.
-4. Linked players join normally and follow **Open 8s Waiting Room**. They connect
+4. Linked players join normally and follow the lobby's **Join 8s Waiting Room**
+   button. Each lobby has its own room, created within the bot's polling cycle
+   even with only one enrolled player. Join/leave updates its private access. They connect
    to voice themselves. The website does not connect them automatically.
    Creation and new enrollment also require a fresh membership check against the
    configured `DISCORD_GUILD_ID`, using the existing server-side bot token and the
@@ -134,7 +146,7 @@ join voice or transmit audio.
    are preserved; no other queue's enrollment policy is changed.
 5. With eight players on the website, maps, teams and the one-minute countdown
    remain pending until the existing bot has observed **all eight** in the
-   configured Waiting Room. The server checks the exact roster/signature, guild,
+   lobby's own Waiting Room. The server checks the match ID, exact roster/signature, guild,
    Waiting Room and category, with a snapshot younger than twenty seconds.
    Frontend readiness claims cannot release this gate; seven waiting players,
    players in other/team channels, stale snapshots or an offline bot keep it
@@ -162,9 +174,16 @@ join voice or transmit audio.
    waiting-room arrivals are retried. Existing reshuffles preserve maps, update
    permissions and move players between this match's team voices.
 8. The bot polls the database every five seconds and reacts to voice events. On
-   completed/cancelled/expired/closed/deleted matches, partial rosters or disabling
-   the test, it returns that match's occupants of its team voices to the waiting room and deletes
-   those voices. It does not move someone who already left for another channel.
+   completed/cancelled/expired/closed/deleted matches or disabling the test, it
+   removes all three owned voices. Known occupants move to the optional public
+   return voice, or are disconnected. An admin-granted win uses the same completed
+   match path. The existing result publisher independently saves confirmed wins
+   in `match-results`; deleting voices never removes that message or match history.
+   If one player leaves while others remain, their access is revoked and they are
+   removed from this lobby's voices. The lobby's Waiting Room stays open. If teams
+   have to reset after a leave, only team voices are deleted and remaining players
+   return to their own Waiting Room. A last-player leave cancels the lobby and
+   deletes its Waiting Room too. It does not move someone who already left for another channel.
    Failed return moves retain the occupied channel for retry. Cleanup runs even if
    no one has the website open. There is no new match expiry timer; an existing
    status change to `expired` is handled when observed.
@@ -178,7 +197,7 @@ being dropped. A disconnected Gateway cannot refresh cached voice readiness.
 These improvements leave the server's twenty-second map-readiness gate intact.
 
 After a confirmed completed result (win/loss), **both teams** still connected to
-their managed team voices return automatically to the shared Waiting Room,
+their managed voices return to the optional public return voice, or disconnect,
 normally on the next five-second bot sweep. Users who already left voice or
 moved elsewhere are not force-connected or moved from unrelated channels.
 Cleanup remains idempotent and only deletes this match's stored channel IDs.
@@ -188,15 +207,15 @@ but put only seven in the Waiting Room. Verify no maps, generated teams, timer
 or temporary team voices appear, including after refresh and an admin reset.
 Connect the eighth player; within the bot/website polling cycle, verify maps and
 teams appear, the one-minute timer starts and all eight move to the correct
-team voices. Confirm a final score and verify both teams return and their
-temporary channels disappear. Money 8s keeps its existing behavior.
+team voices. Confirm a final score and verify all three temporary channels
+disappear and the result remains in `match-results`. Money 8s keeps its existing behavior.
 
 ## Concurrent matches and ownership
 
 The existing unique `Wager.id` is the match identity. No new match or database table
 is created. `DiscordEventDispatch` stores two types of internal records:
 
-- `free8s-voice:<match-id>`: `match_id`, `channels.host` (Team A ID),
+- `free8s-voice:<match-id>`: `match_id`, `channels.waiting` (private Waiting Room ID), `channels.host` (Team A ID),
   `channels.challenger` (Team B ID), guild/category/waiting-room IDs,
   `discord_channels_created_at`, `discord_channels_cleaned_at`, readiness,
   and pending creation operations.
@@ -212,7 +231,7 @@ pool or increase an explicitly lower `connection_limit`.
 An atomic worker-token check prevents a worker whose lock expired from overwriting
 state claimed by a newer worker after a slow Discord request returns.
 
-Before creating either side, the bot persists a unique operation. If Discord's
+Before creating any of the three channels, the bot persists a unique operation. If Discord's
 response is lost, it recovers the exact ID from the stored ownership record or a
 bot-authored audit entry with that unique operation reason. It never adopts,
 searches for ownership, or deletes channels by name. An ambiguous operation with
@@ -220,12 +239,12 @@ no confirmed audit entry stays pending for investigation rather than issuing a
 duplicate creation. Discord retains audit entries for 45 days; keep View Audit Log
 available and investigate pending-creation logs promptly.
 
-Both stored IDs are checked against ownership before any match action. Cleanup
+All three stored IDs are checked against ownership before any match action. Cleanup
 uses only that match's stored IDs, returns only its recorded members, and waits
 if an unrelated occupant is present. Unknown/deleted channels are treated as
 already removed. Each deletion is saved immediately, and cleanup completion is
-timestamped only after both channels/pending operations are gone. Repeated events
-and restarts cannot make one match delete another match's resources. A partial pair
+timestamped only after all three channels/pending operations are gone. Repeated events
+and restarts cannot make one match delete another match's resources. A partial lobby
 from a category capacity race is cleaned before trying another configured category.
 
 Bot state is blocked from generic entity writes and non-admin generic reads.
@@ -244,26 +263,30 @@ Errors retain Discord error codes without logging tokens, OAuth codes or secrets
   Discord in both Matchfinders; direct API join/create attempts must also fail.
 - Complete OAuth and verify return to the originating Free 8s view. Try cancelling
   consent and linking a Discord account already owned by another Topfragg account.
-- Use eight linked test players. Put six in the waiting room, leave one offline and
-  put one in an unrelated voice. Check that two private channels appear and the six
-  ready players move according to the website's generated teams. Check outsiders
-  cannot view/connect and missing players have clear status. The match still starts.
+- Create two lobbies with linked test players. Check distinct private Waiting Rooms
+  appear even before the lobbies fill. Check the join buttons target their own rooms,
+  outsiders cannot view/connect, and each room has an eight-player limit. Put seven
+  players in one lobby's own room and one in the old shared room or the other lobby's
+  room: maps stay pending. Move the eighth to their own room and verify generation
+  and correct team moves. Disconnect one player, then test late arrival.
 - Have the offline player join the waiting room late; verify their correct move.
   Trigger an existing team reshuffle and verify voice placement and access change.
 - Temporarily remove Move Members permission; verify a visible failure and bot log,
   then restore it and verify retry. Test missing Manage Channels/Manage Roles too.
-- Complete/cancel the match with browser tabs closed. Verify return to waiting and
-  deletion. Repeat cleanup/restart the bot and verify no duplicate channels/errors.
-  Test a player leaving before roster lock and an `expired` status on a test record.
-- Run at least 20 concurrent matches. Verify 40 distinct voices with the correct
+- Complete/cancel or grant a win as admin with browser tabs closed. Verify all three
+  voices disappear and completed results persist in `match-results`. Repeat cleanup
+  and restart the bot: no duplicate channels or results. Before roster lock, leave
+  one player: revoke access, remove them from voice and keep the other players' room.
+  Leave the last player: delete that room. Test `expired` too.
+- Run at least 20 concurrent matches. Verify 60 distinct voices with the correct
   full match IDs, teams, permissions and stored ownership. Finish one match and
-  confirm only its pair disappears and only its players return to the waiting room.
+  confirm only its three voices disappear and only its occupants move/disconnect.
 - Repeatedly trigger sync/restart while teams are generated. Rename a managed
   channel and create a lookalike manually; cleanup must use its recorded ID and
   leave the lookalike alone. Simulate an interrupted creation and verify audit
-  recovery without another pair. Test missing View Audit Log permission too.
-- With overflow configured, test more than 25 matches (or prefill ACTIVE 8s).
-  Check each pair stays together in one category. Fill all categories and verify
+  recovery without duplicates. Test missing View Audit Log permission too.
+- With overflow configured, test more than 16 generated matches (or prefill ACTIVE 8s).
+  Check each lobby stays together in one category. Fill all categories and verify
   a visible capacity message, no player moves and normal matchmaking continuation.
 - Make a cleanup move fail: occupied voice must remain for retry. Restore permission
   and verify deletion. Disconnect a player manually; cleanup must not reconnect them.
@@ -275,7 +298,7 @@ Errors retain Discord error codes without logging tokens, OAuth codes or secrets
 ## Automated verification
 
 ```text
-node --test server/free-eights-discord.test.js discord/free-eights-voice.test.js server/wager-acceptance.test.js
+node --test server/free-eights-discord.test.js discord/free-eights-voice.test.js discord/free-eights-results.test.js server/free-eights-teams.test.js server/wager-acceptance.test.js
 npm run build
 ```
 

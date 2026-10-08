@@ -4,10 +4,11 @@ import { AuditLogEvent, ChannelType, Collection, PermissionFlagsBits, Permission
 import { canAssignFreeEightsVoice, syncFreeEightsVoice } from "./free-eights-voice.js";
 import { freeEightsChannelKey, freeEightsDiscordJoinError, freeEightsVoiceKey, freeEightsWaitingRoomReady, publicFreeEightsVoiceStatus, voiceRosterSignature } from "../server/free-eights-discord.js";
 
-const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003" };
+const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003", overflowCategoryIds: ["100000000000000005", "100000000000000006"] };
+const channelId = (n) => String(300000000000000000n + BigInt(n));
 
-function fixture(count = 1) {
-  const matches = Array.from({ length: count }, (_, index) => ({ id: `match${index + 1}`, metadata: { match_type: "8s", status: "open", teams_generated_at: "2026-10-07T00:00:00Z" } }));
+function fixture(count = 1, { autoJoinWaiting = true } = {}) {
+  const matches = Array.from({ length: count }, (_, index) => ({ id: `match${index + 1}`, metadata: { id: `match${index + 1}`, match_type: "8s", status: "open", teams_generated_at: "2026-10-07T00:00:00Z" } }));
   const match = matches[0];
   const participants = matches.flatMap((item, matchIndex) => Array.from({ length: 8 }, (_, index) => ({ user_id: `player${matchIndex * 8 + index}`, wager_id: item.id, team: index < 4 ? "host" : "challenger" })));
   const users = participants.map((player, index) => ({ id: player.user_id, discord_user_id: String(200000000000000000n + BigInt(index)), discord_connected_at: new Date() }));
@@ -42,6 +43,7 @@ function fixture(count = 1) {
   });
   channels.set(config.waitingRoomId, channel(config.waitingRoomId, ChannelType.GuildVoice, "8s Waiting Room", null));
   channels.set(config.categoryId, channel(config.categoryId, ChannelType.GuildCategory, "Free 8s Test", null));
+  for (const id of config.overflowCategoryIds) channels.set(id, channel(id, ChannelType.GuildCategory, "Free 8s overflow", null));
   const guild = { id: config.guildId, client: { user: { id: "100000000000000004" } }, voiceStates: { cache: voices },
     async fetchAuditLogs({ before } = {}) {
       const entries = new Collection([...audits].reverse().filter(([id]) => !before || Number(id) < Number(before)).slice(0, 100));
@@ -60,8 +62,16 @@ function fixture(count = 1) {
           throw Object.assign(new Error("Maximum category channels"), { status: 400, code: 30013 });
         }
         creations++;
-        const item = channel(`channel${creations}`, options.type, options.name, options.parent);
+        const item = channel(channelId(creations), options.type, options.name, options.parent);
+        item.userLimit = options.userLimit;
         item.permissionOverwrites.values = options.permissionOverwrites;
+        // Simulate participants following their own lobby join link (not a bot move).
+        if (autoJoinWaiting && options.name.endsWith("8s Waiting Room")) {
+          for (const overwrite of options.permissionOverwrites.slice(2)) {
+            const voice = voices.get(overwrite.id);
+            if (voice?.channelId === config.waitingRoomId) voice.channelId = item.id;
+          }
+        }
         channels.set(item.id, item);
         audits.set(String(creations), { id: String(creations), reason: options.reason, action: AuditLogEvent.ChannelCreate,
           executorId: guild.client.user.id, targetId: item.id, createdTimestamp: Date.now() });
@@ -141,7 +151,7 @@ test("40 matches fetch the channel inventory once per sweep and do not repeatedl
   const f = fixture(40);
   const overflow = "100000000000000005";
   f.channels.set(overflow, { id: overflow, type: ChannelType.GuildCategory, name: "ACTIVE 8s overflow" });
-  const settings = { overflowCategoryIds: [overflow] };
+  const settings = { overflowCategoryIds: [overflow, config.overflowCategoryIds[1]] };
   await f.sync(settings);
   assert.equal(f.inventoryFetches(), 1);
   assert.equal(f.moves.length, 320);
@@ -201,7 +211,7 @@ test("non-administrator bot creates private voices without forbidden Manage Role
   await f.db.discordEventDispatch.create({ data: { event_key: freeEightsVoiceKey(f.match.id),
     metadata: { match_id: f.match.id, channels: {}, provisions: {}, error: "Missing Permissions" } } });
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.moves.length, 8);
   assert.equal(f.state().error, null);
   for (const id of Object.values(f.state().channels)) {
@@ -216,7 +226,7 @@ test("non-administrator bot creates private voices without forbidden Manage Role
   f.participants[4].team = "host";
   f.match.metadata.teams_generated_at = "2026-10-07T00:01:00Z";
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.stats().permissionEdits, 2);
   assert.equal(f.moves.length, 10);
 });
@@ -227,7 +237,7 @@ test("private channels, correct teams, offline/other-channel players and late ar
   f.voices.get(f.users[7].discord_user_id).channelId = "unrelated-voice";
   await f.sync();
   assert.equal(f.moves.length, 6);
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.state().players.player6.status, "not_in_waiting_room");
   assert.equal(f.state().players.player7.status, "not_in_waiting_room");
   for (const player of f.participants.slice(0, 6)) {
@@ -241,9 +251,9 @@ test("private channels, correct teams, offline/other-channel players and late ar
   assert.deepEqual(overwrite[0].deny, [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]);
   assert.deepEqual(overwrite.slice(2).map((item) => item.id), f.users.slice(0, 4).map((user) => user.discord_user_id));
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.moves.length, 6);
-  f.voices.get(f.users[6].discord_user_id).channelId = config.waitingRoomId;
+  f.voices.get(f.users[6].discord_user_id).channelId = f.state().waiting_room_id;
   await f.sync();
   assert.equal(f.state().players.player6.status, "in_team_voice");
   assert.equal(f.moves.length, 7);
@@ -268,7 +278,7 @@ test("reshuffle changes private access and moves only this match's teams", async
   f.participants[4].team = "host";
   f.match.metadata.teams_generated_at = "2026-10-07T00:01:00Z";
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.stats().permissionEdits, 2);
   assert.equal(f.moves.length, 10);
   assert.equal(f.voices.get(f.users[0].discord_user_id).channelId, f.state().channels.challenger);
@@ -280,23 +290,23 @@ test("website lobby waits for voice before generation and both winning and losin
   f.match.metadata.free_eights_waiting_for_voice = true;
   f.voices.get(f.users[7].discord_user_id).channelId = null;
   await f.sync();
-  assert.equal(f.stats().creations, 0);
+  assert.equal(f.stats().creations, 1);
   assert.equal(f.moves.length, 0);
   assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants, f.state()), false);
-  f.voices.get(f.users[7].discord_user_id).channelId = config.waitingRoomId;
+  f.voices.get(f.users[7].discord_user_id).channelId = f.state().waiting_room_id;
   await f.sync();
   assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants, f.state()), true);
-  assert.equal(f.stats().creations, 0, "presence alone cannot create voices before website generation");
+  assert.equal(f.stats().creations, 1, "presence alone cannot create voices before website generation");
   f.match.metadata.teams_generated_at = new Date().toISOString();
   f.match.metadata.free_eights_waiting_for_voice = false;
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.moves.length, 8);
   f.match.metadata.status = "completed";
   f.match.metadata.winner_id = f.participants[0].user_id;
   await f.sync();
   for (const player of f.users) assert.equal(f.voices.get(player.discord_user_id).channelId, config.waitingRoomId);
-  assert.equal(f.stats().deletes, 2);
+  assert.equal(f.stats().deletes, 3);
   await f.sync();
   assert.equal(f.moves.length, 16, "repeated completion does not move anyone twice");
 });
@@ -307,12 +317,12 @@ for (const status of ["completed", "cancelled", "expired", "closed"]) {
     await f.sync();
     f.match.metadata.status = status;
     await f.sync();
-    assert.equal(f.stats().deletes, 2);
+    assert.equal(f.stats().deletes, 3);
     assert.equal(f.moves.length, 16);
     assert.deepEqual(f.state().channels, {});
     assert.equal(f.state().cleaned, true);
     await f.sync();
-    assert.equal(f.stats().deletes, 2);
+    assert.equal(f.stats().deletes, 3);
   });
 }
 
@@ -322,12 +332,12 @@ test("cleanup move failure retains occupied channel and retries", async () => {
   f.voices.get(f.users[0].discord_user_id).fail = true;
   f.match.metadata.status = "cancelled";
   await f.sync();
-  assert.equal(f.stats().deletes, 1);
+  assert.equal(f.stats().deletes, 2);
   assert.ok(f.state().channels.host);
   assert.equal(f.state().error, "Voice cleanup pending");
   f.voices.get(f.users[0].discord_user_id).fail = false;
   await f.sync();
-  assert.equal(f.stats().deletes, 2);
+  assert.equal(f.stats().deletes, 3);
   assert.equal(f.state().cleaned, true);
 });
 
@@ -335,25 +345,27 @@ test("switch off cleans existing channels; partial roster returns players", asyn
   const f = fixture();
   await f.sync();
   await f.sync({ enabled: false });
-  assert.equal(f.stats().deletes, 2);
+  assert.equal(f.stats().deletes, 3);
   const g = fixture();
   await g.sync();
   g.participants.pop();
   g.match.metadata.teams_generated_at = "";
   await g.sync();
   assert.equal(g.stats().deletes, 2);
-  assert.equal(g.moves.length, 16);
+  assert.equal(g.moves.length, 17);
+  assert.ok(g.state().channels.waiting, "remaining players keep their lobby room");
 });
 
 test("recover interrupted creation by durable operation and audit channel ID for terminal match", async () => {
   const f = fixture();
   await f.sync();
   const state = f.state();
+  const hostId = state.channels.host;
   delete state.channels.host;
-  f.records.delete(freeEightsChannelKey("channel1")); // Only reservation persisted before process failure.
+  f.records.delete(freeEightsChannelKey(hostId)); // Only reservation persisted before process failure.
   f.match.metadata.status = "expired";
   await f.sync();
-  assert.equal(f.stats().deletes, 2);
+  assert.equal(f.stats().deletes, 3);
   assert.equal(f.state().cleaned, true);
 });
 
@@ -374,12 +386,12 @@ test("a failed channel creation retries without duplicating the successful side"
     return original(options);
   };
   await f.sync();
-  assert.equal(f.stats().creations, 1);
+  assert.equal(f.stats().creations, 2);
   assert.equal(f.moves.length, 0);
   assert.ok(f.state().error);
   fail = false;
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.moves.length, 8);
   assert.equal(f.state().error, null);
 });
@@ -410,22 +422,22 @@ test("voice status redacts Discord IDs and rejects stale or changed rosters", as
   assert.equal(publicFreeEightsVoiceStatus(config, f.match.metadata, f.participants, f.state()).fresh, false);
 });
 
-test("20 simultaneous matches and overlapping duplicate sync events create exactly 40 isolated channels", async () => {
+test("20 simultaneous matches and overlapping duplicate sync events create exactly 60 isolated channels", async () => {
   const f = fixture(20);
   await Promise.all([f.sync(), f.sync(), f.sync()]);
-  assert.equal(f.stats().creations, 40);
+  assert.equal(f.stats().creations, 60);
   assert.equal(f.moves.length, 160);
   const assigned = new Set();
   for (const match of f.matches) {
     const state = f.records.get(freeEightsVoiceKey(match.id)).metadata;
     assert.ok(state.discord_channels_created_at);
     assert.equal(state.discord_channels_cleaned_at, null);
-    for (const side of ["host", "challenger"]) {
+    for (const side of ["waiting", "host", "challenger"]) {
       const id = state.channels[side];
       assert.ok(!assigned.has(id));
       assigned.add(id);
       assert.equal(f.records.get(freeEightsChannelKey(id)).metadata.match_id, match.id);
-      assert.equal(f.channels.get(id).name, `${match.id} • Team ${side === "host" ? "A" : "B"}`);
+      assert.equal(f.channels.get(id).name, `${match.id} • ${side === "waiting" ? "8s Waiting Room" : `Team ${side === "host" ? "A" : "B"}`}`);
     }
     for (const player of f.participants.filter((row) => row.wager_id === match.id)) {
       const identity = f.users.find((user) => user.id === player.user_id);
@@ -433,18 +445,18 @@ test("20 simultaneous matches and overlapping duplicate sync events create exact
     }
   }
   await Promise.all([f.sync(), f.sync()]);
-  assert.equal(f.stats().creations, 40);
+  assert.equal(f.stats().creations, 60);
   assert.equal(f.moves.length, 160);
 });
 
-test("cleanup of one of 20 matches uses stored IDs even after rename and leaves 19 pairs untouched", async () => {
+test("cleanup of one of 20 matches uses stored IDs even after rename and leaves 19 lobbies untouched", async () => {
   const f = fixture(20);
   await f.sync();
   const before = new Map(f.matches.map((match) => [match.id, structuredClone(f.records.get(freeEightsVoiceKey(match.id)).metadata.channels)]));
   for (const id of Object.values(before.get(f.match.id))) f.channels.get(id).name = "Team A";
   f.match.metadata.status = "completed";
   await Promise.all([f.sync(), f.sync()]);
-  assert.equal(f.stats().deletes, 2);
+  assert.equal(f.stats().deletes, 3);
   assert.equal(f.moves.length, 168);
   assert.ok(f.state().discord_channels_cleaned_at);
   assert.equal(f.state().cleaned, true);
@@ -453,7 +465,7 @@ test("cleanup of one of 20 matches uses stored IDs even after rename and leaves 
     for (const id of Object.values(before.get(match.id))) assert.ok(f.channels.has(id));
   }
   await f.sync();
-  assert.equal(f.stats().deletes, 2);
+  assert.equal(f.stats().deletes, 3);
 });
 
 test("cross-match channel ID injection cannot move, edit or delete another match's channel", async () => {
@@ -500,10 +512,10 @@ test("ambiguous creation success is recovered by audit ID without creating a dup
     return channel;
   };
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 1);
   assert.equal(f.moves.length, 0);
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.moves.length, 8);
   assert.ok(f.logs.some((row) => row.event === "provision-recovered"));
 });
@@ -527,19 +539,19 @@ test("unconfirmed creation cannot be retried blindly or recovered from a lookali
   assert.equal(f.stats().deletes, 0);
 });
 
-test("40 simultaneous matches overflow into existing categories and retain one isolated pair per match", async () => {
+test("40 simultaneous matches overflow into existing categories and retain three isolated voices per match", async () => {
   const f = fixture(40);
   const overflow = "100000000000000005";
   f.channels.set(overflow, { id: overflow, type: ChannelType.GuildCategory, name: "ACTIVE 8s overflow" });
-  const settings = { overflowCategoryIds: [overflow] };
+  const settings = { overflowCategoryIds: [overflow, config.overflowCategoryIds[1]] };
   await Promise.all([f.sync(settings), f.sync(settings)]);
   await f.sync(settings); // Reconcile any Discord-enforced capacity race.
   assert.equal(f.moves.length, 320, JSON.stringify([...f.records.values()].filter((row) => row.event_key.startsWith("free8s-voice:") && Object.keys(row.metadata.channels).length < 2).map((row) => ({ match: row.metadata.match_id, channels: row.metadata.channels, error: row.metadata.error }))));
-  assert.equal(f.channels.filter((item) => item.parentId === config.categoryId).size, 50);
-  assert.equal(f.channels.filter((item) => item.parentId === overflow).size, 30);
+  assert.equal(f.channels.filter((item) => item.parentId === config.categoryId).size, 48);
+  assert.equal(f.channels.filter((item) => item.parentId === overflow).size, 48);
   for (const match of f.matches) {
     const state = f.records.get(freeEightsVoiceKey(match.id)).metadata;
-    assert.equal(Object.keys(state.channels).length, 2);
+    assert.equal(Object.keys(state.channels).length, 3);
     for (const id of Object.values(state.channels)) assert.equal(f.channels.get(id).parentId, state.category_id);
     assert.equal(publicFreeEightsVoiceStatus({ ...config, ...settings }, match.metadata,
       f.participants.filter((row) => row.wager_id === match.id), state).fresh, true);
@@ -549,12 +561,12 @@ test("40 simultaneous matches overflow into existing categories and retain one i
   assert.deepEqual(f.stats(), stats);
 });
 
-test("full categories leave players in the waiting room and log capacity without breaking matches", async () => {
+test("full categories report capacity without changing the match", async () => {
   const f = fixture();
   for (let index = 0; index < 50; index++) f.channels.set(`external${index}`, {
     id: `external${index}`, parentId: config.categoryId, type: ChannelType.GuildVoice,
   });
-  await f.sync();
+  await f.sync({ overflowCategoryIds: [] });
   assert.equal(f.stats().creations, 0);
   assert.equal(f.moves.length, 0);
   assert.ok(f.state().error.includes("full"));
@@ -567,7 +579,7 @@ test("replacing an externally deleted voice safely recovers an ambiguous result 
   await f.sync();
   const deletedId = f.state().channels.host;
   f.channels.delete(deletedId);
-  for (const voice of f.voices.values()) if (voice.channelId === deletedId) voice.channelId = config.waitingRoomId;
+  for (const voice of f.voices.values()) if (voice.channelId === deletedId) voice.channelId = f.state().waiting_room_id;
   const original = f.guild.channels.create;
   f.guild.channels.create = async (options) => {
     await original(options);
@@ -577,8 +589,8 @@ test("replacing an externally deleted voice safely recovers an ambiguous result 
   assert.equal(f.state().channels.host, undefined);
   assert.ok(f.records.get(freeEightsChannelKey(deletedId)).metadata.deleted_at);
   await f.sync();
-  assert.equal(f.stats().creations, 3);
-  assert.equal(Object.keys(f.state().channels).length, 2);
+  assert.equal(f.stats().creations, 4);
+  assert.equal(Object.keys(f.state().channels).length, 3);
   assert.equal(f.moves.length, 12);
 });
 
@@ -599,15 +611,15 @@ test("lock timeout after Discord creation preserves ownership for the next worke
   await f.sync();
   assert.equal(f.stats().creations, 1);
   assert.equal(f.moves.length, 0);
-  assert.ok(f.state().provisions.host);
-  assert.ok(f.records.has(freeEightsChannelKey("channel1")));
+  assert.ok(f.state().provisions.waiting);
+  assert.ok(f.records.has(freeEightsChannelKey(channelId(1))));
   f.db.$transaction = originalTransaction;
   f.guild.channels.create = originalCreate;
   f.guild.fetchAuditLogs = async () => { throw new Error("Recovery must reuse committed ownership without audit"); };
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.moves.length, 8);
-  assert.equal(f.state().channels.host, "channel1");
+  assert.equal(f.state().channels.waiting, channelId(1));
 });
 
 test("a replaced worker cannot overwrite newer match state after its Discord request returns", async () => {
@@ -623,10 +635,198 @@ test("a replaced worker cannot overwrite newer match state after its Discord req
   assert.equal(f.state().worker_token, "newer-worker");
   assert.equal(f.state().marker, "newer-state");
   assert.equal(f.state().channels.host, undefined);
-  assert.ok(f.records.has(freeEightsChannelKey("channel1")));
+  assert.ok(f.records.has(freeEightsChannelKey(channelId(1))));
   assert.ok(f.logs.some((row) => row.event === "sync-failed" && row.error.includes("stale state write")));
   f.guild.channels.create = originalCreate;
   await f.sync();
-  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().creations, 3);
   assert.equal(f.moves.length, 8);
+});
+
+test("a one-player lobby immediately gets a private eight-seat room; join and leave update access", async () => {
+  const f = fixture(1, { autoJoinWaiting: false });
+  f.match.metadata.teams_generated_at = "";
+  const rest = f.participants.splice(1);
+  await f.sync();
+  const roomId = f.state().channels.waiting;
+  const room = f.channels.get(roomId);
+  assert.equal(f.stats().creations, 1);
+  assert.equal(room.userLimit, 8);
+  assert.notEqual(roomId, config.waitingRoomId);
+  assert.equal(f.moves.length, 0, "creating a lobby never pulls players from the shared voice");
+  assert.deepEqual(room.permissionOverwrites.values.slice(2).map((row) => row.id), [f.users[0].discord_user_id]);
+  assert.equal(publicFreeEightsVoiceStatus(config, f.match.metadata, f.participants, f.state()).waiting_room_url,
+    `https://discord.com/channels/${config.guildId}/${roomId}`);
+  f.voices.get(f.users[0].discord_user_id).channelId = roomId;
+  f.participants.push(rest[0]);
+  await f.sync();
+  assert.deepEqual(room.permissionOverwrites.values.slice(2).map((row) => row.id), f.users.slice(0, 2).map((row) => row.discord_user_id));
+  f.participants.shift(); // Host leaves; the website keeps the remaining player's lobby open.
+  await f.sync();
+  assert.equal(f.state().channels.waiting, roomId);
+  assert.equal(f.stats().deletes, 0);
+  assert.deepEqual(room.permissionOverwrites.values.slice(2).map((row) => row.id), [f.users[1].discord_user_id]);
+  assert.equal(f.voices.get(f.users[0].discord_user_id).channelId, config.waitingRoomId);
+  f.voices.get(f.users[1].discord_user_id).channelId = roomId;
+  f.participants.length = 0;
+  f.match.metadata.status = "cancelled"; // Last leave closes the lobby.
+  await f.sync();
+  assert.equal(f.channels.has(roomId), false);
+  assert.equal(f.state().cleaned, true);
+  assert.equal(f.voices.get(f.users[1].discord_user_id).channelId, config.waitingRoomId);
+  assert.equal(f.channels.has(config.waitingRoomId), true, "the pre-existing return voice is never deleted");
+  assert.ok(f.records.get(freeEightsChannelKey(roomId)).metadata.deleted_at, "channel history survives cleanup");
+});
+
+test("readiness and moves use only the lobby's own room, never the shared room or another lobby", async () => {
+  const f = fixture(2, { autoJoinWaiting: false });
+  for (const match of f.matches) match.metadata.teams_generated_at = "";
+  await f.sync();
+  const first = f.state();
+  const second = f.records.get(freeEightsVoiceKey("match2")).metadata;
+  assert.notEqual(first.waiting_room_id, second.waiting_room_id);
+  assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants.slice(0, 8), first), false);
+  for (const user of f.users.slice(0, 8)) f.voices.get(user.discord_user_id).channelId = first.waiting_room_id;
+  for (const user of f.users.slice(8)) f.voices.get(user.discord_user_id).channelId = first.waiting_room_id; // Admin bypass.
+  await f.sync();
+  assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants.slice(0, 8), f.state()), true);
+  assert.equal(freeEightsWaitingRoomReady(config, f.matches[1].metadata, f.participants.slice(8), f.records.get(freeEightsVoiceKey("match2")).metadata), false);
+  for (const match of f.matches) match.metadata.teams_generated_at = new Date().toISOString();
+  await f.sync();
+  assert.equal(f.moves.length, 8);
+  for (const user of f.users.slice(8)) assert.equal(f.voices.get(user.discord_user_id).channelId, first.waiting_room_id);
+});
+
+test("shared-room snapshots and another match's snapshot cannot produce a lobby join link or readiness", async () => {
+  const f = fixture();
+  f.match.metadata.teams_generated_at = "";
+  await f.sync();
+  const state = f.state();
+  const legacy = { ...state, waiting_room_id: config.waitingRoomId, channels: {} };
+  const foreign = { ...state, match_id: "another-match" };
+  for (const snapshot of [legacy, foreign]) {
+    const view = publicFreeEightsVoiceStatus(config, f.match.metadata, f.participants, snapshot);
+    assert.equal(view.fresh, false);
+    assert.equal(view.waiting_room_url, null);
+    assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants, snapshot), false);
+  }
+  assert.equal(publicFreeEightsVoiceStatus(config, {}, [], null).waiting_room_url, null);
+  assert.equal(publicFreeEightsVoiceStatus(config, { ...f.match.metadata, status: "completed" }, f.participants, state).waiting_room_url, null);
+});
+
+test("admin completion cleans all three voices with no return room, preserving channel history", async () => {
+  const f = fixture();
+  await f.sync({ waitingRoomId: "" });
+  const ids = Object.values(f.state().channels);
+  f.match.metadata.status = "completed";
+  f.match.metadata.winner_id = f.participants[0].user_id;
+  f.match.metadata.admin_resolved_by = "staff";
+  await f.sync({ waitingRoomId: "" });
+  assert.equal(f.stats().deletes, 3);
+  assert.equal(f.state().cleaned, true);
+  for (const user of f.users) assert.equal(f.voices.get(user.discord_user_id).channelId, null);
+  for (const id of ids) assert.ok(f.records.get(freeEightsChannelKey(id)).metadata.deleted_at);
+  await f.sync({ waitingRoomId: "" });
+  assert.equal(f.stats().deletes, 3);
+});
+
+test("deleting the optional old shared room does not block cleanup", async () => {
+  const f = fixture();
+  await f.sync();
+  f.channels.delete(config.waitingRoomId);
+  f.match.metadata.status = "cancelled";
+  await f.sync();
+  assert.equal(f.state().cleaned, true);
+  for (const user of f.users) assert.equal(f.voices.get(user.discord_user_id).channelId, null);
+});
+
+test("a departed player's failed move is retried without deleting the remaining lobby's room", async () => {
+  const f = fixture();
+  f.match.metadata.teams_generated_at = "";
+  await f.sync();
+  const room = f.state().channels.waiting;
+  const leaver = f.users[0];
+  f.voices.get(leaver.discord_user_id).fail = true;
+  f.participants.shift();
+  await f.sync();
+  assert.equal(f.state().channels.waiting, room);
+  assert.ok(f.state().error.includes("departed"));
+  assert.equal(f.channels.get(room).permissionOverwrites.values.some((row) => row.id === leaver.discord_user_id), false);
+  f.voices.get(leaver.discord_user_id).fail = false;
+  await f.sync();
+  assert.equal(f.state().error, null);
+  assert.equal(f.voices.get(leaver.discord_user_id).channelId, config.waitingRoomId);
+});
+
+test("an externally deleted private waiting room is recreated with a new join link and ownership", async () => {
+  const f = fixture();
+  f.match.metadata.teams_generated_at = "";
+  await f.sync();
+  const oldRoom = f.state().channels.waiting;
+  f.channels.delete(oldRoom);
+  for (const voice of f.voices.values()) voice.channelId = null;
+  await f.sync();
+  assert.notEqual(f.state().channels.waiting, oldRoom);
+  assert.ok(f.records.get(freeEightsChannelKey(oldRoom)).metadata.deleted_at);
+  assert.equal(f.stats().creations, 2);
+  const view = publicFreeEightsVoiceStatus(config, f.match.metadata, f.participants, f.state());
+  assert.ok(view.waiting_room_url.endsWith(f.state().channels.waiting));
+  assert.ok(view.players.every((row) => row.status === "not_in_waiting_room"));
+});
+
+test("an existing lobby room survives team-capacity exhaustion until space becomes available", async () => {
+  const f = fixture();
+  f.match.metadata.teams_generated_at = "";
+  await f.sync({ overflowCategoryIds: [] });
+  const room = f.state().channels.waiting;
+  for (let n = 0; n < 49; n++) f.channels.set(`external${n}`, { id: `external${n}`, parentId: config.categoryId, type: ChannelType.GuildVoice });
+  f.match.metadata.teams_generated_at = new Date().toISOString();
+  await f.sync({ overflowCategoryIds: [] });
+  assert.equal(f.state().channels.waiting, room);
+  assert.equal(f.stats().deletes, 0);
+  assert.ok(f.state().error.includes("full"));
+  f.channels.delete("external0");
+  f.channels.delete("external1");
+  await f.sync({ overflowCategoryIds: [] });
+  assert.equal(f.stats().creations, 3);
+  assert.equal(f.moves.length, 8);
+});
+
+test("a waiting-room ID from another lobby cannot authorize cleanup", async () => {
+  const f = fixture(2);
+  await f.sync();
+  const other = f.records.get(freeEightsVoiceKey("match2")).metadata;
+  f.state().channels.waiting = other.channels.waiting;
+  f.state().waiting_room_id = other.waiting_room_id;
+  f.match.metadata.status = "cancelled";
+  const before = f.stats();
+  await f.sync();
+  assert.deepEqual(f.stats(), before);
+  assert.ok(f.channels.has(other.channels.waiting));
+  assert.ok(f.logs.some((row) => row.event === "sync-failed" && row.error.includes("ownership")));
+});
+
+test("upgrade adds a private room to legacy team voices without deleting those teams or the shared voice", async () => {
+  const f = fixture();
+  await f.sync();
+  const state = f.state();
+  const teams = { host: state.channels.host, challenger: state.channels.challenger };
+  const privateRoom = state.channels.waiting;
+  f.channels.delete(privateRoom);
+  delete state.channels.waiting;
+  delete state.provisions.waiting;
+  delete state.channel_roster_signatures.waiting;
+  delete state.return_room_id;
+  state.waiting_room_id = config.waitingRoomId;
+  await f.sync();
+  assert.notEqual(f.state().channels.waiting, config.waitingRoomId);
+  assert.equal(f.state().channels.host, teams.host);
+  assert.equal(f.state().channels.challenger, teams.challenger);
+  assert.equal(f.stats().deletes, 0);
+  assert.equal(f.moves.length, 8);
+  assert.equal(f.channels.has(config.waitingRoomId), true);
+  f.match.metadata.status = "completed";
+  await f.sync();
+  assert.equal(f.state().cleaned, true);
+  assert.equal(f.stats().deletes, 3);
 });

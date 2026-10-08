@@ -54,14 +54,18 @@ export const voiceRosterSignature = (match, participants) => JSON.stringify([
 
 export const publicFreeEightsVoiceStatus = (config, match, participants, state, now = Date.now()) => {
   const age = now - new Date(state?.checked_at).getTime();
+  const room = config.enabled && validDiscordId(config.guildId) && match?.id && match.match_type === "8s"
+    && state?.match_id === match.id && !freeEightsVoiceClosed.has(match.status)
+    && state?.guild_id === config.guildId && freeEightsVoiceCategoryIds(config).includes(state?.category_id)
+    && validDiscordId(state?.channels?.waiting) && state.waiting_room_id === state.channels.waiting
+    ? state.channels.waiting : null;
   const fresh = Boolean(state?.checked_at && age >= 0 && age < 20_000
-    && state.guild_id === config.guildId && state.waiting_room_id === config.waitingRoomId && freeEightsVoiceCategoryIds(config).includes(state.category_id)
+    && room
     && state.roster_signature === voiceRosterSignature(match, participants));
   return {
     enabled: config.enabled,
-    configured: Boolean(validDiscordId(config.guildId) && validDiscordId(config.waitingRoomId) && validDiscordId(config.categoryId)),
-    waiting_room_url: validDiscordId(config.guildId) && validDiscordId(config.waitingRoomId)
-      ? `https://discord.com/channels/${config.guildId}/${config.waitingRoomId}` : null,
+    configured: Boolean(validDiscordId(config.guildId) && validDiscordId(config.categoryId)),
+    waiting_room_url: room ? `https://discord.com/channels/${config.guildId}/${room}` : null,
     fresh,
     snapshot_age_ms: Number.isFinite(age) && age >= 0 ? age : null,
     checked_at: state?.checked_at || null,

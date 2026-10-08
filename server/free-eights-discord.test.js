@@ -28,6 +28,8 @@ test("authenticated Free 8s API and existing OAuth integration", async (t) => {
     DISCORD_CLIENT_ID: "100000000000000001", DISCORD_CLIENT_SECRET: "fake-oauth-secret",
     DISCORD_OAUTH_STATE_SECRET: "test-state-secret", DISCORD_OAUTH_REDIRECT_URI: "http://localhost/api/discord/callback",
     TOPFRAGG_PUBLIC_URL: "http://localhost", DISCORD_TOKEN: "fake-bot-token", DISCORD_GUILD_ID: "100000000000000002",
+    DISCORD_FREE_8S_VOICE_ENABLED: "true", DISCORD_FREE_8S_VOICE_CATEGORY_ID: "100000000000000003",
+    DISCORD_FREE_8S_WAITING_ROOM_ID: "100000000000000004",
   };
   const previousEnv = Object.fromEntries(Object.keys(environment).map((key) => [key, process.env[key]]));
   Object.assign(process.env, environment);
@@ -37,6 +39,7 @@ test("authenticated Free 8s API and existing OAuth integration", async (t) => {
   let active = false;
   let matchType = "8s";
   let participant = true;
+  let voiceState = null;
   let updates = 0;
   const override = (target, method, implementation) => {
     const previous = target[method];
@@ -49,7 +52,7 @@ test("authenticated Free 8s API and existing OAuth integration", async (t) => {
   override(prisma.wager, "findUnique", async () => ({ id: "match1", metadata: { match_type: matchType, status: "open" } }));
   override(prisma.wager, "findMany", async () => active ? [{ id: "match1", metadata: { match_type: "8s", status: "open" } }] : []);
   override(prisma.wagerParticipant, "findMany", async () => participant ? [{ metadata: { user_id: account.id, wager_id: "match1", team: "host" } }] : []);
-  override(prisma.discordEventDispatch, "findUnique", async () => null);
+  override(prisma.discordEventDispatch, "findUnique", async () => voiceState ? { metadata: voiceState } : null);
   const realFetch = globalThis.fetch;
   let discordRequests = 0;
   let memberStatus = 200;
@@ -134,6 +137,18 @@ test("authenticated Free 8s API and existing OAuth integration", async (t) => {
     matchType = "money8s";
     assert.equal((await request("/api/discord/free-eights/match1")).status, 404);
     matchType = "8s";
+  });
+  await t.test("the real voice endpoint binds the private room to its authoritative match ID", async () => {
+    voiceState = { match_id: "match1", guild_id: environment.DISCORD_GUILD_ID,
+      category_id: environment.DISCORD_FREE_8S_VOICE_CATEGORY_ID,
+      waiting_room_id: "300000000000000001", channels: { waiting: "300000000000000001" } };
+    const response = await request("/api/discord/free-eights/match1");
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).waiting_room_url, "https://discord.com/channels/100000000000000002/300000000000000001");
+    voiceState.match_id = "another-match";
+    assert.equal((await (await request("/api/discord/free-eights/match1")).json()).waiting_room_url, null);
+    assert.equal((await (await request("/api/discord/free-eights")).json()).waiting_room_url, null);
+    voiceState = null;
   });
   await t.test("active Free 8s prevents unlink and account replacement", async () => {
     active = true;

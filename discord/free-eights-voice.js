@@ -8,6 +8,7 @@ import {
 
 const activeStatuses = ["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"];
 const guildCategoryReservations = new WeakMap();
+const channelSides = ["waiting", "host", "challenger"];
 const unknownChannel = (error) => Number(error.code) === 10003;
 const getChannel = async (guild, id) => {
   if (!id) return null;
@@ -74,18 +75,27 @@ async function recoverProvision(guild, db, state, side, provision, log) {
   }
 }
 
-export async function cleanupFreeEightsVoice(guild, state, { db = prisma, guard = async () => {}, save = async () => {}, log = freeEightsVoiceLog } = {}) {
+export async function cleanupFreeEightsVoice(guild, state, { db = prisma, guard = async () => {}, save = async () => {}, log = freeEightsVoiceLog, teamsOnly = false } = {}) {
   if (state.guild_id !== guild.id) throw new Error("Managed voice channels belong to a different guild");
-  const waiting = await getChannel(guild, state.waiting_room_id);
+  const returnRoom = state.return_room_id !== undefined ? state.return_room_id : (!state.channels.waiting ? state.waiting_room_id : null);
+  const destination = teamsOnly ? state.channels.waiting || returnRoom : returnRoom;
+  const waiting = await getChannel(guild, destination);
+  if (teamsOnly && destination === state.channels.waiting && destination) await channelOwner(db, guild, state, "waiting", destination);
+  else if (destination && await db.discordEventDispatch.findUnique({ where: { event_key: freeEightsChannelKey(destination) } })) {
+    throw new Error("Return voice is a managed match channel; refusing cleanup moves");
+  }
   let complete = true;
-  for (const side of ["host", "challenger"]) {
+  // Delete teams before the lobby room. Full cleanup returns known players to
+  // the optional public return voice, or disconnects them if none is configured.
+  const sides = teamsOnly ? ["host", "challenger"] : ["host", "challenger", "waiting"];
+  for (const side of sides) {
     const id = state.channels[side];
     if (!id) continue;
     const owner = await channelOwner(db, guild, state, side, id);
     const channel = await getChannel(guild, id);
     if (channel) {
       if (channel.type !== ChannelType.GuildVoice || channel.parentId !== owner.category_id
-        || channel.id === state.waiting_room_id) throw new Error("Managed channel location changed; refusing deletion");
+        || channel.id === destination) throw new Error("Managed channel location changed; refusing deletion");
       const members = new Set([...(owner.discord_user_ids || []), ...(state.member_discord_ids || [])]);
       for (const member of channel.members.values()) {
         if (member.voice.channelId !== channel.id) continue;
@@ -97,9 +107,8 @@ export async function cleanupFreeEightsVoice(guild, state, { db = prisma, guard 
         await guard();
         log("cleanup-move-attempt", { match_id: state.match_id, discord_user_id: member.id, channel_id: id });
         try {
-          if (waiting?.type !== ChannelType.GuildVoice) throw new Error("Waiting room unavailable");
           if (member.voice.channelId !== id) continue;
-          await member.voice.setChannel(waiting.id, `Free 8s ${state.match_id} cleanup`);
+          await member.voice.setChannel(waiting?.type === ChannelType.GuildVoice ? waiting.id : null, `Free 8s ${state.match_id} cleanup`);
           log("cleanup-move-success", { match_id: state.match_id, discord_user_id: member.id });
         } catch (error) {
           complete = false;
@@ -133,8 +142,8 @@ export async function cleanupFreeEightsVoice(guild, state, { db = prisma, guard 
     delete state.channel_roster_signatures[side];
     await save();
   }
-  if (complete && !Object.keys(state.channels).length && !Object.keys(state.provisions).length) {
-    state.discord_channels_cleaned_at ||= new Date().toISOString();
+  if (complete && sides.every((side) => !state.channels[side] && !state.provisions[side])) {
+    if (!teamsOnly) state.discord_channels_cleaned_at ||= new Date().toISOString();
     return true;
   }
   return false;
@@ -178,7 +187,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
   const signature = voiceRosterSignature(match, participants);
   const closed = !match || match.match_type !== "8s" || freeEightsVoiceClosed.has(match.status);
   const assign = config.enabled && canAssignFreeEightsVoice(match, participants);
-  for (const side of ["host", "challenger"]) {
+  for (const side of channelSides) {
     if (!state.channels[side] && state.provisions[side]) {
       await guard();
       const id = await recoverProvision(guild, db, state, side, state.provisions[side], log);
@@ -192,15 +201,17 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       await save();
     }
   }
-  // Validate both IDs before any moves, edits or cleanup for the match.
-  for (const side of ["host", "challenger"]) {
+  // Validate every ID before any moves, edits or cleanup for the match.
+  for (const side of channelSides) {
     if (state.channels[side]) await channelOwner(db, guild, state, side, state.channels[side]);
   }
   const changedConfig = state.guild_id && (state.guild_id !== config.guildId
-    || state.waiting_room_id !== config.waitingRoomId || !freeEightsVoiceCategoryIds(config).includes(state.category_id));
-  if ((!assign || changedConfig) && Object.keys(state.channels).length) {
+    || (state.return_room_id !== undefined && state.return_room_id !== config.waitingRoomId)
+    || !freeEightsVoiceCategoryIds(config).includes(state.category_id));
+  const cleanupAll = closed || !config.enabled || changedConfig;
+  if ((cleanupAll || !assign) && Object.keys(state.channels).some((side) => cleanupAll || side !== "waiting")) {
     state.error = "Voice cleanup pending";
-    if (!await cleanupFreeEightsVoice(guild, state, { db, guard, save, log })) { await save(); return; }
+    if (!await cleanupFreeEightsVoice(guild, state, { db, guard, save, log, teamsOnly: !cleanupAll })) { await save(); return; }
     log("cleanup-complete", { match_id: matchId });
   }
   state.cleaned = closed;
@@ -217,18 +228,19 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
     select: { id: true, discord_user_id: true, discord_connected_at: true } });
   const identities = new Map(users.map((user) => [user.id, user]));
   state.member_discord_ids = [...new Set([...(state.member_discord_ids || []), ...users.filter(hasDiscordLink).map((user) => user.discord_user_id)])];
-  const waiting = config.enabled ? await getChannel(guild, config.waitingRoomId) : null;
   const categories = freeEightsVoiceCategoryIds(config).filter((id) => inventory?.get(id)?.type === ChannelType.GuildCategory);
-  const configured = guild.id === config.guildId && waiting?.type === ChannelType.GuildVoice && categories.length > 0;
+  const configured = guild.id === config.guildId && categories.length > 0;
   state.guild_id = guild.id;
-  state.waiting_room_id = config.waitingRoomId;
+  state.return_room_id = config.waitingRoomId;
+  state.waiting_room_id = state.channels.waiting || null;
   state.category_id ||= config.categoryId;
   if (config.enabled && !configured) {
-    state.error = "Free 8s Discord waiting room or category is not configured correctly";
+    state.error = "Free 8s Discord guild or voice category is not configured correctly";
     log("configuration-error", { match_id: matchId });
   }
   const readyChannels = {};
-  if (assign && configured) {
+  if (config.enabled && configured) {
+    const prepareSides = assign ? channelSides : ["waiting"];
     let reservations = guildCategoryReservations.get(guild);
     if (!reservations) { reservations = new Map(); guildCategoryReservations.set(guild, reservations); }
     let reservedSlots = 0;
@@ -238,21 +250,26 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       reservedSlots--;
     };
     try {
-      // Discord enforces 50 children per category. Keep each match's pair together;
-      // on a capacity race, a later sweep safely removes its own partial pair first.
+      // Discord enforces 50 children per category. Keep a lobby's room and
+      // both team voices together, reserving slots across concurrent workers.
       const exists = (side) => inventory.has(state.channels[side]);
-      const missing = ["host", "challenger"].filter((side) => !exists(side)).length;
+      const missing = prepareSides.filter((side) => !exists(side)).length;
       const roomFor = (id, needed) => inventory.filter((item) => item.parentId === id).size + (reservations.get(id) || 0) + needed <= 50;
       if (missing && (!categories.includes(state.category_id) || !roomFor(state.category_id, missing))) {
-        if (Object.keys(state.channels).length && !await cleanupFreeEightsVoice(guild, state, { db, guard, save, log })) {
-          state.error = "Voice cleanup pending before category change";
-          await save();
-          return;
+        const category = categories.find((id) => roomFor(id, prepareSides.length));
+        // Keep the existing lobby room if every category is full. Only migrate
+        // owned channels after confirming another category can hold the lobby.
+        if (category) {
+          if (Object.keys(state.channels).length && !await cleanupFreeEightsVoice(guild, state, { db, guard, save, log })) {
+            state.error = "Voice cleanup pending before category change";
+            await save();
+            return;
+          }
+          state.category_id = category;
+          state.discord_channels_created_at = null;
         }
-        state.category_id = categories.find((id) => roomFor(id, 2)) || config.categoryId;
-        state.discord_channels_created_at = null;
       }
-      const neededSlots = ["host", "challenger"].filter((side) => !exists(side)).length;
+      const neededSlots = prepareSides.filter((side) => !exists(side)).length;
       const capacity = neededSlots === 0 || roomFor(state.category_id, neededSlots);
       if (capacity) {
         reservedSlots = neededSlots;
@@ -262,9 +279,9 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
         state.error = "Free 8s voice categories are full; waiting for capacity";
         log("category-capacity-unavailable", { match_id: matchId });
       }
-      for (const side of ["host", "challenger"]) {
-        if (!capacity) break;
-        const members = participants.filter((player) => player.team === side).map((player) => identities.get(player.user_id)).filter(hasDiscordLink);
+      for (const side of prepareSides) {
+        if (!capacity && !exists(side)) continue;
+        const members = participants.filter((player) => side === "waiting" || player.team === side).map((player) => identities.get(player.user_id)).filter(hasDiscordLink);
         // Manage Roles is inherited from the bot's guild role. Discord only lets
         // administrators set that bit in channel overwrites (otherwise 50013).
         const overwrites = [
@@ -272,7 +289,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
           { id: guild.client.user.id, type: OverwriteType.Member, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers] },
           ...members.map((user) => ({ id: user.discord_user_id, type: OverwriteType.Member, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak] })),
         ];
-        const permissionSignature = JSON.stringify([signature, members.map((user) => user.discord_user_id)]);
+        const permissionSignature = JSON.stringify([side === "waiting" ? "lobby" : signature, members.map((user) => user.discord_user_id).sort()]);
         try {
           await guard();
           let channel = await getChannel(guild, state.channels[side]);
@@ -294,9 +311,9 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
             await save(); // Reserve BEFORE Discord creation.
             try {
               await guard();
-              channel = await guild.channels.create({ name: `${matchId} • Team ${side === "host" ? "A" : "B"}`,
+              channel = await guild.channels.create({ name: `${matchId} • ${side === "waiting" ? "8s Waiting Room" : `Team ${side === "host" ? "A" : "B"}`}`,
                 type: ChannelType.GuildVoice, parent: state.category_id, permissionOverwrites: overwrites,
-                reason: provision.reason, userLimit: 4 });
+                reason: provision.reason, userLimit: side === "waiting" ? 8 : 4 });
               releaseSlot();
             } catch (error) {
               // A definite rejection permits retry. Ambiguous outcomes retain
@@ -324,29 +341,58 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
           const permissionsChanged = state.channel_roster_signatures[side] !== permissionSignature;
           state.channel_roster_signatures[side] = permissionSignature;
           readyChannels[side] = channel.id;
+          if (side === "waiting") state.waiting_room_id = channel.id;
           if (permissionsChanged) await save();
         } catch (error) {
-          state.error = "Team voice channels could not be prepared; the bot will retry or confirm the pending creation";
+          state.error = "Lobby voice channels could not be prepared; the bot will retry or confirm the pending creation";
           log("channel-prepare-failed", { match_id: matchId, side, code: error.code, error: error.message });
           await guard();
+          // Teams are never prepared while their waiting room is unconfirmed.
+          if (side === "waiting") break;
         }
       }
       if (readyChannels.host && readyChannels.challenger) state.discord_channels_created_at ||= new Date().toISOString();
     } finally { while (reservedSlots) releaseSlot(); }
+  }
+  // A leave revokes private access and removes only that former participant
+  // from this lobby's owned voices. Never move people from unrelated channels.
+  const currentMembers = new Set(users.filter(hasDiscordLink).map((user) => user.discord_user_id));
+  for (const id of state.member_discord_ids) {
+    if (currentMembers.has(id)) continue;
+    const voice = guild.voiceStates.cache.get(id);
+    const side = channelSides.find((key) => state.channels[key] && state.channels[key] === voice?.channelId);
+    if (!side) continue;
+    await guard();
+    await channelOwner(db, guild, state, side, voice.channelId);
+    try {
+      const latestRoster = await rosterFor(db, matchId);
+      const latestUsers = await db.user.findMany({ where: { id: { in: latestRoster.map((player) => player.user_id) } },
+        select: { id: true, discord_user_id: true, discord_connected_at: true } });
+      if (latestUsers.some((user) => hasDiscordLink(user) && user.discord_user_id === id)) continue;
+      const destination = await getChannel(guild, state.return_room_id);
+      if (destination && await db.discordEventDispatch.findUnique({ where: { event_key: freeEightsChannelKey(destination.id) } })) throw new Error("Return voice is a managed match channel");
+      if (voice.channelId !== state.channels[side]) continue;
+      await guard();
+      await voice.setChannel(destination?.type === ChannelType.GuildVoice ? destination.id : null, `Free 8s ${matchId} player left lobby`);
+      log("departed-player-removed", { match_id: matchId, discord_user_id: id });
+    } catch (error) {
+      state.error = "A departed player's voice cleanup is pending; the bot will retry";
+      log("departed-player-cleanup-failed", { match_id: matchId, discord_user_id: id, error: error.message });
+    }
   }
   const observedPlayers = {};
   for (const player of participants) {
     const identity = identities.get(player.user_id);
     let status = "not_linked";
     if (hasDiscordLink(identity)) {
-      status = config.enabled && configured ? "not_in_waiting_room" : "unavailable";
+      status = config.enabled && configured && readyChannels.waiting ? "not_in_waiting_room" : "unavailable";
       const voice = guild.voiceStates.cache.get(identity.discord_user_id);
       const source = voice?.channelId;
       const target = assign && readyChannels.host && readyChannels.challenger ? readyChannels[player.team] : null;
       if (target && source === target) status = "in_team_voice";
-      else if (source === config.waitingRoomId && configured) status = "in_waiting_room";
-      const inManagedTeam = Object.values(state.channels).includes(source);
-      if (target && source && source !== target && (source === config.waitingRoomId || inManagedTeam)) {
+      else if (source && source === readyChannels.waiting) status = "in_waiting_room";
+      const managedSide = channelSides.find((side) => state.channels[side] === source && source);
+      if (target && source && source !== target && managedSide) {
         await guard();
         const latest = await db.wager.findUnique({ where: { id: matchId } });
         const roster = await rosterFor(db, matchId);
@@ -357,7 +403,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
           return;
         }
         await channelOwner(db, guild, state, player.team, target);
-        if (inManagedTeam) await channelOwner(db, guild, state, source === state.channels.host ? "host" : "challenger", source);
+        await channelOwner(db, guild, state, managedSide, source);
         log("move-attempt", { match_id: matchId, user_id: player.user_id, from: source, to: target });
         try {
           if (voice.channelId !== source) throw new Error("Voice presence changed during assignment");
@@ -394,7 +440,7 @@ export async function syncFreeEightsVoice(guild, { db = prisma, config = freeEig
   // reflects channels created/deleted by concurrent workers for capacity checks.
   const fetched = config.enabled ? await guild.channels.fetch() : null;
   const inventory = config.enabled ? guild.channels.cache || fetched : null;
-  if (config.enabled && ![config.guildId, config.waitingRoomId, config.categoryId].every(validDiscordId)) log("configuration-error", { error: "Configure Free 8s guild, waiting room and category IDs" });
+  if (config.enabled && ![config.guildId, config.categoryId].every(validDiscordId)) log("configuration-error", { error: "Configure Free 8s guild and voice category IDs" });
   let cursor = 0;
   await Promise.all(Array.from({ length: Math.min(3, ids.length) }, async () => {
     while (cursor < ids.length) {
