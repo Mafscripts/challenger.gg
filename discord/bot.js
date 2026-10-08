@@ -31,6 +31,8 @@ import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
 import { syncFreeEightsResults } from "./free-eights-results.js";
+import { createCommunityCommandHandler } from "./community-commands.js";
+import { registerCommunityCommands } from "./register-community-commands.js";
 
 const config = discordEnvironment();
 const client = new Client({
@@ -104,6 +106,10 @@ async function botLog(guild, message) {
   const channel = findConfiguredChannel(guild, "bot-log");
   if (channel) await channel.send({ content: message, allowedMentions: { parse: [] } }).catch(() => null);
 }
+
+const handleCommunityInteraction = createCommunityCommandHandler({
+  guildId: config.guildId, publicUrl: config.publicUrl, findChannel: findConfiguredChannel, log: botLog,
+});
 
 async function syncMemberCount(guild) {
   const channel = findConfiguredChannel(guild, "member-count");
@@ -505,6 +511,9 @@ client.once(Events.ClientReady, async (readyClient) => {
     process.stderr.write(`[Topfragg Discord] Server ${config.guildId} is unavailable.\n`);
     return;
   }
+  await registerCommunityCommands({ rest: readyClient.rest, applicationId: readyClient.user.id, guildId: config.guildId })
+    .then((names) => process.stdout.write(`[Topfragg Discord] Commands ready: ${names.map((name) => `/${name}`).join(", ")}\n`))
+    .catch((error) => console.error("[Topfragg Discord] Command registration failed:", error.message));
   await runTournamentDiscordSync(guild);
   await runFreeEightsVoiceSync(guild);
   setInterval(() => runFreeEightsVoiceSync(guild), 5000);
@@ -554,6 +563,7 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.guildId !== config.guildId) return;
   try {
+    if (await handleCommunityInteraction(interaction)) return;
     if (interaction.isButton() && interaction.customId === "topfragg:support:open") {
       await interaction.showModal(supportModal());
       return;

@@ -49,11 +49,63 @@ Keep this process running for slash commands and support tickets. In production 
 
 Available commands:
 
+- `/help` — private command guide, including admin commands for server managers
+- `/rules` — server and competition rules
+- `/8s` — Free 8s lobby link and connection instructions
+- `/streams` — live stream channel and tournament coverage
 - `/ping`
 - `/verify`
 - `/tournaments`
 - `/support reason:<message>`
 - `/setup-status` (server managers only)
+- `/announce`, `/poll`, `/poll-end` (server managers only; see below)
+- `/giveaway start` and `/giveaway end` (server managers only)
+
+### Announcements and polls
+
+```text
+/announce channel:#general everyone:true
+/poll channel:#general hours:24 multiple:false everyone:false
+/poll-end message:<Discord message link or ID>
+```
+
+`/announce` opens a form for a title and message. `/poll` opens a form for a
+question, 2–10 answers (one per line, up to 55 characters each) and an optional
+introduction. Polls use Discord's native voting interface. Duration defaults to
+24 hours and supports 1–768 hours. The current channel is used when `channel`
+is omitted; polls require a regular text channel.
+
+Forms produce a **private preview** with **Publish** and **Cancel** buttons.
+Nothing is posted until the creator confirms. `/poll-end` also asks for private
+confirmation and can only end polls published by this bot. Previews expire after
+10 minutes or a bot restart. Admin permissions are checked again at publication,
+and repeated confirm clicks cannot publish the same preview twice. If Discord
+does not confirm a send, inspect the destination before starting another draft.
+
+These commands require **Manage Server** (or Administrator). Mentions are
+disabled by default, including mentions typed in a message. `everyone:true`
+explicitly enables an `@everyone` notification; both the admin and bot need
+**Mention Everyone** in that channel. The bot also needs **View Channel**, **Send
+Messages**, and **Create Polls** for polls; **Read Message History** is needed to
+fetch an existing poll for `/poll-end`. Its managed access role includes these
+permissions for new setups; existing servers can enable them directly in Discord.
+
+The existing bot automatically registers the seven new commands at startup,
+upserting each by name so unrelated slash commands are preserved. After pushing
+the changes, update production and restart the existing process:
+
+```bash
+cd /var/www/topfragg.gg &&
+git pull origin codex/gray-ui-rework &&
+pm2 restart topfragg-discord --update-env &&
+pm2 status
+```
+
+If command registration needs to be retried after deployment, run
+`npm run discord:commands`. It only registers commands and does not start another
+bot or rebuild the server layout. No website build or database migration is
+needed for these commands. Try `/help`, then create a poll and cancel its preview
+before publishing your first announcement.
 
 ## 5. Website verification
 

@@ -2,6 +2,7 @@ import {
   ChannelType,
   PermissionFlagsBits,
 } from "discord.js";
+import { communityCommandSpecs } from "./community-command-specs.js";
 
 export const TOPFRAGG_COLORS = {
   cyan: 0x14d8ff,
@@ -19,6 +20,8 @@ export const botRuntimeRoleSpec = {
   permissions: [
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.SendMessages,
+    PermissionFlagsBits.SendPolls,
+    PermissionFlagsBits.MentionEveryone,
     PermissionFlagsBits.ReadMessageHistory,
     PermissionFlagsBits.EmbedLinks,
     PermissionFlagsBits.AttachFiles,
@@ -161,6 +164,7 @@ export const memberCountSpec = {
 };
 
 export const commandSpecs = [
+  ...communityCommandSpecs,
   { name: "ping", description: "Check whether Topfragg Bot is online." },
   { name: "verify", description: "Verify your linked Topfragg and Discord identity." },
   { name: "tournaments", description: "Open the current Topfragg tournaments." },
