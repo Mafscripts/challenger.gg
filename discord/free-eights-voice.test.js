@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { AuditLogEvent, ChannelType, Collection, PermissionFlagsBits, PermissionOverwrites } from "discord.js";
-import { canAssignFreeEightsVoice, syncFreeEightsVoice } from "./free-eights-voice.js";
+import { canAssignFreeEightsVoice, freeEightsVoiceChannelName, syncFreeEightsVoice } from "./free-eights-voice.js";
 import { freeEightsChannelKey, freeEightsDiscordJoinError, freeEightsVoiceKey, freeEightsWaitingRoomReady, publicFreeEightsVoiceStatus, voiceRosterSignature } from "../server/free-eights-discord.js";
 
 const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003", overflowCategoryIds: ["100000000000000005", "100000000000000006"] };
@@ -39,6 +39,7 @@ function fixture(count = 1, { autoJoinWaiting = true } = {}) {
     id, type, name, parentId,
     get members() { return members.filter((member) => member.voice.channelId === id); },
     permissionOverwrites: { async set(overwrites) { validateOverwrites(overwrites); this.values = overwrites; permissionEdits++; } },
+    async setName(value) { this.name = value; },
     async delete() { channels.delete(id); deletes++; },
   });
   channels.set(config.waitingRoomId, channel(config.waitingRoomId, ChannelType.GuildVoice, "8s Waiting Room", null));
@@ -66,7 +67,7 @@ function fixture(count = 1, { autoJoinWaiting = true } = {}) {
         item.userLimit = options.userLimit;
         item.permissionOverwrites.values = options.permissionOverwrites;
         // Simulate participants following their own lobby join link (not a bot move).
-        if (autoJoinWaiting && options.name.endsWith("8s Waiting Room")) {
+        if (autoJoinWaiting && options.userLimit === 8) {
           for (const overwrite of options.permissionOverwrites.slice(2)) {
             const voice = voices.get(overwrite.id);
             if (voice?.channelId === config.waitingRoomId) voice.channelId = item.id;
@@ -382,7 +383,7 @@ test("a failed channel creation retries without duplicating the successful side"
   const original = f.guild.channels.create;
   let fail = true;
   f.guild.channels.create = async (options) => {
-    if (options.name.endsWith("Team B") && fail) throw Object.assign(new Error("Missing Permissions"), { code: 50013, status: 403 });
+    if (options.name.startsWith("8s Bravo") && fail) throw Object.assign(new Error("Missing Permissions"), { code: 50013, status: 403 });
     return original(options);
   };
   await f.sync();
@@ -437,7 +438,7 @@ test("20 simultaneous matches and overlapping duplicate sync events create exact
       assert.ok(!assigned.has(id));
       assigned.add(id);
       assert.equal(f.records.get(freeEightsChannelKey(id)).metadata.match_id, match.id);
-      assert.equal(f.channels.get(id).name, `${match.id} • ${side === "waiting" ? "8s Waiting Room" : `Team ${side === "host" ? "A" : "B"}`}`);
+      assert.equal(f.channels.get(id).name, freeEightsVoiceChannelName(match.id, side));
     }
     for (const player of f.participants.filter((row) => row.wager_id === match.id)) {
       const identity = f.users.find((user) => user.id === player.user_id);
@@ -829,4 +830,51 @@ test("upgrade adds a private room to legacy team voices without deleting those t
   await f.sync();
   assert.equal(f.state().cleaned, true);
   assert.equal(f.stats().deletes, 3);
+});
+
+test("compact channel names match the website's eight-character match code", () => {
+  const id = "cmuzv8yu80000ei2g4ilo3do3";
+  assert.equal(freeEightsVoiceChannelName(id, "waiting"), "8s Waiting · #4ILO3DO3");
+  assert.equal(freeEightsVoiceChannelName(id, "host"), "8s Alpha · #4ILO3DO3");
+  assert.equal(freeEightsVoiceChannelName(id, "challenger"), "8s Bravo · #4ILO3DO3");
+});
+
+test("existing lobby channels get compact names without recreation or changing unrelated voices", async () => {
+  const f = fixture();
+  await f.sync();
+  const ids = structuredClone(f.state().channels);
+  for (const [side, id] of Object.entries(ids)) f.channels.get(id).name = `${f.match.id} • ${side} old long name`;
+  const unrelated = await f.guild.channels.create({ name: "A manually named room", type: ChannelType.GuildVoice, parent: config.categoryId, permissionOverwrites: [] });
+  const before = f.stats();
+  let renames = 0;
+  for (const id of Object.values(ids)) {
+    const channel = f.channels.get(id);
+    channel.setName = async (name) => { renames++; channel.name = name; };
+  }
+  await f.sync();
+  assert.equal(renames, 3);
+  assert.deepEqual(f.stats(), before);
+  assert.deepEqual(f.state().channels, ids);
+  assert.equal(f.moves.length, 8);
+  for (const [side, id] of Object.entries(ids)) assert.equal(f.channels.get(id).name, freeEightsVoiceChannelName(f.match.id, side));
+  assert.equal(unrelated.name, "A manually named room");
+  await f.sync();
+  assert.equal(renames, 3, "unchanged names do not cause repeated Discord requests");
+});
+
+test("a failed cosmetic rename preserves voice readiness and retries later", async () => {
+  const f = fixture();
+  f.match.metadata.teams_generated_at = "";
+  await f.sync();
+  const channel = f.channels.get(f.state().channels.waiting);
+  channel.name = "The legacy long waiting-room name";
+  const setName = channel.setName;
+  channel.setName = async () => { throw Object.assign(new Error("Missing Permissions"), { code: 50013 }); };
+  await f.sync();
+  assert.equal(f.state().error, null);
+  assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants, f.state()), true);
+  assert.ok(f.logs.some((row) => row.event === "channel-rename-failed"));
+  channel.setName = setName;
+  await f.sync();
+  assert.equal(channel.name, freeEightsVoiceChannelName(f.match.id, "waiting"));
 });

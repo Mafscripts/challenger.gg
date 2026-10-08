@@ -26,9 +26,12 @@ new webhook, bot, bot secret or public event receiver.
 In the existing Topfragg guild, create:
 
 1. An existing category such as **ACTIVE 8s** for temporary voices. Copy its ID.
-   When a lobby is created, the bot creates `<full-match-id> • 8s Waiting Room`.
+   When a lobby is created, the bot creates `8s Waiting · #<MATCHCODE>`.
    It is private to that lobby's linked players and has an eight-player limit.
-   Generated teams additionally get `<full-match-id> • Team A` and `<full-match-id> • Team B`.
+   Generated teams additionally get `8s Alpha · #<MATCHCODE>` and `8s Bravo · #<MATCHCODE>`.
+   The code is the last eight characters of the match ID, uppercased, matching the
+   website header. Existing managed rooms are renamed in place on the next sweep.
+   Their full match identity stays in the stored ownership records.
    Names are display labels only; ownership and cleanup always use stored IDs.
 2. Optionally, a public return voice channel for players after a match or leave.
    The former shared Waiting Room can be reused for this purpose. Its ID remains
@@ -279,7 +282,7 @@ Errors retain Discord error codes without logging tokens, OAuth codes or secrets
   one player: revoke access, remove them from voice and keep the other players' room.
   Leave the last player: delete that room. Test `expired` too.
 - Run at least 20 concurrent matches. Verify 60 distinct voices with the correct
-  full match IDs, teams, permissions and stored ownership. Finish one match and
+  short match codes, teams, permissions and full match IDs in stored ownership. Finish one match and
   confirm only its three voices disappear and only its occupants move/disconnect.
 - Repeatedly trigger sync/restart while teams are generated. Rename a managed
   channel and create a lookalike manually; cleanup must use its recorded ID and

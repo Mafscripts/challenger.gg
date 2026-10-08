@@ -9,6 +9,8 @@ import {
 const activeStatuses = ["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"];
 const guildCategoryReservations = new WeakMap();
 const channelSides = ["waiting", "host", "challenger"];
+export const freeEightsVoiceChannelName = (matchId, side) =>
+  `8s ${side === "waiting" ? "Waiting" : side === "host" ? "Alpha" : "Bravo"} · #${String(matchId).slice(-8).toUpperCase()}`;
 const unknownChannel = (error) => Number(error.code) === 10003;
 const getChannel = async (guild, id) => {
   if (!id) return null;
@@ -281,6 +283,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       }
       for (const side of prepareSides) {
         if (!capacity && !exists(side)) continue;
+        const channelName = freeEightsVoiceChannelName(matchId, side);
         const members = participants.filter((player) => side === "waiting" || player.team === side).map((player) => identities.get(player.user_id)).filter(hasDiscordLink);
         // Manage Roles is inherited from the bot's guild role. Discord only lets
         // administrators set that bit in channel overwrites (otherwise 50013).
@@ -311,7 +314,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
             await save(); // Reserve BEFORE Discord creation.
             try {
               await guard();
-              channel = await guild.channels.create({ name: `${matchId} • ${side === "waiting" ? "8s Waiting Room" : `Team ${side === "host" ? "A" : "B"}`}`,
+              channel = await guild.channels.create({ name: channelName,
                 type: ChannelType.GuildVoice, parent: state.category_id, permissionOverwrites: overwrites,
                 reason: provision.reason, userLimit: side === "waiting" ? 8 : 4 });
               releaseSlot();
@@ -336,6 +339,15 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
             if (state.channel_roster_signatures[side] !== permissionSignature) {
               await guard();
               await channel.permissionOverwrites.set(overwrites, `Free 8s ${matchId} teams updated`);
+            }
+            if (channel.name !== channelName) {
+              await guard();
+              try {
+                await channel.setName(channelName, `Free 8s ${matchId} readable lobby name`);
+              } catch (error) {
+                // A cosmetic rename failure must not interrupt voice readiness.
+                log("channel-rename-failed", { match_id: matchId, side, channel_id: channel.id, code: error.code, error: error.message });
+              }
             }
           }
           const permissionsChanged = state.channel_roster_signatures[side] !== permissionSignature;
