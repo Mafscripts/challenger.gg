@@ -180,9 +180,9 @@ export default function RankedEights() {
           mode={isMoney ? "money8s" : "eights"}
           currentUser={user}
           openCount={lobbies.length}
-          headerEyebrow={isMoney ? "Wallet-backed 8s" : "Free 8s ladder"}
+          headerEyebrow={isMoney ? "Wallet-backed 8s" : "Free 8s ELO ladder"}
           headerTitle={isMoney ? "Money 8s" : "Free 8s"}
-          headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : "Join free, get shuffled into a 4v4 team and climb the monthly standings."}
+          headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : "Join free, get shuffled into a 4v4 team and climb the 8s ELO standings."}
           matchfinder={(
             <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : "No 8s lobbies are open right now."}>
               {lobbies.map((lobby) => {
@@ -231,7 +231,7 @@ export default function RankedEights() {
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${isMoney ? "border-green/25 bg-green/10 text-green" : "border-yellow-400/25 bg-yellow-400/10 text-yellow-300"}`}><Crown className="h-6 w-6" /></div>
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isMoney ? "text-green" : "text-yellow-300"}`}>{isMoney ? "Wallet-backed matches" : prizeActive ? "Monthly 8s race" : "8s prize announcement"}</p>
-                <h2 className="mt-1 text-2xl font-black">{isMoney ? "Play for the full prize pool" : prizeActive ? "#1 wins $100" : "$100 monthly prize starts October 1"}</h2>
+                <h2 className="mt-1 text-2xl font-black">{isMoney ? "Play for the full prize pool" : prizeActive ? "Most monthly wins: $100" : "$100 monthly prize starts October 1"}</h2>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-vapor">{isMoney ? "Every player pays the selected entry fee from their wallet. The winning team shares the complete Money 8s pot." : prizeActive ? "Play at least one completed 8s match this month. Most wins takes the prize; monthly XP and rating break ties." : "Matches played before October 1 do not count toward the $100 prize. Starting in October, the player with the most monthly 8s wins takes the prize."}</p>
               </div>
             </div>

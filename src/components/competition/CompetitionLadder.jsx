@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import TrophyCounts from "@/components/ui/TrophyCounts";
+import { buildFreeEightsStandings } from "@/lib/freeEightsStandings";
 
 const navigation = [
   { key: "ranked", label: "Ranked", to: "/ranked", icon: Medal },
@@ -50,9 +51,9 @@ const modeCopy = {
     line: "bg-green",
   },
   eights: {
-    eyebrow: "Monthly 8s ladder",
+    eyebrow: "Free 8s ELO ladder",
     title: "8s",
-    description: "Join solo, get shuffled into a 4v4 team and climb the monthly standings.",
+    description: "Join solo, get shuffled into a 4v4 team and climb the 8s ELO standings.",
     accent: "text-orange",
     line: "bg-orange",
   },
@@ -203,6 +204,9 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const copy = modeCopy[mode] || modeCopy.xp;
   const activeTab = location.hash === "#matchfinder" ? "matchfinder" : "standings";
   const selectTab = (tab) => navigate(`${location.pathname}${location.search}#${tab}`);
+  const standingColumns = mode === "eights"
+    ? "grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_190px_100px]"
+    : "grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px]";
 
   useEffect(() => {
     let active = true;
@@ -210,9 +214,9 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
       setLoading(true);
       const [userData, xpData, rankedData, eightsData, moneyData, tournamentData] = await Promise.all([
         base44.entities.User.filter({}, mode === "wagers" ? "-total_wager_earnings" : "-created_date", 500).catch(() => []),
-        base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []),
+        mode === "eights" ? Promise.resolve([]) : base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []),
         mode === "ranked" ? base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []) : Promise.resolve([]),
-        mode === "eights" ? base44.entities.EightsStats.filter({}, "-monthly_wins", 500).catch(() => []) : Promise.resolve([]),
+        mode === "eights" ? base44.entities.EightsStats.filter({}, "-free_eights_elo", 500).catch(() => []) : Promise.resolve([]),
         mode === "money8s" ? base44.functions.invoke("getMoneyEightsStandings", {}).catch(() => ({ data: { rows: [] } })) : Promise.resolve({ data: { rows: [] } }),
         mode === "eights" ? Promise.resolve([]) : base44.entities.Tournament.filter({}, "start_date", 100).catch(() => []),
       ]);
@@ -254,27 +258,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     }
 
     if (mode === "eights") {
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      return eightsRows
-        .filter((row) => !row.monthly_key || row.monthly_key === currentMonth)
-        .map((row) => {
-          const user = usersById.get(String(row.user_id));
-          return {
-            id: row.id || row.user_id,
-            userId: row.user_id,
-            user,
-            name: playerName(user, row),
-            slug: playerSlug(user, row),
-            wins: number(row.monthly_wins ?? row.wins),
-            losses: number(row.monthly_losses ?? row.losses),
-            streak: number(row.win_streak ?? user?.current_win_streak),
-            xp: number(row.monthly_xp ?? xpByUser.get(String(row.user_id))?.total_xp),
-            score: number(row.rating || 1000),
-            trophies: trophyCount(user),
-          };
-        })
-        .sort((a, b) => b.wins - a.wins || b.xp - a.xp || b.score - a.score)
-        .slice(0, 50);
+      return buildFreeEightsStandings(eightsRows, usersById);
     }
 
     if (mode === "money8s") {
@@ -384,8 +368,8 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   ] : mode === "eights" ? [
     { label: "Monthly prize", value: "$100", detail: "Winner takes the prize", icon: Trophy, tone: "text-green" },
     { label: "Open lobbies", value: openCount, detail: "4v4 random teams", icon: Gamepad2, tone: "text-cyan" },
-    { label: "Players", value: standings.length, detail: "On this month's ladder", icon: Users, tone: "text-purple-300" },
-    { label: "Season", value: monthLabel(), detail: "Monthly standings", icon: Clock3, tone: "text-orange" },
+    { label: "Players", value: standings.length, detail: "On the 8s ELO ladder", icon: Users, tone: "text-purple-300" },
+    { label: "Prize month", value: monthLabel(), detail: "Monthly prize period", icon: Clock3, tone: "text-orange" },
   ] : mode === "money8s" ? [
     { label: "Money 8s matches", value: standings.reduce((sum, row) => sum + row.wins + row.losses, 0), detail: "Completed matches", icon: Gamepad2, tone: "text-cyan" },
     { label: "Players", value: standings.length, detail: "On the Money 8s ladder", icon: Users, tone: "text-purple-300" },
@@ -413,7 +397,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
 
       <section id={activeTab} className="premium-panel scroll-mt-24 overflow-hidden rounded-xl border border-white/[0.08]">
         <div className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div><div className="flex items-center gap-2"><span className={`h-2 w-2 ${copy.line}`} /><h2 className="font-black">{activeTab === "matchfinder" ? `${copy.title} matchfinder` : `${copy.title} standings`}</h2></div><p className="mt-1 text-xs text-vapor">{activeTab === "matchfinder" ? `${openCount} open ${openCount === 1 ? "match" : "matches"} in this competition.` : "A separate leaderboard for this competition."}</p></div>
+          <div><div className="flex items-center gap-2"><span className={`h-2 w-2 ${copy.line}`} /><h2 className="font-black">{activeTab === "matchfinder" ? `${copy.title} matchfinder` : `${copy.title} standings`}</h2></div><p className="mt-1 text-xs text-vapor">{activeTab === "matchfinder" ? `${openCount} open ${openCount === 1 ? "match" : "matches"} in this competition.` : mode === "eights" ? "Ranked by 8s ELO, highest first." : "A separate leaderboard for this competition."}</p></div>
           <div className="flex rounded-lg border border-white/[0.07] bg-black/15 p-1 text-[9px] font-black uppercase tracking-wider">
             <button type="button" onClick={() => selectTab("standings")} className={`rounded-md px-3 py-2 ${activeTab === "standings" ? `${copy.accent} bg-white/[0.04]` : "text-vapor hover:text-white"}`}><Medal className="mr-1.5 inline h-3 w-3" /> Standings</button>
             <button type="button" onClick={() => selectTab("matchfinder")} className={`rounded-md px-3 py-2 ${activeTab === "matchfinder" ? `${copy.accent} bg-white/[0.04]` : "text-vapor hover:text-white"}`}><Gamepad2 className="mr-1.5 inline h-3 w-3" /> Matchfinder</button>
@@ -421,29 +405,29 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
           </div>
         </div>
         {activeTab === "matchfinder" ? matchfinder : <div className="overflow-x-auto">
-          <div className="min-w-[1080px]">
-            <div className="grid grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] gap-3 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor">
-              <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span><span className="text-center">XP</span><span>Trophies</span><span className="text-right">{mode === "wagers" || mode === "money8s" ? "Winnings" : mode === "eights" ? "Rating" : "ELO"}</span>
+          <div className={mode === "eights" ? "min-w-[980px]" : "min-w-[1080px]"}>
+            <div className={`grid ${standingColumns} gap-3 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor`}>
+              <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span>{mode !== "eights" && <span className="text-center">XP</span>}<span>Trophies</span><span className="text-right">{mode === "wagers" || mode === "money8s" ? "Winnings" : mode === "eights" ? "8s ELO" : "ELO"}</span>
             </div>
             {loading ? (
               <div className="space-y-px" aria-label={`Loading ${copy.title} standings`}>
                 {[0, 1, 2, 3, 4].map((item) => (
-                  <div key={item} className="grid min-h-[52px] grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] items-center gap-3 border-b border-white/[0.035] px-5">
+                  <div key={item} className={`grid min-h-[52px] ${standingColumns} items-center gap-3 border-b border-white/[0.035] px-5`}>
                     <span className="h-2 w-5 rounded-full bg-white/[0.055]" />
                     <span className="h-2.5 w-32 rounded-full bg-white/[0.055]" />
-                    {[0, 1, 2, 3, 4, 5, 6].map((cell) => <span key={cell} className="mx-auto h-2 w-7 rounded-full bg-white/[0.045]" />)}
+                    {Array.from({ length: mode === "eights" ? 6 : 7 }, (_, cell) => <span key={cell} className="mx-auto h-2 w-7 rounded-full bg-white/[0.045]" />)}
                   </div>
                 ))}
               </div>
             ) : standings.length === 0 ? <div className="px-5 py-12 text-center text-sm text-vapor">The standings begin when the first match is completed.</div> : standings.map((row, index) => (
-              <div key={row.id} className={`grid grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px] items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors hover:bg-white/[0.02] ${String(row.userId) === String(currentUser?.id) ? "bg-cyan/[0.035]" : ""}`}>
+              <div key={row.id} className={`grid ${standingColumns} items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors hover:bg-white/[0.02] ${String(row.userId) === String(currentUser?.id) ? "bg-cyan/[0.035]" : ""}`}>
                 <span className={`font-mono font-black ${rankTone(index)}`}>{index < 3 ? <Trophy className="mr-2 inline h-3.5 w-3.5" /> : null}{index + 1}</span>
                 <Link to={`/profile/${row.slug}`} className="flex min-w-0 items-center gap-3 font-bold text-white hover:text-cyan"><span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.04] text-[10px] font-black">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" className="h-full w-full object-cover" /> : row.name.charAt(0).toUpperCase()}</span><span data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</span></Link>
                 <span className="text-center font-mono font-black text-green">{row.wins}</span>
                 <span className="text-center font-mono font-black text-red-400">{row.losses}</span>
                 <span className="text-center font-mono font-black text-white">{pct(row.wins, row.losses)}</span>
                 <span className="text-center font-mono font-black"><Flame className="mr-1 inline h-3.5 w-3.5 text-orange" />{row.streak}</span>
-                <span className="text-center font-mono font-black text-purple-300">{row.xp.toLocaleString()}</span>
+                {mode !== "eights" && <span className="text-center font-mono font-black text-purple-300">{row.xp.toLocaleString()}</span>}
                 <TrophyCounts
                   trophies={{
                     gold: number(row.user?.gold_count) + number(leaderboardTrophies[row.userId]?.gold),

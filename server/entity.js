@@ -111,7 +111,7 @@ const orderByFor = (entity, order) => {
   if (!order) return entity === "Notification" ? { created_date: "desc" } : undefined;
   const desc = String(order).startsWith("-");
   const field = desc ? String(order).slice(1) : String(order);
-  if (directEntityFields.has(field) || (entity === "User" && userFields.has(field))) {
+  if (directEntityFields.has(field) || (entity === "User" && userFields.has(field)) || (entity === "EightsStats" && field === "free_eights_elo")) {
     return { [field]: desc ? "desc" : "asc" };
   }
   return undefined;

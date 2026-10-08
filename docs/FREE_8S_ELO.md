@@ -32,6 +32,20 @@ below 600 restores the screenshot pill if one is linked. The main profile
 always keeps its screenshot rank, including Top 250. After completion cards
 also show that match's ELO delta. Other match rooms retain their existing cards.
 
+## Free 8s standings
+
+The standings on `/ranked/8s` rank players by `free_eights_elo`, highest first.
+The column is labeled **8s ELO**; XP and the legacy `rating` are not used or shown.
+Equal ELO is ordered by total wins, fewer losses, then user ID for a stable order.
+Records show total wins and losses. Previous-month players remain on the ELO ladder
+because Free 8s ELO does not reset each month. The database sorts by the dedicated
+ELO column before applying the player limit.
+
+The monthly prize continues to follow its separate monthly-wins rules. The prize
+card explicitly describes that race rather than implying ELO position #1 earns it.
+
+Checks: `node --test server/free-eights-standings.test.js`.
+
 ## Balanced Free 8s teams
 
 The Free 8s reshuffle countdown before a full lobby starts is **one minute**.
