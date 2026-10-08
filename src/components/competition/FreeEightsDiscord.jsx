@@ -3,7 +3,6 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { AlertTriangle, CheckCircle2, ExternalLink, Headphones, Link2, Loader2, Mic, MicOff, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { freeEightsVoiceView, recordFreeEightsVoiceResponse } from "@/lib/freeEightsVoiceStatus";
 import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
 
 export const hasFreeEightsDiscordLink = (user) => /^\d{17,20}$/.test(String(user?.discord_user_id || "")) && Boolean(user?.discord_connected_at);
@@ -14,12 +13,24 @@ export const isFreeEightsDiscordRequired = (result) => result?.code === "FREE_EI
 const voiceLabels = {
   checking: "Checking voice…",
   unavailable: "Voice status unavailable",
-  not_linked: "Discord not linked",
-  not_in_waiting_room: "Join the 8s Waiting Room",
-  in_waiting_room: "Ready · in Waiting Room",
-  in_team_voice: "Ready · in team voice",
+  not_linked: "Discord Not Linked",
+  not_in_waiting_room: "Not Connected",
+  in_waiting_room: "In Waiting Room",
+  in_team_voice: "Team Voice",
   move_failed: "Voice move failed · bot will retry",
 };
+
+export function FreeEightsVoiceBadge({ status = "checking" }) {
+  const ready = ["in_waiting_room", "in_team_voice"].includes(status);
+  const StatusIcon = status === "checking" ? Loader2 : ready ? CheckCircle2 : status === "not_linked" ? Link2 : status === "move_failed" ? AlertTriangle : MicOff;
+  const badgeStyle = status === "in_waiting_room" ? "border-green/20 bg-green/[0.08] text-green"
+    : status === "in_team_voice" ? "border-cyan/20 bg-cyan/[0.08] text-cyan"
+    : ["not_linked", "move_failed"].includes(status) ? "border-orange/20 bg-orange/[0.08] text-orange"
+    : "border-white/[0.08] bg-white/[0.03] text-vapor";
+  const label = voiceLabels[status] || voiceLabels.checking;
+  const description = status === "not_in_waiting_room" ? "Join the 8s Waiting Room or your assigned team voice channel." : label;
+  return <span title={description} className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold ${badgeStyle}`}><StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status === "checking" ? "animate-spin" : ""}`} aria-hidden="true" /><span>{label}</span></span>;
+}
 
 export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranked/8s", trigger, returnFocusTo }) {
   const [connecting, setConnecting] = useState(false);
@@ -140,37 +151,8 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
   </div>;
 }
 
-export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps = false, rosterVersion = "" }) {
-  const [voiceResult, setVoiceResult] = useState(null);
-  const rosterKey = JSON.stringify(players.map((player) => [player.user_id, player.team]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    let inFlight = false;
-    setVoiceResult(recordFreeEightsVoiceResponse(null, { matchId, userId: user.id, data: null }));
-    const refresh = async () => {
-      if (cancelled || inFlight) return;
-      inFlight = true;
-      try {
-        const data = await base44.discord.freeEightsVoice(matchId);
-        if (!cancelled) setVoiceResult((previous) => recordFreeEightsVoiceResponse(previous, { matchId, userId: user.id, data }));
-      } catch {
-        if (!cancelled) setVoiceResult((previous) => recordFreeEightsVoiceResponse(previous, { matchId, userId: user.id, failed: true }));
-      } finally { inFlight = false; }
-    };
-    refresh();
-    const timer = window.setInterval(refresh, 2000);
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      cancelled = true; window.clearInterval(timer);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [matchId, user?.id, rosterKey, rosterVersion]);
-  const current = voiceResult?.matchId === matchId && voiceResult?.userId === user?.id ? voiceResult : null;
-  const { voice, available, checking, refreshing, configurationFailure, playerStates, readyCount, warning } = freeEightsVoiceView(current, players);
+export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps = false, voiceView }) {
+  const { voice, available, checking, refreshing, configurationFailure, readyCount, warning } = voiceView;
   const summary = checking ? "Updating Discord voice status…"
     : available && voice?.error ? voice.error
     : !available ? configurationFailure ? "Discord voice is disabled or the waiting room has not been configured." : "Discord voice status has not updated. The bot or connection needs attention."
@@ -203,18 +185,6 @@ export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps =
         <SummaryIcon className={`h-4 w-4 shrink-0 ${checking ? "animate-spin" : available && !warning ? "text-green" : ""}`} aria-hidden="true" />
         <p className="line-clamp-2 min-w-0" title={summary}>{summary}</p>
       </div>
-      <ul className="grid gap-2 md:grid-cols-2">
-        {playerStates.map((player) => {
-          const name = player.full_name || player.user_name || "Player";
-          const unavailable = ["unavailable", "checking"].includes(player.status);
-          const StatusIcon = player.status === "checking" ? Loader2 : player.ready ? CheckCircle2 : player.status === "not_linked" ? Link2 : player.status === "move_failed" ? AlertTriangle : MicOff;
-          const badgeStyle = player.ready ? "border-green/20 bg-green/[0.08] text-green" : unavailable ? "border-white/[0.08] bg-white/[0.03] text-vapor" : "border-orange/20 bg-orange/[0.08] text-orange";
-          return <li key={player.user_id} className="flex flex-col items-start justify-between gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3 sm:flex-row sm:items-center sm:gap-3">
-            <div className="flex min-w-0 w-full items-center gap-2.5 sm:w-auto sm:flex-1"><span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-purple-300/10 bg-purple-300/[0.08] text-xs font-black text-purple-200">{name.slice(0, 1).toUpperCase()}</span><span className="min-w-0 break-words text-xs font-bold text-white">{name}</span></div>
-            <span title={voiceLabels[player.status] || voiceLabels.checking} className={`inline-flex h-8 w-full shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[10px] font-bold sm:w-[220px] ${badgeStyle}`}><StatusIcon className={`h-3.5 w-3.5 shrink-0 ${player.status === "checking" ? "animate-spin" : ""}`} aria-hidden="true" /><span className="truncate">{voiceLabels[player.status] || voiceLabels.checking}</span></span>
-          </li>;
-        })}
-      </ul>
       <p className="mt-3 text-[10px] leading-5 text-vapor">Join Discord voice yourself. Maps wait until all eight players are in the Waiting Room. After the confirmed result, both teams return here automatically.</p>
     </div>
   </section>;

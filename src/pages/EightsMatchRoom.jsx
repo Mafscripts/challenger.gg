@@ -16,6 +16,7 @@ import { isStaffUser } from "@/lib/roles";
 import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
 import { FreeEightsVoiceStatus } from "@/components/competition/FreeEightsDiscord";
+import { useFreeEightsVoice } from "@/hooks/useFreeEightsVoice";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
 import { useRoomRecord } from "@/components/match/useRoomRecord";
 
@@ -339,6 +340,7 @@ function EightsMatchRoomView() {
   }, [id, loadRoom]);
 
   const allPlayers = useMemo(() => [...teamAlpha, ...teamBravo], [teamAlpha, teamBravo]);
+  const voiceView = useFreeEightsVoice({ matchId: match?.id, players: allPlayers, user, rosterVersion: match?.teams_generated_at, enabled: match?.match_type === "8s" });
   const isMoneyEights = match?.match_type === "money8s";
   const roomLabel = isMoneyEights ? "Money 8s" : "Ranked 8s";
   const isParticipant = allPlayers.some((player) => player.user_id === user?.id);
@@ -633,7 +635,7 @@ function EightsMatchRoomView() {
           </div>
         )} beforeTeams={(
           <>
-        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} rosterVersion={match.teams_generated_at} />}
+        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} voiceView={voiceView} />}
         {!locked && !closedStatuses.has(match.status) && (
           <section className="m-3 rounded-xl border border-purple-300/20 bg-[#171722] p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -652,9 +654,9 @@ function EightsMatchRoomView() {
           </>
         )} teams={(
           <>
-            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} freeEights={match.match_type === "8s"} eloChanges={match.free_eights_elo_changes} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
+            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} eloChanges={match.free_eights_elo_changes} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
             <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
-            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} freeEights={match.match_type === "8s"} eloChanges={match.free_eights_elo_changes} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
+            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} eloChanges={match.free_eights_elo_changes} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
           </>
         )} sidebar={(
           <>
