@@ -8,6 +8,7 @@ import {
 } from "../server/free-eights-discord.js";
 
 const activeStatuses = ["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"];
+const visibleTeamStatuses = new Set(activeStatuses.filter((status) => status !== "open"));
 const guildCategoryReservations = new WeakMap();
 const channelSides = ["waiting", "host", "challenger"];
 export { freeEightsVoiceChannelName };
@@ -284,15 +285,20 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       for (const side of prepareSides) {
         if (!capacity && !exists(side)) continue;
         const channelName = freeEightsVoiceChannelName(matchId, side);
+        const visibleToEveryone = side !== "waiting" && assign && visibleTeamStatuses.has(match.status);
         const members = participants.filter((player) => side === "waiting" || player.team === side).map((player) => identities.get(player.user_id)).filter(hasDiscordLink);
         // Manage Roles is inherited from the bot's guild role. Discord only lets
         // administrators set that bit in channel overwrites (otherwise 50013).
         const overwrites = [
-          { id: guild.id, type: OverwriteType.Role, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] },
+          { id: guild.id, type: OverwriteType.Role,
+            allow: visibleToEveryone ? [PermissionFlagsBits.ViewChannel] : [],
+            deny: visibleToEveryone ? [PermissionFlagsBits.Connect] : [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] },
           { id: guild.client.user.id, type: OverwriteType.Member, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers] },
           ...members.map((user) => ({ id: user.discord_user_id, type: OverwriteType.Member, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak] })),
         ];
-        const permissionSignature = JSON.stringify([side === "waiting" ? "lobby" : signature, members.map((user) => user.discord_user_id).sort()]);
+        // Include visibility so a start/reset and older cached permission state
+        // update existing channels even when the roster has not changed.
+        const permissionSignature = JSON.stringify([side === "waiting" ? "lobby" : signature, members.map((user) => user.discord_user_id).sort(), visibleToEveryone]);
         try {
           await guard();
           let channel = await getChannel(guild, state.channels[side]);

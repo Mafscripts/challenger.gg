@@ -82,7 +82,15 @@ and every overflow category and relevant voice. Its existing Verified Player rol
 Roles, with the bot role above the Verified Player role. Players need View Channel,
 Connect and Speak in their lobby's waiting room. Waiting rooms explicitly grant
 these to the lobby's linked identities; team channels grant them to their team's
-linked identities. Both deny View Channel/Connect to `@everyone`.
+linked identities. Waiting rooms always deny View Channel/Connect to `@everyone`.
+Team voices also stay hidden while the lobby is open (including its countdown).
+Once status becomes `in_progress`, Team Alpha and Bravo grant View Channel to
+`@everyone`, while still denying Connect. Other members can see the rooms and their
+occupants, but cannot join or listen. Only each team's linked players can connect
+to that team voice. Visibility remains enabled during score reports/completion
+confirmation and disputes; a reset to `open` hides teams again. Terminal matches
+use the existing channel cleanup. Start/reset changes refresh existing channel
+overwrites even without roster changes, including cached state from older bots.
 Discord administrators retain Discord's normal permission bypass.
 
 Give the bot Manage Roles through its server role, not through a per-channel
@@ -274,6 +282,11 @@ Errors retain Discord error codes without logging tokens, OAuth codes or secrets
   and correct team moves. Disconnect one player, then test late arrival.
 - Have the offline player join the waiting room late; verify their correct move.
   Trigger an existing team reshuffle and verify voice placement and access change.
+- Use an ordinary account outside the lobby. The Waiting Room must stay hidden.
+  During the countdown, both team voices stay hidden too. After the match starts,
+  verify Alpha/Bravo and their occupants are visible, but connecting is denied.
+  A lobby player may join their own team only. Reset to an open lobby: team voices
+  become hidden again. Existing rooms must update without being recreated.
 - Temporarily remove Move Members permission; verify a visible failure and bot log,
   then restore it and verify retry. Test missing Manage Channels/Manage Roles too.
 - Complete/cancel or grant a win as admin with browser tabs closed. Verify all three

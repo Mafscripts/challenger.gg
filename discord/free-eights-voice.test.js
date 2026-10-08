@@ -1,11 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AuditLogEvent, ChannelType, Collection, PermissionFlagsBits, PermissionOverwrites } from "discord.js";
+import { AuditLogEvent, ChannelType, Collection, GuildChannel, PermissionFlagsBits, PermissionOverwrites, PermissionsBitField } from "discord.js";
 import { canAssignFreeEightsVoice, freeEightsVoiceChannelName, syncFreeEightsVoice } from "./free-eights-voice.js";
 import { freeEightsChannelKey, freeEightsDiscordJoinError, freeEightsVoiceKey, freeEightsWaitingRoomReady, publicFreeEightsVoiceStatus, voiceRosterSignature } from "../server/free-eights-discord.js";
 
 const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003", overflowCategoryIds: ["100000000000000005", "100000000000000006"] };
 const channelId = (n) => String(300000000000000000n + BigInt(n));
+
+// Use discord.js's effective member-permission calculation, including guild
+// role grants, channel overwrites and the Administrator bypass.
+function effectivePermissions(channel, id, { admin = false } = {}) {
+  const roles = new Collection([[config.guildId, { permissions: new PermissionsBitField([
+    PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak,
+  ]) }]]);
+  if (admin) roles.set("admin-role", { permissions: new PermissionsBitField(PermissionFlagsBits.Administrator) });
+  const context = {
+    guild: { id: config.guildId, ownerId: "guild-owner" },
+    permissionOverwrites: { cache: new Collection(channel.permissionOverwrites.values.map((value) => {
+      const resolved = PermissionOverwrites.resolve(value);
+      return [resolved.id, { ...resolved, allow: new PermissionsBitField(BigInt(resolved.allow)), deny: new PermissionsBitField(BigInt(resolved.deny)) }];
+    })) },
+    overwritesFor: GuildChannel.prototype.overwritesFor,
+  };
+  return GuildChannel.prototype.memberPermissions.call(context, { id, roles: { cache: roles } }, true);
+}
 
 function fixture(count = 1, { autoJoinWaiting = true } = {}) {
   const matches = Array.from({ length: count }, (_, index) => ({ id: `match${index + 1}`, metadata: { id: `match${index + 1}`, match_type: "8s", status: "open", teams_generated_at: "2026-10-07T00:00:00Z" } }));
@@ -877,4 +895,80 @@ test("a failed cosmetic rename preserves voice readiness and retries later", asy
   channel.setName = setName;
   await f.sync();
   assert.equal(channel.name, freeEightsVoiceChannelName(f.match.id, "waiting"));
+});
+
+test("started team voices are visible to outsiders without Connect; Waiting Rooms remain hidden", async () => {
+  const f = fixture();
+  f.match.metadata.status = "in_progress";
+  await f.sync();
+  const outsider = "200000000000009999";
+  const alphaPlayer = f.users[0].discord_user_id;
+  const bravoPlayer = f.users[4].discord_user_id;
+  const waiting = f.channels.get(f.state().channels.waiting);
+  const alpha = f.channels.get(f.state().channels.host);
+  const bravo = f.channels.get(f.state().channels.challenger);
+  assert.equal(effectivePermissions(waiting, outsider).has(PermissionFlagsBits.ViewChannel), false);
+  assert.equal(effectivePermissions(waiting, outsider).has(PermissionFlagsBits.Connect), false);
+  for (const channel of [alpha, bravo]) {
+    assert.equal(effectivePermissions(channel, outsider).has(PermissionFlagsBits.ViewChannel), true);
+    assert.equal(effectivePermissions(channel, outsider).has(PermissionFlagsBits.Connect), false);
+    assert.equal(effectivePermissions(channel, outsider, { admin: true }).has(PermissionFlagsBits.Connect), true);
+  }
+  for (const player of [alphaPlayer, bravoPlayer]) assert.equal(effectivePermissions(waiting, player).has(PermissionFlagsBits.Connect), true);
+  assert.equal(effectivePermissions(alpha, alphaPlayer).has(PermissionFlagsBits.Connect), true);
+  assert.equal(effectivePermissions(alpha, bravoPlayer).has(PermissionFlagsBits.ViewChannel), true);
+  assert.equal(effectivePermissions(alpha, bravoPlayer).has(PermissionFlagsBits.Connect), false);
+  assert.equal(effectivePermissions(bravo, bravoPlayer).has(PermissionFlagsBits.Connect), true);
+  assert.equal(effectivePermissions(bravo, alphaPlayer).has(PermissionFlagsBits.Connect), false);
+});
+
+test("start and reset change only team visibility without recreating voices or changing the roster", async () => {
+  const f = fixture();
+  await f.sync();
+  const ids = structuredClone(f.state().channels);
+  const outsider = "200000000000009999";
+  for (const id of Object.values(ids)) assert.equal(effectivePermissions(f.channels.get(id), outsider).has(PermissionFlagsBits.ViewChannel), false);
+  f.match.metadata.status = "in_progress";
+  await f.sync();
+  assert.equal(f.stats().permissionEdits, 2);
+  assert.deepEqual(f.state().channels, ids);
+  assert.equal(f.stats().creations, 3);
+  assert.equal(f.moves.length, 8);
+  for (const status of ["awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]) {
+    f.match.metadata.status = status;
+    await f.sync();
+    assert.equal(effectivePermissions(f.channels.get(ids.host), outsider).has(PermissionFlagsBits.ViewChannel), true);
+    assert.equal(effectivePermissions(f.channels.get(ids.challenger), outsider).has(PermissionFlagsBits.Connect), false);
+    assert.equal(effectivePermissions(f.channels.get(ids.waiting), outsider).has(PermissionFlagsBits.ViewChannel), false);
+  }
+  assert.equal(f.stats().permissionEdits, 2, "unchanged public visibility is not rewritten");
+  f.match.metadata.status = "open";
+  await f.sync();
+  assert.equal(f.stats().permissionEdits, 4);
+  for (const id of Object.values(ids)) assert.equal(effectivePermissions(f.channels.get(id), outsider).has(PermissionFlagsBits.ViewChannel), false);
+  assert.deepEqual(f.state().channels, ids);
+  assert.equal(f.stats().deletes, 0);
+  f.match.metadata.status = "completed";
+  await f.sync();
+  assert.equal(f.stats().deletes, 3);
+});
+
+test("legacy cached private permissions refresh existing ongoing rooms once on upgrade", async () => {
+  const f = fixture();
+  await f.sync();
+  const ids = structuredClone(f.state().channels);
+  for (const side of ["waiting", "host", "challenger"]) {
+    f.state().channel_roster_signatures[side] = JSON.stringify(JSON.parse(f.state().channel_roster_signatures[side]).slice(0, 2));
+  }
+  f.match.metadata.status = "in_progress";
+  await f.sync();
+  assert.equal(f.stats().permissionEdits, 3);
+  const outsider = "200000000000009999";
+  assert.equal(effectivePermissions(f.channels.get(ids.host), outsider).has(PermissionFlagsBits.ViewChannel), true);
+  assert.equal(effectivePermissions(f.channels.get(ids.challenger), outsider).has(PermissionFlagsBits.Connect), false);
+  assert.equal(effectivePermissions(f.channels.get(ids.waiting), outsider).has(PermissionFlagsBits.ViewChannel), false);
+  assert.deepEqual(f.state().channels, ids);
+  assert.equal(f.stats().creations, 3);
+  await f.sync();
+  assert.equal(f.stats().permissionEdits, 3);
 });
