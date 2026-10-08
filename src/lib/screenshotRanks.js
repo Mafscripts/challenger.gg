@@ -5,3 +5,5 @@ export const screenshotRanks = [
   { id: "top250", label: "Top 250", style: "border-amber-300/35 bg-amber-300/10 text-amber-200" },
 ];
 export const screenshotRankFor = (id) => screenshotRanks.find((rank) => rank.id === id);
+export const selfSelectableRanks = screenshotRanks.filter((rank) => rank.id !== "top250");
+export const top250RequestFor = (state) => (Array.isArray(state?.attempts) ? state.attempts : []).findLast((attempt) => attempt.kind === "top250_request") || null;

@@ -31,7 +31,7 @@ import RoleBadge from "@/components/ui/RoleBadge";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
-import { ScreenshotRankPill, ScreenshotRankUpload } from "@/components/profile/ScreenshotRank";
+import { ScreenshotRankPill, GameRankSettingsLink } from "@/components/profile/ScreenshotRank";
 import { base44 } from "@/api/base44Client";
 import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
@@ -653,7 +653,7 @@ export default function Profile() {
           )}
         </section>
 
-        {isOwnProfile && <ScreenshotRankUpload key={user.id} userId={user.id} onRankChange={(rank) => setUser((current) => current?.id === user.id ? { ...current, screenshot_rank: rank } : current)} />}
+        {isOwnProfile && <GameRankSettingsLink />}
 
         <nav className="mt-4 grid grid-cols-4 overflow-hidden rounded-xl border border-white/10 bg-card">
           {tabs.map(({ id, label, icon: Icon }) => (

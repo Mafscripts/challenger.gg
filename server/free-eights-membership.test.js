@@ -185,7 +185,7 @@ test("authenticated Free 8s endpoints require a stored screenshot rank, block un
     for (const action of ["createWager", "acceptWager"]) {
       const { body } = await request(action);
       assert.equal(body.code, "FREE_EIGHTS_RANK_REQUIRED", JSON.stringify(body));
-      assert.equal(body.action_url, "/profile#rank-screenshot");
+      assert.equal(body.action_url, "/settings#settings-rank");
     }
     assert.equal(f.members.size, 2);
     assert.equal(f.matches.size, 2);

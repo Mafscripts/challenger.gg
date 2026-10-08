@@ -1,6 +1,6 @@
 import { screenshotRankFor } from "./screenshotRanks.js";
 
-export const freeEightsRankUploadUrl = "/profile#rank-screenshot";
+export const freeEightsRankUploadUrl = "/settings#settings-rank";
 export const hasFreeEightsRank = (user) => Boolean(screenshotRankFor(user?.screenshot_rank));
 export const isFreeEightsRankRequired = (result) => (result?.code || result?.data?.code) === "FREE_EIGHTS_RANK_REQUIRED";
 
@@ -9,7 +9,7 @@ export function freeEightsRankJoinError(matchType, storedRank) {
   return {
     success: false,
     code: "FREE_EIGHTS_RANK_REQUIRED",
-    error: "Upload a ranked screenshot to join Free 8s. Your Diamond, Crimson, Iridescent or Top 250 rank must be approved first.",
+    error: "Choose Diamond, Crimson or Iridescent in Settings to join Free 8s. Top 250 requires admin approval.",
     action_url: freeEightsRankUploadUrl,
   };
 }

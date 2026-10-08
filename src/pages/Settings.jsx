@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   AtSign,
+  Award,
   Coins,
   ChevronDown,
   Gamepad2,
@@ -19,6 +21,7 @@ import PaymentPermissionsSection from "@/components/settings/PaymentPermissionsS
 import DiscordSection from "@/components/settings/DiscordSection";
 import TwitchSection from "@/components/settings/TwitchSection";
 import GamingIdsSection from "@/components/settings/GamingIdsSection";
+import GameRankSection from "@/components/settings/GameRankSection";
 import SocialsSection from "@/components/settings/SocialsSection";
 import ReferralSection from "@/components/settings/ReferralSection";
 import PageHeader from "@/components/ui/PageHeader";
@@ -32,6 +35,7 @@ const settingGroups = [
     icon: UserRound,
     items: [
       { label: "Profile & username", icon: UserRound, target: "settings-account" },
+      { label: "Game rank", icon: Award, target: "settings-rank" },
       { label: "Password & security", icon: KeyRound, target: "settings-password" },
     ],
   },
@@ -79,9 +83,10 @@ function GroupLabel({ icon: Icon, title, description }) {
 }
 
 export default function Settings() {
+  const { hash } = useLocation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [openGroup, setOpenGroup] = useState(null);
+  const [openGroup, setOpenGroup] = useState(() => hash === "#settings-rank" ? "account" : null);
 
   const loadUser = async () => {
     const me = await base44.auth.me();
@@ -94,6 +99,14 @@ export default function Settings() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (hash === "#settings-rank") setOpenGroup("account");
+  }, [hash]);
+
+  useEffect(() => {
+    if (!loading && openGroup === "account" && hash === "#settings-rank") scrollToSetting("settings-rank");
+  }, [loading, openGroup, hash]);
 
   if (loading) return <PageLoader label="Loading settings" />;
 
@@ -174,6 +187,7 @@ export default function Settings() {
             <section id="settings-account" className="scroll-mt-28">
               <GroupLabel icon={UserRound} title="Account & security" description="Your identity, login credentials and account security." />
               <AccountSection user={user} onUserUpdate={loadUser} />
+              <div id="settings-rank" className="mt-6 scroll-mt-28"><GameRankSection user={user} onUserUpdate={loadUser} /></div>
             </section>
           )}
 

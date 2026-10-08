@@ -87,7 +87,9 @@ export default function DiscordSection({ user, onUserUpdate }) {
     try {
       const result = await base44.discord.sync();
       await onUserUpdate();
-      setConnectionResult(result.roleAssigned
+      setConnectionResult(result.roleSyncError
+        ? { success: false, message: `${result.profileRefreshed ? "Discord profile refreshed. " : ""}${result.roleSyncError.message}` }
+        : result.roleAssigned
         ? { success: true, message: result.profileRefreshed ? "Verified Player role and Discord profile synchronized successfully." : "Verified Player role synchronized successfully." }
         : { success: false, message: "Join the Topfragg Discord server first, then try again." });
     } catch (error) {

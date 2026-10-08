@@ -7,6 +7,7 @@ import { freeEightsDiscordConfig, freeEightsDiscordMembershipJoinError, freeEigh
 import {
   discordAvatarUrl,
   discordInviteUrl,
+  discordRoleSyncFailure,
   discordUserProfile,
   removeDiscordVerifiedRole,
   syncDiscordVerifiedRole,
@@ -266,7 +267,13 @@ router.post("/sync", requireAuth, async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user?.discord_user_id) return res.status(400).json({ error: "Connect Discord first" });
-    const result = await syncDiscordVerifiedRole(user.discord_user_id);
+    let result;
+    try {
+      result = await syncDiscordVerifiedRole(user.discord_user_id);
+    } catch (error) {
+      result = { connected: true, roleAssigned: false, roleSyncError: discordRoleSyncFailure(error) };
+      console.warn("Discord role sync unavailable:", result.roleSyncError.code);
+    }
     let profileRefreshed = false;
     try {
       const profile = await discordUserProfile(user.discord_user_id);

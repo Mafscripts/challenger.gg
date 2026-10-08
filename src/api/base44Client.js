@@ -292,9 +292,15 @@ const entityClient = (entity) => ({
 export const base44 = {
   rankVerification: {
     me() { requireToken(); return apiFetch("/rank-verification/me", { dedupe: false }); },
-    async submit(image) {
+    async select(rank) {
       requireToken();
-      const result = await apiFetch("/rank-verification/submit", { method: "POST", body: { image }, dedupe: false });
+      const result = await apiFetch("/rank-verification/select", { method: "POST", body: { rank }, dedupe: false });
+      invalidateApiCache();
+      return result;
+    },
+    async requestTop250(payload) {
+      requireToken();
+      const result = await apiFetch("/rank-verification/top250-request", { method: "POST", body: payload, dedupe: false });
       invalidateApiCache();
       return result;
     },

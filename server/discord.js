@@ -97,14 +97,48 @@ export const syncDiscordVerifiedRole = async (discordUserId) => {
   const encodedGuildId = encodeURIComponent(guildId);
   const encodedUserId = encodeURIComponent(discordUserId);
 
-  if (!(await discordGuildMembership(discordUserId)).inGuild) return { connected: true, inGuild: false, roleAssigned: false };
+  let phase = "membership";
+  try {
+    if (!(await discordGuildMembership(discordUserId)).inGuild) return { connected: true, inGuild: false, roleAssigned: false };
+    phase = "roles";
+    const role = await verifiedRole();
+    phase = "assignment";
+    await discordBotRequest(
+      `/guilds/${encodedGuildId}/members/${encodedUserId}/roles/${encodeURIComponent(role.id)}`,
+      { method: "PUT" },
+    );
+    return { connected: true, inGuild: true, roleAssigned: true, roleId: role.id };
+  } catch (error) {
+    error.discordRoleSyncPhase = phase;
+    throw error;
+  }
+};
 
-  const role = await verifiedRole();
-  await discordBotRequest(
-    `/guilds/${encodedGuildId}/members/${encodedUserId}/roles/${encodeURIComponent(role.id)}`,
-    { method: "PUT" },
-  );
-  return { connected: true, inGuild: true, roleAssigned: true, roleId: role.id };
+export const discordRoleSyncFailure = (error) => {
+  let discordCode;
+  try { discordCode = JSON.parse(error.discordBody || "{}").code; } catch { /* Upstream errors may not be JSON. */ }
+  if (error.discordStatus === 403) {
+    if (error.discordRoleSyncPhase === "assignment" && discordCode !== 50001) return {
+      code: "DISCORD_ROLE_PERMISSIONS_REQUIRED",
+      message: 'Discord is connected, but the bot cannot assign Verified Player. A server admin must enable Manage Roles for the bot and place its role above Verified Player.',
+    };
+    return {
+      code: "DISCORD_SERVER_ACCESS_REQUIRED",
+      message: "Discord is connected, but the bot cannot access the configured server. A server admin must check the bot's server membership and the configured Discord server ID.",
+    };
+  }
+  if (error.code === "DISCORD_ROLE_NOT_FOUND") return {
+    code: error.code,
+    message: 'Discord is connected, but the server is missing the Verified Player role. A server admin must create that role, then try again.',
+  };
+  if (error.code === "DISCORD_NOT_CONFIGURED" || error.discordStatus === 401) return {
+    code: "DISCORD_NOT_CONFIGURED",
+    message: "Discord is connected, but the bot integration is unavailable. A server admin must check the bot configuration.",
+  };
+  return {
+    code: "DISCORD_ROLE_SYNC_UNAVAILABLE",
+    message: "Discord is connected, but the Verified Player role could not be synchronized. Please try again later.",
+  };
 };
 
 export const removeDiscordVerifiedRole = async (discordUserId) => {

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { freeEightsRankJoinError, hasFreeEightsRank, isFreeEightsRankRequired } from "../src/lib/freeEightsRankRequirement.js";
 
-test("Free 8s requires one of the four approved screenshot ranks", () => {
+test("Free 8s requires one of the four stored game ranks", () => {
   for (const rank of ["diamond", "crimson", "iridescent", "top250"]) {
     assert.equal(freeEightsRankJoinError("8s", rank), null);
     assert.equal(hasFreeEightsRank({ screenshot_rank: rank }), true);
@@ -21,9 +21,9 @@ test("Money 8s, XP, ranked, wagers and tournaments do not require a screenshot r
   }
 });
 
-test("rank requirement errors consistently direct players to the profile screenshot section", () => {
+test("rank requirement errors consistently direct players to Settings", () => {
   const error = freeEightsRankJoinError("8s", null);
-  assert.equal(error.action_url, "/profile#rank-screenshot");
+  assert.equal(error.action_url, "/settings#settings-rank");
   assert.equal(isFreeEightsRankRequired(error), true);
   assert.equal(isFreeEightsRankRequired({ data: error }), true);
   assert.equal(isFreeEightsRankRequired(null), false);

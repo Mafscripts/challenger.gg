@@ -1,13 +1,14 @@
 import crypto from "node:crypto";
 import sharp from "sharp";
-import { screenshotRankFor } from "../src/lib/screenshotRanks.js";
+import { screenshotRankFor, top250RequestFor } from "../src/lib/screenshotRanks.js";
 
 export const lockedRankStatuses = new Set(["manual_review", "admin_locked", "rejected"]);
 export const rankError = (message, status = 400) => Object.assign(new Error(message), { status });
 export const initialRankState = (userId) => ({ user_id: userId, status: "idle", failed_attempts: 0, attempts: [] });
 export const publicRankState = (row, rank) => ({
   ...initialRankState(row?.user_id), ...row, rank: screenshotRankFor(rank)?.id || null,
-  attempts: (row?.attempts || []).map(({ image: _image, ...attempt }) => attempt),
+  attempts: (row?.attempts || []).map(({ image: _image, ...attempt }) => ({ ...attempt, has_image: Boolean(_image) })),
+  top250_request: (() => { const request = top250RequestFor(row); if (!request) return null; const { image, ...summary } = request; return { ...summary, has_image: Boolean(image) }; })(),
 });
 
 export async function prepareRankImage(dataUrl) {
