@@ -69,6 +69,12 @@ Connect and Speak in the waiting room. Team channels explicitly grant these to
 their team's linked identities and deny View Channel/Connect to `@everyone`.
 Discord administrators retain Discord's normal permission bypass.
 
+Give the bot Manage Roles through its server role, not through a per-channel
+overwrite. Discord permits setting the Manage Roles bit in channel overwrites
+only for administrators. Free 8s therefore inherits this permission and does
+not explicitly set it in either team channel's overwrites. This avoids error
+50013 during creation/reshuffles without requiring Administrator.
+
 `GuildVoiceStates` has been added to the existing client's intents. It is a
 standard intent and does not need a new privileged-intent toggle. Keep the existing
 Guild Members privileged-intent setting used by the current bot. The bot does not

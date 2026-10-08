@@ -22,10 +22,20 @@ function fixture(count = 1) {
   let creations = 0;
   let permissionEdits = 0;
   let deletes = 0;
+  // Discord rejects MANAGE_ROLES channel overwrites for non-administrators,
+  // even when the bot already has Manage Roles through its guild role.
+  const validateOverwrites = (overwrites = []) => {
+    for (const overwrite of overwrites) {
+      const resolved = PermissionOverwrites.resolve(overwrite);
+      if ((BigInt(resolved.allow) | BigInt(resolved.deny)) & PermissionFlagsBits.ManageRoles) {
+        throw Object.assign(new Error("Missing Permissions"), { status: 403, code: 50013 });
+      }
+    }
+  };
   const channel = (id, type, name, parentId) => ({
     id, type, name, parentId,
     get members() { return members.filter((member) => member.voice.channelId === id); },
-    permissionOverwrites: { async set(overwrites) { this.values = overwrites; permissionEdits++; } },
+    permissionOverwrites: { async set(overwrites) { validateOverwrites(overwrites); this.values = overwrites; permissionEdits++; } },
     async delete() { channels.delete(id); deletes++; },
   });
   channels.set(config.waitingRoomId, channel(config.waitingRoomId, ChannelType.GuildVoice, "8s Waiting Room", null));
@@ -42,6 +52,7 @@ function fixture(count = 1) {
         return channels.get(id);
       },
       async create(options) {
+        validateOverwrites(options.permissionOverwrites);
         if (channels.filter((item) => item.parentId === options.parent).size >= 50) {
           throw Object.assign(new Error("Maximum category channels"), { status: 400, code: 30013 });
         }
@@ -127,6 +138,32 @@ test("only canonical eight-player 4v4 Free 8s teams qualify", () => {
   for (const type of ["money8s", "wagers", "tournament"]) assert.equal(canAssignFreeEightsVoice({ ...f.match.metadata, match_type: type }, f.participants), false);
   assert.equal(canAssignFreeEightsVoice(f.match.metadata, f.participants.slice(1)), false);
   assert.equal(canAssignFreeEightsVoice({ ...f.match.metadata, teams_generated_at: "" }, f.participants), false);
+});
+
+test("non-administrator bot creates private voices without forbidden Manage Roles overwrites", async () => {
+  const f = fixture();
+  // An earlier definite 403 leaves the match eligible for a clean retry.
+  await f.db.discordEventDispatch.create({ data: { event_key: freeEightsVoiceKey(f.match.id),
+    metadata: { match_id: f.match.id, channels: {}, provisions: {}, error: "Missing Permissions" } } });
+  await f.sync();
+  assert.equal(f.stats().creations, 2);
+  assert.equal(f.moves.length, 8);
+  assert.equal(f.state().error, null);
+  for (const id of Object.values(f.state().channels)) {
+    const overwrites = f.channels.get(id).permissionOverwrites.values;
+    const botOverwrite = overwrites.find((entry) => entry.id === f.guild.client.user.id);
+    assert.equal(botOverwrite.allow.includes(PermissionFlagsBits.ManageRoles), false);
+    assert.equal(botOverwrite.allow.includes(PermissionFlagsBits.ManageChannels), true);
+    assert.equal(botOverwrite.allow.includes(PermissionFlagsBits.MoveMembers), true);
+    assert.deepEqual(overwrites[0].deny, [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]);
+  }
+  f.participants[0].team = "challenger";
+  f.participants[4].team = "host";
+  f.match.metadata.teams_generated_at = "2026-10-07T00:01:00Z";
+  await f.sync();
+  assert.equal(f.stats().creations, 2);
+  assert.equal(f.stats().permissionEdits, 2);
+  assert.equal(f.moves.length, 10);
 });
 
 test("private channels, correct teams, offline/other-channel players and late arrivals", async () => {

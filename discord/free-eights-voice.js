@@ -250,9 +250,11 @@ async function reconcileMatch(guild, db, matchId, config, guard, log) {
     for (const side of ["host", "challenger"]) {
       if (!capacity) break;
       const members = participants.filter((player) => player.team === side).map((player) => identities.get(player.user_id)).filter(hasDiscordLink);
+      // Manage Roles is inherited from the bot's guild role. Discord only lets
+      // administrators set that bit in channel overwrites (otherwise 50013).
       const overwrites = [
         { id: guild.id, type: OverwriteType.Role, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] },
-        { id: guild.client.user.id, type: OverwriteType.Member, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers, PermissionFlagsBits.ManageRoles] },
+        { id: guild.client.user.id, type: OverwriteType.Member, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers] },
         ...members.map((user) => ({ id: user.discord_user_id, type: OverwriteType.Member, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak] })),
       ];
       const permissionSignature = JSON.stringify([signature, members.map((user) => user.discord_user_id)]);
