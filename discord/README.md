@@ -86,6 +86,42 @@ While the `topfragg-discord` process is online, it checks the Topfragg database 
 
 The `DiscordEventDispatch` database table prevents duplicate announcements when the bot restarts. Apply the Prisma migration and restart **topfragg-discord** after deployment for the automation to start.
 
+### Free 8s match results
+
+The same bot also checks completed **Free 8s** matches once per minute and posts
+their confirmed result in the existing **📊・match-results** channel. Each English
+embed shows the winning team (Alpha or Bravo), final score, both four-player
+rosters, completion time, unique match ID and a **View match** button. It reads
+the existing `Wager` / `WagerParticipant` records; Money 8s, cancelled matches,
+unconfirmed score reports and other queues do not produce these posts.
+
+The first run catches up on completed matches from the **last seven days**.
+Offline periods are caught up within that same window. Pagination includes all
+eligible matches rather than just the newest 100. Individual failures are logged
+and retried on the next check without stopping voice or tournament automation.
+
+Results reuse `DiscordEventDispatch` with a separate, guild-and-match-specific
+key. PostgreSQL advisory locks prevent competing workers from posting the same
+result. A durable pending record, Discord nonce and recovery of the exact bot
+message from channel history handle interrupted sends or receipt writes. Sent
+results remain logged across restarts; later metadata changes do not repost them.
+Pending recovery uses the originally stored channel ID and bot ID. If that
+channel is unavailable, the bot logs a failure rather than rerouting a possibly
+already posted result. Existing published results are not edited automatically.
+
+No additional migration, token, environment variable or Discord channel is
+required. The existing bot needs **View Channel**, **Send Messages**, **Embed
+Links** and **Read Message History** in `match-results`. Deploy the code and
+restart the existing `topfragg-discord` process; no website build is required for
+this bot-only change.
+
+Manual check: complete a Free 8s match with matching confirmed scores; within
+about a minute, check the winner, score, eight names and match link. Repeat with
+Bravo winning, then restart the bot and verify there is no duplicate. Cancel a
+different lobby and verify it produces no result post. Logs use the prefix
+`[Topfragg Free 8s Results]` and include the match ID on send attempts, successful
+posts, recovery and failures.
+
 ## 7. Team finder and player roles
 
 The **🔎・looking-for-team** card gives verified players two self-service options:

@@ -30,6 +30,7 @@ import { syncManagedDiscordRoles } from "./managed-roles.js";
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
+import { syncFreeEightsResults } from "./free-eights-results.js";
 
 const config = discordEnvironment();
 const client = new Client({
@@ -43,6 +44,19 @@ const client = new Client({
 });
 let tournamentSyncRunning = false;
 let freeEightsVoiceSyncRunning = false;
+let freeEightsResultsSyncRunning = false;
+async function runFreeEightsResultsSync(guild) {
+  if (freeEightsResultsSyncRunning) return;
+  freeEightsResultsSyncRunning = true;
+  try {
+    await guild.channels.fetch();
+    await syncFreeEightsResults(guild, { publicUrl: config.publicUrl, findChannel: findConfiguredChannel });
+  } catch (error) {
+    console.error("[Topfragg Free 8s Results] sync-failed:", error.message);
+  } finally {
+    freeEightsResultsSyncRunning = false;
+  }
+}
 async function runFreeEightsVoiceSync(guild) {
   if (freeEightsVoiceSyncRunning) return;
   freeEightsVoiceSyncRunning = true;
@@ -489,6 +503,8 @@ client.once(Events.ClientReady, async (readyClient) => {
   await runTournamentDiscordSync(guild);
   await runFreeEightsVoiceSync(guild);
   setInterval(() => runFreeEightsVoiceSync(guild), 5000);
+  void runFreeEightsResultsSync(guild);
+  setInterval(() => runFreeEightsResultsSync(guild), 60_000);
   await addControlsToExistingTickets(guild).catch((error) => console.error("[Topfragg Discord] Ticket control sync failed:", error));
   await syncMemberCount(guild).catch((error) => console.error("[Topfragg Discord] Member counter sync failed:", error));
   setInterval(() => runTournamentDiscordSync(guild), 60_000);
