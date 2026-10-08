@@ -1,3 +1,5 @@
+import { discordGuildMembership, discordInviteUrl } from "./discord.js";
+
 export const freeEightsVoiceKey = (id) => `free8s-voice:${id}`;
 export const freeEightsChannelKey = (id) => `free8s-channel:${id}`;
 export const freeEightsVoiceClosed = new Set(["completed", "cancelled", "expired", "closed"]);
@@ -28,6 +30,22 @@ export const freeEightsDiscordJoinError = (matchType, user) => {
     code: "FREE_EIGHTS_DISCORD_REQUIRED",
   };
 };
+
+export async function freeEightsDiscordMembershipJoinError(matchType, user) {
+  if (matchType !== "8s") return null;
+  if (!hasDiscordLink(user)) return freeEightsDiscordJoinError(matchType, user);
+  try {
+    const { inGuild } = await discordGuildMembership(user.discord_user_id);
+    freeEightsVoiceLog("discord-server-membership-check", { user_id: user.id, in_guild: inGuild });
+    if (inGuild) return null;
+    return { success: false, code: "FREE_EIGHTS_DISCORD_SERVER_REQUIRED",
+      error: "Join the Topfragg Discord server with your linked account before creating or joining Free 8s.", action_url: discordInviteUrl() };
+  } catch (error) {
+    freeEightsVoiceLog("discord-server-membership-unavailable", { user_id: user.id, discord_status: error.discordStatus || null });
+    return { success: false, code: "FREE_EIGHTS_DISCORD_MEMBERSHIP_UNAVAILABLE",
+      error: "We could not verify your Topfragg Discord membership. Please try again shortly." };
+  }
+}
 
 export const voiceRosterSignature = (match, participants) => JSON.stringify([
   match?.teams_generated_at || "",

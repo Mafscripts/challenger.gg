@@ -11,12 +11,13 @@ import { issueEightsLiveToken, publishEightsLobbyUpdate } from "../eights-live.j
 import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
 import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTrial.js";
-import { freeEightsDiscordConfig, freeEightsDiscordJoinError, freeEightsVoiceKey, freeEightsVoiceLog, freeEightsWaitingRoomReady } from "../free-eights-discord.js";
+import { freeEightsDiscordConfig, freeEightsDiscordJoinError, freeEightsDiscordMembershipJoinError, freeEightsVoiceKey, freeEightsVoiceLog, freeEightsWaitingRoomReady } from "../free-eights-discord.js";
 import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
 import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membership.js";
+import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -6418,6 +6419,10 @@ async function createWager(req) {
   const entryFee = matchType === "8s" ? 0 : money(req.body.entry_fee ?? req.body.amount);
   const discordError = freeEightsDiscordJoinError(matchType, req.userRow);
   if (discordError) return discordError;
+  const rankError = freeEightsRankJoinError(matchType, req.userRow.metadata?.screenshot_rank);
+  if (rankError) return rankError;
+  const membershipError = await freeEightsDiscordMembershipJoinError(matchType, req.userRow);
+  if (membershipError) return membershipError;
   const requiredSize = requiredRosterSize(req.body.team_size);
   const isTeamMatch = matchType === "wagers";
   const paymentMode = paymentModeFor(req.body.payment_mode);
@@ -6628,6 +6633,10 @@ async function acceptWagerUnlocked(req) {
   if (existingParticipant && isEightsMatchType(wager.match_type)) {
     return { success: true, wager, wager_id: wager.id, rejoined: true };
   }
+  const rankError = freeEightsRankJoinError(wager.match_type, req.userRow.metadata?.screenshot_rank);
+  if (rankError) return rankError;
+  const membershipError = await freeEightsDiscordMembershipJoinError(wager.match_type, req.userRow);
+  if (membershipError) return membershipError;
   if (wager.host_id === req.user.id) {
     return { success: false, error: "You cannot accept your own wager" };
   }

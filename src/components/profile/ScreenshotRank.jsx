@@ -14,12 +14,14 @@ export function ScreenshotRankUpload({ userId, onRankChange }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const input = useRef(null);
+  const panel = useRef(null);
   const activeUser = useRef(userId);
   activeUser.current = userId;
   useEffect(() => {
     let active = true;
     activeUser.current = userId;
     setState(null); setError(""); setMessage("");
+    if (window.location.hash === "#rank-screenshot") panel.current?.scrollIntoView({ block: "center" });
     base44.rankVerification.me().then((result) => { if (active) setState(result); }).catch((error) => { if (active) setError(error.message); });
     return () => { active = false; activeUser.current = null; };
   }, [userId]);
@@ -42,7 +44,7 @@ export function ScreenshotRankUpload({ userId, onRankChange }) {
     } catch (error) { if (activeUser.current === owner) { setError(error.message); if (error.status === 409) base44.rankVerification.me().then((state) => { if (activeUser.current === owner) setState(state); }).catch(() => {}); } }
     finally { if (activeUser.current === owner) setBusy(false); }
   };
-  return <div className="mt-4 rounded-xl border border-white/10 bg-card p-4 sm:p-5">
+  return <div ref={panel} id="rank-screenshot" className="mt-4 scroll-mt-24 rounded-xl border border-white/10 bg-card p-4 sm:p-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="text-sm font-black text-white">Game rank screenshot</h2><p className="mt-1 text-xs leading-5 text-vapor">Diamond, Crimson, Iridescent or Top 250. Upload a clear rank card; divisions I, II and III are ignored.</p></div>
       <button type="button" onClick={() => input.current?.click()} disabled={!state || busy || locked} className="inline-flex items-center gap-2 rounded-xl border border-purple-400/30 bg-purple-400/10 px-4 py-2.5 text-xs font-black text-purple-200 disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{busy ? "Checking screenshot…" : "Upload rank screenshot"}</button>

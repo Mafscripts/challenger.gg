@@ -9,9 +9,12 @@ import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
-import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordNotice, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
+import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordNotice, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
+import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
+import { FreeEightsRankDialog, FreeEightsRankNotice, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
+import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
 const EIGHTS_PRIZE_START_MONTH = "2026-10";
@@ -36,6 +39,8 @@ export default function RankedEights() {
   const [joining, setJoining] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [discordPromptOpen, setDiscordPromptOpen] = useState(false);
+  const [rankPromptOpen, setRankPromptOpen] = useState(false);
+  const [discordServerPrompt, setDiscordServerPrompt] = useState(null);
   const discordPromptTrigger = useRef(null);
   const isMoney = searchParams.get("mode") === "money";
   const lobbyMatchType = isMoney ? "money8s" : "8s";
@@ -104,6 +109,10 @@ export default function RankedEights() {
       setDiscordPromptOpen(true);
       return;
     }
+    if (!isMoney && !hasFreeEightsRank(user)) {
+      setRankPromptOpen(true);
+      return;
+    }
     if (!hasActivisionId(user)) {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
@@ -113,6 +122,14 @@ export default function RankedEights() {
       const response = await base44.functions.invoke("acceptWager", { wager_id: lobby.id });
       if (!isMoney && isFreeEightsDiscordRequired(response.data)) {
         setDiscordPromptOpen(true);
+        return;
+      }
+      if (!isMoney && isFreeEightsRankRequired(response.data)) {
+        setRankPromptOpen(true);
+        return;
+      }
+      if (!isMoney && isFreeEightsDiscordServerRequired(response.data)) {
+        setDiscordServerPrompt(response.data);
         return;
       }
       if (!response.data?.success) throw new Error(response.data?.error || "Could not join this lobby");
@@ -131,6 +148,14 @@ export default function RankedEights() {
       }
       navigate(`/8s-match/${lobby.id}`);
     } catch (error) {
+      if (!isMoney && isFreeEightsDiscordServerRequired(error)) {
+        setDiscordServerPrompt(error.data || error);
+        return;
+      }
+      if (!isMoney && isFreeEightsRankRequired(error)) {
+        setRankPromptOpen(true);
+        return;
+      }
       if (!isMoney && isFreeEightsDiscordRequired(error)) {
         setDiscordPromptOpen(true);
         return;
@@ -190,7 +215,7 @@ export default function RankedEights() {
             <Link to={`/8s-match/${activeLobby.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background">
               Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
             </Link>
-          ) : !isMoney && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> : (
+          ) : !isMoney && !hasFreeEightsRank(user) ? <UploadFreeEightsRank /> : !isMoney && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> : (
             <button onClick={() => setCreateOpen(true)} className="create-cta inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-xs font-black uppercase tracking-wider transition-all">
               <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
@@ -198,6 +223,7 @@ export default function RankedEights() {
         />
         <ActivisionIdNotice user={user} className="mb-6" />
         {!isMoney && <FreeEightsDiscordNotice user={user} />}
+        {!isMoney && <FreeEightsRankNotice user={user} />}
 
         <section className={`mb-6 overflow-hidden rounded-2xl border bg-gradient-to-r via-card to-card ${isMoney ? "border-green/25 from-green/[0.11]" : "border-yellow-400/25 from-yellow-400/[0.11]"}`}>
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -220,6 +246,8 @@ export default function RankedEights() {
       </div>
       <CreateLobbyModal isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} />
       {!isMoney && <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} />}
+      {!isMoney && <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} returnFocusTo={discordPromptTrigger} />}
+      {!isMoney && <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} returnFocusTo={discordPromptTrigger} />}
     </div>
   );
 }

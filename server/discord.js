@@ -1,3 +1,5 @@
+import { topfraggDiscordInviteUrl } from "../src/lib/discordCommunity.js";
+
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const VERIFIED_ROLE_NAME = "Verified Player";
 
@@ -23,6 +25,7 @@ async function discordBotRequest(path, options = {}) {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
+    signal: options.signal,
   });
   if (response.ok) {
     if (response.status === 204) return null;
@@ -59,20 +62,31 @@ export const discordAvatarUrl = (discordUser) => {
   return `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.${extension}?size=256`;
 };
 
+export const discordInviteUrl = () => topfraggDiscordInviteUrl;
+
+// This fresh lookup uses the existing bot and the authenticated account's OAuth ID.
+// A previous successful link or role assignment cannot prove current membership.
+export const discordGuildMembership = async (discordUserId) => {
+  const { guildId } = discordConfig();
+  if (!/^\d{17,20}$/.test(guildId) || !/^\d{17,20}$/.test(String(discordUserId || ""))) throw configurationError();
+  try {
+    await discordBotRequest(`/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(discordUserId)}`, { signal: AbortSignal.timeout(8000) });
+    return { inGuild: true };
+  } catch (error) {
+    let discordCode;
+    try { discordCode = JSON.parse(error.discordBody || "{}").code; } catch { /* Non-JSON upstream errors stay unavailable. */ }
+    if (error.discordStatus === 404 && discordCode === 10007) return { inGuild: false };
+    throw error;
+  }
+};
+
 export const syncDiscordVerifiedRole = async (discordUserId) => {
   const { guildId } = discordConfig();
   if (!guildId) throw configurationError();
   const encodedGuildId = encodeURIComponent(guildId);
   const encodedUserId = encodeURIComponent(discordUserId);
 
-  try {
-    await discordBotRequest(`/guilds/${encodedGuildId}/members/${encodedUserId}`);
-  } catch (error) {
-    if (error.discordStatus === 404) {
-      return { connected: true, inGuild: false, roleAssigned: false };
-    }
-    throw error;
-  }
+  if (!(await discordGuildMembership(discordUserId)).inGuild) return { connected: true, inGuild: false, roleAssigned: false };
 
   const role = await verifiedRole();
   await discordBotRequest(

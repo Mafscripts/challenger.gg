@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Headphones, Link2, Loader2, 
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { freeEightsVoiceView, recordFreeEightsVoiceResponse } from "@/lib/freeEightsVoiceStatus";
+import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
 
 export const hasFreeEightsDiscordLink = (user) => /^\d{17,20}$/.test(String(user?.discord_user_id || "")) && Boolean(user?.discord_connected_at);
 export const isFreeEightsDiscordRequired = (result) => result?.code === "FREE_EIGHTS_DISCORD_REQUIRED"
@@ -55,12 +56,12 @@ export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranke
         <div className="mt-5 rounded-xl border border-white/[0.08] bg-black/20 p-4">
           <p className="text-xs font-bold text-white">What happens next?</p>
           <ol className="mt-2 list-decimal space-y-2 pl-4 text-xs leading-5 text-vapor">
-            <li>Connect Discord securely, then return here and accept the match.</li>
+            <li>Connect Discord securely. If you are not a member, you will go directly to the Topfragg server invitation. Join using your linked Discord account, then return here and accept the match.</li>
             <li>Join the <span className="font-bold text-white">8s Waiting Room</span> yourself.</li>
             <li>Once both team channels are ready, the bot moves players connected to the waiting room into their assigned team voice.</li>
           </ol>
         </div>
-        <p className="mt-4 text-xs leading-5 text-vapor"><span className="font-bold text-white">Without linking, you cannot create or join Free 8s.</span> You can close this popup and connect later. During this voice test, missing voice players do not cancel the match.</p>
+        <p className="mt-4 text-xs leading-5 text-vapor"><span className="font-bold text-white">You must link Discord and join the Topfragg server to create or join Free 8s.</span> All eight players must be in the Waiting Room before maps are generated.</p>
         <p className="mt-3 text-[11px] leading-5 text-vapor">Discord asks you to approve access to your basic profile. Your Discord password is never shared with Topfragg.</p>
         {error && <p role="alert" className="mt-4 rounded-lg border border-orange/25 bg-orange/5 px-3 py-2 text-xs leading-5 text-orange">{error}</p>}
         <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
@@ -74,6 +75,43 @@ export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranke
 
 export function ConnectFreeEightsDiscord({ returnTo = "/ranked/8s" }) {
   return <FreeEightsDiscordDialog returnTo={returnTo} trigger={<button type="button" className="rounded-lg border border-purple-300/30 bg-purple-300/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-purple-200">Connect Discord to join Free 8s</button>} />;
+}
+
+export function FreeEightsDiscordServerDialog({ result, onOpenChange, returnFocusTo }) {
+  const [checking, setChecking] = useState(false);
+  const [message, setMessage] = useState("");
+  const joinLink = useRef(null);
+  const opener = useRef(null);
+  useEffect(() => { setMessage(""); }, [result]);
+  const check = async () => {
+    if (checking) return;
+    setChecking(true);
+    try {
+      const status = await base44.discord.membership();
+      if (status.success && status.in_guild) {
+        onOpenChange(false);
+      } else setMessage(status.error || "Join the server with your linked Discord account, then check again.");
+    } catch { setMessage("Discord membership could not be checked. Please try again shortly."); }
+    finally { setChecking(false); }
+  };
+  return <Dialog open={Boolean(result)} onOpenChange={onOpenChange}>
+    <DialogPortal>
+      <DialogOverlay className="z-[110] bg-black/70 backdrop-blur-sm" />
+      <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-[120] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-purple-400/25 bg-card p-6 shadow-[0_24px_80px_rgba(0,0,0,.6)] sm:p-7"
+        onOpenAutoFocus={(event) => { opener.current = document.activeElement; event.preventDefault(); joinLink.current?.focus(); }}
+        onCloseAutoFocus={(event) => { event.preventDefault(); const target = returnFocusTo?.current || opener.current; if (target?.isConnected) target.focus(); }}>
+        <DialogClose asChild><button type="button" aria-label="Close Discord server popup" className="absolute right-4 top-4 rounded-lg p-1.5 text-vapor hover:bg-white/5 hover:text-white"><X className="h-5 w-5" /></button></DialogClose>
+        <DialogTitle className="pr-5 text-2xl font-black text-white">Join the Topfragg Discord</DialogTitle>
+        <DialogDescription className="mt-3 text-sm leading-6 text-vapor">Free 8s requires server membership as well as a linked Discord account. Join with the same account you linked to Topfragg, then return here and check your membership.</DialogDescription>
+        <p className="mt-4 text-xs leading-5 text-vapor">Once membership is confirmed, accept or create the lobby again. Join the 8s Waiting Room before the match starts.</p>
+        <p role="status" className="mt-4 text-xs leading-5 text-purple-200">{message || result?.error}</p>
+        <div className="mt-6 flex flex-col gap-2">
+          <a ref={joinLink} href={result?.action_url || topfraggDiscordInviteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5865F2] px-5 py-3 text-xs font-black text-white hover:bg-[#4752C4]">Join Topfragg Discord <ExternalLink className="h-4 w-4" /></a>
+          <button type="button" onClick={check} disabled={checking} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-xs font-bold text-white disabled:opacity-50">{checking && <Loader2 className="h-4 w-4 animate-spin" />}{checking ? "Checking membership…" : "I’ve joined — check again"}</button>
+        </div>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  </Dialog>;
 }
 
 export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
@@ -95,9 +133,10 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
   }[callbackStatus];
   return <div className="my-4 rounded-xl border border-purple-300/20 bg-purple-300/5 p-4">
     <p className="text-sm font-bold text-white">{linked ? "Discord connected · Free 8s voice test" : "Connect Discord to join Free 8s"}</p>
-    <p className="mt-1 text-xs leading-5 text-vapor">{linked ? "Join the 8s Waiting Room in Discord. When teams are generated, the bot moves connected players to their team voice channel." : "Link your Discord account before creating or joining a Free 8s lobby."}</p>
+    <p className="mt-1 text-xs leading-5 text-vapor">{linked ? "You must be a member of the Topfragg server. Join the 8s Waiting Room; all eight players must be there before maps are generated and the bot moves you into team voice." : "Link your Discord account and join the Topfragg server before creating or joining a Free 8s lobby."}</p>
     {callbackError && <p role="alert" className="mt-2 text-xs text-orange">{callbackError}</p>}
     <div className="mt-3">{!linked ? <ConnectFreeEightsDiscord returnTo={returnTo} /> : voice?.waiting_room_url ? <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="text-xs font-bold text-cyan underline">Open 8s Waiting Room</a> : <p className="text-xs text-vapor">The Discord waiting room has not been configured yet.</p>}</div>
+    {linked && <a href={topfraggDiscordInviteUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-purple-200">Join Topfragg Discord <ExternalLink className="h-3.5 w-3.5" /></a>}
   </div>;
 }
 

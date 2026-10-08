@@ -94,12 +94,33 @@ join voice or transmit audio.
    verifies ownership and stores the existing identity fields. It never accepts a
    frontend-supplied Discord ID. Duplicate links are rejected by both the ownership
    check and the existing database uniqueness constraint.
-3. Successful OAuth returns to Free 8s, the Free 8s Matchfinder category, or the
-   originating Free 8s match room. Normal Settings connections still return to
-   Settings. Changing/removing an identity is blocked during an active Free 8s
+3. After successful OAuth, players who are not members of the configured guild
+   go directly to the fixed Topfragg invitation `https://discord.gg/JwSgTHcHXe`.
+   They accept the invitation with their linked account, then return to Topfragg.
+   Players already in the guild return to their original Free 8s/Matchfinder/match
+   room or Settings destination. The invitation does not receive OAuth state,
+   access tokens, user IDs or backend secrets. OAuth still requests only `identify`;
+   joining is confirmed by the player in Discord. Changing/removing an identity is blocked during an active Free 8s
    membership; finish or leave the lobby first.
 4. Linked players join normally and follow **Open 8s Waiting Room**. They connect
    to voice themselves. The website does not connect them automatically.
+   Creation and new enrollment also require a fresh membership check against the
+   configured `DISCORD_GUILD_ID`, using the existing server-side bot token and the
+   stored OAuth ID. Leaving the server blocks new Free 8s enrollment immediately
+   on the next check. Discord's Unknown Member response means "join the server";
+   authentication, configuration, rate-limit or network failures show "try again"
+   and cannot grant entry. There is no positive membership cache or new database
+   field. The centered server popup provides the invitation and a Check again
+   action. Already enrolled players can still reopen/finish their current match.
+   The permanent invite is shared by the callback, Free 8s UI and site footer;
+   no new environment variables, OAuth scopes or bot permissions are required.
+   A stored screenshot rank (**Diamond, Crimson, Iridescent or Top 250**) is also
+   mandatory for new Free 8s enrollment and creation. Missing/unsupported ranks
+   show a centered popup and link to `/profile#rank-screenshot`. The existing
+   screenshot checker/admin review sets the protected account rank; a frontend
+   rank claim or an unapproved first upload cannot unlock joining. Free 8s ELO
+   does not bypass this requirement. Existing members can reopen their current
+   room without a new enrollment; they are not removed from ongoing matches.
    A player can be enrolled in only **one unfinished Free 8s** at a time. Both
    creation and accepting a different Free 8s lobby are blocked by the backend,
    including from standalone Matchfinder or concurrent browser tabs. PostgreSQL

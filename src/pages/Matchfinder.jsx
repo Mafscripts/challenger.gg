@@ -4,8 +4,11 @@ import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Use
 import { base44 } from "@/api/base44Client";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { toast } from "@/components/ui/use-toast";
-import { FreeEightsDiscordDialog, FreeEightsDiscordNotice, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
+import { FreeEightsDiscordDialog, FreeEightsDiscordNotice, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
+import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
 import { loadFreeEightsOverview } from "@/lib/freeEightsData";
+import { FreeEightsRankDialog, FreeEightsRankNotice } from "@/components/competition/FreeEightsRankRequirement";
+import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", active: "border-cyan/35 bg-cyan/10 text-cyan", dot: "bg-cyan" },
@@ -46,6 +49,8 @@ export default function Matchfinder() {
   const [loading, setLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState("");
   const [discordPromptOpen, setDiscordPromptOpen] = useState(false);
+  const [rankPromptOpen, setRankPromptOpen] = useState(false);
+  const [discordServerPrompt, setDiscordServerPrompt] = useState(null);
   const discordPromptTrigger = useRef(null);
   const [wagerToAccept, setWagerToAccept] = useState(null);
   const [wagerTeams, setWagerTeams] = useState([]);
@@ -94,6 +99,7 @@ export default function Matchfinder() {
       try {
         const overview = await loadFreeEightsOverview(base44);
         if (!cancelled) {
+          if (overview.current_user?.id === user.id) setUser(overview.current_user);
           setFreeMembership({ userId: user.id, match: overview.active_lobby });
           setEightsCounts(overview.counts);
         }
@@ -268,6 +274,10 @@ export default function Matchfinder() {
       setDiscordPromptOpen(true);
       return;
     }
+    if (category === "eights" && !hasFreeEightsRank(user)) {
+      setRankPromptOpen(true);
+      return;
+    }
     if (category === "wagers") {
       await openWagerAccept(match);
       return;
@@ -292,9 +302,25 @@ export default function Matchfinder() {
         setDiscordPromptOpen(true);
         return;
       }
+      if (category === "eights" && isFreeEightsRankRequired(response.data)) {
+        setRankPromptOpen(true);
+        return;
+      }
+      if (category === "eights" && isFreeEightsDiscordServerRequired(response.data)) {
+        setDiscordServerPrompt(response.data);
+        return;
+      }
       if (!response.data?.success) throw new Error(response.data?.error || "This match could not be accepted.");
       navigate(roomPath(category, match));
     } catch (error) {
+      if (category === "eights" && isFreeEightsDiscordServerRequired(error)) {
+        setDiscordServerPrompt(error.data || error);
+        return;
+      }
+      if (category === "eights" && isFreeEightsRankRequired(error)) {
+        setRankPromptOpen(true);
+        return;
+      }
       if (category === "eights" && isFreeEightsDiscordRequired(error)) {
         setDiscordPromptOpen(true);
         return;
@@ -329,6 +355,8 @@ export default function Matchfinder() {
   return (
     <main className="min-h-screen py-8">
       <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} returnTo="/matchfinder?category=eights" />
+      <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} returnFocusTo={discordPromptTrigger} />
+      <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} returnFocusTo={discordPromptTrigger} />
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <section className="relative isolate min-h-[350px] overflow-hidden rounded-2xl border border-white/[0.1] bg-[#07111c] shadow-[0_18px_60px_rgba(0,0,0,.24)] lg:min-h-[370px]" aria-labelledby="matchfinder-title">
           <img src="/assets/competition/matchfinder-hero.png" alt="Topfragg Matchfinder competition hub" className="absolute inset-0 h-full w-full object-cover object-center" />
@@ -356,6 +384,7 @@ export default function Matchfinder() {
         </nav>
 
         {activeCategory === "eights" && <FreeEightsDiscordNotice user={user} returnTo="/matchfinder?category=eights" />}
+        {activeCategory === "eights" && <FreeEightsRankNotice user={user} />}
         {activeCategory === "eights" && activeFreeMatch && <Link to={`/8s-match/${activeFreeMatch.id}`} className="mb-4 block rounded-xl border border-cyan/20 bg-cyan/5 p-4 text-sm text-white"><strong>Finish your current Free 8s first.</strong><span className="mt-1 block text-xs text-vapor">Report the score and wait for the confirmed result before joining another lobby. Open your current match →</span></Link>}
         <section className="mt-5 overflow-hidden rounded-2xl border border-white/[0.08] bg-card">
           <header className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">

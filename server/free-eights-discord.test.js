@@ -52,10 +52,14 @@ test("authenticated Free 8s API and existing OAuth integration", async (t) => {
   override(prisma.discordEventDispatch, "findUnique", async () => null);
   const realFetch = globalThis.fetch;
   let discordRequests = 0;
+  let memberStatus = 200;
   t.mock.method(globalThis, "fetch", async (url, options) => {
     if (!String(url).startsWith("https://discord.com/api/")) return realFetch(url, options);
     discordRequests++;
     const path = new URL(url).pathname;
+    if (path.includes("/members/") && !path.includes("/roles/") && (!options?.method || options.method === "GET")) {
+      return memberStatus === 200 ? Response.json({ user: { id: "200000000000000001" } }) : Response.json({ code: memberStatus === 404 ? 10007 : 0 }, { status: memberStatus });
+    }
     if (path.endsWith("/oauth2/token")) return Response.json({ access_token: "fake-access-token" });
     if (path.endsWith("/users/@me")) return Response.json({ id: "200000000000000001", username: "test-discord" });
     if (path.endsWith("/roles") && !path.includes("/members/")) return Response.json([{ id: "300000000000000001", name: "Verified Player" }]);
@@ -77,11 +81,12 @@ test("authenticated Free 8s API and existing OAuth integration", async (t) => {
   const connect = async (returnTo = "/ranked/8s") => {
     const response = await request("/api/discord/connect", { method: "POST", body: JSON.stringify({ return_to: returnTo, user_id: "attacker", discord_user_id: "forged" }) });
     const body = await response.json();
+    assert.equal(new URL(body.authorization_url).searchParams.get("scope"), "identify");
     return { response, state: new URL(body.authorization_url).searchParams.get("state"), cookie: response.headers.get("set-cookie").split(";")[0] };
   };
 
   await t.test("unauthenticated linking, readiness and queue actions are rejected", async () => {
-    for (const [path, method] of [["/api/discord/connect", "POST"], ["/api/discord/free-eights/match1", "GET"], ["/api/functions/acceptWager", "POST"]]) {
+    for (const [path, method] of [["/api/discord/connect", "POST"], ["/api/discord/membership", "GET"], ["/api/discord/free-eights/match1", "GET"], ["/api/functions/acceptWager", "POST"]]) {
       assert.equal((await request(path, { method }, false)).status, 401);
     }
   });
@@ -143,5 +148,26 @@ test("authenticated Free 8s API and existing OAuth integration", async (t) => {
     for (const [path, method] of [["/api/entities/DiscordEventDispatch", "GET"], ["/api/entities/DiscordEventDispatch", "POST"], ["/api/entities/DiscordEventDispatch/id", "PATCH"], ["/api/entities/DiscordEventDispatch/id", "DELETE"]]) {
       assert.equal((await request(path, { method, ...(method === "PATCH" || method === "POST" ? { body: "{}" } : {}) })).status, 403);
     }
+  });
+  await t.test("linked nonmembers are immediately sent to the fixed server invitation after OAuth", async () => {
+    active = false;
+    memberStatus = 404;
+    const result = await connect("/ranked/8s");
+    const response = await request(`/api/discord/callback?code=test&state=${encodeURIComponent(result.state)}`, { headers: { Cookie: result.cookie } }, false);
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get("location"), "https://discord.gg/JwSgTHcHXe");
+    assert.equal(account.discord_user_id, "200000000000000001");
+    const membership = await (await request("/api/discord/membership")).json();
+    assert.equal(membership.code, "FREE_EIGHTS_DISCORD_SERVER_REQUIRED");
+  });
+  await t.test("membership checks are fresh, recover after joining, and never treat upstream failure as confirmed membership", async () => {
+    memberStatus = 200;
+    assert.equal((await (await request("/api/discord/membership")).json()).in_guild, true);
+    memberStatus = 500;
+    assert.equal((await (await request("/api/discord/membership")).json()).code, "FREE_EIGHTS_DISCORD_MEMBERSHIP_UNAVAILABLE");
+    memberStatus = 404;
+    assert.equal((await (await request("/api/discord/membership")).json()).code, "FREE_EIGHTS_DISCORD_SERVER_REQUIRED");
+    memberStatus = 200;
+    assert.equal((await (await request("/api/discord/membership")).json()).in_guild, true);
   });
 });

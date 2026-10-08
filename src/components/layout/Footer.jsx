@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Twitter, Youtube, MessageCircle } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
+import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
 
 const footerLinks = {
   Platform: [
@@ -51,7 +52,7 @@ export default function Footer() {
               <a href="https://www.youtube.com/@TopfraggGG" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg on YouTube" className="rounded-lg border border-border bg-secondary p-2.5 text-vapor transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary">
                 <Youtube className="w-4 h-4" />
               </a>
-              <a href="https://discord.gg/topfragg" target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg Discord" className="rounded-lg border border-border bg-secondary p-2.5 text-vapor transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary">
+              <a href={topfraggDiscordInviteUrl} target="_blank" rel="noopener noreferrer" aria-label="Topfragg.gg Discord" className="rounded-lg border border-border bg-secondary p-2.5 text-vapor transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.05] hover:text-primary">
                 <MessageCircle className="w-4 h-4" />
               </a>
             </div>

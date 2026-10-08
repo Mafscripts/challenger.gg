@@ -138,11 +138,23 @@ test("failed enrollment rolls back creation instead of leaving a phantom active 
   assert.equal((await createFreeEightsLobby(f.db, "me", {}, "Me")).success, true);
 });
 
-test("authenticated create/accept endpoints block unfinished matches and ignore forged user IDs", async (t) => {
+test("authenticated Free 8s endpoints require a stored screenshot rank, block unfinished matches and ignore forged identities/ranks", async (t) => {
   const f = fixture([match("old", "awaiting_completion"), match("next")],
     [member("old-member", "me", "old"), member("next-host", "host", "next")]);
-  const account = { id: "me", username: "Me", email_verified: true, role: "user", metadata: { activision_id: "Me#123" },
+  const account = { id: "me", username: "Me", email_verified: true, role: "user", metadata: { activision_id: "Me#123", screenshot_rank: "diamond" },
     discord_user_id: "200000000000000001", discord_connected_at: new Date() };
+  const environment = { DISCORD_TOKEN: "fake-membership-bot-token", DISCORD_GUILD_ID: "1555246540027596972" };
+  const previousEnv = Object.fromEntries(Object.keys(environment).map((key) => [key, process.env[key]]));
+  Object.assign(process.env, environment);
+  t.after(() => { for (const [key, value] of Object.entries(previousEnv)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } });
+  let inGuild = true;
+  const realFetch = globalThis.fetch;
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    if (!String(url).startsWith("https://discord.com/api/")) return realFetch(url, options);
+    assert.equal(String(url), `https://discord.com/api/v10/guilds/${environment.DISCORD_GUILD_ID}/members/${account.discord_user_id}`);
+    assert.equal(options.headers.Authorization, `Bot ${environment.DISCORD_TOKEN}`);
+    return inGuild ? Response.json({ user: { id: account.discord_user_id } }) : Response.json({ code: 10007 }, { status: 404 });
+  });
   const override = (delegate, key, value) => { const old = delegate[key]; delegate[key] = value; t.after(() => { delegate[key] = old; }); };
   override(prisma, "$transaction", f.db.$transaction);
   for (const name of ["wager", "wagerParticipant"]) for (const method of Object.keys(f.db[name])) override(prisma[name], method, f.db[name][method]);
@@ -157,7 +169,7 @@ test("authenticated create/accept endpoints block unfinished matches and ignore 
   const request = async (action, auth = true) => {
     const response = await fetch(`http://127.0.0.1:${server.address().port}/functions/${action}`, { method: "POST",
       headers: { "Content-Type": "application/json", ...(auth ? { Authorization: `Bearer ${signUser(account)}` } : {}) },
-      body: JSON.stringify({ match_type: "8s", wager_id: "next", team_size: "4v4", user_id: "attacker", host_id: "attacker" }) });
+      body: JSON.stringify({ match_type: "8s", wager_id: "next", team_size: "4v4", user_id: "attacker", host_id: "attacker", screenshot_rank: "top250", discord_user_id: "200000000000000099", in_guild: true, metadata: { screenshot_rank: "top250" } }) });
     return { status: response.status, body: await response.json() };
   };
   assert.equal((await request("acceptWager", false)).status, 401);
@@ -168,9 +180,40 @@ test("authenticated create/accept endpoints block unfinished matches and ignore 
   }
   assert.equal(f.members.size, 2);
   f.matches.get("old").metadata.status = "completed";
+  for (const rank of [undefined, null, "", "bronze", "challenger", "invalid"]) {
+    account.metadata.screenshot_rank = rank;
+    for (const action of ["createWager", "acceptWager"]) {
+      const { body } = await request(action);
+      assert.equal(body.code, "FREE_EIGHTS_RANK_REQUIRED", JSON.stringify(body));
+      assert.equal(body.action_url, "/profile#rank-screenshot");
+    }
+    assert.equal(f.members.size, 2);
+    assert.equal(f.matches.size, 2);
+  }
+  for (const rank of ["diamond", "crimson", "iridescent", "top250"]) {
+    account.metadata.screenshot_rank = rank;
+    const { body } = await request("createWager");
+    assert.equal(body.success, true, JSON.stringify(body));
+    assert.equal(body.wager.host_id, "me");
+    f.matches.get(body.wager_id).metadata.status = "cancelled";
+  }
+  inGuild = false;
+  for (const action of ["createWager", "acceptWager"]) {
+    const { body } = await request(action);
+    assert.equal(body.code, "FREE_EIGHTS_DISCORD_SERVER_REQUIRED", JSON.stringify(body));
+    assert.equal(body.action_url, "https://discord.gg/JwSgTHcHXe");
+  }
+  assert.equal([...f.members.values()].some((row) => row.metadata.wager_id === "next" && row.metadata.user_id === "me"), false);
+  inGuild = true;
   const accepted = await request("acceptWager");
   assert.equal(accepted.body.success, true, JSON.stringify(accepted.body));
   assert.equal([...f.members.values()].filter((row) => row.metadata.user_id === "me" && row.metadata.wager_id === "next").length, 1);
   assert.equal([...f.members.values()].some((row) => row.metadata.user_id === "attacker"), false);
   assert.equal((await request("createWager")).body.code, "FREE_EIGHTS_ACTIVE_MATCH");
+  // An already enrolled player can still reopen their room after admin removes the rank.
+  account.metadata.screenshot_rank = null;
+  inGuild = false;
+  const reopened = await request("acceptWager");
+  assert.equal(reopened.body.success, true);
+  assert.equal(reopened.body.rejoined, true);
 });

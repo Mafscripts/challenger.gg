@@ -3,9 +3,10 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { hasRole } from "../roles.js";
-import { freeEightsDiscordConfig, freeEightsVoiceClosed, freeEightsVoiceKey, publicFreeEightsVoiceStatus } from "../free-eights-discord.js";
+import { freeEightsDiscordConfig, freeEightsDiscordMembershipJoinError, freeEightsVoiceClosed, freeEightsVoiceKey, publicFreeEightsVoiceStatus } from "../free-eights-discord.js";
 import {
   discordAvatarUrl,
+  discordInviteUrl,
   removeDiscordVerifiedRole,
   syncDiscordVerifiedRole,
 } from "../discord.js";
@@ -202,6 +203,8 @@ router.get("/callback", async (req, res) => {
     let callbackStatus = "connected-no-server";
     try {
       const roleStatus = await syncDiscordVerifiedRole(discordUser.id);
+      const inviteUrl = discordInviteUrl();
+      if (!roleStatus.inGuild && inviteUrl) return res.redirect(302, inviteUrl);
       if (roleStatus.roleAssigned) callbackStatus = "connected";
     } catch (error) {
       console.error("Discord role sync failed after OAuth:", error.message);
@@ -213,6 +216,11 @@ router.get("/callback", async (req, res) => {
     const origin = config?.origin || String(process.env.TOPFRAGG_PUBLIC_URL || "https://topfragg.gg");
     return settingsRedirect(res, origin, error.code === "P2002" ? "already-linked" : "error", returnTo);
   }
+});
+
+router.get("/membership", requireAuth, async (req, res) => {
+  const error = await freeEightsDiscordMembershipJoinError("8s", req.userRow);
+  res.json(error || { success: true, in_guild: true });
 });
 
 router.get("/free-eights/:wagerId", requireAuth, async (req, res, next) => {

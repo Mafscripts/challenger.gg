@@ -327,6 +327,7 @@ export const base44 = {
   },
   auth,
   discord: {
+    membership() { requireToken(); return apiFetch("/discord/membership", { dedupe: false }); },
     connect(returnTo) {
       requireToken();
       return apiFetch("/discord/connect", { method: "POST", body: { return_to: returnTo }, credentials: "include", dedupe: false });

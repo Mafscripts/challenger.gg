@@ -13,6 +13,7 @@ import {
   Unlink,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
 
 const callbackMessages = {
   connected: { success: true, message: "Discord connected and the Verified Player role was assigned." },
@@ -195,7 +196,7 @@ export default function DiscordSection({ user, onUserUpdate }) {
           <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-secondary/50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-semibold">No Discord account connected</p>
-              <p className="mt-1 text-xs text-vapor">Discord will ask you to approve basic identity access. Your password is never shared with Topfragg.</p>
+              <p className="mt-1 text-xs text-vapor">Discord will ask you to approve basic identity access. If you are not in the Topfragg server yet, you will be redirected to its invitation after linking. Your password is never shared with Topfragg.</p>
             </div>
             <button onClick={handleConnect} disabled={Boolean(connectionAction)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#5865F2] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#6875f5] disabled:opacity-50">
               {connectionAction === "connect" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
@@ -209,6 +210,7 @@ export default function DiscordSection({ user, onUserUpdate }) {
             {connectionResult.message}
           </div>
         )}
+        {connected && <a href={topfraggDiscordInviteUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#8b9cff]">Join the Topfragg Discord server <ExternalLink className="h-3.5 w-3.5" /></a>}
       </div>
 
       <div className="p-6">

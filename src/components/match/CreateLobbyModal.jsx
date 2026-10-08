@@ -4,11 +4,14 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
+import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
+import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { WAGER_PLAY_RULES } from "@/lib/wagerRules";
+import { FreeEightsRankDialog, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
+import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
 const gameModes = [
   { id: "snd", name: "Search & Destroy", icon: Target, description: "Best of 11 rounds", tone: "yellow" },
@@ -108,6 +111,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const [step, setStep] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
   const [discordPromptOpen, setDiscordPromptOpen] = useState(false);
+  const [rankPromptOpen, setRankPromptOpen] = useState(false);
+  const [discordServerPrompt, setDiscordServerPrompt] = useState(null);
 
   const isWager = mode === "wager";
   const isRanked = mode === "ranked" || mode === "xp";
@@ -172,6 +177,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const handleCreate = async () => {
     if (isEights && !hasFreeEightsDiscordLink(user)) {
       setDiscordPromptOpen(true);
+      return;
+    }
+    if (isEights && !hasFreeEightsRank(user)) {
+      setRankPromptOpen(true);
       return;
     }
     if (!hasActivisionId(user)) {
@@ -311,6 +320,16 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             setIsCreating(false);
             return;
           }
+          if (isEights && isFreeEightsRankRequired(response.data)) {
+            setRankPromptOpen(true);
+            setIsCreating(false);
+            return;
+          }
+          if (isEights && isFreeEightsDiscordServerRequired(response.data)) {
+            setDiscordServerPrompt(response.data);
+            setIsCreating(false);
+            return;
+          }
           if (response.data.error) {
             toast({
               title: "Failed to create lobby",
@@ -362,6 +381,16 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         setIsCreating(false);
         onClose();
       } catch (error) {
+        if (isEights && isFreeEightsDiscordServerRequired(error)) {
+          setDiscordServerPrompt(error.data || error);
+          setIsCreating(false);
+          return;
+        }
+        if (isEights && isFreeEightsRankRequired(error)) {
+          setRankPromptOpen(true);
+          setIsCreating(false);
+          return;
+        }
         if (isEights && isFreeEightsDiscordRequired(error)) {
           setDiscordPromptOpen(true);
           setIsCreating(false);
@@ -388,6 +417,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     setPaymentMode("own");
     setSelectedPlayRule("controller_only");
     setDiscordPromptOpen(false);
+    setRankPromptOpen(false);
+    setDiscordServerPrompt(null);
     onClose();
   };
 
@@ -396,6 +427,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   return createPortal(
       <>
       {isEights && <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} />}
+      {isEights && <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} />}
+      {isEights && <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} />}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -754,7 +787,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   >
                     Back
                   </button>
-                  {isEights && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> : <button
+                  {isEights && !hasFreeEightsRank(user) ? <UploadFreeEightsRank /> : isEights && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> : <button
                     onClick={() => isMoneyEights ? setStep(4) : handleCreate()}
                     disabled={isCreating}
                     className="create-cta px-6 py-2.5 font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider flex items-center gap-2"
