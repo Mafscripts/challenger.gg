@@ -6,6 +6,7 @@ import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
+import FreeEightsMatchHeader from "@/components/match/FreeEightsMatchHeader";
 import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
@@ -615,6 +616,13 @@ function EightsMatchRoomView() {
   if (loading && !match) return <PageLoader label="Loading 8s match" />;
   if (!match) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><h1 className="text-2xl font-black">Match not found</h1><Link to={isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s"} className="mt-5 inline-flex text-cyan">Back to {isMoneyEights ? "Money 8s" : "Ranked 8s"}</Link></div>;
 
+  const headerActions = <div className="flex flex-wrap gap-2">
+    {!locked && isParticipant && !closedStatuses.has(match.status) && <button onClick={leave} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><LogOut className="h-4 w-4" /> Leave lobby</button>}
+    {isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && <button onClick={() => setScoreOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit Score</button>}
+    <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
+  </div>;
+  const prizeCard = <LobbyOverviewCard match={match} isMoneyEights={isMoneyEights} joined={joined} openSpots={openSpots} entryFee={entryFee} livePrizePool={livePrizePool} fullPrizePool={fullPrizePool} isComplete={isComplete} />;
+
   return (
     <div className="match-room-theme min-h-screen bg-[#0b1016] py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
@@ -631,21 +639,17 @@ function EightsMatchRoomView() {
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
-        <MatchRoomShell headerBackground={match.match_type === "8s" ? "/assets/competition/free-eights-elo-header.webp" : undefined} header={(
+        <MatchRoomShell headerClassName={isMoneyEights ? "" : "!p-0"} header={isMoneyEights ? (
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex flex-1 flex-col gap-5">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan"><Shield className="h-4 w-4" /> {roomLabel} match room</p><h1 className="mt-3 text-3xl font-black sm:text-4xl">Team Alpha <span className="text-vapor">vs</span> Team Bravo</h1><p className="mt-2 text-sm text-vapor">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3} · Match #{String(match.id).slice(-8).toUpperCase()}{isMoneyEights ? ` · $${Number(match.entry_fee ?? match.amount ?? 0).toFixed(2)} entry · $${Number(match.total_prize_pool ?? (Number(match.entry_fee ?? match.amount ?? 0) * 8)).toFixed(2)} prize pool` : ""}</p></div>
-            <div className="flex flex-wrap gap-2">
-              {!locked && isParticipant && !closedStatuses.has(match.status) && <button onClick={leave} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><LogOut className="h-4 w-4" /> Leave lobby</button>}
-              {isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && <button onClick={() => setScoreOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit Score</button>}
-              <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
+            {headerActions}
             </div>
-            </div>
-            <LobbyOverviewCard match={match} isMoneyEights={isMoneyEights} joined={joined} openSpots={openSpots} entryFee={entryFee} livePrizePool={livePrizePool} fullPrizePool={fullPrizePool} isComplete={isComplete} />
+            {prizeCard}
             </div>
           </div>
-        )} beforeTeams={(
+        ) : <FreeEightsMatchHeader match={match} actions={headerActions} />} beforeTeams={(
           <>
         {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} voiceView={voiceView} />}
         {!locked && !closedStatuses.has(match.status) && (
