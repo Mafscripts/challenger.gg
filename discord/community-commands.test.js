@@ -4,6 +4,7 @@ import { ChannelType, MessageFlags, PermissionFlagsBits as P, PermissionsBitFiel
 import { communityPayload, createCommunityCommandHandler, parsePollAnswers, parsePollMessage } from "./community-commands.js";
 import { communityCommandSpecs, commandApiPayload } from "./community-command-specs.js";
 import { registerCommunityCommands } from "./register-community-commands.js";
+import { playerJokes } from "./player-jokes.js";
 
 const guildId = "100000000000000001", channelId = "100000000000000002", messageId = "100000000000000003";
 const admin = new PermissionsBitField([P.ManageGuild, P.ViewChannel, P.MentionEveryone]);
@@ -175,10 +176,39 @@ test("unrelated support/giveaway interactions are left to existing handlers", as
   assert.match(elsewhere.responses[0].content, /Topfragg server/);
 });
 
-test("registration upserts seven guild commands, preserving unrelated commands", async () => {
+test("gaming roast is public, uses the selected user and never sends a ping", async () => {
+  const f = fixture();
+  const options = { getUser: (name, required) => {
+    assert.equal(name, "username"); assert.equal(required, true); return { id: messageId, username: "@everyone" };
+  } };
+  const joke = f.interaction("slash", { commandName: "retard", memberPermissions: new PermissionsBitField(), options });
+  assert.equal(await f.handler(joke), true);
+  const payload = joke.responses[0];
+  assert.equal(payload.flags, undefined);
+  assert.ok(playerJokes.some((line) => payload.content === `😂 <@${messageId}> ${line}`));
+  assert.deepEqual(payload.allowedMentions, { parse: [] });
+  assert.equal(f.state.sent.length, 0);
+});
+
+test("roast cooldown handles concurrent calls privately, allows other players and expires", async () => {
+  const f = fixture();
+  const joke = (id = "admin") => f.interaction("slash", { commandName: "retard", user: { id }, options: { getUser: () => ({ id: messageId }) } });
+  const first = joke(), duplicate = joke();
+  await Promise.all([f.handler(first), f.handler(duplicate)]);
+  assert.equal(first.responses[0].flags, undefined);
+  assert.equal(duplicate.responses[0].flags, MessageFlags.Ephemeral);
+  assert.match(duplicate.responses[0].content, /30 seconds/);
+  const other = joke("other"); await f.handler(other); assert.equal(other.responses[0].flags, undefined);
+  f.state.time = 30_000;
+  const later = joke(); await f.handler(later); assert.equal(later.responses[0].flags, undefined);
+  const help = f.interaction("slash", { commandName: "help" }); await f.handler(help);
+  assert.match(help.responses[0].embeds[0].toJSON().fields[0].value, /\/retard username:@player/);
+});
+
+test("registration upserts community guild commands, preserving unrelated commands", async () => {
   const calls = [];
   const names = await registerCommunityCommands({ rest: { post: async (path, data) => calls.push({ path, body: data.body }) }, applicationId: "bot", guildId });
-  assert.deepEqual(names, ["help", "rules", "8s", "streams", "announce", "poll", "poll-end"]);
+  assert.deepEqual(names, ["help", "rules", "8s", "streams", "retard", "announce", "poll", "poll-end"]);
   assert.ok(calls.every((call) => call.path === `/applications/bot/guilds/${guildId}/commands`));
   for (const spec of communityCommandSpecs) {
     const payload = commandApiPayload(spec);
@@ -191,6 +221,7 @@ test("registration upserts seven guild commands, preserving unrelated commands",
       if (option.type === 5) builder.addBooleanOption(common);
       if (option.type === 4) builder.addIntegerOption((value) => common(value).setMinValue(option.minValue).setMaxValue(option.maxValue));
       if (option.type === 3) builder.addStringOption((value) => common(value).setMaxLength(option.maxLength));
+      if (option.type === 6) builder.addUserOption(common);
     }
     const validated = JSON.parse(JSON.stringify(builder.toJSON()));
     assert.equal(validated.name, payload.name);

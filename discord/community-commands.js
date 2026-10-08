@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, MessageFlags, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle } from "discord.js";
 import { TOPFRAGG_COLORS } from "./config.js";
+import { playerJokePayload } from "./player-jokes.js";
 
 const prefix = "topfragg:community:";
 const draftLifetime = 10 * 60_000;
@@ -49,6 +50,7 @@ function preview(draft) {
 
 export function createCommunityCommandHandler({ guildId, publicUrl, findChannel, log = async () => {}, now = Date.now }) {
   const drafts = new Map();
+  const jokeCooldowns = new Map();
   const remember = (interaction, data) => {
     for (const [id, draft] of drafts) if (draft.expires <= now() && draft.status !== "publishing") drafts.delete(id);
     if (drafts.size >= 500) throw new Error("Too many previews are open. Try again in a few minutes.");
@@ -75,17 +77,26 @@ export function createCommunityCommandHandler({ guildId, publicUrl, findChannel,
     return channel;
   };
   const help = (interaction) => new EmbedBuilder().setColor(TOPFRAGG_COLORS.cyan).setTitle("🤖 Topfragg Bot commands")
-    .setDescription("Use a slash command below. Replies and draft previews are private.")
-    .addFields({ name: "🎮 Players", value: "`/8s` — Free 8s\n`/tournaments` — Tournament signups\n`/streams` — Stream channels\n`/rules` — Server rules\n`/verify` — Verify your account\n`/support` — Open a ticket\n`/ping` — Bot status" },
+    .setDescription("Info replies and draft previews are private. Gaming roasts appear in the channel.")
+    .addFields({ name: "🎮 Players", value: "`/8s` — Free 8s\n`/tournaments` — Tournament signups\n`/streams` — Stream channels\n`/rules` — Server rules\n`/verify` — Verify your account\n`/support` — Open a ticket\n`/ping` — Bot status\n`/retard username:@player` — Random gaming roast" },
       ...(has(interaction.memberPermissions, PermissionFlagsBits.ManageGuild) ? [{ name: "🛡️ Admins", value: "`/announce` — Announcement with private preview\n`/poll` — Poll with private preview\n`/poll-end` — End a bot poll early\n`/giveaway start` / `/giveaway end` — Giveaways\n`/setup-status` — Check server setup\nChoose `everyone:true` only when you want an everyone ping." }] : []));
 
   return async (interaction) => {
     const command = interaction.isChatInputCommand?.() ? interaction.commandName : null;
-    const managed = ["help", "rules", "8s", "streams", "announce", "poll", "poll-end"].includes(command) || String(interaction.customId || "").startsWith(prefix);
+    const managed = ["help", "rules", "8s", "streams", "retard", "announce", "poll", "poll-end"].includes(command) || String(interaction.customId || "").startsWith(prefix);
     if (!managed) return false;
     if (interaction.guildId !== guildId) { await interaction.reply(privateReply("Use this command in the Topfragg server.")); return true; }
     try {
       if (command === "help") { await interaction.reply({ ...privateReply(""), embeds: [help(interaction)] }); return true; }
+      if (command === "retard") {
+        const currentTime = now();
+        for (const [id, until] of jokeCooldowns) if (until <= currentTime) jokeCooldowns.delete(id);
+        const until = jokeCooldowns.get(interaction.user.id);
+        if (until) { await interaction.reply(privateReply(`Wait ${Math.ceil((until - currentTime) / 1000)} seconds before the next roast.`)); return true; }
+        const target = interaction.options.getUser("username", true);
+        jokeCooldowns.set(interaction.user.id, currentTime + 30_000);
+        await interaction.reply(playerJokePayload(target.id)); return true;
+      }
       if (["rules", "8s", "streams"].includes(command)) {
         const channel = findChannel(interaction.guild, command === "rules" ? "rules" : "live-now");
         const content = command === "8s" ? `🎮 **Free 8s**\nJoin a lobby: ${publicUrl}/ranked/8s\nChoose your game rank in Settings, link Discord and join your lobby's waiting room.`

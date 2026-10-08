@@ -53,6 +53,7 @@ Available commands:
 - `/rules` — server and competition rules
 - `/8s` — Free 8s lobby link and connection instructions
 - `/streams` — live stream channel and tournament coverage
+- `/retard username:@player` — random lighthearted gaming joke, visible in the current channel
 - `/ping`
 - `/verify`
 - `/tournaments`
@@ -90,7 +91,7 @@ Messages**, and **Create Polls** for polls; **Read Message History** is needed t
 fetch an existing poll for `/poll-end`. Its managed access role includes these
 permissions for new setups; existing servers can enable them directly in Discord.
 
-The existing bot automatically registers the seven new commands at startup,
+The existing bot automatically registers the community commands at startup,
 upserting each by name so unrelated slash commands are preserved. After pushing
 the changes, update production and restart the existing process:
 
@@ -106,6 +107,17 @@ If command registration needs to be retried after deployment, run
 bot or rebuild the server layout. No website build or database migration is
 needed for these commands. Try `/help`, then create a poll and cancel its preview
 before publishing your first announcement.
+
+### Gaming jokes
+
+```text
+/retard username:@player
+```
+
+Pick a Discord user in the `username` field. The bot replies publicly with one
+of 16 English gaming jokes about aim, movement, callouts or respawning. The
+chosen player's mention is displayed without sending a notification. Everyone
+can use this command, with a 30-second cooldown per caller. `/help` includes it.
 
 ## 5. Website verification
 
