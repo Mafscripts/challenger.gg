@@ -269,7 +269,7 @@ function EightsMatchRoomView() {
           void loadWagerParticipants(base44, latest, {
             participantRows: rows,
             fresh: true,
-            includeProfile: false,
+            includeProfile: true,
           })
             .then(async (rosters) => {
               if (rosterSignatureRef.current !== rosterSignature) return;

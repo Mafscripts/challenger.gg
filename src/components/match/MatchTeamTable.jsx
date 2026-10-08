@@ -5,6 +5,7 @@ import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
 import { FreeEightsVoiceBadge } from "@/components/competition/FreeEightsDiscord";
 import { normalizeFreeEightsElo } from "@/lib/freeEightsRanks";
@@ -134,7 +135,10 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
             return (
               <article key={userId || `${displayName}-${index}`} className={`match-player-card grid ${freeEights ? "grid-cols-2" : ""} gap-4 bg-[#0e1319] px-4 py-4 transition-colors hover:bg-[#151c25] sm:px-5 ${columns} ${rowLayout}`}>
                 <div className={`flex min-w-0 items-center gap-3 ${freeEights ? "col-span-2 [@container(min-width:1020px)]:col-span-1" : ""}`}>
-                  <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border font-mono text-sm font-black ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}</span>
+                  <Avatar className={`h-11 w-11 border font-mono text-sm font-black ${tintClass} ${toneClass}`}>
+                    <AvatarImage src={player.avatar_url || undefined} alt="" className="object-cover" />
+                    <AvatarFallback className="bg-transparent">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2">{profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white transition-colors ${hoverToneClass} ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</Link> : <span data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</span>}{!freeEights && <TournamentRankBadge goldTrophies={trophies.gold} />}<UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" /></div><p className={`mt-1 truncate text-[9px] font-black uppercase ${role === "captain" ? "text-cyan" : "text-vapor"}`}>{role === "captain" ? "Captain" : "Member"}</p></div>
                 </div>
                 <div className="min-w-0"><p className={fieldLabelClass}>{freeEights ? "Activision Name" : "Gamertag"}</p><div className="inline-flex max-w-full rounded-lg border border-white/[0.18] bg-[#30343a] px-3 py-2"><ActivisionIdLabel user={player} className="max-w-full" /></div></div>
