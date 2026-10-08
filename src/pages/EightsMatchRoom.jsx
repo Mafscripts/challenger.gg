@@ -122,6 +122,18 @@ function TeamPanel({ label, players, captainId, tone, score, winner, embedded = 
 }
 
 function LobbyOverviewCard({ match, isMoneyEights, joined, openSpots, entryFee, livePrizePool, fullPrizePool, isComplete }) {
+  if (!isMoneyEights) {
+    return (
+      <div className="flex justify-end">
+        <div className="w-full rounded-lg border border-yellow-300/20 bg-yellow-300/[0.06] p-3 text-center sm:w-auto sm:min-w-48">
+          <div className="flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-yellow-300"><Trophy className="h-3.5 w-3.5" />Monthly ladder prize</div>
+          <p className="mt-0.5 font-mono text-2xl font-black text-yellow-300">$100</p>
+          <p className="mt-0.5 text-[8px] text-vapor">Earned through the monthly 8s standings</p>
+          {isComplete && <p className="mt-2 text-xs font-black text-yellow-300">{match.winner_name || "Winner"}</p>}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="match-room-overview-strip relative overflow-hidden rounded-xl border border-white/[0.09] bg-[#0d131a] p-3 sm:p-4">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-cyan/60 via-white/10 to-orange/55" />
