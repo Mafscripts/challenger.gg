@@ -32,6 +32,7 @@ const lobbyMatchSnapshot = (value) => JSON.stringify([
   value?.status,
   value?.roster_lock_deadline,
   value?.roster_locked,
+  value?.free_eights_waiting_for_voice,
   value?.eights_reshuffle_vote_count,
   value?.eights_reshuffle_vote_required,
   value?.eights_reshuffle_vote_user_ids,
@@ -631,11 +632,11 @@ function EightsMatchRoomView() {
           </div>
         )} beforeTeams={(
           <>
-        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} />}
+        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} />}
         {!locked && !closedStatuses.has(match.status) && (
           <section className="m-3 rounded-xl border border-purple-300/20 bg-[#171722] p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Shuffle className="h-5 w-5" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-purple-300">Automatic team generator</p><p className="mt-1 font-black">{joined < 8 ? `Waiting for ${8 - joined} more ${8 - joined === 1 ? "player" : "players"}` : "Teams shuffled · veto window open"}</p></div></div>
+              <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Shuffle className="h-5 w-5" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-purple-300">Automatic team generator</p><p className="mt-1 font-black">{joined < 8 ? `Waiting for ${8 - joined} more ${8 - joined === 1 ? "player" : "players"}` : match.free_eights_waiting_for_voice ? "Waiting for all 8 players in Discord" : "Teams shuffled · veto window open"}</p></div></div>
               <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"><Users className="h-4 w-4 text-cyan" /><span className="font-mono font-black">{joined}/8</span>{countdown !== null && joined === 8 && <><span className="text-vapor">·</span><Clock3 className="h-4 w-4 text-yellow-300" /><span className="font-mono font-black text-yellow-300">{formatCountdown(countdown)}</span></>}</div>
             </div>
             {reshuffleOpen && (
@@ -689,7 +690,7 @@ function EightsMatchRoomView() {
                 </div>
               )}
             />
-            <MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} compact stacked />
+            <MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} emptyText={match.match_type === "8s" ? "Maps will be generated once all eight players have joined the Discord Waiting Room." : undefined} compact stacked />
           </>
         )} />
 

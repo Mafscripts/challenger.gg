@@ -35,7 +35,8 @@ export const voiceRosterSignature = (match, participants) => JSON.stringify([
 ]);
 
 export const publicFreeEightsVoiceStatus = (config, match, participants, state, now = Date.now()) => {
-  const fresh = Boolean(state?.checked_at && now - new Date(state.checked_at).getTime() < 20_000
+  const age = now - new Date(state?.checked_at).getTime();
+  const fresh = Boolean(state?.checked_at && age >= 0 && age < 20_000
     && state.guild_id === config.guildId && state.waiting_room_id === config.waitingRoomId && freeEightsVoiceCategoryIds(config).includes(state.category_id)
     && state.roster_signature === voiceRosterSignature(match, participants));
   return {
@@ -52,4 +53,15 @@ export const publicFreeEightsVoiceStatus = (config, match, participants, state, 
       status: config.enabled && fresh ? state?.players?.[row.user_id]?.status || "checking" : "unavailable",
     })),
   };
+};
+
+// Only the existing bot's fresh, exact-roster snapshot can release map
+// generation. Presence in another match's team voice is not Waiting Room readiness.
+export const freeEightsWaitingRoomReady = (config, match, participants, state, now = Date.now()) => {
+  if (match?.match_type !== "8s") return true;
+  if (participants.length !== 8 || participants.some((player) => !player.user_id)
+    || new Set(participants.map((player) => player.user_id)).size !== 8) return false;
+  const voice = publicFreeEightsVoiceStatus(config, match, participants, state, now);
+  return voice.enabled && voice.configured && voice.fresh
+    && voice.players.every((player) => player.status === "in_waiting_room");
 };

@@ -57,6 +57,9 @@ The default in `.env.example` is `DISCORD_FREE_8S_VOICE_ENABLED="false"`.
 **Discord linking is mandatory for Free 8s regardless of that switch.** Turning
 the switch off stops assignments and cleans up managed channels while the bot
 continues running. Keep the old channel/category IDs until cleanup finishes.
+New full Free 8s lobbies also wait for a fresh bot snapshot showing all eight
+players in the Waiting Room before generating teams/maps or starting the timer.
+With voice disabled, unconfigured or offline, those lobbies remain waiting.
 
 ## Permissions and intents
 
@@ -97,19 +100,28 @@ join voice or transmit audio.
    membership; finish or leave the lobby first.
 4. Linked players join normally and follow **Open 8s Waiting Room**. They connect
    to voice themselves. The website does not connect them automatically.
-5. The existing generator creates Alpha/Bravo. The bot checks the exact canonical
+5. With eight players on the website, maps, teams and the one-minute countdown
+   remain pending until the existing bot has observed **all eight** in the
+   configured Waiting Room. The server checks the exact roster/signature, guild,
+   Waiting Room and category, with a snapshot younger than twenty seconds.
+   Frontend readiness claims cannot release this gate; seven waiting players,
+   players in other/team channels, stale snapshots or an offline bot keep it
+   pending. A lobby sync then uses the existing generator to create Alpha/Bravo
+   and the maps and start the countdown. An admin timer reset cannot start a
+   still-pending lobby. The bot checks the exact canonical
    eight-player 4v4 roster and creates private Team A/Team B voice channels. Alpha
    is A; Bravo is B. Once both channels are ready, it moves connected waiting-room
-   players to their assigned team. Missing voice players do not block channel creation.
+   players to their assigned team. Existing live/generated matches are preserved.
 6. The room shows every participant's status: unlinked, not in the waiting room,
    waiting-room ready, team-voice ready, move failed or status unavailable. It polls
    every five seconds and treats snapshots older than twenty seconds or from a
    changed roster/configuration as unavailable. Only players in that room or staff
    can read its status; Discord IDs are not included in the response.
-7. The existing match-start countdown proceeds even with missing voice players.
+7. After generation, the existing countdown proceeds; players are not required
+   to return to the Waiting Room after the bot has moved them to team voice.
    Offline players and people in unrelated voice channels are not moved. Late
-   waiting-room arrivals are retried. Existing reshuffles update permissions and
-   move players between this match's team voices.
+   waiting-room arrivals are retried. Existing reshuffles preserve maps, update
+   permissions and move players between this match's team voices.
 8. The bot polls the database every five seconds and reacts to voice events. On
    completed/cancelled/expired/closed/deleted matches, partial rosters or disabling
    the test, it returns that match's occupants of its team voices to the waiting room and deletes
@@ -117,6 +129,20 @@ join voice or transmit audio.
    Failed return moves retain the occupied channel for retry. Cleanup runs even if
    no one has the website open. There is no new match expiry timer; an existing
    status change to `expired` is handled when observed.
+
+After a confirmed completed result (win/loss), **both teams** still connected to
+their managed team voices return automatically to the shared Waiting Room,
+normally on the next five-second bot sweep. Users who already left voice or
+moved elsewhere are not force-connected or moved from unrelated channels.
+Cleanup remains idempotent and only deletes this match's stored channel IDs.
+
+Manual gate test: join a new Free 8s website lobby with eight linked accounts,
+but put only seven in the Waiting Room. Verify no maps, generated teams, timer
+or temporary team voices appear, including after refresh and an admin reset.
+Connect the eighth player; within the bot/website polling cycle, verify maps and
+teams appear, the one-minute timer starts and all eight move to the correct
+team voices. Confirm a final score and verify both teams return and their
+temporary channels disappear. Money 8s keeps its existing behavior.
 
 ## Concurrent matches and ownership
 

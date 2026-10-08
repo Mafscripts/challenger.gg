@@ -100,7 +100,7 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
   </div>;
 }
 
-export function FreeEightsVoiceStatus({ matchId, players, user }) {
+export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps = false }) {
   const [voiceResult, setVoiceResult] = useState(null);
   useEffect(() => {
     if (!user?.id) return;
@@ -126,7 +126,7 @@ export function FreeEightsVoiceStatus({ matchId, players, user }) {
   const warning = !checking && (!available || Boolean(voice?.error));
   const summary = checking ? "Checking Discord voice status…"
     : voice?.error || (!available ? "Voice status unavailable. The bot may be offline or voice setup may be incomplete."
-      : "Discord voice status is up to date.");
+      : waitingForMaps ? `Waiting for all 8 players in the Waiting Room · ${readyCount}/8 ready. Maps and the timer have not started.` : "Discord voice status is up to date.");
   const SummaryIcon = checking ? Loader2 : warning ? AlertTriangle : CheckCircle2;
   return <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-[#171b26] shadow-[0_8px_30px_rgba(0,0,0,.12)] sm:m-4" aria-label="Free 8s Discord voice readiness">
     <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
@@ -138,7 +138,7 @@ export function FreeEightsVoiceStatus({ matchId, players, user }) {
             <h3 className="text-sm font-black text-white sm:text-base">Discord team voice</h3>
             <span className="rounded-md border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-purple-200">Free 8s · Test</span>
           </div>
-          <p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">Join the waiting room. When teams are ready, the bot moves you into your team’s private voice channel.</p>
+          <p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">All eight players must join the Waiting Room before maps are generated. The bot then moves you into your team’s private voice channel.</p>
         </div>
       </div>
       <div className="min-h-[42px] shrink-0">

@@ -6,6 +6,7 @@ import { generateBalancedFreeEightsTeams, loadFreeEightsSkills } from "./free-ei
 import functionRoutes from "./routes/functions.js";
 import { prisma } from "./prisma.js";
 import { signUser } from "./auth.js";
+import { freeEightsDiscordConfig, freeEightsVoiceKey, freeEightsWaitingRoomReady, voiceRosterSignature } from "./free-eights-discord.js";
 
 const player = (i, elo = 0, screenshot = null) => ({ id: `p${i}`, user_id: `u${i}`, free_eights_elo: elo, screenshot_rank: screenshot });
 const mixedRoster = () => [player(0), player(1), player(2), player(3), player(4, 0, "diamond"), player(5, 0, "diamond"), player(6, 0, "crimson"), player(7, 0, "iridescent")];
@@ -123,6 +124,12 @@ test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s a
   const admin = { id: "admin", email_verified: true, role: "admin", metadata: {} };
   const matches = new Map(["8s", "money8s"].map((type) => [type, { id: type, metadata: { match_type: type, status: "open", required_players_per_team: 4, team_size: "4v4", roster_lock_deadline: new Date(Date.now() + 60000).toISOString() } }]));
   const rosters = new Map([...matches.keys()].map((id) => [id, input.map((row) => ({ id: `${id}-${row.id}`, metadata: { wager_id: id, user_id: row.user_id, user_name: row.user_id, team: "host" } }))]));
+  const voiceRecords = new Map();
+  const env = { DISCORD_FREE_8S_VOICE_ENABLED: "true", DISCORD_GUILD_ID: "100000000000000001", DISCORD_FREE_8S_WAITING_ROOM_ID: "100000000000000002", DISCORD_FREE_8S_VOICE_CATEGORY_ID: "100000000000000003" };
+  for (const [key, value] of Object.entries(env)) {
+    const previous = process.env[key]; process.env[key] = value;
+    t.after(() => { if (previous === undefined) delete process.env[key]; else process.env[key] = previous; });
+  }
   const override = (delegate, method, value) => {
     const previous = delegate[method]; delegate[method] = value;
     t.after(() => { delegate[method] = previous; });
@@ -132,6 +139,7 @@ test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s a
   override(prisma.user, "findMany", f.db.user.findMany);
   override(prisma.eightsStats, "findMany", f.db.eightsStats.findMany);
   override(prisma.wager, "findUnique", async ({ where }) => matches.get(where.id));
+  override(prisma.discordEventDispatch, "findUnique", async ({ where }) => voiceRecords.get(where.event_key) || null);
   override(prisma.wager, "update", async ({ where, data }) => {
     const updated = { ...matches.get(where.id), ...data }; matches.set(where.id, updated); return updated;
   });
@@ -159,9 +167,35 @@ test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s a
     const remaining = new Date(matches.get(type).metadata.roster_lock_deadline).getTime() - Date.now();
     assert.ok(remaining <= duration && remaining > duration - 5000, `${type} expected ${duration}ms, got ${remaining}ms`);
   };
+  // Eight website players cannot generate maps or a countdown using frontend
+  // supplied readiness. A missing/stale bot or seven voice users keeps them waiting.
+  const waiting = await request("syncEightsLobby", "8s");
+  assert.equal(waiting.waiting_for_voice, true);
+  assert.deepEqual(waiting.wager.series_maps, []);
+  assert.equal(waiting.wager.roster_lock_deadline, "");
+  assert.equal(waiting.wager.teams_generated_at, "");
+  assert.equal(f.calls.length, 0, "skills are not generated until all eight are in voice");
+  const pendingReset = await request("adminResetEightsLobby", "8s");
+  assert.equal(pendingReset.seconds_remaining, null);
+  assert.equal(pendingReset.wager.roster_lock_deadline, "", "admin reset cannot bypass the voice gate");
+  const config = freeEightsDiscordConfig();
+  const state = { guild_id: config.guildId, waiting_room_id: config.waitingRoomId, category_id: config.categoryId,
+    checked_at: new Date().toISOString(), roster_signature: voiceRosterSignature(matches.get("8s").metadata, rosters.get("8s").map((row) => row.metadata)),
+    players: Object.fromEntries(input.map((player) => [player.user_id, { status: "in_waiting_room" }])) };
+  state.players.u7.status = "not_in_waiting_room";
+  voiceRecords.set(freeEightsVoiceKey("8s"), { metadata: state });
+  await request("syncEightsLobby", "8s");
+  assert.deepEqual(matches.get("8s").metadata.series_maps, []);
+  state.players.u7.status = "in_waiting_room";
+  state.checked_at = new Date(Date.now() - 21000).toISOString();
+  await request("syncEightsLobby", "8s");
+  assert.deepEqual(matches.get("8s").metadata.series_maps, []);
+  state.checked_at = new Date().toISOString();
   for (const name of ["syncEightsLobby", "adminReshuffleEightsTeams"]) {
     await request(name, "8s");
     assertWindow("8s", 60000);
+    assert.equal(matches.get("8s").metadata.series_maps.length, 3);
+    assert.equal(matches.get("8s").metadata.free_eights_waiting_for_voice, false);
     for (const side of ["host", "challenger"]) {
       const team = rosters.get("8s").filter((row) => row.metadata.team === side).map((row) => row.metadata);
       assert.equal(team.length, 4);
@@ -200,4 +234,27 @@ test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s a
     assert.equal((await request("syncEightsLobby", "8s")).wager.status, "in_progress");
     assert.equal((await request("syncEightsLobby", "money8s")).wager.status, "open");
   } finally { clock.mock.restore(); }
+});
+
+test("map readiness requires all eight in the exact waiting room with a fresh bot snapshot", () => {
+  const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003" };
+  const match = { match_type: "8s" }, participants = mixedRoster();
+  const now = Date.now();
+  const state = { checked_at: new Date(now).toISOString(), guild_id: config.guildId, waiting_room_id: config.waitingRoomId, category_id: config.categoryId,
+    roster_signature: voiceRosterSignature(match, participants), players: Object.fromEntries(participants.map((row) => [row.user_id, { status: "in_waiting_room" }])) };
+  assert.equal(freeEightsWaitingRoomReady(config, match, participants, state, now), true);
+  assert.equal(freeEightsWaitingRoomReady({ ...config, enabled: false }, match, participants, state, now), false);
+  for (const override of [{ checked_at: new Date(now - 20000).toISOString() }, { checked_at: new Date(now + 1000).toISOString() },
+    { guild_id: "other" }, { waiting_room_id: "other" }, { category_id: "other" }, { roster_signature: "another match" }]) {
+    assert.equal(freeEightsWaitingRoomReady(config, match, participants, { ...state, ...override }, now), false);
+  }
+  for (const status of ["in_team_voice", "not_in_waiting_room", "move_failed", "not_linked", "checking", "unavailable"]) {
+    const modified = structuredClone(state); modified.players.u7.status = status;
+    assert.equal(freeEightsWaitingRoomReady(config, match, participants, modified, now), false);
+  }
+  const missing = structuredClone(state); delete missing.players.u7;
+  assert.equal(freeEightsWaitingRoomReady(config, match, participants, missing, now), false);
+  assert.equal(freeEightsWaitingRoomReady(config, match, participants.slice(1), state, now), false);
+  assert.equal(freeEightsWaitingRoomReady(config, match, [...participants.slice(1), participants[1]], state, now), false);
+  assert.equal(freeEightsWaitingRoomReady({ ...config, enabled: false }, { match_type: "money8s" }, [], null, now), true);
 });

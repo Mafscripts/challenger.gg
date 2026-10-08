@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { AuditLogEvent, ChannelType, Collection, PermissionFlagsBits, PermissionOverwrites } from "discord.js";
 import { canAssignFreeEightsVoice, syncFreeEightsVoice } from "./free-eights-voice.js";
-import { freeEightsChannelKey, freeEightsDiscordJoinError, freeEightsVoiceKey, publicFreeEightsVoiceStatus, voiceRosterSignature } from "../server/free-eights-discord.js";
+import { freeEightsChannelKey, freeEightsDiscordJoinError, freeEightsVoiceKey, freeEightsWaitingRoomReady, publicFreeEightsVoiceStatus, voiceRosterSignature } from "../server/free-eights-discord.js";
 
 const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003" };
 
@@ -217,6 +217,33 @@ test("reshuffle changes private access and moves only this match's teams", async
   assert.equal(f.stats().permissionEdits, 2);
   assert.equal(f.moves.length, 10);
   assert.equal(f.voices.get(f.users[0].discord_user_id).channelId, f.state().channels.challenger);
+});
+
+test("website lobby waits for voice before generation and both winning and losing teams return after completion", async () => {
+  const f = fixture();
+  f.match.metadata.teams_generated_at = "";
+  f.match.metadata.free_eights_waiting_for_voice = true;
+  f.voices.get(f.users[7].discord_user_id).channelId = null;
+  await f.sync();
+  assert.equal(f.stats().creations, 0);
+  assert.equal(f.moves.length, 0);
+  assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants, f.state()), false);
+  f.voices.get(f.users[7].discord_user_id).channelId = config.waitingRoomId;
+  await f.sync();
+  assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants, f.state()), true);
+  assert.equal(f.stats().creations, 0, "presence alone cannot create voices before website generation");
+  f.match.metadata.teams_generated_at = new Date().toISOString();
+  f.match.metadata.free_eights_waiting_for_voice = false;
+  await f.sync();
+  assert.equal(f.stats().creations, 2);
+  assert.equal(f.moves.length, 8);
+  f.match.metadata.status = "completed";
+  f.match.metadata.winner_id = f.participants[0].user_id;
+  await f.sync();
+  for (const player of f.users) assert.equal(f.voices.get(player.discord_user_id).channelId, config.waitingRoomId);
+  assert.equal(f.stats().deletes, 2);
+  await f.sync();
+  assert.equal(f.moves.length, 16, "repeated completion does not move anyone twice");
 });
 
 for (const status of ["completed", "cancelled", "expired", "closed"]) {

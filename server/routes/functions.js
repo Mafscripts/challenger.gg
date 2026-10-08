@@ -11,7 +11,7 @@ import { issueEightsLiveToken, publishEightsLobbyUpdate } from "../eights-live.j
 import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
 import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTrial.js";
-import { freeEightsDiscordJoinError, freeEightsVoiceLog } from "../free-eights-discord.js";
+import { freeEightsDiscordConfig, freeEightsDiscordJoinError, freeEightsVoiceKey, freeEightsVoiceLog, freeEightsWaitingRoomReady } from "../free-eights-discord.js";
 import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
@@ -6471,6 +6471,7 @@ async function createWager(req) {
     host_banned_map_id: "",
     host_banned_map_name: "",
     match_type: matchType,
+    ...(matchType === "8s" ? { free_eights_waiting_for_voice: false, teams_generated_at: "", roster_lock_deadline: "", series_modes: [] } : {}),
     status: "open",
     created_date: new Date().toISOString(),
   });
@@ -6526,6 +6527,21 @@ async function createWager(req) {
 async function randomizeEightsTeams(wager, participantRows, { preserveSeries = false } = {}) {
   const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
   if ((participantRows || []).length < requiredSize * 2) return wager;
+  if (wager.match_type === "8s" && !preserveSeries) {
+    const dispatch = await prisma.discordEventDispatch.findUnique({ where: { event_key: freeEightsVoiceKey(wager.id) } });
+    if (!freeEightsWaitingRoomReady(freeEightsDiscordConfig(), wager, participantRows, dispatch?.metadata)) {
+      if (wager.free_eights_waiting_for_voice) return wager;
+      const pending = await updateEntity("Wager", wager.id, {
+        free_eights_waiting_for_voice: true,
+        series_maps: [], series_modes: [], final_map_id: "", final_map_name: "",
+        teams_generated_at: "", roster_lock_deadline: "", roster_locked: false,
+      });
+      freeEightsVoiceLog("map-generation-waiting-for-voice", { match_id: wager.id, players: participantRows.length });
+      publishEightsLobbyUpdate(wager.id, "waiting-for-discord");
+      return pending;
+    }
+    freeEightsVoiceLog("map-generation-voice-ready", { match_id: wager.id, players: participantRows.length });
+  }
   const shuffled = shuffledCopy(participantRows).slice(0, requiredSize * 2);
   const { alpha, bravo, balance } = wager.match_type === "8s"
     ? await generateBalancedFreeEightsTeams(prisma, shuffled)
@@ -6561,6 +6577,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     roster_lock_deadline: new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString(),
     roster_locked: false,
     teams_generated_at: nowIso(),
+    ...(wager.match_type === "8s" ? { free_eights_waiting_for_voice: false } : {}),
     ...(balance ? { free_eights_team_balance: balance } : {}),
     eights_reshuffle_vote_user_ids: [],
     eights_reshuffle_vote_count: 0,
@@ -6580,6 +6597,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
 
 function eightsTeamsNeedGeneration(wager, participants, requiredSize) {
   if (!wager?.teams_generated_at) return true;
+  if (wager.match_type === "8s" && !wager.series_maps?.length) return true;
   const alpha = participants.filter((participant) => participant.team === "host");
   const bravo = participants.filter((participant) => participant.team === "challenger");
   return alpha.length !== requiredSize
@@ -6704,10 +6722,10 @@ async function acceptWagerUnlocked(req) {
 
   const joinedPlayerCount = enrolledParticipants.length + 1;
   const rosterFull = !isIndividualEights || joinedPlayerCount >= playerCapacity;
-  const rosterLockDeadline = isIndividualEights && rosterFull
+  const rosterLockDeadline = isIndividualEights && rosterFull && wager.match_type !== "8s"
     ? new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString()
     : "";
-  const selectedMaps = rosterFull
+  const selectedMaps = rosterFull && wager.match_type !== "8s"
     ? (isIndividualEights ? randomEightsSeriesMaps(wager) : randomWagerMaps(wager.game_mode, wager.best_of))
     : [];
   const challengerIdentity = challengerIdentityAfterAccept(wager, {
@@ -6805,7 +6823,7 @@ async function syncEightsLobby(req) {
     const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
     const full = participants.length >= requiredSize * 2;
     if (!full) {
-      if (!wager.roster_lock_deadline && !wager.roster_locked) return { success: true, wager, locked: false, full: false };
+      if (!wager.roster_lock_deadline && !wager.roster_locked && !wager.free_eights_waiting_for_voice) return { success: true, wager, locked: false, full: false };
       const reopened = await updateEntity("Wager", wager.id, {
         status: "open",
         roster_locked: false,
@@ -6814,7 +6832,9 @@ async function syncEightsLobby(req) {
         final_map_id: "",
         final_map_name: "",
         series_maps: [],
+        series_modes: [],
         teams_generated_at: "",
+        ...(wager.match_type === "8s" ? { free_eights_waiting_for_voice: false } : {}),
         eights_reshuffle_vote_user_ids: [],
         eights_reshuffle_vote_count: 0,
         eights_reshuffle_vote_status: null,
@@ -6826,6 +6846,9 @@ async function syncEightsLobby(req) {
     let currentWager = wager;
     if (eightsTeamsNeedGeneration(wager, participants, requiredSize)) {
       currentWager = await randomizeEightsTeams(wager, participants);
+    }
+    if (currentWager.free_eights_waiting_for_voice && currentWager.match_type === "8s") {
+      return { success: true, wager: currentWager, locked: false, full: true, waiting_for_voice: true };
     }
     if (currentWager.roster_locked || currentWager.status === "in_progress") return { success: true, wager: currentWager, locked: true, full: true };
     const deadline = currentWager.roster_lock_deadline ? new Date(currentWager.roster_lock_deadline) : null;
@@ -6929,10 +6952,13 @@ async function adminResetEightsLobby(req) {
     const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
     const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
     const full = participants.length >= requiredSize * 2;
+    const waitingForVoice = wager.match_type === "8s" && full && !wager.teams_generated_at;
+    const restartTimer = full && !waitingForVoice;
     const reset = await updateEntity("Wager", wager.id, {
       status: "open",
       roster_locked: false,
-      roster_lock_deadline: full ? new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString() : "",
+      roster_lock_deadline: restartTimer ? new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString() : "",
+      ...(wager.match_type === "8s" ? { free_eights_waiting_for_voice: waitingForVoice } : {}),
       match_started_date: "",
       host_reported_score_alpha: null,
       host_reported_score_bravo: null,
@@ -6975,11 +7001,11 @@ async function adminResetEightsLobby(req) {
     await createMatchRoomSystemMessage(
       wager.match_type,
       reset,
-      `${nameFor(req.user)} reset the lobby${full ? `. The ${eightsReshuffleWindowMs(wager.match_type) / 60000}-minute reshuffle window has restarted.` : ". The lobby is open until all eight players are present."}`,
+      `${nameFor(req.user)} reset the lobby${waitingForVoice ? ". Maps and the timer are waiting for all eight players to join the Discord Waiting Room." : restartTimer ? `. The ${eightsReshuffleWindowMs(wager.match_type) / 60000}-minute reshuffle window has restarted.` : ". The lobby is open until all eight players are present."}`,
       req.user,
     ).catch(() => null);
     publishEightsLobbyUpdate(wager.id, "lobby-reset");
-    return { success: true, wager: reset, full, seconds_remaining: full ? Math.ceil(eightsReshuffleWindowMs(wager.match_type) / 1000) : null };
+    return { success: true, wager: reset, full, waiting_for_voice: waitingForVoice, seconds_remaining: restartTimer ? Math.ceil(eightsReshuffleWindowMs(wager.match_type) / 1000) : null };
   });
 }
 
@@ -7057,6 +7083,7 @@ async function leaveEightsLobbyUnlocked(req) {
     final_map_name: "",
     series_maps: [],
     teams_generated_at: "",
+    ...(wager.match_type === "8s" ? { free_eights_waiting_for_voice: false } : {}),
   });
   return { success: true, wager: reopened };
 }
