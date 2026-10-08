@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { normalizeFreeEightsCancellationNotifications } from "./wager-cancellation-notifications.js";
 
 export const entityAliases = {
   SupportTicket: "supportTicket",
@@ -178,7 +179,8 @@ export const getEntity = async (entity, id) => {
     error.status = 404;
     throw error;
   }
-  return serializeRow(row);
+  const serialized = serializeRow(row);
+  return entity === "Notification" ? (await normalizeFreeEightsCancellationNotifications(prisma, [serialized]))[0] : serialized;
 };
 
 export const listEntities = async (entity, filter = {}, order, limit = 100) => {
@@ -213,7 +215,8 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
 
   if (order && !orderBy) flattened = sortRows(flattened, order);
 
-  return flattened.slice(0, take);
+  const selected = flattened.slice(0, take);
+  return entity === "Notification" ? normalizeFreeEightsCancellationNotifications(prisma, selected) : selected;
 };
 
 export const deleteEntity = async (entity, id) => {

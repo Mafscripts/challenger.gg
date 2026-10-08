@@ -199,6 +199,12 @@ join voice or transmit audio.
    no one has the website open. There is no new match expiry timer; an existing
    status change to `expired` is handled when observed.
 
+Website cancellation notifications for Free 8s say **Free 8s lobby cancelled**
+and link to `/ranked/8s`. Free 8s cancellation skips wallet refund operations.
+Older **Wager refunded** notifications referencing a stored Free 8s match are
+corrected on list/single reads, preserving their IDs, read state and timestamps.
+Paid wagers and Money 8s keep escrow refunds and their existing wallet notifications.
+
 Each bot sweep fetches the guild channel inventory once for all matches, uses
 the live channel cache and reserves category capacity across concurrent local
 workers. Intermediate provisioning/move saves preserve the previous presence

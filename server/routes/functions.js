@@ -18,6 +18,7 @@ import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
 import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membership.js";
 import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
+import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -7682,10 +7683,11 @@ async function refundWagerUnlocked(req) {
   const participants = isEightsMatchType(wager.match_type)
     ? await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => [])
     : [];
-  await refundWagerEscrow(wager, req.body.reason || "Wager refunded");
+  const isFreeEights = wager.match_type === "8s";
+  if (!isFreeEights) await refundWagerEscrow(wager, req.body.reason || "Wager refunded");
   const updated = await updateEntity("Wager", wager.id, {
     status: "cancelled",
-    cancel_reason: req.body.reason || "Refunded",
+    cancel_reason: req.body.reason || (isFreeEights ? "Cancelled" : "Refunded"),
     cancelled_by: req.user.id,
     cancelled_by_name: nameFor(req.user),
     cancelled_date: nowIso(),
@@ -7703,18 +7705,11 @@ async function refundWagerUnlocked(req) {
     } : {}),
   });
   if (isEightsMatchType(wager.match_type)) publishEightsLobbyUpdate(wager.id, "cancelled");
-  await resolveOpenMatchDisputes(wager.id, "Match cancelled and refunded", req.user);
+  await resolveOpenMatchDisputes(wager.id, isFreeEights ? "Match cancelled" : "Match cancelled and refunded", req.user);
   const recipientIds = isEightsMatchType(wager.match_type)
     ? participants.map((participant) => participant.user_id).filter(Boolean)
     : [wager.host_id, wager.challenger_id];
-  await notifyUsers(recipientIds, {
-    title: "Wager refunded",
-    message: `${wager.game_mode_display || wager.game_mode || "Match"} was cancelled and escrow was returned.`,
-    type: "match",
-    action_url: "/wallet",
-    related_entity_id: wager.id,
-    related_entity_type: "Wager",
-  });
+  await notifyUsers(recipientIds, wagerCancellationNotification(wager));
   return { success: true, wager: updated };
 }
 

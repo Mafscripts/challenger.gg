@@ -282,6 +282,7 @@ test("Free 8s cancellation persists once and a stale lobby sync cannot reopen it
   const user = { id: "host", role: "user", email_verified: true, metadata: {} };
   let stored = { id: "room", metadata: { status: "open", match_type: "8s", host_id: "host", eights_score_vote_status: "pending", eights_score_vote_user_ids: ["host"], roster_locked: false } };
   let updates = 0;
+  const notifications = [];
   const override = (target, name, implementation) => {
     const previous = target[name]; target[name] = implementation;
     t.after(() => { target[name] = previous; });
@@ -292,7 +293,9 @@ test("Free 8s cancellation persists once and a stale lobby sync cannot reopen it
   override(prisma.wager, "update", async ({ data }) => { updates++; stored = { ...stored, ...data }; return stored; });
   override(prisma.wagerParticipant, "findMany", async () => [{ id: "p1", metadata: { user_id: "host", wager_id: "room", entry_fee_paid: 0 } }]);
   override(prisma.dispute, "findMany", async () => []);
-  override(prisma.notification, "create", async ({ data }) => ({ id: "notification", ...data }));
+  override(prisma.notification, "create", async ({ data }) => { notifications.push(data.metadata); return { id: "notification", ...data }; });
+  override(prisma.wallet, "findMany", async () => { assert.fail("Free 8s cancellation must not access wallets"); });
+  override(prisma.walletTransaction, "create", async () => { assert.fail("Free 8s cancellation must not create a refund transaction"); });
   override(prisma.eightsStats, "update", async () => { assert.fail("Cancellation must not award ELO"); });
   const app = express();
   app.use(express.json()); app.use("/api/functions", functionRoutes);
@@ -311,7 +314,13 @@ test("Free 8s cancellation persists once and a stale lobby sync cannot reopen it
   assert.equal(cancelled.wager.eights_score_vote_status, "cancelled");
   assert.deepEqual(cancelled.wager.eights_score_vote_user_ids, []);
   assert.equal(cancelled.wager.roster_locked, true);
+  assert.equal(cancelled.wager.cancel_reason, "Cancelled");
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].title, "Free 8s lobby cancelled");
+  assert.equal(notifications[0].message, "Match was cancelled.");
+  assert.equal(notifications[0].action_url, "/ranked/8s");
   assert.equal((await request("refundWager")).success, false);
+  assert.equal(notifications.length, 1, "a repeated cancellation must not send a second notification");
   const synced = await request("syncEightsLobby");
   assert.equal(synced.success, true);
   assert.equal(synced.wager.status, "cancelled");
