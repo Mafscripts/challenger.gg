@@ -87,7 +87,7 @@ function PlayerSocials({ player }) {
   );
 }
 
-export default function MatchTeamTable({ label, name, color = "cyan", seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, eloChanges = {}, voiceStates = [] }) {
+export default function MatchTeamTable({ label, name, color = "cyan", seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, eloChanges = {}, voiceStates = [], waitingRoomUrl }) {
   const isOrange = color === "orange";
   const toneClass = isOrange ? "text-orange" : "text-cyan";
   const tintClass = isOrange ? "border-orange/30 bg-orange/10" : "border-cyan/30 bg-cyan/10";
@@ -137,7 +137,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
                 {freeEights && <div className="min-w-0"><p className={fieldLabelClass}>Rank</p><FreeEightsRankBadge elo={player.free_eights_elo} screenshotRank={player.screenshot_rank} /></div>}
                 <div><p className={fieldLabelClass}>Record</p><p className="font-mono text-sm font-black"><span className="text-white">{record.wins}W</span><span className="mx-1.5 text-white/20">/</span><span className="text-vapor">{record.losses}L</span></p></div>
                 {freeEights ? <div><p className={fieldLabelClass}>8s ELO</p><p className="font-mono text-sm font-black text-cyan">{normalizeFreeEightsElo(player.free_eights_elo).toLocaleString()}</p>{isComplete && eloChanges?.[userId] && <p className={`mt-1 text-[9px] font-bold ${eloChanges[userId].delta > 0 ? "text-green" : "text-vapor"}`}>{eloChanges[userId].delta > 0 ? "+" : ""}{eloChanges[userId].delta} this match</p>}</div> : <div><p className={fieldLabelClass}>Earnings</p><p className="font-mono text-sm font-black text-green">{money(earningsFor(player))}</p></div>}
-                {freeEights ? <div className="min-w-0"><p className={fieldLabelClass}>Discord Voice</p><FreeEightsVoiceBadge status={voiceStatuses.get(userId)} /></div> : <div><p className={fieldLabelClass}>Trophies</p><TrophyCounts trophies={trophies} /></div>}
+                {freeEights ? <div className="min-w-0"><p className={fieldLabelClass}>Discord Voice</p><FreeEightsVoiceBadge status={voiceStatuses.get(userId)} waitingRoomUrl={waitingRoomUrl} /></div> : <div><p className={fieldLabelClass}>Trophies</p><TrophyCounts trophies={trophies} /></div>}
                 <div><p className={fieldLabelClass}>Socials</p><PlayerSocials player={player} /></div>
               </article>
             );

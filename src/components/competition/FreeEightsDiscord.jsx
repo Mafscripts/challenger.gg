@@ -14,22 +14,24 @@ const voiceLabels = {
   checking: "Checking voice…",
   unavailable: "Voice status unavailable",
   not_linked: "Discord Not Linked",
-  not_in_waiting_room: "Not Connected",
+  not_in_waiting_room: "Join 8s Waiting Room",
   in_waiting_room: "In Waiting Room",
   in_team_voice: "Team Voice",
   move_failed: "Voice move failed · bot will retry",
 };
 
-export function FreeEightsVoiceBadge({ status = "checking" }) {
+export function FreeEightsVoiceBadge({ status = "checking", waitingRoomUrl }) {
   const ready = ["in_waiting_room", "in_team_voice"].includes(status);
-  const StatusIcon = status === "checking" ? Loader2 : ready ? CheckCircle2 : status === "not_linked" ? Link2 : status === "move_failed" ? AlertTriangle : MicOff;
+  const StatusIcon = status === "checking" ? Loader2 : ready ? CheckCircle2 : status === "not_linked" ? Link2 : status === "move_failed" ? AlertTriangle : status === "not_in_waiting_room" ? Headphones : MicOff;
   const badgeStyle = status === "in_waiting_room" ? "border-green/20 bg-green/[0.08] text-green"
     : status === "in_team_voice" ? "border-cyan/20 bg-cyan/[0.08] text-cyan"
-    : ["not_linked", "move_failed"].includes(status) ? "border-orange/20 bg-orange/[0.08] text-orange"
+    : ["not_in_waiting_room", "not_linked", "move_failed"].includes(status) ? "border-orange/20 bg-orange/[0.08] text-orange"
     : "border-white/[0.08] bg-white/[0.03] text-vapor";
   const label = voiceLabels[status] || voiceLabels.checking;
-  const description = status === "not_in_waiting_room" ? "Join the 8s Waiting Room or your assigned team voice channel." : label;
-  return <span title={description} className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold ${badgeStyle}`}><StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status === "checking" ? "animate-spin" : ""}`} aria-hidden="true" /><span>{label}</span></span>;
+  const description = status === "not_in_waiting_room" ? "Open the 8s Waiting Room in Discord." : label;
+  const canJoin = status === "not_in_waiting_room" && Boolean(waitingRoomUrl);
+  const Badge = canJoin ? "a" : "span";
+  return <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : {})} title={description} className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange" : ""}`}><StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status === "checking" ? "animate-spin" : ""}`} aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}</Badge>;
 }
 
 export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranked/8s", trigger, returnFocusTo }) {
