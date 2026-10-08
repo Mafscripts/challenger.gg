@@ -153,7 +153,7 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
   </div>;
 }
 
-export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps = false, voiceView }) {
+export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, voiceView }) {
   const { voice, available, checking, refreshing, configurationFailure, readyCount, warning } = voiceView;
   const summary = checking ? "Updating Discord voice status…"
     : available && voice?.error ? voice.error
@@ -181,7 +181,7 @@ export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps =
     <div className="border-t border-white/[0.06] bg-black/[0.12] p-4 sm:px-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Player voice status</p>
-        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${available && readyCount === players.length ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{available ? `${readyCount}/${players.length} voice ready` : checking ? "Checking voice…" : "Status unavailable"}</span>
+        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${available && readyCount === 8 ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{available ? `${readyCount}/8 voice ready` : checking ? "Checking voice…" : "Status unavailable"}</span>
       </div>
       <div role="status" className={`mb-3 flex h-16 items-center gap-2 rounded-xl border px-3 text-xs leading-5 sm:h-11 ${warning ? "border-orange/20 bg-orange/5 text-orange" : "border-white/[0.06] bg-white/[0.025] text-vapor"}`}>
         <SummaryIcon className={`h-4 w-4 shrink-0 ${checking ? "animate-spin" : available && !warning ? "text-green" : ""}`} aria-hidden="true" />
