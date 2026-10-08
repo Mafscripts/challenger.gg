@@ -41,7 +41,7 @@ export default function Matchfinder() {
   const [wagerMatches, setWagerMatches] = useState([]);
   const [eightsCounts, setEightsCounts] = useState({});
   const [freeMembership, setFreeMembership] = useState(null);
-  const activeFreeMatch = freeMembership?.userId === user?.id ? freeMembership.match : null;
+  const activeFreeMatch = user?.id && freeMembership?.userId === user.id ? freeMembership?.match ?? null : null;
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState("");
