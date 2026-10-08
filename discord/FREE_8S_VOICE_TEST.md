@@ -114,9 +114,16 @@ join voice or transmit audio.
    players to their assigned team. Existing live/generated matches are preserved.
 6. The room shows every participant's status: unlinked, not in the waiting room,
    waiting-room ready, team-voice ready, move failed or status unavailable. It polls
-   every five seconds and treats snapshots older than twenty seconds or from a
+   every two seconds and treats snapshots older than twenty seconds or from a
    changed roster/configuration as unavailable. Only players in that room or staff
    can read its status; Discord IDs are not included in the response.
+   The website now polls every **two seconds**, with immediate checks after
+   roster changes or returning to the tab, and never overlaps its requests.
+   A short request failure retains the last snapshot only while it is still
+   recent. Brief missing/stale updates show neutral **Updating…** for up to
+   fifteen seconds; old status is not displayed as confirmed readiness. A
+   sustained outage or explicit configuration/Discord error remains visible.
+   Snapshot age is calculated server-side to avoid client clock skew.
 7. After generation, the existing countdown proceeds; players are not required
    to return to the Waiting Room after the bot has moved them to team voice.
    Offline players and people in unrelated voice channels are not moved. Late
@@ -129,6 +136,14 @@ join voice or transmit audio.
    Failed return moves retain the occupied channel for retry. Cleanup runs even if
    no one has the website open. There is no new match expiry timer; an existing
    status change to `expired` is handled when observed.
+
+Each bot sweep fetches the guild channel inventory once for all matches, uses
+the live channel cache and reserves category capacity across concurrent local
+workers. Intermediate provisioning/move saves preserve the previous presence
+timestamp and snapshot; only the final complete roster observation updates
+`checked_at`. Voice events during a running sweep queue a follow-up rather than
+being dropped. A disconnected Gateway cannot refresh cached voice readiness.
+These improvements leave the server's twenty-second map-readiness gate intact.
 
 After a confirmed completed result (win/loss), **both teams** still connected to
 their managed team voices return automatically to the shared Waiting Room,

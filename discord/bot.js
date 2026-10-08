@@ -44,6 +44,7 @@ const client = new Client({
 });
 let tournamentSyncRunning = false;
 let freeEightsVoiceSyncRunning = false;
+let freeEightsVoiceSyncQueued = false;
 let freeEightsResultsSyncRunning = false;
 async function runFreeEightsResultsSync(guild) {
   if (freeEightsResultsSyncRunning) return;
@@ -58,7 +59,7 @@ async function runFreeEightsResultsSync(guild) {
   }
 }
 async function runFreeEightsVoiceSync(guild) {
-  if (freeEightsVoiceSyncRunning) return;
+  if (freeEightsVoiceSyncRunning) { freeEightsVoiceSyncQueued = true; return; }
   freeEightsVoiceSyncRunning = true;
   try {
     await syncFreeEightsVoice(guild);
@@ -66,6 +67,10 @@ async function runFreeEightsVoiceSync(guild) {
     console.error("[Topfragg Free 8s Discord] sync-failed:", error.message);
   } finally {
     freeEightsVoiceSyncRunning = false;
+    if (freeEightsVoiceSyncQueued) {
+      freeEightsVoiceSyncQueued = false;
+      void runFreeEightsVoiceSync(guild);
+    }
   }
 }
 const recentPublicMessages = new Map();

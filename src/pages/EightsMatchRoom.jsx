@@ -33,6 +33,7 @@ const lobbyMatchSnapshot = (value) => JSON.stringify([
   value?.roster_lock_deadline,
   value?.roster_locked,
   value?.free_eights_waiting_for_voice,
+  value?.teams_generated_at,
   value?.eights_reshuffle_vote_count,
   value?.eights_reshuffle_vote_required,
   value?.eights_reshuffle_vote_user_ids,
@@ -632,7 +633,7 @@ function EightsMatchRoomView() {
           </div>
         )} beforeTeams={(
           <>
-        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} />}
+        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} rosterVersion={match.teams_generated_at} />}
         {!locked && !closedStatuses.has(match.status) && (
           <section className="m-3 rounded-xl border border-purple-300/20 bg-[#171722] p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

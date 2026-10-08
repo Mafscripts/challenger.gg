@@ -14,6 +14,7 @@ function fixture(count = 1) {
   const records = new Map();
   const moves = [];
   const logs = [];
+  const writes = [];
   const channels = new Collection();
   const voices = new Collection();
   const members = new Collection();
@@ -22,6 +23,7 @@ function fixture(count = 1) {
   let creations = 0;
   let permissionEdits = 0;
   let deletes = 0;
+  let inventoryFetches = 0;
   // Discord rejects MANAGE_ROLES channel overwrites for non-administrators,
   // even when the bot already has Manage Roles through its guild role.
   const validateOverwrites = (overwrites = []) => {
@@ -46,8 +48,9 @@ function fixture(count = 1) {
       return { entries };
     },
     channels: {
+      cache: channels,
       async fetch(id) {
-        if (!id) return new Collection(channels);
+        if (!id) { inventoryFetches++; return new Collection(channels); }
         if (!channels.has(id)) throw Object.assign(new Error("Unknown Channel"), { code: 10003 });
         return channels.get(id);
       },
@@ -90,6 +93,7 @@ function fixture(count = 1) {
       async create({ data }) {
         if (records.has(data.event_key)) throw Object.assign(new Error("Unique key"), { code: "P2002" });
         records.set(data.event_key, structuredClone(data));
+        if (data.event_key.startsWith("free8s-voice:")) writes.push(structuredClone(data.metadata));
       },
       async update({ where, data }) {
         if (!records.has(where.event_key)) throw new Error("Missing record");
@@ -102,6 +106,7 @@ function fixture(count = 1) {
           : JSON.stringify(record.metadata) === JSON.stringify(where.metadata.equals));
         if (!matches) return { count: 0 };
         records.set(where.event_key, structuredClone({ ...record, ...data }));
+        if (where.event_key.startsWith("free8s-voice:")) writes.push(structuredClone(data.metadata));
         return { count: 1 };
       },
     },
@@ -120,9 +125,9 @@ function fixture(count = 1) {
     },
   };
   const sync = (overrides = {}) => syncFreeEightsVoice(guild, { db, config: { ...config, ...overrides }, log: (event, details) => logs.push({ event, ...details }) });
-  return { match, matches, participants, users, records, moves, logs, channels, voices, guild, db, sync, audits,
+  return { match, matches, participants, users, records, moves, logs, channels, voices, guild, db, sync, audits, writes,
     state: () => records.get(freeEightsVoiceKey(match.id))?.metadata,
-    stats: () => ({ creations, permissionEdits, deletes }) };
+    stats: () => ({ creations, permissionEdits, deletes }), inventoryFetches: () => inventoryFetches };
 }
 
 test("link gate requires authenticated OAuth identity only for Free 8s", () => {
@@ -130,6 +135,56 @@ test("link gate requires authenticated OAuth identity only for Free 8s", () => {
   assert.equal(freeEightsDiscordJoinError("8s", { id: "u", discord_user_id: "200000000000000001" }).success, false);
   assert.equal(freeEightsDiscordJoinError("8s", { id: "u", discord_user_id: "200000000000000001", discord_connected_at: new Date() }), null);
   for (const type of ["money8s", "wagers", "ranked", "xp", "tournament"]) assert.equal(freeEightsDiscordJoinError(type, {}), null);
+});
+
+test("40 matches fetch the channel inventory once per sweep and do not repeatedly rewrite unchanged permissions", async () => {
+  const f = fixture(40);
+  const overflow = "100000000000000005";
+  f.channels.set(overflow, { id: overflow, type: ChannelType.GuildCategory, name: "ACTIVE 8s overflow" });
+  const settings = { overflowCategoryIds: [overflow] };
+  await f.sync(settings);
+  assert.equal(f.inventoryFetches(), 1);
+  assert.equal(f.moves.length, 320);
+  const edits = f.stats().permissionEdits;
+  await f.sync(settings);
+  assert.equal(f.inventoryFetches(), 2);
+  assert.equal(f.stats().permissionEdits, edits);
+});
+
+test("intermediate creation/reshuffle saves cannot publish empty or partially updated fresh player status", async () => {
+  const f = fixture();
+  await f.sync();
+  const checkWrites = () => {
+    let freshWrites = 0;
+    for (const state of f.writes) {
+      const publicStatus = publicFreeEightsVoiceStatus(config, f.match.metadata, f.participants, state);
+      if (!publicStatus.fresh) continue;
+      freshWrites++;
+      assert.equal(Object.keys(state.players).length, 8);
+      assert.ok(publicStatus.players.every((player) => player.status === "in_team_voice"));
+    }
+    assert.ok(freshWrites > 0);
+  };
+  checkWrites();
+  f.writes.length = 0;
+  f.participants[0].team = "challenger";
+  f.participants[4].team = "host";
+  f.match.metadata.teams_generated_at = "2026-10-07T00:02:00Z";
+  await f.sync();
+  checkWrites();
+});
+
+test("a disconnected gateway cannot refresh cached presence or release map generation", async () => {
+  const f = fixture();
+  f.match.metadata.teams_generated_at = "";
+  await f.sync();
+  const checked = f.state().checked_at;
+  f.guild.client.isReady = () => false;
+  await f.sync();
+  assert.equal(f.state().checked_at, checked);
+  assert.equal(f.inventoryFetches(), 1);
+  assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants, f.state(), Date.parse(checked) + 21000), false);
+  assert.ok(f.logs.some((row) => row.event === "gateway-not-ready"));
 });
 
 test("only canonical eight-player 4v4 Free 8s teams qualify", () => {
@@ -479,7 +534,7 @@ test("40 simultaneous matches overflow into existing categories and retain one i
   const settings = { overflowCategoryIds: [overflow] };
   await Promise.all([f.sync(settings), f.sync(settings)]);
   await f.sync(settings); // Reconcile any Discord-enforced capacity race.
-  assert.equal(f.moves.length, 320);
+  assert.equal(f.moves.length, 320, JSON.stringify([...f.records.values()].filter((row) => row.event_key.startsWith("free8s-voice:") && Object.keys(row.metadata.channels).length < 2).map((row) => ({ match: row.metadata.match_id, channels: row.metadata.channels, error: row.metadata.error }))));
   assert.equal(f.channels.filter((item) => item.parentId === config.categoryId).size, 50);
   assert.equal(f.channels.filter((item) => item.parentId === overflow).size, 30);
   for (const match of f.matches) {

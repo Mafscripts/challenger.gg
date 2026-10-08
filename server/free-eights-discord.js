@@ -45,6 +45,7 @@ export const publicFreeEightsVoiceStatus = (config, match, participants, state, 
     waiting_room_url: validDiscordId(config.guildId) && validDiscordId(config.waitingRoomId)
       ? `https://discord.com/channels/${config.guildId}/${config.waitingRoomId}` : null,
     fresh,
+    snapshot_age_ms: Number.isFinite(age) && age >= 0 ? age : null,
     checked_at: state?.checked_at || null,
     error: fresh ? state?.error || null : null,
     players: participants.map((row) => ({

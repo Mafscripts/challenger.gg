@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { AlertTriangle, CheckCircle2, ExternalLink, Headphones, Link2, Loader2, Mic, MicOff, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { freeEightsVoiceView, recordFreeEightsVoiceResponse } from "@/lib/freeEightsVoiceStatus";
 
 export const hasFreeEightsDiscordLink = (user) => /^\d{17,20}$/.test(String(user?.discord_user_id || "")) && Boolean(user?.discord_connected_at);
 export const isFreeEightsDiscordRequired = (result) => result?.code === "FREE_EIGHTS_DISCORD_REQUIRED"
@@ -100,33 +101,42 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
   </div>;
 }
 
-export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps = false }) {
+export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps = false, rosterVersion = "" }) {
   const [voiceResult, setVoiceResult] = useState(null);
+  const rosterKey = JSON.stringify(players.map((player) => [player.user_id, player.team]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
-    const refresh = () => base44.discord.freeEightsVoice(matchId)
-      .then((data) => { if (!cancelled) setVoiceResult({ matchId, userId: user.id, data }); })
-      .catch(() => { if (!cancelled) setVoiceResult({ matchId, userId: user.id, data: null }); });
+    let inFlight = false;
+    setVoiceResult(recordFreeEightsVoiceResponse(null, { matchId, userId: user.id, data: null }));
+    const refresh = async () => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      try {
+        const data = await base44.discord.freeEightsVoice(matchId);
+        if (!cancelled) setVoiceResult((previous) => recordFreeEightsVoiceResponse(previous, { matchId, userId: user.id, data }));
+      } catch {
+        if (!cancelled) setVoiceResult((previous) => recordFreeEightsVoiceResponse(previous, { matchId, userId: user.id, failed: true }));
+      } finally { inFlight = false; }
+    };
     refresh();
-    const timer = window.setInterval(refresh, 5000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [matchId, user?.id]);
-  const checking = !voiceResult || voiceResult.matchId !== matchId || voiceResult.userId !== user?.id;
-  const voice = checking ? null : voiceResult.data;
-  const statuses = Object.fromEntries((voice?.players || []).map((player) => [player.user_id, player]));
-  const stale = !voice?.fresh || Date.now() - new Date(voice.checked_at).getTime() >= 20_000;
-  const available = voice?.enabled && voice?.configured && !stale;
-  const playerStates = players.map((player) => {
-    const current = statuses[player.user_id];
-    const status = checking ? "checking" : available && current?.team === player.team ? current.status : "unavailable";
-    return { ...player, status, ready: ["in_waiting_room", "in_team_voice"].includes(status) };
-  });
-  const readyCount = playerStates.filter((player) => player.ready).length;
-  const warning = !checking && (!available || Boolean(voice?.error));
-  const summary = checking ? "Checking Discord voice status…"
-    : voice?.error || (!available ? "Voice status unavailable. The bot may be offline or voice setup may be incomplete."
-      : waitingForMaps ? `Waiting for all 8 players in the Waiting Room · ${readyCount}/8 ready. Maps and the timer have not started.` : "Discord voice status is up to date.");
+    const timer = window.setInterval(refresh, 2000);
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true; window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [matchId, user?.id, rosterKey, rosterVersion]);
+  const current = voiceResult?.matchId === matchId && voiceResult?.userId === user?.id ? voiceResult : null;
+  const { voice, available, checking, refreshing, configurationFailure, playerStates, readyCount, warning } = freeEightsVoiceView(current, players);
+  const summary = checking ? "Updating Discord voice status…"
+    : available && voice?.error ? voice.error
+    : !available ? configurationFailure ? "Discord voice is disabled or the waiting room has not been configured." : "Discord voice status has not updated. The bot or connection needs attention."
+    : refreshing ? "Refreshing Discord voice status…"
+    : waitingForMaps ? `Waiting for all 8 players in the Waiting Room · ${readyCount}/8 ready. Maps and the timer have not started.` : "Discord voice status is up to date.";
   const SummaryIcon = checking ? Loader2 : warning ? AlertTriangle : CheckCircle2;
   return <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-[#171b26] shadow-[0_8px_30px_rgba(0,0,0,.12)] sm:m-4" aria-label="Free 8s Discord voice readiness">
     <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
@@ -166,7 +176,7 @@ export function FreeEightsVoiceStatus({ matchId, players, user, waitingForMaps =
           </li>;
         })}
       </ul>
-      <p className="mt-3 text-[10px] leading-5 text-vapor">Join Discord voice yourself before you can be moved. Missing voice players do not block this test match.</p>
+      <p className="mt-3 text-[10px] leading-5 text-vapor">Join Discord voice yourself. Maps wait until all eight players are in the Waiting Room. After the confirmed result, both teams return here automatically.</p>
     </div>
   </section>;
 }
