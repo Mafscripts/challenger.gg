@@ -125,12 +125,14 @@ function rankTone(index) {
 
 export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride }) {
   const copy = modeCopy[mode] || modeCopy.xp;
-  const headerImage = "/assets/competition/play-hero.png";
+  const isFreeEights = mode === "eights";
+  const headerImage = isFreeEights ? "/assets/competition/free-eights-elo-header.webp" : "/assets/competition/play-hero.png";
   const headerHeight = "min-h-[350px] lg:min-h-[370px]";
   return (
     <div className={`space-y-5 ${className}`}>
-      <section className={`premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] ${headerHeight}`}>
-        <img src={headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[center_34%] opacity-90" />
+      <section className={`premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] ${isFreeEights ? "" : headerHeight}`}>
+        <img src={headerImage} alt={isFreeEights ? "Free 8s ELO — orange and cyan soldiers with five rank emblems" : ""} className={isFreeEights ? "block h-auto w-full" : "absolute inset-0 h-full w-full object-cover object-[center_34%] opacity-90"} />
+        {!isFreeEights && <>
         <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.96)_0%,hsl(var(--background)/0.76)_23%,hsl(var(--background)/0.12)_44%,transparent_72%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(0deg,hsl(var(--background)/0.42)_0%,transparent_48%)]" />
         <div className="landing-bullet-field absolute inset-0 z-[5]" aria-hidden="true">
@@ -150,12 +152,13 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
             />
           ))}
         </div>
-        <div className={`relative z-10 grid gap-8 p-7 md:p-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end ${headerHeight}`}>
+        </>}
+        <div className={`relative z-10 grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end ${isFreeEights ? "gap-5 border-t border-white/[0.07] bg-[#10151c] p-5 md:p-6" : `gap-8 p-7 md:p-9 ${headerHeight}`}`}>
           <div>
             <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.28em] ${copy.accent}`}><span className={`h-1.5 w-1.5 ${copy.line}`} /> {eyebrowOverride || copy.eyebrow}</div>
-            <h1 className="mt-4 max-w-xl font-heading text-4xl font-black uppercase leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,.75)] sm:text-5xl">{titleOverride || copy.title}</h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-white/75">{descriptionOverride || copy.description}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <h1 className={isFreeEights ? "sr-only" : "mt-4 max-w-xl font-heading text-4xl font-black uppercase leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,.75)] sm:text-5xl"}>{titleOverride || copy.title}</h1>
+            <p className={`${isFreeEights ? "mt-2" : "mt-4"} max-w-xl text-sm leading-6 text-white/75`}>{descriptionOverride || copy.description}</p>
+            <div className={`${isFreeEights ? "mt-3" : "mt-5"} flex flex-wrap gap-2`}>
               <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">Cross platform</span>
               <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{monthLabel()}</span>
               <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{playerCount} {mode === "tournaments" ? "events" : "players"}</span>
