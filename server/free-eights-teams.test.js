@@ -118,7 +118,7 @@ test("missing ranks/stats default to Newb, while database errors prevent a wrong
   await assert.rejects(() => generateBalancedFreeEightsTeams(f.db, mixedRoster()), /database unavailable/);
 });
 
-test("real generation and admin reshuffle persist balanced Free 8s rosters; Money 8s does not query or use these skills", async (t) => {
+test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s at 300 seconds and keep skill isolation", async (t) => {
   const input = mixedRoster(), f = skillDb(input);
   const admin = { id: "admin", email_verified: true, role: "admin", metadata: {} };
   const matches = new Map(["8s", "money8s"].map((type) => [type, { id: type, metadata: { match_type: type, status: "open", required_players_per_team: 4, team_size: "4v4", roster_lock_deadline: new Date(Date.now() + 60000).toISOString() } }]));
@@ -143,7 +143,9 @@ test("real generation and admin reshuffle persist balanced Free 8s rosters; Mone
   override(prisma.wagerParticipant, "update", async ({ where, data }) => {
     const row = [...rosters.values()].flat().find((entry) => entry.id === where.id); Object.assign(row, data); return row;
   });
-  override(prisma.chatMessage, "create", async ({ data }) => ({ id: "system", ...data }));
+  const systemMessages = [];
+  override(prisma.chatMessage, "create", async ({ data }) => { systemMessages.push(data.metadata); return { id: "system", ...data }; });
+  override(prisma.dispute, "findMany", async () => []);
   const app = express(); app.use(express.json()); app.use("/functions", functionRoutes);
   app.use((error, _req, res, _next) => res.status(error.status || 500).json({ error: error.message }));
   const server = app.listen(0, "127.0.0.1");
@@ -153,8 +155,13 @@ test("real generation and admin reshuffle persist balanced Free 8s rosters; Mone
     const response = await fetch(`http://127.0.0.1:${server.address().port}/functions/${name}`, { method: "POST", headers: { Authorization: `Bearer ${signUser(admin)}`, "Content-Type": "application/json" }, body: JSON.stringify({ wager_id: id, participants: input.map((row) => ({ ...row, free_eights_elo: 9999 })) }) });
     const body = await response.json(); assert.equal(response.status, 200, JSON.stringify(body)); assert.equal(body.success, true, JSON.stringify(body)); return body;
   };
+  const assertWindow = (type, duration) => {
+    const remaining = new Date(matches.get(type).metadata.roster_lock_deadline).getTime() - Date.now();
+    assert.ok(remaining <= duration && remaining > duration - 5000, `${type} expected ${duration}ms, got ${remaining}ms`);
+  };
   for (const name of ["syncEightsLobby", "adminReshuffleEightsTeams"]) {
     await request(name, "8s");
+    assertWindow("8s", 60000);
     for (const side of ["host", "challenger"]) {
       const team = rosters.get("8s").filter((row) => row.metadata.team === side).map((row) => row.metadata);
       assert.equal(team.length, 4);
@@ -165,11 +172,32 @@ test("real generation and admin reshuffle persist balanced Free 8s rosters; Mone
     assert.equal(matches.get("8s").metadata.free_eights_team_balance.partitions_checked, 35);
   }
   const reads = f.calls.length;
+  const previousDeadline = matches.get("8s").metadata.roster_lock_deadline;
   await request("syncEightsLobby", "8s");
+  assert.equal(matches.get("8s").metadata.roster_lock_deadline, previousDeadline, "polls do not restart the countdown");
   assert.equal(f.calls.length, reads, "later polls reuse already generated teams");
-  for (const name of ["syncEightsLobby", "adminReshuffleEightsTeams"]) await request(name, "money8s");
+  for (const name of ["syncEightsLobby", "adminReshuffleEightsTeams"]) {
+    await request(name, "money8s");
+    assertWindow("money8s", 300000);
+  }
   assert.equal(f.calls.length, reads, "Money 8s keeps its original random split");
   assert.equal(matches.get("money8s").metadata.free_eights_team_balance, undefined);
   assert.equal(rosters.get("money8s").some((row) => Object.hasOwn(row.metadata, "free_eights_elo")), false);
   assert.deepEqual(f.users.map((row) => row.metadata.screenshot_rank), input.map((row) => row.screenshot_rank));
+  for (const [type, seconds] of [["8s", 60], ["money8s", 300]]) {
+    // Recovery of a missing timer uses the same duration as generation.
+    matches.get(type).metadata.roster_lock_deadline = "";
+    await request("syncEightsLobby", type);
+    assertWindow(type, seconds * 1000);
+    const reset = await request("adminResetEightsLobby", type);
+    assert.equal(reset.seconds_remaining, seconds);
+    assertWindow(type, seconds * 1000);
+    assert.ok(systemMessages.at(-1).content.includes(`${seconds / 60}-minute reshuffle window`));
+  }
+  const afterFreeDeadline = new Date(matches.get("8s").metadata.roster_lock_deadline).getTime() + 1;
+  const clock = t.mock.method(Date, "now", () => afterFreeDeadline);
+  try {
+    assert.equal((await request("syncEightsLobby", "8s")).wager.status, "in_progress");
+    assert.equal((await request("syncEightsLobby", "money8s")).wager.status, "open");
+  } finally { clock.mock.restore(); }
 });

@@ -15,6 +15,7 @@ import { freeEightsDiscordJoinError, freeEightsVoiceLog } from "../free-eights-d
 import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
+import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -62,7 +63,6 @@ const RANKED_LOSS_ELO = -15;
 const RANKED_ELO_SCALE = 400;
 const RANKED_MIN_CHANGE = 5;
 const RANKED_MAX_CHANGE = 40;
-const EIGHTS_RESHUFFLE_WINDOW_MS = 5 * 60 * 1000;
 const EIGHTS_RESHUFFLE_REQUIRED_VOTES = 5;
 const adminPremiumGrantDays = 30;
 const animatedNameFreeTrialDays = 30;
@@ -6558,7 +6558,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
       final_map_id: selectedMaps[0]?.id || "",
       final_map_name: selectedMaps[0]?.name || "",
     } : {}),
-    roster_lock_deadline: new Date(Date.now() + EIGHTS_RESHUFFLE_WINDOW_MS).toISOString(),
+    roster_lock_deadline: new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString(),
     roster_locked: false,
     teams_generated_at: nowIso(),
     ...(balance ? { free_eights_team_balance: balance } : {}),
@@ -6705,7 +6705,7 @@ async function acceptWagerUnlocked(req) {
   const joinedPlayerCount = enrolledParticipants.length + 1;
   const rosterFull = !isIndividualEights || joinedPlayerCount >= playerCapacity;
   const rosterLockDeadline = isIndividualEights && rosterFull
-    ? new Date(Date.now() + EIGHTS_RESHUFFLE_WINDOW_MS).toISOString()
+    ? new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString()
     : "";
   const selectedMaps = rosterFull
     ? (isIndividualEights ? randomEightsSeriesMaps(wager) : randomWagerMaps(wager.game_mode, wager.best_of))
@@ -6831,7 +6831,7 @@ async function syncEightsLobby(req) {
     const deadline = currentWager.roster_lock_deadline ? new Date(currentWager.roster_lock_deadline) : null;
     if (!deadline || Number.isNaN(deadline.getTime())) {
       const pending = await updateEntity("Wager", wager.id, {
-        roster_lock_deadline: new Date(Date.now() + EIGHTS_RESHUFFLE_WINDOW_MS).toISOString(),
+        roster_lock_deadline: new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString(),
         roster_locked: false,
         status: "open",
       });
@@ -6932,7 +6932,7 @@ async function adminResetEightsLobby(req) {
     const reset = await updateEntity("Wager", wager.id, {
       status: "open",
       roster_locked: false,
-      roster_lock_deadline: full ? new Date(Date.now() + EIGHTS_RESHUFFLE_WINDOW_MS).toISOString() : "",
+      roster_lock_deadline: full ? new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString() : "",
       match_started_date: "",
       host_reported_score_alpha: null,
       host_reported_score_bravo: null,
@@ -6975,11 +6975,11 @@ async function adminResetEightsLobby(req) {
     await createMatchRoomSystemMessage(
       wager.match_type,
       reset,
-      `${nameFor(req.user)} reset the lobby${full ? ". The five-minute reshuffle window has restarted." : ". The lobby is open until all eight players are present."}`,
+      `${nameFor(req.user)} reset the lobby${full ? `. The ${eightsReshuffleWindowMs(wager.match_type) / 60000}-minute reshuffle window has restarted.` : ". The lobby is open until all eight players are present."}`,
       req.user,
     ).catch(() => null);
     publishEightsLobbyUpdate(wager.id, "lobby-reset");
-    return { success: true, wager: reset, full, seconds_remaining: full ? Math.ceil(EIGHTS_RESHUFFLE_WINDOW_MS / 1000) : null };
+    return { success: true, wager: reset, full, seconds_remaining: full ? Math.ceil(eightsReshuffleWindowMs(wager.match_type) / 1000) : null };
   });
 }
 

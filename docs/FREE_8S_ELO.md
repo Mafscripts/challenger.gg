@@ -34,6 +34,13 @@ also show that match's ELO delta. Other match rooms retain their existing cards.
 
 ## Balanced Free 8s teams
 
+The Free 8s reshuffle countdown before a full lobby starts is **one minute**.
+Generation, reshuffles, timer recovery and admin resets all use 60 seconds.
+Money 8s keeps its five-minute countdown. Existing stored deadlines are not
+rewritten by this update; new generation or an intentional admin reset uses
+the new duration. Discord voice assignment runs when teams are generated and
+does not wait for this countdown to finish.
+
 On initial generation and every player/admin reshuffle, the backend loads the
 eight stored participants' account screenshot ranks and latest dedicated Free
 8s ELO in two batched queries. Participant or frontend skill values never

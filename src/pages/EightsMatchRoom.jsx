@@ -11,6 +11,7 @@ import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import { loadFreeEightsProgression } from "@/lib/freeEightsData";
+import { eightsReshuffleWindowMs } from "@/lib/eightsLobbyTimer";
 import { isStaffUser } from "@/lib/roles";
 import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
@@ -469,6 +470,7 @@ function EightsMatchRoomView() {
     }
   };
 
+  const reshuffleMinutes = eightsReshuffleWindowMs(match?.match_type) / 60000;
   const voteForReshuffle = async () => {
     setReshuffleBusy(true);
     try {
@@ -477,7 +479,7 @@ function EightsMatchRoomView() {
       setMatch(response.data.wager || match);
       toast({
         title: response.data.reshuffled ? "Teams reshuffled" : response.data.voted ? "Reshuffle vote recorded" : "Reshuffle vote removed",
-        description: response.data.reshuffled ? "Teams are random again. The five-minute veto window restarted." : `${response.data.vote_count}/${response.data.required_votes} players agree to reshuffle.`,
+        description: response.data.reshuffled ? `Teams reshuffled. The ${reshuffleMinutes}-minute veto window restarted.` : `${response.data.vote_count}/${response.data.required_votes} players agree to reshuffle.`,
       });
       await loadRoom(true);
     } catch (error) {
@@ -494,7 +496,7 @@ function EightsMatchRoomView() {
       const response = await base44.functions.invoke("adminReshuffleEightsTeams", { wager_id: id });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not reshuffle teams");
       setMatch(response.data.wager || match);
-      toast({ title: "Teams reshuffled", description: "The five-minute veto window restarted." });
+      toast({ title: "Teams reshuffled", description: `The ${reshuffleMinutes}-minute veto window restarted.` });
       await loadRoom(true);
     } catch (error) {
       toast({ title: "Reshuffle failed", description: error.message, variant: "destructive" });
@@ -504,7 +506,7 @@ function EightsMatchRoomView() {
   };
 
   const adminResetLobby = async () => {
-    if (typeof window !== "undefined" && !window.confirm("Reset this 8s lobby? Any pending score agreement will be cleared and the five-minute reshuffle window will restart.")) return;
+    if (typeof window !== "undefined" && !window.confirm(`Reset this 8s lobby? Any pending score agreement will be cleared and the ${reshuffleMinutes}-minute reshuffle window will restart.`)) return;
     setAdminBusy(true);
     try {
       const response = await base44.functions.invoke("adminResetEightsLobby", { wager_id: id });
@@ -513,7 +515,7 @@ function EightsMatchRoomView() {
       toast({
         title: "Lobby reset",
         description: response.data.full
-          ? "The five-minute reshuffle window restarted."
+          ? `The ${reshuffleMinutes}-minute reshuffle window restarted.`
           : "The lobby is open until all eight players are present.",
       });
       await loadRoom(true);
@@ -680,7 +682,7 @@ function EightsMatchRoomView() {
                       <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
                       <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
                       {isAdmin && <button type="button" onClick={adminReshuffleTeams} disabled={adminBusy || !reshuffleOpen} title={!reshuffleOpen ? "Available while the lobby is open and the reshuffle window is active" : "Randomize both teams again"} className="flex items-center justify-center gap-2 rounded-lg border border-purple-300/25 bg-purple-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-purple-200 transition-colors hover:bg-purple-300/15 disabled:opacity-40"><Shuffle className="h-3.5 w-3.5" /> Reshuffle teams</button>}
-                      {isAdmin && <button type="button" onClick={adminResetLobby} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-yellow-300/25 bg-yellow-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-yellow-200 transition-colors hover:bg-yellow-300/15 disabled:opacity-40"><Clock3 className="h-3.5 w-3.5" /> Reset 5 min timer</button>}
+                      {isAdmin && <button type="button" onClick={adminResetLobby} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-yellow-300/25 bg-yellow-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-yellow-200 transition-colors hover:bg-yellow-300/15 disabled:opacity-40"><Clock3 className="h-3.5 w-3.5" /> Reset {reshuffleMinutes} min timer</button>}
                       <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 transition-colors hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
                     </div>
                   </details>}
