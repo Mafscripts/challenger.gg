@@ -120,7 +120,7 @@ before publishing your first announcement.
 no arguments. Everyone can use it; each caller has a 30-second cooldown.
 
 Pick a Discord user in the `username` field. The bot replies publicly with one
-of 16 English gaming jokes about aim, movement, callouts or respawning. The
+of 50 English gaming jokes about aim, movement, callouts or respawning. The
 chosen player's mention is displayed without sending a notification. Everyone
 can use this command, with a 30-second cooldown per caller. `/help` includes it.
 
