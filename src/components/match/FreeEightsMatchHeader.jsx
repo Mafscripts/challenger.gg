@@ -1,5 +1,6 @@
 import React from "react";
 import { Shield, Trophy } from "lucide-react";
+import { freeEightsMatchCode, freeEightsMatchFormat } from "@/lib/freeEightsRoomIdentity";
 
 export default function FreeEightsMatchHeader({ match, actions }) {
   return (
@@ -9,7 +10,13 @@ export default function FreeEightsMatchHeader({ match, actions }) {
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-cyan"><Shield className="h-3 w-3 shrink-0" aria-hidden="true" />Free 8s match room</p>
           <h1 className="mt-1 text-xl font-black leading-tight text-white sm:text-2xl">Team Alpha <span className="text-vapor">vs</span> Team Bravo</h1>
-          <p className="mt-1 text-[10px] leading-4 text-vapor">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3} · Match #{String(match.id).slice(-8).toUpperCase()}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <p className="text-[10px] leading-4 text-vapor">{freeEightsMatchFormat(match)}</p>
+            <span className="inline-flex items-center gap-2 rounded-md border border-cyan/25 bg-cyan/[0.08] px-2 py-1">
+              <span className="text-[8px] font-black uppercase tracking-wider text-vapor">Match ID</span>
+              <span className="font-mono text-[11px] font-black tracking-wide text-cyan">#{freeEightsMatchCode(match.id)}</span>
+            </span>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 lg:justify-end">
           {actions}

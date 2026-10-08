@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { AuditLogEvent, ChannelType, OverwriteType, PermissionFlagsBits } from "discord.js";
 import { prisma } from "../server/prisma.js";
+import { freeEightsVoiceChannelName } from "../src/lib/freeEightsRoomIdentity.js";
 import {
   freeEightsChannelKey, freeEightsDiscordConfig, freeEightsVoiceClosed, freeEightsVoiceKey,
   freeEightsVoiceCategoryIds, freeEightsVoiceLog, hasDiscordLink, validDiscordId, voiceRosterSignature,
@@ -9,8 +10,7 @@ import {
 const activeStatuses = ["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"];
 const guildCategoryReservations = new WeakMap();
 const channelSides = ["waiting", "host", "challenger"];
-export const freeEightsVoiceChannelName = (matchId, side) =>
-  `8s ${side === "waiting" ? "Waiting" : side === "host" ? "Alpha" : "Bravo"} · #${String(matchId).slice(-8).toUpperCase()}`;
+export { freeEightsVoiceChannelName };
 const unknownChannel = (error) => Number(error.code) === 10003;
 const getChannel = async (guild, id) => {
   if (!id) return null;

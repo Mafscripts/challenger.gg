@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Headphones, Link2, Loader2, 
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
+import { freeEightsVoiceChannelName } from "@/lib/freeEightsRoomIdentity";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 
 export const hasFreeEightsDiscordLink = (user) => /^\d{17,20}$/.test(String(user?.discord_user_id || "")) && Boolean(user?.discord_connected_at);
@@ -177,6 +178,10 @@ export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, v
             <span role="status" className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${available && readyCount === 8 ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{available ? `${readyCount}/8 voice ready` : checking ? "Checking voice…" : "Status unavailable"}</span>
           </div>
           <p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">This lobby has its own private Waiting Room for eight players. Join it before maps are generated; the bot then moves you into your team’s private voice channel.</p>
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-5">
+            <span className="text-vapor">Your Discord room:</span>
+            <span className="font-mono font-black text-cyan">{freeEightsVoiceChannelName(matchId, "waiting")}</span>
+          </p>
         </div>
       </div>
       <div className="min-h-[42px] shrink-0">
