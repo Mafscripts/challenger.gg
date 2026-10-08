@@ -190,6 +190,20 @@ test("gaming roast is public, uses the selected user and never sends a ping", as
   assert.equal(f.state.sent.length, 0);
 });
 
+test("autobots replies publicly without arguments; repeated calls stay private until cooldown expires", async () => {
+  const f = fixture();
+  const autobots = () => f.interaction("slash", { commandName: "autobots", memberPermissions: new PermissionsBitField(), options: {} });
+  const first = autobots(), duplicate = autobots();
+  await Promise.all([f.handler(first), f.handler(duplicate)]);
+  assert.deepEqual(first.responses[0], { content: "🤖🚗 **Autobots, roll out!** 😂🤣🔥", allowedMentions: { parse: [] } });
+  assert.equal(duplicate.responses[0].flags, MessageFlags.Ephemeral);
+  assert.match(duplicate.responses[0].content, /30 seconds/);
+  f.state.time = 30_000;
+  const later = autobots(); await f.handler(later); assert.deepEqual(later.responses[0], first.responses[0]);
+  const help = f.interaction("slash", { commandName: "help" }); await f.handler(help);
+  assert.match(help.responses[0].embeds[0].toJSON().fields[0].value, /\/autobots/);
+});
+
 test("roast cooldown handles concurrent calls privately, allows other players and expires", async () => {
   const f = fixture();
   const joke = (id = "admin") => f.interaction("slash", { commandName: "retard", user: { id }, options: { getUser: () => ({ id: messageId }) } });
@@ -208,7 +222,7 @@ test("roast cooldown handles concurrent calls privately, allows other players an
 test("registration upserts community guild commands, preserving unrelated commands", async () => {
   const calls = [];
   const names = await registerCommunityCommands({ rest: { post: async (path, data) => calls.push({ path, body: data.body }) }, applicationId: "bot", guildId });
-  assert.deepEqual(names, ["help", "rules", "8s", "streams", "retard", "announce", "poll", "poll-end"]);
+  assert.deepEqual(names, ["help", "rules", "8s", "streams", "autobots", "retard", "announce", "poll", "poll-end"]);
   assert.ok(calls.every((call) => call.path === `/applications/bot/guilds/${guildId}/commands`));
   for (const spec of communityCommandSpecs) {
     const payload = commandApiPayload(spec);

@@ -9,6 +9,7 @@ export const communityCommandSpecs = [
   { name: "rules", description: "Read the Topfragg community and competition rules." },
   { name: "8s", description: "Join Free 8s and find your match room." },
   { name: "streams", description: "Find Topfragg community streams and live coverage." },
+  { name: "autobots", description: "Autobots, roll out! Send a fun message in this channel." },
   { name: "retard", description: "Give a player a lighthearted gaming roast.", options: [
     { name: "username", description: "Choose the player to joke about.", type: 6, required: true },
   ] },

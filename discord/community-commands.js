@@ -50,7 +50,7 @@ function preview(draft) {
 
 export function createCommunityCommandHandler({ guildId, publicUrl, findChannel, log = async () => {}, now = Date.now }) {
   const drafts = new Map();
-  const jokeCooldowns = new Map();
+  const funCooldowns = new Map();
   const remember = (interaction, data) => {
     for (const [id, draft] of drafts) if (draft.expires <= now() && draft.status !== "publishing") drafts.delete(id);
     if (drafts.size >= 500) throw new Error("Too many previews are open. Try again in a few minutes.");
@@ -77,25 +77,28 @@ export function createCommunityCommandHandler({ guildId, publicUrl, findChannel,
     return channel;
   };
   const help = (interaction) => new EmbedBuilder().setColor(TOPFRAGG_COLORS.cyan).setTitle("🤖 Topfragg Bot commands")
-    .setDescription("Info replies and draft previews are private. Gaming roasts appear in the channel.")
-    .addFields({ name: "🎮 Players", value: "`/8s` — Free 8s\n`/tournaments` — Tournament signups\n`/streams` — Stream channels\n`/rules` — Server rules\n`/verify` — Verify your account\n`/support` — Open a ticket\n`/ping` — Bot status\n`/retard username:@player` — Random gaming roast" },
+    .setDescription("Info replies and draft previews are private. Fun commands appear in the channel.")
+    .addFields({ name: "🎮 Players", value: "`/8s` — Free 8s\n`/tournaments` — Tournament signups\n`/streams` — Stream channels\n`/rules` — Server rules\n`/verify` — Verify your account\n`/support` — Open a ticket\n`/ping` — Bot status\n`/autobots` — Autobots, roll out!\n`/retard username:@player` — Random gaming roast" },
       ...(has(interaction.memberPermissions, PermissionFlagsBits.ManageGuild) ? [{ name: "🛡️ Admins", value: "`/announce` — Announcement with private preview\n`/poll` — Poll with private preview\n`/poll-end` — End a bot poll early\n`/giveaway start` / `/giveaway end` — Giveaways\n`/setup-status` — Check server setup\nChoose `everyone:true` only when you want an everyone ping." }] : []));
 
   return async (interaction) => {
     const command = interaction.isChatInputCommand?.() ? interaction.commandName : null;
-    const managed = ["help", "rules", "8s", "streams", "retard", "announce", "poll", "poll-end"].includes(command) || String(interaction.customId || "").startsWith(prefix);
+    const managed = ["help", "rules", "8s", "streams", "autobots", "retard", "announce", "poll", "poll-end"].includes(command) || String(interaction.customId || "").startsWith(prefix);
     if (!managed) return false;
     if (interaction.guildId !== guildId) { await interaction.reply(privateReply("Use this command in the Topfragg server.")); return true; }
     try {
       if (command === "help") { await interaction.reply({ ...privateReply(""), embeds: [help(interaction)] }); return true; }
-      if (command === "retard") {
+      if (command === "autobots" || command === "retard") {
         const currentTime = now();
-        for (const [id, until] of jokeCooldowns) if (until <= currentTime) jokeCooldowns.delete(id);
-        const until = jokeCooldowns.get(interaction.user.id);
-        if (until) { await interaction.reply(privateReply(`Wait ${Math.ceil((until - currentTime) / 1000)} seconds before the next roast.`)); return true; }
-        const target = interaction.options.getUser("username", true);
-        jokeCooldowns.set(interaction.user.id, currentTime + 30_000);
-        await interaction.reply(playerJokePayload(target.id)); return true;
+        for (const [id, until] of funCooldowns) if (until <= currentTime) funCooldowns.delete(id);
+        const cooldownKey = `${command}:${interaction.user.id}`;
+        const until = funCooldowns.get(cooldownKey);
+        if (until) { await interaction.reply(privateReply(`Wait ${Math.ceil((until - currentTime) / 1000)} seconds before using /${command} again.`)); return true; }
+        const payload = command === "autobots"
+          ? { content: "🤖🚗 **Autobots, roll out!** 😂🤣🔥", allowedMentions: { parse: [] } }
+          : playerJokePayload(interaction.options.getUser("username", true).id);
+        funCooldowns.set(cooldownKey, currentTime + 30_000);
+        await interaction.reply(payload); return true;
       }
       if (["rules", "8s", "streams"].includes(command)) {
         const channel = findChannel(interaction.guild, command === "rules" ? "rules" : "live-now");

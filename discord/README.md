@@ -53,6 +53,7 @@ Available commands:
 - `/rules` — server and competition rules
 - `/8s` — Free 8s lobby link and connection instructions
 - `/streams` — live stream channel and tournament coverage
+- `/autobots` — post “🤖🚗 Autobots, roll out! 😂🤣🔥” in the current channel
 - `/retard username:@player` — random lighthearted gaming joke, visible in the current channel
 - `/ping`
 - `/verify`
@@ -108,11 +109,15 @@ bot or rebuild the server layout. No website build or database migration is
 needed for these commands. Try `/help`, then create a poll and cancel its preview
 before publishing your first announcement.
 
-### Gaming jokes
+### Fun commands
 
 ```text
+/autobots
 /retard username:@player
 ```
+
+`/autobots` replies publicly with **🤖🚗 Autobots, roll out! 😂🤣🔥** and needs
+no arguments. Everyone can use it; each caller has a 30-second cooldown.
 
 Pick a Discord user in the `username` field. The bot replies publicly with one
 of 16 English gaming jokes about aim, movement, callouts or respawning. The
