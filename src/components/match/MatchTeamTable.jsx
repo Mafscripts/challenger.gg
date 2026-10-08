@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useId } from "react";
 import { Link } from "react-router-dom";
 import { AtSign, Globe2, MessageCircle, Trophy, Twitch, Youtube } from "lucide-react";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
+import BadgeTooltip from "@/components/ui/BadgeTooltip";
 import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
 import { FreeEightsVoiceBadge } from "@/components/competition/FreeEightsDiscord";
 import { normalizeFreeEightsElo } from "@/lib/freeEightsRanks";
@@ -39,11 +40,11 @@ const recordFor = (player) => ({
 const earningsFor = (player) => Math.max(number(player?.earnings), number(player?.lifetime_earnings), number(player?.total_wager_earnings));
 
 const socialDefinitions = [
-  { key: "discord", label: "Discord", icon: MessageCircle },
-  { key: "twitter", label: "X", icon: AtSign },
-  { key: "twitch", label: "Twitch", icon: Twitch },
-  { key: "youtube", label: "YouTube", icon: Youtube },
-  { key: "website", label: "Website", icon: Globe2 },
+  { key: "discord", label: "Discord", icon: MessageCircle, toneClass: "text-purple-300", description: "Open this player's Discord link." },
+  { key: "twitter", label: "X", icon: AtSign, toneClass: "text-white", description: "Open this player's X profile." },
+  { key: "twitch", label: "Twitch", icon: Twitch, toneClass: "text-purple-300", description: "Open this player's Twitch channel." },
+  { key: "youtube", label: "YouTube", icon: Youtube, toneClass: "text-red-400", description: "Open this player's YouTube channel." },
+  { key: "website", label: "Website", icon: Globe2, toneClass: "text-cyan", description: "Open this player's website." },
 ];
 
 const socialUrl = (key, value) => {
@@ -73,15 +74,18 @@ function TournamentRankBadge({ goldTrophies }) {
 }
 
 function PlayerSocials({ player }) {
+  const tooltipPrefix = useId();
   const socials = socialsFor(player);
   const available = socialDefinitions.filter(({ key }) => socials?.[key]);
   if (available.length === 0) return <span className="text-xs text-vapor/45">&mdash;</span>;
   return (
     <div className="grid w-full max-w-[86px] grid-cols-4 gap-1">
-      {available.map(({ key, label, icon: Icon }) => {
+      {available.map(({ key, label, icon: Icon, toneClass, description }) => {
         const href = socialUrl(key, socials[key]);
-        const classes = "inline-flex h-5 w-full min-w-0 items-center justify-center rounded-md border border-white/[0.08] bg-black/20 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan";
-        return href ? <a key={key} href={href} target="_blank" rel="noreferrer" title={label} className={classes}><Icon className="h-3 w-3" /></a> : <span key={key} title={`${label}: ${socials[key]}`} className={classes}><Icon className="h-3 w-3" /></span>;
+        const tooltipId = `${tooltipPrefix}-${key}`;
+        const Social = href ? "a" : "span";
+        const classes = "group/badge relative inline-flex h-5 w-full min-w-0 items-center justify-center rounded-md border border-white/[0.08] bg-black/20 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan";
+        return <Social key={key} {...(href ? { href, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} aria-label={label} aria-describedby={tooltipId} className={classes}><Icon className="h-3 w-3" aria-hidden="true" /><BadgeTooltip id={tooltipId} label={label} description={href ? description : `${label}: ${socials[key]}`} icon={Icon} toneClass={toneClass} /></Social>;
       })}
     </div>
   );

@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, BadgeCheck, Crown, Monitor } from "lucide-react";
+import BadgeTooltip from "@/components/ui/BadgeTooltip";
 
 const specialBadgeConfig = {
   verified_player: {
@@ -76,20 +77,8 @@ export default function UserBadges({
   const iconClass = size === "xs" ? "h-3.5 w-3.5" : "h-4 w-4";
   const iconOnlyClass = size === "xs" ? "h-5 w-5" : "h-6 w-6";
 
-  const tooltipPositionClass = tooltipPlacement === "bottom"
-    ? "left-1/2 top-full mt-2 -translate-x-1/2"
-    : "bottom-full left-1/2 mb-2 -translate-x-1/2";
-
   const tooltip = (label, description, Icon, toneClass) => (
-    <span className={`pointer-events-none invisible absolute z-[70] w-40 translate-y-1 rounded-lg border border-white/[0.12] bg-[#111821] px-3 py-2.5 text-left opacity-0 shadow-[0_14px_36px_rgba(0,0,0,.65)] transition-all duration-150 group-hover/badge:visible group-hover/badge:translate-y-0 group-hover/badge:opacity-100 ${tooltipPositionClass}`}>
-      <span className={`mb-1 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider ${toneClass}`}>
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </span>
-      <span className="block text-[11px] font-medium normal-case leading-snug tracking-normal text-vapor">
-        {description}
-      </span>
-    </span>
+    <BadgeTooltip label={label} description={description} icon={Icon} toneClass={toneClass} placement={tooltipPlacement} />
   );
 
   return (

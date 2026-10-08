@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { AlertTriangle, CheckCircle2, ExternalLink, Headphones, Link2, Loader2, Mic, MicOff, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
+import BadgeTooltip from "@/components/ui/BadgeTooltip";
 
 export const hasFreeEightsDiscordLink = (user) => /^\d{17,20}$/.test(String(user?.discord_user_id || "")) && Boolean(user?.discord_connected_at);
 export const isFreeEightsDiscordRequired = (result) => result?.code === "FREE_EIGHTS_DISCORD_REQUIRED"
@@ -21,6 +22,7 @@ const voiceLabels = {
 };
 
 export function FreeEightsVoiceBadge({ status = "checking", waitingRoomUrl }) {
+  const tooltipId = useId();
   const ready = ["in_waiting_room", "in_team_voice"].includes(status);
   const StatusIcon = status === "checking" ? Loader2 : ready ? CheckCircle2 : status === "not_linked" ? Link2 : status === "move_failed" ? AlertTriangle : status === "not_in_waiting_room" ? Headphones : MicOff;
   const badgeStyle = status === "in_waiting_room" ? "border-green/20 bg-green/[0.08] text-green"
@@ -28,10 +30,19 @@ export function FreeEightsVoiceBadge({ status = "checking", waitingRoomUrl }) {
     : ["not_in_waiting_room", "not_linked", "move_failed"].includes(status) ? "border-orange/20 bg-orange/[0.08] text-orange"
     : "border-white/[0.08] bg-white/[0.03] text-vapor";
   const label = voiceLabels[status] || voiceLabels.checking;
-  const description = status === "not_in_waiting_room" ? "Open the 8s Waiting Room in Discord." : label;
+  const description = {
+    checking: "Checking your current Discord voice channel.",
+    unavailable: "Discord voice status could not be confirmed.",
+    not_linked: "Link your Discord account to join Free 8s.",
+    not_in_waiting_room: "Open the 8s Waiting Room in Discord.",
+    in_waiting_room: "Connected to the 8s Waiting Room and ready to play.",
+    in_team_voice: "Connected to your assigned team voice channel.",
+    move_failed: "The bot will retry moving you into team voice.",
+  }[status] || "Checking your current Discord voice channel.";
   const canJoin = status === "not_in_waiting_room" && Boolean(waitingRoomUrl);
   const Badge = canJoin ? "a" : "span";
-  return <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : {})} title={description} className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange" : ""}`}><StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status === "checking" ? "animate-spin" : ""}`} aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}</Badge>;
+  const toneClass = badgeStyle.split(" ").find((token) => token.startsWith("text-")) || "text-white";
+  return <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} aria-describedby={tooltipId} className={`group/badge relative inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15" : "cursor-default"}`}><StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status === "checking" ? "animate-spin" : ""}`} aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}<BadgeTooltip id={tooltipId} label={status === "not_in_waiting_room" ? "8s Waiting Room" : label} description={description} icon={StatusIcon} toneClass={toneClass} /></Badge>;
 }
 
 export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranked/8s", trigger, returnFocusTo }) {
