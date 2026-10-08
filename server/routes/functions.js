@@ -16,6 +16,7 @@ import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
+import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membership.js";
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -6412,9 +6413,9 @@ async function sendMatchRoomMessage(req) {
 async function createWager(req) {
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
-  const entryFee = money(req.body.entry_fee ?? req.body.amount);
   const requestedMatchType = String(req.body.match_type || "").toLowerCase();
   const matchType = isEightsMatchType(requestedMatchType) ? requestedMatchType : requestedMatchType === "xp" ? "xp" : "wagers";
+  const entryFee = matchType === "8s" ? 0 : money(req.body.entry_fee ?? req.body.amount);
   const discordError = freeEightsDiscordJoinError(matchType, req.userRow);
   if (discordError) return discordError;
   const requiredSize = requiredRosterSize(req.body.team_size);
@@ -6450,7 +6451,7 @@ async function createWager(req) {
   const totalPrizePool = matchType === "money8s"
     ? roundedMoney(entryFee * requiredSize * 2)
     : isTeamMatch ? roundedMoney(entryFee * requiredSize * 2) : roundedMoney(entryFee * 2);
-  const wager = await createEntity("Wager", {
+  const wagerPayload = {
     ...req.body,
     host_id: req.user.id,
     host_name: nameFor(req.user),
@@ -6474,7 +6475,15 @@ async function createWager(req) {
     ...(matchType === "8s" ? { free_eights_waiting_for_voice: false, teams_generated_at: "", roster_lock_deadline: "", series_modes: [] } : {}),
     status: "open",
     created_date: new Date().toISOString(),
-  });
+  };
+
+  if (matchType === "8s") {
+    const result = await createFreeEightsLobby(prisma, req.user.id, wagerPayload, nameFor(req.user));
+    if (result.success) freeEightsVoiceLog("queue-join", { match_id: result.wager_id, user_id: req.user.id, action: "create" });
+    else freeEightsVoiceLog("queue-join-blocked", { user_id: req.user.id, active_match_id: result.active_match_id });
+    return result;
+  }
+  const wager = await createEntity("Wager", wagerPayload);
 
   if (isTeamMatch) {
     await createWagerParticipantsForRoster({
@@ -6628,14 +6637,14 @@ async function acceptWagerUnlocked(req) {
   if (existingParticipant) {
     return { success: false, error: "You already joined this wager" };
   }
-  const entryFee = money(wager.entry_fee ?? wager.amount);
+  const entryFee = wager.match_type === "8s" ? 0 : money(wager.entry_fee ?? wager.amount);
   const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
   const wagerMatchType = wager.match_type || "wagers";
   const isTeamMatch = wagerMatchType === "wagers";
   const paymentMode = paymentModeFor(req.body.payment_mode);
   let challengerTeam = null;
   let challengerRoster = null;
-  const enrolledParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
+  let enrolledParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
   const isIndividualEights = isEightsMatchType(wagerMatchType);
   const playerCapacity = requiredSize * 2;
   if (isIndividualEights && enrolledParticipants.length >= playerCapacity) {
@@ -6643,7 +6652,7 @@ async function acceptWagerUnlocked(req) {
   }
   const hostCount = enrolledParticipants.filter((participant) => participant.team === "host").length;
   const challengerCount = enrolledParticipants.filter((participant) => participant.team === "challenger").length;
-  const individualSide = isIndividualEights && hostCount <= challengerCount ? "host" : "challenger";
+  let individualSide = isIndividualEights && hostCount <= challengerCount ? "host" : "challenger";
   const enrolledActivisionError = await activisionIdErrorForMembers(enrolledParticipants);
   if (enrolledActivisionError) return { success: false, error: enrolledActivisionError, code: "ACTIVISION_ID_REQUIRED" };
 
@@ -6675,7 +6684,15 @@ async function acceptWagerUnlocked(req) {
     }
   }
 
-  if (isTeamMatch) {
+  if (wagerMatchType === "8s") {
+    const result = await joinFreeEightsLobby(prisma, req.user.id, wager.id, nameFor(req.user));
+    if (!result.success || result.rejoined) {
+      if (!result.success) freeEightsVoiceLog("queue-join-blocked", { user_id: req.user.id, match_id: wager.id, active_match_id: result.active_match_id });
+      return result;
+    }
+    enrolledParticipants = result.enrolled;
+    individualSide = result.participant.team;
+  } else if (isTeamMatch) {
     await createWagerParticipantsForRoster({
       wager,
       side: "challenger",

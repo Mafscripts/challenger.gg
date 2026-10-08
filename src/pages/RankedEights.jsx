@@ -173,7 +173,7 @@ export default function RankedEights() {
                     playRule={lobby.play_rule}
                     tone="orange"
                     action={user ? (
-                      <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || joined >= 8} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
+                      <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || (joined >= 8 && (isMoney || !alreadyIn))} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
                         {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? `Finish active ${isMoney ? "Money 8s" : "8s"} first` : "Accept This Match"}
                       </button>
                     ) : null}

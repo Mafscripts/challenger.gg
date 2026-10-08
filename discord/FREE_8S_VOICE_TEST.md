@@ -100,6 +100,17 @@ join voice or transmit audio.
    membership; finish or leave the lobby first.
 4. Linked players join normally and follow **Open 8s Waiting Room**. They connect
    to voice themselves. The website does not connect them automatically.
+   A player can be enrolled in only **one unfinished Free 8s** at a time. Both
+   creation and accepting a different Free 8s lobby are blocked by the backend,
+   including from standalone Matchfinder or concurrent browser tabs. PostgreSQL
+   account locks serialize the check and enrollment in a short database-only
+   transaction; creation of the lobby and its host membership is atomic. The
+   active check uses stored participant records and captain IDs, including
+   legacy captains missing a membership row. All nonterminal statuses remain
+   blocking, including pending score reports, awaiting completion and disputes.
+   Only completed/cancelled/expired/closed matches release the slot. Reopening
+   the current lobby does not create another membership. Existing memberships
+   are preserved; no other queue's enrollment policy is changed.
 5. With eight players on the website, maps, teams and the one-minute countdown
    remain pending until the existing bot has observed **all eight** in the
    configured Waiting Room. The server checks the exact roster/signature, guild,

@@ -16,8 +16,9 @@ function fixture(data = {}) {
   const matchesWhere = (row, where) => !where || Object.entries(where).every(([key, value]) => {
     if (key === "AND") return value.every((entry) => matchesWhere(row, entry));
     if (key === "OR") return value.some((entry) => matchesWhere(row, entry));
+    if (key === "NOT") return value.every((entry) => !matchesWhere(row, entry));
     if (key === "metadata") return row.metadata?.[value.path[0]] === value.equals;
-    return Array.isArray(value?.in) ? value.in.includes(row[key]) : row[key] === value;
+    return Array.isArray(value?.in) ? value.in.includes(row[key]) : value?.not ? row[key] !== value.not : row[key] === value;
   });
   const db = {};
   for (const name of ["wager", "wagerParticipant", "xPStats", "eightsStats", "user"]) {
@@ -62,7 +63,16 @@ test("30 open lobbies and 1,000 old memberships still use four queries; active m
 test("empty Free 8s overview skips empty batch queries", async () => {
   const f = fixture();
   assert.deepEqual(await getFreeEightsOverview(f.db, "me"), { success: true, lobbies: [], active_lobby: null, counts: {} });
-  assert.equal(f.calls.length, 2);
+  assert.equal(f.calls.length, 3);
+});
+
+test("overview and enrollment use the same unresolved status rule and captain fallback", async () => {
+  const hosted = match("hosted", "8s", "score_reported"); hosted.metadata.host_id = "me";
+  const f = fixture({ wager: [hosted, match("completed", "8s", "completed"), match("paid", "money8s", "in_progress")],
+    wagerParticipant: [participant("p1", "me", "completed"), participant("p2", "me", "paid")] });
+  assert.equal((await getFreeEightsOverview(f.db, "me")).active_lobby.id, "hosted");
+  hosted.metadata.status = "completed";
+  assert.equal((await getFreeEightsOverview(f.db, "me")).active_lobby, null);
 });
 
 test("batch stats preserve zero ELO, latest records, roster isolation and public field whitelist", async () => {

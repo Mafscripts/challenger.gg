@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { toast } from "@/components/ui/use-toast";
 import { FreeEightsDiscordDialog, FreeEightsDiscordNotice, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
+import { loadFreeEightsOverview } from "@/lib/freeEightsData";
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", active: "border-cyan/35 bg-cyan/10 text-cyan", dot: "bg-cyan" },
@@ -39,6 +40,8 @@ export default function Matchfinder() {
   const [rankedMatches, setRankedMatches] = useState([]);
   const [wagerMatches, setWagerMatches] = useState([]);
   const [eightsCounts, setEightsCounts] = useState({});
+  const [freeMembership, setFreeMembership] = useState(null);
+  const activeFreeMatch = freeMembership?.userId === user?.id ? freeMembership.match : null;
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState("");
@@ -82,6 +85,29 @@ export default function Matchfinder() {
   }, []);
 
   useEffect(() => {
+    if (activeCategory !== "eights" || !user?.id) return;
+    let cancelled = false;
+    let inFlight = false;
+    const refresh = async () => {
+      if (inFlight || cancelled) return;
+      inFlight = true;
+      try {
+        const overview = await loadFreeEightsOverview(base44);
+        if (!cancelled) {
+          setFreeMembership({ userId: user.id, match: overview.active_lobby });
+          setEightsCounts(overview.counts);
+        }
+      } catch (error) { console.error("Could not check active Free 8s match:", error); }
+      finally { inFlight = false; }
+    };
+    void refresh();
+    const interval = window.setInterval(refresh, 6000);
+    window.addEventListener("focus", refresh);
+    return () => { cancelled = true; window.clearInterval(interval); window.removeEventListener("focus", refresh); };
+  }, [activeCategory, user?.id]);
+
+  useEffect(() => {
+    if (activeCategory === "eights" && user?.id) return;
     if (!["eights", "money8s"].includes(activeCategory)) return;
     const matchType = activeCategory === "money8s" ? "money8s" : "8s";
     const lobbies = wagerMatches.filter((match) => wagerType(match) === matchType);
@@ -100,7 +126,7 @@ export default function Matchfinder() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [activeCategory, wagerMatches]);
+  }, [activeCategory, wagerMatches, user?.id]);
 
   useEffect(() => {
     if (!requestedWagerId || autoOpenedWagerId.current === requestedWagerId) return;
@@ -236,6 +262,7 @@ export default function Matchfinder() {
   };
 
   const acceptMatch = async (category, match) => {
+    if (category === "eights" && activeFreeMatch) { navigate(`/8s-match/${activeFreeMatch.id}`); return; }
     if (category === "eights") discordPromptTrigger.current = document.activeElement;
     if (category === "eights" && !hasFreeEightsDiscordLink(user)) {
       setDiscordPromptOpen(true);
@@ -256,6 +283,11 @@ export default function Matchfinder() {
         : category === "elo"
           ? await base44.functions.invoke("acceptRankedMatch", { ranked_match_id: match.id })
           : await base44.functions.invoke("acceptWager", { wager_id: match.id });
+      if (category === "eights" && response.data?.code === "FREE_EIGHTS_ACTIVE_MATCH") {
+        setFreeMembership({ userId: user.id, match: { id: response.data.active_match_id } });
+        toast({ title: "Finish your current Free 8s", description: response.data.error });
+        return;
+      }
       if (category === "eights" && isFreeEightsDiscordRequired(response.data)) {
         setDiscordPromptOpen(true);
         return;
@@ -275,6 +307,9 @@ export default function Matchfinder() {
   };
 
   const renderAction = (item) => {
+    if (activeCategory === "eights" && activeFreeMatch) {
+      return <button type="button" onClick={() => navigate(`/8s-match/${activeFreeMatch.id}`)} className="min-w-40 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">{activeFreeMatch.id === item.id ? "Open match room" : "Finish active Free 8s first"}</button>;
+    }
     if (activeCategory === "tournaments") {
       return <button type="button" onClick={() => navigate(roomPath(activeCategory, item))} className="min-w-40 rounded-lg border border-red-400/25 bg-red-400/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300">View Tournament</button>;
     }
@@ -321,6 +356,7 @@ export default function Matchfinder() {
         </nav>
 
         {activeCategory === "eights" && <FreeEightsDiscordNotice user={user} returnTo="/matchfinder?category=eights" />}
+        {activeCategory === "eights" && activeFreeMatch && <Link to={`/8s-match/${activeFreeMatch.id}`} className="mb-4 block rounded-xl border border-cyan/20 bg-cyan/5 p-4 text-sm text-white"><strong>Finish your current Free 8s first.</strong><span className="mt-1 block text-xs text-vapor">Report the score and wait for the confirmed result before joining another lobby. Open your current match →</span></Link>}
         <section className="mt-5 overflow-hidden rounded-2xl border border-white/[0.08] bg-card">
           <header className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

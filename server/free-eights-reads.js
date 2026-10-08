@@ -1,7 +1,7 @@
 import { serializeRow } from "./entity.js";
 import { loadFreeEightsSkills } from "./free-eights-teams.js";
+import { findActiveFreeEightsMatch } from "./free-eights-membership.js";
 
-const activeStatuses = ["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"];
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 
 // Read-only Free 8s queries. Batch by stored match/user IDs; never fetch a
@@ -14,10 +14,7 @@ export async function getFreeEightsOverview(db, userId) {
   const openIds = open.map((row) => row.id);
   const memberIds = [...new Set(memberships.map((row) => row.metadata?.wager_id).filter((id) => typeof id === "string" && id))];
   const [active, participants] = await Promise.all([
-    memberIds.length ? db.wager.findMany({ where: { AND: [
-      { id: { in: memberIds } }, field("match_type", "8s"),
-      { OR: activeStatuses.map((status) => field("status", status)) },
-    ] }, orderBy: { created_date: "desc" }, take: 1 }) : [],
+    findActiveFreeEightsMatch(db, userId, { membershipIds: memberIds }),
     openIds.length ? db.wagerParticipant.findMany({ where: { OR: openIds.map((id) => field("wager_id", id)) }, select: { metadata: true } }) : [],
   ]);
   const counts = Object.fromEntries(openIds.map((id) => [id, 0]));
@@ -25,7 +22,7 @@ export async function getFreeEightsOverview(db, userId) {
     const id = row.metadata?.wager_id;
     if (Object.hasOwn(counts, id)) counts[id]++;
   }
-  return { success: true, lobbies: open.map(serializeRow), active_lobby: serializeRow(active[0]), counts };
+  return { success: true, lobbies: open.map(serializeRow), active_lobby: serializeRow(active), counts };
 }
 
 export async function getFreeEightsPlayerStats(db, matchId) {
