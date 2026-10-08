@@ -1,9 +1,14 @@
 import React from "react";
 
-export default function MatchRoomShell({ header, beforeTeams = null, teams, sidebar }) {
+export default function MatchRoomShell({ header, headerBackground, beforeTeams = null, teams, sidebar }) {
   return (
     <section className="relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#11171f] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
-      <header className="match-room-header relative border-b border-white/[0.07] p-4 sm:p-5 lg:p-6">
+      <header className="match-room-header relative border-b border-white/[0.07] p-4 sm:p-5 lg:p-6" style={headerBackground ? {
+        backgroundImage: `linear-gradient(90deg, rgba(13,19,26,.88), rgba(13,19,26,.4) 50%, rgba(13,19,26,.76)), url("${headerBackground}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      } : undefined}>
         {header}
       </header>
       {beforeTeams}

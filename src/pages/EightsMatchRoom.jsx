@@ -631,7 +631,7 @@ function EightsMatchRoomView() {
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
-        <MatchRoomShell header={(
+        <MatchRoomShell headerBackground={match.match_type === "8s" ? "/assets/competition/free-eights-elo-header.webp" : undefined} header={(
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex flex-1 flex-col gap-5">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
