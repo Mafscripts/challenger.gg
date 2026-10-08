@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const callbackMessages = {
   connected: { success: true, message: "Discord connected and the Verified Player role was assigned." },
@@ -85,8 +86,9 @@ export default function DiscordSection({ user, onUserUpdate }) {
     setConnectionResult(null);
     try {
       const result = await base44.discord.sync();
+      await onUserUpdate();
       setConnectionResult(result.roleAssigned
-        ? { success: true, message: "Verified Player role synchronized successfully." }
+        ? { success: true, message: result.profileRefreshed ? "Verified Player role and Discord profile synchronized successfully." : "Verified Player role synchronized successfully." }
         : { success: false, message: "Join the Topfragg Discord server first, then try again." });
     } catch (error) {
       setConnectionResult({ success: false, message: error.message || "Could not synchronize the Discord role." });
@@ -166,13 +168,12 @@ export default function DiscordSection({ user, onUserUpdate }) {
         {connected ? (
           <div className="flex flex-col gap-4 rounded-xl border border-green/20 bg-green/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
-              {user.discord_avatar_url ? (
-                <img src={user.discord_avatar_url} alt="" className="h-12 w-12 rounded-full border border-white/10 object-cover" />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#5865F2]/20 text-lg font-black text-[#8b9cff]">
+              <Avatar className="h-12 w-12 border border-white/10">
+                <AvatarImage src={user.discord_avatar_url || undefined} alt="" className="object-cover" />
+                <AvatarFallback className="bg-[#5865F2]/20 text-lg font-black text-[#8b9cff]">
                   {(user.discord_display_name || user.discord_username || "D").charAt(0).toUpperCase()}
-                </div>
-              )}
+                </AvatarFallback>
+              </Avatar>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="truncate font-bold">{user.discord_display_name || user.discord_username}</p>

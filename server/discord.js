@@ -62,6 +62,17 @@ export const discordAvatarUrl = (discordUser) => {
   return `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.${extension}?size=256`;
 };
 
+export async function discordUserProfile(discordUserId) {
+  if (!/^\d{17,20}$/.test(String(discordUserId || ""))) throw configurationError();
+  const profile = await discordBotRequest(`/users/${encodeURIComponent(discordUserId)}`, { signal: AbortSignal.timeout(8000) });
+  if (profile?.id !== discordUserId || typeof profile.username !== "string" || !profile.username) {
+    const error = new Error("Discord returned an invalid profile for the linked account");
+    error.code = "DISCORD_PROFILE_MISMATCH";
+    throw error;
+  }
+  return profile;
+}
+
 export const discordInviteUrl = () => topfraggDiscordInviteUrl;
 
 // This fresh lookup uses the existing bot and the authenticated account's OAuth ID.

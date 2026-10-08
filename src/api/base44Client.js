@@ -340,9 +340,11 @@ export const base44 = {
       requireToken();
       return apiFetch("/discord/status", { dedupe: false });
     },
-    sync() {
+    async sync() {
       requireToken();
-      return apiFetch("/discord/sync", { method: "POST", dedupe: false });
+      const result = await apiFetch("/discord/sync", { method: "POST", dedupe: false });
+      invalidateMeCache();
+      return result;
     },
     async disconnect() {
       requireToken();

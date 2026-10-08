@@ -7,6 +7,7 @@ import { freeEightsDiscordConfig, freeEightsDiscordMembershipJoinError, freeEigh
 import {
   discordAvatarUrl,
   discordInviteUrl,
+  discordUserProfile,
   removeDiscordVerifiedRole,
   syncDiscordVerifiedRole,
 } from "../discord.js";
@@ -266,7 +267,22 @@ router.post("/sync", requireAuth, async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user?.discord_user_id) return res.status(400).json({ error: "Connect Discord first" });
     const result = await syncDiscordVerifiedRole(user.discord_user_id);
-    res.json(result);
+    let profileRefreshed = false;
+    try {
+      const profile = await discordUserProfile(user.discord_user_id);
+      // Refresh only display fields while this same identity remains linked.
+      // Do not restore an account disconnected during the Discord request.
+      const updated = await prisma.user.updateMany({ where: { id: user.id, discord_user_id: user.discord_user_id }, data: {
+        discord_username: profile.username,
+        discord_display_name: profile.global_name || profile.username,
+        discord_avatar_url: discordAvatarUrl(profile),
+      } });
+      profileRefreshed = updated.count === 1;
+    } catch (error) {
+      // A profile update must not turn a successful role sync into failure.
+      console.warn("Discord profile refresh unavailable:", error.code || "lookup-unavailable");
+    }
+    res.json({ ...result, profileRefreshed });
   } catch (error) {
     next(error);
   }
