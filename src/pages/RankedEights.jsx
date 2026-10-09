@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
 const EIGHTS_PRIZE_START_MONTH = "2026-10";
 const EIGHTS_PRIZE_START_DATE = new Date("2026-10-01T00:00:00Z");
+const actionPillClass = "inline-flex !h-11 w-full items-center gap-2 !rounded-full border border-white/15 bg-[#111821] px-4 text-xs font-bold text-foreground !shadow-sm transition-colors hover:!text-cyan focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan";
 const monthKey = () => new Date().toISOString().slice(0, 7);
 const daysLeftInMonth = () => {
   const now = new Date();
@@ -222,18 +223,31 @@ export default function RankedEights() {
             </CompetitionMatchfinder>
           )}
           action={<div className="space-y-3">{!isMoney && !freeOverview.data ? (
-            <button type="button" disabled={!freeOverview.error} onClick={() => refreshFreeOverview()} className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 px-6 py-3.5 text-xs font-black text-vapor disabled:opacity-50">
+            <button type="button" disabled={!freeOverview.error} onClick={() => refreshFreeOverview()} className={`${actionPillClass} justify-center disabled:opacity-50`}>
               {freeOverview.error ? "Retry loading Free 8s" : "Loading Free 8s..."}
             </button>
           ) : activeLobby ? (
-            <Link to={`/8s-match/${activeLobby.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan px-6 py-3.5 text-xs font-black uppercase tracking-wider text-background">
+            <Link to={`/8s-match/${activeLobby.id}`} className={`${actionPillClass} justify-center`}>
               Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
             </Link>
           ) : !isMoney && !hasFreeEightsRank(user) ? <UploadFreeEightsRank /> : !isMoney && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> : (
-            <button onClick={() => setCreateOpen(true)} className="create-cta inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-xs font-black uppercase tracking-wider transition-all">
+            <button onClick={() => setCreateOpen(true)} className={`${actionPillClass} justify-center`}>
               <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
-          )}{!isMoney && <Select value={gameId} onValueChange={switchGame}><SelectTrigger aria-label="Switch game" className="!h-11 !rounded-full border-white/15 bg-[#111821] px-4 text-xs font-bold"><span className="text-vapor">Switch game</span><SelectValue /></SelectTrigger><SelectContent className="border-white/10 bg-[#111821] text-white">{games.map((game) => <SelectItem key={game.id} value={game.id}><FreeEightsGameName game={game} /></SelectItem>)}</SelectContent></Select>}</div>}
+          )}{!isMoney && (
+            <Select value={gameId} onValueChange={switchGame}>
+              <SelectTrigger aria-label="Switch game" className={`${actionPillClass} justify-between`}>
+                <span className="text-vapor">Switch game</span><SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-white/10 bg-[#111821] text-white">
+                {games.map((game) => (
+                  <SelectItem key={game.id} value={game.id} className="cursor-pointer focus:!bg-transparent focus:!text-cyan data-[highlighted]:!bg-transparent data-[highlighted]:!text-cyan [&[data-highlighted]_*]:!text-cyan">
+                    <FreeEightsGameName game={game} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}</div>}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
         {!isMoney && <FreeEightsDiscordNotice user={user} />}
