@@ -241,7 +241,7 @@ export default function RankedEights() {
               </SelectTrigger>
               <SelectContent className="rounded-xl border-white/10 bg-[#111821] text-white">
                 {games.map((game) => (
-                  <SelectItem key={game.id} value={game.id} className="cursor-pointer focus:!bg-transparent focus:!text-cyan data-[highlighted]:!bg-transparent data-[highlighted]:!text-cyan [&[data-highlighted]_*]:!text-cyan">
+                  <SelectItem key={game.id} value={game.id} className="cursor-pointer focus:!bg-transparent focus:!text-cyan data-[highlighted]:!bg-transparent data-[highlighted]:!text-cyan">
                     <FreeEightsGameName game={game} />
                   </SelectItem>
                 ))}

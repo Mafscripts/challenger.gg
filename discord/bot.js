@@ -30,6 +30,7 @@ import { syncManagedDiscordRoles } from "./managed-roles.js";
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
+import { createFreeEightsVoiceUpdater, startFreeEightsLiveUpdates } from "./free-eights-live.js";
 import { syncFreeEightsResults } from "./free-eights-results.js";
 import { createCommunityCommandHandler } from "./community-commands.js";
 import { registerCommunityCommands } from "./register-community-commands.js";
@@ -518,12 +519,19 @@ client.once(Events.ClientReady, async (readyClient) => {
     process.stderr.write(`[Topfragg Discord] Server ${config.guildId} is unavailable.\n`);
     return;
   }
+  const voiceUpdates = createFreeEightsVoiceUpdater((id) => syncFreeEightsVoice(guild, { matchIds: [id], refreshInventory: false }));
+  void runFreeEightsVoiceSync(guild);
+  setInterval(() => runFreeEightsVoiceSync(guild), 5000);
+  try {
+    startFreeEightsLiveUpdates({ guildId: config.guildId, publicUrl: config.publicUrl,
+      onUpdate: voiceUpdates.request, onReady: () => { void runFreeEightsVoiceSync(guild); } });
+  } catch (error) {
+    console.error("[Topfragg Free 8s Discord] Live connection unavailable; polling remains active:", error.message);
+  }
   await registerCommunityCommands({ rest: readyClient.rest, applicationId: readyClient.user.id, guildId: config.guildId })
     .then((names) => process.stdout.write(`[Topfragg Discord] Commands ready: ${names.map((name) => `/${name}`).join(", ")}\n`))
     .catch((error) => console.error("[Topfragg Discord] Command registration failed:", error.message));
   await runTournamentDiscordSync(guild);
-  await runFreeEightsVoiceSync(guild);
-  setInterval(() => runFreeEightsVoiceSync(guild), 5000);
   void runFreeEightsResultsSync(guild);
   setInterval(() => runFreeEightsResultsSync(guild), 60_000);
   await addControlsToExistingTickets(guild).catch((error) => console.error("[Topfragg Discord] Ticket control sync failed:", error));

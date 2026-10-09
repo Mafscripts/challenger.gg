@@ -7116,6 +7116,7 @@ async function leaveEightsLobbyUnlocked(req) {
   const remaining = participants.filter((row) => row.id !== leaving.id);
   if (remaining.length === 0) {
     const cancelled = await updateEntity("Wager", wager.id, { status: "cancelled", roster_locked: false, roster_lock_deadline: "", cancelled_date: nowIso() });
+    publishEightsLobbyUpdate(wager.id, "cancelled");
     return { success: true, wager: cancelled, cancelled: true };
   }
 
@@ -7631,6 +7632,8 @@ async function completeWagerUnlocked(req) {
   } else {
     await updateEntity("Wager", wager.id, completion);
   }
+
+  if (isEightsMatchType(wager.match_type)) publishEightsLobbyUpdate(wager.id, "completed");
 
   await createEntity("WagerMatch", {
     wager_id: wager.id,

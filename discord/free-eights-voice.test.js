@@ -176,6 +176,45 @@ test("BO7, BO6 and MW3 retain isolated waiting/team voices and cancellation clea
   for (const state of [states[0], states[2]]) for (const id of Object.values(state.channels)) assert.equal(f.channels.has(id), true);
 });
 
+test("terminal BO7, BO6 and MW3 updates return both teams before slow channel deletion without scanning unrelated matches", async () => {
+  for (const game_id of ["bo7", "bo6", "mw3"]) for (const status of ["cancelled", "completed"]) {
+    const f = fixture(2);
+    f.match.metadata.game_id = game_id;
+    await f.sync();
+    const state = f.state();
+    const other = structuredClone(f.records.get(freeEightsVoiceKey("match2")).metadata);
+    f.match.metadata.status = status;
+    f.db.wager.findMany = async () => assert.fail("a direct update must not scan every lobby");
+    f.db.discordEventDispatch.findMany = async () => assert.fail("a direct update must not scan every voice state");
+    const inventoryFetches = f.inventoryFetches();
+    let releaseDelete, startedDelete;
+    const deletionGate = new Promise(resolve => { releaseDelete = resolve; });
+    const deletionStarted = new Promise(resolve => { startedDelete = resolve; });
+    const host = f.channels.get(state.channels.host), deleteHost = host.delete.bind(host);
+    host.delete = async () => { startedDelete(); await deletionGate; return deleteHost(); };
+    let activeMoves = 0, peakMoves = 0;
+    for (const user of f.users.slice(0, 8)) {
+      const voice = f.voices.get(user.discord_user_id), move = voice.setChannel.bind(voice);
+      voice.setChannel = async id => {
+        activeMoves++; peakMoves = Math.max(peakMoves, activeMoves);
+        await new Promise(resolve => setImmediate(resolve));
+        try { return await move(id); } finally { activeMoves--; }
+      };
+    }
+    const cleanup = f.sync({}, { matchIds: [f.match.id], refreshInventory: false });
+    await deletionStarted;
+    assert.ok(f.users.slice(0, 8).every(user => f.voices.get(user.discord_user_id).channelId === config.waitingRoomId));
+    assert.equal(peakMoves, 4, "move up to four independent players together");
+    assert.equal(f.stats().deletes, 0, "both teams return before waiting for a channel delete");
+    assert.equal(f.inventoryFetches(), inventoryFetches);
+    assert.deepEqual(f.records.get(freeEightsVoiceKey("match2")).metadata, other);
+    releaseDelete();
+    assert.deepEqual((await cleanup).deferredMatchIds, []);
+    assert.equal(f.stats().deletes, 3);
+    assert.ok(f.state().cleaned);
+  }
+});
+
 test("BO7, BO6 and MW3 keep partially filled lobby rooms and join links throughout repeated sweeps", async () => {
   const f = fixture(3, { autoJoinWaiting: false });
   ["bo7", "bo6", "mw3"].forEach((id, index) => {
@@ -513,9 +552,20 @@ test("recover interrupted creation by durable operation and audit channel ID for
 test("advisory lock loser performs no match actions", async () => {
   const f = fixture();
   f.db.$queryRaw = async () => [{ locked: false }];
-  await f.sync();
+  assert.deepEqual((await f.sync({}, { matchIds: [f.match.id], refreshInventory: false })).deferredMatchIds, [f.match.id]);
   assert.equal(f.stats().creations, 0);
   assert.equal(f.moves.length, 0);
+});
+
+test("polling fallback prioritizes a finished match over open lobbies", async () => {
+  const f = fixture(4);
+  await f.sync();
+  f.matches[3].metadata.status = "completed";
+  const reads = [], getMatch = f.db.wager.findUnique;
+  f.db.wager.findUnique = async (input) => { reads.push(input.where.id); return getMatch(input); };
+  await f.sync();
+  assert.equal(reads[0], "match4");
+  assert.ok(f.users.slice(24).every(user => f.voices.get(user.discord_user_id).channelId === config.waitingRoomId));
 });
 
 test("a failed channel creation retries without duplicating the successful side", async () => {

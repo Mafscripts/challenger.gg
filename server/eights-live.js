@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import WebSocket, { WebSocketServer } from "ws";
 import { getEntity, listEntities } from "./entity.js";
+import { isEightsDiscordToken } from "./eights-discord-events.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const EIGHTS_LIVE_PATH = "/api/eights-live";
@@ -38,7 +39,7 @@ export const publishEightsLobbyUpdate = (wagerId, reason = "updated") => {
   const id = String(wagerId || "");
   if (!id) return;
   clients.forEach((client) => {
-    if (client.wagerId === id) send(client.socket, { type: "eights-lobby-updated", wager_id: id, reason });
+    if (client.discord || client.wagerId === id) send(client.socket, { type: "eights-lobby-updated", wager_id: id, reason });
   });
 };
 
@@ -54,7 +55,7 @@ export const attachEightsLiveServer = (server) => {
       return;
     }
     if (url.pathname !== EIGHTS_LIVE_PATH) return;
-    const token = url.searchParams.get("token");
+    const token = request.headers.authorization?.replace(/^Bearer /i, "") || url.searchParams.get("token");
     if (!token) {
       socket.destroy();
       return;
@@ -67,6 +68,14 @@ export const attachEightsLiveServer = (server) => {
   wss.on("connection", async (socket, token) => {
     try {
       const payload = jwt.verify(token, JWT_SECRET, { audience: "eights-live", issuer: "topfragg" });
+      if (isEightsDiscordToken(payload)) {
+        const client = { socket, discord: true };
+        clients.add(client);
+        send(socket, { type: "eights-discord-ready" });
+        socket.on("close", () => clients.delete(client));
+        socket.on("error", () => clients.delete(client));
+        return;
+      }
       if (payload.scope !== "eights-live" || !await mayWatchLobby(payload.wager_id, payload.sub, payload.staff === true)) throw new Error("Unauthorized");
       const client = { socket, wagerId: String(payload.wager_id) };
       clients.add(client);
