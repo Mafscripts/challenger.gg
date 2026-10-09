@@ -227,14 +227,17 @@ router.get("/membership", requireAuth, async (req, res) => {
 
 router.get("/free-eights/:wagerId", requireAuth, async (req, res, next) => {
   try {
-    const row = await prisma.wager.findUnique({ where: { id: req.params.wagerId } });
+    const wagerId = req.params.wagerId;
+    const [row, rows, dispatch] = await Promise.all([
+      prisma.wager.findUnique({ where: { id: wagerId } }),
+      prisma.wagerParticipant.findMany({ where: { metadata: { path: ["wager_id"], equals: wagerId } } }),
+      prisma.discordEventDispatch.findUnique({ where: { event_key: freeEightsVoiceKey(wagerId) } }),
+    ]);
     if (row?.metadata?.match_type !== "8s") return res.status(404).json({ error: "Free 8s lobby not found" });
-    const rows = await prisma.wagerParticipant.findMany({ where: { metadata: { path: ["wager_id"], equals: row.id } } });
     const participants = rows.map((participant) => participant.metadata);
     if (!participants.some((participant) => participant.user_id === req.user.id) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Only lobby players or staff can view voice readiness" });
     }
-    const dispatch = await prisma.discordEventDispatch.findUnique({ where: { event_key: freeEightsVoiceKey(row.id) } });
     res.json(publicFreeEightsVoiceStatus(freeEightsDiscordConfig(), { ...row.metadata, id: row.id }, participants, dispatch?.metadata));
   } catch (error) {
     next(error);

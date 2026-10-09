@@ -445,7 +445,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
   await save();
 }
 
-export async function syncFreeEightsVoice(guild, { db = prisma, config = freeEightsDiscordConfig(), log = freeEightsVoiceLog } = {}) {
+export async function syncFreeEightsVoice(guild, { db = prisma, config = freeEightsDiscordConfig(), log = freeEightsVoiceLog, refreshInventory = true } = {}) {
   if (guild.client.isReady?.() === false) { log("gateway-not-ready", { guild_id: guild.id }); return; }
   const managed = await db.discordEventDispatch.findMany({ where: { event_key: { startsWith: "free8s-voice:" } } });
   const matches = config.enabled ? await db.wager.findMany({ where: { AND: [
@@ -456,7 +456,9 @@ export async function syncFreeEightsVoice(guild, { db = prisma, config = freeEig
   if (!ids.length) return;
   // Fetch once per sweep rather than once for every match. The live cache also
   // reflects channels created/deleted by concurrent workers for capacity checks.
-  const fetched = config.enabled ? await guild.channels.fetch() : null;
+  // Voice gateway events already update the live channel cache. They can
+  // reconcile immediately; periodic sweeps still refresh the full inventory.
+  const fetched = config.enabled && (refreshInventory || !guild.channels.cache?.size) ? await guild.channels.fetch() : null;
   const inventory = config.enabled ? guild.channels.cache || fetched : null;
   if (config.enabled && ![config.guildId, config.categoryId].every(validDiscordId)) log("configuration-error", { error: "Configure Free 8s guild and voice category IDs" });
   let cursor = 0;

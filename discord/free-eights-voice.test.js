@@ -155,7 +155,7 @@ function fixture(count = 1, { autoJoinWaiting = true } = {}) {
       try { return await fn(tx); } finally { if (lockedKey) locks.delete(lockedKey); }
     },
   };
-  const sync = (overrides = {}) => syncFreeEightsVoice(guild, { db, config: { ...config, ...overrides }, log: (event, details) => logs.push({ event, ...details }) });
+  const sync = (overrides = {}, options = {}) => syncFreeEightsVoice(guild, { db, config: { ...config, ...overrides }, log: (event, details) => logs.push({ event, ...details }), ...options });
   return { match, matches, participants, users, records, moves, logs, channels, voices, guild, db, sync, audits, writes,
     state: () => records.get(freeEightsVoiceKey(match.id))?.metadata,
     stats: () => ({ creations, permissionEdits, deletes }), inventoryFetches: () => inventoryFetches };
@@ -180,6 +180,31 @@ test("40 matches fetch the channel inventory once per sweep and do not repeatedl
   await f.sync(settings);
   assert.equal(f.inventoryFetches(), 2);
   assert.equal(f.stats().permissionEdits, edits);
+});
+
+test("gateway voice checks use the live inventory and still refresh observed channel changes", async () => {
+  const f = fixture();
+  await f.sync();
+  const edits = f.stats().permissionEdits;
+  const player = f.users[0];
+  f.voices.get(player.discord_user_id).channelId = null;
+  await f.sync({}, { refreshInventory: false });
+  assert.equal(f.inventoryFetches(), 1, "a voice event must not fetch the full inventory again");
+  assert.equal(f.stats().permissionEdits, edits);
+  assert.equal(f.state().players[player.id].status, "not_in_waiting_room");
+  assert.equal(publicFreeEightsVoiceStatus(config, f.match.metadata, f.participants, f.state()).fresh, true);
+  await f.sync();
+  assert.equal(f.inventoryFetches(), 2, "the periodic fallback must still refresh inventory");
+});
+
+test("gateway checks cannot refresh presence while Discord is disconnected", async () => {
+  const f = fixture();
+  await f.sync();
+  const checked = f.state().checked_at;
+  f.guild.client.isReady = () => false;
+  await f.sync({}, { refreshInventory: false });
+  assert.equal(f.state().checked_at, checked);
+  assert.equal(f.inventoryFetches(), 1);
 });
 
 test("intermediate creation/reshuffle saves cannot publish empty or partially updated fresh player status", async () => {

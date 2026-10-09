@@ -31,7 +31,9 @@ export function useFreeEightsVoice({ matchId, players, user, rosterVersion = "",
       } finally { inFlight = false; }
     };
     refresh();
-    const timer = window.setInterval(refresh, 2000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 1000);
     const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", onVisible);

@@ -38,6 +38,7 @@ import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { activisionIdFor } from "@/lib/activision";
 import { normalizeImageSource, prepareImageFile } from "@/lib/images";
 import { trophyCountsFor } from "@/lib/trophyCounts";
+import { participantBelongsToUser, profileMatchOutcome, tournamentMatchSideFor } from "@/lib/profileMatchResults";
 
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
@@ -149,25 +150,6 @@ const matchRouteFor = (match) => {
   return `/ranked-match/${match.id}`;
 };
 
-const participantBelongsToUser = (participant, userId) => (
-  participant?.captain_id === userId
-  || participant?.user_id === userId
-  || (participant?.members || []).some((member) => member?.user_id === userId)
-);
-
-const participantKeys = (participant) => [
-  participant?.id,
-  participant?.team_id,
-  participant?.user_id,
-  participant?.captain_id,
-].filter(Boolean).map(String);
-
-const tournamentMatchSideFor = (match, keys) => {
-  const keySet = keys instanceof Set ? keys : new Set(keys || []);
-  if ([match?.team_a_participant_id, match?.team_a_id].some((value) => value && keySet.has(String(value)))) return "team_a";
-  if ([match?.team_b_participant_id, match?.team_b_id].some((value) => value && keySet.has(String(value)))) return "team_b";
-  return null;
-};
 const matchScoreText = (match) => {
   const alpha = match.team_alpha_score ?? match.team_a_score ?? match.reported_score_alpha;
   const bravo = match.team_bravo_score ?? match.team_b_score ?? match.reported_score_bravo;
@@ -175,13 +157,10 @@ const matchScoreText = (match) => {
   return `${alpha} - ${bravo}`;
 };
 const matchResultFor = (match, userId) => {
-  if (match?.profile_result === "win") return ["Win", "text-green", "border-green/25 bg-green/10"];
-  if (match?.profile_result === "loss") return ["Loss", "text-red-300", "border-red-400/20 bg-red-500/10"];
-  if (!match?.winner_id || !userId) return ["Pending", "text-vapor", "border-white/5 bg-background/25"];
-  const won = String(match.winner_id) === String(userId);
-  return won
-    ? ["Win", "text-green", "border-green/25 bg-green/10"]
-    : ["Loss", "text-red-300", "border-red-400/20 bg-red-500/10"];
+  const outcome = match?.profile_result || profileMatchOutcome(match, userId);
+  if (outcome === "win") return ["Win", "text-green", "border-green/25 bg-green/10"];
+  if (outcome === "loss") return ["Loss", "text-red-300", "border-red-400/20 bg-red-500/10"];
+  return ["Pending", "text-vapor", "border-white/5 bg-background/25"];
 };
 const matchDateMs = (match) => new Date(
   match.match_completed_date || match.completed_date || match.accepted_date || match.created_date || 0
@@ -405,41 +384,30 @@ export default function Profile() {
       });
       const enrichWagerResult = (wager) => {
         if (!wager) return wager;
-        const userTeam = (participantRowsByWager.get(String(wager.id)) || [])
-          .map((participant) => participant.team || participant.side)
-          .find(Boolean);
-        const winningTeam = wager.winner_id === wager.host_id
-          ? "host"
-          : wager.winner_id === wager.challenger_id
-            ? "challenger"
-            : null;
         return {
           ...wager,
-          profile_result: userTeam && winningTeam
-            ? (userTeam === winningTeam ? "win" : "loss")
-            : undefined,
+          profile_result: profileMatchOutcome(wager, userRow.id, { wagerParticipants: participantRowsByWager.get(String(wager.id)) || [] }),
         };
       };
 
       const userTournamentParticipants = (tournamentParticipants || []).filter((participant) => (
         participantBelongsToUser(participant, userRow.id)
       ));
-      const tournamentParticipantKeySet = new Set(userTournamentParticipants.flatMap(participantKeys));
       const tournamentIds = [...new Set(userTournamentParticipants.map((participant) => participant.tournament_id).filter(Boolean))];
       const tournamentMatchRows = (await Promise.all(tournamentIds.map((tournamentId) => (
         base44.entities.TournamentMatch.filter({ tournament_id: tournamentId }, "-created_date", 100).catch(() => [])
       )))).flat()
-        .filter((match) => tournamentMatchSideFor(match, tournamentParticipantKeySet))
-        .map((match) => ({ ...match, match_type: "tournament" }));
+        .filter((match) => tournamentMatchSideFor(match, userTournamentParticipants))
+        .map((match) => ({ ...match, match_type: "tournament", profile_result: profileMatchOutcome(match, userRow.id, { tournamentParticipants: userTournamentParticipants }) }));
 
       const combinedMatches = [
         ...hostedWagers.map(enrichWagerResult),
         ...challengedWagers.map(enrichWagerResult),
         ...participantWagers.filter(Boolean).map(enrichWagerResult),
-        ...hostedRanked,
-        ...challengedRanked,
-        ...hostedXp.map((match) => ({ ...match, match_type: match.match_type || "xp" })),
-        ...challengedXp.map((match) => ({ ...match, match_type: match.match_type || "xp" })),
+        ...hostedRanked.map((match) => ({ ...match, profile_result: profileMatchOutcome(match, userRow.id) })),
+        ...challengedRanked.map((match) => ({ ...match, profile_result: profileMatchOutcome(match, userRow.id) })),
+        ...hostedXp.map((match) => ({ ...match, match_type: match.match_type || "xp", profile_result: profileMatchOutcome(match, userRow.id) })),
+        ...challengedXp.map((match) => ({ ...match, match_type: match.match_type || "xp", profile_result: profileMatchOutcome(match, userRow.id) })),
         ...tournamentMatchRows,
       ]
         .filter((match, index, list) => list.findIndex((item) => item.id === match.id) === index)
