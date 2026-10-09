@@ -267,3 +267,58 @@ TWITCH_OAUTH_STATE_SECRET="a-separate-long-random-secret"
 ```
 
 When a connected player with both a linked Discord account and the manual **Streamer** Discord role goes live, the bot posts one stream card in **🔴・live-now** with a Twitch button. The Streamer role prevents every linked account from auto-posting.
+
+## 12. Free mention chat and website guide
+
+Tag **@Topfragg Bot** in **general** or **off-topic** for website help, greetings
+or sharp gaming roasts. It uses authored English/Dutch replies and keyword
+matching. It is enabled by default and requires no AI API key, credits, extra
+dependency or database migration. The chat handler makes no external requests.
+Old `DISCORD_AI_ENABLED`, `DISCORD_AI_MODEL` and `OPENAI_API_KEY` values are unused.
+
+The guide in `discord/website-knowledge.js` explains account registration,
+password resets, email verification, Discord linking/unlinking and conflicts,
+Twitch alerts, Gaming IDs, Free 8s, voice rooms, game ranks, teams, tournament
+registration, automatic Verified Player, settings, rules, support, wallet,
+Premium, leaderboards and X. Answers include real website links and distinguish
+the automatic Discord role from the account link required for Free 8s. The
+instructions are reviewed against website source; update the guide whenever a
+website flow changes. It does not learn changes automatically or read live
+accounts, scores, balances or queue data. Unknown questions receive a help
+prompt instead of an invented answer; prices and live information link to the
+website, and disputes/payment problems go to staff.
+
+Examples:
+
+```text
+@Topfragg Bot how do I connect Discord?
+@Topfragg Bot hoe koppel ik Twitch?
+@Topfragg Bot how do I join Free 8s?
+@Topfragg Bot hoe maak ik een team?
+@Topfragg Bot roast me
+```
+
+Only explicit text mentions trigger replies. Ordinary chat, DMs, other servers,
+private tickets and bot/webhook messages are ignored. Existing anti-spam checks
+run first. Replies cannot notify users, roles or everyone. A player gets at most
+one reply per 15 seconds, with a server-wide limit of 20 per minute per process.
+Duplicate events and failed sends are not retried. The last reply per player and
+channel is remembered briefly to avoid repeating the same joke; raw user
+messages are not stored or logged. State is bounded and expires after ten
+minutes or on restart. Website help takes priority over jokes.
+
+Commit and push, update the server and restart the existing bot:
+
+```bash
+cd /var/www/topfragg.gg &&
+git pull --ff-only origin codex/gray-ui-rework &&
+pm2 restart topfragg-discord --update-env &&
+pm2 status
+```
+
+No website build is needed for the chat change. Keep **Message Content Intent**
+enabled. Look for `[Topfragg Chat] Free mention replies and website help enabled`
+in the bot logs. Optionally set `DISCORD_CHAT_ENABLED=false` and restart to disable
+the feature. After deployment, try the examples above with 15 seconds between
+messages, and confirm that no response is sent in private tickets or ordinary
+untagged chat.

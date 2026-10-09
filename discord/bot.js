@@ -35,6 +35,7 @@ import { createFreeEightsVoiceUpdater, startFreeEightsLiveUpdates } from "./free
 import { syncFreeEightsResults } from "./free-eights-results.js";
 import { createCommunityCommandHandler } from "./community-commands.js";
 import { registerCommunityCommands } from "./register-community-commands.js";
+import { createMentionChatHandler, discordChatEnvironment } from "./mention-chat.js";
 
 const config = discordEnvironment();
 const client = new Client({
@@ -131,6 +132,14 @@ async function botLog(guild, message) {
 
 const handleCommunityInteraction = createCommunityCommandHandler({
   guildId: config.guildId, publicUrl: config.publicUrl, findChannel: findConfiguredChannel, log: botLog,
+});
+const chatSettings = discordChatEnvironment();
+const handleMentionChat = createMentionChatHandler({
+  guildId: config.guildId, publicUrl: config.publicUrl, settings: chatSettings,
+  isAllowedChannel: (message) => ["general", "off-topic"].some((key) => (
+    findConfiguredChannel(message.guild, key)?.id === message.channelId
+  )),
+  log: (message) => console.error(`[Topfragg Chat] ${message}`),
 });
 
 async function syncMemberCount(guild) {
@@ -528,6 +537,7 @@ async function publishLookingForTeamPost(interaction) {
 client.once(Events.ClientReady, async (readyClient) => {
   readyClient.user.setActivity("Topfragg tournaments", { type: ActivityType.Competing });
   process.stdout.write(`[Topfragg Discord] Online as ${readyClient.user.tag}\n`);
+  process.stdout.write(`[Topfragg Chat] ${chatSettings.enabled ? "Free mention replies and website help enabled" : "Disabled"}\n`);
   const guild = await readyClient.guilds.fetch(config.guildId).catch(() => null);
   if (!guild) {
     process.stderr.write(`[Topfragg Discord] Server ${config.guildId} is unavailable.\n`);
@@ -572,7 +582,11 @@ client.on(Events.VoiceStateUpdate, (oldState, newState) => {
 
 client.on(Events.MessageCreate, async (message) => {
   if (!message.guild || message.guild.id !== config.guildId || message.author.bot) return;
-  if (!isPublicChatChannel(message.guild, message.channel) || isStaffMember(message.member)) return;
+  if (!isPublicChatChannel(message.guild, message.channel)) return;
+  if (isStaffMember(message.member)) {
+    await handleMentionChat(message);
+    return;
+  }
 
   const content = String(message.content || "").trim();
   if (spamPhrases.some((pattern) => pattern.test(content))) {
@@ -594,7 +608,9 @@ client.on(Events.MessageCreate, async (message) => {
   }
   if (duplicateCount >= 2) {
     await removeSpamMessage(message, "please do not repeat the same message.");
+    return;
   }
+  await handleMentionChat(message);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
