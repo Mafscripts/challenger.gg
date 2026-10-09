@@ -13,8 +13,6 @@ export const isFreeEightsDiscordRequired = (result) => result?.code === "FREE_EI
   || (result?.error || result?.message) === "Connect Discord to join Free 8s";
 
 const voiceLabels = {
-  checking: "Checking voice…",
-  unavailable: "Voice status unavailable",
   not_linked: "Discord Not Linked",
   not_in_waiting_room: "Join 8s Waiting Room",
   in_waiting_room: "In Waiting Room",
@@ -22,28 +20,27 @@ const voiceLabels = {
   move_failed: "Voice move failed · bot will retry",
 };
 
-export function FreeEightsVoiceBadge({ status = "checking", waitingRoomUrl }) {
+export function FreeEightsVoiceBadge({ status = "unknown", waitingRoomUrl }) {
   const tooltipId = useId();
+  if (!voiceLabels[status]) return <span className="inline-flex min-h-8 items-center text-xs text-vapor/45" aria-label="Discord voice">&mdash;</span>;
   const ready = ["in_waiting_room", "in_team_voice"].includes(status);
-  const StatusIcon = status === "checking" ? Loader2 : ready ? CheckCircle2 : status === "not_linked" ? Link2 : status === "move_failed" ? AlertTriangle : status === "not_in_waiting_room" ? Headphones : MicOff;
+  const StatusIcon = ready ? CheckCircle2 : status === "not_linked" ? Link2 : status === "move_failed" ? AlertTriangle : status === "not_in_waiting_room" ? Headphones : MicOff;
   const badgeStyle = status === "in_waiting_room" ? "border-green/20 bg-green/[0.08] text-green"
     : status === "in_team_voice" ? "border-cyan/20 bg-cyan/[0.08] text-cyan"
     : ["not_in_waiting_room", "not_linked", "move_failed"].includes(status) ? "border-orange/20 bg-orange/[0.08] text-orange"
     : "border-white/[0.08] bg-white/[0.03] text-vapor";
-  const label = voiceLabels[status] || voiceLabels.checking;
+  const label = voiceLabels[status];
   const description = {
-    checking: "Checking your current Discord voice channel.",
-    unavailable: "Discord voice status could not be confirmed.",
     not_linked: "Link your Discord account to join Free 8s.",
     not_in_waiting_room: "Open the 8s Waiting Room in Discord.",
     in_waiting_room: "Connected to the 8s Waiting Room and ready to play.",
     in_team_voice: "Connected to your assigned team voice channel.",
     move_failed: "The bot will retry moving you into team voice.",
-  }[status] || "Checking your current Discord voice channel.";
+  }[status];
   const canJoin = status === "not_in_waiting_room" && Boolean(waitingRoomUrl);
   const Badge = canJoin ? "a" : "span";
   const toneClass = badgeStyle.split(" ").find((token) => token.startsWith("text-")) || "text-white";
-  return <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} aria-describedby={tooltipId} className={`group/badge relative inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15" : "cursor-default"}`}><StatusIcon className={`h-3.5 w-3.5 shrink-0 ${status === "checking" ? "animate-spin" : ""}`} aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}<BadgeTooltip id={tooltipId} label={status === "not_in_waiting_room" ? "8s Waiting Room" : label} description={description} icon={StatusIcon} toneClass={toneClass} /></Badge>;
+  return <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} aria-describedby={tooltipId} className={`group/badge relative inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15" : "cursor-default"}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}<BadgeTooltip id={tooltipId} label={status === "not_in_waiting_room" ? "8s Waiting Room" : label} description={description} icon={StatusIcon} toneClass={toneClass} /></Badge>;
 }
 
 export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranked/8s", trigger, returnFocusTo }) {
@@ -159,13 +156,8 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
 }
 
 export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, voiceView }) {
-  const { voice, available, checking, refreshing, configurationFailure, readyCount, warning } = voiceView;
-  const summary = checking ? "Updating Discord voice status…"
-    : available && voice?.error ? voice.error
-    : !available ? configurationFailure ? "Discord voice is disabled or the waiting room has not been configured." : "Discord voice status has not updated. The bot or connection needs attention."
-    : refreshing ? "Refreshing Discord voice status…"
-    : waitingForMaps ? `Waiting for all 8 players in the Waiting Room · ${readyCount}/8 ready. Maps and the timer have not started.` : null;
-  const SummaryIcon = checking ? Loader2 : warning ? AlertTriangle : CheckCircle2;
+  const { voice, hasConfirmedStatus, displayReadyCount } = voiceView;
+  const summary = waitingForMaps ? "Join this lobby’s Waiting Room. Maps and the timer start once all eight players are connected." : null;
   return <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-[#171b26] shadow-[0_8px_30px_rgba(0,0,0,.12)] sm:m-4" aria-label="Free 8s Discord voice readiness">
     <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
     <div className="relative flex flex-col gap-4 bg-gradient-to-r from-[#5865F2]/[0.09] via-transparent to-transparent p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -175,7 +167,7 @@ export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, v
           <div className="flex flex-wrap items-center gap-2.5">
             <h3 className="text-sm font-black text-white sm:text-base">Discord team voice</h3>
             <span className="rounded-md border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-purple-200">Free 8s · Test</span>
-            <span role="status" className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${available && readyCount === 8 ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{available ? `${readyCount}/8 voice ready` : checking ? "Checking voice…" : "Status unavailable"}</span>
+            {hasConfirmedStatus && <span role="status" className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${displayReadyCount === 8 ? "text-green" : "text-vapor"}`}><Mic className="h-3.5 w-3.5" aria-hidden="true" />{displayReadyCount}/8 voice ready</span>}
           </div>
           <p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">This lobby has its own private Waiting Room for eight players. Join it before maps are generated; the bot then moves you into your team’s private voice channel.</p>
           <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-5">
@@ -189,8 +181,8 @@ export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, v
       </div>
     </div>
     {summary && <div className="border-t border-white/[0.06] bg-black/[0.12] p-4 sm:px-5">
-      <div role="status" className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-xs leading-5 ${warning ? "border-orange/20 bg-orange/5 text-orange" : "border-white/[0.06] bg-white/[0.025] text-vapor"}`}>
-        <SummaryIcon className={`h-4 w-4 shrink-0 ${checking ? "animate-spin" : available && !warning ? "text-green" : ""}`} aria-hidden="true" />
+      <div className="flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-xs leading-5 text-vapor">
+        <Headphones className="h-4 w-4 shrink-0" aria-hidden="true" />
         <p className="line-clamp-2 min-w-0" title={summary}>{summary}</p>
       </div>
     </div>}

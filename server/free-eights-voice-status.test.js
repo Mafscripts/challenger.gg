@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { freeEightsVoiceView, recordFreeEightsVoiceResponse } from "../src/lib/freeEightsVoiceStatus.js";
+import { freeEightsVoiceDisplaySignature, freeEightsVoiceView, recordFreeEightsVoiceResponse } from "../src/lib/freeEightsVoiceStatus.js";
 
 const players = [{ user_id: "a", team: "host" }, { user_id: "b", team: "challenger" }];
 const data = () => ({ enabled: true, configured: true, fresh: true, snapshot_age_ms: 1000,
@@ -69,4 +69,66 @@ test("successful refresh clears temporary transport errors", () => {
   const recovered = receive(failed, { now: 104000 });
   assert.equal(freeEightsVoiceView(recovered, players, 104000).refreshing, false);
   assert.equal(freeEightsVoiceView(recovered, players, 104000).readyCount, 2);
+});
+
+test("pending and stale checks keep the last observed badges while readiness expires internally", () => {
+  const good = receive(null);
+  const pending = receive(good, { data: { ...data(), fresh: false, snapshot_age_ms: 30000,
+    players: players.map((player) => ({ ...player, status: "unavailable" })) }, now: 130000 });
+  const view = freeEightsVoiceView(pending, players, 150000);
+  assert.deepEqual(view.playerStates.map((player) => player.status), ["in_waiting_room", "in_waiting_room"]);
+  assert.equal(view.displayReadyCount, 2);
+  assert.equal(view.hasConfirmedStatus, true);
+  assert.equal(view.readyCount, 0);
+  assert.equal(view.available, false);
+  assert.equal(freeEightsVoiceDisplaySignature(pending, players), freeEightsVoiceDisplaySignature(good, players));
+});
+
+test("repeated timestamps, request failures and bot errors do not change the displayed status", () => {
+  const good = receive(null);
+  const signature = freeEightsVoiceDisplaySignature(good, players);
+  const repeated = receive(good, { data: { ...data(), checked_at: "2026-10-09T10:00:00Z" }, now: 104000 });
+  const failed = receive(repeated, { failed: true, now: 106000 });
+  const botError = receive(failed, { data: { ...data(), error: "Team channels could not be prepared" }, now: 108000 });
+  for (const result of [repeated, failed, botError]) assert.equal(freeEightsVoiceDisplaySignature(result, players), signature);
+  assert.equal(freeEightsVoiceView(botError, players, 108000).warning, true, "technical health remains available internally");
+});
+
+test("a confirmed channel change replaces the badge without clearing other players", () => {
+  const good = receive(null);
+  const changedData = data(); changedData.players[0].status = "not_in_waiting_room";
+  const changed = receive(good, { data: changedData, now: 104000 });
+  const view = freeEightsVoiceView(changed, players, 104000);
+  assert.deepEqual(view.playerStates.map((player) => player.status), ["not_in_waiting_room", "in_waiting_room"]);
+  assert.equal(view.displayReadyCount, 1);
+  assert.notEqual(freeEightsVoiceDisplaySignature(changed, players), freeEightsVoiceDisplaySignature(good, players));
+});
+
+test("unconfirmed first checks and technical player statuses show a neutral placeholder", () => {
+  const initial = freeEightsVoiceView(null, players);
+  assert.deepEqual(initial.playerStates.map((player) => player.status), ["unknown", "unknown"]);
+  assert.equal(initial.hasConfirmedStatus, false);
+  const good = receive(null);
+  const checkingData = data(); checkingData.players[0].status = "checking";
+  const checking = receive(good, { data: checkingData, now: 104000 });
+  assert.equal(freeEightsVoiceView(checking, players, 104000).playerStates[0].status, "in_waiting_room");
+  assert.equal(freeEightsVoiceView(receive(null, { data: checkingData }), players, 100000).playerStates[0].status, "unknown");
+});
+
+test("a roster change preserves unchanged players but does not reuse the wrong team's channel", () => {
+  const good = receive(null);
+  const changedPlayers = [{ ...players[0], team: "challenger" }, players[1], { user_id: "new", team: "host" }];
+  assert.deepEqual(freeEightsVoiceView(good, changedPlayers, 102000).playerStates.map((player) => player.status), ["unknown", "in_waiting_room", "unknown"]);
+  for (const change of [{ matchId: "match2" }, { userId: "different" }]) {
+    const next = receive(good, { ...change, failed: true, now: 102000 });
+    assert.equal(next.lastConfirmed, undefined);
+    assert.equal(freeEightsVoiceView(next, players).hasConfirmedStatus, false);
+  }
+});
+
+test("the last confirmed waiting room link survives a temporary missing snapshot", () => {
+  const good = receive(null, { data: { ...data(), waiting_room_url: "https://discord.com/channels/guild/room" } });
+  const pending = receive(good, { data: { ...data(), fresh: false, waiting_room_url: null }, now: 105000 });
+  assert.equal(freeEightsVoiceView(pending, players, 105000).voice.waiting_room_url, good.data.waiting_room_url);
+  assert.equal(freeEightsVoiceDisplaySignature(pending, players), freeEightsVoiceDisplaySignature(good, players));
 });
