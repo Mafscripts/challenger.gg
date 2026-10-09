@@ -96,6 +96,12 @@
     background: hsl(var(--background));
   }
 
+  /* The root keeps its scrollbar gutter when Radix locks body scrolling.
+     Avoid reserving the same space again through react-remove-scroll. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
