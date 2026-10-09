@@ -1,16 +1,19 @@
 import { serializeRow } from "./entity.js";
 import { loadFreeEightsSkills } from "./free-eights-teams.js";
 import { findActiveFreeEightsMatch } from "./free-eights-membership.js";
+import { isMatchfinderPostVisible, MATCHFINDER_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
 
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 
 // Read-only Free 8s queries. Batch by stored match/user IDs; never fetch a
 // separate match or roster for every row in the player's history.
 export async function getFreeEightsOverview(db, userId) {
-  const [open, memberships] = await Promise.all([
-    db.wager.findMany({ where: { AND: [field("match_type", "8s"), field("status", "open")] }, orderBy: { created_date: "desc" }, take: 30 }),
+  const now = Date.now();
+  const [openRows, memberships] = await Promise.all([
+    db.wager.findMany({ where: { AND: [field("match_type", "8s"), field("status", "open"), { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } }] }, orderBy: { created_date: "desc" }, take: 30 }),
     db.wagerParticipant.findMany({ where: field("user_id", userId), select: { metadata: true } }),
   ]);
+  const open = openRows.filter((row) => isMatchfinderPostVisible(serializeRow(row), now));
   const openIds = open.map((row) => row.id);
   const memberIds = [...new Set(memberships.map((row) => row.metadata?.wager_id).filter((id) => typeof id === "string" && id))];
   const [active, participants] = await Promise.all([

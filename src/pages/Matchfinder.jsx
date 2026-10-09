@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
+import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
 import { toast } from "@/components/ui/use-toast";
 import { FreeEightsDiscordDialog, FreeEightsDiscordNotice, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
 import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
@@ -42,6 +43,9 @@ export default function Matchfinder() {
   const [xpMatches, setXpMatches] = useState([]);
   const [rankedMatches, setRankedMatches] = useState([]);
   const [wagerMatches, setWagerMatches] = useState([]);
+  const visibleXpMatches = useMatchfinderPosts(xpMatches);
+  const visibleRankedMatches = useMatchfinderPosts(rankedMatches);
+  const visibleWagerMatches = useMatchfinderPosts(wagerMatches);
   const [eightsCounts, setEightsCounts] = useState({});
   const [freeMembership, setFreeMembership] = useState(null);
   const activeFreeMatch = user?.id && freeMembership?.userId === user.id ? freeMembership?.match ?? null : null;
@@ -64,9 +68,9 @@ export default function Matchfinder() {
       setLoading(true);
       const [currentUser, xpRows, rankedRows, wagerRows, tournamentRows] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.entities.XPMatch.filterFresh({ status: "open" }, "-created_date", 100).catch(() => []),
-        base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 100).catch(() => []),
-        base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 100).catch(() => []),
+        base44.entities.XPMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100).catch(() => []),
+        base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100).catch(() => []),
+        base44.entities.Wager.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100).catch(() => []),
         base44.entities.Tournament.filterFresh({}, "start_date", 100).catch(() => []),
       ]);
       setUser(currentUser);
@@ -102,6 +106,7 @@ export default function Matchfinder() {
           if (overview.current_user?.id === user.id) setUser(overview.current_user);
           setFreeMembership({ userId: user.id, match: overview.active_lobby });
           setEightsCounts(overview.counts);
+          setWagerMatches((rows) => [...rows.filter((row) => wagerType(row) !== "8s"), ...(overview.lobbies || [])]);
         }
       } catch (error) { console.error("Could not check active Free 8s match:", error); }
       finally { inFlight = false; }
@@ -143,13 +148,13 @@ export default function Matchfinder() {
   }, [requestedWagerId, user?.id, wagerMatches]);
 
   const matches = useMemo(() => ({
-    xp: xpMatches,
-    elo: rankedMatches,
-    eights: wagerMatches.filter((match) => wagerType(match) === "8s"),
-    money8s: wagerMatches.filter((match) => wagerType(match) === "money8s"),
-    wagers: wagerMatches.filter((match) => wagerType(match) === "wagers"),
+    xp: visibleXpMatches,
+    elo: visibleRankedMatches,
+    eights: visibleWagerMatches.filter((match) => wagerType(match) === "8s"),
+    money8s: visibleWagerMatches.filter((match) => wagerType(match) === "money8s"),
+    wagers: visibleWagerMatches.filter((match) => wagerType(match) === "wagers"),
     tournaments,
-  }), [xpMatches, rankedMatches, tournaments, wagerMatches]);
+  }), [visibleXpMatches, visibleRankedMatches, tournaments, visibleWagerMatches]);
 
   const activeRows = matches[activeCategory] || [];
   const currentCategory = categories.find((category) => category.key === activeCategory) || categories[0];
@@ -409,6 +414,7 @@ export default function Matchfinder() {
                   competition={activeCategory === "xp" ? "XP Match" : activeCategory === "elo" ? "ELO Ranked" : activeCategory === "eights" ? "Free 8s" : activeCategory === "money8s" ? "Money 8s" : activeCategory === "wagers" ? `$${amount} Wager` : "Official Tournament"}
                   competitionDetail={isTournament ? `${item.current_teams || item.registered_teams || 0}/${item.max_teams || item.team_limit || "—"} teams registered` : `${activeCategory === "money8s" ? `$${amount.toFixed(2)} entry · ` : ""}Hosted by ${item.host_name || "Player"} · BO${item.best_of || 1}`}
                   playRule={item.play_rule}
+                  postedAt={isTournament ? undefined : item.created_date}
                   starting={isTournament ? formatStart(item.start_date) : "Available now"}
                   tone={currentCategory.tone}
                   action={renderAction(item)}

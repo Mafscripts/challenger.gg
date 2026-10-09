@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
+import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
 import RankBadge from "@/components/ui/RankBadge";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
@@ -87,7 +88,8 @@ export default function Ranked() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [currentStats, setCurrentStats] = useState(null);
-  const [rankedMatches, setRankedMatches] = useState([]);
+  const [openPosts, setRankedMatches] = useState([]);
+  const rankedMatches = useMatchfinderPosts(openPosts);
   const [activeRankedMatch, setActiveRankedMatch] = useState(null);
   const [leaderboardPosition, setLeaderboardPosition] = useState(null);
   const [loadingMatches, setLoadingMatches] = useState(true);
@@ -110,7 +112,7 @@ export default function Ranked() {
       refreshing = true;
       try {
         const [matches, playerMatches, playerStats] = await Promise.all([
-          base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
+          base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 20),
           base44.entities.RankedMatch.filterFresh({}, "-created_date", 100),
           base44.entities.RankedStats.filterFresh({ user_id: user.id }, "-elo", 1),
         ]);
@@ -159,7 +161,7 @@ export default function Ranked() {
       setUser(currentUser);
 
       const [matches, statsRows, captainTeams] = await Promise.all([
-        base44.entities.RankedMatch.filterFresh({ status: "open" }, "-created_date", 20),
+        base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 20),
         base44.entities.RankedStats.filterFresh({}, "-elo", 500),
         loadCaptainRankedTeams(currentUser?.id),
       ]);
@@ -242,6 +244,7 @@ export default function Ranked() {
                     competition="Ranked"
                     competitionDetail={`${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`}
                     playRule={match.play_rule}
+                    postedAt={match.created_date}
                     tone="cyan"
                     action={belongsToUser ? (
                       <Link to={`/ranked-match/${match.id}`} className="inline-flex min-w-44 items-center justify-center rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room</Link>

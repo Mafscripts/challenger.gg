@@ -7,7 +7,8 @@ import functionRoutes from "./routes/functions.js";
 import { prisma } from "./prisma.js";
 import { signUser } from "./auth.js";
 
-const match = (id, type = "8s", status = "open", date = 1) => ({ id, created_date: new Date(date), metadata: { match_type: type, status } });
+const fixtureDate = Date.now() - 10000;
+const match = (id, type = "8s", status = "open", date = 1) => ({ id, created_date: new Date(fixtureDate + date), metadata: { match_type: type, status } });
 const participant = (id, user_id, wager_id) => ({ id, metadata: { user_id, wager_id } });
 const stat = (user_id, metadata, date = 1, elo = 0) => ({ created_date: new Date(date), metadata: { user_id, ...metadata }, free_eights_elo: elo });
 
@@ -18,6 +19,7 @@ function fixture(data = {}) {
     if (key === "OR") return value.some((entry) => matchesWhere(row, entry));
     if (key === "NOT") return value.every((entry) => !matchesWhere(row, entry));
     if (key === "metadata") return row.metadata?.[value.path[0]] === value.equals;
+    if (value?.gt !== undefined) return row[key] > value.gt;
     return Array.isArray(value?.in) ? value.in.includes(row[key]) : value?.not ? row[key] !== value.not : row[key] === value;
   });
   const db = {};
@@ -64,6 +66,21 @@ test("empty Free 8s overview skips empty batch queries", async () => {
   const f = fixture();
   assert.deepEqual(await getFreeEightsOverview(f.db, "me"), { success: true, lobbies: [], active_lobby: null, counts: {} });
   assert.equal(f.calls.length, 3);
+});
+
+test("expired posts leave the overview and counts while participants retain their active room", async () => {
+  const expired = match("expired");
+  expired.created_date = new Date(Date.now() - 30 * 60 * 1000 - 1000);
+  const hidden = match("hidden");
+  hidden.metadata.posted_to_matchfinder = false;
+  const f = fixture({ wager: [expired, hidden, match("recent")], wagerParticipant: [
+    participant("p1", "me", "expired"), participant("p2", "friend", "recent"),
+  ] });
+  const result = await getFreeEightsOverview(f.db, "me");
+  assert.deepEqual(result.lobbies.map((row) => row.id), ["recent"]);
+  assert.deepEqual(result.counts, { recent: 1 });
+  assert.equal(result.active_lobby.id, "expired");
+  assert.equal(result.active_lobby.status, "open");
 });
 
 test("overview and enrollment use the same unresolved status rule and captain fallback", async () => {

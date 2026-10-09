@@ -15,6 +15,7 @@ import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
 import { FreeEightsRankDialog, FreeEightsRankNotice, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
+import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
 
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
 const EIGHTS_PRIZE_START_MONTH = "2026-10";
@@ -54,7 +55,7 @@ export default function RankedEights() {
     refetchOnWindowFocus: true,
   });
   const user = isMoney ? moneyUser : freeOverview.data?.current_user || authenticatedUser;
-  const lobbies = isMoney ? moneyLobbies : freeOverview.data?.lobbies || [];
+  const lobbies = useMatchfinderPosts(isMoney ? moneyLobbies : freeOverview.data?.lobbies || []);
   const counts = isMoney ? moneyCounts : freeOverview.data?.counts || {};
   const activeLobby = isMoney ? moneyActiveLobby : freeOverview.data?.active_lobby || null;
   const loading = isMoney ? moneyLoading : freeOverview.isPending;
@@ -70,7 +71,7 @@ export default function RankedEights() {
     try {
       const currentUser = await base44.auth.me();
       const [openRows, memberships] = await Promise.all([
-        base44.entities.Wager.filterFresh({ match_type: lobbyMatchType, status: "open" }, "-created_date", 30),
+        base44.entities.Wager.filterFresh({ match_type: lobbyMatchType, status: "open", matchfinder_visible: true }, "-created_date", 30),
         base44.entities.WagerParticipant.filterFresh({ user_id: currentUser.id }, "-joined_date", 50),
       ]);
       const activeMemberships = (memberships || []).filter(Boolean);
@@ -196,6 +197,7 @@ export default function RankedEights() {
                     competition={isMoney ? "Money 8s" : "Free 8s"}
                     competitionDetail={`Hosted by ${lobby.host_name || "Player"} · BO${lobby.best_of || 3}`}
                     playRule={lobby.play_rule}
+                    postedAt={lobby.created_date}
                     tone="orange"
                     action={user ? (
                       <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || (joined >= 8 && (isMoney || !alreadyIn))} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">

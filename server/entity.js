@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { normalizeFreeEightsCancellationNotifications } from "./wager-cancellation-notifications.js";
+import { isMatchfinderPostVisible, MATCHFINDER_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
 
 export const entityAliases = {
   SupportTicket: "supportTicket",
@@ -184,17 +185,25 @@ export const getEntity = async (entity, id) => {
 };
 
 export const listEntities = async (entity, filter = {}, order, limit = 100) => {
+  // This computed filter is only for public listings. History and match rooms
+  // retain their records, participants and escrow after the post expires.
+  const matchfinderOnly = ["XPMatch", "RankedMatch", "Wager"].includes(entity) && filter.matchfinder_visible === true;
+  const now = Date.now();
   const take = Math.min(Number(limit) || 100, 500);
   const delegate = delegateFor(entity);
   const orderBy = orderByFor(entity, order);
   const metadataFilters = metadataFilterEntities.has(entity)
     ? metadataFilterKeys.filter((key) => typeof filter?.[key] === "string" && filter[key])
     : [];
-  const where = entity === "User" && typeof filter?.username === "string"
+  let where = entity === "User" && typeof filter?.username === "string"
     ? { username: filter.username }
     : metadataFilters.length
       ? { AND: metadataFilters.map((key) => ({ metadata: { path: [key], equals: filter[key] } })) }
       : undefined;
+  if (matchfinderOnly) where = { AND: [
+    ...(where ? [where] : []),
+    { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
+  ] };
   const rows = entity === "Notification"
     ? await delegate.findMany({
       where: notificationWhereFor(filter),
@@ -209,6 +218,7 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
   let flattened = rows.map(serializeRow);
 
   flattened = flattened.filter((row) => Object.entries(filter || {}).every(([key, value]) => {
+    if (matchfinderOnly && key === "matchfinder_visible") return isMatchfinderPostVisible(row, now);
     if (value === undefined || value === null || value === "") return true;
     return String(row[key] ?? "") === String(value);
   }));

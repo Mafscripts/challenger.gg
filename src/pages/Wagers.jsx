@@ -8,6 +8,7 @@ import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
+import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import {
@@ -27,7 +28,8 @@ export default function Wagers() {
   const requestedTeamId = searchParams.get("team");
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [wagers, setWagers] = useState([]);
+  const [openPosts, setWagers] = useState([]);
+  const wagers = useMatchfinderPosts(openPosts);
   const [historyWagers, setHistoryWagers] = useState([]);
   const [user, setUser] = useState(null);
   const [userTeams, setUserTeams] = useState([]);
@@ -49,7 +51,7 @@ export default function Wagers() {
       if (refreshing || document.visibilityState === "hidden") return;
       refreshing = true;
       try {
-        const wagerList = await base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 50);
+        const wagerList = await base44.entities.Wager.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 50);
         if (!active) return;
         setWagers((wagerList || []).filter(isWagerMatch));
 
@@ -92,7 +94,7 @@ export default function Wagers() {
     try {
       const [currentUser, wagerList] = await Promise.all([
         base44.auth.me().catch(() => null),
-        base44.entities.Wager.filterFresh({ status: "open" }, "-created_date", 50)
+        base44.entities.Wager.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 50)
       ]);
       if (currentUser) {
         const wallets = await base44.entities.Wallet.filterFresh({ user_id: currentUser.id }, "-created_date", 1);
@@ -313,6 +315,7 @@ export default function Wagers() {
                     competition="Wager"
                     competitionDetail={`BO${wager.best_of || 1} · ${wager.host_id === user?.id ? "Your wager" : "Open challenge"}`}
                     playRule={wager.play_rule}
+                    postedAt={wager.created_date}
                     tone="green"
                     action={wager.host_id === user?.id ? (
                       <div className="flex items-center justify-end gap-2">
