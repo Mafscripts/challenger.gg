@@ -5,6 +5,11 @@ import { Crown, MessageSquare, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/ui/PageHeader";
+import { disputeEvidenceUrls, disputeReasonLabel } from "@/lib/matchDisputes";
+
+const visibleProof = (ticket) => [...new Set([...(ticket.submitted_proof || []), ...(ticket.proof_urls || [])])].filter((url) => {
+  try { return disputeEvidenceUrls([url]).length > 0; } catch { return false; }
+});
 
 const categories = [
   { value: "support", label: "General Support" },
@@ -249,6 +254,9 @@ export default function Support({ ticketCenter = false }) {
                         )}
                       </div>
                       {ticket.description && <p className="mb-3 rounded-lg border border-white/5 bg-background/30 p-3 text-sm leading-6 text-foreground/80 whitespace-pre-line">{ticket.description}</p>}
+                      {ticket.dispute_reason && <p className="mb-3 text-xs text-vapor"><strong className="text-orange">{disputeReasonLabel(ticket.dispute_reason)}</strong>{ticket.reported_against_name ? ` · ${ticket.reported_against_name}` : ""}</p>}
+                      {!!visibleProof(ticket).length && <div className="mb-3 flex flex-wrap gap-2">{visibleProof(ticket).map((url, index) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="max-w-full truncate rounded-lg border border-cyan/20 bg-cyan/5 px-3 py-2 text-xs text-cyan">Proof {index + 1}: {url}</a>)}</div>}
+                      {closed && ticket.resolution && <div className="mb-3 rounded-lg border border-green/20 bg-green/5 p-3"><p className="text-xs font-bold text-green">Staff decision{ticket.resolved_by_name ? ` · ${ticket.resolved_by_name}` : ""}</p><p className="mt-2 whitespace-pre-wrap text-sm text-foreground/80">{ticket.resolution}</p></div>}
                       {ticket.action_url && ticket.action_url !== "/admin" && (
                         <Link to={ticket.action_url} className="mb-3 inline-flex rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/20">
                           Open match room

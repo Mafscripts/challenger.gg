@@ -50,6 +50,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
 import RankVerificationAdmin from "@/components/admin/RankVerificationAdmin";
+import DisputeReviewCard from "@/components/admin/DisputeReviewCard";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
@@ -1383,29 +1384,6 @@ export default function Admin() {
       }
     } catch (error) {
       toast({ title: "Repair failed", description: error.message || "Could not repair bracket.", variant: "destructive" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleModerateDispute = async (dispute, action) => {
-    const notes = typeof window !== "undefined" ? window.prompt(`Notes for ${action.replace(/_/g, " ")}:`, "") : "";
-    if (notes === null) return;
-    setBusyId(`dispute:${dispute.id}:${action}`);
-    try {
-      const response = await base44.functions.invoke("moderateDispute", {
-        dispute_id: dispute.id,
-        action,
-        notes,
-      });
-      if (response.data?.success) {
-        toast({ title: "Dispute resolved", description: action.replace(/_/g, " ") });
-        loadAdminData();
-      } else {
-        toast({ title: "Dispute action failed", description: response.data?.error || "Could not resolve dispute.", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Dispute action failed", description: error.message || "Could not resolve dispute.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -2846,63 +2824,9 @@ export default function Admin() {
 
           {activeTab === "disputes" && (
             <ListSection title="Disputes" rows={data.disputes} empty="No disputes." render={(dispute) => (
-              <div className="px-5 py-4">
-                <RowGrid compact columns={[
-                  ["Reason", dispute.reason || dispute.description],
-                  ["Status", <StatusPill status={dispute.status} />],
-                  ["Priority", <StatusPill status={dispute.priority} />],
-                  ["Reporter", dispute.reported_by_name || dispute.reported_by],
-                  ["Match", dispute.match_id || dispute.wager_id ? `#${String(dispute.match_id || dispute.wager_id).slice(-8)}` : "N/A"],
-                ]} />
-                <div className="mt-3 grid lg:grid-cols-4 gap-3 text-xs text-vapor">
-                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
-                    <p className="uppercase text-[10px] mb-1">Team A</p>
-                    <p>{dispute.wager_details?.host_name || dispute.wager_details?.team_a_name || "Team A"}</p>
-                  </div>
-                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
-                    <p className="uppercase text-[10px] mb-1">Team B</p>
-                    <p>{dispute.wager_details?.challenger_name || dispute.wager_details?.team_b_name || "Team B"}</p>
-                  </div>
-                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3 lg:col-span-2">
-                    <p className="uppercase text-[10px] mb-1">Evidence</p>
-                    <p>{(dispute.submitted_evidence || [...(dispute.evidence_urls || []), ...(dispute.screenshots || []), ...(dispute.videos || [])]).join(", ") || "No evidence attached"}</p>
-                  </div>
-                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3 lg:col-span-2">
-                    <p className="uppercase text-[10px] mb-1">Chat Logs</p>
-                    <p>{compactListText(dispute.chat_logs, (row) => `${row.sender_name || "Unknown"}: ${row.content || ""}`)}</p>
-                  </div>
-                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
-                    <p className="uppercase text-[10px] mb-1">Match Logs</p>
-                    <p>{compactListText(dispute.match_logs, (row) => `${row.status || "status"} ${row.winner_name ? `winner ${row.winner_name}` : ""}`)}</p>
-                  </div>
-                  <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
-                    <p className="uppercase text-[10px] mb-1">Match History</p>
-                    <p>{compactListText(dispute.match_history, (row) => row.summary || row.result || row.status || row.id)}</p>
-                  </div>
-                </div>
-                {dispute.status !== "resolved" && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {[
-                      ["approve_team_a", "Approve Team A"],
-                      ["approve_team_b", "Approve Team B"],
-                      ["force_replay", "Force Replay"],
-                      ["reject_dispute", "Reject"],
-                    ].map(([action, label]) => (
-                      <button
-                        key={action}
-                        onClick={() => handleModerateDispute(dispute, action)}
-                        disabled={busyId === `dispute:${dispute.id}:${action}`}
-                        className="px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-50"
-                      >
-                        {busyId === `dispute:${dispute.id}:${action}` ? "Working..." : label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <DisputeReviewCard dispute={dispute} ticket={ticketById[dispute.ticket_id]} onRefresh={loadAdminData} />
             )} />
           )}
-
           {activeTab === "wagers" && (
             <ListSection title="Wagers" rows={data.wagers} empty="No wagers." render={(wager) => (
               <RowGrid columns={[

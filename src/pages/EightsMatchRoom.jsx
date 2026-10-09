@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, DollarSign, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
+import MatchDisputeDialog from "@/components/match/MatchDisputeDialog";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
@@ -178,6 +179,7 @@ function EightsMatchRoomView() {
   const [reshuffleBusy, setReshuffleBusy] = useState(false);
   const [requestingAdmin, setRequestingAdmin] = useState(false);
   const [disputing, setDisputing] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(false);
   const [adminBusy, setAdminBusy] = useState(false);
   const [swapPlayer, setSwapPlayer] = useState(null);
   const [scoreOpen, setScoreOpen] = useState(false);
@@ -576,29 +578,23 @@ function EightsMatchRoomView() {
     }
   };
 
-  const createDispute = async () => {
-    const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
-    if (evidenceText === null) return;
-    const evidenceUrls = evidenceText.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
-    const onAlpha = teamAlpha.some((player) => player.user_id === user?.id);
+  const createDispute = async (payload) => {
     setDisputing(true);
     try {
       const response = await base44.functions.invoke("createDispute", {
         match_type: isMoneyEights ? "money8s" : "8s",
         match_id: match.id,
         wager_id: match.id,
-        reason: "score_dispute",
-        description: `Dispute submitted from ${roomLabel} match room ${match.id}.`,
-        reported_against: onAlpha ? match.challenger_id : match.host_id,
-        reported_against_name: onAlpha ? (match.challenger_name || "Team Bravo") : (match.host_name || "Team Alpha"),
-        evidence_urls: evidenceUrls,
+        ...payload,
         escalated: Boolean(user?.is_premium),
       });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not create dispute");
       toast({ title: "Ticket created", description: "You can follow this dispute under My Tickets." });
       await loadRoom(true);
+      return response.data;
     } catch (error) {
       toast({ title: "Dispute failed", description: error.message, variant: "destructive" });
+      throw error;
     } finally {
       setDisputing(false);
     }
@@ -658,6 +654,7 @@ function EightsMatchRoomView() {
 
   return (
     <div className="match-room-theme min-h-screen bg-[#0b1016] py-6">
+      <MatchDisputeDialog open={disputeOpen} onOpenChange={setDisputeOpen} match={match} players={allPlayers} userId={user?.id} submitting={disputing} onSubmit={createDispute} />
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         {isMoneyEights && isComplete && personalMoneyResult && !resultDismissed && (
           <WagerMoneyResultOverlay
@@ -723,7 +720,7 @@ function EightsMatchRoomView() {
                     <button type="button" onClick={requestAdmin} disabled={!isParticipant || requestingAdmin || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:opacity-40">
                       <AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
                     </button>
-                    <button type="button" onClick={createDispute} disabled={!isParticipant || disputing || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
+                    <button type="button" onClick={() => setDisputeOpen(true)} disabled={!isParticipant || disputing || closedStatuses.has(match.status)} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
                       <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Submit ticket"}
                     </button>
                   </div>

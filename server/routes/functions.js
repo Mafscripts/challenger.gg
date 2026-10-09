@@ -20,6 +20,7 @@ import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
 import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membership.js";
 import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
 import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
+import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
 
 export const expireMatchfinderPosts = () => sweepExpiredMatchfinderPosts(prisma, { withLock: withTournamentMutationLock });
@@ -5066,6 +5067,10 @@ async function requestAdminAlert(req) {
     match_type: context.matchType,
     match_id: context.match?.id || req.body.match_id,
     dispute_id: req.body.dispute_id || existingTicket?.dispute_id,
+    dispute_reason: req.body.dispute_reason || existingTicket?.dispute_reason,
+    reported_against: req.body.reported_against || existingTicket?.reported_against,
+    reported_against_name: req.body.reported_against_name || existingTicket?.reported_against_name,
+    match_roster: req.body.match_roster || existingTicket?.match_roster || [],
     participant_user_ids: context.participantUserIds,
     team_a_id: context.team_a_id,
     team_a_name: context.team_a_name,
@@ -5344,6 +5349,11 @@ async function resolveTicket(req) {
   if (!ticket) return { success: false, error: "Ticket not found" };
   const action = req.body.action || req.body.decision;
   let actionResult = null;
+
+  if (ticket.dispute_id && !action) {
+    actionResult = await moderateDispute({ ...req, body: { dispute_id: ticket.dispute_id, action: "resolve_dispute", notes: req.body.resolution || req.body.notes || "Resolved by staff" } });
+    if (actionResult?.success === false) return actionResult;
+  }
 
   if (action && ["approve_team_a", "approve_team_b", "force_replay"].includes(action) && ticket.match_id) {
     if (ticket.dispute_id) {
@@ -9989,11 +9999,22 @@ async function completeTournamentMatch(req) {
 }
 
 async function createDispute(req) {
+  const type = normalizeMatchType(req.body.match_type || "wager");
+  const id = req.body.match_id || req.body.wager_id || req.body.ranked_match_id || req.body.xp_match_id || req.body.tournament_match_id;
+  const prefix = type === "ranked" ? "ranked" : type === "xp" ? "xp" : type === "tournament" ? "dispute-tournament" : "wager";
+  return withTournamentMutationLock(`${prefix}-accept:${id}`, () => createDisputeUnlocked(req));
+}
+
+async function createDisputeUnlocked(req) {
   const matchType = normalizeMatchType(req.body.match_type || "wager");
   const matchId = req.body.match_id || req.body.wager_id || req.body.ranked_match_id || req.body.xp_match_id || req.body.tournament_match_id;
   if (!matchId) return { success: false, error: "Match ID is required" };
   const match = await getEntity(matchEntityFor(matchType), matchId);
   if (!match) return { success: false, error: "Match not found" };
+
+  const isEightsDispute = isEightsMatchType(matchType);
+  if (isEightsDispute && match.match_type !== matchType) return { success: false, error: "Match type does not match this lobby." };
+  if (["completed", "cancelled", "expired", "closed"].includes(match.status)) return { success: false, error: "This match is already closed." };
 
   if (matchType === "tournament" && match?.tournament_id) {
     const tournament = await getEntity("Tournament", match.tournament_id).catch(() => null);
@@ -10018,13 +10039,32 @@ async function createDispute(req) {
     return { success: false, error: "Only match participants can submit disputes" };
   }
 
+  let roster = [];
+  if (isEightsDispute) {
+    let input;
+    try { input = validateMatchDispute(req.body); } catch (error) { return { success: false, error: error.message }; }
+    const participants = await listEntities("WagerParticipant", { wager_id: match.id }, "joined_date", 100);
+    const userRows = await prisma.user.findMany({ where: { id: { in: participants.map((player) => player.user_id).filter(Boolean) } } });
+    const usersById = new Map(userRows.map((user) => [user.id, user]));
+    roster = participants.map((player) => {
+      const user = usersById.get(player.user_id);
+      return { user_id: player.user_id, user_name: user ? nameFor(user) : player.user_name,
+        username: user?.username, activision_id: activisionIdFor(user), team: player.team,
+        is_captain: player.is_captain === true, screenshot_rank: user?.metadata?.screenshot_rank,
+      };
+    });
+    const target = input.reported_against ? roster.find((player) => player.user_id === input.reported_against) : null;
+    if (input.reported_against && (!target || target.user_id === req.user.id)) return { success: false, error: "Choose another player from this match." };
+    req = { ...req, body: { ...req.body, ...input, reported_against_name: target?.user_name || "General match issue", screenshots: [], videos: [] } };
+  }
+
   const submittedEvidence = [
     ...(req.body.evidence_urls || []),
     ...(req.body.screenshots || []),
     ...(req.body.videos || []),
   ];
   const sourceMatchType = String(matchType === "ranked" ? "ranked" : (match?.match_type || matchType)).toLowerCase();
-  const createsPlayerTicket = ["ranked", "8s", "eights", "xp"].includes(sourceMatchType);
+  const createsPlayerTicket = ["ranked", "8s", "eights", "money8s", "xp"].includes(sourceMatchType);
   const ensureDisputeTicket = async (dispute) => {
     if (!createsPlayerTicket || !dispute) return { dispute, ticket: null };
     if (dispute.ticket_id) {
@@ -10043,16 +10083,41 @@ async function createDispute(req) {
         priority: req.user.is_premium ? "critical" : "high",
         proof_urls: submittedEvidence,
         ticket_category: sourceMatchType,
+        dispute_reason: dispute.reason,
+        reported_against: dispute.reported_against,
+        reported_against_name: dispute.reported_against_name,
+        match_roster: dispute.match_roster || roster,
       },
-    }).catch(() => null);
+    }).catch((error) => { if (isEightsDispute) throw error; return null; });
+    if (isEightsDispute && !ticketResult?.success) throw new Error(ticketResult?.error || "Could not link the dispute conversation. Please retry.");
     const linkedDispute = ticketResult?.ticket?.id
-      ? await updateEntity("Dispute", dispute.id, { ticket_id: ticketResult.ticket.id }).catch(() => dispute)
+      ? await updateEntity("Dispute", dispute.id, { ticket_id: ticketResult.ticket.id }).catch((error) => { if (isEightsDispute) throw error; return dispute; })
       : dispute;
     return { dispute: linkedDispute, ticket: ticketResult?.ticket || null };
   };
   const existingDisputes = await listEntities("Dispute", { match_id: match.id }, "-created_date", 20).catch(() => []);
   const existingOpenDispute = existingDisputes.find((row) => !["resolved", "rejected", "closed"].includes(row.status));
   if (existingOpenDispute) {
+    if (isEightsDispute) {
+      const submission = { reason: req.body.reason, description: req.body.description,
+        reported_by: req.user.id, reported_by_name: nameFor(req.user), reported_against: req.body.reported_against,
+        reported_against_name: req.body.reported_against_name, evidence_urls: submittedEvidence, created_date: nowIso() };
+      const same = (existingOpenDispute.submissions || []).some((row) => row.reported_by === submission.reported_by
+        && row.reason === submission.reason && row.description === submission.description && row.reported_against === submission.reported_against
+        && JSON.stringify(row.evidence_urls) === JSON.stringify(submission.evidence_urls));
+      const updated = same ? existingOpenDispute : await updateEntity("Dispute", existingOpenDispute.id, {
+        submissions: [...(existingOpenDispute.submissions || []), submission],
+        submitted_evidence: [...new Set([...(existingOpenDispute.submitted_evidence || []), ...submittedEvidence])], match_roster: roster,
+      });
+      const linked = await ensureDisputeTicket(updated);
+      if (!same && linked.ticket) {
+        await updateEntity("Ticket", linked.ticket.id, { submitted_proof: linked.dispute.submitted_evidence, proof_urls: linked.dispute.submitted_evidence,
+          match_roster: roster, dispute_submissions: linked.dispute.submissions });
+        await replyTicket({ ...req, body: { ticket_id: linked.ticket.id,
+          message: `${disputeReasonLabel(submission.reason)}${submission.reported_against ? ` · ${submission.reported_against_name}` : ""}\n${submission.description}${submittedEvidence.length ? `\nEvidence:\n${submittedEvidence.join("\n")}` : ""}` } });
+      }
+      return { success: true, dispute: linked.dispute, ticket: linked.ticket, already_exists: true };
+    }
     if (req.user.is_premium && req.body.escalated) {
       const updated = await updateEntity("Dispute", existingOpenDispute.id, {
         priority: "critical",
@@ -10091,10 +10156,17 @@ async function createDispute(req) {
       ? { id: match.team_a_id, name: match.team_a_name }
       : null;
   const dispute = await createEntity("Dispute", {
-    wager_id: matchType === "wager" ? match.id : undefined,
+    wager_id: matchType === "wager" || isEightsDispute ? match.id : undefined,
     match_id: match.id,
     match_type: matchType,
     wager_details: match,
+    match_status_before_dispute: match.status,
+    action_url: matchRouteFor(matchType, match),
+    match_roster: roster,
+    result_report: resultReportFor(matchType, match),
+    ...(isEightsDispute ? { submissions: [{ reason: req.body.reason, description: req.body.description,
+      reported_by: req.user.id, reported_by_name: nameFor(req.user), reported_against: req.body.reported_against,
+      reported_against_name: req.body.reported_against_name, evidence_urls: submittedEvidence, created_date: nowIso() }] } : {}),
     match_logs: [match],
     match_history: matchHistory,
     chat_logs: chatLogs,
@@ -10120,6 +10192,8 @@ async function createDispute(req) {
     dispute_id: dispute.id,
     disputed_date: nowIso(),
   }).catch(() => null);
+
+  if (isEightsDispute) publishEightsLobbyUpdate(match.id, "disputed");
 
   await notifyStaff({
     title: "New dispute",
@@ -10188,6 +10262,29 @@ async function moderateDispute(req) {
   if (!match) return { success: false, error: "The match linked to this dispute no longer exists" };
   let result = null;
 
+  if (["resolved", "rejected", "closed"].includes(dispute.status)) return { success: false, error: "This dispute has already been resolved." };
+  if (action === "review_proof" || action === "ban_player") {
+    if (action === "ban_player") {
+      if (!String(req.body.notes || "").trim()) return { success: false, error: "Add a reason for the ban." };
+      const roster = await matchParticipantIds(matchType, match);
+      const targetId = String(req.body.user_id || "");
+      if (!roster.includes(targetId) || targetId === req.user.id) return { success: false, error: "Choose another player from this match." };
+      const duration = req.body.duration || "24h";
+      if (!["24h", "3d", "7d", "14d", "30d", "permanent"].includes(duration)) return { success: false, error: "Invalid ban duration." };
+      result = await moderateUser({ ...req, body: { user_id: targetId, action: duration === "permanent" ? "ban" : "temporary_ban", duration,
+        reason: `Dispute #${dispute.id.slice(-8)}: ${String(req.body.notes).trim()}` } });
+      if (!result.success) return result;
+    }
+    const entry = { action, user_id: action === "ban_player" ? req.body.user_id : null, duration: req.body.duration,
+      notes: String(req.body.notes || "").trim(), admin_id: req.user.id, admin_name: nameFor(req.user), created_date: nowIso() };
+    const updated = await updateEntity("Dispute", dispute.id, { status: "under_review",
+      ...(action === "review_proof" ? { proof_reviewed_by: req.user.id, proof_reviewed_by_name: nameFor(req.user), proof_reviewed_date: nowIso() } : {}),
+      review_actions: [...(dispute.review_actions || []), entry] });
+    if (dispute.ticket_id) await replyTicket({ ...req, body: { ticket_id: dispute.ticket_id, internal: true,
+      message: action === "review_proof" ? `Evidence reviewed. ${entry.notes}` : `Player ${req.body.user_id} banned (${req.body.duration || "24h"}). ${entry.notes}` } });
+    return { success: true, dispute: updated, result };
+  }
+
   if (action === "approve_team_a" || action === "approve_team_b") {
     if (matchType === "ranked") {
       const winnerId = action === "approve_team_a" ? match.host_id : match.challenger_id;
@@ -10233,17 +10330,23 @@ async function moderateDispute(req) {
       replay_forced_by: req.user.id,
       replay_forced_date: nowIso(),
     });
-  } else if (action === "reject_dispute") {
+  } else if (action === "reject_dispute" || action === "resolve_dispute") {
+    if (!String(req.body.notes || "").trim()) return { success: false, error: "Add a resolution explaining the decision." };
     result = await updateEntity(entityName, match.id, {
-      status: ["disputed", "score_conflict"].includes(match.status) ? "in_progress" : match.status,
+      status: ["disputed", "score_conflict"].includes(match.status)
+        ? dispute.match_status_before_dispute && !["disputed", "score_conflict"].includes(dispute.match_status_before_dispute)
+          ? dispute.match_status_before_dispute : "in_progress"
+        : match.status,
       dispute_id: null,
-      dispute_rejected: true,
+      dispute_rejected: action === "reject_dispute",
       dispute_rejected_by: req.user.id,
       dispute_rejected_date: nowIso(),
     });
   } else {
     return { success: false, error: "Unknown dispute action" };
   }
+
+  if (result?.success === false) return result;
 
   const updated = await updateEntity("Dispute", dispute.id, {
     status: "resolved",
@@ -10254,6 +10357,11 @@ async function moderateDispute(req) {
     resolved_date: nowIso(),
   });
   await suppressDisputePopups(dispute.id, req.user).catch(() => null);
+  if (dispute.ticket_id) await updateEntity("Ticket", dispute.ticket_id, {
+    status: "resolved", resolution: req.body.notes || action, decision: action,
+    resolved_by: req.user.id, resolved_by_name: nameFor(req.user), resolved_date: nowIso(),
+  });
+  if (isEightsMatchType(matchType)) publishEightsLobbyUpdate(match.id, "dispute-updated");
 
   const notifyIds = [
     dispute.reported_by,
