@@ -24,9 +24,9 @@ export async function loadFreeEightsSkills(db, userIds) {
   }));
 }
 
-export async function generateBalancedFreeEightsTeams(db, participants, random = Math.random) {
+export async function generateBalancedFreeEightsTeams(db, participants, random = Math.random, options = {}) {
   const skills = await loadFreeEightsSkills(db, participants.map((row) => row.user_id));
   // Participant/client rank fields never control the split. Stored account and
   // dedicated Free 8s stats replace them before applying the shared policy.
-  return balanceFreeEightsTeams(participants.map((row) => ({ ...row, ...skills[row.user_id] })), random);
+  return balanceFreeEightsTeams(participants.map((row) => ({ ...row, ...skills[row.user_id] })), random, options);
 }

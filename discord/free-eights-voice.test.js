@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { AuditLogEvent, ChannelType, Collection, GuildChannel, PermissionFlagsBits, PermissionOverwrites, PermissionsBitField } from "discord.js";
 import { canAssignFreeEightsVoice, freeEightsVoiceChannelName, syncFreeEightsVoice } from "./free-eights-voice.js";
 import { freeEightsChannelKey, freeEightsDiscordJoinError, freeEightsVoiceKey, freeEightsWaitingRoomReady, publicFreeEightsVoiceStatus, voiceRosterSignature } from "../server/free-eights-discord.js";
+import { editEightsTeamsAsAdmin } from "../server/eights-admin-teams.js";
 
 const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003", overflowCategoryIds: ["100000000000000005", "100000000000000006"] };
 const channelId = (n) => String(300000000000000000n + BigInt(n));
@@ -301,6 +302,35 @@ test("reshuffle changes private access and moves only this match's teams", async
   assert.equal(f.stats().permissionEdits, 2);
   assert.equal(f.moves.length, 10);
   assert.equal(f.voices.get(f.users[0].discord_user_id).channelId, f.state().channels.challenger);
+});
+
+test("a persisted admin swap invalidates old voice status and moves both players into their new private teams", async () => {
+  const f = fixture();
+  Object.assign(f.match.metadata, { host_id: "player0", challenger_id: "player4", roster_lock_deadline: new Date(Date.now() + 60000).toISOString() });
+  f.participants.forEach((player, i) => { player.is_captain = i === 0 || i === 4; });
+  await f.sync();
+  const channelsBefore = { ...f.state().channels };
+  const tx = {
+    $executeRaw: async () => 1,
+    wager: { findUnique: f.db.wager.findUnique, update: async ({ data }) => { Object.assign(f.match, structuredClone(data)); return structuredClone(f.match); } },
+    wagerParticipant: {
+      findMany: async () => f.participants.map((metadata, i) => ({ id: `participant${i}`, metadata: structuredClone(metadata) })),
+      update: async ({ where, data }) => { const i = Number(where.id.replace("participant", "")); Object.assign(f.participants[i], structuredClone(data.metadata)); return { id: where.id, metadata: f.participants[i] }; },
+    },
+    user: f.db.user, eightsStats: { findMany: async () => [] }, adminAction: { create: async () => ({}) },
+  };
+  await editEightsTeamsAsAdmin({ $transaction: (action) => action(tx) }, { id: "admin", role: "admin" }, f.match.id, {
+    mode: "swap", first_user_id: "player0", second_user_id: "player4", expected_teams_generated_at: f.match.metadata.teams_generated_at,
+  });
+  assert.equal(publicFreeEightsVoiceStatus(config, { ...f.match.metadata, id: f.match.id }, f.participants, f.state()).fresh, false);
+  await f.sync();
+  assert.deepEqual(f.state().channels, channelsBefore);
+  assert.equal(f.moves.length, 10); assert.equal(f.stats().permissionEdits, 2);
+  assert.equal(f.voices.get(f.users[0].discord_user_id).channelId, f.state().channels.challenger);
+  assert.equal(f.voices.get(f.users[4].discord_user_id).channelId, f.state().channels.host);
+  assert.ok(effectivePermissions(f.channels.get(f.state().channels.challenger), f.users[0].discord_user_id).has(PermissionFlagsBits.Connect));
+  assert.equal(effectivePermissions(f.channels.get(f.state().channels.host), f.users[0].discord_user_id).has(PermissionFlagsBits.Connect), false);
+  assert.equal(f.state().roster_signature, voiceRosterSignature(f.match.metadata, f.participants));
 });
 
 test("website lobby waits for voice before generation and both winning and losing teams return after completion", async () => {

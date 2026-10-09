@@ -15,6 +15,7 @@ import { freeEightsDiscordConfig, freeEightsDiscordJoinError, freeEightsDiscordM
 import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
+import { editEightsTeamsAsAdmin } from "../eights-admin-teams.js";
 import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
 import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membership.js";
 import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
@@ -6559,7 +6560,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
   }
   const shuffled = shuffledCopy(participantRows).slice(0, requiredSize * 2);
   const { alpha, bravo, balance } = wager.match_type === "8s"
-    ? await generateBalancedFreeEightsTeams(prisma, shuffled)
+    ? await generateBalancedFreeEightsTeams(prisma, shuffled, Math.random, { avoidCurrentTeams: preserveSeries })
     : { alpha: shuffled.slice(0, requiredSize), bravo: shuffled.slice(requiredSize, requiredSize * 2) };
   const skillsByParticipant = new Map([...alpha, ...bravo].map((row) => [row.id, row]));
   if (wager.match_type === "8s") freeEightsVoiceLog("eight-players-found", { match_id: wager.id, players: shuffled.length });
@@ -6594,6 +6595,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     teams_generated_at: nowIso(),
     ...(wager.match_type === "8s" ? { free_eights_waiting_for_voice: false } : {}),
     ...(balance ? { free_eights_team_balance: balance } : {}),
+    eights_team_override: null,
     eights_reshuffle_vote_user_ids: [],
     eights_reshuffle_vote_count: 0,
     eights_reshuffle_vote_required: EIGHTS_RESHUFFLE_REQUIRED_VOTES,
@@ -6948,20 +6950,21 @@ async function adminReshuffleEightsTeams(req) {
   if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access is required" };
 
   return withTournamentMutationLock(`wager-accept:${wagerId}`, async () => {
-    const wager = await getEntity("Wager", wagerId);
-    if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
-    const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "joined_date", 20).catch(() => []);
-    const requiredSize = Number(wager.required_players_per_team || requiredRosterSize(wager.team_size));
-    if (participants.length < requiredSize * 2) return { success: false, error: `The lobby needs ${requiredSize * 2} players before teams can be reshuffled` };
-
-    const deadline = new Date(wager.roster_lock_deadline || "");
-    if (wager.status !== "open" || wager.roster_locked || Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
-      return { success: false, error: "The reshuffle window has closed" };
-    }
-
-    const updated = await randomizeEightsTeams(wager, participants, { preserveSeries: true });
+    const { wager: updated } = await editEightsTeamsAsAdmin(prisma, req.user, wagerId, { ...req.body, mode: "random" });
+    publishEightsLobbyUpdate(wagerId, "admin-teams-randomized");
     await createMatchRoomSystemMessage("8s", updated, `Teams were reshuffled by admin ${nameFor(req.user)}.`, req.user).catch(() => null);
     return { success: true, wager: updated, reshuffled: true };
+  });
+}
+
+async function adminSwapEightsPlayers(req) {
+  const wagerId = req.body.wager_id || req.body.id;
+  if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access is required" };
+  return withTournamentMutationLock(`wager-accept:${wagerId}`, async () => {
+    const { wager } = await editEightsTeamsAsAdmin(prisma, req.user, wagerId, { ...req.body, mode: "swap" });
+    publishEightsLobbyUpdate(wagerId, "admin-players-swapped");
+    await createMatchRoomSystemMessage("8s", wager, `Two players were swapped by admin ${nameFor(req.user)}.`, req.user).catch(() => null);
+    return { success: true, wager, swapped: true };
   });
 }
 
@@ -10878,6 +10881,7 @@ const handlers = {
   syncEightsLobby,
   voteEightsReshuffle,
   adminReshuffleEightsTeams,
+  adminSwapEightsPlayers,
   adminResetEightsLobby,
   leaveEightsLobby,
   getMoneyEightsStandings,

@@ -12,13 +12,13 @@ const player = (i, elo = 0, screenshot = null) => ({ id: `p${i}`, user_id: `u${i
 const mixedRoster = () => [player(0), player(1), player(2), player(3), player(4, 0, "diamond"), player(5, 0, "diamond"), player(6, 0, "crimson"), player(7, 0, "iridescent")];
 const ranks = (rows) => rows.map((row) => getFreeEightsSkill(row.free_eights_elo, row.screenshot_rank).key);
 
-test("Free 8s uses the screenshot below Challenger and its own ladder from 600; profile identity stays intact", () => {
+test("Free 8s uses the chosen rank below Topfragger and its own ladder from 800; profile identity stays intact", () => {
   for (const screenshot_rank of ["diamond", "crimson", "iridescent", "top250"]) {
     const profile = { screenshot_rank };
     assert.equal(getFreeEightsSkill(0, profile.screenshot_rank).key, screenshot_rank);
     assert.equal(getFreeEightsSkill(599, profile.screenshot_rank).source, "screenshot");
-    assert.equal(getFreeEightsSkill(600, profile.screenshot_rank).key, "challenger");
-    assert.equal(getFreeEightsSkill(799, profile.screenshot_rank).key, "challenger");
+    assert.equal(getFreeEightsSkill(600, profile.screenshot_rank).key, screenshot_rank);
+    assert.equal(getFreeEightsSkill(799, profile.screenshot_rank).key, screenshot_rank);
     assert.equal(getFreeEightsSkill(800, profile.screenshot_rank).key, "topfragger");
     assert.equal(getFreeEightsSkill(1200, profile.screenshot_rank).strength, 1200);
     assert.deepEqual(profile, { screenshot_rank });
@@ -48,7 +48,7 @@ test("four Newbs, two Diamonds, Crimson and Iridescent split as two Newbs and on
   assert.deepEqual(input, before);
 });
 
-test("balancing finds the optimal rank spread and strength gap across all 70 labeled team splits", () => {
+test("balancing spreads elite ranks first, then minimizes strength gap and rank spread across all 70 labeled team splits", () => {
   const rosters = [mixedRoster(), Array.from({ length: 8 }, (_, i) => player(i, [0, 199, 200, 399, 400, 599, 600, 1800][i])),
     [player(0, 0, "top250"), player(1, 599, "top250"), player(2, 600, "diamond"), player(3, 700, "crimson"), player(4, 800, "iridescent"), player(5, 1600, "top250"), player(6, 0), player(7, 199)]];
   for (const input of rosters) {
@@ -62,12 +62,16 @@ test("balancing finds the optimal rank spread and strength gap across all 70 lab
         return sum + counts * counts;
       }, 0);
       const gap = Math.abs(skills.reduce((sum, row, i) => sum + row.strength * (team[i] ? 1 : -1), 0));
-      objectives.push([imbalance, gap]);
+      const eliteImbalance = ["topfragger", "top250"].reduce((sum, key) => {
+        const counts = skills.reduce((total, row, i) => total + (row.key === key ? team[i] ? 1 : -1 : 0), 0);
+        return sum + counts * counts;
+      }, 0);
+      objectives.push([eliteImbalance, gap, imbalance]);
     }
     assert.equal(objectives.length, 70);
-    objectives.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    objectives.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
     const result = balanceFreeEightsTeams(input, () => 0.4);
-    assert.deepEqual([result.balance.rank_imbalance, result.balance.strength_gap], objectives[0]);
+    assert.deepEqual([result.balance.elite_rank_imbalance, result.balance.strength_gap, result.balance.rank_imbalance], objectives[0]);
   }
 });
 
@@ -76,6 +80,40 @@ test("equal players can reshuffle; invalid or duplicate rosters cannot be genera
   assert.notDeepEqual(balanceFreeEightsTeams(input, () => 0).alpha, balanceFreeEightsTeams(input, () => 0.99).alpha);
   for (const invalid of [input.slice(0, 7), [...input, player(8)], [...input.slice(0, 7), input[0]], [...input.slice(0, 7), { id: "missing" }]]) {
     assert.throws(() => balanceFreeEightsTeams(invalid), /eight distinct players/);
+  }
+});
+
+test("photo regression: the Crimson offsets two Top 250 players; records do not affect the split", () => {
+  const input = [player(0, 19, "iridescent"), player(1, 0, "top250"), player(2, 22, "iridescent"), player(3, 0, "top250"),
+    player(4, 40, "iridescent"), player(5, 17, "top250"), player(6, 92, "iridescent"), player(7, 0, "crimson")];
+  for (let i = 0; i < 35; i++) {
+    const result = balanceFreeEightsTeams(input, () => i / 35);
+    const crimsonTeam = [result.alpha, result.bravo].find((team) => ranks(team).includes("crimson"));
+    assert.equal(ranks(crimsonTeam).filter((rank) => rank === "top250").length, 2);
+    assert.ok(result.balance.strength_gap <= 3);
+    const records = input.map((p, j) => ({ ...p, eights_wins: j < 4 ? 9999 : 0, eights_losses: j < 4 ? 0 : 9999, win_rate: j < 4 ? 100 : 0 }));
+    assert.deepEqual(balanceFreeEightsTeams(records, () => i / 35).balance, result.balance);
+  }
+});
+
+test("the Diamond offsets two Top 250 players and only Topfragger replaces chosen ranks", () => {
+  for (const elo of [0, 400, 600, 799]) {
+    const input = ["top250", "top250", "top250", "iridescent", "iridescent", "iridescent", "iridescent", "diamond"].map((rank, i) => player(i, elo, rank));
+    const result = balanceFreeEightsTeams(input, () => 0);
+    const diamondTeam = [result.alpha, result.bravo].find((team) => ranks(team).includes("diamond"));
+    assert.equal(ranks(diamondTeam).filter((rank) => rank === "top250").length, 2);
+  }
+});
+
+test("a player veto chooses different teammates instead of reusing or mirroring the current split", () => {
+  const input = mixedRoster();
+  const first = balanceFreeEightsTeams(input, () => 0);
+  const previous = new Set(first.alpha.map((p) => p.user_id));
+  const current = input.map((p) => ({ ...p, team: previous.has(p.user_id) ? "host" : "challenger" }));
+  for (let i = 0; i < 35; i++) {
+    const result = balanceFreeEightsTeams(current, () => i / 35, { avoidCurrentTeams: true });
+    assert.ok(result.alpha.some((p) => p.team === "host") && result.alpha.some((p) => p.team === "challenger"));
+    assert.equal(result.balance.strength_gap, 100);
   }
 });
 
@@ -191,7 +229,7 @@ test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s a
   await request("syncEightsLobby", "8s");
   assert.deepEqual(matches.get("8s").metadata.series_maps, []);
   state.checked_at = new Date().toISOString();
-  for (const name of ["syncEightsLobby", "adminReshuffleEightsTeams"]) {
+  for (const name of ["syncEightsLobby"]) {
     await request(name, "8s");
     assertWindow("8s", 60000);
     assert.equal(matches.get("8s").metadata.series_maps.length, 3);
@@ -210,7 +248,7 @@ test("real generation and resets use 60 seconds for Free 8s, preserve Money 8s a
   await request("syncEightsLobby", "8s");
   assert.equal(matches.get("8s").metadata.roster_lock_deadline, previousDeadline, "polls do not restart the countdown");
   assert.equal(f.calls.length, reads, "later polls reuse already generated teams");
-  for (const name of ["syncEightsLobby", "adminReshuffleEightsTeams"]) {
+  for (const name of ["syncEightsLobby"]) {
     await request(name, "money8s");
     assertWindow("money8s", 300000);
   }

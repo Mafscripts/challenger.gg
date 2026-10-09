@@ -179,6 +179,7 @@ function EightsMatchRoomView() {
   const [requestingAdmin, setRequestingAdmin] = useState(false);
   const [disputing, setDisputing] = useState(false);
   const [adminBusy, setAdminBusy] = useState(false);
+  const [swapPlayer, setSwapPlayer] = useState(null);
   const [scoreOpen, setScoreOpen] = useState(false);
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
@@ -412,6 +413,8 @@ function EightsMatchRoomView() {
   const requiredReshuffleVotes = Number(match?.eights_reshuffle_vote_required || 5);
   const hasReshuffleVote = Boolean(user?.id && reshuffleVoteIds.includes(user.id));
   const reshuffleOpen = joined === 8 && !locked && countdown !== null && countdown > 0 && !closedStatuses.has(match?.status);
+  const canEditTeams = isAdmin && reshuffleOpen && match?.status === "open" && Boolean(match?.teams_generated_at) && !match?.free_eights_waiting_for_voice;
+  useEffect(() => { setSwapPlayer(null); }, [match?.teams_generated_at]);
   const seriesMaps = (Array.isArray(match?.series_maps) ? match.series_maps : []).map((map, index) => (
     typeof map === "string"
       ? { name: map, mode: seriesModeName(match?.series_modes?.[index]) }
@@ -507,13 +510,12 @@ function EightsMatchRoomView() {
   };
 
   const adminReshuffleTeams = async () => {
-    if (typeof window !== "undefined" && !window.confirm("Reshuffle both 8s teams now?")) return;
     setAdminBusy(true);
     try {
-      const response = await base44.functions.invoke("adminReshuffleEightsTeams", { wager_id: id });
+      const response = await base44.functions.invoke("adminReshuffleEightsTeams", { wager_id: id, expected_teams_generated_at: match.teams_generated_at });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not reshuffle teams");
       setMatch(response.data.wager || match);
-      toast({ title: "Teams reshuffled", description: `The ${reshuffleMinutes}-minute veto window restarted.` });
+      toast({ title: "Teams randomly shuffled", description: `Admin team selection applied. The ${reshuffleMinutes}-minute veto window restarted.` });
       await loadRoom(true);
     } catch (error) {
       toast({ title: "Reshuffle failed", description: error.message, variant: "destructive" });
@@ -521,6 +523,37 @@ function EightsMatchRoomView() {
       setAdminBusy(false);
     }
   };
+
+  const swapTeamPlayers = async (target, source = swapPlayer) => {
+    if (!canEditTeams || adminBusy || !source || source.team === target.team || source.userId === target.user_id) return;
+    setAdminBusy(true);
+    try {
+      const response = await base44.functions.invoke("adminSwapEightsPlayers", {
+        wager_id: id, first_user_id: source.userId, second_user_id: target.user_id,
+        expected_teams_generated_at: source.revision,
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not swap players");
+      setSwapPlayer(null);
+      setMatch(response.data.wager);
+      toast({ title: "Players swapped", description: "Teams saved. Discord voice assignments will follow the new teams." });
+      await loadRoom(true);
+    } catch (error) {
+      setSwapPlayer(null);
+      toast({ title: "Swap failed", description: error.message, variant: "destructive" });
+      await loadRoom(true);
+    } finally { setAdminBusy(false); }
+  };
+  const teamEditing = canEditTeams ? {
+    busy: adminBusy, selected: swapPlayer, revision: match.teams_generated_at,
+    onSelect: (player) => {
+      if (adminBusy) return;
+      if (swapPlayer && swapPlayer.team !== player.team) { swapTeamPlayers(player); return; }
+      setSwapPlayer(swapPlayer?.userId === player.user_id ? null : { userId: player.user_id, team: player.team, revision: match.teams_generated_at });
+    },
+    onDragStart: (player) => setSwapPlayer({ userId: player.user_id, team: player.team, revision: match.teams_generated_at }),
+    onDragEnd: () => setSwapPlayer(null),
+    onDrop: swapTeamPlayers,
+  } : null;
 
   const adminResetLobby = async () => {
     if (typeof window !== "undefined" && !window.confirm(`Reset this 8s lobby? Any pending score agreement will be cleared and the ${reshuffleMinutes}-minute reshuffle window will restart.`)) return;
@@ -652,6 +685,7 @@ function EightsMatchRoomView() {
         ) : <FreeEightsMatchHeader match={match} actions={headerActions} />} beforeTeams={(
           <>
         {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} voiceView={voiceView} />}
+        {canEditTeams && <section className="m-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan/25 bg-cyan/[0.06] p-4 sm:m-4"><div><p className="text-xs font-black text-cyan">Admin team controls</p><p className="mt-1 text-xs text-vapor" role="status">{swapPlayer ? "Choose a player on the other team to swap, or select the same player to cancel." : "Drag a player onto someone on the other team to swap. You can also select two players using their swap buttons."}</p><p className="mt-1 text-[10px] text-vapor">Admin changes override automatic balancing and update Discord team assignments.</p></div><button type="button" onClick={adminReshuffleTeams} disabled={adminBusy} className="inline-flex items-center gap-2 rounded-lg border border-cyan/30 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan disabled:opacity-50"><Shuffle className="h-4 w-4" />Random shuffle</button></section>}
         {!locked && !closedStatuses.has(match.status) && (
           <section className="m-3 rounded-xl border border-purple-300/20 bg-[#171722] p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -670,9 +704,9 @@ function EightsMatchRoomView() {
           </>
         )} teams={(
           <>
-            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
+            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
             <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
-            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
+            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
           </>
         )} sidebar={(
           <>
@@ -701,7 +735,7 @@ function EightsMatchRoomView() {
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
                       <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
-                      {isAdmin && <button type="button" onClick={adminReshuffleTeams} disabled={adminBusy || !reshuffleOpen} title={!reshuffleOpen ? "Available while the lobby is open and the reshuffle window is active" : "Randomize both teams again"} className="flex items-center justify-center gap-2 rounded-lg border border-purple-300/25 bg-purple-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-purple-200 transition-colors hover:bg-purple-300/15 disabled:opacity-40"><Shuffle className="h-3.5 w-3.5" /> Reshuffle teams</button>}
+                      {isAdmin && <button type="button" onClick={adminReshuffleTeams} disabled={adminBusy || !canEditTeams} title={!canEditTeams ? "Available while the lobby is open and the reshuffle window is active" : "Randomize both teams again"} className="flex items-center justify-center gap-2 rounded-lg border border-purple-300/25 bg-purple-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-purple-200 transition-colors hover:bg-purple-300/15 disabled:opacity-40"><Shuffle className="h-3.5 w-3.5" /> Random shuffle</button>}
                       {isAdmin && <button type="button" onClick={adminResetLobby} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-yellow-300/25 bg-yellow-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-yellow-200 transition-colors hover:bg-yellow-300/15 disabled:opacity-40"><Clock3 className="h-3.5 w-3.5" /> Reset {reshuffleMinutes} min timer</button>}
                       <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 transition-colors hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
                     </div>

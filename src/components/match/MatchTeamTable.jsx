@@ -1,6 +1,6 @@
 import React, { useId } from "react";
 import { Link } from "react-router-dom";
-import { AtSign, Globe2, MessageCircle, Trophy, Twitch, Youtube } from "lucide-react";
+import { ArrowLeftRight, AtSign, Globe2, MessageCircle, Trophy, Twitch, Youtube } from "lucide-react";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
@@ -92,7 +92,7 @@ function PlayerSocials({ player }) {
   );
 }
 
-export default function MatchTeamTable({ label, name, color = "cyan", seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, eloChanges = {}, voiceStates = [], waitingRoomUrl }) {
+export default function MatchTeamTable({ label, name, color = "cyan", seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing }) {
   const isOrange = color === "orange";
   const toneClass = isOrange ? "text-orange" : "text-cyan";
   const tintClass = isOrange ? "border-orange/30 bg-orange/10" : "border-cyan/30 bg-cyan/10";
@@ -132,9 +132,17 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
             const trophies = trophiesFor(player);
             const record = recordFor(player);
             const role = player.role || (captainId && String(userId) === String(captainId) ? "captain" : "member");
+            const selected = teamEditing?.selected?.userId === userId;
+            const swapTarget = teamEditing?.selected && teamEditing.selected.team !== player.team;
             return (
-              <article key={userId || `${displayName}-${index}`} className={`match-player-card grid ${freeEights ? "grid-cols-2" : ""} gap-4 bg-[#0e1319] px-4 py-4 transition-colors hover:bg-[#151c25] sm:px-5 ${columns} ${rowLayout}`}>
+              <article key={userId || `${displayName}-${index}`} draggable={Boolean(teamEditing && !teamEditing.busy)}
+                onDragStart={teamEditing ? (event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-topfragg-player", JSON.stringify({ userId, team: player.team, revision: teamEditing.revision })); teamEditing.onDragStart(player); } : undefined}
+                onDragEnd={teamEditing?.onDragEnd}
+                onDragOver={teamEditing ? (event) => { if (!teamEditing.busy && event.dataTransfer.types.includes("application/x-topfragg-player")) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } } : undefined}
+                onDrop={teamEditing ? (event) => { event.preventDefault(); if (teamEditing.busy) return; try { const source = JSON.parse(event.dataTransfer.getData("application/x-topfragg-player")); if (source.team !== player.team) teamEditing.onDrop(player, source); } catch { /* Ignore unrelated drops. */ } } : undefined}
+                className={`match-player-card grid ${freeEights ? "grid-cols-2" : ""} gap-4 bg-[#0e1319] px-4 py-4 transition-colors hover:bg-[#151c25] sm:px-5 ${columns} ${rowLayout} ${teamEditing && !teamEditing.busy ? "cursor-grab active:cursor-grabbing" : ""} ${selected ? "ring-2 ring-inset ring-cyan" : swapTarget ? "hover:ring-2 hover:ring-inset hover:ring-cyan/60" : ""}`}>
                 <div className={`flex min-w-0 items-center gap-3 ${freeEights ? "col-span-2 [@container(min-width:1020px)]:col-span-1" : ""}`}>
+                  {teamEditing && <button type="button" aria-label={`${selected ? "Cancel swap for" : "Swap"} ${displayName}`} aria-pressed={selected} disabled={teamEditing.busy} onClick={() => teamEditing.onSelect(player)} className="shrink-0 rounded-lg border border-cyan/25 bg-cyan/10 p-2 text-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan disabled:opacity-40"><ArrowLeftRight className="h-4 w-4" /></button>}
                   <Avatar className={`h-11 w-11 border font-mono text-sm font-black ${tintClass} ${toneClass}`}>
                     <AvatarImage src={player.avatar_url || undefined} alt="" className="object-cover" />
                     <AvatarFallback className="bg-transparent">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
