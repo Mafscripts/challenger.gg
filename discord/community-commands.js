@@ -78,7 +78,7 @@ export function createCommunityCommandHandler({ guildId, publicUrl, findChannel,
   };
   const help = (interaction) => new EmbedBuilder().setColor(TOPFRAGG_COLORS.cyan).setTitle("🤖 Topfragg Bot commands")
     .setDescription("Info replies and draft previews are private. Fun commands appear in the channel.")
-    .addFields({ name: "🎮 Players", value: "`/8s` — Free 8s\n`/tournaments` — Tournament signups\n`/streams` — Stream channels\n`/rules` — Server rules\n`/verify` — Verify your account\n`/support` — Open a ticket\n`/ping` — Bot status\n`/autobots` — Autobots, roll out!\n`/retard username:@player` — Random gaming roast" },
+    .addFields({ name: "🎮 Players", value: "`/8s` — Free 8s\n`/tournaments` — Tournament signups\n`/streams` — Stream channels\n`/rules` — Server rules\n`/verify` — Restore your automatic community role\n`/support` — Open a ticket\n`/ping` — Bot status\n`/autobots` — Autobots, roll out!\n`/retard username:@player` — Random gaming roast" },
       ...(has(interaction.memberPermissions, PermissionFlagsBits.ManageGuild) ? [{ name: "🛡️ Admins", value: "`/announce` — Announcement with private preview\n`/poll` — Poll with private preview\n`/poll-end` — End a bot poll early\n`/giveaway start` / `/giveaway end` — Giveaways\n`/setup-status` — Check server setup\nChoose `everyone:true` only when you want an everyone ping." }] : []));
 
   return async (interaction) => {

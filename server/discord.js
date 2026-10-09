@@ -140,19 +140,3 @@ export const discordRoleSyncFailure = (error) => {
     message: "Discord is connected, but the Verified Player role could not be synchronized. Please try again later.",
   };
 };
-
-export const removeDiscordVerifiedRole = async (discordUserId) => {
-  const { guildId } = discordConfig();
-  if (!guildId || !discordUserId) return { removed: false };
-  const role = await verifiedRole();
-  try {
-    await discordBotRequest(
-      `/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(discordUserId)}/roles/${encodeURIComponent(role.id)}`,
-      { method: "DELETE" },
-    );
-    return { removed: true };
-  } catch (error) {
-    if (error.discordStatus === 404) return { removed: false };
-    throw error;
-  }
-};

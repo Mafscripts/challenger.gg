@@ -9,7 +9,6 @@ import {
   discordInviteUrl,
   discordRoleSyncFailure,
   discordUserProfile,
-  removeDiscordVerifiedRole,
   syncDiscordVerifiedRole,
 } from "../discord.js";
 
@@ -303,12 +302,7 @@ router.delete("/connection", requireAuth, async (req, res, next) => {
     if (await activeFreeEightsMembership(req.user.id)) {
       return res.status(409).json({ error: "Finish or leave your active Free 8s lobby before disconnecting Discord" });
     }
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    if (user?.discord_user_id) {
-      await removeDiscordVerifiedRole(user.discord_user_id).catch((error) => {
-        console.error("Discord role removal failed:", error.message);
-      });
-    }
+    // Verified Player belongs to server members independently of website linking.
     await prisma.user.update({
       where: { id: req.user.id },
       data: {

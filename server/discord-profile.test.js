@@ -13,6 +13,36 @@ test("Discord avatars use the current account hash and handle removed or animate
   assert.equal(discordAvatarUrl({ id, avatar: null }), null);
 });
 
+test("disconnecting the website identity preserves the automatic Discord community role", async (t) => {
+  const user = { id: "account", role: "user", email_verified: true, metadata: {}, discord_user_id: "200000000000000001" };
+  const override = (target, name, implementation) => {
+    const previous = target[name]; target[name] = implementation;
+    t.after(() => { target[name] = previous; });
+  };
+  override(prisma.user, "findUnique", async () => structuredClone(user));
+  override(prisma.ban, "findMany", async () => []);
+  override(prisma.wagerParticipant, "findMany", async () => []);
+  override(prisma.user, "update", async ({ where, data }) => {
+    assert.equal(where.id, user.id);
+    assert.equal(data.discord_user_id, null);
+    return { ...user, ...data };
+  });
+  const realFetch = globalThis.fetch;
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    assert.ok(!String(url).startsWith("https://discord.com/"), "Disconnect must not remove a Discord role");
+    return realFetch(url, options);
+  });
+  const app = express(); app.use("/api/discord", discordRoutes);
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise((resolve) => server.once("listening", resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const response = await realFetch(`http://127.0.0.1:${server.address().port}/api/discord/connection`, {
+    method: "DELETE", headers: { Authorization: `Bearer ${signUser(user)}` },
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { connected: false });
+});
+
 test("authenticated role sync refreshes only the still-linked Discord profile and tolerates unavailable updates", async (t) => {
   const env = { DISCORD_TOKEN: "test-bot-token", DISCORD_GUILD_ID: "100000000000000001" };
   for (const [key, value] of Object.entries(env)) {

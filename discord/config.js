@@ -83,7 +83,7 @@ export const categorySpecs = [
       { key: "welcome", name: "👋・welcome", legacyNames: ["welcome"], type: ChannelType.GuildText, mode: "read-only", topic: "Welcome to the official Topfragg.gg competitive community." },
       { key: "rules", name: "📜・rules", legacyNames: ["rules"], type: ChannelType.GuildText, mode: "read-only", topic: "The rules that keep Topfragg competitive, fair and fun." },
       { key: "announcements", name: "📢・announcements", legacyNames: ["announcements"], type: ChannelType.GuildText, mode: "read-only", topic: "Official Topfragg news, events and tournament announcements." },
-      { key: "verification", name: "✅・verification", legacyNames: ["verification"], type: ChannelType.GuildText, mode: "read-only", topic: "Connect your Topfragg identity and request verification." },
+      { key: "verification", name: "✅・verification", legacyNames: ["verification"], type: ChannelType.GuildText, mode: "read-only", topic: "Verified Player is automatic on join. Optionally connect your Topfragg account." },
       { key: "faq", name: "❓・faq", legacyNames: ["faq"], type: ChannelType.GuildText, mode: "read-only", topic: "Quick answers about accounts, teams and competitions." },
     ],
   },
@@ -166,7 +166,7 @@ export const memberCountSpec = {
 export const commandSpecs = [
   ...communityCommandSpecs,
   { name: "ping", description: "Check whether Topfragg Bot is online." },
-  { name: "verify", description: "Verify your linked Topfragg and Discord identity." },
+  { name: "verify", description: "Restore your automatic Verified Player community role." },
   { name: "tournaments", description: "Open the current Topfragg tournaments." },
   {
     name: "support",

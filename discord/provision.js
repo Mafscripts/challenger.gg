@@ -492,7 +492,7 @@ async function seedInformation(guild) {
       .setDescription("Your competitive arena starts here. Enter tournaments, build your roster, climb the leaderboards and prove who owns the lobby.")
       .addFields(
         { name: "📜 1. Know the rules", value: `Start in ${rulesChannel} and keep every match fair.`, inline: true },
-        { name: "✅ 2. Get verified", value: `Visit ${verificationChannel} and connect your identity.`, inline: true },
+        { name: "✅ 2. Automatically verified", value: "You receive **Verified Player** when you join. No extra step is required.", inline: true },
         { name: "🏆 3. Enter the arena", value: `Find your next event in ${tournamentsChannel}.`, inline: true },
         { name: "🔥 Ready to compete?", value: "Bring your squad, play for prizes and build your reputation in the Topfragg community." },
       ),
@@ -532,12 +532,12 @@ async function seedInformation(guild) {
     "Topfragg setup:v1:verification",
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.green)
-      .setTitle("✅ Verify your Topfragg identity")
-      .setDescription("Link Discord securely through Topfragg. We verify your unique Discord user ID automatically—never by trusting a typed username or old #1234 tag.")
+      .setTitle("✅ Automatic verification · Optional account connection")
+      .setDescription("Every new player receives **Verified Player** automatically on joining. No button, rules acceptance or Topfragg account is required for this community role. You can optionally connect Discord to your Topfragg account for competition features.")
       .addFields(
         { name: "1. Connect", value: "Open Topfragg Settings and press **Connect Discord**." },
         { name: "2. Approve", value: "Authorize basic identity access on Discord. Topfragg never receives your password." },
-        { name: "3. Verify", value: "The **Verified Player** role is assigned automatically. Use `/verify` to synchronize it again." },
+        { name: "Already verified", value: "Your **Verified Player** role does not depend on a website connection. Use `/verify` if you need to restore it." },
         { name: "Automatic roles", value: "**Premium**, **Team Captain** and **Tournament Participant** update automatically from your Topfragg account." },
       ),
     [
@@ -549,7 +549,7 @@ async function seedInformation(guild) {
           .setURL(`${config.publicUrl}/settings?connect=discord`),
       ),
     ],
-    ["Verify your Topfragg identity"],
+    ["Verify your Topfragg identity", "Automatic verification · Optional account connection"],
   );
   await sendSeedEmbed(
     announcementsChannel,

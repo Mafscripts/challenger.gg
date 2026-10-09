@@ -27,6 +27,7 @@ import {
 import { prisma } from "../server/prisma.js";
 import { syncTournamentDiscord } from "./announcements.js";
 import { syncManagedDiscordRoles } from "./managed-roles.js";
+import { assignVerifiedPlayerRole, syncVerifiedPlayerRoles } from "./member-verification.js";
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
@@ -46,6 +47,19 @@ const client = new Client({
   ],
 });
 let tournamentSyncRunning = false;
+let memberVerificationSyncRunning = false;
+const verificationLog = (message) => process.stdout.write(`[Topfragg Verification] ${message}\n`);
+async function runMemberVerificationSync(guild) {
+  if (memberVerificationSyncRunning) return;
+  memberVerificationSyncRunning = true;
+  try {
+    await syncVerifiedPlayerRoles(guild, { log: verificationLog });
+  } catch (error) {
+    console.error("[Topfragg Verification] Sync failed:", error.message);
+  } finally {
+    memberVerificationSyncRunning = false;
+  }
+}
 let freeEightsVoiceSyncRunning = false;
 let freeEightsVoiceSyncQueued = false;
 let freeEightsVoiceInventoryRefreshQueued = false;
@@ -519,6 +533,8 @@ client.once(Events.ClientReady, async (readyClient) => {
     process.stderr.write(`[Topfragg Discord] Server ${config.guildId} is unavailable.\n`);
     return;
   }
+  void runMemberVerificationSync(guild);
+  setInterval(() => runMemberVerificationSync(guild), 60_000);
   const voiceUpdates = createFreeEightsVoiceUpdater((id) => syncFreeEightsVoice(guild, { matchIds: [id], refreshInventory: false }));
   void runFreeEightsVoiceSync(guild);
   setInterval(() => runFreeEightsVoiceSync(guild), 5000);
@@ -541,6 +557,12 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 client.on(Events.GuildMemberAdd, syncMemberCountFromEvent);
+client.on(Events.GuildMemberAdd, (member) => {
+  if (member.guild.id !== config.guildId) return;
+  assignVerifiedPlayerRole(member, { log: verificationLog }).catch((error) => {
+    console.error(`[Topfragg Verification] Join assignment failed for ${member.id}:`, error.message);
+  });
+});
 client.on(Events.GuildMemberRemove, syncMemberCountFromEvent);
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   if (newState.guild.id === config.guildId && oldState.channelId !== newState.channelId) {
@@ -824,31 +846,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
     if (interaction.commandName === "verify") {
-      const linkedUser = await prisma.user.findUnique({
-        where: { discord_user_id: interaction.user.id },
-      });
-      if (!linkedUser) {
-        await interaction.reply({
-          content: "Connect this Discord account to your Topfragg account first. No username or #1234 tag is needed.",
-          flags: MessageFlags.Ephemeral,
-          components: [
-            new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setLabel("Connect Discord on Topfragg")
-                .setStyle(ButtonStyle.Link)
-                .setURL(`${config.publicUrl}/settings?connect=discord`),
-            ),
-          ],
-        });
-        return;
-      }
-      const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
-      if (!verifiedRole) {
-        await interaction.reply(ephemeral("The Verified Player role is unavailable. Please contact Topfragg support."));
-        return;
-      }
-      await interaction.member.roles.add(verifiedRole, "Topfragg website Discord identity verified");
-      await interaction.reply(ephemeral(`Verified successfully. Welcome back, ${linkedUser.display_name || linkedUser.username || interaction.user.username}!`));
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      await assignVerifiedPlayerRole(interaction.member, { log: verificationLog });
+      await interaction.editReply("You have the Verified Player role. This role is assigned automatically when you join; no website connection is required.");
       return;
     }
     if (interaction.commandName === "tournaments") {
