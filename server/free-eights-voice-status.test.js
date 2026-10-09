@@ -4,7 +4,7 @@ import express from "express";
 import discordRoutes from "./routes/discord.js";
 import { prisma } from "./prisma.js";
 import { signUser } from "./auth.js";
-import { voiceRosterSignature } from "./free-eights-discord.js";
+import { freeEightsWaitingRoomReady, publicFreeEightsVoiceStatus, voiceRosterSignature } from "./free-eights-discord.js";
 import { freeEightsVoiceDisplaySignature, freeEightsVoiceView, recordFreeEightsVoiceResponse } from "../src/lib/freeEightsVoiceStatus.js";
 
 const players = [{ user_id: "a", team: "host" }, { user_id: "b", team: "challenger" }];
@@ -136,6 +136,69 @@ test("the last confirmed waiting room link survives a temporary missing snapshot
   const pending = receive(good, { data: { ...data(), fresh: false, waiting_room_url: null }, now: 105000 });
   assert.equal(freeEightsVoiceView(pending, players, 105000).voice.waiting_room_url, good.data.waiting_room_url);
   assert.equal(freeEightsVoiceDisplaySignature(pending, players), freeEightsVoiceDisplaySignature(good, players));
+});
+
+test("a provisioned room link survives missing polls before the first fresh observation", () => {
+  const url = "https://discord.com/channels/100000000000000001/100000000000000002";
+  const initial = receive(null, { data: { ...data(), fresh: false, waiting_room_url: url } });
+  const missing = receive(initial, { data: { ...data(), fresh: false, waiting_room_url: null }, now: 102000 });
+  const freshWithoutLink = receive(missing, { data: data(), now: 104000 });
+  const empty = receive(freshWithoutLink, { data: { ...data(), fresh: false, players: [], waiting_room_url: null }, now: 106000 });
+  for (const result of [initial, missing, freshWithoutLink, empty]) {
+    assert.equal(freeEightsVoiceView(result, players, 106000).voice.waiting_room_url, url);
+  }
+  assert.deepEqual(freeEightsVoiceView(empty, players, 106000).playerStates.map((row) => row.status), ["in_waiting_room", "in_waiting_room"]);
+  for (const change of [{ matchId: "match2" }, { userId: "different" }]) {
+    const other = receive(empty, { ...change, data: { ...data(), fresh: false, waiting_room_url: null } });
+    assert.equal(freeEightsVoiceView(other, players).voice.waiting_room_url, null);
+  }
+  const closed = receive(empty, { data: { ...data(), closed: true, waiting_room_url: null } });
+  const closedView = freeEightsVoiceView(closed, players, 100000);
+  assert.equal(closedView.voice.waiting_room_url, null);
+  assert.equal(closedView.hasConfirmedStatus, false);
+  assert.equal(closedView.readyCount, 0);
+});
+
+test("BO7, BO6 and MW3 display the last server observation after F5 without granting stale readiness", () => {
+  const config = { enabled: true, guildId: "100000000000000001", categoryId: "100000000000000003" };
+  const roster = Array.from({ length: 8 }, (_, i) => ({ user_id: `u${i}`, team: i < 4 ? "host" : "challenger" }));
+  for (const game_id of ["bo7", "bo6", "mw3"]) {
+    const match = { id: `match-${game_id}`, match_type: "8s", game_id, status: "open", teams_generated_at: "revision" };
+    const state = { match_id: match.id, guild_id: config.guildId, category_id: config.categoryId,
+      channels: { waiting: "100000000000000002" }, waiting_room_id: "100000000000000002",
+      checked_at: new Date(100000).toISOString(), roster_signature: voiceRosterSignature(match, roster),
+      players: Object.fromEntries(roster.map((row) => [row.user_id, { status: "in_waiting_room" }])) };
+    const stale = publicFreeEightsVoiceStatus(config, match, roster, state, 130000);
+    assert.equal(stale.fresh, false);
+    assert.ok(stale.players.every((row) => row.status === "unavailable"));
+    assert.equal(freeEightsWaitingRoomReady(config, match, roster, state, 130000), false);
+    const firstLoad = recordFreeEightsVoiceResponse(null, { matchId: match.id, userId: "u0", data: stale, now: 130000 });
+    const view = freeEightsVoiceView(firstLoad, roster, 130000);
+    assert.equal(view.displayReadyCount, 8);
+    assert.equal(view.hasConfirmedStatus, true);
+    assert.equal(view.readyCount, 0);
+    assert.ok(view.voice.waiting_room_url);
+    const swapped = roster.map((row) => row.user_id === "u0" ? { ...row, team: "challenger" } : row);
+    assert.equal(publicFreeEightsVoiceStatus(config, match, swapped, state, 130000).players[0].last_observed_status, null);
+    for (const overrides of [{ match_id: "another" }, { guild_id: "100000000000000004" }, { roster_signature: "broken" }, { roster_signature: '["", {}]' }]) {
+      assert.ok(publicFreeEightsVoiceStatus(config, match, roster, { ...state, ...overrides }, 130000).players.every((row) => !row.last_observed_status));
+    }
+    const closed = publicFreeEightsVoiceStatus(config, { ...match, status: "cancelled" }, roster, state, 130000);
+    assert.equal(closed.closed, true);
+    assert.equal(closed.waiting_room_url, null);
+    assert.ok(closed.players.every((row) => !row.last_observed_status));
+  }
+});
+
+test("a stale server observation restores a first load but never rolls back a newer displayed check", () => {
+  const good = receive(null);
+  const oldSnapshot = { ...data(), fresh: false, players: players.map((player) => ({ ...player,
+    status: "unavailable", last_observed_status: "not_in_waiting_room" })) };
+  const stale = receive(good, { data: oldSnapshot, now: 130000 });
+  assert.deepEqual(freeEightsVoiceView(stale, players, 130000).playerStates.map((row) => row.status), ["in_waiting_room", "in_waiting_room"]);
+  const fresh = receive(stale, { data: { ...oldSnapshot, fresh: true, snapshot_age_ms: 0,
+    players: players.map((player) => ({ ...player, status: "not_in_waiting_room" })) }, now: 131000 });
+  assert.deepEqual(freeEightsVoiceView(fresh, players, 131000).playerStates.map((row) => row.status), ["not_in_waiting_room", "not_in_waiting_room"]);
 });
 
 test("voice API reads run together and still enforce authentication, lobby membership and match type", async (t) => {

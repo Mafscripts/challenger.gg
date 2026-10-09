@@ -8,17 +8,24 @@ export function recordFreeEightsVoiceResponse(previous, { matchId, userId, data,
   const sameRoom = previous?.matchId === matchId && previous?.userId === userId;
   const current = sameRoom ? previous : { matchId, userId, data: null, receivedAt: null, pendingSince: now };
   if (failed) return { ...current, requestFailed: true, pendingSince: current.pendingSince ?? now };
-  let lastConfirmed = current.lastConfirmed;
-  if (data?.enabled && data.configured && data.fresh && Number(data.snapshot_age_ms || 0) < FRESH_MS) {
+  const closed = Boolean(data?.closed);
+  const lastWaitingRoomUrl = closed ? null : data?.waiting_room_url || current.lastWaitingRoomUrl || current.lastConfirmed?.waiting_room_url || null;
+  let lastConfirmed = closed ? undefined : current.lastConfirmed;
+  if (!closed && data?.enabled && data.configured) {
     // Keep bot observations separate from transport health. A pending/stale
     // response must never replace a player's last observed voice channel.
-    lastConfirmed = { ...data, players: (data.players || []).map((player) => {
+    const fresh = data.fresh && Number(data.snapshot_age_ms || 0) < FRESH_MS;
+    const observedPlayers = (data.players || []).map((player) => {
       const previousPlayer = lastConfirmed?.players?.find((row) => samePlayer(row, player));
-      return confirmedStatuses.has(player.status) ? player : { ...player, status: previousPlayer?.status || "unknown" };
-    }) };
+      const observed = fresh ? player.status : confirmedStatuses.has(previousPlayer?.status) ? previousPlayer.status : player.last_observed_status;
+      return { ...player, status: confirmedStatuses.has(observed) ? observed : previousPlayer?.status || "unknown" };
+    });
+    // A temporary empty/partial response must not erase existing badges.
+    const retainedPlayers = (lastConfirmed?.players || []).filter((player) => !observedPlayers.some((row) => samePlayer(row, player)));
+    lastConfirmed = { ...data, players: [...retainedPlayers, ...observedPlayers].slice(-16) };
   }
   return { matchId, userId, data, receivedAt: now, requestFailed: false,
-    lastConfirmed,
+    lastConfirmed, lastWaitingRoomUrl,
     pendingSince: data?.fresh ? null : current.pendingSince ?? now };
 }
 
@@ -30,7 +37,7 @@ export function freeEightsVoiceView(result, players, now = Date.now()) {
   const snapshotAge = Math.max(0, Number(voice?.snapshot_age_ms) || 0);
   const rosterMatches = voice?.players?.length === players.length
     && players.every((player) => voice.players.some((row) => row.user_id === player.user_id && row.team === player.team));
-  const available = Boolean(voice?.enabled && voice.configured && voice.fresh && rosterMatches && snapshotAge + elapsed < FRESH_MS);
+  const available = Boolean(!voice?.closed && voice?.enabled && voice.configured && voice.fresh && rosterMatches && snapshotAge + elapsed < FRESH_MS);
   const configurationFailure = voice && (voice.enabled === false || voice.configured === false);
   const expiredAt = (result?.receivedAt ?? now) + Math.max(0, FRESH_MS - snapshotAge);
   const pendingSince = result?.pendingSince ?? (voice?.fresh && rosterMatches ? expiredAt : now);
@@ -44,7 +51,7 @@ export function freeEightsVoiceView(result, players, now = Date.now()) {
     return { ...player, status, ready: available && ["in_waiting_room", "in_team_voice"].includes(observed) };
   });
   const displayVoice = voice || result?.lastConfirmed;
-  return { voice: displayVoice && { ...displayVoice, waiting_room_url: voice?.waiting_room_url || result?.lastConfirmed?.waiting_room_url || null },
+  return { voice: displayVoice && { ...displayVoice, waiting_room_url: voice?.closed ? null : voice?.waiting_room_url || result?.lastWaitingRoomUrl || result?.lastConfirmed?.waiting_room_url || null },
     available, checking, refreshing, configurationFailure, playerStates,
     hasConfirmedStatus: playerStates.length > 0 && playerStates.every((player) => confirmedStatuses.has(player.status)),
     displayReadyCount: playerStates.filter((player) => ["in_waiting_room", "in_team_voice"].includes(player.status)).length,

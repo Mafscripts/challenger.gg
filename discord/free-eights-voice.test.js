@@ -176,6 +176,33 @@ test("BO7, BO6 and MW3 retain isolated waiting/team voices and cancellation clea
   for (const state of [states[0], states[2]]) for (const id of Object.values(state.channels)) assert.equal(f.channels.has(id), true);
 });
 
+test("BO7, BO6 and MW3 keep partially filled lobby rooms and join links throughout repeated sweeps", async () => {
+  const f = fixture(3, { autoJoinWaiting: false });
+  ["bo7", "bo6", "mw3"].forEach((id, index) => {
+    f.matches[index].metadata.game_id = id;
+    f.matches[index].metadata.teams_generated_at = "";
+  });
+  for (let index = f.participants.length - 1; index >= 0; index--) {
+    if (index % 8 >= 3) f.participants.splice(index, 1);
+  }
+  await f.sync();
+  const ids = f.matches.map((match) => f.records.get(freeEightsVoiceKey(match.id)).metadata.channels.waiting);
+  assert.equal(new Set(ids).size, 3);
+  for (let sweep = 0; sweep < 3; sweep++) {
+    await f.sync();
+    for (const [index, match] of f.matches.entries()) {
+      const state = f.records.get(freeEightsVoiceKey(match.id)).metadata;
+      const roster = f.participants.filter((row) => row.wager_id === match.id);
+      assert.equal(state.channels.waiting, ids[index]);
+      assert.equal(f.channels.has(ids[index]), true);
+      assert.equal(publicFreeEightsVoiceStatus(config, match.metadata, roster, state).waiting_room_url,
+        `https://discord.com/channels/${config.guildId}/${ids[index]}`);
+    }
+  }
+  assert.equal(f.stats().deletes, 0);
+  assert.equal(f.stats().creations, 3);
+});
+
 test("link gate requires authenticated OAuth identity only for Free 8s", () => {
   assert.equal(freeEightsDiscordJoinError("8s", { id: "u", discord: "typed-name", discord_user_id: "bad" }).code, "FREE_EIGHTS_DISCORD_REQUIRED");
   assert.equal(freeEightsDiscordJoinError("8s", { id: "u", discord_user_id: "200000000000000001" }).success, false);

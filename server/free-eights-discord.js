@@ -62,9 +62,17 @@ export const publicFreeEightsVoiceStatus = (config, match, participants, state, 
   const fresh = Boolean(state?.checked_at && age >= 0 && age < 20_000
     && room
     && state.roster_signature === voiceRosterSignature(match, participants));
+  // Keep the last bot observation available after F5 and during a sweep. It
+  // is display-only: map generation still requires the fresh exact roster.
+  let observedRoster = [];
+  try {
+    const roster = JSON.parse(state?.roster_signature || "[]")[1];
+    if (Array.isArray(roster)) observedRoster = roster.filter(Array.isArray);
+  } catch { /* No trusted previous roster. */ }
   return {
     enabled: config.enabled,
     configured: Boolean(validDiscordId(config.guildId) && validDiscordId(config.categoryId)),
+    closed: freeEightsVoiceClosed.has(match?.status),
     waiting_room_url: room ? `https://discord.com/channels/${config.guildId}/${room}` : null,
     fresh,
     snapshot_age_ms: Number.isFinite(age) && age >= 0 ? age : null,
@@ -74,6 +82,8 @@ export const publicFreeEightsVoiceStatus = (config, match, participants, state, 
       user_id: row.user_id,
       team: row.team,
       status: config.enabled && fresh ? state?.players?.[row.user_id]?.status || "checking" : "unavailable",
+      last_observed_status: room && observedRoster.some(([id, team]) => id === row.user_id && team === row.team)
+        ? state?.players?.[row.user_id]?.status || null : null,
     })),
   };
 };
