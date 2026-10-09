@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, CalendarDays, Crown, Plus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -16,6 +16,10 @@ import { toast } from "@/components/ui/use-toast";
 import { FreeEightsRankDialog, FreeEightsRankNotice, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
+import { useFreeEightsGames } from "@/hooks/useFreeEightsGames";
+import FreeEightsGameName from "@/components/competition/FreeEightsGameName";
+import { DEFAULT_EIGHTS_GAME, DEFAULT_EIGHTS_GAMES, eightsGameName } from "@/lib/freeEightsGames";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
 const EIGHTS_PRIZE_START_MONTH = "2026-10";
@@ -31,6 +35,12 @@ const daysUntilPrizeStarts = () => Math.max(0, Math.ceil((EIGHTS_PRIZE_START_DAT
 export default function RankedEights() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const gameQuery = useFreeEightsGames();
+  const games = (gameQuery.data?.games || DEFAULT_EIGHTS_GAMES).filter((game) => game.enabled);
+  const selectedGame = games.find((game) => game.id === (searchParams.get("game") || DEFAULT_EIGHTS_GAME)) || games[0];
+  const gameId = selectedGame.id;
+  const switchGame = (value) => { const params = new URLSearchParams(searchParams); params.set("game", value); navigate(`${location.pathname}?${params}${location.hash}`); setCreateOpen(false); };
   const { user: authenticatedUser } = useAuth();
   const [moneyUser, setUser] = useState(null);
   const [moneyLobbies, setLobbies] = useState([]);
@@ -46,8 +56,8 @@ export default function RankedEights() {
   const isMoney = searchParams.get("mode") === "money";
   const lobbyMatchType = isMoney ? "money8s" : "8s";
   const freeOverview = useQuery({
-    queryKey: ["free-eights-overview", authenticatedUser?.id],
-    queryFn: () => loadFreeEightsOverview(base44),
+    queryKey: ["free-eights-overview", authenticatedUser?.id, gameId],
+    queryFn: () => loadFreeEightsOverview(base44, gameId),
     enabled: !isMoney && Boolean(authenticatedUser?.id),
     staleTime: 0,
     refetchInterval: 6000,
@@ -179,10 +189,12 @@ export default function RankedEights() {
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <CompetitionLadder
           mode={isMoney ? "money8s" : "eights"}
+          gameId={gameId}
           currentUser={user}
           openCount={lobbies.length}
           headerEyebrow={isMoney ? "Wallet-backed 8s" : "Free 8s ELO ladder"}
-          headerTitle={isMoney ? "Money 8s" : "Free 8s"}
+          headerTitle={isMoney ? "Money 8s" : <FreeEightsGameName game={selectedGame} prefix="Free 8s " />}
+          competitionTitle={isMoney ? undefined : <FreeEightsGameName game={selectedGame} prefix="Free 8s " />}
           headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : "Join free, get shuffled into a 4v4 team and climb the 8s ELO standings."}
           matchfinder={(
             <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : "No 8s lobbies are open right now."}>
@@ -194,7 +206,7 @@ export default function RankedEights() {
                     key={lobby.id}
                     game={lobby.game_mode_display || lobby.game_mode}
                     gameDetail={`4v4 · ${joined}/8 joined`}
-                    competition={isMoney ? "Money 8s" : "Free 8s"}
+                    competition={isMoney ? "Money 8s" : `Free 8s ${eightsGameName(selectedGame)}`}
                     competitionDetail={`Hosted by ${lobby.host_name || "Player"} · BO${lobby.best_of || 3}`}
                     playRule={lobby.play_rule}
                     postedAt={lobby.created_date}
@@ -209,7 +221,7 @@ export default function RankedEights() {
               })}
             </CompetitionMatchfinder>
           )}
-          action={!isMoney && !freeOverview.data ? (
+          action={<div className="space-y-3">{!isMoney && !freeOverview.data ? (
             <button type="button" disabled={!freeOverview.error} onClick={() => refreshFreeOverview()} className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 px-6 py-3.5 text-xs font-black text-vapor disabled:opacity-50">
               {freeOverview.error ? "Retry loading Free 8s" : "Loading Free 8s..."}
             </button>
@@ -221,13 +233,13 @@ export default function RankedEights() {
             <button onClick={() => setCreateOpen(true)} className="create-cta inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-xs font-black uppercase tracking-wider transition-all">
               <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
-          )}
+          )}{!isMoney && <Select value={gameId} onValueChange={switchGame}><SelectTrigger aria-label="Switch game" className="!h-11 !rounded-full border-white/15 bg-[#111821] px-4 text-xs font-bold"><span className="text-vapor">Switch game</span><SelectValue /></SelectTrigger><SelectContent className="border-white/10 bg-[#111821] text-white">{games.map((game) => <SelectItem key={game.id} value={game.id}><FreeEightsGameName game={game} /></SelectItem>)}</SelectContent></Select>}</div>}
         />
         <ActivisionIdNotice user={user} className="mb-6" />
         {!isMoney && <FreeEightsDiscordNotice user={user} />}
         {!isMoney && <FreeEightsRankNotice user={user} />}
 
-        <section className={`mb-6 overflow-hidden rounded-2xl border bg-gradient-to-r via-card to-card ${isMoney ? "border-green/25 from-green/[0.11]" : "border-yellow-400/25 from-yellow-400/[0.11]"}`}>
+        {(isMoney || gameId === DEFAULT_EIGHTS_GAME) && <section className={`mb-6 overflow-hidden rounded-2xl border bg-gradient-to-r via-card to-card ${isMoney ? "border-green/25 from-green/[0.11]" : "border-yellow-400/25 from-yellow-400/[0.11]"}`}>
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="flex items-start gap-4">
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${isMoney ? "border-green/25 bg-green/10 text-green" : "border-yellow-400/25 bg-yellow-400/10 text-yellow-300"}`}><Crown className="h-6 w-6" /></div>
@@ -243,10 +255,10 @@ export default function RankedEights() {
               <p className="text-[9px] font-black uppercase tracking-wider text-vapor">{isMoney ? "players per lobby" : prizeActive ? "days remaining" : "days until launch"}</p>
             </div>
           </div>
-        </section>
+        </section>}
 
       </div>
-      <CreateLobbyModal isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} />
+      <CreateLobbyModal key={`${isMoney}:${gameId}`} isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} gameConfig={selectedGame} />
       {!isMoney && <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} />}
       {!isMoney && <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} returnFocusTo={discordPromptTrigger} />}
       {!isMoney && <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} returnFocusTo={discordPromptTrigger} />}

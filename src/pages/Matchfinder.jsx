@@ -10,6 +10,7 @@ import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
 import { loadFreeEightsOverview } from "@/lib/freeEightsData";
 import { FreeEightsRankDialog, FreeEightsRankNotice } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
+import { eightsMatchGameName } from "@/lib/freeEightsGames";
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", active: "border-cyan/35 bg-cyan/10 text-cyan", dot: "bg-cyan" },
@@ -411,7 +412,7 @@ export default function Matchfinder() {
                   key={item.id}
                   game={isTournament ? item.name : displayMode(item)}
                   gameDetail={isTournament ? `${item.team_size || "Team format"} · ${item.game || "Call of Duty"}` : ["eights", "money8s"].includes(activeCategory) ? `4v4 · ${eightsCounts[item.id] ?? "—"}/8 joined` : `${item.team_size || "1v1"} · ${joined}/${slots} players`}
-                  competition={activeCategory === "xp" ? "XP Match" : activeCategory === "elo" ? "ELO Ranked" : activeCategory === "eights" ? "Free 8s" : activeCategory === "money8s" ? "Money 8s" : activeCategory === "wagers" ? `$${amount} Wager` : "Official Tournament"}
+                  competition={activeCategory === "xp" ? "XP Match" : activeCategory === "elo" ? "ELO Ranked" : activeCategory === "eights" ? `Free 8s ${eightsMatchGameName(item)}` : activeCategory === "money8s" ? "Money 8s" : activeCategory === "wagers" ? `$${amount} Wager` : "Official Tournament"}
                   competitionDetail={isTournament ? `${item.current_teams || item.registered_teams || 0}/${item.max_teams || item.team_limit || "—"} teams registered` : `${activeCategory === "money8s" ? `$${amount.toFixed(2)} entry · ` : ""}Hosted by ${item.host_name || "Player"} · BO${item.best_of || 1}`}
                   playRule={item.play_rule}
                   postedAt={isTournament ? undefined : item.created_date}

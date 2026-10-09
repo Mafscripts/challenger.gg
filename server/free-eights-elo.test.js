@@ -31,9 +31,9 @@ test("team ELO accounts for opposition, preserves zero and records rank transiti
 
 // In-memory transaction adapter checks orchestration, rollback and the lock
 // request. PostgreSQL provides the real transaction/advisory-lock semantics.
-function fixture({ type = "8s", status = "in_progress", playerCount = 8, missingStats = false } = {}) {
+function fixture({ type = "8s", status = "in_progress", playerCount = 8, missingStats = false, gameId } = {}) {
   let state = {
-    matches: { m1: { id: "m1", metadata: { match_type: type, status, host_id: "p0", challenger_id: "p4" } } },
+    matches: { m1: { id: "m1", metadata: { match_type: type, status, host_id: "p0", challenger_id: "p4", ...(gameId ? { game_id: gameId } : {}) } } },
     players: Array.from({ length: playerCount }, (_, i) => ({ metadata: { wager_id: "m1", user_id: `p${i}`, user_name: `Player ${i}`, team: i < 4 ? "host" : "challenger" } })),
     stats: missingStats ? [] : Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, free_eights_elo: 400, metadata: { user_id: `p${i}`, rating: 1500, wins: 12, monthly_wins: 3 } })),
   };
@@ -51,7 +51,7 @@ function fixture({ type = "8s", status = "in_progress", playerCount = 8, missing
         },
         wagerParticipant: { findMany: async ({ where }) => draft.players.filter((row) => row.metadata.wager_id === where.metadata.equals) },
         eightsStats: {
-          findFirst: async ({ where }) => draft.stats.find((row) => row.metadata.user_id === where.metadata.equals),
+          findMany: async ({ where }) => draft.stats.filter((row) => row.metadata.user_id === where.metadata.equals),
           create: async ({ data }) => { const row = { id: `s${draft.stats.length}`, free_eights_elo: 0, ...data }; draft.stats.push(row); return row; },
           update: async ({ where, data }) => {
             if (failUpdate) throw new Error("database failure");
@@ -70,6 +70,19 @@ function fixture({ type = "8s", status = "in_progress", playerCount = 8, missing
 }
 
 const completion = { status: "completed", winner_id: "p0", winner_name: "Alpha" };
+
+test("BO6 completion starts its own ELO and leaves legacy BO7 records intact", async (t) => {
+  t.mock.method(console, "info", () => {});
+  const f = fixture({ gameId: "bo6" });
+  const before = structuredClone(f.state().stats);
+  const result = await completeFreeEightsWithElo(f.db, "m1", completion);
+  assert.equal(result.applied, true);
+  assert.equal(f.state().stats.length, 16);
+  assert.deepEqual(f.state().stats.slice(0, 8), before);
+  assert.equal(f.state().stats[8].metadata.game_id, "bo6");
+  assert.equal(f.state().stats[8].free_eights_elo, 20);
+  assert.equal(f.state().stats[12].free_eights_elo, 0);
+});
 
 test("completion applies ELO once, persists audit changes and keeps legacy stats", async (t) => {
   t.mock.method(console, "info", () => {});

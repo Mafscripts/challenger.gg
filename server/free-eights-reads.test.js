@@ -146,7 +146,7 @@ test("browser overview uses one request and does not disguise failed responses a
   const api = { functions: { invoke: async (name, payload) => {
     calls++;
     assert.equal(name, "getFreeEightsOverview");
-    assert.deepEqual(payload, {});
+    assert.deepEqual(payload, { all_games: true });
     return { data: calls === 1 ? { success: false, error: "offline" } : { success: true, lobbies: [], counts: {}, active_lobby: null } };
   } } };
   await assert.rejects(() => loadFreeEightsOverview(api), /offline/);

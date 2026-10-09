@@ -41,7 +41,7 @@ export default function MatchMapSeries({
           <div className="rounded-lg border border-white/[0.06] bg-black/15 p-4 text-sm text-vapor">{emptyText}</div>
         ) : visibleMaps.map((map, index) => {
           const name = mapName(map);
-          const image = getMapImage(name);
+          const image = (typeof map === "object" && map?.image) || getMapImage(name);
           const mapNumber = typeof map === "string" ? index + 1 : (map?.game || map?.number || index + 1);
           const currentHost = mapHost(map, host);
 

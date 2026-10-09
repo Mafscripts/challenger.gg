@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, escapeMarkdown } from "discord.js";
 import { prisma } from "../server/prisma.js";
 import { TOPFRAGG_COLORS } from "./config.js";
+import { eightsMatchGameName } from "../src/lib/freeEightsGames.js";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 export const freeEightsResultKey = (guildId, matchId) => `free8s-result:${guildId}:${matchId}`;
@@ -32,7 +33,7 @@ export function freeEightsResultPayload(match, participants, publicUrl) {
   const mode = escapeMarkdown(String(match.game_mode_display || match.game_mode || "Competitive").slice(0, 100));
   const embed = new EmbedBuilder()
     .setColor(TOPFRAGG_COLORS.green)
-    .setTitle("🏆 Free 8s · Match result")
+    .setTitle(`🏆 Free 8s ${eightsMatchGameName(match)} · Match result`)
     .setDescription(`**Team ${wonAlpha ? "Alpha" : "Bravo"} wins ${winnerScore}–${loserScore}!**\n${mode} · 4v4`)
     .addFields(
       { name: `🔵 Team Alpha · ${alphaScore}${wonAlpha ? " · WINNERS" : ""}`, value: names(alpha), inline: true },

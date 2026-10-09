@@ -98,7 +98,7 @@ const mapsByMode = {
   ],
 };
 
-export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager" }) {
+export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig }) {
   const [selectedGameMode, setSelectedGameMode] = useState(null);
   const [selectedTeamSize, setSelectedTeamSize] = useState(null);
   const [selectedAmount, setSelectedAmount] = useState(0);
@@ -119,7 +119,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const isEights = mode === "eights";
   const isMoneyEights = mode === "money8s";
   const isEightsLobby = isEights || isMoneyEights;
-  const modeChoices = isEightsLobby ? eightsSeriesFormats : gameModes;
+  const modeChoices = isEights && gameConfig ? gameConfig.formats.map((format) => ({ ...format, gameMode: format.modes[0], icon: Swords, tone: "cyan", description: format.modes.map((id) => gameConfig.modes.find((mode) => mode.id === id)?.name || id).join(" · ") })) : isEightsLobby ? eightsSeriesFormats : gameModes;
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
@@ -303,7 +303,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             team_size: isEightsLobby ? "4v4" : selectedTeamSize,
             amount: isMoneyEights ? enteredAmount : 0,
             max_players: isEightsLobby ? 8 : teamSizeObj.players,
-            best_of: isEightsLobby ? 3 : 1,
+            best_of: isEightsLobby ? selectedMode.modes.length : 1,
+            game_id: isEights ? gameConfig?.id || "bo7" : undefined,
             team_id: selectedTeamId || undefined,
             host_banned_map: null,
             host_banned_map_name: "",
@@ -447,7 +448,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
             <div>
               <h2 className="text-xl font-black">{isMoneyEights ? "Create Money 8s Lobby" : isEights ? "Create 8s Lobby" : isRanked ? "Create XP Match" : "Create Wager"}</h2>
-              <p className="text-xs text-vapor mt-0.5">{isEightsLobby ? "Pick a BO3 series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
+              <p className="text-xs text-vapor mt-0.5">{isEightsLobby ? "Pick a series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-vapor" />

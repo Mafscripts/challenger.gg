@@ -51,6 +51,8 @@ import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
 import RankVerificationAdmin from "@/components/admin/RankVerificationAdmin";
 import DisputeReviewCard from "@/components/admin/DisputeReviewCard";
+import FreeEightsGamesAdmin from "@/components/admin/FreeEightsGamesAdmin";
+import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
@@ -234,6 +236,7 @@ const tabs = [
   { id: "disputes", label: "Disputes", icon: Gavel },
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
   { id: "live8s", label: "Live 8s Rooms", icon: Radio },
+  { id: "eightsGames", label: "8s Games & Maps", icon: Swords },
   { id: "ranked", label: "Ranked Management", icon: Swords },
   { id: "verifyRank", label: "Verify Rank", icon: UserCheck },
   { id: "tournaments", label: "Tournaments", icon: Trophy },
@@ -2163,6 +2166,7 @@ export default function Admin() {
             </div>
           )}
 
+          {activeTab === "eightsGames" && <FreeEightsGamesAdmin />}
           {activeTab === "live8s" && (
             <div className="p-6">
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2182,7 +2186,7 @@ export default function Admin() {
                       <article key={match.id} className={`rounded-xl border p-4 ${money8s ? "border-green/25 bg-green/[0.035]" : "border-cyan/20 bg-cyan/[0.035]"}`}>
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <div className="flex flex-wrap items-center gap-2"><span className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${money8s ? "border-green/25 bg-green/10 text-green" : "border-cyan/25 bg-cyan/10 text-cyan"}`}>{money8s ? "Money 8s" : "Free 8s"}</span><StatusPill status={match.status} /></div>
+                            <div className="flex flex-wrap items-center gap-2"><span className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${money8s ? "border-green/25 bg-green/10 text-green" : "border-cyan/25 bg-cyan/10 text-cyan"}`}>{money8s ? "Money 8s" : `Free 8s ${eightsMatchGameName(match)}`}</span><StatusPill status={match.status} /></div>
                             <h3 className="mt-2 text-sm font-black">{match.host_name || "Team Alpha"} <span className="text-vapor">vs</span> {match.challenger_name || "Lobby filling"}</h3>
                             <p className="mt-1 text-[10px] text-vapor">{match.game_mode_display || match.game_mode || "Mode pending"} · BO{match.best_of || 3} · created {formatDate(match.created_date)}</p>
                           </div>

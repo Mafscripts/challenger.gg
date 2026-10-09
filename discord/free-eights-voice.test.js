@@ -161,6 +161,21 @@ function fixture(count = 1, { autoJoinWaiting = true } = {}) {
     stats: () => ({ creations, permissionEdits, deletes }), inventoryFetches: () => inventoryFetches };
 }
 
+test("BO7, BO6 and MW3 retain isolated waiting/team voices and cancellation cleanup", async () => {
+  const f = fixture(3);
+  ["bo7", "bo6", "mw3"].forEach((id, index) => { f.matches[index].metadata.game_id = id; });
+  await f.sync();
+  assert.equal(f.stats().creations, 9);
+  const states = f.matches.map((match) => f.records.get(freeEightsVoiceKey(match.id)).metadata);
+  const ids = states.flatMap((state) => Object.values(state.channels));
+  assert.equal(new Set(ids).size, 9);
+  for (const state of states) assert.equal(Object.values(state.players).filter((player) => player.status === "in_team_voice").length, 8);
+  f.matches[1].metadata.status = "cancelled";
+  await f.sync();
+  for (const id of Object.values(states[1].channels)) assert.equal(f.channels.has(id), false);
+  for (const state of [states[0], states[2]]) for (const id of Object.values(state.channels)) assert.equal(f.channels.has(id), true);
+});
+
 test("link gate requires authenticated OAuth identity only for Free 8s", () => {
   assert.equal(freeEightsDiscordJoinError("8s", { id: "u", discord: "typed-name", discord_user_id: "bad" }).code, "FREE_EIGHTS_DISCORD_REQUIRED");
   assert.equal(freeEightsDiscordJoinError("8s", { id: "u", discord_user_id: "200000000000000001" }).success, false);

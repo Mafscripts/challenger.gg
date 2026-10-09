@@ -6,6 +6,7 @@ import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchDisputeDialog from "@/components/match/MatchDisputeDialog";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
+import { eightsGameId, eightsMatchGameName } from "@/lib/freeEightsGames";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import FreeEightsMatchHeader from "@/components/match/FreeEightsMatchHeader";
 import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay";
@@ -367,7 +368,8 @@ function EightsMatchRoomView() {
   const allPlayers = useMemo(() => [...teamAlpha, ...teamBravo], [teamAlpha, teamBravo]);
   const voiceView = useFreeEightsVoice({ matchId: match?.id, players: allPlayers, user, rosterVersion: match?.teams_generated_at, enabled: match?.match_type === "8s" });
   const isMoneyEights = match?.match_type === "money8s";
-  const roomLabel = isMoneyEights ? "Money 8s" : "Ranked 8s";
+  const roomLabel = isMoneyEights ? "Money 8s" : `Free 8s ${eightsMatchGameName(match)}`;
+  const returnToLadder = isMoneyEights ? "/ranked/8s?mode=money" : `/ranked/8s?game=${eightsGameId(match)}`;
   const isParticipant = allPlayers.some((player) => player.user_id === user?.id);
   const isStaff = isStaffUser(user);
   const isAdmin = ["ceo", "super_admin", "admin"].includes(user?.role) || ["ceo", "super_admin", "admin"].includes(user?.admin_role) || user?.is_admin === true;
@@ -428,12 +430,12 @@ function EightsMatchRoomView() {
   useEffect(() => { setSwapPlayer(null); }, [match?.teams_generated_at]);
   const seriesMaps = (Array.isArray(match?.series_maps) ? match.series_maps : []).map((map, index) => (
     typeof map === "string"
-      ? { name: map, mode: seriesModeName(match?.series_modes?.[index]) }
+      ? { name: map, mode: match?.series_mode_labels?.[index] || seriesModeName(match?.series_modes?.[index]), image: match?.series_images?.[index] || "" }
       : map
   ));
   const dismissResult = () => {
     setResultDismissed(true);
-    navigate(isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s", { replace: true });
+    navigate(returnToLadder, { replace: true });
   };
 
   const leave = async () => {
@@ -454,7 +456,7 @@ function EightsMatchRoomView() {
           },
         }));
       }
-      navigate(isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s", { replace: true });
+      navigate(returnToLadder, { replace: true });
     } catch (error) {
       toast({ title: "Could not leave", description: error.message, variant: "destructive" });
       loadRoom(true);
@@ -642,7 +644,7 @@ function EightsMatchRoomView() {
       if (!response.data?.success) throw new Error(response.data?.error || "Could not cancel match");
       setMatch(response.data.wager || { ...match, status: "cancelled" });
       toast({ title: "Match cancelled" });
-      navigate(isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s", { replace: true });
+      navigate(returnToLadder, { replace: true });
     } catch (error) {
       toast({ title: "Cancel failed", description: error.message, variant: "destructive" });
     } finally {
@@ -674,7 +676,7 @@ function EightsMatchRoomView() {
           />
         )}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Link to={isMoneyEights ? "/ranked/8s?mode=money" : "/ranked/8s"} className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> {roomLabel}</Link>
+          <Link to={returnToLadder} className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> {roomLabel}</Link>
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 

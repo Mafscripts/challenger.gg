@@ -161,15 +161,16 @@ test("authenticated Free 8s endpoints require a stored screenshot rank, block un
   override(prisma.user, "findUnique", async () => account);
   override(prisma.user, "findMany", async ({ where }) => (where?.id?.in || []).map((id) => ({ ...account, id })));
   override(prisma.ban, "findMany", async () => []);
+  override(prisma.mapPool, "findUnique", async () => null);
   override(prisma.notification, "create", async ({ data }) => ({ id: "notification", ...data }));
   const app = express(); app.use(express.json()); app.use("/functions", functionRoutes);
   app.use((error, _req, res, _next) => res.status(error.status || 500).json({ error: error.message }));
   const server = app.listen(0, "127.0.0.1"); await new Promise((resolve) => server.once("listening", resolve));
   t.after(() => { server.closeAllConnections(); server.close(); });
-  const request = async (action, auth = true) => {
+  const request = async (action, auth = true, settings = {}) => {
     const response = await fetch(`http://127.0.0.1:${server.address().port}/functions/${action}`, { method: "POST",
       headers: { "Content-Type": "application/json", ...(auth ? { Authorization: `Bearer ${signUser(account)}` } : {}) },
-      body: JSON.stringify({ match_type: "8s", wager_id: "next", team_size: "4v4", user_id: "attacker", host_id: "attacker", screenshot_rank: "top250", discord_user_id: "200000000000000099", in_guild: true, metadata: { screenshot_rank: "top250" } }) });
+      body: JSON.stringify({ match_type: "8s", wager_id: "next", team_size: "4v4", user_id: "attacker", host_id: "attacker", screenshot_rank: "top250", discord_user_id: "200000000000000099", in_guild: true, metadata: { screenshot_rank: "top250" }, ...settings }) });
     return { status: response.status, body: await response.json() };
   };
   assert.equal((await request("acceptWager", false)).status, 401);
@@ -195,6 +196,18 @@ test("authenticated Free 8s endpoints require a stored screenshot rank, block un
     const { body } = await request("createWager");
     assert.equal(body.success, true, JSON.stringify(body));
     assert.equal(body.wager.host_id, "me");
+    f.matches.get(body.wager_id).metadata.status = "cancelled";
+  }
+  for (const [game_id, series_format, best_of] of [["bo6", "hp_bo1", 1], ["mw3", "snd_bo3", 3]]) {
+    const { body } = await request("createWager", true, { game_id, series_format, best_of: 99, team_size: "1v1", maps: ["Fake"], series_mode_ids: ["fake"], game_config: {} });
+    assert.equal(body.success, true, JSON.stringify(body));
+    assert.equal(body.wager.game_id, game_id);
+    assert.equal(body.wager.game_config.id, game_id);
+    assert.equal(body.wager.best_of, best_of);
+    assert.equal(body.wager.team_size, "4v4");
+    assert.equal(body.wager.required_players_per_team, 4);
+    assert.equal(body.wager.series_mode_ids.length, best_of);
+    assert(!body.wager.maps.includes("Fake"));
     f.matches.get(body.wager_id).metadata.status = "cancelled";
   }
   inGuild = false;

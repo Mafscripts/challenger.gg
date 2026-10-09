@@ -1,8 +1,9 @@
 import { balanceFreeEightsTeams } from "../src/lib/freeEightsSkill.js";
 import { normalizeFreeEightsElo } from "../src/lib/freeEightsRanks.js";
 import { screenshotRankFor } from "../src/lib/screenshotRanks.js";
+import { eightsGameId } from "../src/lib/freeEightsGames.js";
 
-export async function loadFreeEightsSkills(db, userIds) {
+export async function loadFreeEightsSkills(db, userIds, gameId = "bo7") {
   const ids = [...new Set(userIds)];
   if (!ids.length) return {};
   const [users, stats] = await Promise.all([
@@ -11,7 +12,7 @@ export async function loadFreeEightsSkills(db, userIds) {
   ]);
   const usersById = new Map(users.map((user) => [user.id, user]));
   const statsById = new Map();
-  for (const row of stats) if (!statsById.has(row.metadata?.user_id)) statsById.set(row.metadata?.user_id, row);
+  for (const row of stats) if (eightsGameId(row.metadata?.game_id) === gameId && !statsById.has(row.metadata?.user_id)) statsById.set(row.metadata?.user_id, row);
   return Object.fromEntries(ids.map((id) => {
     const row = statsById.get(id), metadata = row?.metadata;
     return [id, {
@@ -25,7 +26,7 @@ export async function loadFreeEightsSkills(db, userIds) {
 }
 
 export async function generateBalancedFreeEightsTeams(db, participants, random = Math.random, options = {}) {
-  const skills = await loadFreeEightsSkills(db, participants.map((row) => row.user_id));
+  const skills = await loadFreeEightsSkills(db, participants.map((row) => row.user_id), options.gameId);
   // Participant/client rank fields never control the split. Stored account and
   // dedicated Free 8s stats replace them before applying the shared policy.
   return balanceFreeEightsTeams(participants.map((row) => ({ ...row, ...skills[row.user_id] })), random, options);

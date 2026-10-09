@@ -190,7 +190,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
   );
 }
 
-export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription }) {
+export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription, gameId = "bo7", competitionTitle }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -216,7 +216,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         base44.entities.User.filter({}, mode === "wagers" ? "-total_wager_earnings" : "-created_date", 500).catch(() => []),
         mode === "eights" ? Promise.resolve([]) : base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []),
         mode === "ranked" ? base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []) : Promise.resolve([]),
-        mode === "eights" ? base44.entities.EightsStats.filter({}, "-free_eights_elo", 500).catch(() => []) : Promise.resolve([]),
+        mode === "eights" ? base44.functions.invoke("getFreeEightsStandings", { game_id: gameId }).then((response) => response.data.rows || []).catch(() => []) : Promise.resolve([]),
         mode === "money8s" ? base44.functions.invoke("getMoneyEightsStandings", {}).catch(() => ({ data: { rows: [] } })) : Promise.resolve({ data: { rows: [] } }),
         mode === "eights" ? Promise.resolve([]) : base44.entities.Tournament.filter({}, "start_date", 100).catch(() => []),
       ]);
@@ -231,7 +231,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     };
     load();
     return () => { active = false; };
-  }, [mode]);
+  }, [mode, gameId]);
 
   const usersById = useMemo(() => new Map(users.map((user) => [String(user.id), user])), [users]);
   const xpByUser = useMemo(() => new Map(xpRows.map((row) => [String(row.user_id), row])), [xpRows]);
@@ -366,10 +366,10 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     { label: "Ladder winnings", value: `$${totalScore.toLocaleString()}`, detail: `${standings.length} ranked players`, icon: Trophy, tone: "text-green" },
     { label: "Next tournament", value: formatDate(nextTournament?.start_date), detail: nextTournament?.name || "No event announced", icon: CalendarDays, tone: "text-orange" },
   ] : mode === "eights" ? [
-    { label: "Monthly prize", value: "$100", detail: "Winner takes the prize", icon: Trophy, tone: "text-green" },
+    gameId === "bo7" ? { label: "Monthly prize", value: "$100", detail: "Winner takes the prize", icon: Trophy, tone: "text-green" } : { label: "Format", value: "4v4", detail: "Free entry", icon: Trophy, tone: "text-green" },
     { label: "Open lobbies", value: openCount, detail: "4v4 random teams", icon: Gamepad2, tone: "text-cyan" },
     { label: "Players", value: standings.length, detail: "On the 8s ELO ladder", icon: Users, tone: "text-purple-300" },
-    { label: "Prize month", value: monthLabel(), detail: "Monthly prize period", icon: Clock3, tone: "text-orange" },
+    { label: gameId === "bo7" ? "Prize month" : "Season", value: monthLabel(), detail: gameId === "bo7" ? "Monthly prize period" : "Separate game standings", icon: Clock3, tone: "text-orange" },
   ] : mode === "money8s" ? [
     { label: "Money 8s matches", value: standings.reduce((sum, row) => sum + row.wins + row.losses, 0), detail: "Completed matches", icon: Gamepad2, tone: "text-cyan" },
     { label: "Players", value: standings.length, detail: "On the Money 8s ladder", icon: Users, tone: "text-purple-300" },
@@ -397,7 +397,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
 
       <section id={activeTab} className="premium-panel scroll-mt-24 overflow-hidden rounded-xl border border-white/[0.08]">
         <div className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div><div className="flex items-center gap-2"><span className={`h-2 w-2 ${copy.line}`} /><h2 className="font-black">{activeTab === "matchfinder" ? `${copy.title} matchfinder` : `${copy.title} standings`}</h2></div><p className="mt-1 text-xs text-vapor">{activeTab === "matchfinder" ? `${openCount} open ${openCount === 1 ? "match" : "matches"} in this competition.` : mode === "eights" ? "Ranked by 8s ELO, highest first." : "A separate leaderboard for this competition."}</p></div>
+          <div><div className="flex items-center gap-2"><span className={`h-2 w-2 ${copy.line}`} /><h2 className="font-black">{competitionTitle || copy.title} {activeTab === "matchfinder" ? "matchfinder" : "standings"}</h2></div><p className="mt-1 text-xs text-vapor">{activeTab === "matchfinder" ? `${openCount} open ${openCount === 1 ? "match" : "matches"} in this competition.` : mode === "eights" ? "Ranked by 8s ELO, highest first." : "A separate leaderboard for this competition."}</p></div>
           <div className="flex rounded-lg border border-white/[0.07] bg-black/15 p-1 text-[9px] font-black uppercase tracking-wider">
             <button type="button" onClick={() => selectTab("standings")} className={`rounded-md px-3 py-2 ${activeTab === "standings" ? `${copy.accent} bg-white/[0.04]` : "text-vapor hover:text-white"}`}><Medal className="mr-1.5 inline h-3 w-3" /> Standings</button>
             <button type="button" onClick={() => selectTab("matchfinder")} className={`rounded-md px-3 py-2 ${activeTab === "matchfinder" ? `${copy.accent} bg-white/[0.04]` : "text-vapor hover:text-white"}`}><Gamepad2 className="mr-1.5 inline h-3 w-3" /> Matchfinder</button>

@@ -1,5 +1,7 @@
 import { calculateFreeEightsElo } from "../src/lib/freeEightsRanks.js";
 import { serializeRow } from "./entity.js";
+import { findEightsStatsRow } from "./free-eights-games.js";
+import { eightsGameId } from "../src/lib/freeEightsGames.js";
 
 // Match completion and ELO are committed together. A database lock serializes
 // this small ladder update across API workers and overlapping match rosters.
@@ -15,14 +17,15 @@ export async function completeFreeEightsWithElo(db, matchId, completion) {
     const winningSide = completion.winner_id === match.metadata.host_id ? "host" : "challenger";
     if (![match.metadata.host_id, match.metadata.challenger_id].includes(completion.winner_id)) throw new Error("Invalid Free 8s winner");
     const roster = await tx.wagerParticipant.findMany({ where: { metadata: { path: ["wager_id"], equals: matchId } } });
+    const gameId = eightsGameId(match.metadata.game_id);
     const winners = [];
     const losers = [];
     const statsByUser = new Map();
     for (const row of roster) {
       const { user_id: userId, user_name: username, team } = row.metadata;
       if (!userId || !["host", "challenger"].includes(team)) throw new Error("Invalid Free 8s roster");
-      let stats = await tx.eightsStats.findFirst({ where: { metadata: { path: ["user_id"], equals: userId } }, orderBy: { created_date: "desc" } });
-      if (!stats) stats = await tx.eightsStats.create({ data: { metadata: { user_id: userId, username: username || "Player" } } });
+      let stats = await findEightsStatsRow(tx, userId, gameId);
+      if (!stats) stats = await tx.eightsStats.create({ data: { metadata: { user_id: userId, game_id: gameId, username: username || "Player" } } });
       statsByUser.set(userId, stats);
       (team === winningSide ? winners : losers).push({ user_id: userId, elo: stats.free_eights_elo });
     }

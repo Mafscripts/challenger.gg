@@ -14,6 +14,8 @@ import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTr
 import { freeEightsDiscordConfig, freeEightsDiscordJoinError, freeEightsDiscordMembershipJoinError, freeEightsVoiceKey, freeEightsVoiceLog, freeEightsWaitingRoomReady } from "../free-eights-discord.js";
 import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
+import { loadEightsGames, saveEightsGames, eightsLobbySettings, uploadEightsMapImage, EIGHTS_CONFIG_ID } from "../free-eights-games.js";
+import { eightsGameId, generateEightsSeries } from "../../src/lib/freeEightsGames.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 import { editEightsTeamsAsAdmin } from "../eights-admin-teams.js";
 import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
@@ -1503,12 +1505,13 @@ async function applyParticipantRewards(winnerIds = [], loserIds = []) {
 
 const currentEightsMonthKey = () => new Date().toISOString().slice(0, 7);
 
-async function updateEightsOutcome(userId, didWin) {
+async function updateEightsOutcome(userId, didWin, gameId = "bo7") {
   const user = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
   if (!user) return null;
-  const existing = await firstEntity("EightsStats", { user_id: userId }).catch(() => null);
+  const existing = (await listEntities("EightsStats", { user_id: userId }, "-created_date", 500)).find((row) => eightsGameId(row.game_id) === gameId);
   const stats = existing || await createEntity("EightsStats", {
     user_id: userId,
+    game_id: gameId,
     username: nameFor(user),
     rating: 1000,
     wins: 0,
@@ -1543,6 +1546,7 @@ async function updateEightsOutcome(userId, didWin) {
     wins,
     losses,
     matches_played: matches,
+    win_streak: didWin ? Number(stats.win_streak || 0) + 1 : 0,
     win_rate: Math.round((wins / matches) * 100),
     monthly_key: currentEightsMonthKey(),
     monthly_wins: monthlyWins,
@@ -6431,6 +6435,7 @@ async function createWager(req) {
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const requestedMatchType = String(req.body.match_type || "").toLowerCase();
   const matchType = isEightsMatchType(requestedMatchType) ? requestedMatchType : requestedMatchType === "xp" ? "xp" : "wagers";
+  const gameSettings = matchType === "8s" ? eightsLobbySettings(await loadEightsGames(prisma), req.body) : {};
   const entryFee = matchType === "8s" ? 0 : money(req.body.entry_fee ?? req.body.amount);
   const discordError = freeEightsDiscordJoinError(matchType, req.userRow);
   if (discordError) return discordError;
@@ -6473,6 +6478,7 @@ async function createWager(req) {
     : isTeamMatch ? roundedMoney(entryFee * requiredSize * 2) : roundedMoney(entryFee * 2);
   const wagerPayload = {
     ...req.body,
+    ...gameSettings,
     host_id: req.user.id,
     host_name: nameFor(req.user),
     host_team_id: hostTeam?.id,
@@ -6482,10 +6488,10 @@ async function createWager(req) {
     amount: entryFee,
     team_entry_fee: roundedMoney(entryFee * requiredSize),
     total_prize_pool: totalPrizePool,
-    required_players_per_team: requiredSize,
+    required_players_per_team: matchType === "8s" ? 4 : requiredSize,
     roster_locked: isTeamMatch,
     play_rule: playRule,
-    maps: RANKED_MAPS_BY_MODE[req.body.game_mode] || RANKED_MAPS_BY_MODE.snd,
+    maps: gameSettings.maps || RANKED_MAPS_BY_MODE[req.body.game_mode] || RANKED_MAPS_BY_MODE.snd,
     series_maps: [],
     final_map_id: "",
     final_map_name: "",
@@ -6573,7 +6579,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
   }
   const shuffled = shuffledCopy(participantRows).slice(0, requiredSize * 2);
   const { alpha, bravo, balance } = wager.match_type === "8s"
-    ? await generateBalancedFreeEightsTeams(prisma, shuffled, Math.random, { avoidCurrentTeams: preserveSeries })
+    ? await generateBalancedFreeEightsTeams(prisma, shuffled, Math.random, { avoidCurrentTeams: preserveSeries, gameId: eightsGameId(wager.game_id) })
     : { alpha: shuffled.slice(0, requiredSize), bravo: shuffled.slice(requiredSize, requiredSize * 2) };
   const skillsByParticipant = new Map([...alpha, ...bravo].map((row) => [row.id, row]));
   if (wager.match_type === "8s") freeEightsVoiceLog("eight-players-found", { match_id: wager.id, players: shuffled.length });
@@ -6600,6 +6606,8 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     ...(selectedMaps ? {
       series_maps: selectedMaps.map((map) => map.name),
       series_modes: selectedMaps.map((map) => map.mode),
+      series_images: selectedMaps.map((map) => map.image || ""),
+      series_mode_labels: selectedMaps.map((map) => map.mode_name || map.mode),
       final_map_id: selectedMaps[0]?.id || "",
       final_map_name: selectedMaps[0]?.name || "",
     } : {}),
@@ -7219,7 +7227,7 @@ async function settleEightsMonthlyPrize() {
   if (settled) return { success: true, already_settled: true, month, winner_id: settled.user_id, amount: Number(settled.amount || 100) };
 
   const rows = await listEntities("EightsStats", {}, "-created_date", 500).catch(() => []);
-  const candidates = rows.map((stats) => {
+  const candidates = rows.filter((stats) => eightsGameId(stats.game_id) === "bo7").map((stats) => {
     const snapshot = stats.monthly_key === month
       ? { month, wins: Number(stats.monthly_wins || 0), matches: Number(stats.monthly_matches || 0), xp: Number(stats.monthly_xp || 0), rating: Number(stats.rating || 1000) }
       : (Array.isArray(stats.monthly_history) ? stats.monthly_history.find((entry) => entry?.month === month) : null);
@@ -7655,8 +7663,8 @@ async function completeWagerUnlocked(req) {
   const xpChanges = await applyParticipantRewards(winnerUserIds, loserUserIds);
   if (isEightsMatchType(wager.match_type)) {
     await Promise.all([
-      ...winnerUserIds.map((userId) => updateEightsOutcome(userId, true)),
-      ...loserUserIds.map((userId) => updateEightsOutcome(userId, false)),
+      ...winnerUserIds.map((userId) => updateEightsOutcome(userId, true, eightsGameId(wager.game_id))),
+      ...loserUserIds.map((userId) => updateEightsOutcome(userId, false, eightsGameId(wager.game_id))),
     ]);
   }
   const completedWager = await updateEntity("Wager", wager.id, {
@@ -7787,6 +7795,7 @@ function eightsSeriesModes(wager = {}) {
 }
 
 function randomEightsSeriesMaps(wager = {}) {
+  if (wager.match_type === "8s") return generateEightsSeries(wager);
   const usedByMode = new Map();
   return eightsSeriesModes(wager).map((mode) => {
     const pool = [...(RANKED_MAPS_BY_MODE[mode] || RANKED_MAPS_BY_MODE.hp)];
@@ -10994,7 +11003,24 @@ const handlers = {
   createWager,
   acceptWager,
   getEightsLiveUpdatesToken,
-  getFreeEightsOverview: async (req) => ({ ...await getFreeEightsOverview(prisma, req.user.id), current_user: req.user }),
+  getFreeEightsOverview: async (req) => ({ ...await getFreeEightsOverview(prisma, req.user.id, req.body.all_games === true ? null : eightsGameId(req.body.game_id)), current_user: req.user }),
+  getFreeEightsStandings: async (req) => {
+    const gameId = eightsGameId(req.body.game_id);
+    const rows = await prisma.eightsStats.findMany({ orderBy: { free_eights_elo: "desc" }, take: 10000 });
+    return { success: true, rows: rows.filter((row) => eightsGameId(row.metadata?.game_id) === gameId).slice(0, 500).map(serializeRow) };
+  },
+  getFreeEightsGames: async () => {
+    const row = await prisma.mapPool.findUnique({ where: { id: EIGHTS_CONFIG_ID } });
+    return { success: true, games: row?.metadata?.games || await loadEightsGames(prisma), version: row?.updated_date.toISOString() || "default" };
+  },
+  updateFreeEightsGames: async (req) => {
+    assertStaff(req, "admin");
+    return saveEightsGames(prisma, req.body.games, req.user.id, req.body.version);
+  },
+  uploadFreeEightsMapImage: async (req) => {
+    assertStaff(req, "admin");
+    return uploadEightsMapImage(prisma, req.body.image);
+  },
   getFreeEightsPlayerStats: (req) => getFreeEightsPlayerStats(prisma, req.body.wager_id),
   syncEightsLobby,
   voteEightsReshuffle,

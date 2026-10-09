@@ -2,18 +2,19 @@ import { serializeRow } from "./entity.js";
 import { loadFreeEightsSkills } from "./free-eights-teams.js";
 import { findActiveFreeEightsMatch } from "./free-eights-membership.js";
 import { isMatchfinderPostVisible, MATCHFINDER_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
+import { eightsGameId } from "../src/lib/freeEightsGames.js";
 
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 
 // Read-only Free 8s queries. Batch by stored match/user IDs; never fetch a
 // separate match or roster for every row in the player's history.
-export async function getFreeEightsOverview(db, userId) {
+export async function getFreeEightsOverview(db, userId, gameId = "bo7") {
   const now = Date.now();
   const [openRows, memberships] = await Promise.all([
-    db.wager.findMany({ where: { AND: [field("match_type", "8s"), field("status", "open"), { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } }] }, orderBy: { created_date: "desc" }, take: 30 }),
+    db.wager.findMany({ where: { AND: [field("match_type", "8s"), field("status", "open"), { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } }] }, orderBy: { created_date: "desc" }, take: 600 }),
     db.wagerParticipant.findMany({ where: field("user_id", userId), select: { metadata: true } }),
   ]);
-  const open = openRows.filter((row) => isMatchfinderPostVisible(serializeRow(row), now));
+  const open = openRows.filter((row) => (!gameId || eightsGameId(row.metadata?.game_id) === gameId) && isMatchfinderPostVisible(serializeRow(row), now)).slice(0, 30);
   const openIds = open.map((row) => row.id);
   const memberIds = [...new Set(memberships.map((row) => row.metadata?.wager_id).filter((id) => typeof id === "string" && id))];
   const [active, participants] = await Promise.all([
@@ -42,7 +43,7 @@ export async function getFreeEightsPlayerStats(db, matchId) {
   const where = { OR: ids.map((id) => field("user_id", id)) };
   const [xpRows, skills] = await Promise.all([
     db.xPStats.findMany({ where, orderBy: { created_date: "desc" }, select: { metadata: true } }),
-    loadFreeEightsSkills(db, ids),
+    loadFreeEightsSkills(db, ids, eightsGameId(match.metadata.game_id)),
   ]);
   const latestByUser = (rows) => {
     const result = new Map();

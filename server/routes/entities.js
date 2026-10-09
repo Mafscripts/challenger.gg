@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { hasRole } from "../roles.js";
 
 const protectedMutationEntities = new Set([
+  "MapPool",
   // These records contain match results, escrow, support state, or bracket
   // routing and must only be changed through their server-side actions.
   "Wager",
@@ -62,6 +63,7 @@ const discordIdentityFields = new Set([
   "discord_connected_at",
 ]);
 const sensitiveReadEntities = new Set([
+  "MapPool",
   "DiscordEventDispatch",
   "WalletTransaction",
   "CreditTransaction",
@@ -106,6 +108,7 @@ const participantIdentityValues = (participant) => {
 
 const router = Router();
 router.use("/:entity", (req, res, next) => {
+  if (String(req.params.entity).toLowerCase() === "mappool" && ["POST", "PATCH", "DELETE"].includes(req.method)) return res.status(403).json({ error: "Use the Free 8s game configuration action" });
   if (String(req.params.entity).toLowerCase() === "rankverification") return res.status(403).json({ error: "Use the protected rank verification endpoints" });
   if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method) && Object.hasOwn(req.body || {}, "screenshot_rank")) return res.status(403).json({ error: "Use rank verification or admin rank review" });
   next();
