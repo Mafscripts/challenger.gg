@@ -410,6 +410,7 @@ export default function Profile() {
         ...challengedXp.map((match) => ({ ...match, match_type: match.match_type || "xp", profile_result: profileMatchOutcome(match, userRow.id) })),
         ...tournamentMatchRows,
       ]
+        .filter((match) => !["cancelled", "canceled", "expired"].includes(cleanKey(match.status)))
         .filter((match, index, list) => list.findIndex((item) => item.id === match.id) === index)
         .sort((a, b) => matchDateMs(b) - matchDateMs(a))
         .slice(0, 8);
