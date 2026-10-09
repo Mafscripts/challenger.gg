@@ -833,27 +833,28 @@ function TournamentMatchOverview({ match, tournament, isComplete }) {
   ];
 
   return (
-    <section aria-label="Tournament overview" className="match-room-overview-strip relative grid overflow-hidden rounded-2xl border border-white/10 bg-[#111923] shadow-[0_12px_36px_-20px_rgba(0,0,0,.7)] lg:grid-cols-[minmax(0,1fr)_240px]">
+    <section aria-label="Tournament overview" className="match-room-overview-strip relative w-full overflow-hidden rounded-xl border border-white/10 bg-[#111923] p-4 shadow-[0_12px_36px_-20px_rgba(0,0,0,.7)]">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-cyan/60 via-white/10 to-green/55" />
-      <div className="min-w-0 p-4 sm:p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan/20 bg-cyan/[0.08] text-cyan"><Swords className="h-5 w-5" aria-hidden="true" /></div>
-          <div><h2 className="text-sm font-black text-white sm:text-base">Tournament overview</h2><p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-vapor">{tournament?.team_size || "Teams"} <span className="mx-1 text-white/20">·</span> Best of {match.best_of || 3}</p></div>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan/20 bg-cyan/[0.08] text-cyan"><Swords className="h-4 w-4" aria-hidden="true" /></div>
+          <div><h2 className="text-xs font-black text-white">Tournament overview</h2><p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-vapor">{tournament?.team_size || "Teams"} <span className="mx-1 text-white/20">·</span> Best of {match.best_of || 3}</p></div>
         </div>
-        <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <dl className="mt-3 divide-y divide-white/[0.06]">
           {items.map((item) => (
-            <div key={item.label} className="min-w-0 rounded-xl border border-white/[0.06] bg-[#0c131c] px-3 py-3">
-              <dt className="text-[8px] font-black uppercase tracking-wider text-vapor">{item.label}</dt>
-              <dd className={`mt-1.5 break-words text-xs font-black ${item.valueClass || "text-white"}`}>{item.value}</dd>
+            <div key={item.label} className="flex min-w-0 items-start justify-between gap-4 py-2">
+              <dt className="shrink-0 text-[8px] font-black uppercase leading-4 tracking-wider text-vapor">{item.label}</dt>
+              <dd className={`min-w-0 break-words text-right text-[11px] font-black leading-4 ${item.valueClass || "text-white"}`}>{item.value}</dd>
             </div>
           ))}
         </dl>
       </div>
-      <div className="relative m-3 mt-0 flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border border-green/25 bg-gradient-to-br from-green/[0.12] via-green/[0.05] to-transparent p-4 text-center sm:p-5 lg:ml-0 lg:mt-3">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-green/60 to-transparent" />
-        <div className="flex items-center justify-center gap-2 text-[8px] font-black uppercase tracking-[0.16em] text-green"><Trophy className="h-4 w-4 shrink-0" aria-hidden="true" /> Tournament prize pool</div>
-        <p className="mt-2 break-words font-mono text-3xl font-black tracking-tight text-green">${Number(tournament?.prize_pool || 0).toLocaleString()}</p>
-        {isComplete && <div className="mt-3 border-t border-green/15 pt-3"><p className="text-[8px] font-bold uppercase tracking-wider text-vapor">Match winner</p><p className="mt-1 break-words text-xs font-black text-green">{match.winner_name || "Match completed"}</p></div>}
+      <div className="mt-3 min-w-0 rounded-lg border border-green/25 bg-green/[0.06] px-3 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-wider text-green"><Trophy className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Prize pool</div>
+          <p className="min-w-0 break-words font-mono text-xl font-black tracking-tight text-green">${Number(tournament?.prize_pool || 0).toLocaleString()}</p>
+        </div>
+        {isComplete && <div className="mt-2 flex items-start justify-between gap-3 border-t border-green/15 pt-2"><p className="shrink-0 text-[8px] font-bold uppercase leading-4 tracking-wider text-vapor">Match winner</p><p className="min-w-0 break-words text-right text-[11px] font-black leading-4 text-green">{match.winner_name || "Match completed"}</p></div>}
       </div>
     </section>
   );
@@ -1316,8 +1317,8 @@ function TournamentMatchRoomView() {
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{statusLabel(match.status)}</span><button onClick={loadRoom} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
         <MatchRoomShell header={(
-          <div className="flex flex-1 flex-col gap-5">
-            <div>
+          <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+            <div className="min-w-0">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan"><Trophy className="h-4 w-4 shrink-0" /> Tournament match room · {tournament?.name || "Tournament"}</p>
                 <h1 className="mt-3 break-words text-3xl font-black sm:text-4xl">{match.team_a_name || "Team Alpha"} <span className="text-vapor">vs</span> {match.team_b_name || "Team Bravo"}</h1>
@@ -1325,12 +1326,14 @@ function TournamentMatchRoomView() {
                 {match.is_forfeit && <p className="mt-2 flex items-start gap-2 text-[9px] text-vapor"><Flag className="h-3 w-3 shrink-0 text-orange" /><span><strong className="font-black uppercase tracking-wider text-orange">{match.match_result_badge || "Match forfeited"}</strong> · {match.match_result_note || `${match.forfeited_by_name || "Losing team"} forfeited the match.`}</span></p>}
               </div>
             </div>
-            <div aria-label="Tournament match actions" className="flex flex-wrap justify-end gap-2">
-              {canSubmit && <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit score</button>}
-              <button type="button" onClick={handleOpenBracket} className="inline-flex items-center gap-2 rounded-xl border border-orange/25 bg-orange/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-orange hover:bg-orange/20"><LayoutGrid className="h-4 w-4" /> Bracket</button>
-              <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
+            <div className="min-w-0 space-y-3">
+              <div aria-label="Tournament match actions" className="flex flex-wrap justify-end gap-2">
+                {canSubmit && <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit score</button>}
+                <button type="button" onClick={handleOpenBracket} className="inline-flex items-center gap-2 rounded-xl border border-orange/25 bg-orange/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-orange hover:bg-orange/20"><LayoutGrid className="h-4 w-4" /> Bracket</button>
+                <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
+              </div>
+              <TournamentMatchOverview match={match} tournament={tournament} isComplete={isComplete} />
             </div>
-            <TournamentMatchOverview match={match} tournament={tournament} isComplete={isComplete} />
           </div>
         )} beforeTeams={(
           <>
