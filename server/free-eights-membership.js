@@ -1,4 +1,5 @@
 import { dataForEntity, serializeRow } from "./entity.js";
+import { matchfinderPostExpiresAt } from "../src/lib/matchfinderPosts.js";
 
 const terminalStatuses = ["completed", "cancelled", "expired", "closed"];
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
@@ -42,6 +43,7 @@ export async function joinFreeEightsLobby(db, userId, matchId, userName) {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`free8s-enrollment:${matchId}`}))`;
     const match = await tx.wager.findUnique({ where: { id: matchId } });
     if (match?.metadata?.match_type !== "8s" || match.metadata.status !== "open") return { success: false, error: "Free 8s lobby is not open" };
+    if (matchfinderPostExpiresAt(serializeRow(match)) <= Date.now()) return { success: false, code: "MATCH_CANCELLED", error: "This Free 8s lobby expired after 30 minutes. Join or create another match." };
     const rows = await tx.wagerParticipant.findMany({ where: field("wager_id", matchId), orderBy: { created_date: "asc" } });
     const existing = rows.find((row) => row.metadata?.user_id === userId);
     if (existing) return { success: true, rejoined: true, wager: serializeRow(match), wager_id: matchId };

@@ -68,7 +68,7 @@ test("empty Free 8s overview skips empty batch queries", async () => {
   assert.equal(f.calls.length, 3);
 });
 
-test("expired posts leave the overview and counts while participants retain their active room", async () => {
+test("overview hides expired posts pending the background worker and releases cancelled membership", async () => {
   const expired = match("expired");
   expired.created_date = new Date(Date.now() - 30 * 60 * 1000 - 1000);
   const hidden = match("hidden");
@@ -81,6 +81,8 @@ test("expired posts leave the overview and counts while participants retain thei
   assert.deepEqual(result.counts, { recent: 1 });
   assert.equal(result.active_lobby.id, "expired");
   assert.equal(result.active_lobby.status, "open");
+  expired.metadata.status = "cancelled";
+  assert.equal((await getFreeEightsOverview(f.db, "me")).active_lobby, null);
 });
 
 test("overview and enrollment use the same unresolved status rule and captain fallback", async () => {

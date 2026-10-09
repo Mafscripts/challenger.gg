@@ -20,6 +20,9 @@ import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
 import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membership.js";
 import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
 import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
+import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
+
+export const expireMatchfinderPosts = () => sweepExpiredMatchfinderPosts(prisma, { withLock: withTournamentMutationLock });
 
 const router = Router();
 const tournamentMutationTails = new Map();
@@ -6630,6 +6633,7 @@ async function acceptWagerUnlocked(req) {
   if (!wager || wager.status !== "open") {
     return { success: false, error: "Wager is not open" };
   }
+  if (isExpiredOpenMatch(wager)) return { success: false, code: "MATCH_CANCELLED", error: "This lobby expired after 30 minutes. Join or create another match." };
   const discordError = freeEightsDiscordJoinError(wager.match_type, req.userRow);
   if (discordError) return discordError;
   const existingParticipant = await firstEntity("WagerParticipant", { wager_id: wager.id, user_id: req.user.id }).catch(() => null);
@@ -6839,6 +6843,10 @@ async function syncEightsLobby(req) {
     const participant = participants.some((row) => row.user_id === req.user.id);
     if (!participant && !hasRole(req.user, "moderator")) return { success: false, error: "Only lobby players can sync this room" };
     if (["completed", "cancelled"].includes(wager.status)) return { success: true, wager, locked: true };
+    if (isExpiredOpenMatch(wager)) {
+      const cancelled = await cancelExpiredMatchfinderPost(prisma, "Wager", wager.id);
+      return { success: true, wager: cancelled || await getEntity("Wager", wager.id), locked: true };
+    }
 
     // Score reporting, disputes, and an already-live match are no longer lobby
     // states.  A stale room poll must never turn one back into an open lobby.
@@ -7998,6 +8006,7 @@ async function acceptRankedMatchUnlocked(req) {
   const match = await getEntity("RankedMatch", id);
   if (!match) return { success: false, error: "Ranked match not found" };
   if (match.status !== "open") return { success: false, error: "Ranked match is not open" };
+  if (isExpiredOpenMatch(match)) return { success: false, code: "MATCH_CANCELLED", error: "This ranked lobby expired after 30 minutes. Join or create another match." };
   if (match.host_id === req.user.id) return { success: false, error: "You cannot accept your own ranked match" };
   const slotsPerTeam = rankedTeamSize(match);
   const alphaIds = rankedRosterIds(match, "alpha");
@@ -8134,6 +8143,7 @@ async function acceptXPMatchUnlocked(req) {
   const match = await getEntity("XPMatch", id);
   if (!match) return { success: false, error: "XP match not found" };
   if (match.status !== "open") return { success: false, error: "XP match is not open" };
+  if (isExpiredOpenMatch(match)) return { success: false, code: "MATCH_CANCELLED", error: "This XP lobby expired after 30 minutes. Join or create another match." };
   if (match.host_id === req.user.id) return { success: false, error: "You cannot accept your own XP match" };
 
   const slotsPerTeam = Math.max(1, Number.parseInt(String(match.team_size || "1v1").split("v")[0], 10) || 1);

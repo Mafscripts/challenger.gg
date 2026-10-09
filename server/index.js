@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes, { registerHandler } from "./routes/auth.js";
 import entityRoutes from "./routes/entities.js";
-import functionRoutes from "./routes/functions.js";
+import functionRoutes, { expireMatchfinderPosts } from "./routes/functions.js";
 import publicRoutes from "./routes/public.js";
 import discordRoutes from "./routes/discord.js";
 import twitchRoutes from "./routes/twitch.js";
@@ -12,6 +12,7 @@ import rankVerificationRoutes from "./routes/rank-verification.js";
 import { disconnectPrisma } from "./prisma.js";
 import { attachRankedVoiceServer } from "./ranked-voice.js";
 import { attachEightsLiveServer } from "./eights-live.js";
+import { startMatchfinderExpiryWorker } from "./matchfinder-expiry.js";
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -67,9 +68,11 @@ const server = app.listen(port, () => {
 });
 attachRankedVoiceServer(server);
 attachEightsLiveServer(server);
+const stopMatchfinderExpiry = startMatchfinderExpiryWorker(expireMatchfinderPosts);
 
 const shutdown = async () => {
   server.close(async () => {
+    await stopMatchfinderExpiry();
     await disconnectPrisma();
     process.exit(0);
   });

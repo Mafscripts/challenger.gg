@@ -4,6 +4,7 @@ import { AuditLogEvent, ChannelType, Collection, GuildChannel, PermissionFlagsBi
 import { canAssignFreeEightsVoice, freeEightsVoiceChannelName, syncFreeEightsVoice } from "./free-eights-voice.js";
 import { freeEightsChannelKey, freeEightsDiscordJoinError, freeEightsVoiceKey, freeEightsWaitingRoomReady, publicFreeEightsVoiceStatus, voiceRosterSignature } from "../server/free-eights-discord.js";
 import { editEightsTeamsAsAdmin } from "../server/eights-admin-teams.js";
+import { cancelExpiredMatchfinderPost } from "../server/matchfinder-expiry.js";
 
 const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003", overflowCategoryIds: ["100000000000000005", "100000000000000006"] };
 const channelId = (n) => String(300000000000000000n + BigInt(n));
@@ -358,6 +359,30 @@ test("website lobby waits for voice before generation and both winning and losin
   assert.equal(f.stats().deletes, 3);
   await f.sync();
   assert.equal(f.moves.length, 16, "repeated completion does not move anyone twice");
+});
+
+test("30-minute automatic cancellation removes the Discord lobby without website polling", async () => {
+  const f = fixture();
+  const now = Date.now();
+  f.match.created_date = new Date(now - 30 * 60 * 1000);
+  f.match.metadata.host_id = f.users[0].id;
+  await f.sync();
+  assert.equal(f.stats().creations, 3);
+  const tx = {
+    $executeRaw: async () => 1,
+    wager: { findUnique: f.db.wager.findUnique, update: async ({ data }) => { Object.assign(f.match, structuredClone(data)); return structuredClone(f.match); } },
+    wagerParticipant: f.db.wagerParticipant,
+    notification: { create: async () => ({}) },
+  };
+  await cancelExpiredMatchfinderPost({ $transaction: (action) => action(tx) }, "Wager", f.match.id, { now, publish: () => {} });
+  assert.equal(f.match.metadata.status, "cancelled");
+  await f.sync();
+  assert.equal(f.stats().deletes, 3);
+  assert.equal(f.state().cleaned, true);
+  assert.deepEqual(f.state().channels, {});
+  for (const user of f.users) assert.equal(f.voices.get(user.discord_user_id).channelId, config.waitingRoomId);
+  await f.sync();
+  assert.equal(f.stats().deletes, 3);
 });
 
 for (const status of ["completed", "cancelled", "expired", "closed"]) {
