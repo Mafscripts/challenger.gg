@@ -273,7 +273,9 @@ When a connected player with both a linked Discord account and the manual **Stre
 Tag **@Topfragg Bot** in **general** or **off-topic** for website help, greetings
 or sharp gaming roasts. Without a Groq key it uses authored English/Dutch replies
 and keyword matching. With a Groq key it generates conversational replies and
-fresh gaming roasts, using the reviewed website guide as context. Missing keys,
+fresh gaming roasts, using the reviewed website guide as context. Each roast
+request gets one punchline in one sentence, up to 240 characters; AI lists or
+extra roast sentences are trimmed. Website help still supports multiple steps. Missing keys,
 timeouts, API errors and limits fall back to the preset replies. No extra package,
 website build or database migration is needed.
 Old `DISCORD_AI_ENABLED`, `DISCORD_AI_MODEL` and `OPENAI_API_KEY` values are unused.

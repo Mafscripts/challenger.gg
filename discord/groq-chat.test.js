@@ -63,6 +63,25 @@ test("AI responses respect Dutch and English, custom site URLs and Discord lengt
   assert.match(prompt, /Reply in English/);
 });
 
+test("one roast request produces a single short punchline even when AI returns several", async () => {
+  const cases = [
+    ["Your aim is still buffering. Your scoreboard is blank. Your controller wants a transfer.", "Your aim is still buffering."],
+    ["Sure, here are three roasts:\n1. Your aim is still buffering.\n2. Your scoreboard is blank.\n3. Your controller wants a transfer.", "Your aim is still buffering."],
+    ["- Je aim moet de tutorial nog doen.\n- Je controller wil een transfer.", "Je aim moet de tutorial nog doen."],
+  ];
+  for (const [response, expected] of cases) {
+    const reply = createGroqReply({ settings, fetchImpl: async (_, options) => {
+      assert.match(JSON.parse(options.body).messages[0].content, /exactly ONE short punchline/);
+      return success(response);
+    } });
+    assert.equal(await reply({ text: "roast me" }), expected);
+  }
+  const long = createGroqReply({ settings, fetchImpl: async () => success("Your aim is ".repeat(100)) });
+  assert.ok((await long({ text: "roast me" })).length <= 240);
+  const help = createGroqReply({ settings, fetchImpl: async () => success("First, open Free 8s. Then follow the rank and Discord steps.") });
+  assert.match(await help({ text: "help me play 8s before you roast me" }), /Then follow/);
+});
+
 test("rate limits pause requests and honor Retry-After without logging response bodies", async () => {
   let now = 100_000, calls = 0;
   const logs = [];
