@@ -9,7 +9,7 @@ function fixture(options = {}) {
   const replies = [], logs = [];
   const handler = createMentionChatHandler({ guildId: "guild", publicUrl: "https://topfragg.gg",
     isAllowedChannel: (message) => ["general", "off-topic"].includes(message.channelId),
-    now: () => time, pick: () => 0, log: (line) => logs.push(line), ...options });
+    now: () => time, pick: () => 0, log: (line) => logs.push(line), generateReply: async () => null, ...options });
   const message = (overrides = {}) => ({ id: String(++sequence), guildId: "guild", channelId: "general",
     client: { user: { id: "12345" } }, author: { id: "player", bot: false }, content: "<@12345> roast me",
     reply: async (payload) => replies.push(payload), ...overrides });

@@ -268,13 +268,37 @@ TWITCH_OAUTH_STATE_SECRET="a-separate-long-random-secret"
 
 When a connected player with both a linked Discord account and the manual **Streamer** Discord role goes live, the bot posts one stream card in **🔴・live-now** with a Twitch button. The Streamer role prevents every linked account from auto-posting.
 
-## 12. Free mention chat and website guide
+## 12. Mention chat, Groq AI and website guide
 
 Tag **@Topfragg Bot** in **general** or **off-topic** for website help, greetings
-or sharp gaming roasts. It uses authored English/Dutch replies and keyword
-matching. It is enabled by default and requires no AI API key, credits, extra
-dependency or database migration. The chat handler makes no external requests.
+or sharp gaming roasts. Without a Groq key it uses authored English/Dutch replies
+and keyword matching. With a Groq key it generates conversational replies and
+fresh gaming roasts, using the reviewed website guide as context. Missing keys,
+timeouts, API errors and limits fall back to the preset replies. No extra package,
+website build or database migration is needed.
 Old `DISCORD_AI_ENABLED`, `DISCORD_AI_MODEL` and `OPENAI_API_KEY` values are unused.
+
+Create a key at [Groq API Keys](https://console.groq.com/keys). Keep the Groq account
+on its **Free plan**; upgrading enables paid usage. The bot cannot determine your
+billing plan, buy credits or change Groq billing. Free access has model/token and
+request limits; see [Groq's current limits](https://console.groq.com/docs/rate-limits).
+Put the key in the server's private `.env` file, never in chat or Git:
+
+```env
+DISCORD_CHAT_ENABLED="true"
+GROQ_API_KEY="your-private-groq-key"
+DISCORD_GROQ_ENABLED="true"
+DISCORD_GROQ_MODEL="openai/gpt-oss-20b"
+```
+
+`DISCORD_GROQ_ENABLED=false` keeps the preset chat without contacting Groq.
+`DISCORD_CHAT_ENABLED=false` disables all mention replies. The default model is
+listed in Groq's Free plan; model availability and free limits may change.
+Only the individual tagged message (up to 1500 characters, Discord mentions
+removed) and the authored website guide are sent to Groq. No conversation
+history, previous bot replies, Discord IDs or live account records are added.
+The player can still include personal information in their own tagged message.
+Groq processes that message under [its data policy](https://console.groq.com/docs/your-data).
 
 The guide in `discord/website-knowledge.js` explains account registration,
 password resets, email verification, Discord linking/unlinking and conflicts,
@@ -285,9 +309,12 @@ chat replies do not include Discord server invites. The guide distinguishes
 the automatic Discord role from the account link required for Free 8s. The
 instructions are reviewed against website source; update the guide whenever a
 website flow changes. It does not learn changes automatically or read live
-accounts, scores, balances or queue data. Unknown questions receive a help
-prompt instead of an invented answer; prices and live information link to the
-website, and disputes/payment problems go to staff.
+accounts, scores, balances or queue data. Groq is instructed to answer website
+questions using the guide and admit missing information; generated text can
+still be wrong. Preset replies use the reviewed steps directly. Prices and live
+information link to the website, and disputes/payment problems go to staff.
+AI output is limited to 1900 characters and one known main link. Discord invites
+and unknown URLs are removed, and link previews are suppressed.
 
 Examples:
 
@@ -305,9 +332,18 @@ private tickets and bot/webhook messages are ignored. Existing anti-spam checks
 run first. Replies cannot notify users, roles or everyone. A player gets at most
 one reply per 15 seconds, with a server-wide limit of 20 per minute per process.
 Duplicate events and failed sends are not retried. The last reply per player and
-channel is remembered briefly to avoid repeating the same joke; raw user
-messages are not stored or logged. State is bounded and expires after ten
-minutes or on restart. Website help takes priority over jokes.
+channel is remembered briefly for the preset jokes and is never sent to Groq;
+raw user messages are not stored or logged by the bot. The remembered replies
+expire after ten minutes or on restart and are capped at 200 player/channel
+entries. Website help takes priority over jokes.
+
+Groq requests have a 12-second timeout, at most two concurrent requests, six
+requests per minute and 100 per UTC day per process. Excess messages use preset
+replies. The local request counters reset on process restart; Groq's account
+quotas do not. HTTP 429 honors Retry-After with at least a minute's pause; invalid
+keys/models pause for five minutes. There are no automatic retries or alternate
+providers. These local limits do not guarantee staying within token quotas;
+Groq may return 429 sooner, which also triggers the preset fallback.
 
 Commit and push, update the server and restart the existing bot:
 
@@ -319,11 +355,17 @@ pm2 status
 ```
 
 No website build is needed for the chat change. Keep **Message Content Intent**
-enabled. Look for `[Topfragg Chat] Free mention replies and website help enabled`
-in the bot logs. Optionally set `DISCORD_CHAT_ENABLED=false` and restart to disable
-the feature. After deployment, try the examples above with 15 seconds between
+enabled. With a key, look for `[Topfragg Chat] Groq AI enabled with website guide
+and preset fallback` in the bot logs. Without it, the log reports preset mode.
+After deployment, try the examples above with 15 seconds between
 messages, and confirm that no response is sent in private tickets or ordinary
 untagged chat.
+
+Local validation (mocked Groq responses, no key or network needed):
+
+```bash
+node --test discord/groq-chat.test.js discord/mention-chat.test.js discord/community-commands.test.js
+```
 
 Free 8s questions accept `8s`, `8's`, `8’s`, `8 s` and `eights`. Questions about
 creating/hosting a lobby get the creation flow, including **Create 8s lobby** and

@@ -1,4 +1,6 @@
 import { randomInt } from "node:crypto";
+import { MessageFlags } from "discord.js";
+import { createGroqReply } from "./groq-chat.js";
 import { chatLanguage, websiteAnswer } from "./website-knowledge.js";
 
 const TTL_MS = 10 * 60_000;
@@ -66,9 +68,10 @@ export function freeChatReply(text, { publicUrl, previous, pick = randomInt } = 
 
 export function createMentionChatHandler({
   guildId, publicUrl, isAllowedChannel, settings = discordChatEnvironment(),
-  now = Date.now, pick = randomInt, log = () => {},
+  now = Date.now, pick = randomInt, log = () => {}, generateReply,
 }) {
   const seen = new Map(), cooldowns = new Map(), previous = new Map();
+  const aiReply = generateReply || createGroqReply({ publicUrl, now, log });
   let recentReplies = [];
   return async (message) => {
     const botId = message.client?.user?.id;
@@ -83,14 +86,16 @@ export function createMentionChatHandler({
     recentReplies = recentReplies.filter((at) => time - at < 60_000);
     if (seen.has(message.id) || cooldowns.has(message.author.id) || recentReplies.length >= 20) return true;
     const sessionKey = `${message.channelId}:${message.author.id}`;
-    // Never echo player text, fetch chat history or send data to an AI provider.
+    // Only this tagged message and the website guide reach Groq; never fetch chat history.
     const text = String(message.content || "").replace(mention, "").replace(/<[^>]+>/g, "").trim().slice(0, 1500);
-    const content = freeChatReply(text, { publicUrl, previous: previous.get(sessionKey)?.content, pick });
     seen.set(message.id, time);
     cooldowns.set(message.author.id, time);
     recentReplies.push(time);
+    let generated;
+    try { generated = await aiReply({ text }); } catch { log("Groq unavailable; using preset replies"); }
+    const content = generated || freeChatReply(text, { publicUrl, previous: previous.get(sessionKey)?.content, pick });
     try {
-      await message.reply({ content, allowedMentions: { parse: [], repliedUser: false }, failIfNotExists: false });
+      await message.reply({ content, flags: MessageFlags.SuppressEmbeds, allowedMentions: { parse: [], repliedUser: false }, failIfNotExists: false });
       if (!previous.has(sessionKey) && previous.size >= 200) previous.delete(previous.keys().next().value);
       previous.set(sessionKey, { at: time, content });
     } catch {

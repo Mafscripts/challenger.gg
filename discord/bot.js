@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { groqChatEnvironment } from "./groq-chat.js";
 import {
   ActionRowBuilder,
   ActivityType,
@@ -537,7 +538,8 @@ async function publishLookingForTeamPost(interaction) {
 client.once(Events.ClientReady, async (readyClient) => {
   readyClient.user.setActivity("Topfragg tournaments", { type: ActivityType.Competing });
   process.stdout.write(`[Topfragg Discord] Online as ${readyClient.user.tag}\n`);
-  process.stdout.write(`[Topfragg Chat] ${chatSettings.enabled ? "Free mention replies and website help enabled" : "Disabled"}\n`);
+  const groqSettings = groqChatEnvironment();
+  process.stdout.write(`[Topfragg Chat] ${!chatSettings.enabled ? "Disabled" : groqSettings.enabled && groqSettings.apiKey ? "Groq AI enabled with website guide and preset fallback" : "Preset replies and website help enabled (Groq key missing or disabled)"}\n`);
   const guild = await readyClient.guilds.fetch(config.guildId).catch(() => null);
   if (!guild) {
     process.stderr.write(`[Topfragg Discord] Server ${config.guildId} is unavailable.\n`);
