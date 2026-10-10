@@ -278,9 +278,10 @@ Old `DISCORD_AI_ENABLED`, `DISCORD_AI_MODEL` and `OPENAI_API_KEY` values are unu
 
 The guide in `discord/website-knowledge.js` explains account registration,
 password resets, email verification, Discord linking/unlinking and conflicts,
-Twitch alerts, Gaming IDs, Free 8s, voice rooms, game ranks, teams, tournament
+Twitch alerts, Gaming IDs, joining and creating Free 8s lobbies, voice rooms, game ranks, teams, tournament
 registration, automatic Verified Player, settings, rules, support, wallet,
-Premium, leaderboards and X. Answers include real website links and distinguish
+Premium, leaderboards and X. Each answer includes only its main destination link;
+chat replies do not include Discord server invites. The guide distinguishes
 the automatic Discord role from the account link required for Free 8s. The
 instructions are reviewed against website source; update the guide whenever a
 website flow changes. It does not learn changes automatically or read live
@@ -294,6 +295,7 @@ Examples:
 @Topfragg Bot how do I connect Discord?
 @Topfragg Bot hoe koppel ik Twitch?
 @Topfragg Bot how do I join Free 8s?
+@Topfragg Bot how do i make an 8's lobby
 @Topfragg Bot hoe maak ik een team?
 @Topfragg Bot roast me
 ```
@@ -322,3 +324,8 @@ in the bot logs. Optionally set `DISCORD_CHAT_ENABLED=false` and restart to disa
 the feature. After deployment, try the examples above with 15 seconds between
 messages, and confirm that no response is sent in private tickets or ordinary
 untagged chat.
+
+Free 8s questions accept `8s`, `8's`, `8’s`, `8 s` and `eights`. Questions about
+creating/hosting a lobby get the creation flow, including **Create 8s lobby** and
+**Open 8s Lobby**; play/join questions get the joining steps and waiting-room
+requirement. Both include the Activision ID, rank and linked Discord prerequisites.

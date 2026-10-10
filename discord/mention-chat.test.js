@@ -77,9 +77,56 @@ test("every website link points to an existing route and every settings anchor e
     assert.ok(topic.en && topic.nl);
     for (const [, path] of topic.links) {
       const url = new URL(path, "https://topfragg.gg");
-      if (!path.startsWith("/")) { assert.ok(["discord.gg", "x.com"].includes(url.hostname)); continue; }
+      if (!path.startsWith("/")) { assert.equal(url.hostname, "x.com"); continue; }
       assert.ok(routes.has(url.pathname), `${topic.id}: missing route ${path}`);
       if (url.hash) assert.ok(settings.includes(`id="${url.hash.slice(1)}"`), `missing anchor: ${path}`);
+    }
+  }
+});
+
+test("the reported 8's lobby question gets creation steps instead of the generic fallback", async () => {
+  const f = fixture();
+  await f.handler(f.message({ content: "<@12345> how do i make an 8's lobby" }));
+  assert.equal(f.replies.length, 1);
+  assert.match(f.replies[0].content, /Create 8s lobby/);
+  assert.match(f.replies[0].content, /Open 8s Lobby/);
+  assert.match(f.replies[0].content, /Activision ID/);
+  assert.match(f.replies[0].content, /https:\/\/topfragg.gg\/ranked\/8s/);
+  assert.doesNotMatch(f.replies[0].content, /two loadouts|website link or a roast/);
+});
+
+test("8s spelling variants recognize play and lobby creation in English and Dutch", () => {
+  for (const spelling of ["8s", "8's", "8’s", "8 s", "8‘s", "eights", "eight's"]) {
+    for (const question of [`how do I play ${spelling}?`, `hoe speel ik ${spelling}?`]) {
+      const answer = websiteAnswer(question);
+      assert.equal(answer?.topic, "free-eights", question);
+      assert.match(answer.content, /Accept This Match/);
+      assert.ok(answer.content.length < 2000);
+    }
+    for (const question of [`how do I make an ${spelling} lobby?`, `hoe maak ik een ${spelling} lobby?`]) {
+      const answer = websiteAnswer(question);
+      assert.equal(answer?.topic, "create-eights", question);
+      assert.match(answer.content, /Open 8s Lobby/);
+      assert.ok(answer.content.length < 2000);
+    }
+  }
+  assert.equal(websiteAnswer("I have 8 supporters"), null);
+});
+
+test("website answers include only the topic's main link", () => {
+  const cases = [
+    ["how do i make a 8s lobby", "/ranked/8s"],
+    ["how do I play 8's", "/ranked/8s"],
+    ["how do I connect discord", "/settings?connect=discord"],
+    ["website help", "/settings"],
+    ["support", "/support"],
+    ["twitter", "https://x.com/_topfragg"],
+  ];
+  for (const [question, path] of cases) {
+    for (const language of ["en", "nl"]) {
+      const { content } = websiteAnswer(question, { language });
+      const urls = content.match(/https?:\/\/[^)\s]+/g) || [];
+      assert.deepEqual(urls, [path.startsWith("/") ? `https://topfragg.gg${path}` : path], question);
     }
   }
 });

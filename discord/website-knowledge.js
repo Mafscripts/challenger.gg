@@ -1,7 +1,5 @@
-import { topfraggDiscordInviteUrl } from "../src/lib/discordCommunity.js";
-
 // Reviewed against App.jsx, Settings.jsx, DiscordSection.jsx, TwitchSection.jsx,
-// FreeEightsDiscord.jsx, RankedEights.jsx, Teams.jsx and TournamentJoinModal.jsx.
+// FreeEightsDiscord.jsx, RankedEights.jsx, CreateLobbyModal.jsx, Teams.jsx and TournamentJoinModal.jsx.
 // Update this authored guide when the website's flows change.
 export const websiteTopics = [
   {
@@ -45,14 +43,19 @@ export const websiteTopics = [
     nl: "Open je Free 8s-matchroom en gebruik daar de Discord-/8s Waiting Room-link. Join met hetzelfde Discord-account als in Settings. Gebruik de link van je eigen lobby. Blijft een verplaatsing misgaan, stuur het match-ID via /support.", links: [["Free 8s", "/ranked/8s"], ["Discord settings", "/settings#settings-discord"]],
   },
   {
+    id: "create-eights", match: /^(?=.*\b(8s|eights)\b)(?=.*\b(create|make|host|open|aanmaken|maken|maak|creeer|creëren|hosten)\b)/i,
+    en: "**Create a Free 8s lobby**\n1. Sign in, open Free 8s and choose your game.\n2. Complete the game-rank step, add your Activision ID in Settings → Gaming IDs, and connect Discord. Join our Discord with that same account.\n3. Click **Create 8s lobby**, choose the available series format and follow the setup steps.\n4. Check the input/platform rule, then click **Open 8s Lobby**. Other players join with **Accept This Match**.\n5. Open your match room and join its **8s Waiting Room** voice link. All eight players must be there before maps are generated; the bot moves players into team voice when ready.\nAlready in a lobby? Finish or leave it first. A Verified Player role alone does not link your website account.",
+    nl: "**Een Free 8s-lobby maken**\n1. Log in, open Free 8s en kies je game.\n2. Voltooi de gamerankstap, vul je Activision ID in via Settings → Gaming IDs en koppel Discord. Join onze Discord met datzelfde account.\n3. Klik **Create 8s lobby**, kies een beschikbaar seriesformat en volg de stappen.\n4. Controleer de input-/platformregel en klik **Open 8s Lobby**. Anderen joinen via **Accept This Match**.\n5. Open je matchroom en join de **8s Waiting Room** via de voicelink daar. Alle acht spelers moeten daar zijn voordat maps worden gegenereerd; de bot verplaatst spelers naar teamvoice zodra die klaarstaat.\nAl in een lobby? Rond die eerst af of verlaat die. Alleen Verified Player hebben koppelt je websiteaccount niet.", links: [["Free 8s", "/ranked/8s"], ["Gaming IDs", "/settings#settings-gaming"], ["Connect Discord", "/settings?connect=discord"]],
+  },
+  {
     id: "rank", match: /\b(ranks?|elo|diamond|crimson|iridescent|top ?250|screenshot|amateur)\b/i,
     en: "Open Settings → Game rank to view or submit your game rank. For Free 8s, complete the rank step shown on the lobby page before joining. Check Free 8s Elo on the website; I cannot see or change your current rank.",
     nl: "Ga naar Settings → Game rank om je gamerank te bekijken of in te dienen. Volg voor Free 8s eerst de rankstap op de lobbypagina. Bekijk je Free 8s-Elo op de website; ik kan je huidige rank niet inzien of aanpassen.", links: [["Game rank", "/settings#settings-rank"], ["Leaderboards", "/leaderboards"]],
   },
   {
     id: "free-eights", match: /\b(8s|eights|free ?8|bo6|bo7|mw3|black ops|modern warfare)\b/i,
-    en: "Open Free 8s, choose the game, complete the rank step and connect Discord. Join the Topfragg Discord with that same account, then select Accept This Match on an available lobby. Open the match room and follow its Discord voice link. Verified Player alone does not link your website account.",
-    nl: "Open Free 8s, kies de game, voltooi de rankstap en koppel Discord. Join de Topfragg Discord met datzelfde account en kies Accept This Match bij een beschikbare lobby. Open daarna de matchroom en volg de Discord-voicelink. Alleen Verified Player hebben koppelt je websiteaccount niet.", links: [["Free 8s", "/ranked/8s"], ["Connect Discord", "/settings?connect=discord"], ["Discord server", topfraggDiscordInviteUrl]],
+    en: "**Play Free 8s (4v4, eight players)**\n1. Sign in, open Free 8s and choose your game.\n2. Complete the rank step, add your Activision ID in Settings → Gaming IDs, and connect Discord. Join our server with that same Discord account.\n3. Click **Accept This Match** on an available lobby, or **Create 8s lobby** to host one.\n4. Open your match room and join its **8s Waiting Room** voice link. All eight players must be in the waiting room before maps are generated; the bot moves players to team voice when ready.\n5. Follow the match room's teams, maps and rules, then report the result there.\nVerified Player alone does not link your website account.",
+    nl: "**Free 8s spelen (4v4, acht spelers)**\n1. Log in, open Free 8s en kies je game.\n2. Voltooi de rankstap, vul je Activision ID in via Settings → Gaming IDs en koppel Discord. Join onze server met datzelfde Discord-account.\n3. Klik **Accept This Match** bij een beschikbare lobby, of **Create 8s lobby** om er een te maken.\n4. Open je matchroom en join de **8s Waiting Room** via de voicelink daar. Alle acht spelers moeten in de wachtkamer zijn voordat maps worden gegenereerd; de bot verplaatst spelers naar teamvoice zodra die klaarstaat.\n5. Volg de teams, maps en regels in de matchroom en rapporteer daar de uitslag.\nAlleen Verified Player hebben koppelt je websiteaccount niet.", links: [["Free 8s", "/ranked/8s"], ["Connect Discord", "/settings?connect=discord"]],
   },
   {
     id: "teams", match: /\b(team\w*|roster|captain|invite\w*|uitnodig\w*|squad)\b/i,
@@ -72,7 +75,7 @@ export const websiteTopics = [
   {
     id: "discord", match: /\bdiscord\b|\b(link|connect|koppel\w*)\b.*\b(account|accounts)\b/i,
     en: "Sign in on Topfragg, open Settings → Connections → Discord and press Connect Discord. Approve identity access in Discord, then return to Topfragg. Use your actual Discord account; typing a username does not link it. Join the server with the same linked account.",
-    nl: "Log in op Topfragg en open Settings → Connections → Discord. Klik Connect Discord, keur de identiteitstoegang goed en keer terug naar Topfragg. Gebruik je echte Discord-account; alleen een gebruikersnaam invullen koppelt niets. Join de server met hetzelfde gekoppelde account.", links: [["Connect Discord", "/settings?connect=discord"], ["Discord server", topfraggDiscordInviteUrl]],
+    nl: "Log in op Topfragg en open Settings → Connections → Discord. Klik Connect Discord, keur de identiteitstoegang goed en keer terug naar Topfragg. Gebruik je echte Discord-account; alleen een gebruikersnaam invullen koppelt niets. Join de server met hetzelfde gekoppelde account.", links: [["Connect Discord", "/settings?connect=discord"]],
   },
   {
     id: "gaming-ids", match: /\b(activision|psn|xbox|battlenet|battle\.net|gaming ids?|game.?id|gamertag|steam)\b/i,
@@ -124,9 +127,13 @@ export const websiteTopics = [
 export const chatLanguage = (text) => /\b(hoe|waar|wat|waarom|ik|jij|je|mijn|jouw|kan|kun|wil|hoi|hallo|bedankt|grappig|grap|roast mij|koppelen|toernooi\w*|instellingen|wachtwoord|gratis|doei)\b/i.test(text) ? "nl" : "en";
 
 export function websiteAnswer(text, { publicUrl = "https://topfragg.gg", language = chatLanguage(text) } = {}) {
-  const topic = websiteTopics.find((item) => item.match.test(text));
+  // Players use 8s, 8's, 8’s, 8 s and eight's for the same game mode.
+  const question = String(text).normalize("NFKC").replace(/[’‘]/g, "'").replace(/\b(?:8|eight)\s*'?s\b/gi, "8s");
+  const topic = websiteTopics.find((item) => item.match.test(question));
   if (!topic) return null;
   const base = publicUrl.replace(/\/$/, "");
-  const links = topic.links.map(([label, path]) => `[${label}](${path.startsWith("/") ? base + path : path})`);
-  return { topic: topic.id, content: [topic[language], links.join(" · ")].filter(Boolean).join("\n") };
+  // Keep the topic's main destination; multiple related links clutter Discord replies.
+  const destination = topic.links[0];
+  const link = destination ? `[${destination[0]}](${destination[1].startsWith("/") ? base + destination[1] : destination[1]})` : "";
+  return { topic: topic.id, content: [topic[language], link].filter(Boolean).join("\n") };
 }
