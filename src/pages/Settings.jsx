@@ -89,12 +89,13 @@ function scrollToSetting(target) {
 }
 
 export default function Settings() {
-  const { pathname, hash, search } = useLocation();
+  const { pathname, hash, search, state } = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [failedAvatar, setFailedAvatar] = useState("");
+  const preserveSettingsScroll = state?.preserveSettingsScroll === true;
   const target = settingTarget(hash, search);
   const activeGroup = settingGroups.find(group => group.items.some(item => item.target === target));
   const details = groupDetails[activeGroup.id];
@@ -114,15 +115,17 @@ export default function Settings() {
 
   useEffect(() => {
     const params = new URLSearchParams(search);
-    if (!loading && (hash || params.has("discord") || params.has("twitch") || params.get("connect") === "discord")) scrollToSetting(target);
-  }, [loading, hash, search, target]);
+    if (!loading && !preserveSettingsScroll && (hash || params.has("discord") || params.has("twitch") || params.get("connect") === "discord")) scrollToSetting(target);
+  }, [loading, hash, search, target, preserveSettingsScroll]);
 
-  const openSetting = nextTarget => {
+  const openSetting = (nextTarget, { scroll = true } = {}) => {
     if (target === nextTarget) {
-      scrollToSetting(nextTarget);
+      if (scroll) scrollToSetting(nextTarget);
       return;
     }
-    navigate({ pathname, search: window.location.search, hash: `#${nextTarget}` });
+    navigate({ pathname, search: window.location.search, hash: `#${nextTarget}` }, {
+      state: scroll ? null : { preserveSettingsScroll: true },
+    });
   };
 
   if (loading) return <PageLoader label="Loading settings" />;
@@ -153,7 +156,7 @@ export default function Settings() {
                 {settingGroups.map(group => {
                   const Icon = group.icon;
                   const selected = activeGroup.id === group.id;
-                  return <button key={group.id} type="button" onClick={() => openSetting(group.items[0].target)} aria-current={selected ? "true" : undefined} className="settings-category">
+                  return <button key={group.id} type="button" onClick={() => openSetting(group.items[0].target, { scroll: false })} aria-current={selected ? "true" : undefined} className="settings-category">
                     <span className="settings-category-icon"><Icon size={19} aria-hidden="true" /></span>
                     <span className="settings-category-copy"><strong>{group.label}</strong><span>{group.description}</span></span>
                     <ChevronRight size={15} className="settings-category-arrow" aria-hidden="true" />

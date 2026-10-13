@@ -16,11 +16,13 @@ export default function ScrollToTop() {
   const navigationType = useNavigationType();
   const previousPath = useRef(pathname);
   const preserveCompetitionScroll = state?.preserveCompetitionScroll === true;
+  const preserveSettingsScroll = state?.preserveSettingsScroll === true;
 
   useLayoutEffect(() => {
     const from = previousPath.current;
     previousPath.current = pathname;
     if (navigationType === "POP") return;
+    if (preserveSettingsScroll && from === "/settings" && pathname === "/settings") return;
     const competitionPaths = ["/ranked", "/xp", "/wagers", "/ranked/8s"];
     if ((!hash || hash === "#upcoming-tournaments") && preserveCompetitionScroll && competitionPaths.includes(from) && competitionPaths.includes(pathname)) return;
 
@@ -33,7 +35,7 @@ export default function ScrollToTop() {
     }
 
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, [pathname, hash, navigationType, preserveCompetitionScroll]);
+  }, [pathname, hash, navigationType, preserveCompetitionScroll, preserveSettingsScroll]);
 
   return null;
 }
