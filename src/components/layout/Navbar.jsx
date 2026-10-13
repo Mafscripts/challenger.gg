@@ -8,6 +8,7 @@ import {
   Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, DollarSign, Search, ArrowRight, Ticket, Crown
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
+import NavbarMessages from "./NavbarMessages";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
@@ -1529,62 +1530,15 @@ export default function Navbar() {
                   )}
                 </Link>
 
-                {messagesOpen && (
-                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-[min(390px,calc(100vw-1rem))] overflow-hidden rounded-2xl">
-                      <div className="flex items-center justify-between border-b border-white/5 bg-[linear-gradient(135deg,rgba(20,216,255,0.08),transparent_55%)] px-4 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan/20 bg-cyan/10 text-cyan"><MessageSquare className="h-4 w-4" /></span>
-                          <div>
-                            <h3 className="text-sm font-black">Messages</h3>
-                            <p className="text-[10px] text-vapor">Your latest conversations</p>
-                          </div>
-                        </div>
-                        {unreadMessagesCount > 0 && <span className="rounded-full bg-cyan px-2 py-1 font-mono text-[9px] font-black text-background">{unreadMessagesCount} new</span>}
-                      </div>
-                      <div className="max-h-[360px] space-y-1 overflow-y-auto p-2">
-                        {messagePreviews.length === 0 ? (
-                          <div className="px-4 py-8 text-center">
-                            <MessageSquare className="w-8 h-8 text-vapor/30 mx-auto mb-2" />
-                            <p className="text-xs text-vapor">No messages</p>
-                          </div>
-                        ) : (
-                          messagePreviews.map((message) => (
-                            <Link
-                              key={message.id}
-                              to={message.action_url || (
-                                message.message_type === "direct_message" && message.sender_id
-                                  ? `/messages?conversation=${encodeURIComponent(message.sender_id)}`
-                                  : "/messages"
-                              )}
-                              onClick={() => { markMessageAsRead(message.id); setMessagesOpen(false); }}
-                              className={`group block rounded-xl border px-3 py-3 transition-all ${
-                                !message.is_read ? 'border-cyan/15 bg-cyan/[0.055]' : 'border-transparent hover:border-white/[0.07] hover:bg-white/[0.035]'
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-cyan/25 to-orange/20 text-sm font-black text-white shadow-sm">
-                                  {(message.sender_name || "Unknown sender").charAt(0)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <p className={`truncate text-xs font-black ${!message.is_read ? 'text-cyan' : 'text-foreground'}`}>{message.sender_name || "Unknown sender"}</p>
-                                    <span className="shrink-0 font-mono text-[9px] text-vapor/60">{formatMessageTime(message.created_date)}</span>
-                                  </div>
-                                  <p className="mt-1 truncate text-[11px] leading-4 text-vapor">{message.content || message.subject || 'Open message'}</p>
-                                </div>
-                                {!message.is_read && (
-                                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan shadow-[0_0_8px_rgba(20,216,255,0.6)]" />
-                                )}
-                              </div>
-                            </Link>
-                          ))
-                        )}
-                      </div>
-                      <Link to="/messages" onClick={() => setMessagesOpen(false)} className="flex items-center justify-center gap-2 border-t border-white/5 bg-white/[0.02] px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-cyan transition-colors hover:bg-cyan/[0.06]">
-                        Open all messages <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </div>
-                )}
+                <NavbarMessages
+                  key={user?.id || authUser?.id || "guest"}
+                  open={messagesOpen}
+                  messages={messagePreviews}
+                  unreadCount={unreadMessagesCount}
+                  formatTime={formatMessageTime}
+                  onRead={markMessageAsRead}
+                  onClose={() => setMessagesOpen(false)}
+                />
               </div>
 
               {/* Profile */}
