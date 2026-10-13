@@ -703,6 +703,7 @@ function TournamentTeamTable({ label, name, color, seed, isFirstHost, players = 
 
 function TournamentChatColumn({
   match,
+  isComplete = false,
   teamAPlayers,
   teamBPlayers,
   isStreamerMatch,
@@ -715,6 +716,9 @@ function TournamentChatColumn({
   onCreateDispute,
   adminTools = null,
 }) {
+  const showSupport = !isStreamerMatch && (
+    !isComplete || (isMatchParticipant && supportWindowUnlocked) || match.admin_request_status || match.requested_admin
+  );
   return (
       <MatchRoomChat
         conversationId={match.id}
@@ -723,12 +727,13 @@ function TournamentChatColumn({
         teamBPlayers={teamBPlayers}
         pollIntervalMs={3500}
         messageLimit={50}
-        inputActions={(!isStreamerMatch || adminTools) ? (
+        heightClass="h-[500px] xl:h-[580px]"
+        inputActions={(showSupport || adminTools) ? (
           <>
-          {!isStreamerMatch ? (
+          {showSupport ? (
           <div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
+            <div className={`grid gap-2 ${isComplete ? "grid-cols-1" : "grid-cols-2"}`}>
+              {!isComplete && <button
                 type="button"
                 onClick={onRequestAdmin}
                 disabled={!isMatchParticipant || !adminSupportUnlocked || requestingAdmin}
@@ -736,7 +741,7 @@ function TournamentChatColumn({
                 className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 hover:bg-red-400/15 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <AlertTriangle className="h-3.5 w-3.5" /> {requestingAdmin ? "Requesting..." : "Request Admin"}
-              </button>
+              </button>}
               <button
                 type="button"
                 onClick={onCreateDispute}
@@ -747,7 +752,7 @@ function TournamentChatColumn({
                 <Flag className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Submit ticket"}
               </button>
             </div>
-            {!supportWindowUnlocked && isMatchParticipant && (
+            {!isComplete && !supportWindowUnlocked && isMatchParticipant && (
               <p className="mt-2 text-center text-[9px] leading-4 text-vapor">Admin help is available now. Disputes unlock when the start timer reaches 00:00.</p>
             )}
             {(match.admin_request_status || match.requested_admin) && (
@@ -830,32 +835,69 @@ function TournamentMatchOverview({ match, tournament, isComplete }) {
     { label: "Bracket", value: bracketLabels[match.bracket] || match.bracket || "Tournament" },
     { label: "First host", value: match.first_host_team_name || "TBD" },
     { label: "Status", value: statusLabel(match.status), valueClass: isComplete ? "capitalize text-green" : "capitalize text-cyan" },
+    { label: "Team size", value: tournament?.team_size || "Teams" },
+    { label: "Series", value: `Best of ${match.best_of || 3}` },
+    { label: "Match ID", value: `#${String(match.id).slice(-8).toUpperCase()}` },
+    { label: "Tournament prize pool", value: moneyLabel(tournament?.prize_pool), valueClass: "text-green" },
   ];
 
   return (
-    <section aria-label="Tournament overview" className="match-room-overview-strip relative w-full overflow-hidden rounded-xl border border-white/10 bg-[var(--arena-inset)] p-4 shadow-[0_12px_36px_-20px_rgba(0,0,0,.7)]">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-cyan/60 via-white/10 to-green/55" />
+    <details className="tournament-room-details group rounded-xl border border-white/[0.08] bg-[var(--arena-inset)]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-xs font-bold text-vapor transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-cyan" /> Tournament details</span>
+        <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <dl className="grid grid-cols-2 gap-x-5 gap-y-4 border-t border-white/[0.06] p-4 lg:grid-cols-4">
+        {items.map((item) => (
+          <div key={item.label} className="min-w-0">
+            <dt className="text-[10px] font-bold uppercase tracking-wider text-vapor">{item.label}</dt>
+            <dd className={`mt-1 break-words text-sm font-bold ${item.valueClass || "text-white"}`}>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
+function TournamentMatchScoreboard({ match, isComplete, isTeamAWinner, isTeamBWinner }) {
+  const teams = [
+    { name: match.team_a_name || "Team Alpha", label: "Team Alpha", isWinner: isTeamAWinner, tone: "orange" },
+    { name: match.team_b_name || "Team Bravo", label: "Team Bravo", isWinner: isTeamBWinner, tone: "cyan" },
+  ];
+  const winnerName = match.winner_name || (isTeamAWinner ? teams[0].name : isTeamBWinner ? teams[1].name : "");
+
+  const teamIdentity = (team, index) => (
+    <div className={`tournament-scoreboard-team ${index === 1 ? "tournament-scoreboard-team-right" : ""}`}>
+      <span aria-hidden="true" className={`tournament-scoreboard-monogram border ${team.tone === "orange" ? "border-orange/25 bg-orange/10 text-orange" : "border-cyan/25 bg-cyan/10 text-cyan"}`}>{team.name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase()}</span>
       <div className="min-w-0">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan/20 bg-cyan/[0.08] text-cyan"><Swords className="h-4 w-4" aria-hidden="true" /></div>
-          <div><h2 className="text-xs font-black text-white">Tournament overview</h2><p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-vapor">{tournament?.team_size || "Teams"} <span className="mx-1 text-white/20">·</span> Best of {match.best_of || 3}</p></div>
-        </div>
-        <dl className="mt-3 divide-y divide-white/[0.06]">
-          {items.map((item) => (
-            <div key={item.label} className="flex min-w-0 items-start justify-between gap-4 py-2">
-              <dt className="shrink-0 text-[8px] font-black uppercase leading-4 tracking-wider text-vapor">{item.label}</dt>
-              <dd className={`min-w-0 break-words text-right text-[11px] font-black leading-4 ${item.valueClass || "text-white"}`}>{item.value}</dd>
-            </div>
-          ))}
-        </dl>
+        <p className={`text-[10px] font-bold uppercase tracking-[0.14em] ${team.tone === "orange" ? "text-orange" : "text-cyan"}`}>{team.label}</p>
+        <p className="mt-1 break-words text-base font-black leading-tight text-white sm:text-xl lg:text-2xl">{team.name}</p>
+        {team.isWinner && <p className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-green"><Trophy className="h-3 w-3" /> Winner</p>}
       </div>
-      <div className="mt-3 min-w-0 rounded-lg border border-green/25 bg-green/[0.06] px-3 py-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-wider text-green"><Trophy className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Prize pool</div>
-          <p className="min-w-0 break-words font-mono text-xl font-black tracking-tight text-green">${Number(tournament?.prize_pool || 0).toLocaleString()}</p>
+    </div>
+  );
+
+  return (
+    <section aria-label="Match score" className="tournament-scoreboard rounded-xl border border-white/[0.08] bg-[var(--arena-inset)]">
+      <div className="tournament-scoreboard-matchup">
+        {teamIdentity(teams[0], 0)}
+        <div className="tournament-scoreboard-score text-center">
+          <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-vapor">{isComplete ? "Final score" : "Series score"}</p>
+          <p className="flex items-center justify-center gap-2 font-mono text-3xl font-black tabular-nums sm:gap-4 sm:text-4xl lg:text-5xl" aria-label={`${teams[0].name} ${statNumber(match.team_a_score)}, ${teams[1].name} ${statNumber(match.team_b_score)}`}>
+            <span className={isTeamAWinner ? "text-green" : "text-white"}>{statNumber(match.team_a_score)}</span>
+            <span className="text-xl text-vapor/50">–</span>
+            <span className={isTeamBWinner ? "text-green" : "text-white"}>{statNumber(match.team_b_score)}</span>
+          </p>
         </div>
-        {isComplete && <div className="mt-2 flex items-start justify-between gap-3 border-t border-green/15 pt-2"><p className="shrink-0 text-[8px] font-bold uppercase leading-4 tracking-wider text-vapor">Match winner</p><p className="min-w-0 break-words text-right text-[11px] font-black leading-4 text-green">{match.winner_name || "Match completed"}</p></div>}
+        {teamIdentity(teams[1], 1)}
       </div>
+      {(isComplete || match.is_forfeit) && (
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-white/[0.06] px-4 py-3 text-center">
+          {isComplete && <p className="inline-flex items-center gap-1.5 text-xs font-bold text-green"><Trophy className="h-3.5 w-3.5 shrink-0" />{winnerName ? `${winnerName} wins` : "Match completed"}</p>}
+          {match.is_forfeit && <p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-orange"><Flag className="h-3 w-3" />{match.match_result_badge || "Match forfeited"}</p>}
+          {match.is_forfeit && <p className="w-full text-xs leading-relaxed text-vapor">{match.match_result_note || `${match.forfeited_by_name || "Losing team"} forfeited the match.`}</p>}
+        </div>
+      )}
     </section>
   );
 }
@@ -1310,30 +1352,28 @@ function TournamentMatchRoomView() {
     || cleanKey(match.winner_name) === cleanKey(match.team_b_name)
   );
   return (
-    <div className="match-room-theme min-h-screen bg-[#0b1016] py-6">
+    <div className="match-room-theme tournament-match-room min-h-screen bg-[#0b1016] py-6">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Link to="/tournaments" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> Tournaments</Link>
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{statusLabel(match.status)}</span><button onClick={loadRoom} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
-        <MatchRoomShell header={(
-          <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-            <div className="min-w-0">
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan"><Trophy className="h-4 w-4 shrink-0" /> Tournament match room · {tournament?.name || "Tournament"}</p>
-                <h1 className="mt-3 break-words text-3xl font-black sm:text-4xl">{match.team_a_name || "Team Alpha"} <span className="text-vapor">vs</span> {match.team_b_name || "Team Bravo"}</h1>
-                <p className="mt-2 text-sm text-vapor">{match.game_mode || match.tournament_game_mode} · BO{bestOf} · Round {match.round} · Match #{String(match.id).slice(-8).toUpperCase()}</p>
-                {match.is_forfeit && <p className="mt-2 flex items-start gap-2 text-[9px] text-vapor"><Flag className="h-3 w-3 shrink-0 text-orange" /><span><strong className="font-black uppercase tracking-wider text-orange">{match.match_result_badge || "Match forfeited"}</strong> · {match.match_result_note || `${match.forfeited_by_name || "Losing team"} forfeited the match.`}</span></p>}
+        <MatchRoomShell className={`tournament-room-shell ${canChat ? "" : "tournament-room-no-chat"}`} header={(
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan"><Trophy className="h-3.5 w-3.5 shrink-0" /> Tournament match room</p>
+                <h1 className="mt-1.5 break-words text-xl font-black leading-tight sm:text-2xl">{tournament?.name || "Tournament"}</h1>
+                <p className="mt-1.5 text-xs text-vapor">{match.game_mode || match.tournament_game_mode || "Tournament match"} · BO{bestOf} · Round {match.round || "–"}</p>
               </div>
-            </div>
-            <div className="min-w-0 space-y-3">
-              <div aria-label="Tournament match actions" className="flex flex-wrap justify-end gap-2">
+              <div aria-label="Tournament match actions" className="flex flex-wrap items-center gap-2">
                 {canSubmit && <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit score</button>}
                 <button type="button" onClick={handleOpenBracket} className="inline-flex items-center gap-2 rounded-xl border border-orange/25 bg-orange/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-orange hover:bg-orange/20"><LayoutGrid className="h-4 w-4" /> Bracket</button>
                 <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
               </div>
-              <TournamentMatchOverview match={match} tournament={tournament} isComplete={isComplete} />
             </div>
+            <TournamentMatchScoreboard match={match} isComplete={isComplete} isTeamAWinner={isTeamAWinner} isTeamBWinner={isTeamBWinner} />
+            <TournamentMatchOverview match={match} tournament={tournament} isComplete={isComplete} />
           </div>
         )} beforeTeams={(
           <>
@@ -1392,6 +1432,7 @@ function TournamentMatchRoomView() {
           <>
               <MatchTeamTable
                 label="Team Alpha"
+                compact
                 color="orange"
                 name={match.team_a_name}
                 seed={match.team_a_seed}
@@ -1401,13 +1442,14 @@ function TournamentMatchRoomView() {
                 isWinner={isTeamAWinner}
                 finalScore={match.team_a_score || 0}
               />
-              <div className="flex items-center gap-4 px-2" aria-hidden="true">
+              <div className="flex items-center gap-3 px-2" aria-hidden="true">
                 <span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" />
-                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-vapor">VS</span>
                 <span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" />
               </div>
               <MatchTeamTable
                 label="Team Bravo"
+                compact
                 color="cyan"
                 name={match.team_b_name}
                 seed={match.team_b_seed}
@@ -1417,12 +1459,23 @@ function TournamentMatchRoomView() {
                 isWinner={isTeamBWinner}
                 finalScore={match.team_b_score || 0}
               />
+              <MatchMapSeries
+                maps={tournamentMapPicks}
+                mode={match.game_mode || match.tournament_game_mode || "Tournament match"}
+                host={match.first_host_team_name || "TBD"}
+                hostLabel="First host"
+                context={match.map_display_source === "tournament_schedule" ? "Tournament schedule" : ""}
+                bestOf={bestOf}
+                compact
+                list
+                note={match.is_forfeit ? "Series ended by forfeit. Individual map results are not shown here." : ""}
+                emptyText={match.team_a_id && match.team_b_id ? "No map series is available for this match." : "Map series is awaiting team assignment."}
+              />
           </>
-        )} sidebar={(
-          <>
-              {canChat && (
+        )} sidebar={canChat ? (
                 <TournamentChatColumn
                   match={match}
+                  isComplete={isComplete}
                   teamAPlayers={teamAPlayers}
                   teamBPlayers={teamBPlayers}
                   isStreamerMatch={isStreamerMatch}
@@ -1445,20 +1498,7 @@ function TournamentMatchRoomView() {
                     />
                   ) : null}
                 />
-              )}
-              <MatchMapSeries
-                maps={tournamentMapPicks}
-                mode={match.game_mode || match.tournament_game_mode || "Tournament match"}
-                host={match.first_host_team_name || "TBD"}
-                hostLabel="First host"
-                context={match.map_display_source === "tournament_schedule" ? "Tournament schedule" : ""}
-                bestOf={bestOf}
-                compact
-                stacked
-                emptyText={match.team_a_id && match.team_b_id ? "No map series is available for this match." : "Map series is awaiting team assignment."}
-              />
-          </>
-        )} />
+        ) : null} />
 
         {scoreModalOpen && canSubmit && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="submit-score-title">

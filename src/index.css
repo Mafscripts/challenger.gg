@@ -2998,3 +2998,112 @@ img {
 .balance-popup-progress {
   animation: balance-popup-progress 5.2s linear both;
 }
+
+/* Tournament rooms keep both rosters stacked, with a compact shared score. */
+.tournament-room-shell .match-room-header {
+  padding: 1rem;
+}
+
+.tournament-scoreboard-matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.tournament-scoreboard-team {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .875rem;
+}
+
+.tournament-scoreboard-team-right {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.tournament-scoreboard-monogram {
+  display: flex;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: .75rem;
+  font-family: var(--font-mono, monospace);
+  font-size: .875rem;
+  font-weight: 900;
+}
+
+.tournament-room-shell .match-team-card-compact > header {
+  flex-direction: row;
+  align-items: center;
+  gap: .875rem;
+  padding: 1rem 1.25rem;
+}
+
+.tournament-room-shell .match-team-card-compact > header > span {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: .625rem;
+  font-size: .875rem;
+}
+
+.tournament-room-shell .match-team-score {
+  min-width: 4.5rem;
+  padding: .625rem .75rem;
+}
+
+.tournament-room-shell .match-team-card-compact > header h3 {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 1.125rem;
+}
+
+.tournament-room-shell .match-player-card {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+@media (min-width: 640px) {
+  .tournament-room-shell .match-room-header {
+    padding: 1.25rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .tournament-room-shell .match-room-body {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+  }
+
+  .tournament-room-no-chat .match-room-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .tournament-scoreboard-matchup {
+    gap: .625rem;
+    padding: 1rem .75rem;
+  }
+
+  .tournament-scoreboard-team,
+  .tournament-scoreboard-team-right {
+    flex-direction: column;
+    gap: .625rem;
+    text-align: center;
+  }
+
+  .tournament-scoreboard-monogram {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .tournament-room-shell .match-team-card-compact > header {
+    gap: .625rem;
+    padding: .875rem;
+  }
+}

@@ -18,13 +18,15 @@ export default function MatchMapSeries({
   bestOf,
   compact = false,
   stacked = false,
+  list = false,
+  note = "",
   emptyText = "Maps are being generated.",
 }) {
   const visibleMaps = (Array.isArray(maps) ? maps : [maps]).filter(Boolean);
   const columns = stacked ? "grid-cols-1" : visibleMaps.length <= 1 ? "sm:grid-cols-1" : visibleMaps.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3";
 
   return (
-    <section className={`dark-focus dark-media rounded-xl border border-white/[0.09] bg-card ${stacked ? "h-auto w-full" : "h-full"} ${compact || stacked ? "p-4" : "p-5"}`}>
+    <section className={`dark-focus dark-media rounded-xl border border-white/[0.09] bg-card ${stacked || list ? "h-auto w-full" : "h-full"} ${compact || stacked ? "p-4" : "p-5"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white">
           <MapIcon className="h-4 w-4 text-cyan" /> {title}
@@ -36,14 +38,32 @@ export default function MatchMapSeries({
         </div>
       </div>
 
-      <div className={`mt-4 grid gap-2 ${columns}`}>
+      {note ? <p className="mt-3 text-xs leading-relaxed text-vapor">{note}</p> : null}
+      <div className={`mt-4 grid gap-2 ${list ? "grid-cols-1" : columns}`}>
         {visibleMaps.length === 0 ? (
           <div className="rounded-lg border border-white/[0.06] bg-black/15 p-4 text-sm text-vapor">{emptyText}</div>
         ) : visibleMaps.map((map, index) => {
           const name = mapName(map);
           const image = (typeof map === "object" && map?.image) || getMapImage(name);
           const mapNumber = typeof map === "string" ? index + 1 : (map?.game || map?.number || index + 1);
-          const currentHost = mapHost(map, host);
+          const currentHost = mapHost(map, list ? (index === 0 ? host : "") : host);
+
+          if (list) return (
+            <article key={`${name}-${mapNumber}`} className="tournament-map-row flex min-w-0 items-center gap-3 rounded-lg border border-white/[0.07] bg-[var(--arena-inset)] p-2.5 sm:gap-4">
+              <div aria-hidden="true" className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md border border-white/[0.08] bg-black/20 sm:w-24">
+                {image ? <img src={image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <MapIcon className="mx-auto mt-4 h-6 w-6 text-vapor/40" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-cyan">Map {mapNumber}</p>
+                <h3 className="mt-0.5 break-words text-sm font-black text-white">{name}</h3>
+                <p className="mt-0.5 text-[11px] text-vapor">{mapMode(map, mode)}</p>
+              </div>
+              <div className="min-w-0 max-w-[35%] text-right">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-vapor">Host</p>
+                <p className={`mt-1 break-words text-xs font-bold ${currentHost ? "text-cyan" : "text-vapor"}`}>{currentHost || "Not assigned"}</p>
+              </div>
+            </article>
+          );
 
           return (
             <article key={`${name}-${mapNumber}`} className={`group relative isolate overflow-hidden rounded-xl border border-white/[0.1] bg-black/25 shadow-[0_12px_28px_rgba(0,0,0,0.2)] ${compact || stacked ? "min-h-[112px]" : "min-h-[156px]"}`}>
