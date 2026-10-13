@@ -30,7 +30,7 @@ const trophies = [
   { key: "hosted", label: "Hosted", image: "/assets/trophies/compact/hosted.png" },
 ];
 
-export const playerOverlayUrl = identifier => `${window.location.origin}/overlay/player/${encodeURIComponent(identifier)}`;
+export const playerOverlayUrl = (identifier, theme = "blue") => `${window.location.origin}/overlay/player/${encodeURIComponent(identifier)}${theme === "orange" ? "?theme=orange" : ""}`;
 
 export function usePlayerOverlay(identifier) {
   const [state, setState] = useState({ data: null, error: "", loading: true, stale: false });
@@ -64,14 +64,14 @@ export function usePlayerOverlay(identifier) {
   return state;
 }
 
-export default function PlayerStatsBar({ data, stale = false }) {
+export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) {
   const [failedAvatar, setFailedAvatar] = useState("");
   const player = data.player;
   const stats = data.stats;
   const rank = getRankForElo(stats.elo);
   const effect = player.display_name_color;
   const money = Number(stats.earnings || 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return <div className="app-content stream-player-bar">
+  return <div className="app-content stream-player-bar" data-theme={theme === "orange" ? "orange" : "blue"}>
     <div className="stream-player-brand">
       <TopfraggLogo showWordmark={false} markClassName="stream-brand-mark" />
       <div><strong className="stream-brand-wordmark" aria-label="Topfragg.gg">{brandLetters.map(({ letter, tone, motion }, index) => <span key={index} className="stream-brand-letter" data-tone={tone} style={motion} aria-hidden="true">{letter}</span>)}</strong><span className="stream-brand-caption">Player overview</span></div>

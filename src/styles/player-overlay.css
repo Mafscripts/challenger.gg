@@ -4,6 +4,10 @@ html.stream-overlay-document #root { min-height: 0; }
 .stream-overlay-canvas { transform-origin: top left; }
 .stream-player-bar { position: relative; display: grid; grid-template-columns: 190px minmax(220px, 1fr) 138px 145px 130px 175px minmax(480px, 1.6fr); align-items: center; gap: 0; width: 100%; height: 80px; padding: 6px 22px; overflow: hidden; border: 1px solid rgb(20 216 255 / .3); border-radius: 11px; background: linear-gradient(115deg, rgb(8 20 29 / .97), rgb(14 32 43 / .96) 38%, rgb(7 18 27 / .97)); color: #f1f7fa; box-shadow: inset 0 1px 0 rgb(255 255 255 / .05); }
 .stream-player-bar::before { content: ""; position: absolute; top: 0; left: 22px; right: 22px; height: 2px; background: linear-gradient(90deg, #14d8ff, rgb(20 216 255 / .15) 60%, #ff7900); }
+.stream-player-bar[data-theme="orange"] { border-color: rgb(255 138 36 / .4); background: linear-gradient(115deg, rgb(23 17 13 / .97), rgb(38 27 20 / .96) 38%, rgb(17 17 20 / .97)); }
+.stream-player-bar[data-theme="orange"]::before { background: linear-gradient(90deg, #ff8a24, rgb(255 138 36 / .2) 60%, #ffb86a); }
+.stream-player-bar[data-theme="orange"] .stream-player-avatar { border-color: rgb(255 138 36 / .35); }
+.stream-player-bar[data-theme="orange"] :is(.stream-player-label > svg, .stream-player-percent, .stream-player-rank strong) { color: #ff8a24; }
 .stream-player-brand { display: flex; align-items: center; gap: 9px; min-width: 0; padding-right: 14px; }
 .stream-player-brand .stream-brand-mark { width: 44px; height: 44px; }
 .stream-player-brand > div { min-width: 0; }

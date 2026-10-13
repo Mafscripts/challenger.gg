@@ -9,6 +9,10 @@ URL so renaming a player does not break their source.
 - Own profile: **Your Twitch player overlay**.
 - Settings: **Connections → Stream overlay**.
 - The settings panel includes a live preview, **Copy URL**, and setup instructions.
+- Choose **Original blue** or **Orange** in the settings preview. The orange URL adds
+  `?theme=orange`; existing URLs retain blue. Only the surrounding accents and dark tint
+  change: the Topfragg shield and white/cyan wordmark retain their original branding,
+  and player name effects, trophy colors and record colors are preserved.
 - OBS source width: match the stream canvas (for example **1920** for 1080p or **2560** for 1440p), height **80**. Align at **X: 0, Y: 0** without shrinking the source.
 - The document around the dark player bar is transparent, with no navigation or login.
 - The bar fills the browser viewport edge to edge with no outer padding or maximum width. It scales as a complete bar below 1920px and expands its layout above that width; it keeps every trophy counter.
