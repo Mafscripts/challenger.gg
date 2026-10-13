@@ -141,7 +141,14 @@ function LeagueDivision({ division }) {
       <header className={`league-panel league-division-header ${isChallengers ? "league-division-header-challengers" : ""}`}>
         <div className="league-division-title-group">
           <span className="league-division-emblem" aria-hidden="true">{isChallengers ? <Crown className="h-6 w-6" /> : String(division.number).padStart(2, "0")}</span>
-          <div><p className="league-eyebrow">MW<span className="text-yellow-300">4</span> · {isChallengers ? "Highest tier" : division.number === 1 ? "Highest numbered division" : "League division"}</p><h1>{division.name}</h1><p>{isChallengers ? "The top level of Topfragg League." : `Your dedicated Division ${division.number} competition.`}</p></div>
+          <div>
+            <div className="league-division-game-intro">
+              <img src="/assets/mw4/logo.webp" alt="Modern Warfare 4" width="600" height="236" className="league-division-game-logo" />
+              <span className={`league-division-level ${isChallengers ? "league-division-level-highest" : ""}`}>{isChallengers ? "Highest tier" : division.number === 1 ? "Top numbered division" : "League division"}</span>
+            </div>
+            <h1>{division.name}</h1>
+            <p>{isChallengers ? "The top level of Topfragg League." : `Your dedicated Division ${division.number} competition.`}</p>
+          </div>
         </div>
         <div className="league-division-entry"><span className="league-small-label">Team entry</span><strong>${division.fee}<span>USD / team</span></strong><ComingSoon /></div>
         <div className="league-division-header-meta"><span><Users className="h-3.5 w-3.5" />4 players + 2 reserves</span><span><ShieldCheck className="h-3.5 w-3.5" />Division-specific match access</span><span><CalendarDays className="h-3.5 w-3.5" />Season dates to be announced</span></div>

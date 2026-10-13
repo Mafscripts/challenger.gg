@@ -147,6 +147,10 @@
 .topfragg-league .league-division-switch > svg { position: absolute; right: 10px; pointer-events: none; color: hsl(var(--cyan)); }
 .topfragg-league .league-division-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 18px; padding: 22px 24px 0; margin-bottom: 22px; border-radius: 12px; }
 .topfragg-league .league-division-title-group { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
+.topfragg-league .league-division-game-intro { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
+.topfragg-league .league-division-game-logo { display: block; flex-shrink: 0; width: 104px; height: 42px; object-fit: contain; }
+.topfragg-league .league-division-level { padding: 4px 7px; border: 1px solid hsl(var(--cyan) / .2); border-radius: 5px; color: hsl(var(--cyan)); background: hsl(var(--cyan) / .05); font-size: 8px; line-height: 1.5; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.topfragg-league .league-division-level-highest { color: #facc15; border-color: rgb(250 204 21 / .25); background: rgb(250 204 21 / .05); }
 .topfragg-league .league-division-emblem { display: inline-flex; justify-content: center; align-items: center; flex-shrink: 0; width: 52px; height: 56px; background: hsl(var(--cyan) / .07); border: 1px solid hsl(var(--cyan) / .2); border-radius: 10px; color: hsl(var(--cyan)); font-family: var(--font-mono); font-size: 20px; font-weight: 900; }
 .topfragg-league .league-division-header-challengers .league-division-emblem { background: rgb(250 204 21 / .06); border-color: rgb(250 204 21 / .22); color: #facc15; }
 .topfragg-league .league-division-header h1 { margin-top: 4px; font-size: 30px; line-height: 1.2; font-weight: 900; letter-spacing: -.035em; overflow-wrap: anywhere; }
@@ -362,6 +366,8 @@
   .topfragg-league .league-how, .topfragg-league .league-team-preview { padding: 20px; }
   .topfragg-league .league-division-header { padding: 20px 16px 0; gap: 16px; }
   .topfragg-league .league-division-title-group { flex-basis: 100%; gap: 12px; }
+  .topfragg-league .league-division-game-intro { gap: 8px; }
+  .topfragg-league .league-division-game-logo { width: 84px; height: 34px; }
   .topfragg-league .league-division-header h1 { font-size: 26px; }
   .topfragg-league .league-division-entry { align-items: center; flex-direction: row; flex-wrap: wrap; gap: 8px 12px; }
   .topfragg-league .league-division-entry strong { font-size: 22px; }
