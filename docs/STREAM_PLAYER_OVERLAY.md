@@ -9,9 +9,9 @@ URL so renaming a player does not break their source.
 - Own profile: **Your Twitch player overlay**.
 - Settings: **Connections → Stream overlay**.
 - The settings panel includes a live preview, **Copy URL**, and setup instructions.
-- OBS source size: **1920 × 160**. Scale and position the source on the stream canvas.
+- OBS source width: match the stream canvas (for example **1920** for 1080p or **2560** for 1440p), height **160**. Align at **X: 0, Y: 0** without shrinking the source.
 - The document around the dark player bar is transparent, with no navigation or login.
-- The source also scales as a complete bar for smaller browser viewports; it keeps every trophy counter.
+- The bar fills the browser viewport edge to edge with no outer padding or maximum width. It scales as a complete bar below 1920px and expands its layout above that width; it keeps every trophy counter.
 
 ## Presentation and updates
 

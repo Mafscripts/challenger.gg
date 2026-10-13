@@ -11,8 +11,9 @@ export default function PlayerOverlay() {
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
-  const scale = Math.min(1, Math.max(1, width - 16) / PLAYER_OVERLAY_WIDTH);
+  const canvasWidth = Math.max(PLAYER_OVERLAY_WIDTH, width);
+  const scale = Math.max(1, width) / canvasWidth;
   return <main className="stream-overlay-page">
-    {data ? <div className="stream-overlay-canvas" style={{ width: PLAYER_OVERLAY_WIDTH, transform: `scale(${scale})` }}><PlayerStatsBar data={data} stale={stale} /></div> : <div className="stream-overlay-status" role="status">{loading ? "Loading Topfragg player…" : error}</div>}
+    {data ? <div className="stream-overlay-canvas" style={{ width: canvasWidth, transform: `scale(${scale})` }}><PlayerStatsBar data={data} stale={stale} /></div> : <div className="stream-overlay-status" role="status">{loading ? "Loading Topfragg player…" : error}</div>}
   </main>;
 }

@@ -1,6 +1,6 @@
 html.stream-overlay-document, html.stream-overlay-document body { min-width: 0; min-height: 0; margin: 0; background: transparent; background-image: none; overflow: hidden; scrollbar-gutter: auto; }
 html.stream-overlay-document #root { min-height: 0; }
-.stream-overlay-page { width: 100%; padding: 8px; }
+.stream-overlay-page { width: 100%; padding: 0; }
 .stream-overlay-canvas { transform-origin: top left; }
 .stream-player-bar { position: relative; display: grid; grid-template-columns: 190px minmax(220px, 1fr) 138px 145px 130px 175px minmax(480px, 1.6fr); align-items: center; gap: 0; width: 100%; height: 136px; padding: 14px 22px; overflow: hidden; border: 1px solid rgb(20 216 255 / .3); border-radius: 15px; background: linear-gradient(115deg, rgb(8 20 29 / .97), rgb(14 32 43 / .96) 38%, rgb(7 18 27 / .97)); color: #f1f7fa; box-shadow: inset 0 1px 0 rgb(255 255 255 / .05); }
 .stream-player-bar::before { content: ""; position: absolute; top: 0; left: 22px; right: 22px; height: 2px; background: linear-gradient(90deg, #14d8ff, rgb(20 216 255 / .15) 60%, #ff7900); }
