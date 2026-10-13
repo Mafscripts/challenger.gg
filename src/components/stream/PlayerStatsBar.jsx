@@ -7,7 +7,7 @@ import { getRankForElo } from "@/lib/ranks";
 import "@/styles/player-overlay.css";
 
 export const PLAYER_OVERLAY_WIDTH = 1920;
-export const PLAYER_OVERLAY_HEIGHT = 90;
+export const PLAYER_OVERLAY_HEIGHT = 80;
 const REFRESH_MS = 15000;
 const trophies = [
   { key: "gold", label: "Gold", image: "/assets/trophies/profile/gold.png" },
