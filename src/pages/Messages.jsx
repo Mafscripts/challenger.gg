@@ -425,14 +425,14 @@ export default function Messages() {
               <button onClick={() => setComposerOpen(false)} className="rounded-lg p-2 text-vapor hover:bg-white/5 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
             <div className="p-5">
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-background/50 px-4 focus-within:border-cyan/30">
-                <Search className="h-4 w-4 text-vapor" />
+              <div className="messages-recipient-search">
+                <Search size={18} aria-hidden="true" />
                 <input
                   autoFocus
                   value={playerQuery}
                   onChange={event => setPlayerQuery(event.target.value)}
                   placeholder="Search username or display name..."
-                  className="h-12 min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 text-sm shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0"
+                  aria-label="Search players by username or display name"
                 />
               </div>
               <div className="mt-3 min-h-36 max-h-80 overflow-y-auto">

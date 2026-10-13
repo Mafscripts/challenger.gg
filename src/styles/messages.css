@@ -15,6 +15,10 @@
 .messages-page .messages-conversation-search { display: flex; align-items: center; gap: 8px; margin: 0 16px 14px; padding: 0 10px; border: 1px solid rgb(255 255 255 / .075); border-radius: 8px; background: #0a1720; color: hsl(var(--vapor)); }
 .messages-page .messages-conversation-search:focus-within { border-color: hsl(var(--cyan) / .3); }
 .messages-page .messages-conversation-search input { width: 100%; min-width: 0; height: 42px; padding: 0; border: 0; outline: none; background: transparent; font-size: 13px; box-shadow: none; }
+.messages-page .messages-recipient-search { display: flex; align-items: center; gap: 12px; padding: 0 14px; border: 1px solid rgb(255 255 255 / .1); border-radius: 11px; background: #0a1720; color: hsl(var(--vapor)); }
+.messages-page .messages-recipient-search:focus-within { border-color: hsl(var(--cyan) / .55); }
+.messages-page .messages-recipient-search > svg { flex-shrink: 0; }
+.messages-page .messages-recipient-search input { flex: 1; width: 100%; min-width: 0; height: 48px; padding: 0; appearance: none; border: 0; border-radius: 0; background: transparent; color: #eaf3f8; font-size: 16px; box-shadow: none; }
 .messages-page .messages-sidebar-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px 16px; }
 .messages-page .messages-list-label { display: flex; align-items: center; justify-content: space-between; margin: 9px 10px 8px; color: hsl(var(--vapor) / .65); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .messages-page .messages-invitations { margin-bottom: 18px; }
@@ -93,7 +97,7 @@
 .messages-page .messages-invitation-body article > div { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-top: 26px; padding-top: 20px; border-top: 1px solid rgb(255 255 255 / .06); }
 .messages-page .messages-invitation-body small { color: hsl(var(--vapor)); font-size: 12px; }
 .messages-page :is(button, a, textarea, input):focus-visible { outline: 2px solid hsl(var(--cyan) / .65); outline-offset: 2px; }
-.messages-page :is(.messages-composer-field textarea, .messages-conversation-search input):focus-visible { outline: none; }
+.messages-page :is(.messages-composer-field textarea, .messages-conversation-search input, .messages-recipient-search input):focus-visible { outline: none; }
 @media (max-width: 1100px) { .messages-page .messages-workspace { grid-template-columns: 280px minmax(0, 1fr); } .messages-page .messages-keyboard-hint { display: none; } }
 @media (max-width: 767px) {
   .messages-page .messages-page-heading { gap: 10px; margin-bottom: 14px; }
