@@ -22,7 +22,7 @@ export default function ScrollToTop() {
     previousPath.current = pathname;
     if (navigationType === "POP") return;
     const competitionPaths = ["/ranked", "/xp", "/wagers", "/ranked/8s"];
-    if (!hash && preserveCompetitionScroll && competitionPaths.includes(from) && competitionPaths.includes(pathname)) return;
+    if ((!hash || hash === "#upcoming-tournaments") && preserveCompetitionScroll && competitionPaths.includes(from) && competitionPaths.includes(pathname)) return;
 
     if (hash) {
       const id = getHashId(hash);

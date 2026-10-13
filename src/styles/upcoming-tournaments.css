@@ -1,0 +1,46 @@
+.play-upcoming-tournaments { overflow: hidden; }
+.play-upcoming-tournaments .play-upcoming-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 22px 24px; border-bottom: 1px solid rgb(255 255 255 / .07); }
+.play-upcoming-tournaments .play-upcoming-eyebrow { color: hsl(var(--cyan)); font-size: 8px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.play-upcoming-tournaments h2 { margin: 5px 0; font-size: 20px; font-weight: 900; }
+.play-upcoming-tournaments .play-upcoming-heading p:not(.play-upcoming-eyebrow) { color: hsl(var(--vapor)); font-size: 11px; line-height: 1.7; }
+.play-upcoming-tournaments .play-upcoming-heading > button { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px; border: 1px solid rgb(255 255 255 / .1); border-radius: 9px; color: hsl(var(--cyan)); background: var(--arena-inset); }
+.play-upcoming-tournaments .play-upcoming-heading > button:disabled { opacity: .45; }
+.play-upcoming-tournaments .play-upcoming-event { display: grid; grid-template-columns: 185px minmax(180px, 1fr) minmax(260px, .85fr) auto; align-items: center; gap: 22px; padding: 22px 24px; border-bottom: 1px solid rgb(255 255 255 / .06); }
+.play-upcoming-tournaments .play-upcoming-schedule { display: flex; align-items: center; gap: 12px; }
+.play-upcoming-tournaments .play-upcoming-calendar { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; width: 50px; height: 58px; border: 1px solid hsl(var(--cyan) / .18); border-radius: 9px; background: hsl(var(--cyan) / .045); }
+.play-upcoming-tournaments .play-upcoming-calendar strong { font-family: var(--font-mono); font-size: 22px; font-weight: 900; line-height: 1.1; }
+.play-upcoming-tournaments .play-upcoming-calendar small { margin-top: 5px; color: hsl(var(--cyan)); font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.play-upcoming-tournaments .play-upcoming-schedule > div strong { display: block; font-size: 12px; font-weight: 800; }
+.play-upcoming-tournaments .play-upcoming-schedule > div small { display: block; margin-top: 5px; color: hsl(var(--vapor)); font-size: 9px; }
+.play-upcoming-tournaments .play-upcoming-state { color: hsl(var(--green)); font-size: 7px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.play-upcoming-tournaments .play-upcoming-state[data-full="true"] { color: hsl(var(--orange)); }
+.play-upcoming-tournaments h3 { margin-top: 5px; overflow-wrap: anywhere; font-size: 15px; font-weight: 800; line-height: 1.5; }
+.play-upcoming-tournaments .play-upcoming-identity p { margin-top: 4px; color: hsl(var(--vapor)); font-size: 10px; line-height: 1.7; }
+.play-upcoming-tournaments .play-upcoming-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.play-upcoming-tournaments .play-upcoming-details > span { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.play-upcoming-tournaments .play-upcoming-details svg { color: hsl(var(--cyan)); }
+.play-upcoming-tournaments .play-upcoming-details strong { font-size: 11px; font-weight: 800; line-height: 1.5; }
+.play-upcoming-tournaments .play-upcoming-details > span:first-child strong { color: hsl(var(--green)); }
+.play-upcoming-tournaments .play-upcoming-details small { flex-basis: 100%; color: hsl(var(--vapor)); font-size: 8px; }
+.play-upcoming-tournaments .play-upcoming-event-link { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 13px; border: 1px solid hsl(var(--cyan) / .2); border-radius: 8px; background: hsl(var(--cyan) / .06); color: hsl(var(--cyan)); font-size: 9px; font-weight: 800; white-space: nowrap; }
+.play-upcoming-tournaments .play-upcoming-event-link:hover { border-color: hsl(var(--cyan) / .45); }
+.play-upcoming-tournaments .play-upcoming-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 50px 20px; text-align: center; }
+.play-upcoming-tournaments .play-upcoming-empty > svg { color: hsl(var(--cyan)); }
+.play-upcoming-tournaments .play-upcoming-empty strong { font-size: 14px; }
+.play-upcoming-tournaments .play-upcoming-empty p { color: hsl(var(--vapor)); font-size: 11px; }
+.play-upcoming-tournaments .play-upcoming-empty button { color: hsl(var(--cyan)); font-size: 11px; font-weight: 800; }
+.play-upcoming-tournaments .play-upcoming-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; color: hsl(var(--vapor)); font-size: 9px; }
+.play-upcoming-tournaments .play-upcoming-footer :is(span, a) { display: flex; align-items: center; gap: 6px; }
+.play-upcoming-tournaments .play-upcoming-footer a { color: hsl(var(--cyan)); font-weight: 800; }
+@media (max-width: 1100px) {
+  .play-upcoming-tournaments .play-upcoming-event { grid-template-columns: 180px minmax(0, 1fr) auto; gap: 16px; }
+  .play-upcoming-tournaments .play-upcoming-details { grid-column: 2; grid-row: 2; }
+  .play-upcoming-tournaments .play-upcoming-event-link { grid-column: 3; grid-row: 1 / 3; }
+}
+@media (max-width: 639px) {
+  .play-upcoming-tournaments :is(.play-upcoming-heading, .play-upcoming-footer) { padding-inline: 16px; }
+  .play-upcoming-tournaments .play-upcoming-event { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 20px 16px; }
+  .play-upcoming-tournaments .play-upcoming-schedule { padding-bottom: 14px; border-bottom: 1px solid rgb(255 255 255 / .06); }
+  .play-upcoming-tournaments :is(.play-upcoming-details, .play-upcoming-event-link) { grid-column: auto; grid-row: auto; }
+  .play-upcoming-tournaments .play-upcoming-event-link { min-height: 44px; }
+}

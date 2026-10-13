@@ -138,6 +138,8 @@ export function CompetitionHeader(props) {
 }
 
 export function CompetitionHeaderView({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride, gameId }) {
+  const { pathname, search } = useLocation();
+  const withinPlay = ["/ranked", "/xp", "/wagers", "/ranked/8s"].includes(pathname);
   const isMw4 = mode === "eights" && gameId === "mw4";
   const copy = isMw4 ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || modeCopy.xp;
   const headerImage = isMw4 ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png";
@@ -190,7 +192,7 @@ export function CompetitionHeaderView({ mode = "xp", playerCount = 0, action, cl
           return (
             <Link
               key={key}
-              to={to}
+              to={key === "tournaments" && withinPlay ? `${pathname}${search}#upcoming-tournaments` : to}
               state={{ preserveCompetitionScroll: true }}
               aria-current={active ? "page" : undefined}
               className="arena-tab relative flex min-h-14 items-center justify-center gap-2 px-4 py-4 text-xs font-black transition-colors"
