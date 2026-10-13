@@ -32,6 +32,7 @@ const Leaderboards = lazy(() => import('@/pages/Leaderboards'));
 const Matchfinder = lazy(() => import('@/pages/Matchfinder'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const MyMatches = lazy(() => import('@/pages/MyMatches'));
+const League = lazy(() => import('@/pages/League'));
 const Teams = lazy(() => import('@/pages/Teams'));
 const Marketplace = lazy(() => import('@/pages/Marketplace'));
 const ItemDetail = lazy(() => import('@/pages/ItemDetail'));
@@ -107,6 +108,8 @@ const AuthenticatedApp = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/rules" element={<Rules />} />
+        <Route path="/league" element={<League />} />
+        <Route path="/league/division/:divisionId" element={<League />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/change-password" element={<ChangePassword />} />

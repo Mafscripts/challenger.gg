@@ -1680,6 +1680,7 @@ export default function Navbar() {
                       <ProfileMenuSection
                         label="Competitive"
                         items={[
+                          { label: "Topfragg League · Coming Soon", path: "/league", icon: ShieldCheck },
                           { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
                           ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
                         ]}
@@ -1866,6 +1867,14 @@ export default function Navbar() {
                     >
                       <User className="w-5 h-5" />
                       My Profile
+                    </Link>
+                    <Link
+                      to="/league"
+                      onClick={closeMobileMenu}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
+                    >
+                      <ShieldCheck className="w-5 h-5 text-cyan" />
+                      <span>Topfragg League <span className="ml-1 text-[10px] text-cyan">Coming Soon</span></span>
                     </Link>
                     <Link
                       to="/my-tickets"
