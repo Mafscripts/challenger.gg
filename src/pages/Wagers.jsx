@@ -6,6 +6,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
@@ -28,6 +29,7 @@ export default function Wagers() {
   const requestedTeamId = searchParams.get("team");
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [teamCreator, setTeamCreator] = useState({ open: false, wagerId: null, rosterSize: 4 });
   const [openPosts, setWagers] = useState([]);
   const wagers = useMatchfinderPosts(openPosts);
   const [historyWagers, setHistoryWagers] = useState([]);
@@ -167,7 +169,7 @@ export default function Wagers() {
       const ownedTeams = ownedWagerTeamsFor();
       if (ownedTeams.length === 0) {
         toast({ title: "Create a wager team first", description: "Your team will be set to the right match size automatically." });
-        navigate(createTeamUrlFor(wager));
+        openWagerTeamCreator(wager);
         return;
       }
       toast({
@@ -289,9 +291,22 @@ export default function Wagers() {
     ))
   );
 
-  const createTeamUrlFor = (wager) => {
-    const returnTo = `/wagers?accept=${encodeURIComponent(wager.id)}`;
-    return `/teams?create=wager&roster=${rosterSize(wager.team_size)}&returnTo=${encodeURIComponent(returnTo)}`;
+  const openWagerTeamCreator = (wager = null) => {
+    setTeamCreator({ open: true, wagerId: wager?.id || null, rosterSize: wager ? rosterSize(wager.team_size) : 4 });
+  };
+
+  const handleWagerTeamCreated = async (team) => {
+    const { wagerId, rosterSize: requestedSize } = teamCreator;
+    await loadData();
+    // Keep the new team available even if its captain membership has not reached the refetch yet.
+    setUserTeams((current) => current.some((item) => item.id === team.id) ? current : [{
+      ...team,
+      membership: { user_id: user?.id, team_id: team.id, is_active: true, role: "captain" },
+      members: [{ user_id: user?.id, role: "captain", is_active: true }],
+    }, ...current]);
+    if (wagerId && requestedSize === 1) {
+      setAcceptTeamByWager((current) => ({ ...current, [wagerId]: team.id }));
+    }
   };
 
   return (
@@ -330,7 +345,7 @@ export default function Wagers() {
                             {ownedWagerTeamsFor().length > 0 ? (
                               <Link to={`/teams?team=${encodeURIComponent(ownedWagerTeamsFor()[0].id)}`} className="flex w-full items-center justify-center gap-1.5 rounded-md bg-orange px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Finish roster</Link>
                             ) : (
-                              <Link to={createTeamUrlFor(wager)} className="flex w-full items-center justify-center gap-1.5 rounded-md bg-orange px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Create team to accept</Link>
+                              <button type="button" onClick={() => openWagerTeamCreator(wager)} className="flex w-full items-center justify-center gap-1.5 rounded-md bg-orange px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Create team to accept</button>
                             )}
                           </div>
                         )}
@@ -349,9 +364,9 @@ export default function Wagers() {
           )}
           action={
             <div className="competition-actions">
-              <Link to="/teams?create=wager" className="competition-action-pill">
+              <button type="button" onClick={() => openWagerTeamCreator()} className="competition-action-pill">
                 <Users className="h-[18px] w-[18px]" /> Create Wager Team
-              </Link>
+              </button>
               <button onClick={() => setIsCreateModalOpen(true)} className="competition-action-pill">
                 <Plus className="h-[18px] w-[18px]" /> Post a wager
               </button>
@@ -385,6 +400,18 @@ export default function Wagers() {
               )}
             </div>
         </section>
+
+        <CreateTeamModal
+          isOpen={teamCreator.open}
+          onClose={() => setTeamCreator((current) => ({ ...current, open: false }))}
+          onCreated={handleWagerTeamCreated}
+          user={user}
+          defaultTeamType="wager"
+          defaultRosterSize={teamCreator.rosterSize}
+          lockTeamType
+          title="Create Wager Team"
+          description="Build a dedicated roster for team wagers with yourself as captain."
+        />
 
         {/* Create Lobby Modal */}
         <CreateLobbyModal
