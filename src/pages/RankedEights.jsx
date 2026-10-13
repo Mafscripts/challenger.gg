@@ -18,7 +18,7 @@ import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRan
 import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
 import { useFreeEightsGames } from "@/hooks/useFreeEightsGames";
 import FreeEightsGameName from "@/components/competition/FreeEightsGameName";
-import { DEFAULT_EIGHTS_GAME, DEFAULT_EIGHTS_GAMES, eightsGameName } from "@/lib/freeEightsGames";
+import { DEFAULT_EIGHTS_GAME, DEFAULT_EIGHTS_GAMES, eightsGameName, withMw4Preview } from "@/lib/freeEightsGames";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
@@ -38,7 +38,7 @@ export default function RankedEights() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const gameQuery = useFreeEightsGames();
-  const games = (gameQuery.data?.games || DEFAULT_EIGHTS_GAMES).filter((game) => game.enabled);
+  const games = withMw4Preview(gameQuery.data?.games || DEFAULT_EIGHTS_GAMES).filter((game) => game.enabled || game.id === "mw4");
   const selectedGame = games.find((game) => game.id === (searchParams.get("game") || DEFAULT_EIGHTS_GAME)) || games[0];
   const gameId = selectedGame.id;
   const switchGame = (value) => { const params = new URLSearchParams(searchParams); params.set("game", value); navigate(`${location.pathname}?${params}${location.hash}`); setCreateOpen(false); };
@@ -55,11 +55,12 @@ export default function RankedEights() {
   const [discordServerPrompt, setDiscordServerPrompt] = useState(null);
   const discordPromptTrigger = useRef(null);
   const isMoney = searchParams.get("mode") === "money";
+  const comingSoon = !isMoney && selectedGame.id === "mw4" && !selectedGame.enabled;
   const lobbyMatchType = isMoney ? "money8s" : "8s";
   const freeOverview = useQuery({
     queryKey: ["free-eights-overview", authenticatedUser?.id, gameId],
     queryFn: () => loadFreeEightsOverview(base44, gameId),
-    enabled: !isMoney && Boolean(authenticatedUser?.id),
+    enabled: !isMoney && !comingSoon && Boolean(authenticatedUser?.id),
     staleTime: 0,
     refetchInterval: 6000,
     refetchIntervalInBackground: false,
@@ -69,7 +70,7 @@ export default function RankedEights() {
   const lobbies = useMatchfinderPosts(isMoney ? moneyLobbies : freeOverview.data?.lobbies || []);
   const counts = isMoney ? moneyCounts : freeOverview.data?.counts || {};
   const activeLobby = isMoney ? moneyActiveLobby : freeOverview.data?.active_lobby || null;
-  const loading = isMoney ? moneyLoading : freeOverview.isPending;
+  const loading = isMoney ? moneyLoading : !comingSoon && freeOverview.isPending;
   const refreshFreeOverview = freeOverview.refetch;
 
   useEffect(() => {
@@ -188,17 +189,25 @@ export default function RankedEights() {
   return (
     <div className="min-h-screen py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+        {!isMoney && <nav className="eights-game-deployments" aria-label="Free 8s games">
+          {games.map((game) => <Link key={game.id} to={`${location.pathname}?game=${game.id}${location.hash}`} aria-current={gameId === game.id ? "page" : undefined} className={`eights-game-deployment ${game.id === "mw4" ? "eights-game-deployment-mw4" : ""}`}>
+            {game.id === "mw4" && <img src="/assets/mw4/logo.webp" alt="" />}
+            <span><span className="eights-game-kicker">Free 8s · Leaderboard</span><strong><FreeEightsGameName game={game} /></strong></span>
+            <span className="eights-game-status">{game.enabled ? "Play now" : "Coming soon"}</span><ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+          </Link>)}
+        </nav>}
         <CompetitionLadder
+          key={`${isMoney ? "money" : "free"}-${gameId}`}
           mode={isMoney ? "money8s" : "eights"}
           gameId={gameId}
           currentUser={user}
           openCount={lobbies.length}
-          headerEyebrow={isMoney ? "Wallet-backed 8s" : "Free 8s ELO ladder"}
+          headerEyebrow={isMoney ? "Wallet-backed 8s" : comingSoon ? "Next deployment // Coming soon" : "Free 8s ELO ladder"}
           headerTitle={isMoney ? "Money 8s" : <FreeEightsGameName game={selectedGame} prefix="Free 8s " />}
           competitionTitle={isMoney ? undefined : <FreeEightsGameName game={selectedGame} prefix="Free 8s " />}
-          headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : "Join free, get shuffled into a 4v4 team and climb the 8s ELO standings."}
+          headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : comingSoon ? "A new battlefield. A fresh leaderboard. MW4 Free 8s opens once its maps and competitive rules are ready. Black Ops 7 is live now." : "Join free, get shuffled into a 4v4 team and climb the 8s ELO standings."}
           matchfinder={(
-            <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : "No 8s lobbies are open right now."}>
+            <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : comingSoon ? "MW4 Free 8s is coming soon. Play Black Ops 7 while the next deployment gets ready." : "No 8s lobbies are open right now."}>
               {lobbies.map((lobby) => {
                 const joined = counts[lobby.id] || 0;
                 const alreadyIn = activeLobby?.id === lobby.id;
@@ -222,7 +231,9 @@ export default function RankedEights() {
               })}
             </CompetitionMatchfinder>
           )}
-          action={<div className="space-y-3">{!isMoney && !freeOverview.data ? (
+          action={<div className="space-y-3">{comingSoon ? (
+            <Link to="/ranked/8s?game=bo7" className={`${actionPillClass} justify-center`}>Play Black Ops <span className="text-orange">7</span><ArrowRight className="h-4 w-4" /></Link>
+          ) : !isMoney && !freeOverview.data ? (
             <button type="button" disabled={!freeOverview.error} onClick={() => refreshFreeOverview()} className={`${actionPillClass} justify-center disabled:opacity-50`}>
               {freeOverview.error ? "Retry loading Free 8s" : "Loading Free 8s..."}
             </button>
@@ -249,9 +260,10 @@ export default function RankedEights() {
             </Select>
           )}</div>}
         />
-        <ActivisionIdNotice user={user} className="mb-6" />
-        {!isMoney && <FreeEightsDiscordNotice user={user} />}
-        {!isMoney && <FreeEightsRankNotice user={user} />}
+        {comingSoon && <div className="mw4-launch-notice"><span className="mw4-signal-status">Coming soon</span><p>MW4 has its own leaderboard. Matches open when the game and map pools are ready.</p><Link to="/ranked/8s?game=bo7">Play Black Ops 7 <ArrowRight className="h-4 w-4" /></Link></div>}
+        {!comingSoon && <ActivisionIdNotice user={user} className="mb-6" />}
+        {!isMoney && !comingSoon && <FreeEightsDiscordNotice user={user} />}
+        {!isMoney && !comingSoon && <FreeEightsRankNotice user={user} />}
 
         {(isMoney || gameId === DEFAULT_EIGHTS_GAME) && <section className={`mb-6 overflow-hidden rounded-2xl border bg-gradient-to-r via-card to-card ${isMoney ? "border-green/25 from-green/[0.11]" : "border-yellow-400/25 from-yellow-400/[0.11]"}`}>
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -272,7 +284,7 @@ export default function RankedEights() {
         </section>}
 
       </div>
-      <CreateLobbyModal key={`${isMoney}:${gameId}`} isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} gameConfig={selectedGame} />
+      {!comingSoon && <CreateLobbyModal key={`${isMoney}:${gameId}`} isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} gameConfig={selectedGame} />}
       {!isMoney && <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} />}
       {!isMoney && <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} returnFocusTo={discordPromptTrigger} />}
       {!isMoney && <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} returnFocusTo={discordPromptTrigger} />}

@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { access } from "node:fs/promises";
 import express from "express";
 import sharp from "sharp";
-import { DEFAULT_EIGHTS_GAMES, eightsGameId, generateEightsSeries } from "../src/lib/freeEightsGames.js";
-import { validateEightsGames, eightsLobbySettings, uploadEightsMapImage, EIGHTS_CONFIG_ID } from "./free-eights-games.js";
+import { DEFAULT_EIGHTS_GAMES, eightsGameId, generateEightsSeries, withMw4Preview } from "../src/lib/freeEightsGames.js";
+import { validateEightsGames, eightsLobbySettings, uploadEightsMapImage, EIGHTS_CONFIG_ID, loadEightsGames } from "./free-eights-games.js";
 import { loadFreeEightsSkills } from "./free-eights-teams.js";
 import { getFreeEightsOverview } from "./free-eights-reads.js";
 import functions from "./routes/functions.js";
@@ -12,6 +12,24 @@ import entities from "./routes/entities.js";
 import publicRoutes from "./routes/public.js";
 import { prisma } from "./prisma.js";
 import { signUser } from "./auth.js";
+
+test("MW4 preview preserves stored games and cannot create lobbies without configured pools", async () => {
+  const stored = structuredClone(DEFAULT_EIGHTS_GAMES);
+  const games = await loadEightsGames({ mapPool: { findUnique: async () => ({ metadata: { games: stored } }) } });
+  assert.equal(games[0].id, "mw4");
+  assert.equal(games[0].color, "yellow");
+  assert.equal(games[0].enabled, false);
+  assert.deepEqual(games.slice(1), stored);
+  assert.deepEqual(stored, DEFAULT_EIGHTS_GAMES);
+  assert.deepEqual(validateEightsGames(games), games);
+  assert.equal(withMw4Preview(games).filter(row => row.id === "mw4").length, 1);
+  assert.throws(() => eightsLobbySettings(games, { game_id: "mw4" }), /unavailable/);
+  assert.throws(() => validateEightsGames(games.map(row => row.id === "mw4" ? { ...row, enabled: true } : row)), /modes/);
+  const configured = { ...structuredClone(DEFAULT_EIGHTS_GAMES[0]), id: "mw4", name: "Modern Warfare", number: "4", color: "yellow" };
+  const ready = withMw4Preview([...stored, configured]);
+  assert.equal(validateEightsGames(ready)[0].color, "yellow");
+  assert.equal(eightsLobbySettings(ready, { game_id: "mw4" }).game_id, "mw4");
+});
 
 test("defaults preserve BO7 and contain the exact supplied BO6/MW3 pools with artwork", async () => {
   assert.deepEqual(validateEightsGames(DEFAULT_EIGHTS_GAMES), DEFAULT_EIGHTS_GAMES);

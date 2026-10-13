@@ -124,13 +124,14 @@ function rankTone(index) {
   return "text-vapor";
 }
 
-export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride }) {
-  const copy = modeCopy[mode] || modeCopy.xp;
-  const headerImage = "/assets/competition/play-hero.png";
+export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride, gameId }) {
+  const isMw4 = mode === "eights" && gameId === "mw4";
+  const copy = isMw4 ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || modeCopy.xp;
+  const headerImage = isMw4 ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png";
   const headerHeight = "min-h-[350px] lg:min-h-[370px]";
   return (
     <div className={`space-y-5 ${className}`}>
-      <section className={`premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] ${headerHeight}`}>
+      <section className={`premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] ${headerHeight} ${isMw4 ? "mw4-feature" : ""}`}>
         <img src={headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[center_34%] opacity-90" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.96)_0%,hsl(var(--background)/0.76)_23%,hsl(var(--background)/0.12)_44%,transparent_72%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(0deg,hsl(var(--background)/0.42)_0%,transparent_48%)]" />
@@ -201,7 +202,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const [tournaments, setTournaments] = useState([]);
   const [leaderboardTrophies, setLeaderboardTrophies] = useState({});
   const [loading, setLoading] = useState(true);
-  const copy = modeCopy[mode] || modeCopy.xp;
+  const copy = mode === "eights" && gameId === "mw4" ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || modeCopy.xp;
   const activeTab = location.hash === "#matchfinder" ? "matchfinder" : "standings";
   const selectTab = (tab) => navigate(`${location.pathname}${location.search}#${tab}`);
   const standingColumns = mode === "eights"
@@ -384,7 +385,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
 
   return (
     <div className="mb-7 space-y-5">
-      <CompetitionHeader mode={mode} playerCount={standings.length} action={action} titleOverride={headerTitle} eyebrowOverride={headerEyebrow} descriptionOverride={headerDescription} />
+      <CompetitionHeader mode={mode} gameId={gameId} playerCount={standings.length} action={action} titleOverride={headerTitle} eyebrowOverride={headerEyebrow} descriptionOverride={headerDescription} />
 
       <div className={`grid gap-3 sm:grid-cols-2 ${mode === "wagers" ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {summary.map(({ label, value, detail, icon: Icon, tone }) => (

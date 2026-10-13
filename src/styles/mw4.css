@@ -1,0 +1,138 @@
+/* Topfragg blue and white, with MW4 yellow deployment accents. */
+.app-season-mw4 .page-ambient {
+  background: radial-gradient(ellipse at 80% 0, rgb(250 204 21 / .035), transparent 42%), radial-gradient(ellipse at 10% 20%, rgb(20 216 255 / .035), transparent 50%);
+}
+.app-topbar-v2.topbar-mw4,
+.app-topbar-v2.topbar-mw4[data-scrolled="true"] {
+  background: linear-gradient(90deg, rgb(5 12 19 / .97) 5%, rgb(5 12 19 / .9) 45%, rgb(11 14 15 / .84) 85%, rgb(5 12 19 / .97)), url('/assets/mw4/hero.webp') 76% 42% / cover;
+  box-shadow: 0 12px 35px rgb(0 0 0 / .35);
+}
+.app-topbar-v2.topbar-mw4::before {
+  inset: 0;
+  opacity: .18;
+  background: repeating-linear-gradient(90deg, transparent 0 47px, rgb(250 204 21 / .18) 48px 49px), repeating-linear-gradient(0deg, transparent 0 15px, rgb(255 255 255 / .08) 16px 17px);
+  mask-image: linear-gradient(90deg, transparent, black 50%, transparent);
+  animation: none;
+  pointer-events: none;
+}
+.app-topbar-v2.topbar-mw4::after {
+  inset-inline: 0;
+  opacity: .85;
+  background: linear-gradient(90deg, transparent, #14d8ff 20%, #14d8ff 45%, #facc15 75%, transparent);
+  box-shadow: 0 0 14px rgb(20 216 255 / .16);
+}
+.app-topbar-v2.topbar-mw4 .topbar-shell::before {
+  display: block;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgb(250 204 21 / .1) 49%, rgb(255 255 255 / .08) 50%, transparent 65%);
+  opacity: .5;
+  transform: translateX(-100%);
+  animation: mw4-topbar-scan 10s ease-in-out infinite;
+  pointer-events: none;
+}
+.app-topbar-v2.topbar-mw4 .topbar-logo-mark { filter: drop-shadow(0 0 9px rgb(20 216 255 / .2)); }
+.app-topbar-v2.topbar-mw4 .topbar-brand::after,
+.app-topbar-v2.topbar-mw4 .topbar-actions::before { background: linear-gradient(transparent, rgb(20 216 255 / .22), transparent); }
+.topbar-season-badge {
+  display: none;
+  align-items: center;
+  gap: .55rem;
+  border-left: 1px solid rgb(250 204 21 / .2);
+  padding-left: .7rem;
+  color: #facc15;
+  font: 800 .46rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  transition: opacity 180ms ease;
+}
+.topbar-season-badge img { width: 46px; height: 23px; object-fit: contain; }
+.topbar-season-badge:hover { opacity: .7; }
+@media (min-width: 1536px) { .topbar-season-badge { display: inline-flex; } }
+.mw4-feature {
+  isolation: isolate;
+  border-color: rgb(250 204 21 / .24) !important;
+  box-shadow: 0 28px 80px rgb(0 0 0 / .3), inset 0 1px 0 rgb(250 204 21 / .07) !important;
+}
+.mw4-feature::after {
+  content: '';
+  position: absolute;
+  z-index: 8;
+  inset: 12px;
+  border: 1px solid rgb(250 204 21 / .3);
+  /* Tactical corner marks, with the content kept completely clickable. */
+  mask: linear-gradient(black, black) top left / 30px 1px, linear-gradient(black, black) top left / 1px 30px, linear-gradient(black, black) top right / 30px 1px, linear-gradient(black, black) top right / 1px 30px, linear-gradient(black, black) bottom left / 30px 1px, linear-gradient(black, black) bottom left / 1px 30px, linear-gradient(black, black) bottom right / 30px 1px, linear-gradient(black, black) bottom right / 1px 30px;
+  mask-repeat: no-repeat;
+  pointer-events: none;
+}
+.mw4-feature .text-orange { color: #facc15; }
+.mw4-feature .bg-orange { background-color: #facc15; }
+.mw4-feature .border-orange\/30, .mw4-feature .border-orange\/40 { border-color: rgb(250 204 21 / .3); }
+.mw4-feature .bg-orange\/10 { background-color: rgb(250 204 21 / .08); }
+.mw4-feature .landing-bullet-field { display: none; }
+.mw4-feature .home-featured-copy { max-width: 720px; }
+.mw4-feature > img + div,
+.mw4-feature .home-featured-image + div {
+  background-image: linear-gradient(90deg, #060c13 0%, rgb(6 12 19 / .97) 32%, rgb(6 12 19 / .88) 47%, rgb(6 12 19 / .18) 69%, transparent);
+}
+.mw4-season-signal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem;
+  width: fit-content;
+  padding: .7rem .85rem;
+  border-left: 2px solid #facc15;
+  background: rgb(5 12 19 / .65);
+  font: 700 .58rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #93a1ad;
+}
+.mw4-season-signal svg { color: #facc15; }
+.mw4-season-signal strong { color: #fff; }
+.mw4-signal-status { color: #facc15; font: 800 .56rem var(--font-mono); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
+.mw4-signal-status::before { content: ''; display: inline-block; width: 5px; height: 5px; margin-right: .45rem; background: #facc15; box-shadow: 0 0 8px rgb(250 204 21 / .4); }
+.eights-game-deployments { display: grid; gap: .65rem; margin-bottom: 1.5rem; }
+.eights-game-deployment {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  min-height: 64px;
+  padding: .85rem 1.2rem;
+  border: 1px solid rgb(255 255 255 / .08);
+  border-radius: 10px;
+  color: #c4cdd6;
+  background: #101820;
+  transition: border-color 180ms, background-color 180ms;
+}
+.eights-game-deployment:hover, .eights-game-deployment:focus-visible { border-color: rgb(20 216 255 / .45); background-color: #13212c; }
+.eights-game-deployment[aria-current="page"] { border-color: rgb(20 216 255 / .45); }
+.eights-game-deployment-mw4 {
+  border-color: rgb(250 204 21 / .22);
+  background: linear-gradient(90deg, #101820 20%, rgb(16 24 32 / .95) 55%, rgb(16 24 32 / .65)), url('/assets/mw4/hero.webp') center 36% / cover;
+}
+.eights-game-deployment-mw4[aria-current="page"] { border-color: rgb(250 204 21 / .6); }
+.eights-game-deployment img { width: 64px; height: 32px; object-fit: contain; }
+.eights-game-deployment strong { display: block; color: #fff; font-size: .9rem; }
+.eights-game-kicker { display: block; margin-bottom: .2rem; color: #8a9aa8; font: 700 .5rem var(--font-mono); letter-spacing: .15em; text-transform: uppercase; }
+.eights-game-status { margin-left: auto; font: 700 .5rem var(--font-mono); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.eights-game-deployment-mw4 .eights-game-status, .eights-game-deployment-mw4 > svg { color: #facc15; }
+.mw4-launch-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem 1.2rem; border: 1px solid rgb(250 204 21 / .18); border-radius: 10px; background: rgb(250 204 21 / .025); }
+.mw4-launch-notice p { flex: 1; min-width: 200px; color: #a7b3bf; font-size: .75rem; line-height: 1.6; }
+.mw4-launch-notice a { display: inline-flex; align-items: center; gap: .5rem; color: #14d8ff; font-size: .7rem; font-weight: 800; }
+@keyframes mw4-topbar-scan { 0%, 18% { transform: translateX(-100%); } 55%, 100% { transform: translateX(100%); } }
+@media (max-width: 640px) {
+  .app-topbar-v2.topbar-mw4 .topbar-brand { min-width: 0; padding-right: 0; }
+  .app-topbar-v2.topbar-mw4 .topbar-brand::after { display: none; }
+  .app-topbar-v2.topbar-mw4 .topbar-shell { gap: .5rem; }
+  .mw4-feature > img, .mw4-feature .home-featured-image img { object-position: 62% center !important; }
+  .mw4-season-signal { gap: .5rem; font-size: .5rem; }
+  .mw4-season-signal > span:first-of-type { display: none; }
+  .eights-game-deployment { gap: .65rem; padding: .85rem; }
+  .eights-game-deployment img { width: 42px; }
+  .eights-game-deployment strong { font-size: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-topbar-v2.topbar-mw4 .topbar-shell::before { animation: none; transform: none; }
+  .mw4-feature :is(.landing-copy-reveal, .landing-title-reveal, .home-featured-image, .home-slide-progress) { animation: none !important; opacity: 1; transform: none; }
+}

@@ -24,8 +24,8 @@ test("App renders actual Free and Money 8s pages with the shared QueryClient pro
       export const isFreeEightsDiscordRequired = () => false;
       export const ConnectFreeEightsDiscord = () => null;
       export const FreeEightsDiscordDialog = () => null;
+      export const FreeEightsDiscordServerDialog = () => null;
       export const FreeEightsDiscordNotice = () => null;`],
-    ["@/components/match/CreateLobbyModal", empty],
   ]);
   const normalizedRoot = root.replaceAll("\\", "/").replace(/\/$/, "");
   const absoluteStubs = new Map([...stubs].map(([source, code]) => [
@@ -74,14 +74,20 @@ test("App renders actual Free and Money 8s pages with the shared QueryClient pro
   const { default: RankedEights } = await server.ssrLoadModule("/src/pages/RankedEights.jsx");
   const { queryClientInstance } = await server.ssrLoadModule("/src/lib/query-client.js");
   t.after(() => queryClientInstance.clear());
-  queryClientInstance.setQueryData(["free-eights-overview", "test-player"], { success: true, lobbies: [], counts: {}, active_lobby: null });
-  for (const [path, expected] of [["/ranked/8s", "Free 8s"], ["/ranked/8s?mode=money", "Money 8s"], ["/ranked/8s#matchfinder", "Free 8s"]]) {
+  queryClientInstance.setQueryData(["free-eights-overview", "test-player", "bo7"], { success: true, lobbies: [], counts: {}, active_lobby: null });
+  for (const [path, expected] of [["/ranked/8s", "Free 8s"], ["/ranked/8s?mode=money", "Money 8s"], ["/ranked/8s#matchfinder", "Free 8s"], ["/ranked/8s?game=mw4", "Modern Warfare"]]) {
     // Prove that the real page exercises the reported crash without the provider.
     assert.throws(() => renderToString(React.createElement(MemoryRouter,
       { initialEntries: [path] }, React.createElement(RankedEights))), /No QueryClient set/);
     globalThis.__eightsRenderPath = path;
     const html = renderToString(React.createElement(App));
     assert.ok(html.includes(expected), `${path} must render its competition page`);
-    assert.ok(html.includes("monthly standings") || html.includes("wallet entry fee"));
+    assert.ok(html.includes("Most monthly wins") || html.includes("wallet entry fee") || html.includes("Next deployment // Coming soon"), `${path} must show its prize or launch status`);
+    if (path.includes("game=mw4")) {
+      assert.ok(html.includes("mw4-feature"));
+      assert.ok(html.includes("text-yellow-400"));
+      assert.ok(html.includes("Play Black Ops"));
+      assert.ok(!html.includes("Create 8s lobby"));
+    }
   }
 });

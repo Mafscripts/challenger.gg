@@ -1,6 +1,15 @@
 import { getMapImage } from "./cdlMaps.js";
 
 export const DEFAULT_EIGHTS_GAME = "bo7";
+// Visible before launch, but cannot create rooms until staff configure real pools.
+export const MW4_EIGHTS_PREVIEW = {
+  id: "mw4", name: "Modern Warfare", number: "4", color: "yellow",
+  enabled: false, modes: [], formats: [],
+};
+export const withMw4Preview = (games) => {
+  const mw4 = games.find((row) => row.id === "mw4") || structuredClone(MW4_EIGHTS_PREVIEW);
+  return [mw4, ...games.filter((row) => row.id !== "mw4")];
+};
 export const eightsGameId = (value) => String((typeof value === "object" ? value?.game_id : value) || DEFAULT_EIGHTS_GAME).toLowerCase();
 export const eightsSlug = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 const maps = (names, game) => names.map((name) => ({ name, image: game === "bo7" ? getMapImage(name) : `/assets/maps/${game}/${eightsSlug(name)}.webp` }));

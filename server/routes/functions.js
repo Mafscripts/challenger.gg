@@ -11015,7 +11015,7 @@ const handlers = {
   },
   getFreeEightsGames: async () => {
     const row = await prisma.mapPool.findUnique({ where: { id: EIGHTS_CONFIG_ID } });
-    return { success: true, games: row?.metadata?.games || await loadEightsGames(prisma), version: row?.updated_date.toISOString() || "default" };
+    return { success: true, games: await loadEightsGames(prisma), version: row?.updated_date.toISOString() || "default" };
   },
   updateFreeEightsGames: async (req) => {
     assertStaff(req, "admin");

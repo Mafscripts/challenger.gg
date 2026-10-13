@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import sharp from "sharp";
-import { DEFAULT_EIGHTS_GAMES, DEFAULT_EIGHTS_GAME, eightsGameId, eightsGameName } from "../src/lib/freeEightsGames.js";
+import { DEFAULT_EIGHTS_GAMES, DEFAULT_EIGHTS_GAME, eightsGameId, eightsGameName, withMw4Preview } from "../src/lib/freeEightsGames.js";
 
 export const EIGHTS_CONFIG_ID = "free-eights-game-config";
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
@@ -21,6 +21,9 @@ export function validateEightsGames(input) {
   if (!Array.isArray(input) || !input.length || input.length > 20) fail("Configure between 1 and 20 games");
   const games = input.map((game) => {
     if (!game || typeof game !== "object") fail("Invalid game configuration");
+    if (game.id === "mw4" && game.enabled === false && Array.isArray(game.modes) && !game.modes.length && Array.isArray(game.formats) && !game.formats.length) {
+      return { id: "mw4", name: label(game.name, "Game name"), number: game.number ? label(game.number, "Game number", 8) : "", color: "yellow", enabled: false, modes: [], formats: [] };
+    }
     if (!Array.isArray(game.modes) || !game.modes.length || game.modes.length > 12) fail("Each game needs 1–12 modes");
     const modes = game.modes.map((mode) => {
       if (!mode || typeof mode !== "object") fail("Invalid mode configuration");
@@ -37,7 +40,7 @@ export function validateEightsGames(input) {
       return { id: id(format.id, "Format"), name: label(format.name, "Format name"), modes: [...format.modes] };
     });
     unique(formats, "format");
-    return { id: id(game.id, "Game"), name: label(game.name, "Game name"), number: game.number ? label(game.number, "Game number", 8) : "", color: game.color === "green" ? "green" : "orange", enabled: game.enabled !== false, modes, formats };
+    return { id: id(game.id, "Game"), name: label(game.name, "Game name"), number: game.number ? label(game.number, "Game number", 8) : "", color: ["green", "yellow"].includes(game.color) ? game.color : "orange", enabled: game.enabled !== false, modes, formats };
   });
   unique(games, "game");
   if (!games.some((game) => game.id === DEFAULT_EIGHTS_GAME)) fail("Keep Black Ops 7 for existing rooms");
@@ -46,7 +49,7 @@ export function validateEightsGames(input) {
 }
 export async function loadEightsGames(db) {
   const row = await db.mapPool.findUnique({ where: { id: EIGHTS_CONFIG_ID } });
-  return row?.metadata?.games || structuredClone(DEFAULT_EIGHTS_GAMES);
+  return withMw4Preview(row?.metadata?.games || structuredClone(DEFAULT_EIGHTS_GAMES));
 }
 export async function saveEightsGames(db, input, adminId, version) {
   const games = validateEightsGames(input);

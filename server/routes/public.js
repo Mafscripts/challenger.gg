@@ -2,13 +2,13 @@ import { Router } from "express";
 import { listEntities } from "../entity.js";
 import { prisma } from "../prisma.js";
 import { EIGHTS_CONFIG_ID } from "../free-eights-games.js";
-import { DEFAULT_EIGHTS_GAMES } from "../../src/lib/freeEightsGames.js";
+import { DEFAULT_EIGHTS_GAMES, withMw4Preview } from "../../src/lib/freeEightsGames.js";
 
 const router = Router();
 router.get("/free-eights-games", async (_req, res, next) => {
   try {
     const row = await prisma.mapPool.findUnique({ where: { id: EIGHTS_CONFIG_ID } });
-    res.json({ success: true, games: row?.metadata?.games || DEFAULT_EIGHTS_GAMES, version: row?.updated_date.toISOString() || "default" });
+    res.json({ success: true, games: withMw4Preview(row?.metadata?.games || DEFAULT_EIGHTS_GAMES), version: row?.updated_date.toISOString() || "default" });
   } catch (error) { next(error); }
 });
 router.get("/free-eights-map-images/:id", async (req, res, next) => {

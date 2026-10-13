@@ -18,12 +18,12 @@ export default function TopfraggLogo({
             strokeWidth="2"
           />
           <path d="M14 16.25h16M22 16.25v13.5M16.5 23h11" stroke="#EAFBFF" strokeWidth="2.6" strokeLinecap="round" />
-          <circle cx="33" cy="10.25" r="2.3" fill="#FF8200" />
+          <circle cx="33" cy="10.25" r="2.3" fill="#14D8FF" />
         </svg>
       </span>
       {showWordmark && (
         <span className={`font-black uppercase leading-none tracking-[-0.03em] ${wordmarkClassName}`}>
-          <span className="text-orange">Top</span><span style={{ color: "#14D8FF" }}>fragg</span>
+          <span style={{ color: "#FFFFFF" }}>Top</span><span style={{ color: "#14D8FF" }}>fragg</span>
         </span>
       )}
     </span>

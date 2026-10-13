@@ -13,7 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { HalloweenCountdown, HalloweenEventBadge } from "@/components/halloween/HalloweenSeason";
+import { Mw4SeasonSignal } from "@/components/season/Mw4Season";
 import PageLoader from "@/components/ui/PageLoader";
 
 const SLIDE_DURATION = 10000;
@@ -32,18 +32,18 @@ const homeBulletImpacts = [
 
 const slides = [
   {
-    image: "/assets/home/halloween-special.png",
-    season: "halloween",
+    image: "/assets/mw4/hero.webp",
+    season: "mw4",
     objectPosition: "center center",
-    tag: "Halloween special",
-    meta: "8 free tournaments",
-    title: "HALLOWEEN MAYHEM",
-    accent: "EIGHT SHOTS AT GLORY",
-    description: "Sign up, squad up, and enter eight free Halloween tournaments. Every bracket is a new chance to sharpen your game, build your reputation, and prove you can compete with the pros.",
-    primaryLabel: "Claim your free spot",
-    primaryHref: "/tournaments",
+    tag: "MW4 // Next deployment",
+    meta: "Free 8s · Separate leaderboard",
+    title: "MODERN WARFARE",
+    accent: "4 // THE NEXT CHAPTER",
+    description: "A new battlefield. The same competitive edge. Explore the Modern Warfare 4 Free 8s leaderboard, and keep your squad sharp in Black Ops 7 while the next chapter gets ready.",
+    primaryLabel: "Explore MW4 Free 8s",
+    primaryHref: "/ranked/8s?game=mw4",
     secondaryLabel: "View the leaderboard",
-    secondaryHref: "/leaderboards",
+    secondaryHref: "/ranked/8s?game=mw4#standings",
   },
   {
     image: "/assets/home/featured-season.png",
@@ -169,7 +169,7 @@ function FeaturedNews() {
   const move = (direction) => setActive((current) => (current + direction + slides.length) % slides.length);
 
   return (
-    <section className={`home-featured relative isolate h-[590px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:h-[550px] lg:h-[520px] ${slide.season === "halloween" ? "halloween-feature" : ""}`}>
+    <section className={`home-featured relative isolate h-[590px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:h-[550px] lg:h-[520px] ${slide.season === "mw4" ? "mw4-feature" : ""}`}>
       <div key={`base-${active}`} className="home-featured-image absolute inset-0">
         <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
       </div>
@@ -206,8 +206,8 @@ function FeaturedNews() {
           {slide.title}<br /><span className="text-orange">{slide.accent}</span>
         </h1>
         <p className="mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">{slide.description}</p>
-        {slide.season === "halloween" && <HalloweenCountdown className="mt-5" />}
-        <div className={`${slide.season === "halloween" ? "mt-5" : "mt-7"} flex flex-wrap gap-3`}>
+        {slide.season === "mw4" && <Mw4SeasonSignal className="mt-5" />}
+        <div className={`${slide.season === "mw4" ? "mt-5" : "mt-7"} flex flex-wrap gap-3`}>
           <Link to={slide.primaryHref} className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-black transition-transform hover:-translate-y-0.5">
             {slide.primaryLabel}<ArrowRight className="h-4 w-4" />
           </Link>
@@ -273,7 +273,7 @@ function TournamentRows({ tournaments, now, loading }) {
         {!loading && tournaments.length === 0 && (
           <div className="px-5 py-12 text-center text-sm text-vapor">No upcoming tournaments are scheduled yet.</div>
         )}
-        {tournaments.map((tournament, index) => {
+        {tournaments.map((tournament) => {
           const teams = number(tournament.registered_teams ?? tournament.participant_count);
           const maxTeams = number(tournament.max_teams || tournament.team_limit || 0);
           return (
@@ -283,7 +283,6 @@ function TournamentRows({ tournaments, now, loading }) {
                 <div className="flex items-center gap-2">
                   <h3 className="truncate font-heading text-sm font-black text-white transition-colors group-hover:text-orange sm:text-base">{tournament.name || "Tournament"}</h3>
                   <span className="hidden rounded bg-cyan/10 px-1.5 py-0.5 font-mono text-[8px] font-black uppercase tracking-wider text-cyan md:inline">{String(tournament.status || "Open").replace("_", " ")}</span>
-                  {index < 2 && <HalloweenEventBadge className="hidden xl:inline-flex" />}
                 </div>
                 <p className="mt-1 truncate text-[11px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p>
                 <p className="mt-1.5 font-mono text-[9px] font-bold uppercase tracking-wider text-cyan sm:hidden">{timeUntil(tournament.start_date, now)}</p>
