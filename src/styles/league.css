@@ -255,34 +255,38 @@
 .topfragg-league .league-demo-fixture-action { display: flex; align-items: center; justify-content: flex-end; gap: 6px; color: hsl(var(--cyan)); font-size: 10px; font-weight: 700; }
 .topfragg-league .league-demo-all-matches { display: flex; justify-content: center; align-items: center; gap: 7px; border-top: 1px solid rgb(255 255 255 / .06); padding: 12px; color: hsl(var(--cyan)); font-size: 10px; font-weight: 700; }
 .topfragg-league .league-demo-upcoming { overflow: hidden; border-radius: 10px; }
-.topfragg-league .league-demo-room-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 22px; padding: 22px 24px; margin: 20px 0 16px; }
+.topfragg-league .league-demo-match-shell { margin-top: 20px; }
+.topfragg-league .league-demo-room-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 22px; padding: 0; margin: 0 0 16px; }
 .topfragg-league .league-demo-room-header h1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-top: 7px; font-size: 26px; font-weight: 900; letter-spacing: -.025em; line-height: 1.4; }
 .topfragg-league .league-demo-room-header h1 span { font-size: 16px; font-weight: 500; color: hsl(var(--vapor)); }
 .topfragg-league .league-demo-room-header p:not(.league-eyebrow) { margin-top: 5px; color: hsl(var(--vapor)); font-size: 11px; }
 .topfragg-league .league-demo-room-view > div { display: flex; gap: 5px; margin-top: 8px; }
 .topfragg-league .league-demo-room-view button { display: flex; align-items: center; gap: 5px; padding: 9px 11px; border: 1px solid hsl(var(--border)); border-radius: 7px; color: hsl(var(--vapor)); background: var(--arena-inset); font-size: 10px; font-weight: 700; }
 .topfragg-league .league-demo-room-view button[aria-pressed="true"] { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .3); background: hsl(var(--cyan) / .08); }
-.topfragg-league .league-demo-room-score { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 18px; padding: 22px 24px; margin-bottom: 20px; }
+.topfragg-league .league-demo-room-score { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 18px; padding: 16px 20px; border: 1px solid rgb(255 255 255 / .07); border-radius: 10px; background: var(--arena-inset); }
 .topfragg-league .league-demo-room-score > div:not(.league-demo-score-center) { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: 18px; line-height: 1.4; }
 .topfragg-league .league-demo-room-score > div:last-child { flex-direction: row-reverse; text-align: right; }
 .topfragg-league .league-demo-score-center { text-align: center; }
 .topfragg-league .league-demo-score-center > span { display: block; font-size: 8px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: hsl(var(--vapor)); }
 .topfragg-league .league-demo-score-center > strong { display: block; margin: 3px 0; font-family: var(--font-mono); font-size: 34px; font-weight: 900; }
 .topfragg-league .league-demo-score-center > small { display: block; color: hsl(var(--cyan)); font-size: 9px; }
-.topfragg-league .league-demo-room-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; align-items: start; gap: 20px; }
-.topfragg-league .league-demo-room-sidebar { display: grid; gap: 16px; }
-.topfragg-league .league-demo-room-roster { overflow: hidden; }
-.topfragg-league .league-demo-room-roster header { display: flex; gap: 12px; align-items: center; padding: 17px 20px; border-bottom: 1px solid rgb(255 255 255 / .07); }
-.topfragg-league .league-demo-room-roster h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 3px; font-size: 18px; font-weight: 800; }
-.topfragg-league .league-demo-room-roster header div > p:last-child { margin-top: 4px; font-size: 10px; color: hsl(var(--vapor)); }
-.topfragg-league .league-demo-winner { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; color: hsl(var(--green)); }
-.topfragg-league .league-demo-room-players > div { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid rgb(255 255 255 / .045); }
-.topfragg-league .league-demo-player-avatar { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid hsl(var(--border)); border-radius: 50%; color: hsl(var(--cyan)); font-size: 10px; font-weight: 800; }
-.topfragg-league .league-demo-room-players strong { display: block; font-size: 12px; font-weight: 700; }
-.topfragg-league .league-demo-room-players small { display: block; margin-top: 2px; font-size: 8px; color: hsl(var(--vapor)); }
-.topfragg-league .league-demo-player-state { margin-left: auto; font-size: 9px; color: hsl(var(--green)); }
-.topfragg-league .league-demo-reserve .league-demo-player-state { color: hsl(var(--vapor)); }
-.topfragg-league .league-demo-roster-note { padding: 10px 20px; font-size: 9px; color: hsl(var(--vapor)); background: var(--arena-inset); }
+.topfragg-league .league-demo-selected-team { min-width: 0; }
+.topfragg-league .league-demo-lineup-picker { margin-bottom: 10px; border: 1px solid rgb(255 255 255 / .07); border-radius: 9px; background: var(--arena-inset); }
+.topfragg-league .league-demo-lineup-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; }
+.topfragg-league .league-demo-lineup-heading p { font-size: 10px; color: hsl(var(--vapor)); }
+.topfragg-league .league-demo-lineup-heading strong { color: white; }
+.topfragg-league .league-demo-lineup-heading small { display: block; margin-top: 4px; font-size: 9px; color: hsl(var(--vapor)); }
+.topfragg-league .league-demo-lineup-heading .league-button { padding: 8px 11px; font-size: 10px; }
+.topfragg-league .league-demo-lineup-options { padding: 14px 16px; border-top: 1px solid rgb(255 255 255 / .06); }
+.topfragg-league .league-demo-lineup-options legend { font-size: 10px; font-weight: 800; color: hsl(var(--cyan)); margin-bottom: 10px; }
+.topfragg-league .league-demo-lineup-options fieldset > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.topfragg-league .league-demo-lineup-options label { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid rgb(255 255 255 / .08); border-radius: 6px; font-size: 11px; cursor: pointer; }
+.topfragg-league .league-demo-lineup-options input { accent-color: hsl(var(--cyan)); }
+.topfragg-league .league-demo-lineup-options label:has(input:checked) { border-color: hsl(var(--cyan) / .3); background: hsl(var(--cyan) / .04); }
+.topfragg-league .league-demo-lineup-options label:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+.topfragg-league .league-demo-lineup-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
+.topfragg-league .league-demo-lineup-actions p { max-width: 420px; font-size: 9px; line-height: 1.8; color: hsl(var(--vapor)); }
+.topfragg-league .league-demo-lineup-actions .league-button { font-size: 10px; padding: 8px 11px; }
 .topfragg-league .league-demo-room-maps { overflow: hidden; }
 .topfragg-league .league-demo-room-map { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-top: 1px solid rgb(255 255 255 / .06); }
 .topfragg-league .league-demo-map-number { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid hsl(var(--border)); border-radius: 6px; color: hsl(var(--cyan)); font-family: var(--font-mono); font-size: 11px; }
@@ -295,7 +299,8 @@
 .topfragg-league .league-demo-room-chat h2 { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; }
 .topfragg-league .league-demo-chat-messages { min-height: 240px; padding: 16px; }
 .topfragg-league .league-demo-chat-messages article { margin-top: 16px; }
-.topfragg-league .league-demo-chat-messages article strong { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; color: hsl(var(--cyan)); font-size: 11px; }
+.topfragg-league .league-demo-chat-messages article strong { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; font-size: 11px; }
+.topfragg-league .league-demo-chat-messages article strong:not(.text-orange) { color: hsl(var(--cyan)); }
 .topfragg-league .league-demo-chat-messages article small { color: hsl(var(--vapor)); font-size: 8px; font-weight: 500; }
 .topfragg-league .league-demo-chat-messages article p { margin-top: 6px; padding: 9px 11px; border: 1px solid rgb(255 255 255 / .06); border-radius: 8px; background: var(--arena-inset); font-size: 11px; line-height: 1.8; }
 .topfragg-league .league-demo-chat-system { margin: 6px 0; color: hsl(var(--vapor)); font-size: 9px; line-height: 1.8; }
@@ -331,8 +336,6 @@
 }
 @media (max-width: 900px) {
   .topfragg-league .league-layout { grid-template-columns: minmax(0, 1fr); }
-  .topfragg-league .league-demo-room-layout { grid-template-columns: minmax(0, 1fr); }
-  .topfragg-league .league-demo-room-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
   .topfragg-league .league-news { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
   .topfragg-league .league-news > .league-section-title { grid-column: 1 / -1; margin: 0; }
   .topfragg-league .league-news > article + article { margin: 0; }
@@ -375,8 +378,6 @@
   .topfragg-league .league-division-registration { padding: 16px; }
   .topfragg-league .league-division-registration > div { min-width: 160px; }
   .topfragg-league .league-division-guide summary { padding-inline: 16px; gap: 10px; }
-  .topfragg-league .league-demo-room-sidebar { grid-template-columns: minmax(0, 1fr); }
-  .topfragg-league .league-demo-room-header { padding: 18px 16px; }
   .topfragg-league .league-demo-room-header h1 { font-size: 21px; }
   .topfragg-league .league-demo-room-score { gap: 10px; padding: 18px 12px; }
   .topfragg-league .league-demo-room-score > div:not(.league-demo-score-center) { flex-direction: column; gap: 8px; text-align: center; font-size: 12px; }
@@ -387,8 +388,7 @@
   .topfragg-league .league-demo-room-map { gap: 8px; padding-inline: 12px; }
   .topfragg-league .league-demo-map-result { min-width: 70px; }
   .topfragg-league .league-demo-room-map small { font-size: 8px; }
-  .topfragg-league .league-demo-room-roster h2 { font-size: 16px; }
-  .topfragg-league .league-demo-room-roster header, .topfragg-league .league-demo-room-players > div { padding-inline: 16px; }
+  .topfragg-league .league-demo-lineup-options fieldset > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 419px) {
   .topfragg-league .league-steps { grid-template-columns: minmax(0, 1fr); }
