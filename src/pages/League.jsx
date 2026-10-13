@@ -17,19 +17,18 @@ function ComingSoon({ children = "Coming soon" }) {
 function LeagueNews() {
   return (
     <aside className="league-news" aria-label="League news">
-      <div className="league-section-title"><span className="league-eyebrow">League news</span><span className="league-small-label">MW4 launch</span></div>
+      <div className="league-section-title"><span className="league-eyebrow">League news</span><span className="league-small-label">Updates</span></div>
       <article className="league-panel league-payout-news">
-        <span className="league-icon league-icon-gold"><Trophy className="h-5 w-5" /></span>
-        <p className="league-eyebrow mt-5">Prize pool boost</p>
-        <h2>Big payouts.<br />Bigger ambitions.</h2>
+        <div className="league-news-heading"><Trophy className="h-4 w-4" /><p className="league-eyebrow">Topfragg prize boost</p></div>
+        <h2>More teams.<br />Bigger payouts.</h2>
         <p>If enough teams sign up, <strong>Topfragg itself will add between $50–$500 extra per division</strong> to boost the payouts.</p>
         <div className="league-news-amount"><span>$50–$500</span><small>Potential extra funding / division</small></div>
         <p className="league-fine-print">Extra funding depends on team participation. Final prize pools, payout splits and eligibility will be announced before paid registration opens.</p>
       </article>
       <article className="league-panel league-news-note">
-        <div className="flex items-center gap-2 text-cyan"><Clock3 className="h-4 w-4" /><h2>Built for MW4</h2></div>
-        <p>Explore all 13 divisions now. Team registration, manager payments and league matches will open closer to launch.</p>
-        <p className="league-fine-print">Season dates, rules and the match schedule are coming soon.</p>
+        <div className="flex items-center gap-2 text-cyan"><Clock3 className="h-4 w-4" /><h2>Launch status</h2></div>
+        <dl className="league-launch-list"><div><dt>Division pages</dt><dd className="text-green">Open to browse</dd></div><div><dt>Team registration</dt><dd>Coming soon</dd></div><div><dt>League matches</dt><dd>Coming soon</dd></div></dl>
+        <p className="league-fine-print">Season dates and rules will be announced before registration opens.</p>
       </article>
     </aside>
   );
@@ -39,23 +38,17 @@ function LeagueIntroduction() {
   return (
     <header className="league-hero league-panel">
       <div className="league-hero-copy">
-        <div className="flex flex-wrap items-center gap-3"><span className="league-eyebrow">A new chapter of competition</span><ComingSoon /></div>
-        <h1>TOP<span>FRAGG</span><br /><span>LEAGUE</span><span className="league-title-dot">.</span></h1>
-        <p className="league-hero-description">Your team. Your division. Your next challenge.</p>
-        <p className="league-hero-detail">A standalone Modern Warfare <strong className="text-yellow-300">4</strong> league with 12 divisions and one Challengers ladder. Build your roster and compete within your own division.</p>
-        <div className="league-hero-actions"><a href="#league-divisions" className="league-button league-button-primary">Explore divisions<ArrowRight className="h-4 w-4" /></a><a href="#league-how-it-works" className="league-button">How it works<ChevronRight className="h-4 w-4" /></a></div>
+        <div className="flex flex-wrap items-center gap-3"><span className="league-eyebrow">Modern Warfare 4 · Team competition</span><ComingSoon /></div>
+        <h1>TOP<span>FRAGG</span> <span className="league-hero-title">LEAGUE</span></h1>
+        <p className="league-hero-detail">12 divisions. One Challengers ladder. A dedicated competition for your team, with matches inside your own division.</p>
+        <div className="league-hero-actions"><a href="#league-divisions" className="league-button league-button-primary">Find your division<ArrowRight className="h-4 w-4" /></a><a href="#league-how-it-works" className="league-hero-text-link">How it works<ChevronRight className="h-3.5 w-3.5" /></a></div>
       </div>
-      <div className="league-season-card">
+      <div className="league-game-identity">
         <img src="/assets/mw4/logo.webp" alt="Modern Warfare 4" width="220" height="85" className="league-game-logo" />
-        <span className="league-eyebrow">Topfragg League · Launch preview</span>
-        <h2>The next season<br />starts with your team.</h2>
-        <dl className="league-season-details">
-          <div><dt>Competition</dt><dd>12 divisions + Challengers</dd></div>
-          <div><dt>Team roster</dt><dd>4 players + 2 reserves</dd></div>
-          <div><dt>Registration</dt><dd className="text-cyan">Coming soon</dd></div>
-        </dl>
-        <p className="league-fine-print flex items-start gap-2"><LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />Browsing is open. No payments or signups are being taken yet.</p>
+        <span className="league-small-label">The next chapter</span>
+        <p>Built for MW<span className="text-yellow-300">4</span></p>
       </div>
+      <dl className="league-hero-facts"><div><Layers className="h-4 w-4" /><dt>Competition</dt><dd>12 divisions + Challengers</dd></div><div><Users className="h-4 w-4" /><dt>Team roster</dt><dd>4 players + 2 reserves</dd></div><div><LockKeyhole className="h-4 w-4" /><dt>Team registration</dt><dd>Coming soon</dd></div></dl>
     </header>
   );
 }
@@ -90,27 +83,38 @@ function LeagueTeamPreview() {
   );
 }
 
-function LeagueDivisionCards() {
+function LeagueDivisionList() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const divisions = LEAGUE_DIVISIONS.filter((division) => (
     (filter === "all" || (filter === "premier" ? division.number && division.number <= 2 : filter === "league" ? division.number >= 3 : division.id === "challengers"))
     && division.name.toLowerCase().includes(search.trim().toLowerCase())
   ));
+  const groups = [
+    { id: "challengers", name: "Challengers", description: "Highest tier", entries: divisions.filter((division) => division.id === "challengers") },
+    { id: "premier", name: "Division 1–2", description: "Premier divisions", entries: divisions.filter((division) => division.number && division.number <= 2) },
+    { id: "league", name: "Division 3–12", description: "League divisions", entries: divisions.filter((division) => division.number >= 3) },
+  ].filter((group) => group.entries.length > 0);
   return (
     <section id="league-divisions" className="league-division-section">
-      <div className="league-section-title"><div><p className="league-eyebrow">Find your competition</p><h2>12 divisions. One Challengers ladder.</h2><p className="league-section-description">Choose a division to explore its future standings, teams and matches.</p></div><span className="league-small-label">13 divisions</span></div>
+      <div className="league-section-title"><div><p className="league-eyebrow">Competition directory</p><h2>Choose your division</h2><p className="league-section-description">Highest to lowest: Challengers, then Division 1 through 12.</p></div><span className="league-directory-count">{divisions.length} / 13 divisions</span></div>
       <div className="league-division-toolbar">
-        <div className="league-filters" aria-label="Filter league divisions">{[{ id: "all", name: "All divisions" }, { id: "premier", name: "Div 1–2" }, { id: "league", name: "Div 3–12" }, { id: "challengers", name: "Challengers" }].map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{item.name}</button>)}</div>
+        <div className="league-filters" aria-label="Filter league divisions">{[{ id: "all", name: "All divisions" }, { id: "challengers", name: "Challengers" }, { id: "premier", name: "Div 1–2" }, { id: "league", name: "Div 3–12" }].map((item) => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>{item.name}</button>)}</div>
         <label className="league-search"><Search className="h-4 w-4" /><input aria-label="Search divisions" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a division" /></label>
       </div>
-      <div className="league-division-grid">{divisions.map((division) => <Link key={division.id} to={leagueDivisionUrl(division)} className={`league-division-card ${division.id === "challengers" ? "league-division-challengers" : ""}`}>
-        <div className="league-card-top"><span className="league-division-mark">{division.number ? String(division.number).padStart(2, "0") : <Crown className="h-6 w-6" />}</span><span className="league-small-label">Coming soon</span></div>
-        <p className="league-card-tier">{division.tier}</p><h3>{division.name}</h3>
-        <div className="league-card-fee"><strong>${division.fee}</strong><span>USD / team</span></div>
-        <p className="league-card-roster">4 players + 2 reserves</p>
-        <div className="league-card-footer"><span>Explore division</span><ArrowRight className="h-4 w-4" /></div>
-      </Link>)}</div>
+      <div className="league-directory">
+        <div className="league-directory-columns" aria-hidden="true"><span>Division</span><span className="league-row-roster">Team roster</span><span>Entry / team</span><span className="text-right">View</span></div>
+        {groups.map((group) => <section key={group.id} className={`league-directory-group league-directory-group-${group.id}`} aria-labelledby={`league-group-${group.id}`}>
+          <div className="league-directory-group-title"><h3 id={`league-group-${group.id}`}>{group.name}</h3><span>{group.description}</span></div>
+          <ul>{group.entries.map((division) => <li key={division.id}><Link to={leagueDivisionUrl(division)} className="league-division-row" aria-label={`View ${division.name}, entry ${division.fee} US dollars per team`}>
+            <div className="league-row-identity"><span className="league-row-number" aria-hidden="true">{division.number ? String(division.number).padStart(2, "0") : <Crown className="h-5 w-5" />}</span><div><h4>{division.name}</h4><span>{division.id === "challengers" ? "Highest level" : division.number === 1 ? "Highest numbered division" : "MW4 league"}</span></div></div>
+            <div className="league-row-roster"><Users className="h-3.5 w-3.5" /><span>4 players <span className="league-row-reserves">+ 2 reserves</span></span></div>
+            <div className="league-row-entry"><strong>${division.fee}</strong><span>USD / team</span></div>
+            <span className="league-row-action"><span>View division</span><ChevronRight className="h-4 w-4" /></span>
+          </Link></li>)}</ul>
+        </section>)}
+      </div>
+      <p className="league-directory-footnote"><Info className="h-3.5 w-3.5 shrink-0" />Entry fees are shown for launch. Browsing a division does not register or charge your team.</p>
       {divisions.length === 0 && <div className="league-panel league-empty"><Search className="h-6 w-6 text-cyan" /><h3>No matching divisions</h3><p>Try another search or view all divisions.</p><button type="button" onClick={() => { setFilter("all"); setSearch(""); }} className="league-button">Reset filters</button></div>}
     </section>
   );
@@ -130,7 +134,7 @@ function LeagueDivision({ division }) {
     <>
       <Link to="/league#league-divisions" className="league-back"><ArrowLeft className="h-4 w-4" />All divisions</Link>
       <header className="league-panel league-division-header">
-        <div><p className="league-eyebrow">Topfragg League · Modern Warfare <span className="text-yellow-300">4</span></p><h1>{division.name}</h1><p>{division.id === "challengers" ? "The standalone Challengers ladder." : `A dedicated competition for Division ${division.number} teams.`} One division. Your roster. Your matches.</p></div>
+        <div><p className="league-eyebrow">Topfragg League · Modern Warfare <span className="text-yellow-300">4</span></p><h1>{division.name}</h1><p>{division.id === "challengers" ? "The highest level of Topfragg League." : `A dedicated competition for Division ${division.number} teams.`} One division. Your roster. Your matches.</p></div>
         <div className="league-division-entry"><ComingSoon /><strong>${division.fee}<span>USD / team</span></strong><span className="league-fine-print">4 players + 2 reserves</span></div>
       </header>
       <div className="league-layout">
@@ -176,7 +180,7 @@ export default function League() {
     <div className="topfragg-league"><div className="league-container">
       <div className="league-topline"><Link to="/league" className="league-wordmark"><ShieldCheck className="h-4 w-4 text-cyan" /><span>TOP<span className="text-cyan">FRAGG</span> LEAGUE</span></Link><span className="league-small-label flex items-center gap-1.5"><Gamepad2 className="h-3.5 w-3.5" />MW<span className="text-yellow-300">4</span></span></div>
       <nav className="league-main-nav" aria-label="Topfragg League"><Link to="/league" aria-current={!divisionId && !myTeam ? "page" : undefined}><Layers className="h-4 w-4" />League overview</Link><Link to="/league?view=my-team" aria-current={myTeam ? "page" : undefined}><Users className="h-4 w-4" />My league team<Clock3 className="h-3 w-3 text-vapor" /></Link></nav>
-      {division ? <LeagueDivision division={division} /> : myTeam ? <LeagueMyTeam /> : <><LeagueIntroduction /><div className="league-opening-notice"><CalendarDays className="h-4 w-4 shrink-0 text-cyan" /><p><strong>Coming soon for MW4.</strong> Explore divisions and entry fees now. Signups, payments, season dates and league matches will follow at launch.</p></div><div className="league-layout"><div className="league-main-column"><LeagueDivisionCards /><LeagueHowItWorks /><LeagueTeamPreview /></div><LeagueNews /></div></>}
+      {division ? <LeagueDivision division={division} /> : myTeam ? <LeagueMyTeam /> : <><LeagueIntroduction /><div className="league-opening-notice"><CalendarDays className="h-4 w-4 shrink-0 text-cyan" /><p><strong>Coming soon for MW4.</strong> Explore divisions and entry fees now. Signups, payments, season dates and league matches will follow at launch.</p></div><div className="league-layout"><div className="league-main-column"><LeagueDivisionList /><LeagueHowItWorks /><LeagueTeamPreview /></div><LeagueNews /></div></>}
       <p className="league-footer-note">Topfragg League is a standalone Topfragg competition. Registration is currently closed.</p>
     </div></div>
   );

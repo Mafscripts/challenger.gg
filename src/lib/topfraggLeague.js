@@ -9,6 +9,7 @@ export const TOPFRAGG_LEAGUE = Object.freeze({
 });
 
 export const LEAGUE_DIVISIONS = [
+  { id: "challengers", name: "Challengers", shortName: "CHALLENGERS", number: null, fee: 250, tier: "Highest tier · Challengers ladder" },
   ...Array.from({ length: 12 }, (_, index) => {
     const number = index + 1;
     return {
@@ -20,7 +21,6 @@ export const LEAGUE_DIVISIONS = [
       tier: number <= 2 ? "Premier divisions" : "League divisions",
     };
   }),
-  { id: "challengers", name: "Challengers", shortName: "CHALLENGERS", number: null, fee: 250, tier: "Challengers ladder" },
 ];
 
 export const leagueDivisionUrl = (division) => `/league/division/${division.id}`;
