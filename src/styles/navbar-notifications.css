@@ -1,0 +1,8 @@
+.nav-notifications-popover .nav-notification-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; align-self: flex-start; width: 44px; height: 44px; margin-top: 2px; border: 1px solid rgb(255 255 255 / .09); border-radius: 12px; background: #12212c; color: var(--notice-accent); }
+.nav-notifications-popover .nav-notification-kind { display: block; margin-bottom: 4px; color: var(--notice-accent); font-size: 7px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.nav-notifications-popover .nav-notification-row .nav-message-identity strong { white-space: normal; overflow-wrap: anywhere; }
+.nav-notifications-popover .nav-notification-row .nav-message-meta { min-width: 30px; }
+.nav-notifications-popover .nav-notification-amount { display: inline-block; margin-top: 7px; color: var(--notice-accent); font-size: 11px; font-weight: 800; font-family: var(--font-mono); }
+@media (max-width: 639px) {
+  .app-topbar-v2 .nav-popover.nav-notifications-popover { position: fixed; top: 64px; left: 8px; right: 8px; width: auto; }
+}

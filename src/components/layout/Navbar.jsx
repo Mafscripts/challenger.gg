@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Wallet, Bell, MessageSquare, ChevronDown, User,
+  Wallet, Bell, MessageSquare, ChevronDown, ChevronRight, User,
   Menu, X, House, Swords, Trophy, ShoppingBag,
   Users, Zap,
-  Info, AlertCircle, Star, ExternalLink, LogIn, UserPlus,
+  AlertCircle, ExternalLink, LogIn, UserPlus,
   Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, DollarSign, Search, ArrowRight, Ticket, Crown
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import NavbarMessages from "./NavbarMessages";
+import NavbarNotifications from "./NavbarNotifications";
+import "@/styles/navbar-profile.css";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
@@ -1424,6 +1426,8 @@ export default function Navbar() {
                 <button
                   type="button"
                   aria-label="Open notifications"
+                  aria-expanded={notifOpen}
+                  aria-controls="nav-notifications-preview"
                   onClick={() => {
                     cancelDropdownClose();
                     setNotifOpen((current) => !current);
@@ -1441,62 +1445,13 @@ export default function Navbar() {
                   )}
                 </button>
 
-                {notifOpen && (
-                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-xl">
-                      <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                        <h3 className="font-bold text-sm">Notifications</h3>
-                        <Link to="/notifications" onClick={() => setNotifOpen(false)} className="text-xs text-cyan hover:underline">
-                          View All
-                        </Link>
-                      </div>
-                      <div className="max-h-80 overflow-y-auto">
-                        {notifications.length === 0 ? (
-                          <div className="px-4 py-8 text-center">
-                            <Bell className="w-8 h-8 text-vapor/30 mx-auto mb-2" />
-                            <p className="text-xs text-vapor">No notifications</p>
-                          </div>
-                        ) : (
-                          notifications.map((notification) => (
-                            <Link
-                              key={notification.id}
-                              to={notification.title === "Wager refunded" ? "/wallet" : (notification.action_url || "/notifications")}
-                              onClick={() => { markNotifAsRead(notification.id); setNotifOpen(false); }}
-                              className={`block px-4 py-3 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-all ${
-                                !notification.is_read ? 'bg-cyan/5' : ''
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                  notification.type === 'system' ? 'bg-cyan/10' :
-                                  notification.type === 'admin_request' ? 'bg-red-500/10' :
-                                  notification.type === 'dispute' ? 'bg-orange/10' :
-                                  notification.type === 'match' ? 'bg-orange/10' :
-                                  notification.type === 'tournament' ? 'bg-purple/10' : 'bg-secondary'
-                                }`}>
-                                  {notification.type === 'system' ? <Info className="w-4 h-4 text-cyan" /> :
-                                   notification.type === 'admin_request' ? <ShieldCheck className="w-4 h-4 text-red-400" /> :
-                                   notification.type === 'dispute' ? <AlertCircle className="w-4 h-4 text-orange" /> :
-                                   notification.type === 'match' ? <Trophy className="w-4 h-4 text-orange" /> :
-                                   notification.type === 'tournament' ? <Star className="w-4 h-4 text-purple-400" /> :
-                                   <AlertCircle className="w-4 h-4 text-vapor" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold truncate">{notification.title}</p>
-                                  <p className="text-[10px] text-vapor mt-0.5 truncate">{notification.message}</p>
-                                  <p className="text-[9px] text-vapor/50 mt-1">
-                                    {new Date(notification.created_date).toLocaleDateString()}
-                                  </p>
-                                </div>
-                                {!notification.is_read && (
-                                  <span className="w-2 h-2 bg-cyan rounded-full shrink-0" />
-                                )}
-                              </div>
-                            </Link>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                )}
+                {notifOpen && <NavbarNotifications
+                  notifications={notifications}
+                  unreadCount={unreadNotifCount}
+                  formatTime={formatMessageTime}
+                  onRead={markNotifAsRead}
+                  onClose={() => setNotifOpen(false)}
+                />}
               </div>
 
               {/* Messages */}
@@ -1566,6 +1521,9 @@ export default function Navbar() {
                     setMessagesOpen(false);
                   }}
                   className={`topbar-profile flex h-11 items-center gap-2.5 rounded-xl border py-1 pl-1 pr-2 transition-colors ${profileOpen ? "is-open" : ""}`}
+                  aria-label="Open account menu"
+                  aria-expanded={profileOpen}
+                  aria-controls="nav-account-menu"
                 >
                   <div className="topbar-avatar relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg">
                     <User className="h-3.5 w-3.5" />
@@ -1579,20 +1537,26 @@ export default function Navbar() {
                 </button>
 
                 {profileOpen && (
-                    <div className="nav-popover nav-popover-enter absolute right-0 top-12 z-50 max-h-[calc(100dvh-5rem)] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-xl p-2.5">
-                      <div className="border-b border-white/5 px-1 pb-2">
-                        <div className="flex items-center gap-2 px-2">
+                    <div id="nav-account-menu" className="nav-popover nav-popover-enter nav-profile-popover absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-1rem))] rounded-2xl">
+                      <header className="profile-menu-header">
+                        <span className="profile-menu-avatar"><User size={20} />{profileAvatar && <img src={profileAvatar} alt="" onError={event => { event.currentTarget.style.display = "none"; }} />}</span>
+                        <div className="profile-menu-identity"><p>Your Topfragg account</p><strong>{accountName}</strong></div>
+                        <span className="profile-menu-role">{canSeeAdminLink ? (user?.role || "Staff").replaceAll("_", " ") : "Player"}</span>
+                      </header>
+                      <div className="profile-menu-scroll">
+                      <div>
+                        <div className="profile-menu-search">
                           <Search className="h-4 w-4 shrink-0 text-vapor" />
                           <input
                             value={profilePlayerQuery}
                             onChange={(event) => setProfilePlayerQuery(event.target.value)}
                             onKeyDown={(event) => event.stopPropagation()}
                             placeholder="Search players..."
-                            className="h-10 min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-vapor/60"
+                            aria-label="Search Topfragg players"
                           />
                         </div>
                         {profilePlayerQuery.trim().length >= 2 && (
-                          <div className="max-h-56 overflow-y-auto border-t border-white/5 pt-1">
+                          <div className="profile-menu-search-results">
                             {profilePlayerSearching ? (
                               <p className="px-3 py-5 text-center text-xs text-vapor">Searching...</p>
                             ) : profilePlayerResults.length === 0 ? (
@@ -1665,26 +1629,16 @@ export default function Navbar() {
                         onSelect={() => setProfileOpen(false)}
                       />
                       {canSeeAdminLink && (
-                        <div className="border-t border-white/5 pt-2 mt-2">
-                          <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">Admin</p>
-                          <Link
-                            to="/admin"
-                            onClick={() => setProfileOpen(false)}
-                            className="nav-menu-item flex items-center gap-3 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
-                          >
-                            <ShieldCheck className="h-4 w-4 shrink-0 text-red-300" />
-                            Admin Panel
-                          </Link>
-                        </div>
+                        <ProfileMenuSection label="Admin" items={[{ label: "Admin Panel", path: "/admin", icon: ShieldCheck }]} onSelect={() => setProfileOpen(false)} />
                       )}
-                      <div className="border-t border-white/5 mt-1 pt-1">
+                      </div>
+                      <div className="profile-menu-footer">
                         <Link
                           to="/logout"
                           onClick={() => setProfileOpen(false)}
-                          className="nav-menu-item flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10"
+                          className="profile-menu-logout"
                         >
-                          <LogOut className="w-4 h-4" />
-                          Logout
+                          <span><LogOut size={15} />Log out</span><ChevronRight size={13} />
                         </Link>
                       </div>
                     </div>
@@ -1911,8 +1865,9 @@ export default function Navbar() {
 
 function ProfileMenuSection({ label, items, onSelect }) {
   return (
-    <div className="border-t border-white/5 pt-2 mt-2 first:border-t-0 first:pt-1 first:mt-1">
-      <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">{label}</p>
+    <section className="profile-menu-section" data-section={label}>
+      <p>{label}</p>
+      <div className="profile-menu-section-links">
       {items.map((item) => {
         const Icon = item.icon;
 
@@ -1933,15 +1888,16 @@ function ProfileMenuSection({ label, items, onSelect }) {
             key={item.path}
             to={item.path}
             onClick={onSelect}
-            className="nav-menu-item group flex items-center gap-3 rounded-lg border border-transparent px-2.5 py-2 text-sm text-vapor transition-colors duration-100 hover:border-white/[0.06] hover:bg-white/[0.04] hover:text-foreground"
+            className="profile-menu-link"
           >
-            <Icon className="h-4 w-4 shrink-0 text-cyan" />
-            <span className="font-bold">{item.label}</span>
-            <span className="ml-auto text-vapor/30 transition-transform duration-100 group-hover:translate-x-0.5 group-hover:text-vapor">→</span>
+            <span className="profile-menu-item-icon"><Icon size={14} aria-hidden="true" /></span>
+            <span className="profile-menu-link-label">{item.label}</span>
+            <ChevronRight className="profile-menu-link-arrow" size={12} aria-hidden="true" />
           </Link>
         );
       })}
-    </div>
+      </div>
+    </section>
   );
 }
 
