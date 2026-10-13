@@ -624,11 +624,10 @@ export default function Profile() {
 
         {isOwnProfile && <GameRankSettingsLink />}
 
-        <nav className="mt-4 grid grid-cols-4 overflow-hidden rounded-xl border border-white/10 bg-card">
+        <nav className="arena-tabs mt-4 grid grid-cols-4" aria-label="Profile sections">
           {tabs.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" onClick={() => setTab(id)} className={`relative flex min-h-12 items-center justify-center gap-2 border-r border-white/[0.06] px-2 text-[9px] font-black uppercase tracking-wider transition-colors last:border-r-0 sm:text-[10px] ${tab === id ? "bg-cyan/[0.07] text-cyan" : "text-vapor hover:bg-white/[0.03] hover:text-white"}`}>
+            <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id} className="arena-tab relative flex min-h-12 items-center justify-center gap-2 px-2 text-[9px] font-black transition-colors sm:text-[10px]">
               <Icon className="hidden h-3.5 w-3.5 sm:block" /> {label}
-              {tab === id && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-cyan" />}
             </button>
           ))}
         </nav>

@@ -159,7 +159,7 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
 export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, voiceView }) {
   const { voice, hasConfirmedStatus, displayReadyCount } = voiceView;
   const summary = waitingForMaps ? "Join this lobby’s Waiting Room. Maps and the timer start once all eight players are connected." : null;
-  return <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-[#171b26] shadow-[0_8px_30px_rgba(0,0,0,.12)] sm:m-4" aria-label="Free 8s Discord voice readiness">
+  return <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-card shadow-[0_8px_30px_rgba(0,0,0,.12)] sm:m-4" aria-label="Free 8s Discord voice readiness">
     <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
     <div className="relative flex flex-col gap-4 bg-gradient-to-r from-[#5865F2]/[0.09] via-transparent to-transparent p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex min-w-0 items-start gap-3 sm:gap-4">

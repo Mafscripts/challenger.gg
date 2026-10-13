@@ -183,7 +183,7 @@ export default function Notifications() {
         />
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="arena-tabs mb-6 flex w-fit items-center">
           {[
             { value: "all", label: "All", count: notifications.length },
             { value: "unread", label: "Unread", count: unreadCount },
@@ -191,11 +191,11 @@ export default function Notifications() {
           ].map(tab => (
             <button
               key={tab.value}
-              onClick={() => setFilter(tab.value)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              aria-pressed={filter === tab.value} onClick={() => setFilter(tab.value)}
+              className={`arena-tab px-4 py-2 text-xs font-semibold transition-colors ${
                 filter === tab.value 
-                  ? "bg-cyan/10 text-cyan border border-cyan/20" 
-                  : "text-vapor hover:text-foreground border border-transparent"
+                  ? "text-cyan" 
+                  : "text-vapor"
               }`}
             >
               {tab.label} {tab.count > 0 && `(${tab.count})`}

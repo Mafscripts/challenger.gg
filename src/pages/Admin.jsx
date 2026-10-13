@@ -2022,9 +2022,9 @@ export default function Admin() {
         </aside>
 
         <main className="min-w-0">
-          <label className="mb-4 block rounded-xl border border-[#303b49] bg-[#202a35] p-3 text-white lg:hidden">
+          <label className="mb-4 block rounded-xl border border-border bg-card p-3 text-white lg:hidden">
             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-primary">Admin section</span>
-            <select value={activeTab} onChange={(event) => setActiveTab(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[#2d3942] px-3 py-2.5 text-sm font-bold text-white">
+            <select value={activeTab} onChange={(event) => setActiveTab(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[var(--arena-inset)] px-3 py-2.5 text-sm font-bold text-white">
               {tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
             </select>
           </label>
@@ -2351,7 +2351,7 @@ export default function Admin() {
                                 Manage
                               </button>
                               {openManageUserId === user.id && (
-                              <div className="fixed right-6 top-24 z-[9999] max-h-[calc(100vh-7rem)] w-80 overflow-y-auto rounded-xl border border-white/10 bg-[#171d27] p-2 shadow-2xl shadow-black/60">
+                              <div className="fixed right-6 top-24 z-[9999] max-h-[calc(100vh-7rem)] w-80 overflow-y-auto rounded-xl border border-white/10 bg-popover p-2 shadow-2xl shadow-black/60">
                                 <div className="border-b border-white/5 px-3 py-2">
                                   <p className="text-xs font-bold text-foreground">{userName(user)}</p>
                                   <p className="text-[10px] text-vapor">{user.role || "user"} · account actions</p>

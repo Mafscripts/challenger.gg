@@ -6,7 +6,7 @@ import { eightsSlug } from "@/lib/freeEightsGames";
 import { useQueryClient } from "@tanstack/react-query";
 import FreeEightsGameName from "@/components/competition/FreeEightsGameName";
 
-const fieldClass = "w-full min-w-0 rounded-lg border border-white/10 bg-[#0d131a] px-3 py-2 text-xs text-white outline-none focus:border-cyan/50";
+const fieldClass = "w-full min-w-0 rounded-lg border border-white/10 bg-[var(--arena-inset)] px-3 py-2 text-xs text-white outline-none focus:border-cyan/50";
 const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-bold text-white hover:bg-white/[0.08] disabled:opacity-50";
 const newId = (prefix) => `${prefix}_${crypto.randomUUID().slice(0, 8)}`;
 function Field({ label, children }) { return <label className="block min-w-0 space-y-1.5"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">{label}</span>{children}</label>; }

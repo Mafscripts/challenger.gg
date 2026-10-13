@@ -710,10 +710,10 @@ export default function Teams() {
               onSettings={() => setDetailTab("settings")}
             />
 
-            <nav className="mb-6 mt-4 flex gap-1 overflow-x-auto rounded-xl border border-white/5 bg-card/60 p-1.5">
+            <nav className="arena-tabs mb-6 mt-4 flex" aria-label="Team sections">
               {detailTabs.map((tab) => {
                 const Icon = tab.icon;
-                return <button key={tab.id} onClick={() => setDetailTab(tab.id)} className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-colors ${detailTab === tab.id ? "bg-cyan/10 text-cyan" : "text-vapor hover:bg-white/[0.04] hover:text-white"}`}><Icon className="h-3.5 w-3.5" /> {tab.label}</button>;
+                return <button key={tab.id} type="button" onClick={() => setDetailTab(tab.id)} aria-pressed={detailTab === tab.id} className="arena-tab inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-xs font-black transition-colors"><Icon className="h-3.5 w-3.5" /> {tab.label}</button>;
               })}
             </nav>
 

@@ -558,10 +558,10 @@ export default function TournamentOverview() {
 
       <div className="mx-auto max-w-[1500px] px-4 lg:px-8">
         <ActivisionIdNotice user={user} className="mt-5" />
-        <div className="overflow-x-auto border-b border-white/[0.07]">
+        <div className="arena-tabs mt-4">
           <div className="flex min-w-max" role="tablist">
             {[["overview", "Overview"], ["bracket", "Bracket"], ["participants", `Participants ${participants.length}`], ["rules", "Rules"]].map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setActiveTab(value)} className={`relative px-5 py-5 text-[10px] font-black uppercase tracking-[0.13em] after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 ${activeTab === value ? "text-orange after:bg-orange" : "text-vapor after:bg-transparent hover:text-white"}`}>{label}</button>
+              <button key={value} type="button" onClick={() => setActiveTab(value)} role="tab" aria-selected={activeTab === value} className="arena-tab relative px-5 py-4 text-xs font-black transition-colors">{label}</button>
             ))}
           </div>
         </div>

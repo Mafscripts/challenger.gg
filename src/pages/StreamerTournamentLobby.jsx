@@ -601,7 +601,7 @@ export default function StreamerTournamentLobby() {
         .streamer-lobby-screen {
           position: relative;
           overflow: hidden;
-          background: #0b1017;
+          background: var(--arena-shell);
         }
         .streamer-lobby-screen::before {
           content: "";
@@ -619,15 +619,15 @@ export default function StreamerTournamentLobby() {
         .streamer-panel {
           position: relative;
           overflow: hidden;
-          border: 1px solid #303b49;
-          background: #202a35;
+          border: 1px solid hsl(var(--border));
+          background: var(--arena-panel);
           box-shadow: 0 12px 30px rgba(0,0,0,0.22);
         }
         .streamer-panel::before,
         .streamer-hero::before { display: none; }
         .streamer-mini-card {
-          border: 1px solid #303b49;
-          background: #27313a;
+          border: 1px solid hsl(var(--border));
+          background: var(--arena-card);
         }
         .streamer-title-glow {
           text-shadow: none;

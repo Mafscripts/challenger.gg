@@ -131,7 +131,7 @@ export default function CreateTeamModal({
             style={{ willChange: "transform, opacity" }}
             onSubmit={handleSubmit}
             onClick={(event) => event.stopPropagation()}
-            className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg transform-gpu flex-col overflow-hidden rounded-2xl border border-white/10 bg-card shadow-[0_24px_70px_rgba(0,0,0,0.5)]"
+            className="arena-dialog flex max-h-[calc(100vh-2rem)] w-full max-w-lg transform-gpu flex-col overflow-hidden rounded-2xl border border-white/10 bg-card shadow-[0_24px_70px_rgba(0,0,0,0.5)]"
           >
         <div className="flex shrink-0 items-center justify-between border-b border-white/5 bg-card px-6 py-4">
           <div>

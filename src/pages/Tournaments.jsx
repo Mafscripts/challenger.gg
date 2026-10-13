@@ -679,15 +679,15 @@ export default function Tournaments() {
             <p className="text-sm font-black text-white">Browse tournaments</p>
             <p className="mt-0.5 text-[11px] text-vapor">{filteredTournaments.length} official event{filteredTournaments.length === 1 ? "" : "s"} available</p>
           </div>
-          <div className="tournaments-filter-group flex items-center gap-1 overflow-x-auto rounded-lg border border-white/[0.055] bg-background/35 p-1">
+          <div className="arena-tabs tournaments-filter-group flex items-center">
             {["All", "Open", "Registration", "In Progress", "Completed"].map((item) => (
               <button
                 key={item}
                 type="button"
                 aria-pressed={filter === item}
                 onClick={() => setFilter(item)}
-                className={`whitespace-nowrap rounded-md px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-all ${
-                  filter === item ? "bg-white/[0.09] text-white shadow-sm" : "text-vapor hover:bg-white/[0.04] hover:text-white"
+                className={`arena-tab whitespace-nowrap px-3 py-2 text-xs font-bold transition-colors ${
+                  filter === item ? "text-cyan" : "text-vapor"
                 }`}
               >
                 {item}
@@ -821,7 +821,7 @@ export default function Tournaments() {
               )}
 
               {selectedTournament && (
-                <div className="tournament-detail-tabs overflow-x-auto rounded-xl border border-white/[0.06] bg-card/45 px-2">
+                <div className="arena-tabs tournament-detail-tabs">
                   <div className="flex min-w-max items-center" role="tablist" aria-label="Tournament sections">
                     {[
                       ["overview", "Overview"],
@@ -836,7 +836,7 @@ export default function Tournaments() {
                         role="tab"
                         aria-selected={tournamentTab === value}
                         onClick={() => setTournamentTab(value)}
-                        className={`relative min-h-12 px-4 text-xs font-black transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full ${tournamentTab === value ? "text-primary after:bg-primary" : "text-vapor after:bg-transparent hover:text-white"}`}
+                        className="arena-tab relative min-h-12 px-4 text-xs font-black transition-colors"
                       >
                         {label}
                       </button>

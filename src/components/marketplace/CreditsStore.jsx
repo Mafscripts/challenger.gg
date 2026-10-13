@@ -18,7 +18,7 @@ function CreditPackageArtwork({ credits }) {
       <div className="absolute left-[29%] top-[30%] h-12 w-12 -rotate-12 rounded-full border border-yellow-200/15 bg-yellow-400/10" />
       <div className="absolute right-[27%] top-[38%] h-12 w-12 rotate-12 rounded-full border border-yellow-200/15 bg-yellow-400/10" />
       <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-yellow-200/50 bg-gradient-to-br from-yellow-200 via-yellow-400 to-amber-600 shadow-[0_0_28px_rgba(250,204,21,0.22)]">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-black/20 bg-[#15191f] shadow-inner">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-black/20 bg-[var(--arena-inset)] shadow-inner">
           <img src="/topfragg-mark.svg" alt="" className="h-8 w-8 object-contain" />
         </div>
       </div>

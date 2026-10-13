@@ -169,33 +169,33 @@ export default function Wallet() {
 
         {/* Tabs */}
         <div className="glass rounded-xl border border-white/5 overflow-hidden mb-6">
-          <div className="flex border-b border-white/5">
+          <div className="arena-tabs mx-3 mt-3 flex" aria-label="Wallet sections">
             <button
-              onClick={() => setActiveTab("overview")}
-              className={`flex-1 px-6 py-4 text-sm font-bold uppercase tracking-wider transition-all ${
+              aria-pressed={activeTab === "overview"} onClick={() => setActiveTab("overview")}
+              className={`arena-tab flex-1 px-3 py-3 text-xs font-bold transition-colors ${
                 activeTab === "overview"
-                  ? "bg-cyan/10 text-cyan border-b-2 border-cyan"
-                  : "text-vapor hover:bg-secondary/50"
+                  ? "text-cyan"
+                  : "text-vapor"
               }`}
             >
               Overview
             </button>
             <button
-              onClick={() => setActiveTab("transactions")}
-              className={`flex-1 px-6 py-4 text-sm font-bold uppercase tracking-wider transition-all ${
+              aria-pressed={activeTab === "transactions"} onClick={() => setActiveTab("transactions")}
+              className={`arena-tab flex-1 px-3 py-3 text-xs font-bold transition-colors ${
                 activeTab === "transactions"
-                  ? "bg-cyan/10 text-cyan border-b-2 border-cyan"
-                  : "text-vapor hover:bg-secondary/50"
+                  ? "text-cyan"
+                  : "text-vapor"
               }`}
             >
               Transaction History
             </button>
             <button
-              onClick={() => setActiveTab("wagers")}
-              className={`flex-1 px-6 py-4 text-sm font-bold uppercase tracking-wider transition-all ${
+              aria-pressed={activeTab === "wagers"} onClick={() => setActiveTab("wagers")}
+              className={`arena-tab flex-1 px-3 py-3 text-xs font-bold transition-colors ${
                 activeTab === "wagers"
-                  ? "bg-cyan/10 text-cyan border-b-2 border-cyan"
-                  : "text-vapor hover:bg-secondary/50"
+                  ? "text-cyan"
+                  : "text-vapor"
               }`}
             >
               Wager History

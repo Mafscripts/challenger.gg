@@ -6,9 +6,9 @@ import { DEFAULT_EIGHTS_GAMES, eightsGameId } from "@/lib/freeEightsGames";
 
 export default function FreeEightsMatchHeader({ match, actions }) {
   return (
-    <div className="relative overflow-hidden bg-[#0b1016]">
+    <div className="relative overflow-hidden bg-background">
       <img src="/assets/competition/free-eights-elo-header.webp" alt="Free 8s ELO" width={2172} height={724} className="block h-auto w-full" />
-      <div className="flex flex-col gap-4 border-t border-white/[0.08] bg-[#0d131a]/95 p-4 sm:p-5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:flex-row lg:items-center lg:justify-between lg:gap-5 lg:py-3">
+      <div className="flex flex-col gap-4 border-t border-white/[0.08] bg-background/95 p-4 sm:p-5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:flex-row lg:items-center lg:justify-between lg:gap-5 lg:py-3">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-cyan"><Shield className="h-3 w-3 shrink-0" aria-hidden="true" /><FreeEightsGameName game={match.game_config || DEFAULT_EIGHTS_GAMES.find((game) => game.id === eightsGameId(match))} prefix="Free 8s " /> match room</p>
           <h1 className="mt-1 text-xl font-black leading-tight text-white sm:text-2xl">Team Alpha <span className="text-vapor">vs</span> Team Bravo</h1>

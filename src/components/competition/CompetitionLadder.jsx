@@ -173,7 +173,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
         </div>
       </section>
 
-      <nav className="grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 lg:grid-cols-6">
+      <nav className="arena-tabs grid sm:grid-cols-2 lg:grid-cols-6" aria-label="Competition modes">
         {navigation.map(({ key, label, to, icon: Icon }) => {
           const active = key === mode;
           return (
@@ -181,7 +181,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
               key={key}
               to={to}
               aria-current={active ? "page" : undefined}
-              className={`relative flex min-h-14 items-center justify-center gap-2 border-b border-white/[0.06] px-4 py-4 text-xs font-black transition-colors sm:border-r lg:border-b-0 ${active ? "bg-secondary text-white" : "text-vapor hover:bg-secondary/70 hover:text-white"}`}
+              className="arena-tab relative flex min-h-14 items-center justify-center gap-2 px-4 py-4 text-xs font-black transition-colors"
             >
               <Icon className={`h-4 w-4 ${active ? copy.accent : ""}`} /> {label}
               {active && <span className={`absolute inset-x-0 bottom-0 h-0.5 ${copy.line}`} />}

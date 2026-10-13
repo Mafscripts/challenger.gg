@@ -833,7 +833,7 @@ function TournamentMatchOverview({ match, tournament, isComplete }) {
   ];
 
   return (
-    <section aria-label="Tournament overview" className="match-room-overview-strip relative w-full overflow-hidden rounded-xl border border-white/10 bg-[#111923] p-4 shadow-[0_12px_36px_-20px_rgba(0,0,0,.7)]">
+    <section aria-label="Tournament overview" className="match-room-overview-strip relative w-full overflow-hidden rounded-xl border border-white/10 bg-[var(--arena-inset)] p-4 shadow-[0_12px_36px_-20px_rgba(0,0,0,.7)]">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-cyan/60 via-white/10 to-green/55" />
       <div className="min-w-0">
         <div className="flex items-center gap-2.5">

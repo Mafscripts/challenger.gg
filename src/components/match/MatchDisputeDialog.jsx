@@ -4,7 +4,7 @@ import { CheckCircle2, FileText, Flag, Link2, Loader2, ShieldAlert, Users } from
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { matchDisputeReasons, playerDisputeReasons, validateMatchDispute } from "@/lib/matchDisputes";
 
-const fieldClass = "w-full rounded-xl border border-white/10 bg-[#0b111b] px-3.5 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan/50 focus:ring-2 focus:ring-cyan/10 disabled:opacity-50";
+const fieldClass = "w-full rounded-xl border border-white/10 bg-[var(--arena-inset)] px-3.5 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan/50 focus:ring-2 focus:ring-cyan/10 disabled:opacity-50";
 
 function DisputeForm({ match, players, userId, submitting, onSubmit, onClose }) {
   const [reason, setReason] = useState("");
@@ -40,7 +40,7 @@ function DisputeForm({ match, players, userId, submitting, onSubmit, onClose }) 
 }
 
 export default function MatchDisputeDialog({ open, onOpenChange, match, players, userId, submitting, onSubmit }) {
-  return <Dialog open={open} onOpenChange={(value) => { if (!submitting) onOpenChange(value); }}><DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto border-white/10 bg-[#111925] p-5 text-white shadow-[0_30px_120px_rgba(0,0,0,.65)] sm:p-7" onEscapeKeyDown={(event) => { if (submitting) event.preventDefault(); }} onPointerDownOutside={(event) => { if (submitting) event.preventDefault(); }}>
+  return <Dialog open={open} onOpenChange={(value) => { if (!submitting) onOpenChange(value); }}><DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto border-white/10 bg-card p-5 text-white shadow-[0_30px_120px_rgba(0,0,0,.65)] sm:p-7" onEscapeKeyDown={(event) => { if (submitting) event.preventDefault(); }} onPointerDownOutside={(event) => { if (submitting) event.preventDefault(); }}>
     <div className="pr-7"><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange/25 bg-orange/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-orange"><ShieldAlert className="h-3.5 w-3.5" /> Match support</div><DialogTitle className="text-2xl font-black">Open a dispute</DialogTitle><DialogDescription className="mt-2 text-sm leading-6 text-slate-400">Tell us what happened so staff can review the right player and evidence.</DialogDescription></div>
     {open && <DisputeForm key={match.id} match={match} players={players} userId={userId} submitting={submitting} onSubmit={onSubmit} onClose={() => onOpenChange(false)} />}
   </DialogContent></Dialog>;

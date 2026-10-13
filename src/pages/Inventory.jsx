@@ -89,9 +89,9 @@ export default function Inventory() {
           {categories.map(c => (
             <button
               key={c}
-              onClick={() => setFilter(c)}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                filter === c ? "bg-cyan/10 text-cyan border border-cyan/20" : "bg-secondary text-vapor"
+              aria-pressed={filter === c} onClick={() => setFilter(c)}
+              className={`arena-tab px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                filter === c ? "text-cyan" : "bg-[var(--arena-pill)] text-vapor"
               }`}
             >{c}</button>
           ))}

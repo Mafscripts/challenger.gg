@@ -138,7 +138,7 @@ function LobbyOverviewCard({ match, isMoneyEights, joined, openSpots, entryFee, 
     );
   }
   return (
-    <div className="match-room-overview-strip relative overflow-hidden rounded-xl border border-white/[0.09] bg-[#0d131a] p-3 sm:p-4">
+    <div className="match-room-overview-strip relative overflow-hidden rounded-xl border border-white/[0.09] bg-[var(--arena-inset)] p-3 sm:p-4">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-cyan/60 via-white/10 to-orange/55" />
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex items-center gap-2.5 lg:min-w-48">
@@ -146,10 +146,10 @@ function LobbyOverviewCard({ match, isMoneyEights, joined, openSpots, entryFee, 
           <div><p className="text-[8px] font-black uppercase tracking-[0.18em] text-vapor">Lobby overview</p><p className="mt-0.5 text-base font-black">{match.game_mode_display || match.game_mode} · BO{match.best_of || 3}</p></div>
         </div>
         <div className="grid flex-1 grid-cols-2 gap-1.5 sm:grid-cols-4">
-          <div className="rounded-lg border border-white/[0.08] bg-[#151c25] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Format</p><p className="mt-0.5 text-xs font-black">Randomized 4v4</p></div>
-          <div className="rounded-lg border border-white/[0.08] bg-[#151c25] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Players</p><p className="mt-0.5 flex items-center gap-1 font-mono text-xs font-black text-cyan"><Users className="h-3 w-3" />{joined}/8</p></div>
-          <div className="rounded-lg border border-white/[0.08] bg-[#151c25] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Open spots</p><p className="mt-0.5 text-xs font-black">{openSpots}</p></div>
-          <div className="rounded-lg border border-white/[0.08] bg-[#151c25] px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Entry</p><p className={`mt-0.5 flex items-center gap-1 font-mono text-xs font-black ${isMoneyEights ? "text-green" : "text-vapor"}`}><DollarSign className="h-3 w-3" />{isMoneyEights ? formatMoney(entryFee) : "Free"}</p></div>
+          <div className="rounded-lg border border-white/[0.08] bg-secondary px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Format</p><p className="mt-0.5 text-xs font-black">Randomized 4v4</p></div>
+          <div className="rounded-lg border border-white/[0.08] bg-secondary px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Players</p><p className="mt-0.5 flex items-center gap-1 font-mono text-xs font-black text-cyan"><Users className="h-3 w-3" />{joined}/8</p></div>
+          <div className="rounded-lg border border-white/[0.08] bg-secondary px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Open spots</p><p className="mt-0.5 text-xs font-black">{openSpots}</p></div>
+          <div className="rounded-lg border border-white/[0.08] bg-secondary px-2.5 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Entry</p><p className={`mt-0.5 flex items-center gap-1 font-mono text-xs font-black ${isMoneyEights ? "text-green" : "text-vapor"}`}><DollarSign className="h-3 w-3" />{isMoneyEights ? formatMoney(entryFee) : "Free"}</p></div>
         </div>
         <div className={`rounded-lg border p-3 text-center lg:min-w-48 ${isMoneyEights ? "border-green/35 bg-green/[0.09] shadow-[0_12px_34px_-18px_rgba(0,255,150,.9)]" : "border-yellow-300/20 bg-yellow-300/[0.06]"}`}>
           <div className={`flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] ${isMoneyEights ? "text-green" : "text-yellow-300"}`}><Trophy className="h-3.5 w-3.5" />{isMoneyEights ? "Live prize pool" : "Monthly ladder prize"}</div>
@@ -695,7 +695,7 @@ function EightsMatchRoomView() {
         {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} voiceView={voiceView} />}
         {canEditTeams && <section className="m-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan/25 bg-cyan/[0.06] p-4 sm:m-4"><div><p className="text-xs font-black text-cyan">Admin team controls</p><p className="mt-1 text-xs text-vapor" role="status">{swapPlayer ? "Choose a player on the other team to swap, or select the same player to cancel." : "Drag a player onto someone on the other team to swap. You can also select two players using their swap buttons."}</p><p className="mt-1 text-[10px] text-vapor">Admin changes override automatic balancing and update Discord team assignments.</p></div><button type="button" onClick={adminReshuffleTeams} disabled={adminBusy} className="inline-flex items-center gap-2 rounded-lg border border-cyan/30 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan disabled:opacity-50"><Shuffle className="h-4 w-4" />Random shuffle</button></section>}
         {!locked && !closedStatuses.has(match.status) && (
-          <section className="m-3 rounded-xl border border-purple-300/20 bg-[#171722] p-4 sm:m-4 sm:p-4">
+          <section className="m-3 rounded-xl border border-purple-300/20 bg-card p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Shuffle className="h-5 w-5" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-purple-300">Automatic team generator</p><p className="mt-1 font-black">{joined < 8 ? `Waiting for ${8 - joined} more ${8 - joined === 1 ? "player" : "players"}` : match.free_eights_waiting_for_voice ? "Waiting for all 8 players in Discord" : "Teams shuffled · veto window open"}</p></div></div>
               <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"><Users className="h-4 w-4 text-cyan" /><span className="font-mono font-black">{joined}/8</span>{countdown !== null && joined === 8 && <><span className="text-vapor">·</span><Clock3 className="h-4 w-4 text-yellow-300" /><span className="font-mono font-black text-yellow-300">{formatCountdown(countdown)}</span></>}</div>
