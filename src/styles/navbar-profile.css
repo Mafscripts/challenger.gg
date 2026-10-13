@@ -1,3 +1,20 @@
+.app-topbar-v2 .topbar-profile.topbar-account-button { display: flex; align-items: center; gap: 10px; height: 46px; padding: 4px 7px 4px 5px; border: 1px solid hsl(var(--cyan) / .16); border-radius: 12px; background: linear-gradient(125deg, #142b36, #101b25 65%); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / .055); transition: border-color 150ms ease, background-color 150ms ease; }
+.app-topbar-v2 .topbar-profile.topbar-account-button:hover, .app-topbar-v2 .topbar-profile.topbar-account-button.is-open { border-color: hsl(var(--cyan) / .4); background: linear-gradient(125deg, #163542, #12212d 65%); box-shadow: inset 0 1px 0 rgb(255 255 255 / .07); transform: none; }
+.app-topbar-v2 .topbar-account-button .topbar-account-avatar { position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px; overflow: hidden; border: 1px solid hsl(var(--cyan) / .25); border-radius: 9px; background: #081923; color: hsl(var(--cyan)); }
+.app-topbar-v2 .topbar-account-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.app-topbar-v2 .topbar-account-copy { display: flex; align-items: flex-start; flex-direction: column; gap: 4px; min-width: 58px; max-width: 110px; text-align: left; }
+.app-topbar-v2 .topbar-account-name { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; font-size: 15px; font-weight: 800; line-height: 1.1; }
+.app-topbar-v2 .topbar-account-role { display: flex; align-items: center; gap: 4px; color: hsl(var(--vapor)); font-size: 11px; font-weight: 700; line-height: 1; text-transform: capitalize; }
+.app-topbar-v2 .topbar-account-role[data-staff="true"] { color: hsl(var(--cyan)); text-transform: uppercase; }
+.app-topbar-v2 .topbar-account-role svg { flex-shrink: 0; }
+.app-topbar-v2 .topbar-account-chevron { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 28px; margin-left: 1px; border-left: 1px solid rgb(255 255 255 / .07); color: hsl(var(--vapor)); }
+.app-topbar-v2 .topbar-account-chevron svg { transition: transform 150ms ease; }
+.app-topbar-v2 .topbar-account-button.is-open .topbar-account-chevron { color: hsl(var(--cyan)); }
+.app-topbar-v2 .topbar-account-button.is-open .topbar-account-chevron svg { transform: rotate(180deg); }
+.app-topbar-v2 .topbar-account-button:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 2px; }
+@media (min-width: 1024px) and (max-width: 1535px) { .app-topbar-v2 .topbar-account-copy { max-width: 82px; } .app-topbar-v2 .topbar-account-name { font-size: 14px; } }
+@media (max-width: 1023px) { .app-topbar-v2 .topbar-account-copy { display: none; } .app-topbar-v2 .topbar-profile.topbar-account-button { gap: 5px; } }
+@media (prefers-reduced-motion: reduce) { .app-topbar-v2 .topbar-profile.topbar-account-button, .app-topbar-v2 .topbar-account-chevron svg { transition: none; } }
 .app-topbar-v2 .nav-popover.nav-profile-popover { display: flex; flex-direction: column; max-height: min(820px, calc(100dvh - 5rem)); overflow: hidden; padding: 0; background: linear-gradient(145deg, #12232f, #0c1721 48%, #0b141d); border-color: hsl(var(--cyan) / .18); box-shadow: 0 26px 70px rgb(0 0 0 / .5), inset 0 1px 0 rgb(255 255 255 / .05); isolation: isolate; }
 .nav-profile-popover .profile-menu-header { position: relative; display: flex; align-items: center; gap: 12px; flex-shrink: 0; padding: 18px 20px; border-bottom: 1px solid rgb(255 255 255 / .07); }
 .nav-profile-popover .profile-menu-header::before { content: ""; position: absolute; inset: 0 auto auto 20px; width: 44px; height: 2px; background: hsl(var(--cyan)); }

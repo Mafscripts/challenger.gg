@@ -416,6 +416,9 @@ export default function Navbar() {
   const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
   const accountName = user?.display_name || user?.full_name || user?.username || user?.email || "Account";
   const canSeeAdminLink = isStaffUser(user || authUser);
+  const accountRole = canSeeAdminLink
+    ? (staffRoles.has(user?.admin_role) ? user.admin_role : user?.role || "Staff").replaceAll("_", " ")
+    : "Player";
   const canSeeStreamerShortcut = isStreamerUser(user || authUser);
   const matchHistoryPath = "/my-matches?view=history";
 
@@ -1422,20 +1425,21 @@ export default function Navbar() {
                     setNotifOpen(false);
                     setMessagesOpen(false);
                   }}
-                  className={`topbar-profile flex h-11 items-center gap-2.5 rounded-xl border py-1 pl-1 pr-2 transition-colors ${profileOpen ? "is-open" : ""}`}
-                  aria-label="Open account menu"
+                  className={`topbar-profile topbar-account-button ${profileOpen ? "is-open" : ""}`}
+                  aria-label={`Open account menu for ${accountName}`}
+                  title={`${accountName} · ${accountRole}`}
                   aria-expanded={profileOpen}
                   aria-controls="nav-account-menu"
                 >
-                  <div className="topbar-avatar relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg">
-                    <User className="h-3.5 w-3.5" />
-                    {profileAvatar && <img src={profileAvatar} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
-                  </div>
-                  <span className="hidden max-w-[110px] text-left lg:block">
-                    <span className="truncate text-xs font-black text-foreground">{accountName}</span>
-                    <span className="topbar-role block text-[8px] font-black uppercase tracking-[0.12em]">{canSeeAdminLink ? (user?.role || "Staff").replace("_", " ") : "Competitor"}</span>
+                  <span className="topbar-avatar topbar-account-avatar" aria-hidden="true">
+                    <User size={18} />
+                    {profileAvatar && <img key={profileAvatar} src={profileAvatar} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
                   </span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-vapor transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+                  <span className="topbar-account-copy">
+                    <span className="topbar-account-name">{accountName}</span>
+                    <span className="topbar-account-role" data-staff={canSeeAdminLink}>{canSeeAdminLink && <ShieldCheck size={11} aria-hidden="true" />}{accountRole}</span>
+                  </span>
+                  <span className="topbar-account-chevron" aria-hidden="true"><ChevronDown size={14} /></span>
                 </button>
 
                 {profileOpen && (
@@ -1443,7 +1447,7 @@ export default function Navbar() {
                       <header className="profile-menu-header">
                         <span className="profile-menu-avatar"><User size={20} />{profileAvatar && <img src={profileAvatar} alt="" onError={event => { event.currentTarget.style.display = "none"; }} />}</span>
                         <div className="profile-menu-identity"><p>Your Topfragg account</p><strong>{accountName}</strong></div>
-                        <span className="profile-menu-role">{canSeeAdminLink ? (user?.role || "Staff").replaceAll("_", " ") : "Player"}</span>
+                        <span className="profile-menu-role">{accountRole}</span>
                       </header>
                       <div className="profile-menu-scroll">
                       <div>
