@@ -2,6 +2,9 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
+  ArrowLeft,
+  ChevronDown,
+  LockKeyhole,
   Mail,
   MessageSquare,
   Plus,
@@ -14,8 +17,8 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
-import PageHeader from "@/components/ui/PageHeader";
 import PageLoader from "@/components/ui/PageLoader";
+import "@/styles/messages.css";
 
 const initials = (name) => String(name || "Player").trim().slice(0, 1).toUpperCase();
 const messageTime = (value) => value
@@ -24,13 +27,31 @@ const messageTime = (value) => value
 const messageDate = (value) => value
   ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric" })
   : "";
+const messageDay = value => {
+  const date = new Date(value || "");
+  return Number.isNaN(date.getTime()) ? "" : `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+};
+const messageDayLabel = value => {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return "Conversation";
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (messageDay(value) === messageDay(today)) return "Today";
+  if (messageDay(value) === messageDay(yesterday)) return "Yesterday";
+  return date.toLocaleDateString([], { weekday: "short", day: "numeric", month: "long", year: "numeric" });
+};
+const sameMessageGroup = (previous, current) => Boolean(previous && current
+  && previous.sender_id === current.sender_id && messageDay(previous.created_date) === messageDay(current.created_date)
+  && new Date(current.created_date) - new Date(previous.created_date) <= 5 * 60 * 1000);
 
 function PlayerAvatar({ player, size = "md" }) {
-  const dimensions = size === "lg" ? "h-12 w-12" : "h-10 w-10";
+  const [failedAvatar, setFailedAvatar] = useState("");
+  const dimensions = size === "lg" ? "h-12 w-12" : size === "sm" ? "h-7 w-7" : "h-10 w-10";
   return (
     <div className={`${dimensions} shrink-0 overflow-hidden rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 to-orange/10 flex items-center justify-center font-black text-cyan`}>
-      {player?.avatar_url ? (
-        <img src={player.avatar_url} alt="" className="h-full w-full object-cover" />
+      {player?.avatar_url && player.avatar_url !== failedAvatar ? (
+        <img src={player.avatar_url} alt="" onError={() => setFailedAvatar(player.avatar_url)} className="h-full w-full object-cover" />
       ) : initials(player?.name)}
     </div>
   );
@@ -64,10 +85,16 @@ export default function Messages() {
   const [playerQuery, setPlayerQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [conversationQuery, setConversationQuery] = useState("");
+  const [mobileChatOpen, setMobileChatOpen] = useState(Boolean(searchParams.get("conversation")));
+  const [desktopView, setDesktopView] = useState(() => window.matchMedia("(min-width: 768px)").matches);
+  const [atLatest, setAtLatest] = useState(true);
   const requestedPlayerId = searchParams.get("compose") || searchParams.get("conversation") || "";
   const chatEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const displayedChatRef = useRef(null);
+  const composerRef = useRef(null);
+  const followingChatRef = useRef(true);
   const activePlayerIdRef = useRef(activePlayerId);
   const directMessagesLoadingRef = useRef(false);
 
@@ -78,6 +105,12 @@ export default function Messages() {
   useEffect(() => {
     activePlayerIdRef.current = activePlayerId;
   }, [activePlayerId]);
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setDesktopView(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   const loadInvitations = async (userId) => {
     const rows = await base44.entities.Message.filterFresh({ recipient_id: userId }, "-created_date", 100).catch(() => []);
@@ -137,6 +170,7 @@ export default function Messages() {
         setPlayers(current => ({ ...current, [player.id]: player }));
         setActivePlayerId(player.id);
         setActiveInvitation(null);
+        setMobileChatOpen(true);
         setComposerOpen(false);
         if (searchParams.has("compose")) setSearchParams({ conversation: player.id }, { replace: true });
       })
@@ -191,15 +225,23 @@ export default function Messages() {
     ));
   }, [currentUser?.id, directMessages]);
 
+  const visibleConversations = conversations.filter(conversation => {
+    const player = players[conversation.playerId];
+    const fallbackName = conversation.lastMessage.sender_id === currentUser?.id ? conversation.lastMessage.recipient_name : conversation.lastMessage.sender_name;
+    return [player?.name, player?.handle, player?.username, fallbackName]
+      .filter(Boolean).some(value => String(value).toLowerCase().includes(conversationQuery.trim().toLowerCase()));
+  });
+  const unreadCount = conversations.reduce((total, conversation) => total + conversation.unread, 0);
   const activeMessages = useMemo(() => directMessages.filter(message => (
     currentUser?.id && activePlayerId
     && [message.sender_id, message.recipient_id].includes(currentUser.id)
     && [message.sender_id, message.recipient_id].includes(activePlayerId)
-  )), [activePlayerId, currentUser?.id, directMessages]);
+  )).sort((a, b) => (Date.parse(a.created_date) || 0) - (Date.parse(b.created_date) || 0)), [activePlayerId, currentUser?.id, directMessages]);
   const activePlayer = players[activePlayerId] || null;
+  const latestMessage = activeMessages[activeMessages.length - 1];
 
   useEffect(() => {
-    if (!activePlayerId || !currentUser?.id) return;
+    if (activeInvitation || !activePlayerId || !currentUser?.id || (!desktopView && !mobileChatOpen)) return;
     const unreadIds = activeMessages
       .filter(message => message.recipient_id === currentUser.id && !message.is_read)
       .map(message => message.id);
@@ -214,11 +256,11 @@ export default function Messages() {
         window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
       })
       .catch(() => null);
-  }, [activePlayerId, activeMessages.length, currentUser?.id]);
+  }, [activeInvitation, activePlayerId, activeMessages.length, currentUser?.id, desktopView, mobileChatOpen]);
 
   useLayoutEffect(() => {
     const chat = chatScrollRef.current;
-    if (!chat) {
+    if (!chat || (!desktopView && !mobileChatOpen)) {
       displayedChatRef.current = null;
       return;
     }
@@ -226,15 +268,28 @@ export default function Messages() {
     const openingConversation = displayedChatRef.current?.element !== chat
       || displayedChatRef.current?.playerId !== activePlayerId;
     // Position a newly opened conversation before paint; animate only later messages.
-    if (openingConversation) chat.scrollTop = chat.scrollHeight;
-    else chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
-    displayedChatRef.current = { element: chat, playerId: activePlayerId };
-  }, [loading, activePlayer?.id, activeMessages.length, activePlayerId]);
+    if (openingConversation) {
+      chat.scrollTop = chat.scrollHeight;
+      followingChatRef.current = true;
+      setAtLatest(true);
+    } else if (followingChatRef.current || (latestMessage?.sender_id === currentUser?.id && latestMessage?.id !== displayedChatRef.current?.lastMessageId)) {
+      chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+    }
+    displayedChatRef.current = { element: chat, playerId: activePlayerId, lastMessageId: latestMessage?.id };
+  }, [loading, activeInvitation?.id, activePlayer?.id, activePlayerId, currentUser?.id, latestMessage?.id, latestMessage?.sender_id, desktopView, mobileChatOpen]);
+
+  useLayoutEffect(() => {
+    if (!composerRef.current) return;
+    composerRef.current.style.height = "auto";
+    composerRef.current.style.height = `${Math.min(composerRef.current.scrollHeight, 120)}px`;
+    if (followingChatRef.current && chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [draft, activeInvitation?.id, activePlayerId, activePlayer?.id, desktopView, mobileChatOpen]);
 
   const selectPlayer = (player) => {
     setPlayers(current => ({ ...current, [player.id]: player }));
     setActivePlayerId(player.id);
     setActiveInvitation(null);
+    setMobileChatOpen(true);
     setComposerOpen(false);
     setPlayerQuery("");
     setSearchParams({ conversation: player.id }, { replace: true });
@@ -243,6 +298,7 @@ export default function Messages() {
   const selectInvitation = async (invitation) => {
     setActiveInvitation(invitation);
     setActivePlayerId("");
+    setMobileChatOpen(true);
     setSearchParams({}, { replace: true });
     if (!invitation.is_read) {
       setInvitations(current => current.map(item => (
@@ -280,202 +336,84 @@ export default function Messages() {
   }
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="messages-page min-h-screen py-6">
       <div className="mx-auto max-w-[1450px] px-4 lg:px-6">
-        <PageHeader
-          eyebrow="Private communications"
-          title="Messages"
-          description="Chat privately with other Topfragg players."
-          action={<button
-            type="button"
-            onClick={() => setComposerOpen(true)}
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-blue-500 px-5 text-xs font-black uppercase tracking-wider text-white transition-all hover:-translate-y-0.5 hover:bg-blue-400"
-          >
-            <Plus className="h-4 w-4" /> New message
-          </button>}
-        />
+        <header className="messages-page-heading">
+          <span className="messages-page-mark" aria-hidden="true"><MessageSquare size={24} /></span>
+          <div><p>Your private inbox</p><h1>Messages</h1></div>
+          <div className="messages-page-actions">
+            {unreadCount > 0 && <span className="messages-unread-summary">{unreadCount} unread</span>}
+            <button type="button" onClick={() => setComposerOpen(true)} className="messages-new-button"><Plus size={15} />New message</button>
+          </div>
+        </header>
 
-        <div className="grid overflow-hidden rounded-2xl border border-white/10 bg-card lg:h-[calc(100dvh-13rem)] lg:min-h-[560px] lg:max-h-[760px] lg:grid-cols-[340px_minmax(0,1fr)]">
-          <aside className="border-b border-white/10 bg-background/25 lg:border-b-0 lg:border-r">
-            <div className="border-b border-white/10 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-vapor">Conversations</p>
-            </div>
-
-            {invitations.length > 0 && (
-              <div className="border-b border-white/10 p-3">
-                <p className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-orange">Tournament invites</p>
-                {invitations.slice(0, 3).map(invite => (
-                  <button
-                    key={invite.id}
-                    type="button"
-                    onClick={() => selectInvitation(invite)}
-                    className={`mb-1 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${activeInvitation?.id === invite.id ? "border-orange/35 bg-orange/15" : "border-orange/15 bg-orange/5 hover:bg-orange/10"}`}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange/10 text-orange"><Trophy className="h-4 w-4" /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-bold">{invite.subject || "Tournament invitation"}</span>
-                      <span className="block truncate text-[10px] text-vapor">Read full invitation</span>
-                    </span>
-                    {!invite.is_read && <span className="h-2 w-2 shrink-0 rounded-full bg-orange" />}
-                    <ArrowRight className="h-3.5 w-3.5 text-vapor" />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="max-h-[580px] overflow-y-auto p-2">
-              {conversations.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <Mail className="mx-auto mb-3 h-9 w-9 text-vapor/30" />
-                  <p className="text-sm font-bold">No conversations yet</p>
-                  <button onClick={() => setComposerOpen(true)} className="mt-2 text-xs font-bold text-cyan hover:underline">Message a player</button>
-                </div>
-              ) : conversations.map(conversation => {
-                const player = players[conversation.playerId];
-                const selected = activePlayerId === conversation.playerId;
-                return (
-                  <button
-                    key={conversation.playerId}
-                    type="button"
-                    onClick={() => selectPlayer(player || { id: conversation.playerId, name: conversation.lastMessage.sender_name })}
-                    className={`mb-1 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selected ? "border-cyan/30 bg-cyan/10" : "border-transparent hover:bg-white/[0.04]"}`}
-                  >
-                    <PlayerAvatar player={player || { name: conversation.lastMessage.sender_name }} />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <PlayerName
-                            player={player || { name: conversation.lastMessage.sender_name }}
-                            className="truncate text-sm font-black"
-                          />
-                          <UserBadges user={player} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" className="shrink-0" />
-                        </span>
-                        <span className="text-[9px] text-vapor">{messageDate(conversation.lastMessage.created_date)}</span>
-                      </span>
-                      <span className="mt-1 flex items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate text-xs text-vapor">{conversation.lastMessage.sender_id === currentUser.id ? "You: " : ""}{conversation.lastMessage.content}</span>
-                        {conversation.unread > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan px-1.5 text-[9px] font-black text-background">{conversation.unread}</span>}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+        <div className="messages-workspace" data-thread-open={mobileChatOpen}>
+          <aside className="messages-sidebar">
+            <div className="messages-sidebar-heading"><h2>Inbox<span>{conversations.length}</span></h2><button type="button" aria-label="Start a new conversation" onClick={() => setComposerOpen(true)}><Plus size={16} /></button></div>
+            <label className="messages-conversation-search"><Search size={14} aria-hidden="true" /><input value={conversationQuery} onChange={event => setConversationQuery(event.target.value)} placeholder="Search conversations…" aria-label="Search your conversations" /></label>
+            <div className="messages-sidebar-scroll">
+              {invitations.length > 0 && <div className="messages-invitations">
+                <p className="messages-list-label">Tournament invitations<span>{invitations.length}</span></p>
+                {invitations.slice(0, 3).map(invite => <button key={invite.id} type="button" onClick={() => selectInvitation(invite)} className="messages-invitation-link" data-selected={activeInvitation?.id === invite.id}>
+                  <span className="messages-invitation-icon"><Trophy size={16} /></span><span className="messages-invitation-copy"><strong>{invite.subject || "Tournament invitation"}</strong><small>View invitation</small></span>{!invite.is_read && <span className="messages-invitation-dot" />}<ArrowRight size={13} />
+                </button>)}
+              </div>}
+              <p className="messages-list-label">Conversations</p>
+              {conversations.length === 0 ? <div className="messages-sidebar-empty"><Mail size={28} /><strong>Your inbox starts here.</strong><button type="button" onClick={() => setComposerOpen(true)}>Message a player</button></div>
+                : visibleConversations.length === 0 ? <div className="messages-sidebar-empty"><Search size={24} /><strong>No matching conversations.</strong><button type="button" onClick={() => setConversationQuery("")}>Clear search</button></div>
+                  : visibleConversations.map(conversation => {
+                    const player = players[conversation.playerId] || { id: conversation.playerId, name: conversation.lastMessage.sender_id === currentUser.id ? conversation.lastMessage.recipient_name : conversation.lastMessage.sender_name };
+                    return <button key={conversation.playerId} type="button" onClick={() => selectPlayer(player)} className="messages-conversation-link" data-selected={activePlayerId === conversation.playerId && !activeInvitation}>
+                      <PlayerAvatar player={player} /><span className="messages-conversation-copy"><span className="messages-conversation-name"><PlayerName player={player} /><UserBadges user={player} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /><time dateTime={conversation.lastMessage.created_date}>{messageDate(conversation.lastMessage.created_date)}</time></span><span className="messages-conversation-preview"><span>{conversation.lastMessage.sender_id === currentUser.id ? "You: " : ""}{conversation.lastMessage.content}</span>{conversation.unread > 0 && <span className="messages-unread-pill">{conversation.unread}</span>}</span></span>
+                    </button>;
+                  })}
             </div>
           </aside>
 
-          <section className="flex h-[620px] min-h-0 min-w-0 flex-col lg:h-auto">
-            {activeInvitation ? (
-              <div className="flex min-h-[620px] flex-1 flex-col">
-                <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-orange/25 bg-orange/10 text-orange">
-                    <Trophy className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange">Tournament invitation</p>
-                    <p className="mt-1 truncate text-base font-black">TopFragg Tournaments</p>
-                  </div>
-                  <span className="text-[10px] text-vapor">{messageDate(activeInvitation.created_date)}</span>
-                </div>
-
-                <div className="flex flex-1 items-start justify-center overflow-y-auto bg-background/15 p-5 sm:p-10">
-                  <article className="w-full max-w-3xl overflow-hidden rounded-2xl border border-orange/20 bg-card shadow-[0_24px_70px_rgba(0,0,0,.25)]">
-                    <div className="border-b border-white/10 bg-gradient-to-r from-orange/10 via-transparent to-cyan/5 p-6 sm:p-8">
-                      <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-orange">You are invited to compete</p>
-                      <h2 className="break-words text-2xl font-black leading-tight sm:text-3xl">
-                        {activeInvitation.subject || "Tournament invitation"}
-                      </h2>
-                    </div>
-                    <div className="p-6 sm:p-8">
-                      <p className="whitespace-pre-wrap break-words text-sm leading-7 text-white/75">
-                        {activeInvitation.content || "You have received an invitation to join this tournament."}
-                      </p>
-                      <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-white/10 pt-6">
-                        <Link
-                          to={activeInvitation.action_url || "/tournaments"}
-                          className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange px-5 text-xs font-black uppercase tracking-wider text-background transition-transform hover:-translate-y-0.5"
-                        >
-                          View tournament <ArrowRight className="h-4 w-4" />
-                        </Link>
-                        <span className="text-xs text-vapor">Received {new Date(activeInvitation.created_date).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </article>
-                </div>
-              </div>
-            ) : activePlayer ? (
-              <>
-                <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
-                  <PlayerAvatar player={activePlayer} size="lg" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <PlayerName player={activePlayer} className="truncate text-base font-black" />
-                      <UserBadges user={activePlayer} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" className="shrink-0" />
-                    </div>
-                    <p className="truncate text-xs text-vapor">@{activePlayer.handle || activePlayer.username || "player"}</p>
-                  </div>
-                  <Link to={`/profile/${activePlayer.username || activePlayer.id}`} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:border-cyan/25 hover:text-cyan">
-                    View profile
-                  </Link>
-                </div>
-
-                <div key={activePlayerId} ref={chatScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-auto bg-background/15 px-4 py-6 sm:px-7">
-                  {activeMessages.length === 0 && (
-                    <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
-                      <PlayerAvatar player={activePlayer} size="lg" />
-                      <h2 className="mt-4 text-xl font-black">Start a conversation</h2>
-                      <p className="mt-1 max-w-sm text-sm text-vapor">Send {activePlayer.name} a private message.</p>
-                    </div>
-                  )}
-                  <div className="space-y-3">
-                    {activeMessages.map(message => {
+          <section className="messages-thread">
+            {activeInvitation ? <>
+              <header className="messages-thread-heading"><button type="button" onClick={() => setMobileChatOpen(false)} className="messages-back" aria-label="Back to conversations"><ArrowLeft size={18} /></button><span className="messages-invitation-avatar"><Trophy size={21} /></span><div className="messages-thread-identity"><strong>Topfragg Tournaments</strong><p>Tournament invitation</p></div><time className="messages-thread-date" dateTime={activeInvitation.created_date}>{messageDate(activeInvitation.created_date)}</time></header>
+              <div className="messages-invitation-body"><article><p className="messages-invitation-eyebrow">You're invited to compete</p><h2>{activeInvitation.subject || "Tournament invitation"}</h2><p className="messages-invitation-content">{activeInvitation.content || "You have received an invitation to join this tournament."}</p><div><Link to={activeInvitation.action_url || "/tournaments"} className="messages-new-button">View tournament<ArrowRight size={14} /></Link><small>Received {new Date(activeInvitation.created_date).toLocaleString()}</small></div></article></div>
+            </> : activePlayer ? <>
+              <header className="messages-thread-heading">
+                <button type="button" onClick={() => setMobileChatOpen(false)} className="messages-back" aria-label="Back to conversations"><ArrowLeft size={18} /></button>
+                <PlayerAvatar player={activePlayer} />
+                <div className="messages-thread-identity"><div><PlayerName player={activePlayer} /><UserBadges user={activePlayer} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></div><p>@{activePlayer.handle || activePlayer.username || "player"}</p></div>
+                <Link to={`/profile/${activePlayer.username || activePlayer.id}`} className="messages-profile-link"><User size={13} /><span>View profile</span><ArrowRight size={12} /></Link>
+              </header>
+              <div className="messages-chat-region">
+                <div key={activePlayerId} ref={chatScrollRef} className="messages-chat-scroll scroll-auto" onScroll={event => { const chat = event.currentTarget; const following = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 96; followingChatRef.current = following; setAtLatest(following); }}>
+                  {activeMessages.length === 0 ? <div className="messages-chat-empty"><PlayerAvatar player={activePlayer} size="lg" /><h2>Say hello to <PlayerName player={activePlayer} />.</h2><p>Send the first message to start your conversation.</p></div> : <div className="messages-feed">
+                    {activeMessages.map((message, index) => {
                       const own = message.sender_id === currentUser.id;
-                      return (
-                        <div key={message.id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
-                          <div className={`max-w-[78%] rounded-2xl px-4 py-3 ${own ? "rounded-br-md bg-cyan text-background" : "rounded-bl-md border border-white/10 bg-secondary"}`}>
-                            <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.content}</p>
-                            <p className={`mt-1 text-right text-[9px] ${own ? "text-background/60" : "text-vapor"}`}>{messageTime(message.created_date)}</p>
+                      const grouped = sameMessageGroup(activeMessages[index - 1], message);
+                      const endGroup = !sameMessageGroup(message, activeMessages[index + 1]);
+                      const newDay = index === 0 || messageDay(message.created_date) !== messageDay(activeMessages[index - 1].created_date);
+                      return <React.Fragment key={message.id}>
+                        {newDay && <div className="messages-day-divider"><span>{messageDayLabel(message.created_date)}</span></div>}
+                        <div className="messages-message-row" data-own={own} data-grouped={grouped}>
+                          {!own && <span className="messages-message-avatar">{!grouped && <PlayerAvatar player={activePlayer} size="sm" />}</span>}
+                          <div className="messages-message-stack">
+                            {!grouped && <span className="messages-message-sender">{own ? "You" : activePlayer.name}</span>}
+                            <div className="messages-bubble" title={message.created_date ? new Date(message.created_date).toLocaleString() : undefined}><p>{message.content}</p></div>
+                            {endGroup && <time className="messages-message-time" dateTime={message.created_date}>{messageTime(message.created_date)}</time>}
                           </div>
                         </div>
-                      );
+                      </React.Fragment>;
                     })}
                     <div ref={chatEndRef} />
-                  </div>
+                  </div>}
                 </div>
-
-                <form onSubmit={sendMessage} className="border-t border-white/10 p-4">
-                  <div className="flex items-end gap-2 rounded-xl border border-white/10 bg-background/45 p-2 focus-within:border-cyan/30">
-                    <textarea
-                      value={draft}
-                      onChange={event => setDraft(event.target.value.slice(0, 1000))}
-                      onKeyDown={event => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          sendMessage(event);
-                        }
-                      }}
-                      rows={1}
-                      placeholder={`Message ${activePlayer.name}...`}
-                      className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-vapor/60"
-                    />
-                    <button disabled={!draft.trim() || sending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan text-background disabled:opacity-40">
-                      <Send className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p className="mt-2 text-right text-[9px] text-vapor">{draft.length}/1000</p>
-                </form>
-              </>
-            ) : (
-              <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-                <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-cyan/20 bg-cyan/10"><MessageSquare className="h-9 w-9 text-cyan" /></span>
-                <h2 className="mt-5 text-2xl font-black">Your private inbox</h2>
-                <p className="mt-2 max-w-md text-sm text-vapor">Select a conversation or find a player to send your first message.</p>
-                <button onClick={() => setComposerOpen(true)} className="mt-5 rounded-xl bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background">New message</button>
+                {!atLatest && <button type="button" className="messages-jump-latest" onClick={() => { const chat = chatScrollRef.current; if (chat) chat.scrollTop = chat.scrollHeight; followingChatRef.current = true; setAtLatest(true); }}>Latest messages<ChevronDown size={14} /></button>}
               </div>
-            )}
+              <form onSubmit={sendMessage} className="messages-composer">
+                <div className="messages-composer-field"><textarea ref={composerRef} value={draft} onChange={event => setDraft(event.target.value.slice(0, 1000))} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); sendMessage(event); } }} rows={1} placeholder={`Message ${activePlayer.name}…`} aria-label={`Message ${activePlayer.name}`} /><button type="submit" disabled={!draft.trim() || sending} aria-label={sending ? "Sending message" : "Send message"}><Send size={18} /></button></div>
+                <div className="messages-composer-meta"><span><LockKeyhole size={10} />Private conversation</span><span className="messages-keyboard-hint">Enter to send · Shift + Enter for a new line</span><span>{sending ? "Sending…" : `${draft.length}/1000`}</span></div>
+              </form>
+            </> : <div className="messages-inbox-empty"><span><MessageSquare size={32} /></span><h2>Your private inbox</h2><p>Select a conversation or find a player to send your first message.</p><button type="button" onClick={() => setComposerOpen(true)} className="messages-new-button"><Plus size={15} />New message</button></div>}
           </section>
         </div>
       </div>
-
       {composerOpen && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/75 p-4 pt-[12vh] backdrop-blur-sm" onMouseDown={() => setComposerOpen(false)}>
           <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl" onMouseDown={event => event.stopPropagation()}>
