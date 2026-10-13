@@ -1,28 +1,43 @@
 import React, { useEffect, useRef, useState } from "react";
 
 let scriptPromise;
+let scriptAttempt = 0;
 
 const loadTurnstile = () => {
-  if (window.turnstile) return new Promise((resolve) => window.turnstile.ready(() => resolve(window.turnstile)));
   if (scriptPromise) return scriptPromise;
+  if (typeof window.turnstile?.render === "function") return Promise.resolve(window.turnstile);
   scriptPromise = new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    script.async = true;
-    const fail = () => {
+    const callbackName = `topfraggTurnstileLoaded${++scriptAttempt}`;
+    let settled = false;
+    const cleanUp = () => {
       window.clearTimeout(timeout);
+      script.onload = null;
+      script.onerror = null;
+      delete window[callbackName];
+    };
+    const complete = () => {
+      if (settled || typeof window.turnstile?.render !== "function") return;
+      settled = true;
+      cleanUp();
+      resolve(window.turnstile);
+    };
+    script.src = `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=${callbackName}`;
+    script.async = true;
+    const fail = (message) => {
+      if (settled) return;
+      settled = true;
+      cleanUp();
       script.remove();
       scriptPromise = null;
-      reject(new Error("Security check could not load"));
+      reject(new Error(message));
     };
-    const timeout = window.setTimeout(fail, 20000);
-    script.onerror = fail;
+    const timeout = window.setTimeout(() => fail("Cloudflare script did not become ready within 20 seconds"), 20000);
+    window[callbackName] = complete;
+    script.onerror = () => fail("Cloudflare script could not load; check the browser console for blocked requests");
     script.onload = () => {
-      if (!window.turnstile) return fail();
-      window.turnstile.ready(() => {
-        window.clearTimeout(timeout);
-        resolve(window.turnstile);
-      });
+      complete();
+      if (!settled) fail("Cloudflare script loaded without the widget API");
     };
     document.head.appendChild(script);
   });
@@ -62,12 +77,16 @@ export default function TurnstileCheck({ siteKey, onTokenChange, resetKey }) {
         },
         "expired-callback": () => invalidate("loading"),
         "timeout-callback": () => invalidate("error"),
-        "error-callback": () => {
+        "error-callback": (errorCode) => {
+          console.warn("[Turnstile] Security check failed:", errorCode);
           invalidate("error");
           return true;
         },
       });
-    }).catch(() => invalidate("error"));
+    }).catch((error) => {
+      console.warn("[Turnstile] Widget could not start:", error.message);
+      invalidate("error");
+    });
     return () => {
       disposed = true;
       if (widgetId !== undefined) api.remove(widgetId);
