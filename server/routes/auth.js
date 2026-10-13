@@ -17,6 +17,7 @@ import { isEmailConfigured, sendPasswordResetEmail, sendVerificationEmail } from
 import { evaluateAccess, requestIpAddress } from "../ban-enforcement.js";
 import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
 import { getAnimatedNameFreeTrial } from "../freeTrial.js";
+import { registrationSecurityConfig, verifyRegistrationTurnstile } from "../turnstile.js";
 
 const router = Router();
 const VERIFICATION_TTL_MS = 10 * 60 * 1000;
@@ -211,6 +212,7 @@ export const registerHandler = async (req, res, next) => {
       return res.status(503).json({ error: "Email verification is not configured" });
     }
     const payload = req.body || {};
+    await verifyRegistrationTurnstile(req, access.ip);
     let user = await createUserWithPassword(payload);
     const referralCode = normalizeReferralCode(payload.referral_code || payload.referralCode);
     if (referralCode) {
@@ -234,6 +236,15 @@ export const registerHandler = async (req, res, next) => {
 };
 
 router.post("/register", registerHandler);
+
+router.get("/registration-config", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  try {
+    res.json(registrationSecurityConfig());
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post("/login", async (req, res, next) => {
   try {

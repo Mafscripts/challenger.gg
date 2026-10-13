@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, UserPlus, Mail, Lock, Loader2, Gift } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import TurnstileCheck from "@/components/TurnstileCheck";
 
 const usernamePattern = /^[a-z0-9_]{3,20}$/;
 
@@ -19,11 +20,36 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [securityConfig, setSecurityConfig] = useState(null);
+  const [securityConfigError, setSecurityConfigError] = useState("");
+  const [securityConfigRetry, setSecurityConfigRetry] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
   const referralCode = String(searchParams.get("ref") || "").trim().toUpperCase();
+
+  useEffect(() => {
+    let active = true;
+    setSecurityConfigError("");
+    base44.auth.getRegistrationConfig().then((config) => {
+      if (!config || typeof config.turnstile_required !== "boolean"
+        || (config.turnstile_required && !config.turnstile_site_key)) {
+        throw new Error("Registration is temporarily unavailable. Please try again.");
+      }
+      if (active) setSecurityConfig(config);
+    }).catch((err) => {
+      if (active) setSecurityConfigError(err.message || "Registration is temporarily unavailable. Please try again.");
+    });
+    return () => { active = false; };
+  }, [securityConfigRetry]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError("");
+    if (!securityConfig || (securityConfig.turnstile_required && !turnstileToken)) {
+      setError("Please wait for the security check to finish before creating your account.");
+      return;
+    }
     const normalizedUsername = username.trim().toLowerCase();
     const cleanDisplayName = displayName.trim();
     if (!usernamePattern.test(normalizedUsername)) {
@@ -51,6 +77,7 @@ export default function Register() {
         email: normalizedEmail,
         password,
         referral_code: referralCode || undefined,
+        ...(securityConfig.turnstile_required ? { turnstile_token: turnstileToken } : {}),
       });
       if (result?.email_verification_required) {
         const verificationEmail = result.email || normalizedEmail;
@@ -64,6 +91,9 @@ export default function Register() {
     } catch (err) {
       setError(err.message || "Registration failed");
     } finally {
+      // Tokens can only be submitted once, including failed registrations.
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
       setLoading(false);
     }
   };
@@ -185,10 +215,20 @@ export default function Register() {
             />
           </div>
         </div>
+        {securityConfigError ? (
+          <div role="status" className="space-y-2 rounded-xl border border-cyan/20 bg-cyan/5 p-3 text-sm text-vapor">
+            <p>{securityConfigError}</p>
+            <button type="button" onClick={() => setSecurityConfigRetry((value) => value + 1)} className="text-xs font-bold text-cyan hover:underline">Retry</button>
+          </div>
+        ) : !securityConfig ? (
+          <p role="status" className="text-xs text-vapor">Preparing registration...</p>
+        ) : securityConfig.turnstile_required ? (
+          <TurnstileCheck siteKey={securityConfig.turnstile_site_key} onTokenChange={setTurnstileToken} resetKey={turnstileReset} />
+        ) : null}
         <Button
           type="submit"
           className="create-cta h-11 w-full font-black uppercase tracking-wide shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-          disabled={loading}
+          disabled={loading || !securityConfig || Boolean(securityConfigError) || (securityConfig.turnstile_required && !turnstileToken)}
         >
           {loading ? (
             <>

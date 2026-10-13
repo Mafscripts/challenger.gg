@@ -178,6 +178,10 @@ const auth = {
     return result;
   },
 
+  getRegistrationConfig() {
+    return apiFetch("/auth/registration-config");
+  },
+
   async register(payload) {
     const result = await apiFetch("/auth/register", { method: "POST", body: payload, dedupe: false });
     if (result.access_token) {
