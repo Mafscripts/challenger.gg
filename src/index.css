@@ -2999,6 +2999,19 @@ img {
   animation: balance-popup-progress 5.2s linear both;
 }
 
+.free-eights-room-header {
+  background: radial-gradient(ellipse at 100% 0%, hsl(var(--cyan) / .055), transparent 55%), var(--arena-panel);
+}
+
+.free-eights-room-header-actions button {
+  border-radius: 9999px;
+}
+
+.free-eights-room-header-actions button:focus-visible {
+  outline: 2px solid hsl(var(--cyan));
+  outline-offset: 3px;
+}
+
 /* Tournament rooms keep both rosters stacked, with a compact shared score. */
 .tournament-room-shell .match-room-header {
   padding: 1rem;
