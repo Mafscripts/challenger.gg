@@ -13,6 +13,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { Mw4SeasonSignal } from "@/components/season/Mw4Season";
 import { useAuth } from "@/lib/AuthContext";
+import HomeModeNavigation from "@/components/home/HomeModeNavigation";
 
 const number = (value) => Number(value || 0);
 const formatNumber = (value) => Math.round(Math.max(0, number(value))).toLocaleString();
@@ -45,6 +46,11 @@ function AnimatedTotal({ value, money = false }) {
   useEffect(() => {
     const from = previous.current;
     const to = Math.max(0, number(value));
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      previous.current = to;
+      setShown(to);
+      return undefined;
+    }
     const started = performance.now();
     let frame;
     const tick = (timestamp) => {
@@ -62,9 +68,9 @@ function AnimatedTotal({ value, money = false }) {
 function PublicSectionTitle({ eyebrow, title, target, isAuthenticated }) {
   const href = isAuthenticated ? target : `/login?returnTo=${encodeURIComponent(target)}`;
   return (
-    <div className="mb-4 flex items-end justify-between gap-4">
+    <div className="home-section-heading mb-4 flex items-end justify-between gap-4">
       <div><p className="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-cyan">{eyebrow}</p><h2 className="mt-1 font-heading text-2xl font-black text-white sm:text-3xl">{title}</h2></div>
-      <Link to={href} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:text-orange">
+      <Link to={href} className="home-section-link inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:text-cyan">
         {!isAuthenticated && <LockKeyhole className="h-3 w-3" />} View all <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </div>
@@ -95,12 +101,12 @@ export default function PublicHomeOverview() {
   const visibleLadder = useMemo(() => (data.ladder || []).slice(0, 16), [data.ladder]);
 
   return (
-    <div className="landing-arena relative overflow-hidden py-20 sm:py-24">
+    <div className="home-hub landing-arena relative overflow-hidden">
       <div className="landing-arena-glow landing-arena-glow-cyan" aria-hidden="true" />
       <div className="landing-arena-glow landing-arena-glow-orange" aria-hidden="true" />
-      <div className="relative mx-auto max-w-[1600px] space-y-16 px-4 lg:px-6">
-        <section className="mw4-feature landing-season-card relative isolate min-h-[430px] overflow-hidden rounded-2xl border border-white/10 bg-card sm:min-h-[440px]">
-          <img src="/assets/mw4/hero.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" />
+      <div className="home-hub-container relative">
+        <section className="home-hero mw4-feature landing-season-card relative isolate overflow-hidden rounded-2xl border border-white/10 bg-card">
+          <img src="/assets/mw4/hero.webp" alt="" fetchPriority="high" className="home-hero-image absolute inset-0 h-full w-full object-cover object-center" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,17,.98)_0%,rgba(5,10,17,.9)_38%,rgba(5,10,17,.25)_78%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,10,17,.84),transparent_60%)]" />
           <div className="landing-bullet-field absolute inset-0 z-[2]" aria-hidden="true">
@@ -120,24 +126,26 @@ export default function PublicHomeOverview() {
               />
             ))}
           </div>
-          <div className="relative z-10 flex min-h-[430px] max-w-2xl flex-col justify-center px-6 py-12 sm:min-h-[440px] sm:px-10 lg:px-14">
+          <div className="home-hero-copy relative z-10 flex max-w-2xl flex-col justify-center px-6 sm:px-10 lg:px-14">
             <span className="landing-copy-reveal landing-copy-delay-1 inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> MW4 // Next deployment</span>
-            <h2 className="mt-5 font-heading text-4xl font-black uppercase leading-[.95] text-white sm:text-5xl">
+            <h1 className="mt-5 font-heading text-4xl font-black uppercase leading-[.95] text-white sm:text-5xl">
               <span className="landing-title-reveal landing-copy-delay-2 block">Modern Warfare</span>
               <span className="landing-title-reveal landing-copy-delay-3 block text-orange">4 // The next chapter</span>
-            </h2>
+            </h1>
             <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">A new battlefield. The same competitive edge. Your Modern Warfare 4 Free 8s leaderboard is ready for the next chapter. Keep your squad sharp in Black Ops 7 while MW4 gets ready.</p>
             <Mw4SeasonSignal className="landing-copy-reveal landing-copy-delay-5 mt-5" />
             <div className="landing-copy-reveal landing-copy-delay-5 mt-5 flex flex-wrap gap-3">
               <Link to={protectedHref("/ranked/8s?game=mw4")} className="mw4-primary-cta inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> Explore MW4 Free 8s <ArrowRight className="h-4 w-4" /></Link>
-              {!isAuthenticated && <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black shadow-[0_0_24px_rgba(255,108,0,.16)] transition-colors hover:bg-orange/90">Sign up free</Link>}
+              {!isAuthenticated && <Link to="/register" className="home-primary-cta">Sign up free</Link>}
             </div>
           </div>
         </section>
 
+        <HomeModeNavigation resolveHref={protectedHref} />
+
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {statCards.map(({ label, value, icon: Icon, tone, money }) => (
-            <article key={label} className="landing-stat-card relative overflow-hidden rounded-xl border border-white/10 bg-card px-4 py-4 sm:px-5">
+            <article key={label} className="home-stat-card landing-stat-card relative overflow-hidden rounded-xl border border-white/10 bg-card px-4 py-4 sm:px-5">
               <div className="flex items-center gap-2"><span className={`grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.035] ${tone}`}><Icon className="h-4 w-4" /></span><span className="font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor">{label}</span></div>
               <p className="mt-3 font-heading text-2xl font-black text-white sm:text-3xl">{loading ? "—" : <AnimatedTotal value={value} money={money} />}</p>
             </article>
@@ -146,7 +154,7 @@ export default function PublicHomeOverview() {
 
         <section>
           <PublicSectionTitle eyebrow="Compete" title="Upcoming tournaments" target="/tournaments" isAuthenticated={isAuthenticated} />
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
+          <div className="home-panel overflow-hidden rounded-2xl border border-white/10 bg-card">
             {loading && [0, 1, 2].map((item) => <div key={item} className="h-[78px] animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
             {!loading && data.tournaments.length === 0 && <div className="p-8 text-center text-sm text-vapor">No upcoming tournaments are scheduled yet.</div>}
             {data.tournaments.map((tournament) => (
@@ -164,7 +172,7 @@ export default function PublicHomeOverview() {
 
         <section>
           <PublicSectionTitle eyebrow="October 2026" title="Tournament ladder — Top 16" target="/leaderboards" isAuthenticated={isAuthenticated} />
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
+          <div className="home-panel home-preview-ladder overflow-hidden rounded-2xl border border-white/10 bg-card">
             <div className="grid grid-cols-[48px_1fr_80px_100px] border-b border-white/10 bg-white/[0.025] px-4 py-3 font-mono text-[8px] font-black uppercase tracking-wider text-vapor sm:px-5"><span>Rank</span><span>Competitor</span><span className="text-center">Wins</span><span className="text-right">Earnings</span></div>
             {loading && [0, 1, 2, 3].map((item) => <div key={item} className="h-14 animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
             {!loading && visibleLadder.length === 0 && <div className="p-8 text-center text-sm text-vapor">The October ladder is waiting for its first champion.</div>}
@@ -180,8 +188,8 @@ export default function PublicHomeOverview() {
         </section>
 
         <section>
-          <PublicSectionTitle eyebrow="Ready to play" title="Matchfinder" target="/wagers" isAuthenticated={isAuthenticated} />
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
+          <PublicSectionTitle eyebrow="Ready to play" title="Matchfinder" target="/matchfinder" isAuthenticated={isAuthenticated} />
+          <div className="home-panel overflow-hidden rounded-2xl border border-white/10 bg-card">
             {loading && [0, 1].map((item) => <div key={item} className="h-[68px] animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
             {!loading && data.matches.length === 0 && <div className="p-8 text-center text-sm text-vapor">No open matches right now.</div>}
             {data.matches.map((match) => {
@@ -200,8 +208,8 @@ export default function PublicHomeOverview() {
         </section>
 
         {!isAuthenticated && (
-          <section className="landing-final-cta relative overflow-hidden rounded-2xl border border-cyan/20 bg-card px-6 py-12 text-center sm:px-10">
-            <div className="relative z-10"><p className="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-orange">Your season starts here</p><h2 className="mt-3 font-heading text-3xl font-black text-white sm:text-4xl">Ready to compete?</h2><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-vapor">Create an account to open tournaments, join matches, build your team and compete on the October ladder.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link to="/register" className="rounded-lg bg-orange px-6 py-3 text-[10px] font-black uppercase tracking-wider text-black shadow-[0_0_26px_rgba(255,108,0,.18)] transition-colors hover:bg-orange/90">Register free</Link><Link to="/login" className="rounded-lg border border-white/10 bg-white/[0.035] px-6 py-3 text-[10px] font-black uppercase tracking-wider text-white">Login</Link></div></div>
+          <section className="home-final-cta landing-final-cta relative overflow-hidden rounded-2xl border border-cyan/20 bg-card px-6 text-center sm:px-10">
+            <div className="relative z-10"><p className="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-cyan">Your season starts here</p><h2 className="mt-3 font-heading text-3xl font-black text-white sm:text-4xl">Ready to compete?</h2><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-vapor">Create an account to open tournaments, join matches, build your team and compete on the October ladder.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link to="/register" className="home-primary-cta">Register free</Link><Link to="/login" className="home-secondary-cta">Login</Link></div></div>
           </section>
         )}
       </div>

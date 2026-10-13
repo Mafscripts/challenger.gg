@@ -34,7 +34,7 @@ export default function PageLayout() {
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
-    <div className={`app-season-mw4 relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"} ${isAdminRoute ? "app-shell-admin" : ""}`}>
+    <div className={`app-style-arena app-season-mw4 relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"} ${isAdminRoute ? "app-shell-admin" : ""}`}>
       <div className="page-ambient" aria-hidden="true" />
       <Navbar />
       <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">

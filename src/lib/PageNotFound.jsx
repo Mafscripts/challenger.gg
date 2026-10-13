@@ -8,8 +8,8 @@ export default function PageNotFound() {
     const { user, isAuthenticated, authChecked } = useAuth();
     
     return (
-        <div className="flex min-h-screen items-center justify-center bg-background p-6">
-            <div className="max-w-md w-full">
+        <div className="arena-error flex min-h-screen items-center justify-center bg-background p-6">
+            <div className="arena-error-card max-w-md w-full">
                 <div className="text-center space-y-6">
                     {/* 404 Error Code */}
                     <div className="space-y-2">

@@ -1,0 +1,216 @@
+/* Shared Matchfinder surfaces for public, account, competition and admin screens. */
+:root,
+.dark {
+  --card: 215 28% 12%;
+  --popover: 215 27% 13%;
+  --secondary: 215 24% 15%;
+  --muted: 215 22% 17%;
+  --muted-foreground: 215 15% 68%;
+  --border: 215 21% 23%;
+  --input: 215 23% 20%;
+  --surface-panel: 215 28% 12%;
+  --surface-card: 215 26% 14%;
+  --surface-raised: 215 24% 17%;
+  --surface-hover: 215 25% 18%;
+  --arena-panel: linear-gradient(145deg, #172330 0%, #111b27 55%, #0e1721 100%);
+  --arena-card: linear-gradient(135deg, #192634, #131e2a);
+  --arena-ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+body {
+  background-image: radial-gradient(ellipse at 12% 0%, hsl(var(--cyan) / .055), transparent 42rem), linear-gradient(180deg, #0d1621, #0a111a 70%);
+}
+
+.app-style-arena .page-ambient {
+  background: radial-gradient(ellipse at 82% 0%, rgb(250 204 21 / .025), transparent 42%), radial-gradient(ellipse at 10% 0%, hsl(var(--cyan) / .045), transparent 55%);
+}
+
+.app-style-arena .app-content :where(.glass, .premium-panel, .arena-panel) {
+  background: var(--arena-panel);
+  box-shadow: 0 14px 36px rgb(0 0 0 / .16), inset 0 1px 0 rgb(255 255 255 / .025);
+}
+
+.app-style-arena .app-content :where(.premium-card, .arena-card):not([class*="bg-gradient-"]) {
+  background: var(--arena-card);
+  box-shadow: 0 8px 24px rgb(0 0 0 / .14);
+  transition: background-color 180ms var(--arena-ease), border-color 180ms var(--arena-ease), box-shadow 180ms var(--arena-ease), transform 180ms var(--arena-ease);
+}
+
+/* Bring legacy cards onto the same palette without replacing rarity gradients. */
+.app-style-arena .app-content :where(section, article, div)[class*="rounded-"][class~="border"][class*="bg-card"]:not([class*="bg-gradient-"]) {
+  background-color: hsl(var(--card));
+  background-image: var(--arena-panel);
+}
+
+.app-style-arena .app-content :where(.glass, .premium-panel, .premium-card).rounded-xl {
+  border-radius: 16px;
+}
+
+.app-style-arena .app-content .arena-page-header {
+  border-radius: 18px;
+  border-color: hsl(var(--cyan) / .13);
+  background: radial-gradient(ellipse at 95% 0%, hsl(var(--cyan) / .085), transparent 60%), var(--arena-panel);
+  padding: 26px;
+}
+
+.arena-page-header h1 { letter-spacing: -.04em; }
+.arena-header-line { background: hsl(var(--cyan)); width: 2px; }
+.arena-header-eyebrow { color: hsl(var(--cyan)); }
+
+.app-style-arena .route-stage > :first-child:not(.page-logo-loader) {
+  animation: arena-page-enter 180ms var(--arena-ease);
+}
+
+.app-style-arena .route-stage > :where(div, main)[class*="py-8"] {
+  padding-top: 28px;
+  padding-bottom: 48px;
+}
+
+.arena-button,
+.app-style-arena .app-content :where(button, a)[class*="rounded-"] {
+  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
+  transition-duration: 180ms;
+  transition-timing-function: var(--arena-ease);
+}
+
+.arena-button { border-radius: 11px; font-weight: 750; }
+.arena-button:active:not(:disabled) { transform: translateY(1px); }
+.arena-button:disabled { box-shadow: none; }
+
+.create-cta {
+  border-color: hsl(var(--cyan) / .3);
+  background: linear-gradient(135deg, hsl(var(--cyan) / .13), hsl(var(--cyan) / .045));
+  color: hsl(var(--cyan));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .04);
+  backdrop-filter: none;
+}
+.create-cta:hover {
+  border-color: hsl(var(--cyan) / .55);
+  background: linear-gradient(135deg, hsl(var(--cyan) / .2), hsl(var(--cyan) / .08));
+  box-shadow: 0 6px 22px hsl(var(--cyan) / .075);
+}
+
+.arena-field,
+.app-style-arena .app-content :where(input, textarea, select)[class*="border"]:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]) {
+  background-color: #0d1722;
+  border-radius: 10px;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / .12);
+  transition: border-color 160ms var(--arena-ease), box-shadow 160ms var(--arena-ease), background-color 160ms var(--arena-ease);
+  color-scheme: dark;
+}
+.arena-field::placeholder { color: #798b9e; }
+.arena-field:focus-visible { border-color: hsl(var(--cyan) / .5); box-shadow: 0 0 0 3px hsl(var(--cyan) / .09); }
+.arena-field[aria-invalid="true"] { border-color: hsl(var(--destructive) / .6); }
+.arena-field:disabled { opacity: .55; }
+.arena-field:-webkit-autofill { -webkit-text-fill-color: #f8fafc; box-shadow: 0 0 0 1000px #111d2a inset; }
+
+.arena-tabs {
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid rgb(255 255 255 / .08);
+  border-radius: 12px;
+  background: #101a26;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.arena-tab { border-bottom: 0; border-radius: 8px; font-size: 12px; font-weight: 750; }
+.arena-tab[data-state="active"] { color: hsl(var(--cyan)); background: hsl(var(--cyan) / .09); box-shadow: inset 0 0 0 1px hsl(var(--cyan) / .14); }
+.arena-tab[data-state="inactive"]:hover { color: white; background: rgb(255 255 255 / .025); }
+
+.arena-dialog,
+.arena-select-menu {
+  border-radius: 16px;
+  border-color: rgb(255 255 255 / .12);
+  background: var(--arena-panel);
+  box-shadow: 0 28px 80px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .035);
+  color-scheme: dark;
+}
+.arena-select-menu { border-radius: 12px; }
+.arena-select-menu [role="option"][data-highlighted] { background: hsl(var(--cyan) / .08); }
+.app-style-arena .app-content :where(table) { font-variant-numeric: tabular-nums; }
+.app-style-arena .app-content :where(thead) { background: rgb(0 0 0 / .13); }
+.app-style-arena .app-content :where(th) { font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.app-style-arena .app-content :where(tbody tr) { transition: background-color 160ms var(--arena-ease); }
+.app-style-arena .app-content :where(tbody tr):hover { background-color: hsl(var(--cyan) / .035); }
+
+/* Home and dashboard share the same density, panels and section headers. */
+.home-hub { padding-top: 28px; padding-bottom: 48px; }
+.home-hub-container { max-width: 1600px; margin-inline: auto; padding-inline: 24px; display: grid; gap: 32px; }
+.home-hub .landing-arena-glow { display: none; }
+.home-hub .home-hero { border-radius: 20px; border-color: rgb(255 255 255 / .1); box-shadow: 0 20px 55px rgb(0 0 0 / .22); }
+.home-hub .home-hero-image { opacity: .9; }
+.home-hub .home-hero-copy { min-height: 410px; padding-block: 38px; }
+.home-hub .home-hero-copy > h1 { letter-spacing: -.045em; line-height: 1; }
+.home-hub .home-featured { height: 550px; }
+.home-hub .home-featured-copy { padding-top: 36px; }
+.home-hub .home-section-heading { align-items: center; padding-inline: 2px; }
+.home-hub .home-section-heading h2 { font-size: 22px; letter-spacing: -.03em; }
+.home-hub .home-section-link { border: 1px solid rgb(255 255 255 / .1); border-radius: 9px; padding: 9px 12px; font-size: 9px; }
+.home-hub .home-section-link:hover { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .3); background: hsl(var(--cyan) / .05); }
+.home-hub .home-panel { border-radius: 16px; background: var(--arena-panel); }
+.home-hub .home-panel > a { transition: background-color 180ms var(--arena-ease); }
+.home-hub .home-panel > a:hover { background-color: hsl(var(--cyan) / .045); }
+.home-hub .home-panel > a:nth-child(even) { background-color: rgb(255 255 255 / .012); }
+.home-hub .home-stat-card { border-radius: 14px; background: var(--arena-card); transition: border-color 180ms var(--arena-ease), box-shadow 180ms var(--arena-ease); }
+.home-hub .home-stat-card:hover { border-color: hsl(var(--cyan) / .24) !important; box-shadow: 0 8px 24px rgb(0 0 0 / .12); }
+.home-hub .home-stat-card > p { font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
+.home-hub .landing-stat-card::after { opacity: .35; }
+.home-hub .home-final-cta { padding-block: 36px; background: radial-gradient(ellipse at 50% 100%, hsl(var(--cyan) / .07), transparent 70%), var(--arena-panel); }
+.home-primary-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid hsl(var(--cyan) / .4); border-radius: 10px; background: hsl(var(--cyan)); padding: 12px 20px; color: #06131c; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; }
+.home-primary-cta:hover { background: #57e4ff; box-shadow: 0 6px 24px hsl(var(--cyan) / .12); }
+.home-secondary-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid rgb(255 255 255 / .15); border-radius: 10px; background: rgb(8 17 27 / .65); padding: 12px 20px; color: white; font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; }
+.home-secondary-cta:hover { border-color: hsl(var(--cyan) / .4); background: hsl(var(--cyan) / .06); }
+.home-mode-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid rgb(255 255 255 / .09); border-radius: 14px; background: rgb(255 255 255 / .06); }
+.home-mode-link { display: flex; align-items: center; gap: 12px; padding: 18px 20px; background: #111d2a; transition: background-color 180ms var(--arena-ease); }
+.home-mode-link > svg:first-child { flex-shrink: 0; color: hsl(var(--cyan)); }
+.home-mode-link strong { display: block; color: white; font-size: 12px; font-weight: 850; }
+.home-mode-link small { display: block; margin-top: 4px; color: hsl(var(--vapor)); font-size: 10px; }
+.home-mode-link > svg:last-child { margin-left: auto; flex-shrink: 0; color: #7e91a5; transition: color 180ms; }
+.home-mode-link:hover { background: #172838; }
+.home-mode-link:hover > svg:last-child { color: hsl(var(--cyan)); }
+
+.arena-auth { position: relative; padding-block: 48px; background: radial-gradient(ellipse at 50% 25%, hsl(var(--cyan) / .055), transparent 34rem); }
+.arena-auth-card { border-radius: 20px; border: 1px solid rgb(255 255 255 / .1); background: var(--arena-panel); box-shadow: 0 22px 65px rgb(0 0 0 / .22); }
+.arena-auth-icon { background: hsl(var(--cyan) / .08); border: 1px solid hsl(var(--cyan) / .22); box-shadow: inset 0 1px 0 rgb(255 255 255 / .025); }
+.arena-auth-icon svg { color: hsl(var(--cyan)); }
+.arena-auth-footer a { color: hsl(var(--cyan)); }
+.arena-footer { margin-top: 40px; background: #0b141e; border-top-color: rgb(255 255 255 / .07); }
+.arena-footer > div { padding-block: 48px; }
+.arena-error { background: radial-gradient(ellipse at 50% 25%, hsl(var(--cyan) / .06), transparent 36rem); }
+.arena-error-card { padding: 32px; border: 1px solid rgb(255 255 255 / .1); border-radius: 20px; background: var(--arena-panel); }
+
+@keyframes arena-page-enter { from { opacity: .65; } to { opacity: 1; } }
+@media (hover: hover) and (pointer: fine) {
+  .app-style-arena .app-content .premium-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgb(0 0 0 / .2); }
+}
+@media (max-width: 768px) {
+  .home-hub-container { padding-inline: 16px; gap: 26px; }
+  .home-mode-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-mode-link { gap: 10px; padding: 15px; }
+  .home-hub .home-featured { height: 590px; }
+  .home-hub .home-section-heading h2 { font-size: 19px; }
+  .home-hub .home-hero-copy { padding-block: 30px; }
+  .app-style-arena .app-content .arena-page-header { padding: 22px; }
+  .arena-tabs { scrollbar-width: none; }
+}
+@media (max-width: 480px) {
+  .home-hub { padding-top: 20px; }
+  .home-hub .home-hero { border-radius: 16px; }
+  .home-hub .home-section-heading { align-items: flex-start; gap: 10px; }
+  .home-hub .home-section-link { flex-shrink: 0; padding: 8px; letter-spacing: .02em; }
+  .home-hub .home-hero-copy { min-height: 440px; padding-inline: 22px; }
+  .home-mode-link { gap: 8px; padding: 14px 12px; }
+  .home-mode-link strong { font-size: 11px; }
+  .home-mode-link small { font-size: 9px; }
+  .home-hub .home-preview-ladder > :where(div, a) { grid-template-columns: 32px minmax(0, 1fr) 52px 80px; padding-inline: 12px; }
+  .home-hub .home-preview-ladder > a > div { gap: 8px; }
+  .home-hub .home-preview-ladder .player-name-wrap { font-size: 11px; }
+  .arena-auth { padding-block: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-style-arena .route-stage > :first-child { animation: none; }
+  .arena-button, .arena-field, .arena-tab, .home-mode-link, .home-stat-card,
+  .app-style-arena .app-content :where(button, a)[class*="rounded-"] { transition-duration: 0ms; }
+  .home-hub :is(.landing-copy-reveal, .landing-title-reveal, .home-featured-image, .home-featured-copy, .home-slide-progress) { animation: none !important; opacity: 1; transform: none; }
+}

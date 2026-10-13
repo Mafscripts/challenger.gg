@@ -15,6 +15,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { Mw4SeasonSignal } from "@/components/season/Mw4Season";
 import PageLoader from "@/components/ui/PageLoader";
+import HomeModeNavigation from "@/components/home/HomeModeNavigation";
 
 const SLIDE_DURATION = 10000;
 const HOME_REFRESH_INTERVAL = 60000;
@@ -125,6 +126,11 @@ function AnimatedNumber({ value, money = false }) {
   useEffect(() => {
     const from = previous.current;
     const to = Math.max(0, number(value));
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      previous.current = to;
+      setShown(to);
+      return undefined;
+    }
     const started = performance.now();
     let frame;
     const tick = (timestamp) => {
@@ -143,13 +149,13 @@ function AnimatedNumber({ value, money = false }) {
 
 function SectionHeading({ eyebrow, title, action, actionLabel = "View all" }) {
   return (
-    <div className="mb-4 flex items-end justify-between gap-4">
+    <div className="home-section-heading mb-4 flex items-end justify-between gap-4">
       <div>
         <p className="font-mono text-[10px] font-black uppercase tracking-[0.22em] text-cyan">{eyebrow}</p>
         <h2 className="mt-1 font-heading text-xl font-black text-white sm:text-2xl">{title}</h2>
       </div>
       {action && (
-        <Link to={action} className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.15em] text-vapor transition-colors hover:text-orange">
+        <Link to={action} className="home-section-link inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.15em] text-vapor transition-colors hover:text-cyan">
           {actionLabel}<ArrowRight className="h-3.5 w-3.5" />
         </Link>
       )}
@@ -169,7 +175,7 @@ function FeaturedNews() {
   const move = (direction) => setActive((current) => (current + direction + slides.length) % slides.length);
 
   return (
-    <section className={`home-featured relative isolate h-[590px] overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] sm:h-[550px] lg:h-[520px] ${slide.season === "mw4" ? "mw4-feature" : ""}`}>
+    <section className={`home-hero home-featured relative isolate overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] ${slide.season === "mw4" ? "mw4-feature" : ""}`}>
       <div key={`base-${active}`} className="home-featured-image absolute inset-0">
         <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
       </div>
@@ -251,7 +257,7 @@ function StatsStrip({ stats }) {
   return (
     <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {cards.map(({ label, value, icon: Icon, tone, money }) => (
-        <article key={label} className="group relative overflow-hidden rounded-xl border border-white/10 bg-card px-4 py-4 sm:px-5">
+        <article key={label} className="home-stat-card group relative overflow-hidden rounded-xl border border-white/10 bg-card px-4 py-4 sm:px-5">
           <div className="flex items-center gap-2">
             <span className={`grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.035] ${tone}`}><Icon className="h-4 w-4" /></span>
             <span className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{label}</span>
@@ -268,7 +274,7 @@ function TournamentRows({ tournaments, now, loading }) {
   return (
     <section>
       <SectionHeading eyebrow="Compete" title="Upcoming tournaments" action="/tournaments" />
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
+      <div className="home-panel overflow-hidden rounded-2xl border border-white/10 bg-card">
         {loading && tournaments.length === 0 && [0, 1, 2].map((item) => <div key={item} className="h-[86px] animate-pulse border-b border-white/5 bg-white/[0.025] last:border-0" />)}
         {!loading && tournaments.length === 0 && (
           <div className="px-5 py-12 text-center text-sm text-vapor">No upcoming tournaments are scheduled yet.</div>
@@ -320,7 +326,7 @@ function TournamentLadder({ players, loading }) {
   return (
     <section>
       <SectionHeading eyebrow="Season rankings" title="Tournament ladder — Top 16" action="/leaderboards" actionLabel="Full leaderboard" />
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
+      <div className="home-panel home-preview-ladder overflow-hidden rounded-2xl border border-white/10 bg-card">
         <div className="grid grid-cols-[46px_1fr_74px_92px] border-b border-white/10 bg-black/10 px-4 py-3 font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor sm:grid-cols-[56px_1fr_110px_120px] sm:px-5">
           <span>Rank</span><span>Competitor</span><span className="text-center">Wins</span><span className="text-right">Earnings</span>
         </div>
@@ -347,8 +353,8 @@ function TournamentLadder({ players, loading }) {
 function Matchfinder({ matches, loading }) {
   return (
     <section>
-      <SectionHeading eyebrow="Ready to play" title="Matchfinder" action="/wagers" actionLabel="Find all matches" />
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
+      <SectionHeading eyebrow="Ready to play" title="Matchfinder" action="/matchfinder" actionLabel="Find all matches" />
+      <div className="home-panel overflow-hidden rounded-2xl border border-white/10 bg-card">
         {loading && matches.length === 0 && [0, 1].map((item) => <div key={item} className="h-[76px] animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
         {!loading && matches.length === 0 && <div className="px-5 py-12 text-center text-sm text-vapor">No open matches right now. Post a match and be the first.</div>}
         {matches.map((match) => {
@@ -450,8 +456,9 @@ export default function Dashboard() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-8 px-4 pb-12 pt-4 lg:space-y-10 lg:px-6">
+    <main className="home-hub home-hub-container w-full">
       <FeaturedNews />
+      <HomeModeNavigation />
       <StatsStrip stats={stats} />
       <TournamentRows tournaments={upcoming} now={now} loading={loading} />
       <TournamentLadder players={ladder} loading={loading} />
