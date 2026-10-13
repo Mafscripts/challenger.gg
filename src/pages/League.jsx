@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, ChevronRight, 
 import { TOPFRAGG_LEAGUE, LEAGUE_DIVISIONS, leagueDivisionUrl } from "@/lib/topfraggLeague";
 import { leagueDemoMatchUrl } from "@/lib/leagueDemo";
 import { LeagueDemoLabel, LeagueDemoNotice, LeagueDemoStandings, LeagueDemoTeams, LeagueDemoMatches, LeagueDemoUpcoming } from "@/components/league/LeagueDemo";
+import LeagueTeamLogo from "@/components/league/LeagueTeamLogo";
 import "@/styles/league.css";
 
 const divisionViews = [
@@ -77,7 +78,7 @@ function LeagueTeamPreview({ division = LEAGUE_DIVISIONS.find((item) => item.num
       <div><p className="league-eyebrow">Your league identity · At launch</p><h2>A team players can call their own.</h2><p>After the manager's payment is confirmed and players accept their roster places, their profile will show their team, division and league role. League roles stay separate from website staff roles.</p><div className="league-role-list"><span><UserCog className="h-3.5 w-3.5" />Manager</span><span><UserRound className="h-3.5 w-3.5" />Player</span><span><Users className="h-3.5 w-3.5" />Reserve</span></div></div>
       <div className="league-profile-example" aria-label="Example of a future league profile badge">
         <span className="league-small-label">Profile example · Not a registered team</span>
-        <div className="league-example-identity"><span className="league-team-monogram">TF</span><div><strong>Topfragg</strong><span>Topfragg League · {division.name}</span></div></div>
+        <div className="league-example-identity"><LeagueTeamLogo team={{ id: "topfragg" }} size={40} /><div><strong>Topfragg</strong><span>Topfragg League · {division.name}</span></div></div>
         <div className="league-example-badges"><span>{division.name}</span><span>League player</span></div>
         <div className="league-example-match"><Swords className="h-4 w-4 text-cyan" /><span>Assigned {division.name} matches</span><LockKeyhole className="h-3.5 w-3.5 text-vapor" /></div>
       </div>

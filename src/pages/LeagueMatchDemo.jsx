@@ -6,6 +6,7 @@ import MatchTeamTable from "@/components/match/MatchTeamTable";
 import { LEAGUE_DIVISIONS, leagueDivisionUrl } from "@/lib/topfraggLeague";
 import { LEAGUE_DEMO_MATCHES, leagueDemoTeam } from "@/lib/leagueDemo";
 import { LeagueDemoLabel, LeagueDemoNotice } from "@/components/league/LeagueDemo";
+import LeagueTeamLogo from "@/components/league/LeagueTeamLogo";
 import "@/styles/league.css";
 
 // Only names and display statistics: fictional players have no profile links or account IDs.
@@ -71,13 +72,13 @@ function LeagueMatchDemoView({ division, match }) {
         <div className="league-demo-room-view"><span className="league-small-label">Preview match state</span><div><button type="button" aria-pressed={!showResult} onClick={() => setShowResult(false)}><Clock3 className="h-3.5 w-3.5" />Pre-match</button><button type="button" aria-pressed={showResult} onClick={() => setShowResult(true)}><Trophy className="h-3.5 w-3.5" />Result example</button></div></div>
       </div>
       <section className="league-demo-room-score" aria-label="Example match score">
-        <div className="text-orange"><span className="league-demo-team-tag">{teamA.tag}</span><strong>{teamA.name}</strong></div>
+        <div className="text-orange"><LeagueTeamLogo team={teamA} size={44} /><strong>{teamA.name}</strong></div>
         <div className="league-demo-score-center"><span>{showResult ? "Example final score" : "Scheduled · Demo"}</span><strong>{showResult ? `${scoreA} – ${scoreB}` : "VS"}</strong><small>{showResult ? `${winner.name} wins` : `${match.day === "Example result" ? "Example Friday" : match.day} · ${match.time === "Completed" ? "19:00 UTC" : match.time}`}</small></div>
-        <div className="text-cyan"><span className="league-demo-team-tag">{teamB.tag}</span><strong>{teamB.name}</strong></div>
+        <div className="text-cyan"><LeagueTeamLogo team={teamB} size={44} /><strong>{teamB.name}</strong></div>
       </section>
     </>} teams={<>
       <div className="league-demo-selected-team"><DemoLineupPicker team={teamA} selected={selectedA} onConfirm={setSelectedA} disabled={showResult} />
-        <MatchTeamTable label="Team Alpha" name={teamA.name} color="orange" compact players={matchPlayers(teamA, selectedA)} isFirstHost isComplete={showResult} isWinner={showResult && winner.id === teamA.id} finalScore={scoreA} />
+        <MatchTeamTable label="Team Alpha" name={teamA.name} teamIcon={<LeagueTeamLogo team={teamA} size={42} />} color="orange" compact players={matchPlayers(teamA, selectedA)} isFirstHost isComplete={showResult} isWinner={showResult && winner.id === teamA.id} finalScore={scoreA} />
       </div>
       <div className="flex items-center gap-4 px-2" aria-hidden="true">
         <span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" />
@@ -85,7 +86,7 @@ function LeagueMatchDemoView({ division, match }) {
         <span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" />
       </div>
       <div className="league-demo-selected-team"><DemoLineupPicker team={teamB} selected={selectedB} onConfirm={setSelectedB} disabled={showResult} />
-        <MatchTeamTable label="Team Bravo" name={teamB.name} color="cyan" compact players={matchPlayers(teamB, selectedB)} isComplete={showResult} isWinner={showResult && winner.id === teamB.id} finalScore={scoreB} />
+        <MatchTeamTable label="Team Bravo" name={teamB.name} teamIcon={<LeagueTeamLogo team={teamB} size={42} />} color="cyan" compact players={matchPlayers(teamB, selectedB)} isComplete={showResult} isWinner={showResult && winner.id === teamB.id} finalScore={scoreB} />
       </div>
       <section className="league-panel league-demo-room-maps">
         <div className="league-division-section-heading"><div><h2 className="flex items-center gap-2"><MapIcon className="h-4 w-4 text-cyan" />Example map series</h2><p>Fictional map labels. Final MW4 modes, maps and rules are not set.</p></div><LeagueDemoLabel /></div>

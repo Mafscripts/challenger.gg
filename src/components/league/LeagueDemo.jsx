@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, Clock3, FlaskConical, Users } from "lucide-react";
 import { LEAGUE_DEMO_TEAMS, LEAGUE_DEMO_MATCHES, leagueDemoTeam, leagueDemoMatchUrl } from "@/lib/leagueDemo";
 import { leagueDivisionUrl } from "@/lib/topfraggLeague";
+import LeagueTeamLogo from "@/components/league/LeagueTeamLogo";
 
 export function LeagueDemoLabel() {
   return <span className="league-demo-label"><FlaskConical className="h-3 w-3" aria-hidden="true" />Demo</span>;
@@ -13,7 +14,7 @@ export function LeagueDemoNotice() {
 }
 
 export function LeagueDemoTeamIdentity({ team }) {
-  return <span className="league-demo-team"><span className="league-demo-team-tag">{team.tag}</span><span>{team.name}</span></span>;
+  return <span className="league-demo-team"><LeagueTeamLogo team={team} /><span>{team.name}</span></span>;
 }
 
 export function LeagueDemoStandings() {
@@ -37,7 +38,7 @@ export function LeagueDemoMatches({ division, upcomingOnly = false }) {
   return <div className="league-demo-fixtures">{matches.map((match) => {
     const a = leagueDemoTeam(match.teamA);
     const b = leagueDemoTeam(match.teamB);
-    return <Link key={match.id} to={leagueDemoMatchUrl(division, match)} className="league-demo-fixture"><span className="league-demo-fixture-date"><small>{match.round} · {match.day}</small><strong>{match.time}</strong></span><span className="league-demo-fixture-teams"><span>{a.name}</span><span className="league-demo-fixture-score">{match.status === "completed" ? `${match.scoreA} – ${match.scoreB}` : "vs"}</span><span>{b.name}</span></span><span className="league-demo-fixture-action">View demo<ArrowRight className="h-3.5 w-3.5" /></span></Link>;
+    return <Link key={match.id} to={leagueDemoMatchUrl(division, match)} className="league-demo-fixture"><span className="league-demo-fixture-date"><small>{match.round} · {match.day}</small><strong>{match.time}</strong></span><span className="league-demo-fixture-teams"><span className="league-demo-fixture-identity"><LeagueTeamLogo team={a} size={28} /><span>{a.name}</span></span><span className="league-demo-fixture-score">{match.status === "completed" ? `${match.scoreA} – ${match.scoreB}` : "vs"}</span><span className="league-demo-fixture-identity"><LeagueTeamLogo team={b} size={28} /><span>{b.name}</span></span></span><span className="league-demo-fixture-action">View demo<ArrowRight className="h-3.5 w-3.5" /></span></Link>;
   })}</div>;
 }
 

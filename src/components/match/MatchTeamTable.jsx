@@ -92,7 +92,7 @@ function PlayerSocials({ player }) {
   );
 }
 
-export default function MatchTeamTable({ label, name, color = "cyan", seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, compact = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing }) {
+export default function MatchTeamTable({ label, name, color = "cyan", teamIcon = null, seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, compact = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing }) {
   const isOrange = color === "orange";
   const toneClass = isOrange ? "text-orange" : "text-cyan";
   const tintClass = isOrange ? "border-orange/30 bg-orange/10" : "border-cyan/30 bg-cyan/10";
@@ -111,7 +111,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", seed, isFi
     <section className={`match-team-card relative overflow-visible rounded-xl border border-white/[0.09] bg-[var(--arena-pill)] ${freeEights || compact ? "[container-type:inline-size]" : ""} ${compact ? "match-team-card-compact" : ""}`}>
       <div className={`absolute inset-x-10 top-0 h-px ${isOrange ? "bg-gradient-to-r from-transparent via-orange/70 to-transparent" : "bg-gradient-to-r from-transparent via-cyan/70 to-transparent"}`} />
       <header className={`flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:px-5 ${isOrange ? "bg-gradient-to-r from-orange/[0.09] via-card to-background" : "bg-gradient-to-r from-cyan/[0.09] via-card to-background"}`}>
-        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-mono text-base font-black ${tintClass} ${toneClass}`}>{teamMonogram(name || label)}</span>
+        <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-mono text-base font-black ${tintClass} ${toneClass}`}>{teamIcon || teamMonogram(name || label)}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${toneClass}`}>{label}</p>
