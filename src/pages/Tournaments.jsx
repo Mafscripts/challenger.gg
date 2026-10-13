@@ -653,15 +653,15 @@ export default function Tournaments() {
           mode="tournaments"
           playerCount={officialTournaments.length}
           className="mb-5"
-          action={<div className="flex flex-wrap items-center gap-2">
-            <Link to="/teams" className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-background/70 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-vapor backdrop-blur-sm transition-colors hover:border-cyan/30 hover:text-cyan">
+          action={<div className="competition-actions">
+            <Link to="/teams" className="competition-action-pill">
               <Users className="h-3.5 w-3.5" /> My Teams
             </Link>
-            <button type="button" onClick={() => openTournamentTeamCreator()} className="create-cta inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wider transition-all">
+            <button type="button" onClick={() => openTournamentTeamCreator()} className="competition-action-pill">
               <Plus className="h-3.5 w-3.5" /> Create Tournament Team
             </button>
             {isAdmin && (
-              <Link to="/admin" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-orange/30 bg-background/70 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange backdrop-blur-sm transition-colors hover:bg-orange/15">
+              <Link to="/admin" className="competition-action-pill">
                 <Trophy className="h-3.5 w-3.5" /> Create Tournament
               </Link>
             )}

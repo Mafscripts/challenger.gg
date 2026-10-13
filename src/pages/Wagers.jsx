@@ -348,11 +348,11 @@ export default function Wagers() {
             </div>
           )}
           action={
-            <div className="flex flex-col gap-2">
-              <Link to="/teams?create=wager" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-orange/25 bg-orange/5 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-orange transition-colors hover:border-orange/40 hover:bg-orange/10">
+            <div className="competition-actions">
+              <Link to="/teams?create=wager" className="competition-action-pill">
                 <Users className="h-[18px] w-[18px]" /> Create Wager Team
               </Link>
-              <button onClick={() => setIsCreateModalOpen(true)} className="create-cta inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-black uppercase tracking-wider transition-all hover:-translate-y-0.5">
+              <button onClick={() => setIsCreateModalOpen(true)} className="competition-action-pill">
                 <Plus className="h-[18px] w-[18px]" /> Post a wager
               </button>
             </div>

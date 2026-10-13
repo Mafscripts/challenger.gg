@@ -95,8 +95,8 @@ export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranke
   </Dialog>;
 }
 
-export function ConnectFreeEightsDiscord({ returnTo = "/ranked/8s" }) {
-  return <FreeEightsDiscordDialog returnTo={returnTo} trigger={<button type="button" className="rounded-lg border border-purple-300/30 bg-purple-300/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-purple-200">Connect Discord to join Free 8s</button>} />;
+export function ConnectFreeEightsDiscord({ returnTo = "/ranked/8s", className = "rounded-lg border border-purple-300/30 bg-purple-300/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-purple-200" }) {
+  return <FreeEightsDiscordDialog returnTo={returnTo} trigger={<button type="button" className={className}>Connect Discord to join Free 8s</button>} />;
 }
 
 export function FreeEightsDiscordServerDialog({ result, onOpenChange, returnFocusTo }) {

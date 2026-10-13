@@ -5,8 +5,8 @@ import { Award, Settings, X } from "lucide-react";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog";
 import { freeEightsRankUploadUrl, hasFreeEightsRank } from "@/lib/freeEightsRankRequirement";
 
-export function UploadFreeEightsRank() {
-  return <Link to={freeEightsRankUploadUrl} className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-4 py-2.5 text-xs font-black text-blue-200"><Settings className="h-4 w-4" />Choose game rank</Link>;
+export function UploadFreeEightsRank({ className = "inline-flex items-center justify-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-4 py-2.5 text-xs font-black text-blue-200" }) {
+  return <Link to={freeEightsRankUploadUrl} className={className}><Settings className="h-4 w-4" />Choose game rank</Link>;
 }
 
 export function FreeEightsRankNotice({ user }) {

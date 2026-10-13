@@ -104,6 +104,47 @@ body {
 .arena-field:disabled { opacity: .55; }
 .arena-field:-webkit-autofill { -webkit-text-fill-color: #f8fafc; box-shadow: 0 0 0 1000px #111d2a inset; }
 
+/* One shared pill style for every competition header, including the game switch. */
+.competition-actions {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.competition-action-pill,
+.competition-action-pill.arena-field {
+  display: inline-flex;
+  width: 100%;
+  height: 44px;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgb(255 255 255 / .1);
+  border-radius: 9999px;
+  background: #111821;
+  padding: 0 16px;
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: normal;
+  text-transform: none;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .05);
+  transition: background-color 180ms var(--arena-ease), border-color 180ms var(--arena-ease), color 180ms var(--arena-ease);
+}
+
+.competition-action-pill svg { width: 16px; height: 16px; flex-shrink: 0; }
+.competition-action-pill:not(:disabled):hover { border-color: hsl(var(--cyan) / .35); color: hsl(var(--cyan)); }
+.competition-action-pill:focus-visible {
+  outline: 2px solid hsl(var(--cyan));
+  outline-offset: 3px;
+}
+.competition-action-pill:disabled { cursor: not-allowed; opacity: .5; }
+.competition-action-pill.competition-game-switch { justify-content: space-between; }
+
 .arena-tabs {
   gap: 4px;
   padding: 5px;

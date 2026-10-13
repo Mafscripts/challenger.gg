@@ -24,7 +24,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
 const EIGHTS_PRIZE_START_MONTH = "2026-10";
 const EIGHTS_PRIZE_START_DATE = new Date("2026-10-01T00:00:00Z");
-const actionPillClass = "inline-flex !h-11 w-full items-center gap-2 !rounded-full border border-white/15 bg-[#111821] px-4 text-xs font-bold text-foreground !shadow-sm transition-colors hover:!text-cyan focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan";
 const monthKey = () => new Date().toISOString().slice(0, 7);
 const daysLeftInMonth = () => {
   const now = new Date();
@@ -231,23 +230,23 @@ export default function RankedEights() {
               })}
             </CompetitionMatchfinder>
           )}
-          action={<div className="space-y-3">{comingSoon ? (
-            <Link to="/ranked/8s?game=bo7" className={`${actionPillClass} justify-center`}>Play Black Ops <span className="text-orange">7</span><ArrowRight className="h-4 w-4" /></Link>
+          action={<div className="competition-actions">{comingSoon ? (
+            <Link to="/ranked/8s?game=bo7" className="competition-action-pill">Play Black Ops <span className="text-orange">7</span><ArrowRight className="h-4 w-4" /></Link>
           ) : !isMoney && !freeOverview.data ? (
-            <button type="button" disabled={!freeOverview.error} onClick={() => refreshFreeOverview()} className={`${actionPillClass} justify-center disabled:opacity-50`}>
+            <button type="button" disabled={!freeOverview.error} onClick={() => refreshFreeOverview()} className="competition-action-pill">
               {freeOverview.error ? "Retry loading Free 8s" : "Loading Free 8s..."}
             </button>
           ) : activeLobby ? (
-            <Link to={`/8s-match/${activeLobby.id}`} className={`${actionPillClass} justify-center`}>
+            <Link to={`/8s-match/${activeLobby.id}`} className="competition-action-pill">
               Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
             </Link>
-          ) : !isMoney && !hasFreeEightsRank(user) ? <UploadFreeEightsRank /> : !isMoney && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord /> : (
-            <button onClick={() => setCreateOpen(true)} className={`${actionPillClass} justify-center`}>
+          ) : !isMoney && !hasFreeEightsRank(user) ? <UploadFreeEightsRank className="competition-action-pill" /> : !isMoney && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord className="competition-action-pill" /> : (
+            <button onClick={() => setCreateOpen(true)} className="competition-action-pill">
               <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
           )}{!isMoney && (
             <Select value={gameId} onValueChange={switchGame}>
-              <SelectTrigger aria-label="Switch game" className={`${actionPillClass} justify-between`}>
+              <SelectTrigger aria-label="Switch game" className="competition-action-pill competition-game-switch">
                 <span className="text-vapor">Switch game</span><SelectValue />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-white/10 bg-[#111821] text-white">

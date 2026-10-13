@@ -269,27 +269,20 @@ export default function Ranked() {
             </CompetitionMatchfinder>
           )}
           action={
-            <div className="flex w-full flex-col gap-3 xl:w-[320px]">
-              <Link to="/rules" className="group rounded-xl border border-cyan/35 bg-secondary px-4 py-3 shadow-sm transition-colors hover:border-cyan/55 hover:bg-secondary/90">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/10 text-cyan"><Trophy className="h-4 w-4" /></div>
-                    <div>
-                      <div className="flex items-center gap-2"><p className="text-xs font-black uppercase tracking-wider text-cyan">CDL Rules</p><span className="rounded-full border border-cyan/20 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-cyan">Required</span></div>
-                      <p className="mt-1 text-[10px] text-vapor">Competitive ranked ruleset</p>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-cyan transition-transform group-hover:translate-x-0.5" />
-                </div>
+            <div className="competition-actions">
+              <Link to="/rules" title="Competitive ranked ruleset — required" className="competition-action-pill">
+                <Trophy className="h-4 w-4" /> CDL Rules
+                <span className="text-[10px] text-vapor">Required</span>
+                <ArrowRight className="h-4 w-4" />
               </Link>
               {activeRankedMatch ? (
-                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-secondary px-6 py-3 text-sm font-bold uppercase tracking-wider text-cyan shadow-sm transition-colors hover:border-cyan/60 hover:bg-secondary/90">
+                <Link to={`/ranked-match/${activeRankedMatch.id}`} className="competition-action-pill">
                   Return to Active Match <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="create-cta inline-flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-black uppercase tracking-wider transition-all"
+                  className="competition-action-pill"
                 >
                   <Plus className="w-4 h-4" /> Create Ranked Match
                 </button>
