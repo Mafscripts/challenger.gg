@@ -70,6 +70,25 @@
 .mw4-feature .bg-orange\/10 { background-color: rgb(250 204 21 / .08); }
 .mw4-feature .landing-bullet-field { display: none; }
 .mw4-feature .home-featured-copy { max-width: 720px; }
+.mw4-feature .home-featured-image > img {
+  transform-origin: 70% 50%;
+  animation: mw4-feature-camera 20s cubic-bezier(.4, 0, .2, 1) infinite alternate;
+  will-change: transform;
+}
+@keyframes mw4-feature-camera {
+  from { transform: translate3d(-.3%, .3%, 0) scale(1.035); }
+  to { transform: translate3d(.6%, -.4%, 0) scale(1.105); }
+}
+@media (max-width: 640px) {
+  .mw4-feature .home-featured-image > img { animation-name: mw4-feature-camera-mobile; transform-origin: 62% 50%; }
+}
+@keyframes mw4-feature-camera-mobile {
+  from { transform: translate3d(-.2%, .2%, 0) scale(1.025); }
+  to { transform: translate3d(.3%, -.3%, 0) scale(1.07); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mw4-feature .home-featured-image > img { animation: none; transform: none; will-change: auto; }
+}
 .mw4-feature > img + div,
 .mw4-feature .home-featured-image + div {
   background-image: linear-gradient(90deg, #060c13 0%, rgb(6 12 19 / .97) 32%, rgb(6 12 19 / .88) 47%, rgb(6 12 19 / .18) 69%, transparent);
