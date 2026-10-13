@@ -77,10 +77,6 @@ export default function UserBadges({
   const iconClass = size === "xs" ? "h-3.5 w-3.5" : "h-4 w-4";
   const iconOnlyClass = size === "xs" ? "h-5 w-5" : "h-6 w-6";
 
-  const tooltip = (label, description, Icon, toneClass) => (
-    <BadgeTooltip label={label} description={description} icon={Icon} toneClass={toneClass} placement={tooltipPlacement} />
-  );
-
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
       {rows.map((badge) => {
@@ -89,47 +85,44 @@ export default function UserBadges({
         const Icon = config.icon;
         const badgeHref = badge.type === "streamer" ? streamerHref : "";
         const BadgeTag = badgeHref ? Link : "span";
-        const linkProps = badgeHref ? { to: badgeHref, title: "Open streamer tournaments" } : {};
-        if (iconOnly) {
-          return (
+        const linkProps = badgeHref ? { to: badgeHref, "aria-label": "Open streamer tournaments" } : {};
+        return (
+          <BadgeTooltip
+            key={badge.type}
+            enabled={showTooltip}
+            label={badge.name || config.label}
+            description={config.description}
+            icon={Icon}
+            toneClass={config.className.split(" ").find((token) => token.startsWith("text-")) || "text-white"}
+            placement={tooltipPlacement}
+          >
             <BadgeTag
-              key={badge.type}
               {...linkProps}
-              title={linkProps.title}
-              className={`group/badge relative inline-flex shrink-0 select-none items-center justify-center rounded-full border ${iconOnlyClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
+              tabIndex={showTooltip ? 0 : undefined}
+              aria-label={iconOnly ? badge.name || config.label : linkProps["aria-label"]}
+              className={`relative inline-flex select-none items-center border font-black uppercase tracking-wider ${iconOnly ? `shrink-0 justify-center rounded-full ${iconOnlyClass}` : `gap-1 rounded-md ${sizeClass}`} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
             >
               <Icon className={iconClass} />
-              {showTooltip && tooltip(badge.name || config.label, config.description, Icon, config.className.split(" ").find((token) => token.startsWith("text-")) || "text-white")}
+              {!iconOnly && (badge.name || config.label)}
             </BadgeTag>
-          );
-        }
-        return (
-          <BadgeTag
-            key={badge.type}
-            {...linkProps}
-            className={`group/badge relative inline-flex select-none items-center gap-1 rounded-md border font-black uppercase tracking-wider ${sizeClass} ${badgeHref ? "cursor-pointer transition-transform hover:-translate-y-0.5" : "cursor-default"} ${config.className}`}
-          >
-            <Icon className={iconClass} />
-            {badge.name || config.label}
-            {showTooltip && tooltip(badge.name || config.label, config.description, Icon, config.className.split(" ").find((token) => token.startsWith("text-")) || "text-white")}
-          </BadgeTag>
+          </BadgeTooltip>
         );
       })}
       {forcedStream && (
-        <span
-          className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} group/badge relative inline-flex cursor-default select-none items-center border border-orange/25 bg-orange/10 font-black uppercase tracking-wider text-orange`}
-        >
-          {iconOnly ? <AlertTriangle className={iconClass} /> : "Stream Required"}
-          {showTooltip && tooltip("Stream Required", "Admin requires this player to stream", AlertTriangle, "text-orange")}
-        </span>
+        <BadgeTooltip enabled={showTooltip} label="Stream Required" description="Admin requires this player to stream" icon={AlertTriangle} toneClass="text-orange" placement={tooltipPlacement}>
+          <span tabIndex={showTooltip ? 0 : undefined} aria-label={iconOnly ? "Stream Required" : undefined}
+            className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} relative inline-flex cursor-default select-none items-center border border-orange/25 bg-orange/10 font-black uppercase tracking-wider text-orange`}>
+            {iconOnly ? <AlertTriangle className={iconClass} /> : "Stream Required"}
+          </span>
+        </BadgeTooltip>
       )}
       {monitorCamRequired && (
-        <span
-          className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} group/badge relative inline-flex cursor-default select-none items-center border border-red-400/35 bg-red-500/10 font-black uppercase tracking-wider text-red-400 shadow-[0_0_14px_rgba(248,113,113,0.2)]`}
-        >
-          {iconOnly ? "!" : "Monitor Cam Required"}
-          {showTooltip && tooltip("Monitor Cam", "This player must use monitor cam in match rooms.", AlertTriangle, "text-red-400")}
-        </span>
+        <BadgeTooltip enabled={showTooltip} label="Monitor Cam" description="This player must use monitor cam in match rooms." icon={AlertTriangle} toneClass="text-red-400" placement={tooltipPlacement}>
+          <span tabIndex={showTooltip ? 0 : undefined} aria-label={iconOnly ? "Monitor Cam Required" : undefined}
+            className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} relative inline-flex cursor-default select-none items-center border border-red-400/35 bg-red-500/10 font-black uppercase tracking-wider text-red-400 shadow-[0_0_14px_rgba(248,113,113,0.2)]`}>
+            {iconOnly ? "!" : "Monitor Cam Required"}
+          </span>
+        </BadgeTooltip>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { AlertTriangle, CheckCircle2, ExternalLink, Headphones, Link2, Loader2, Mic, MicOff, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -21,7 +21,6 @@ const voiceLabels = {
 };
 
 export function FreeEightsVoiceBadge({ status = "unknown", waitingRoomUrl }) {
-  const tooltipId = useId();
   if (!voiceLabels[status]) return <span className="inline-flex min-h-8 items-center text-xs text-vapor/45" aria-label="Discord voice">&mdash;</span>;
   const ready = ["in_waiting_room", "in_team_voice"].includes(status);
   const StatusIcon = ready ? CheckCircle2 : status === "not_linked" ? Link2 : status === "move_failed" ? AlertTriangle : status === "not_in_waiting_room" ? Headphones : MicOff;
@@ -40,7 +39,9 @@ export function FreeEightsVoiceBadge({ status = "unknown", waitingRoomUrl }) {
   const canJoin = status === "not_in_waiting_room" && Boolean(waitingRoomUrl);
   const Badge = canJoin ? "a" : "span";
   const toneClass = badgeStyle.split(" ").find((token) => token.startsWith("text-")) || "text-white";
-  return <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} aria-describedby={tooltipId} className={`group/badge relative inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15" : "cursor-default"}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}<BadgeTooltip id={tooltipId} label={status === "not_in_waiting_room" ? "8s Waiting Room" : label} description={description} icon={StatusIcon} toneClass={toneClass} /></Badge>;
+  return <BadgeTooltip label={status === "not_in_waiting_room" ? "8s Waiting Room" : label} description={description} icon={StatusIcon} toneClass={toneClass}>
+    <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} className={`relative inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15" : "cursor-default"}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}</Badge>
+  </BadgeTooltip>;
 }
 
 export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranked/8s", trigger, returnFocusTo }) {
