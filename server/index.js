@@ -5,6 +5,7 @@ import authRoutes, { registerHandler } from "./routes/auth.js";
 import entityRoutes from "./routes/entities.js";
 import functionRoutes, { expireMatchfinderPosts } from "./routes/functions.js";
 import publicRoutes from "./routes/public.js";
+import playerOverlayRoutes from "./routes/player-overlay.js";
 import discordRoutes from "./routes/discord.js";
 import twitchRoutes from "./routes/twitch.js";
 import profileRoutes from "./routes/profile.js";
@@ -38,6 +39,7 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/register", registerHandler);
 app.use("/api/public", publicRoutes);
+app.use("/api/public/player-overlay", playerOverlayRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/discord", discordRoutes);
 app.use("/api/twitch", twitchRoutes);

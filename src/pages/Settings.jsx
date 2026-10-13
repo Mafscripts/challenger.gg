@@ -12,6 +12,7 @@ import {
   KeyRound,
   Link2,
   MessageCircle,
+  MonitorPlay,
   ShieldCheck,
   UserRound,
   WalletCards,
@@ -26,6 +27,7 @@ import GamingIdsSection from "@/components/settings/GamingIdsSection";
 import GameRankSection from "@/components/settings/GameRankSection";
 import SocialsSection from "@/components/settings/SocialsSection";
 import ReferralSection from "@/components/settings/ReferralSection";
+import StreamOverlaySection from "@/components/settings/StreamOverlaySection";
 import "@/styles/settings.css";
 import PageLoader from "@/components/ui/PageLoader";
 
@@ -61,6 +63,7 @@ const settingGroups = [
       { label: "Gaming IDs", icon: Gamepad2, target: "settings-gaming" },
       { label: "Social profiles", icon: AtSign, target: "settings-socials" },
       { label: "Twitch", icon: MessageCircle, target: "settings-twitch" },
+      { label: "Stream overlay", icon: MonitorPlay, target: "settings-overlay" },
       { label: "Discord", icon: MessageCircle, target: "settings-discord" },
     ],
   },
@@ -191,6 +194,7 @@ export default function Settings() {
                 <div id="settings-gaming" className="settings-block"><GamingIdsSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-socials" className="settings-block"><SocialsSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-twitch" className="settings-block"><TwitchSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-overlay" className="settings-block"><StreamOverlaySection user={user} /></div>
                 <div id="settings-discord" className="settings-block"><DiscordSection user={user} onUserUpdate={loadUser} /></div>
               </div>}
             </div>

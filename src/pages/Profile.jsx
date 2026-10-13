@@ -13,6 +13,7 @@ import {
   Globe2,
   Medal,
   MessageSquare,
+  MonitorPlay,
   Package,
   Pencil,
   Save,
@@ -571,6 +572,7 @@ export default function Profile() {
                   <Link to={`/messages?compose=${encodeURIComponent(user.id)}`} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-3 text-[9px] font-black uppercase tracking-wider text-cyan"><MessageSquare className="h-3.5 w-3.5" /> Message</Link>
                 ) : null}
               </div>
+              {isOwnProfile && <Link to="/settings#settings-overlay" className="mt-3 flex items-center justify-center gap-2 text-xs font-bold text-cyan"><MonitorPlay size={15} />Your Twitch player overlay<ChevronRight size={13} /></Link>}
             </div>
           </div>
 

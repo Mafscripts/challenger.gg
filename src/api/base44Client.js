@@ -344,6 +344,9 @@ export const base44 = {
     },
   },
   public: {
+    playerOverlay(identifier) {
+      return apiFetch(`/public/player-overlay/${encodeURIComponent(identifier)}`);
+    },
     homeOverview() {
       return apiFetch("/public/home-overview");
     },

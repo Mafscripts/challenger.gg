@@ -46,6 +46,7 @@ const Rules = lazy(() => import('@/pages/Rules'));
 const Support = lazy(() => import('@/pages/Support'));
 const Terms = lazy(() => import('@/pages/Terms'));
 const Settings = lazy(() => import('@/pages/Settings'));
+const PlayerOverlay = lazy(() => import('@/pages/PlayerOverlay'));
 const ThankYou = lazy(() => import('@/pages/ThankYou'));
 const Admin = lazy(() => import('@/pages/Admin'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
@@ -177,6 +178,12 @@ function App() {
       document.removeEventListener('dragstart', blockImageDrag, true);
     };
   }, []);
+
+  if (/^\/overlay\/player\/[^/]+\/?$/.test(window.location.pathname)) {
+    return <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <Suspense fallback={null}><Routes><Route path="/overlay/player/:identifier" element={<PlayerOverlay />} /></Routes></Suspense>
+    </Router>;
+  }
 
   return (
     <QueryClientProvider client={queryClientInstance}>
