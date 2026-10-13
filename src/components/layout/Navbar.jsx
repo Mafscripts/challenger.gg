@@ -1680,7 +1680,7 @@ export default function Navbar() {
                       <ProfileMenuSection
                         label="Competitive"
                         items={[
-                          { label: "Topfragg League · Coming Soon", path: "/league", icon: ShieldCheck },
+                          { label: "Topfragg League", path: "/league", icon: ShieldCheck, featuredLeague: true },
                           { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
                           ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
                         ]}
@@ -1961,6 +1961,18 @@ function ProfileMenuSection({ label, items, onSelect }) {
       <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">{label}</p>
       {items.map((item) => {
         const Icon = item.icon;
+
+        if (item.featuredLeague) return (
+          <Link key={item.path} to={item.path} onClick={onSelect} className="profile-league-menu-link">
+            <span className="profile-league-menu-icon"><Icon className="h-5 w-5" aria-hidden="true" /></span>
+            <span className="profile-league-menu-copy">
+              <span className="profile-league-menu-title">{item.label}</span>
+              <span className="profile-league-menu-description">Modern Warfare <span className="text-yellow-300">4</span><span aria-hidden="true"> · </span>13 divisions</span>
+              <span className="profile-league-menu-status">Coming soon</span>
+            </span>
+            <ArrowRight className="profile-league-menu-arrow h-4 w-4" aria-hidden="true" />
+          </Link>
+        );
 
         return (
           <Link
