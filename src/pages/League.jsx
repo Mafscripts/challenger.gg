@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, ChevronRight, Clock3, Crown, Gamepad2, Info, Layers, LockKeyhole, Search, ShieldCheck, Swords, Trophy, UserCog, UserRound, Users } from "lucide-react";
 import { TOPFRAGG_LEAGUE, LEAGUE_DIVISIONS, leagueDivisionUrl } from "@/lib/topfraggLeague";
+import { leagueDemoMatchUrl } from "@/lib/leagueDemo";
+import { LeagueDemoLabel, LeagueDemoNotice, LeagueDemoStandings, LeagueDemoTeams, LeagueDemoMatches, LeagueDemoUpcoming } from "@/components/league/LeagueDemo";
 import "@/styles/league.css";
 
 const divisionViews = [
@@ -41,7 +43,7 @@ function LeagueIntroduction() {
         <div className="flex flex-wrap items-center gap-3"><span className="league-eyebrow">Modern Warfare 4 · Team competition</span><ComingSoon /></div>
         <h1>TOP<span>FRAGG</span> <span className="league-hero-title">LEAGUE</span></h1>
         <p className="league-hero-detail">12 divisions. One Challengers ladder. A dedicated competition for your team, with matches inside your own division.</p>
-        <div className="league-hero-actions"><a href="#league-divisions" className="league-button league-button-primary">Find your division<ArrowRight className="h-4 w-4" /></a><a href="#league-how-it-works" className="league-hero-text-link">How it works<ChevronRight className="h-3.5 w-3.5" /></a></div>
+        <div className="league-hero-actions"><a href="#league-divisions" className="league-button league-button-primary">Find your division<ArrowRight className="h-4 w-4" /></a><Link to={leagueDemoMatchUrl(LEAGUE_DIVISIONS[0])} className="league-button">Preview a match room<ArrowRight className="h-3.5 w-3.5" /></Link><a href="#league-how-it-works" className="league-hero-text-link">How it works<ChevronRight className="h-3.5 w-3.5" /></a></div>
       </div>
       <div className="league-game-identity">
         <img src="/assets/mw4/logo.webp" alt="Modern Warfare 4" width="220" height="85" className="league-game-logo" />
@@ -125,18 +127,7 @@ function LeagueDivision({ division }) {
   const navigate = useNavigate();
   const selectedView = divisionViews.find((view) => view.id === params.get("view"))?.id || "standings";
   const selected = divisionViews.find((view) => view.id === selectedView);
-  const Icon = selected.icon;
   const isChallengers = division.id === "challengers";
-  const columns = {
-    standings: ["Pos.", "Team", "Played", "Wins", "Losses"],
-    teams: ["Team", "Manager", "Roster", "Status"],
-    matches: ["Match", "Scheduled", "Status", "Match room"],
-  }[selectedView];
-  const emptyMessage = {
-    standings: { title: "Standings open at season launch", text: `${division.name} teams and their results will appear here once the competition starts.` },
-    teams: { title: "Team registration is coming soon", text: `Confirmed ${division.name} teams, managers and rosters will appear here after registration opens.` },
-    matches: { title: "The match schedule is coming soon", text: `Assigned ${division.name} fixtures will appear here. Match rooms will open to the participating rosters only.` },
-  }[selectedView];
   return (
     <>
       <div className="league-division-navigation">
@@ -156,16 +147,14 @@ function LeagueDivision({ division }) {
       </header>
       <div className="league-layout league-division-workspace">
         <div className="league-main-column">
+          <LeagueDemoNotice />
           <section className="league-panel league-division-content">
             <nav className="league-view-tabs" aria-label={`${division.name} sections`}>{divisionViews.map(({ id, name, icon: TabIcon }) => <Link key={id} to={`${leagueDivisionUrl(division)}?view=${id}`} aria-current={selectedView === id ? "page" : undefined}><TabIcon className="h-4 w-4" />{name}</Link>)}</nav>
-            <div className="league-division-section-heading"><div><h2>{division.name} {selected.name.toLowerCase()}</h2><p>{selectedView === "standings" ? "League positions and team records" : selectedView === "teams" ? "Registered teams and accepted rosters" : "Fixtures and assigned match rooms"}</p></div><span className="league-small-label">Launch preview</span></div>
-            <table className={`league-preview-table league-preview-table-${selectedView}`}>
-              <caption className="sr-only">{division.name} {selected.name.toLowerCase()} — coming soon</caption>
-              <thead><tr>{columns.map((column) => <th key={column} scope="col">{column}</th>)}</tr></thead>
-              <tbody><tr><td colSpan={columns.length}><div className="league-table-empty"><span className="league-icon"><Icon className="h-5 w-5" /></span><div><h3>{emptyMessage.title}</h3><p>{emptyMessage.text}</p></div></div></td></tr></tbody>
-            </table>
-            <div className="league-division-panel-footer"><Clock3 className="h-3.5 w-3.5" /><span>Registration and fixtures are coming soon. No payments are being collected.</span></div>
+            <div className="league-division-section-heading"><div><h2>{division.name} {selected.name.toLowerCase()}</h2><p>{selectedView === "standings" ? "Sample leaderboard · Fictional team records" : selectedView === "teams" ? "Example teams · Click a team to see its roster" : "Sample fixtures · Open a demo match room"}</p></div><LeagueDemoLabel /></div>
+            {selectedView === "standings" ? <LeagueDemoStandings /> : selectedView === "teams" ? <LeagueDemoTeams /> : <LeagueDemoMatches division={division} />}
+            <div className="league-division-panel-footer"><Clock3 className="h-3.5 w-3.5" /><span>Demo data only. Registration and real fixtures are coming soon.</span></div>
           </section>
+          {selectedView !== "matches" && <LeagueDemoUpcoming division={division} />}
           <section className="league-panel league-division-registration">
             <span className="league-icon"><UserCog className="h-5 w-5" /></span>
             <div><h2>Register through your team manager</h2><p>At launch, your manager pays <strong>${division.fee} per team</strong> and invites your roster from registered Topfragg players.</p></div>
