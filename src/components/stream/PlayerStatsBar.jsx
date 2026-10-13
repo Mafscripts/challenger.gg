@@ -9,6 +9,18 @@ import "@/styles/player-overlay.css";
 export const PLAYER_OVERLAY_WIDTH = 1920;
 export const PLAYER_OVERLAY_HEIGHT = 80;
 const REFRESH_MS = 15000;
+const brandLetters = [..."TOPFRAGG.GG"].map((letter, index) => ({
+  letter,
+  tone: index < 3 ? "white" : index < 8 ? "cyan" : "domain",
+  motion: {
+    "--brand-enter-x": `${-100 + index * 6}px`,
+    "--brand-enter-y": `${-20 - (index % 3) * 8}px`,
+    "--brand-enter-turn": `${-18 + index * 2}deg`,
+    "--brand-fall-x": `${(index - 5) * 9}px`,
+    "--brand-fall-y": `${35 + (index % 4) * 8}px`,
+    "--brand-fall-turn": `${(index % 2 ? 1 : -1) * (18 + index * 4)}deg`,
+  },
+}));
 const trophies = [
   { key: "gold", label: "Gold", image: "/assets/trophies/profile/gold.png" },
   { key: "silver", label: "Silver", image: "/assets/trophies/profile/silver.png" },
@@ -62,7 +74,7 @@ export default function PlayerStatsBar({ data, stale = false }) {
   return <div className="app-content stream-player-bar">
     <div className="stream-player-brand">
       <TopfraggLogo showWordmark={false} markClassName="stream-brand-mark" />
-      <div><strong><span>TOP</span><span>FRAGG</span><span>.GG</span></strong><span className="stream-brand-caption">Player overview</span></div>
+      <div><strong className="stream-brand-wordmark" aria-label="Topfragg.gg">{brandLetters.map(({ letter, tone, motion }, index) => <span key={index} className="stream-brand-letter" data-tone={tone} style={motion} aria-hidden="true">{letter}</span>)}</strong><span className="stream-brand-caption">Player overview</span></div>
     </div>
     <div className="stream-player-identity">
       <span className="stream-player-avatar">{player.avatar_url && failedAvatar !== player.avatar_url ? <img src={player.avatar_url} alt="" onError={() => setFailedAvatar(player.avatar_url)} /> : player.display_name.slice(0, 1).toUpperCase()}</span>

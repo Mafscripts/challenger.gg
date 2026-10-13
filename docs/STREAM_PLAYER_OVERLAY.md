@@ -18,8 +18,10 @@ URL so renaming a player does not break their source.
 The bar includes the existing Topfragg shield, TOPFRAGG.GG wordmark, player avatar,
 saved name color/animated effect, public badges, ranked ELO, wins/losses, win rate,
 lifetime USD earnings, and gold/silver/bronze/premium/Topfragg/hosted trophies, including zeros.
-Name effects reuse the website's CSS and assets. The Topfragg shield makes a slow 3D turn
-every 12 seconds; the wordmark stays still. Reduced-motion preferences disable the logo animation.
+Name effects reuse the website's CSS and assets. The Topfragg shield stays still.
+The TOPFRAGG.GG letters fly into place, hold together for three seconds, then fall apart
+and repeat in an eight-second cycle. Only transforms and opacity animate; stable letter keys
+keep the animation running across data refreshes. Reduced-motion preferences show a static wordmark.
 
 The source requests `GET /api/public/player-overlay/:identifier` every 15 seconds after
 the preceding request completes. It updates the existing components without refreshing
