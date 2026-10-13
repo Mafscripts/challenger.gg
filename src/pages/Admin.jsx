@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
@@ -49,12 +49,14 @@ import RankBadge from "@/components/ui/RankBadge";
 import PageHeader from "@/components/ui/PageHeader";
 import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
-import RankVerificationAdmin from "@/components/admin/RankVerificationAdmin";
-import DisputeReviewCard from "@/components/admin/DisputeReviewCard";
-import FreeEightsGamesAdmin from "@/components/admin/FreeEightsGamesAdmin";
+import { useAdminConsoleData } from "@/hooks/useAdminConsoleData";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
+
+const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
+const DisputeReviewCard = lazy(() => import("@/components/admin/DisputeReviewCard"));
+const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGamesAdmin"));
 
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
@@ -540,10 +542,10 @@ function TournamentRewardPicker({ title, description, selectedIds = [], items = 
 }
 
 export default function Admin() {
-  const { user: authUser, isLoadingAuth, authChecked } = useAuth();
+  const { user: authUser, isLoadingAuth } = useAuth();
   const [activeTab, setActiveTab] = useState(initialAdminTab);
-  const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
+  const loading = isLoadingAuth;
+  const currentUser = authUser;
   const [data, setData] = useState(initialData);
   const [searchQuery, setSearchQuery] = useState("");
   const [busyId, setBusyId] = useState(null);
@@ -570,12 +572,39 @@ export default function Admin() {
   const [animatedNameFreeTrial, setAnimatedNameFreeTrial] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
 
+  const adminQueries = useAdminConsoleData(currentUser, activeTab);
+  const receivedRows = useRef({});
+  const receivedScope = useRef(null);
+  const loadAdminData = adminQueries.refresh;
+
   useEffect(() => {
-    // AuthContext can finish the loading transition before authChecked is
-    // committed in the same render. Do not gate the admin loader on a second
-    // flag, otherwise the console can stay on its initial loading state.
-    if (!isLoadingAuth) loadAdminData();
-  }, [authUser, isLoadingAuth]);
+    const scope = currentUser?.id ? currentUser.id + ":" + currentRole : null;
+    const reset = receivedScope.current !== scope;
+    if (reset) {
+      receivedScope.current = scope;
+      receivedRows.current = {};
+      setReferralProgram(null);
+      setAnimatedNameFreeTrial(null);
+    }
+    const updates = {};
+    // Only merge datasets that actually changed, preserving local edits and live polls.
+    for (const [key, rows] of Object.entries(adminQueries.data)) {
+      if (receivedRows.current[key] === rows) continue;
+      receivedRows.current[key] = rows;
+      if (key === "referralProgram") setReferralProgram(rows);
+      else if (key === "animatedNameFreeTrial") setAnimatedNameFreeTrial(rows);
+      else if (key === "adminAlerts" || key === "disputes") updates[key] = rows.filter(isVisibleCompetitionRecord);
+      else if (key === "wagers") {
+        updates.wagers = rows.filter(isVisibleCompetitionRecord);
+        updates.eightsMatches = rows.filter(isLiveEightsLobby);
+      } else if (key === "marketplace") updates.marketplace = rows.filter(isVisibleMarketplaceItem);
+      else if (key === "inventory") updates.inventory = rows.filter((item) => !isRemovedInvitationalTrophy(item));
+      else updates[key] = rows;
+    }
+    if (reset || Object.keys(updates).length) {
+      setData((previous) => ({ ...(reset ? initialData : previous), ...updates }));
+    }
+  }, [adminQueries.data, currentUser?.id, currentRole]);
 
   useEffect(() => {
     setOpenManageUserId(null);
@@ -584,18 +613,18 @@ export default function Admin() {
     url.searchParams.set("tab", activeTab);
     window.history.replaceState({}, "", url);
 
-    if (["tournaments", "marketplace"].includes(activeTab)) {
+    if (["tournaments", "marketplace"].includes(activeTab) && currentUser?.id && canAccessAdminPanel(currentRole)) {
       const refreshMarketplaceItems = () => {
-        base44.entities.MarketplaceItem.filter({}, "-created_date", 500)
+        base44.entities.MarketplaceItem.filterFresh({}, "-created_date", 500)
           .then((marketplace) => setData((current) => ({ ...current, marketplace: marketplace.filter(isVisibleMarketplaceItem) })))
           .catch((error) => console.warn("Failed to refresh marketplace items:", error));
       };
-      refreshMarketplaceItems();
+      // Initial marketplace data comes from the section query.
       const refreshTimer = window.setInterval(refreshMarketplaceItems, 10000);
       return () => window.clearInterval(refreshTimer);
     }
     return undefined;
-  }, [activeTab]);
+  }, [activeTab, currentUser?.id, currentRole]);
 
   useEffect(() => {
     if (activeTab !== "live8s" || !currentUser?.id) return undefined;
@@ -620,111 +649,6 @@ export default function Admin() {
       window.clearInterval(timer);
     };
   }, [activeTab, currentUser?.id]);
-
-  const safeList = async (entityName) => {
-    try {
-      return await base44.entities[entityName].filter({}, "-created_date", 500);
-    } catch (error) {
-      console.warn(`Failed to load ${entityName}:`, error);
-      return [];
-    }
-  };
-
-  const loadAdminData = async () => {
-    try {
-      setLoading(true);
-      const freshUser = await base44.auth.me().catch(() => null);
-      const me = {
-        ...(freshUser || {}),
-        ...(authUser || {}),
-        role: authUser?.role ?? freshUser?.role,
-        admin_role: authUser?.admin_role ?? freshUser?.admin_role,
-        is_admin: authUser?.is_admin ?? freshUser?.is_admin,
-      };
-      setCurrentUser(me?.id ? me : null);
-
-      if (!canAccessAdminPanel(effectiveRoleFor(me))) {
-        setData(initialData);
-        setLoading(false);
-        return;
-      }
-
-      await base44.functions.invoke("syncTournamentLifecycle", {}).catch(() => null);
-
-      const [
-        users,
-        adminAlerts,
-        tickets,
-        disputes,
-        wagers,
-        rankedMatches,
-        rankedStats,
-        tournaments,
-        tournamentMatches,
-        tournamentParticipants,
-        wallets,
-        withdrawals,
-        marketplace,
-        inventory,
-        adminActions,
-        bans,
-        systemLogs,
-        messages,
-      ] = await Promise.all([
-        safeList("User"),
-        safeList("AdminAlert"),
-        safeList("Ticket"),
-        safeList("Dispute"),
-        safeList("Wager"),
-        safeList("RankedMatch"),
-        safeList("RankedStats"),
-        safeList("Tournament"),
-        safeList("TournamentMatch"),
-        safeList("TournamentParticipant"),
-        safeList("Wallet"),
-        safeList("WithdrawalRequest"),
-        safeList("MarketplaceItem"),
-        safeList("UserInventory"),
-        safeList("AdminAction"),
-        safeList("Ban"),
-        safeList("SystemLog"),
-        safeList("Message"),
-      ]);
-
-      setData({
-        users,
-        adminAlerts: adminAlerts.filter(isVisibleCompetitionRecord),
-        tickets,
-        disputes: disputes.filter(isVisibleCompetitionRecord),
-        wagers: wagers.filter(isVisibleCompetitionRecord),
-        eightsMatches: wagers.filter(isLiveEightsLobby),
-        rankedMatches,
-        rankedStats,
-        tournaments,
-        tournamentMatches,
-        tournamentParticipants,
-        wallets,
-        withdrawals,
-        marketplace: marketplace.filter(isVisibleMarketplaceItem),
-        inventory: inventory.filter((item) => !isRemovedInvitationalTrophy(item)),
-        adminActions,
-        bans,
-        systemLogs,
-        messages,
-      });
-      const freeTrialResponse = await base44.functions.invoke("getAnimatedNameFreeTrialStatus", {}).catch(() => null);
-      if (freeTrialResponse?.data?.trial) setAnimatedNameFreeTrial(freeTrialResponse.data.trial);
-      const referralResponse = await base44.functions.invoke("getReferralProgram").catch(() => null);
-      if (referralResponse?.data?.success) {
-        setReferralProgram({ ...referralResponse.data.program, rewarded_users: referralResponse.data.rewarded_users });
-      }
-    } catch (error) {
-      console.error("Failed to load admin data:", error);
-      toast({ title: "Error", description: "Failed to load admin data", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredUsers = useMemo(() => (
     data.users.filter((user) => {
@@ -796,22 +720,30 @@ export default function Admin() {
     winnerSpecialTrophyTemplates.every((template) => winnerSpecialTrophyItems.some((item) => String(item.name || "").toLowerCase() === template.name.toLowerCase()))
   ), [winnerSpecialTrophyItems]);
 
-  const sharedIpCount = (targetUser) => {
-    if (!canViewUserIps(currentRole)) return 0;
-    const ips = new Set(knownIpAddresses(targetUser).map(ipComparisonKey));
-    if (ips.size === 0) return 0;
-    return data.users.filter((user) => (
-      user.id !== targetUser.id && knownIpAddresses(user).some((ip) => ips.has(ipComparisonKey(ip)))
-    )).length;
-  };
+  const sharedIpAccounts = useMemo(() => {
+    if (!canViewUserIps(currentRole)) return new Map();
+    const usersByIp = new Map();
+    const userIps = data.users.map((user) => ({ user, ips: knownIpAddresses(user).map(ipComparisonKey) }));
+    for (const { user, ips } of userIps) {
+      for (const ip of ips) {
+        if (!usersByIp.has(ip)) usersByIp.set(ip, []);
+        usersByIp.get(ip).push(user);
+      }
+    }
+    // Calculate shared accounts once per dataset instead of scanning every user for every cell.
+    return new Map(userIps.map(({ user, ips }) => {
+      const accounts = new Map();
+      for (const ip of ips) {
+        for (const account of usersByIp.get(ip)) {
+          if (account.id !== user.id) accounts.set(account.id, account);
+        }
+      }
+      return [user.id, [...accounts.values()]];
+    }));
+  }, [data.users, currentRole]);
 
-  const sharedIpAccountNames = (targetUser) => {
-    if (!canViewUserIps(currentRole)) return [];
-    const ips = new Set(knownIpAddresses(targetUser).map(ipComparisonKey));
-    return data.users
-      .filter((user) => user.id !== targetUser.id && knownIpAddresses(user).some((ip) => ips.has(ipComparisonKey(ip))))
-      .map(userName);
-  };
+  const sharedIpCount = (targetUser) => sharedIpAccounts.get(targetUser.id)?.length || 0;
+  const sharedIpAccountNames = (targetUser) => (sharedIpAccounts.get(targetUser.id) || []).map(userName);
 
   const auditRows = useMemo(() => ([
     ...data.adminActions.map((row) => ({
@@ -2104,25 +2036,31 @@ export default function Admin() {
           className="dark-focus dark-media mb-5"
           action={<div className="flex items-center gap-3">
               <RoleBadge role={currentRole} />
-              <button onClick={loadAdminData} className="rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:border-primary/35 hover:text-primary">
-                Refresh
+              <button onClick={loadAdminData} disabled={adminQueries.refreshing} className="rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:border-primary/35 hover:text-primary">
+                {adminQueries.refreshing ? "Refreshing..." : "Refresh"}
               </button>
           </div>}
         />
 
         <div className="admin-stat-grid mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-9">
-          <StatCard icon={Users} label="Users" value={stats.totalUsers} />
-          <StatCard icon={BellRing} label="Alerts" value={stats.openAdminAlerts} color="text-red-400" />
-          <StatCard icon={Ticket} label="Open Tickets" value={stats.openTickets} color="text-orange" />
-          <StatCard icon={Gavel} label="Disputes" value={stats.pendingDisputes} color="text-yellow-400" />
-          <StatCard icon={BadgeDollarSign} label="Wagers" value={stats.activeWagers} color="text-green" />
-          <StatCard icon={Swords} label="Ranked" value={stats.activeRanked} color="text-cyan" />
-          <StatCard icon={Trophy} label="Tournaments" value={stats.activeTournaments} color="text-purple-400" />
-          <StatCard icon={Landmark} label="Withdrawals" value={stats.pendingWithdrawals} color="text-red-400" />
-          <StatCard icon={CreditCard} label="Wallet Total" value={formatMoney(stats.walletTotal)} color="text-green" />
+          <StatCard icon={Users} label="Users" value={adminQueries.status.users.ready ? stats.totalUsers : "…"} />
+          <StatCard icon={BellRing} label="Alerts" value={adminQueries.status.adminAlerts.ready ? stats.openAdminAlerts : "…"} color="text-red-400" />
+          <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.tickets.ready ? stats.openTickets : "…"} color="text-orange" />
+          <StatCard icon={Gavel} label="Disputes" value={adminQueries.status.disputes.ready ? stats.pendingDisputes : "…"} color="text-yellow-400" />
+          <StatCard icon={BadgeDollarSign} label="Wagers" value={adminQueries.status.wagers.ready ? stats.activeWagers : "…"} color="text-green" />
+          <StatCard icon={Swords} label="Ranked" value={adminQueries.status.rankedMatches.ready ? stats.activeRanked : "…"} color="text-cyan" />
+          <StatCard icon={Trophy} label="Tournaments" value={adminQueries.status.tournaments.ready ? stats.activeTournaments : "…"} color="text-purple-400" />
+          <StatCard icon={Landmark} label="Withdrawals" value={adminQueries.status.withdrawals.ready ? stats.pendingWithdrawals : "…"} color="text-red-400" />
+          <StatCard icon={CreditCard} label="Wallet Total" value={adminQueries.status.wallets.ready ? formatMoney(stats.walletTotal) : "…"} color="text-green" />
         </div>
 
         <div className="admin-workspace glass overflow-hidden rounded-xl border">
+          {adminQueries.sectionLoading ? (
+            <div role="status" className="flex items-center gap-3 p-6 text-sm text-vapor"><Loader2 className="h-5 w-5 animate-spin" /> Loading {tabs.find((tab) => tab.id === activeTab)?.label || "section"}...</div>
+          ) : adminQueries.sectionError ? (
+            <div role="alert" className="p-6 text-sm text-vapor"><p>Could not load this section.</p><button type="button" onClick={loadAdminData} className="mt-3 text-cyan">Try again</button></div>
+          ) : <Suspense fallback={<div role="status" className="flex items-center gap-3 p-6 text-sm text-vapor"><Loader2 className="h-5 w-5 animate-spin" /> Opening section...</div>}>
+
           {activeTab === "verifyRank" && <RankVerificationAdmin users={data.users} />}
           {activeTab === "dashboard" && (
             <div className="p-6">
@@ -3867,6 +3805,7 @@ export default function Admin() {
               ]} />
             )} />
           )}
+          </Suspense>}
         </div>
         </main>
       </div>

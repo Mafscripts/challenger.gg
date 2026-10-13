@@ -1,0 +1,104 @@
+import { useEffect, useState } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { canAccessAdminPanel, canManageRoles, canManageWallets, effectiveRoleForUser } from "@/lib/roles";
+
+const entities = {
+  users: "User", adminAlerts: "AdminAlert", tickets: "Ticket", disputes: "Dispute",
+  wagers: "Wager", rankedMatches: "RankedMatch", rankedStats: "RankedStats",
+  tournaments: "Tournament", tournamentMatches: "TournamentMatch",
+  tournamentParticipants: "TournamentParticipant", wallets: "Wallet",
+  withdrawals: "WithdrawalRequest", marketplace: "MarketplaceItem",
+  inventory: "UserInventory", adminActions: "AdminAction", systemLogs: "SystemLog",
+  messages: "Message",
+};
+const overviewKeys = ["users", "adminAlerts", "tickets", "disputes", "wagers", "rankedMatches", "tournaments", "withdrawals", "wallets"];
+const sectionKeys = {
+  dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "adminActions", "systemLogs"],
+  users: ["users", "wallets"], roles: ["users"], alerts: ["adminAlerts", "tickets"],
+  tickets: ["tickets", "messages"], disputes: ["disputes", "tickets"], wagers: ["wagers"],
+  live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
+  verifyRank: ["users"],
+  tournaments: ["tournaments", "tournamentMatches", "tournamentParticipants", "users", "marketplace"],
+  tournamentMatches: ["tournamentMatches"], wallets: ["wallets", "users"],
+  referrals: ["referralProgram"], freeTrials: ["animatedNameFreeTrial", "users"],
+  withdrawals: ["withdrawals", "users"], marketplace: ["marketplace"],
+  inventory: ["inventory", "users"], audit: ["adminActions", "systemLogs"],
+};
+const queryKeys = [...Object.keys(entities), "referralProgram", "animatedNameFreeTrial"];
+const combineQueries = (results) => ({
+  data: Object.fromEntries(results.flatMap((result, index) => result.data === undefined ? [] : [[queryKeys[index], result.data]])),
+  status: Object.fromEntries(results.map((result, index) => [queryKeys[index], {
+    ready: result.data !== undefined, pending: result.isPending, error: result.error,
+    fetching: result.isFetching,
+  }])),
+});
+
+async function loadRows(key) {
+  if (entities[key]) {
+    try {
+      return await base44.entities[entities[key]].filterFresh({}, "-created_date", 500);
+    } catch (error) {
+      // Some lists are intentionally unavailable to moderators.
+      if (error.status === 403) return [];
+      throw error;
+    }
+  }
+  if (key === "referralProgram") {
+    const response = await base44.functions.invoke("getReferralProgram", {});
+    if (!response.data?.success) throw new Error(response.data?.error || "Could not load referral settings");
+    return { ...response.data.program, rewarded_users: response.data.rewarded_users };
+  }
+  const response = await base44.functions.invoke("getAnimatedNameFreeTrialStatus", {});
+  if (!response.data?.trial) throw new Error("Could not load free trial settings");
+  return response.data.trial;
+}
+
+export function useAdminConsoleData(user, activeTab) {
+  const queryClient = useQueryClient();
+  const role = effectiveRoleForUser(user);
+  const allowed = Boolean(user?.id) && canAccessAdminPanel(role);
+  const scope = `${user?.id}:${role}`;
+  const [overviewScope, setOverviewScope] = useState(null);
+  const overviewReady = overviewScope === scope;
+  const required = sectionKeys[activeTab] || sectionKeys.dashboard;
+  // Give the opened section priority before starting unrelated overview reads.
+  const enabledKeys = new Set([...required, ...(overviewReady ? overviewKeys : [])]);
+  const queries = useQueries({
+    queries: queryKeys.map((key) => ({
+      queryKey: ["admin-console", user?.id, role, key],
+      queryFn: () => key === "referralProgram" && !canManageRoles(role) ? null : loadRows(key),
+      enabled: allowed && enabledKeys.has(key),
+      staleTime: 30000,
+      refetchOnWindowFocus: false,
+    })),
+    combine: combineQueries,
+  });
+  const sectionLoading = allowed && required.some((key) => !queries.status[key].ready && queries.status[key].pending);
+
+  useEffect(() => {
+    if (allowed && !sectionLoading) setOverviewScope(scope);
+  }, [allowed, sectionLoading, scope]);
+
+  useEffect(() => {
+    if (!allowed || !overviewReady || !canManageWallets(role)) return;
+    let active = true;
+    // Keep lifecycle updates, but never make opening the console wait for them.
+    base44.functions.invoke("syncTournamentLifecycle", {}).then((response) => {
+      if (!active || !response.data?.synced?.length) return;
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-console", user.id, role],
+        predicate: (query) => ["tournaments", "tournamentMatches", "tournamentParticipants"].includes(query.queryKey[3]),
+      });
+    }).catch((error) => console.warn("Tournament lifecycle sync failed:", error));
+    return () => { active = false; };
+  }, [allowed, overviewReady, user?.id, role, queryClient]);
+
+  return {
+    ...queries,
+    sectionLoading,
+    sectionError: required.find((key) => !queries.status[key].ready && queries.status[key].error),
+    refreshing: [...enabledKeys].some((key) => queries.status[key]?.fetching),
+    refresh: () => queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role] }),
+  };
+}
