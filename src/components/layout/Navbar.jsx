@@ -413,7 +413,7 @@ export default function Navbar() {
   const accountName = user?.display_name || user?.full_name || user?.username || user?.email || "Account";
   const canSeeAdminLink = isStaffUser(user || authUser);
   const canSeeStreamerShortcut = isStreamerUser(user || authUser);
-  const matchHistoryPath = profilePath;
+  const matchHistoryPath = "/my-matches?view=history";
 
   useEffect(() => {
     if (!isStaffUser(user || authUser)) return;
@@ -1296,7 +1296,7 @@ export default function Navbar() {
                       <div className="nav-popover nav-popover-enter absolute left-0 top-11 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-xl">
                         <div className="grid grid-cols-2 gap-2 p-2 border-b border-white/5">
                           <Link
-                            to="/dashboard"
+                            to="/my-matches?view=active"
                             onClick={() => setMatchesOpen(false)}
                             className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
                           >
@@ -1670,7 +1670,7 @@ export default function Navbar() {
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
                           { label: "My Tickets", path: "/my-tickets", icon: Ticket },
-                          { label: "My Matches", path: matchHistoryPath, icon: History },
+                          { label: "My Matches", path: "/my-matches", icon: History },
                           { label: "Teams", path: "/teams", icon: Users },
                           { label: "Wallet", path: "/wallet", icon: Wallet },
                           { label: "Settings", path: "/settings", icon: Settings },
@@ -1828,7 +1828,7 @@ export default function Navbar() {
                 <p className="px-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">Matches</p>
                 <div className="space-y-1">
                   <Link
-                    to="/dashboard"
+                    to="/my-matches?view=active"
                     onClick={closeMobileMenu}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all
                       text-vapor hover:text-foreground hover:bg-secondary`}

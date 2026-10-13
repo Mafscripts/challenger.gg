@@ -30,6 +30,8 @@ import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
+import RecentMatchesPanel from "@/components/match/RecentMatchesPanel";
+import { matchDateMs } from "@/lib/matchPresentation";
 import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
 import { teamPurposeFor } from "@/lib/teamPresentation";
 import { ScreenshotRankPill, GameRankSettingsLink } from "@/components/profile/ScreenshotRank";
@@ -136,80 +138,6 @@ const socialLinksFor = (profile, user) => socialFields
     return value ? { ...field, value, url: socialUrlFor(field.label, value) } : null;
   })
   .filter(Boolean);
-const matchRouteFor = (match) => {
-  const type = cleanKey(match?.match_type || match?.competition_type || match?.competition);
-  if (match?.tournament_id || type === "tournament" || type === "tournament_match" || type === "streamer_tournament") {
-    return `/tournament-match/${match.id}`;
-  }
-  if (type === "xp" || type === "xp_match" || type === "xpmatch") return `/xp-match/${match.id}`;
-  if (type === "8s" || type === "eights" || type === "free8s" || type === "free-8s" || type === "free_8s" || type === "money8s" || type === "money-8s" || type === "money_8s") {
-    return `/8s-match/${match.id}`;
-  }
-  if (type === "wager" || type === "wagers" || match.entry_fee !== undefined || match.amount !== undefined) {
-    return `/wagers-match/${match.id}`;
-  }
-  return `/ranked-match/${match.id}`;
-};
-
-const matchScoreFor = (match, userId) => {
-  if (cleanKey(match.status) !== "completed") return { text: "—", label: "Awaiting result" };
-  const ownSide = match.profile_side || profileMatchSideFor(match, userId);
-  const alpha = match.confirmed_score_alpha ?? match.team_alpha_score ?? match.team_a_score ?? match.reported_score_alpha;
-  const bravo = match.confirmed_score_bravo ?? match.team_bravo_score ?? match.team_b_score ?? match.reported_score_bravo;
-  const isScore = (value) => value !== undefined && value !== null && value !== "" && Number.isFinite(Number(value));
-  if (isScore(alpha) && isScore(bravo)) {
-    return { text: ownSide === "bravo" ? `${bravo} – ${alpha}` : `${alpha} – ${bravo}`, label: ownSide ? "Own team first" : "Team A – Team B" };
-  }
-  if (isScore(match.winner_score) && isScore(match.loser_score) && ["win", "loss"].includes(match.profile_result)) {
-    return { text: match.profile_result === "win" ? `${match.winner_score} – ${match.loser_score}` : `${match.loser_score} – ${match.winner_score}`, label: "Own team first" };
-  }
-  return { text: "—", label: "Score unavailable" };
-};
-const matchOpponentFor = (match, userId) => {
-  const ownSide = match.profile_side || profileMatchSideFor(match, userId);
-  const alpha = match.team_a_name || match.team_alpha_name || match.host_team_name || match.host_name;
-  const bravo = match.team_b_name || match.team_bravo_name || match.challenger_team_name || match.challenger_name;
-  if (ownSide) return `vs ${ownSide === "alpha" ? bravo || "Team Bravo" : alpha || "Team Alpha"}`;
-  return alpha && bravo ? `${alpha} vs ${bravo}` : "Team match";
-};
-const matchRewardsFor = (match, userId) => {
-  if (cleanKey(match.status) !== "completed") return "";
-  const eloChange = match.elo_changes?.[userId]?.delta;
-  const xpChange = match.xp_changes?.[userId]?.amount;
-  const rewards = [];
-  if (typeof eloChange === "number" && Number.isFinite(eloChange)) rewards.push(`${eloChange > 0 ? "+" : ""}${eloChange} ELO`);
-  if (typeof xpChange === "number" && Number.isFinite(xpChange)) rewards.push(`${xpChange > 0 ? "+" : ""}${xpChange} XP`);
-  return rewards.join(" · ");
-};
-const matchResultFor = (match, userId) => {
-  const outcome = match?.profile_result || profileMatchOutcome(match, userId);
-  if (outcome === "win") return ["Win", "text-green", "border-green/25 bg-green/10"];
-  if (outcome === "loss") return ["Loss", "text-red-300", "border-red-400/20 bg-red-500/10"];
-  return ["Pending", "text-vapor", "border-white/5 bg-background/25"];
-};
-const matchDateMs = (match) => new Date(
-  match.match_completed_date || match.completed_date || match.accepted_date || match.created_date || 0
-).getTime() || 0;
-const competitionLabelFor = (match) => {
-  const type = cleanKey(match?.match_type || match?.competition_type || match?.competition);
-  if (type === "money8s" || type === "money-8s" || type === "money_8s" || type === "money 8s") return "Money 8s";
-  if (type === "8s" || type === "eights" || type === "free8s" || type === "free-8s" || type === "free_8s") return "Free 8s";
-  if (type === "tournament" || type === "streamer_tournament" || type === "tournament_match" || match?.tournament_id) return "Tournament";
-  if (type === "xp" || type === "xp_match" || type === "xpmatch") return "XP Match";
-  if (type === "ranked" || type === "elo") return "Ranked";
-  if (type === "wager" || type === "wagers") return "Wager";
-  return "Match";
-};
-const competitionToneFor = (label) => {
-  if (label === "Money 8s") return "border-green/20 bg-green/10 text-green";
-  if (label === "Free 8s") return "border-cyan/20 bg-cyan/10 text-cyan";
-  if (label === "Tournament") return "border-orange/20 bg-orange/10 text-orange";
-  if (label === "XP Match") return "border-purple-300/20 bg-purple-300/10 text-purple-200";
-  if (label === "Ranked") return "border-yellow-400/20 bg-yellow-400/10 text-yellow-300";
-  if (label === "Wager") return "border-orange/25 bg-orange/10 text-orange";
-  return "border-white/15 bg-white/[0.06] text-white";
-};
-
 const premiumInventoryEffectClass = (item) => {
   const rarity = String(item?.item_rarity || "").toLowerCase();
   if (rarity === "exclusive") return "animate-exclusive-glow exclusive-shimmer border-cyan/30 glow-cyan";
@@ -894,62 +822,6 @@ function TrophyOverview({ trophies, items = [] }) {
         </div>
       )}
     </SectionCard>
-  );
-}
-
-function RecentMatchesPanel({ matches, userId, className = "", expanded = false, loading = false, onViewAll }) {
-  const [competition, setCompetition] = useState("All");
-  const categories = ["All", "Free 8s", "Money 8s", "Ranked", "XP Match", "Tournament", "Wager"];
-  const filtered = competition === "All" ? matches : matches.filter((match) => competitionLabelFor(match) === competition);
-  const visible = expanded ? filtered : filtered.slice(0, 6);
-  const completed = filtered.filter((match) => ["win", "loss"].includes(match.profile_result));
-  const recentWins = completed.filter((match) => match.profile_result === "win").length;
-  return (
-    <section className={className}>
-      <ProfileSectionTitle title={expanded ? "Match history" : "Recent matches"} count={loading ? "Loading" : `${visible.length} of ${filtered.length} recent matches`} />
-      <div className="profile-mode-filters mb-4 flex flex-wrap gap-2" aria-label="Filter matches by competition">
-        {categories.map((category) => <button key={category} type="button" aria-pressed={competition === category} onClick={() => setCompetition(category)} className="competition-action-pill profile-mode-pill">
-          {category === "All" ? "All modes" : category === "XP Match" ? "XP" : category === "Tournament" ? "Tournaments" : category === "Wager" ? "Wagers" : category}
-          <span className="profile-mode-count">{category === "All" ? matches.length : matches.filter((match) => competitionLabelFor(match) === category).length}</span>
-        </button>)}
-      </div>
-      {!loading && completed.length > 0 && <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-vapor"><p>Recent form <span className="ml-2 font-bold text-green">{recentWins}W</span><span className="ml-2 font-bold text-red-300">{completed.length - recentWins}L</span></p><span>Recent activity · up to 50 matches</span></div>}
-      {loading ? (
-        <div role="status" className="rounded-xl border border-white/10 bg-card p-5 text-sm text-vapor">Loading matches...</div>
-      ) : visible.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-card p-5"><EmptyPanel icon={Gamepad2} text={competition === "All" ? "No matches found." : "No matches for this mode in your recent activity."} /></div>
-      ) : (
-        <div className="space-y-2.5">
-          {visible.map((match) => {
-            const [result, resultColor, resultClass] = matchResultFor(match, userId);
-            const competitionLabel = competitionLabelFor(match);
-            const score = matchScoreFor(match, userId);
-            const rewards = matchRewardsFor(match, userId);
-            const opponent = matchOpponentFor(match, userId);
-            return (
-              <Link
-                key={`${competitionLabel}:${match.id}`}
-                to={matchRouteFor(match)}
-                aria-label={`${competitionLabel}: ${match.game_mode_display || match.game_mode || "Match"}, ${opponent}, ${result}, ${score.text}`}
-                className={`profile-match-row group grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/10 bg-card px-4 py-4 sm:grid-cols-[40px_minmax(0,1fr)_110px_95px_24px] ${result === "Win" ? "border-l-green" : result === "Loss" ? "border-l-red-400" : "border-l-cyan"} border-l-2`}
-              >
-                <span className={`grid h-9 w-9 place-items-center rounded-xl border ${resultClass}`}><Swords className={`h-4 w-4 ${resultColor}`} /></span>
-                <div className="min-w-0">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-cyan">{match.game_mode_display || match.game_mode || "Match"}</p><span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-bold ${competitionToneFor(competitionLabel)}`}>{competitionLabel}</span></div>
-                  <p className="mt-1 truncate text-xs font-semibold text-white/80">{opponent}</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-vapor"><time dateTime={new Date(matchDateMs(match)).toISOString()}>{formatDate(match.match_completed_date || match.completed_date || match.created_date)}</time><span className="mx-1.5">·</span>{match.final_map_name || match.map_name || "Map unavailable"}</p>
-                  {rewards && <p className="mt-1 text-[11px] font-bold text-cyan">{rewards}</p>}
-                </div>
-                <div className="text-right sm:text-center"><p className="text-base font-black tabular-nums text-white">{score.text}</p><p className="mt-1 max-w-24 text-[10px] text-vapor sm:max-w-none">{score.label}</p><span className={`mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-black uppercase sm:hidden ${resultClass} ${resultColor}`}>{result}</span></div>
-                <span className={`hidden rounded-full border px-3 py-1.5 text-center text-[10px] font-black uppercase sm:block ${resultClass} ${resultColor}`}>{result}</span>
-                <ChevronRight aria-hidden="true" className="hidden h-4 w-4 text-cyan sm:block" />
-              </Link>
-            );
-          })}
-        </div>
-      )}
-      {!expanded && !loading && matches.length > 0 && <button type="button" onClick={onViewAll} className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-cyan hover:underline">View match history<ChevronRight className="h-3.5 w-3.5" /></button>}
-    </section>
   );
 }
 
