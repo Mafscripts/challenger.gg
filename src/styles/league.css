@@ -306,12 +306,18 @@
 .topfragg-league .league-demo-lineup-actions p { max-width: 420px; font-size: 9px; line-height: 1.8; color: hsl(var(--vapor)); }
 .topfragg-league .league-demo-lineup-actions .league-button { font-size: 10px; padding: 8px 11px; }
 .topfragg-league .league-demo-room-maps { overflow: hidden; }
-.topfragg-league .league-demo-room-map { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-top: 1px solid rgb(255 255 255 / .06); }
-.topfragg-league .league-demo-map-number { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid hsl(var(--border)); border-radius: 6px; color: hsl(var(--cyan)); font-family: var(--font-mono); font-size: 11px; }
+.topfragg-league .league-demo-room-map { display: grid; grid-template-columns: 160px minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 16px 20px; border-top: 1px solid rgb(255 255 255 / .06); }
+.topfragg-league .league-demo-map-preview { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid rgb(255 255 255 / .1); border-radius: 8px; background: var(--arena-inset); }
+.topfragg-league .league-demo-map-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.topfragg-league .league-demo-map-number { position: absolute; left: 7px; top: 7px; display: flex; align-items: center; justify-content: center; width: 25px; height: 25px; border: 1px solid hsl(var(--cyan) / .25); border-radius: 5px; background: rgb(7 17 24 / .9); color: hsl(var(--cyan)); font-family: var(--font-mono); font-size: 10px; font-weight: 800; }
+.topfragg-league .league-demo-map-description { min-width: 0; }
+.topfragg-league .league-demo-map-mode { display: inline-block; margin-bottom: 5px; color: hsl(var(--cyan)); font-size: 8px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
 .topfragg-league .league-demo-room-map strong { display: block; font-size: 12px; font-weight: 700; }
+.topfragg-league .league-demo-map-description strong { font-size: 16px; }
 .topfragg-league .league-demo-room-map small { display: block; margin-top: 4px; color: hsl(var(--vapor)); font-size: 9px; line-height: 1.6; }
 .topfragg-league .league-demo-map-result { margin-left: auto; text-align: right; }
 .topfragg-league .league-demo-map-result strong { font-family: var(--font-mono); color: hsl(var(--cyan)); white-space: nowrap; }
+.topfragg-league .league-demo-map-status-dot { display: inline-block; width: 5px; height: 5px; margin-right: 5px; border-radius: 50%; background: hsl(var(--cyan)); vertical-align: middle; }
 .topfragg-league .league-demo-room-chat { overflow: hidden; }
 .topfragg-league .league-demo-room-chat header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid rgb(255 255 255 / .07); }
 .topfragg-league .league-demo-room-chat h2 { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; }
@@ -407,13 +413,20 @@
   .topfragg-league .league-demo-score-center > small { max-width: 110px; font-size: 8px; }
   .topfragg-league .league-demo-expanded-roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topfragg-league .league-demo-fixture-teams { font-size: 10px; }
-  .topfragg-league .league-demo-room-map { gap: 8px; padding-inline: 12px; }
+  .topfragg-league .league-demo-room-map { grid-template-columns: 88px minmax(0, 1fr) auto; gap: 10px; padding: 14px 12px; }
+  .topfragg-league .league-demo-map-preview { aspect-ratio: 4 / 3; }
+  .topfragg-league .league-demo-map-number { width: 21px; height: 21px; left: 4px; top: 4px; font-size: 8px; }
+  .topfragg-league .league-demo-map-description strong { font-size: 13px; }
+  .topfragg-league .league-demo-map-mode { font-size: 7px; letter-spacing: .02em; }
   .topfragg-league .league-demo-map-result { min-width: 70px; }
   .topfragg-league .league-demo-room-map small { font-size: 8px; }
   .topfragg-league .league-demo-lineup-options fieldset > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 419px) {
   .topfragg-league .league-steps { grid-template-columns: minmax(0, 1fr); }
+  .topfragg-league .league-demo-room-map { grid-template-columns: 88px minmax(0, 1fr); gap: 5px 12px; }
+  .topfragg-league .league-demo-map-preview { grid-row: 1 / 3; }
+  .topfragg-league .league-demo-map-result { grid-column: 2; margin-left: 0; min-width: 0; text-align: left; }
 }
 @container (max-width: 720px) {
   .topfragg-league :is(.league-directory-columns, .league-division-row) { grid-template-columns: minmax(0, 1fr) 85px 115px; }

@@ -60,9 +60,9 @@ function LeagueMatchDemoView({ division, match }) {
   const winner = scoreA > scoreB ? teamA : teamB;
   const schedule = leagueDemoSchedule(match);
   const maps = [
-    { name: "Sample map A", mode: "Hardpoint", host: teamA.name, score: "250 – 183", winner: teamA.name },
-    { name: "Sample map B", mode: "Search & Destroy", host: teamB.name, score: "4 – 6", winner: teamB.name },
-    { name: "Sample map C", mode: "Hardpoint", host: "Agreed by teams", score: "250 – 221", winner: teamA.name },
+    { name: "Breakwater", image: "/assets/league/demo-maps/breakwater.webp", setting: "Stormfront cargo port", alt: "Fictional Breakwater map: coastal cargo docks beneath storm clouds", mode: "Hardpoint", host: teamA.name, score: "250 – 183", winner: teamA.name },
+    { name: "Nightfall", image: "/assets/league/demo-maps/nightfall.webp", setting: "Rain-soaked transit district", alt: "Fictional Nightfall map: a rain-soaked city plaza with blue and violet lights", mode: "Search & Destroy", host: teamB.name, score: "4 – 6", winner: teamB.name },
+    { name: "Foundry", image: "/assets/league/demo-maps/foundry.webp", setting: "Industrial steelworks", alt: "Fictional Foundry map: steelworks and cargo cranes in amber evening light", mode: "Hardpoint", host: "Agreed by teams", score: "250 – 221", winner: teamA.name },
   ];
   return <div className="topfragg-league match-room-theme league-demo-match-room"><div className="league-container">
     <div className="league-topline"><Link to={`${leagueDivisionUrl(division)}?view=matches`} className="league-back"><ArrowLeft className="h-4 w-4" />{division.name} matches</Link><LeagueDemoLabel /></div>
@@ -90,8 +90,12 @@ function LeagueMatchDemoView({ division, match }) {
         <MatchTeamTable label="Team Bravo" name={teamB.name} teamIcon={<LeagueTeamLogo team={teamB} size={42} />} color="cyan" compact players={matchPlayers(teamB, selectedB)} isComplete={showResult} isWinner={showResult && winner.id === teamB.id} finalScore={scoreB} />
       </div>
       <section className="league-panel league-demo-room-maps">
-        <div className="league-division-section-heading"><div><h2 className="flex items-center gap-2"><MapIcon className="h-4 w-4 text-cyan" />Example map series</h2><p>Fictional map labels. Final MW4 modes, maps and rules are not set.</p></div><LeagueDemoLabel /></div>
-        {maps.map((map, index) => <div className="league-demo-room-map" key={map.name}><span className="league-demo-map-number">0{index + 1}</span><div><strong>{map.name}</strong><small>{map.mode} · Example host: {map.host}</small></div><span className="league-demo-map-result">{showResult ? <><strong>{map.score}</strong><small>{map.winner}</small></> : <small>Awaiting play</small>}</span></div>)}
+        <div className="league-division-section-heading"><div><h2 className="flex items-center gap-2"><MapIcon className="h-4 w-4 text-cyan" />Example map series</h2><p>Original fictional maps and concept art for this demo. Official MW4 maps and rules are not set.</p></div><LeagueDemoLabel /></div>
+        {maps.map((map, index) => <div className="league-demo-room-map" key={map.name}>
+          <div className="league-demo-map-preview"><img src={map.image} alt={map.alt} width="960" height="540" loading="lazy" decoding="async" /><span className="league-demo-map-number">0{index + 1}</span></div>
+          <div className="league-demo-map-description"><span className="league-demo-map-mode">{map.mode}</span><strong>{map.name}</strong><small>{map.setting}</small><small>Example host: {map.host}</small></div>
+          <span className="league-demo-map-result">{showResult ? <><strong>{map.score}</strong><small>{map.winner}</small></> : <small><span className="league-demo-map-status-dot" />Awaiting play</small>}</span>
+        </div>)}
       </section>
     </>} sidebar={<>
       <section className="match-chat-panel glass league-demo-room-chat">
