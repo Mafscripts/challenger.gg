@@ -28,6 +28,17 @@ export function tournamentMatchSideFor(match, participants) {
   return alpha === bravo ? null : alpha ? "alpha" : "bravo";
 }
 
+export function profileMatchSideFor(match, userId, { wagerParticipants = [], tournamentParticipants = [] } = {}) {
+  if (!match || !userId) return null;
+  if (match.tournament_id || String(match.match_type || "").toLowerCase().includes("tournament")) {
+    return tournamentMatchSideFor(match, tournamentParticipants.filter((participant) => participantBelongsToUser(participant, userId)));
+  }
+  const participantSides = [...new Set(wagerParticipants.filter((participant) => sameId(participant.wager_id, match.id)
+    && participantBelongsToUser(participant, userId)).map((participant) => sideFor(participant.team || participant.side)).filter(Boolean))];
+  if (participantSides.length) return participantSides.length === 1 ? participantSides[0] : null;
+  return sameId(match.host_id, userId) ? "alpha" : sameId(match.challenger_id, userId) ? "bravo" : null;
+}
+
 export function profileMatchOutcome(match, userId, { wagerParticipants = [], tournamentParticipants = [] } = {}) {
   if (!match || !userId) return "pending";
   const status = String(match.status || "").toLowerCase();

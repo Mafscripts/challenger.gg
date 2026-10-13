@@ -28,7 +28,6 @@ import {
 import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
-import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
 import { ScreenshotRankPill, GameRankSettingsLink } from "@/components/profile/ScreenshotRank";
@@ -38,7 +37,7 @@ import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { activisionIdFor } from "@/lib/activision";
 import { normalizeImageSource, prepareImageFile } from "@/lib/images";
 import { trophyCountsFor } from "@/lib/trophyCounts";
-import { participantBelongsToUser, profileMatchOutcome, tournamentMatchSideFor } from "@/lib/profileMatchResults";
+import { participantBelongsToUser, profileMatchOutcome, profileMatchSideFor, tournamentMatchSideFor } from "@/lib/profileMatchResults";
 
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
@@ -150,11 +149,35 @@ const matchRouteFor = (match) => {
   return `/ranked-match/${match.id}`;
 };
 
-const matchScoreText = (match) => {
-  const alpha = match.team_alpha_score ?? match.team_a_score ?? match.reported_score_alpha;
-  const bravo = match.team_bravo_score ?? match.team_b_score ?? match.reported_score_bravo;
-  if (alpha === undefined || alpha === null || bravo === undefined || bravo === null) return "TBD";
-  return `${alpha} - ${bravo}`;
+const matchScoreFor = (match, userId) => {
+  if (cleanKey(match.status) !== "completed") return { text: "—", label: "Awaiting result" };
+  const ownSide = match.profile_side || profileMatchSideFor(match, userId);
+  const alpha = match.confirmed_score_alpha ?? match.team_alpha_score ?? match.team_a_score ?? match.reported_score_alpha;
+  const bravo = match.confirmed_score_bravo ?? match.team_bravo_score ?? match.team_b_score ?? match.reported_score_bravo;
+  const isScore = (value) => value !== undefined && value !== null && value !== "" && Number.isFinite(Number(value));
+  if (isScore(alpha) && isScore(bravo)) {
+    return { text: ownSide === "bravo" ? `${bravo} – ${alpha}` : `${alpha} – ${bravo}`, label: ownSide ? "Own team first" : "Team A – Team B" };
+  }
+  if (isScore(match.winner_score) && isScore(match.loser_score) && ["win", "loss"].includes(match.profile_result)) {
+    return { text: match.profile_result === "win" ? `${match.winner_score} – ${match.loser_score}` : `${match.loser_score} – ${match.winner_score}`, label: "Own team first" };
+  }
+  return { text: "—", label: "Score unavailable" };
+};
+const matchOpponentFor = (match, userId) => {
+  const ownSide = match.profile_side || profileMatchSideFor(match, userId);
+  const alpha = match.team_a_name || match.team_alpha_name || match.host_team_name || match.host_name;
+  const bravo = match.team_b_name || match.team_bravo_name || match.challenger_team_name || match.challenger_name;
+  if (ownSide) return `vs ${ownSide === "alpha" ? bravo || "Team Bravo" : alpha || "Team Alpha"}`;
+  return alpha && bravo ? `${alpha} vs ${bravo}` : "Team match";
+};
+const matchRewardsFor = (match, userId) => {
+  if (cleanKey(match.status) !== "completed") return "";
+  const eloChange = match.elo_changes?.[userId]?.delta;
+  const xpChange = match.xp_changes?.[userId]?.amount;
+  const rewards = [];
+  if (typeof eloChange === "number" && Number.isFinite(eloChange)) rewards.push(`${eloChange > 0 ? "+" : ""}${eloChange} ELO`);
+  if (typeof xpChange === "number" && Number.isFinite(xpChange)) rewards.push(`${xpChange > 0 ? "+" : ""}${xpChange} XP`);
+  return rewards.join(" · ");
 };
 const matchResultFor = (match, userId) => {
   const outcome = match?.profile_result || profileMatchOutcome(match, userId);
@@ -240,6 +263,8 @@ export default function Profile() {
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [avatarDraft, setAvatarDraft] = useState("");
+  const [bannerDraft, setBannerDraft] = useState("");
+  const [bannerLoading, setBannerLoading] = useState(false);
   const [bioDraft, setBioDraft] = useState("");
   const [nameColorDraft, setNameColorDraft] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
@@ -307,6 +332,7 @@ export default function Profile() {
       const loadedProfile = profileRows[0] || null;
       setProfile(loadedProfile);
       setAvatarDraft(loadedProfile?.avatar_url || userRow?.avatar_url || "");
+      setBannerDraft(loadedProfile?.banner_url || "");
       setBioDraft(loadedProfile?.bio || "");
       setNameColorDraft(userRow?.display_name_color || loadedProfile?.display_name_color || "");
       setRankedStats(rankedRows[0] || null);
@@ -386,6 +412,7 @@ export default function Profile() {
         if (!wager) return wager;
         return {
           ...wager,
+          profile_side: profileMatchSideFor(wager, userRow.id, { wagerParticipants: participantRowsByWager.get(String(wager.id)) || [] }),
           profile_result: profileMatchOutcome(wager, userRow.id, { wagerParticipants: participantRowsByWager.get(String(wager.id)) || [] }),
         };
       };
@@ -398,14 +425,14 @@ export default function Profile() {
         base44.entities.TournamentMatch.filter({ tournament_id: tournamentId }, "-created_date", 100).catch(() => [])
       )))).flat()
         .filter((match) => tournamentMatchSideFor(match, userTournamentParticipants))
-        .map((match) => ({ ...match, match_type: "tournament", profile_result: profileMatchOutcome(match, userRow.id, { tournamentParticipants: userTournamentParticipants }) }));
+        .map((match) => ({ ...match, match_type: "tournament", profile_side: tournamentMatchSideFor(match, userTournamentParticipants), profile_result: profileMatchOutcome(match, userRow.id, { tournamentParticipants: userTournamentParticipants }) }));
 
       const combinedMatches = [
         ...hostedWagers.map(enrichWagerResult),
         ...challengedWagers.map(enrichWagerResult),
         ...participantWagers.filter(Boolean).map(enrichWagerResult),
-        ...hostedRanked.map((match) => ({ ...match, profile_result: profileMatchOutcome(match, userRow.id) })),
-        ...challengedRanked.map((match) => ({ ...match, profile_result: profileMatchOutcome(match, userRow.id) })),
+        ...hostedRanked.map((match) => ({ ...match, match_type: match.match_type || "ranked", profile_result: profileMatchOutcome(match, userRow.id) })),
+        ...challengedRanked.map((match) => ({ ...match, match_type: match.match_type || "ranked", profile_result: profileMatchOutcome(match, userRow.id) })),
         ...hostedXp.map((match) => ({ ...match, match_type: match.match_type || "xp", profile_result: profileMatchOutcome(match, userRow.id) })),
         ...challengedXp.map((match) => ({ ...match, match_type: match.match_type || "xp", profile_result: profileMatchOutcome(match, userRow.id) })),
         ...tournamentMatchRows,
@@ -413,7 +440,7 @@ export default function Profile() {
         .filter((match) => !["cancelled", "canceled", "expired"].includes(cleanKey(match.status)))
         .filter((match, index, list) => list.findIndex((item) => item.id === match.id) === index)
         .sort((a, b) => matchDateMs(b) - matchDateMs(a))
-        .slice(0, 8);
+        .slice(0, 50);
       if (!isActive()) return;
       setMatches(combinedMatches);
     } catch (error) {
@@ -495,7 +522,7 @@ export default function Profile() {
   };
 
   const handleSaveProfileVisuals = async () => {
-    if (!isOwnProfile || !user?.id) return;
+    if (!isOwnProfile || !user?.id || bannerLoading || profileSaving) return;
     setProfileSaving(true);
     setProfileResult(null);
     try {
@@ -508,6 +535,7 @@ export default function Profile() {
         username: user.username,
         handle: user.handle || user.username,
         avatar_url: normalizedAvatar,
+        banner_url: normalizeImageSource(bannerDraft),
         bio: bioDraft.trim().slice(0, 500),
         display_name_color: canUseNameColor ? nextNameColor : "",
       };
@@ -551,23 +579,23 @@ export default function Profile() {
   ];
 
   return (
-    <div className="min-h-screen py-6 sm:py-8">
+    <div className="profile-page min-h-screen py-6 sm:py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-card">
-          {profile?.banner_url && <img src={profile.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_5%,rgba(20,216,255,.1),transparent_28%),radial-gradient(circle_at_15%_100%,rgba(255,110,0,.1),transparent_26%),linear-gradient(90deg,rgba(10,16,25,.97),rgba(12,18,28,.78))]" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
-          <div className="relative flex min-h-[210px] flex-col justify-start gap-7 p-5 sm:p-7 lg:flex-row lg:items-start lg:justify-between lg:p-8">
-            <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+        <section className="profile-hero relative overflow-hidden rounded-2xl border border-white/10 bg-card">
+          {bannerDraft && <img src={bannerDraft} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-35" />}
+          <div className="profile-hero-shade pointer-events-none absolute inset-0" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
+          <div className="relative flex min-h-[240px] flex-col justify-start gap-7 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between lg:p-8">
+            <div className="flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
               <div className="relative shrink-0">
-                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-3xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)] sm:h-28 sm:w-28">
+                <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-4xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)] sm:h-36 sm:w-36">
                   {avatarDraft || profile?.avatar_url ? <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" /> : name.charAt(0)}
                 </div>
-                <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-4 border-card bg-green" />
               </div>
               <div className="min-w-0">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-cyan">TopFragg competitor</p>
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 data-name-effect={selectedNameColor || undefined} className={`player-name-wrap shrink-0 font-heading text-3xl font-black leading-tight text-white sm:text-4xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
+                  <h1 data-name-effect={selectedNameColor || undefined} className={`player-name-wrap min-w-0 break-words font-heading text-4xl font-black leading-tight text-white sm:text-5xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
                   <RoleBadge role={user.role || "user"} />
                   <ScreenshotRankPill rank={user.screenshot_rank} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
@@ -578,14 +606,24 @@ export default function Profile() {
                   <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">{region}</span>
                   <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">Joined {joinedDate}</span>
                 </div>
+                {socialLinks.length > 0 && <div className="mt-4 flex flex-wrap gap-2" aria-label="Player socials">
+                  {socialLinks.map((social) => social.url ? (
+                    <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="profile-social-pill"><Globe2 className="h-3.5 w-3.5" />{social.label}<ChevronRight className="h-3 w-3" /></a>
+                  ) : <span key={social.key} className="profile-social-pill"><MessageSquare className="h-3.5 w-3.5" />{social.label}: {social.value}</span>)}
+                </div>}
               </div>
             </div>
 
-            <div className="w-full lg:w-[360px]">
+            <div className="w-full shrink-0 lg:w-[360px]">
               <div className="rounded-xl border border-cyan/15 bg-cyan/[0.045] px-3 py-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">TopFragg rank</p><p className="mt-1 text-sm font-black text-white">{topfraggRankLabel}</p></div>
                   {hasXpMatches ? <RankBadge rank={rank.tier} size="sm" showLabel={false} animated={false} /> : <span className="grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.04] font-mono text-lg font-black text-vapor">?</span>}
+                </div>
+                <div className="mt-3 border-t border-white/10 pt-3">
+                  <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold"><span className="text-cyan">{elo.toLocaleString()} ELO</span><span className="text-vapor">{!hasXpMatches ? "Play Ranked to get placed" : nextRank ? `Next: ${nextRank.name}` : "Highest rank reached"}</span></div>
+                  <div role="progressbar" aria-label="TopFragg rank progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={hasXpMatches ? rankProgress : 0} className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-cyan" style={{ width: `${hasXpMatches ? rankProgress : 0}%` }} /></div>
+                  {hasXpMatches && nextRank && <p className="mt-2 text-[11px] text-vapor">{Math.max(0, nextRank.min - elo).toLocaleString()} ELO to {nextRank.name}</p>}
                 </div>
                 <ProfileTrophyCount trophies={trophyOverviewCards} total={trophyCount} />
               </div>
@@ -612,10 +650,12 @@ export default function Profile() {
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span><input value={avatarDraft} onChange={(event) => setAvatarDraft(event.target.value)} onBlur={() => { try { setAvatarDraft(normalizeImageSource(avatarDraft)); } catch { /* Save displays validation. */ } }} placeholder="https://i.imgur.com/example.png" className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
                   <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Upload profile picture</span><input type="file" accept="image/*" onChange={handleAvatarFile} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
+                  <label className="space-y-1"><span className="text-xs font-bold text-vapor">Upload profile banner</span><input type="file" accept="image/*" disabled={bannerLoading || profileSaving} onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setBannerLoading(true); setProfileResult(null); try { setBannerDraft(await prepareImageFile(file)); } catch (error) { setProfileResult({ success: false, message: error.message || "Could not load banner." }); } finally { setBannerLoading(false); } }} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40 disabled:opacity-50" /><span role="status" className="block text-xs text-vapor">{bannerLoading ? "Preparing banner..." : "Wide images work best · max 8MB"}</span></label>
+                  {bannerDraft && <button type="button" disabled={bannerLoading || profileSaving} onClick={() => setBannerDraft("")} className="justify-self-start text-xs font-bold text-cyan hover:underline disabled:opacity-50">Remove banner</button>}
                   {canUseNameColor && <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">{canUseAnimatedEffects ? (isPremium ? "Premium name effect" : "Free trial animated effect") : "Verified name color"}</span><select value={nameColorDraft} onChange={(event) => setNameColorDraft(event.target.value)} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40">{verifiedNameColors.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}{canUseAnimatedEffects && <optgroup label="Animated name effects">{premiumNameEffects.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}</optgroup>}</select></label>}
                   <label className="space-y-1 md:col-span-2 xl:col-span-3"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Bio</span><textarea value={bioDraft} onChange={(event) => setBioDraft(event.target.value)} maxLength={500} rows={3} className="w-full resize-y rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /><span className="block text-right text-[9px] text-vapor">{bioDraft.length}/500</span></label>
                 </div>
-                <button onClick={handleSaveProfileVisuals} disabled={profileSaving} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-[10px] font-black uppercase tracking-wider text-background disabled:opacity-50">{profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />} Save</button>
+                <button onClick={handleSaveProfileVisuals} disabled={profileSaving || bannerLoading} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-[10px] font-black uppercase tracking-wider text-background disabled:opacity-50">{profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />} Save</button>
               </div>
               {profileResult && <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${profileResult.success ? "border-green/20 bg-green/10 text-green" : "border-red-500/20 bg-red-500/10 text-red-400"}`}>{profileResult.message}</div>}
             </div>
@@ -635,14 +675,13 @@ export default function Profile() {
         {tab === "overview" && (
           <div className="mt-5 space-y-6">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <ProfileStatCard icon={Trophy} label="Rank" value={topfraggRankLabel} tone="text-orange" />
-              <ProfileStatCard icon={Target} label="Record" value={`${wins}W - ${losses}L`} tone="text-green" />
-              <ProfileStatCard icon={Flame} label="Win ratio" value={`${winRate}%`} tone="text-cyan" />
+              <ProfileStatCard icon={Swords} label="Career results" value={totalMatches.toLocaleString()} tone="text-orange" />
+              <ProfileStatCard icon={Target} label="Career record" value={`${wins}W - ${losses}L`} tone="text-green" />
+              <ProfileStatCard icon={Flame} label="Career win rate" value={`${winRate}%`} tone="text-cyan" />
               <ProfileStatCard icon={DollarSign} label="Lifetime earnings" value={formatMoney(earnedMoney)} tone="text-green" />
             </div>
-            <PlayerOverviewPanel user={user} profile={profile} name={name} rank={rank} rankLabel={topfraggRankLabel} elo={elo} wins={wins} losses={losses} earnedMoney={earnedMoney} trophies={trophyOverviewCards} socialLinks={socialLinks} />
-            <SeasonRecordPanel rankedStats={rankedStats} wins={wins} losses={losses} winRate={winRate} currentStreak={currentStreak} earnedMoney={earnedMoney} />
-            <RecentMatchesPanel matches={matches.slice(0, 6)} userId={user.id} loading={historyLoading} />
+            <SeasonRecordPanel rankedStats={rankedStats} />
+            <RecentMatchesPanel key={user.id} matches={matches} userId={user.id} loading={historyLoading} onViewAll={() => setTab("matches")} />
           </div>
         )}
 
@@ -654,7 +693,7 @@ export default function Profile() {
             <div className="grid gap-6 xl:grid-cols-2"><AchievementsPanel achievements={achievementCards} badges={badges} expanded /><AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} /></div>
           </div>
         )}
-        {tab === "matches" && <div className="mt-5"><RecentMatchesPanel matches={matches} userId={user.id} loading={historyLoading} expanded /></div>}
+        {tab === "matches" && <div className="mt-5"><RecentMatchesPanel key={user.id} matches={matches} userId={user.id} loading={historyLoading} expanded /></div>}
         {tab === "teams" && <div className="mt-5"><TeamsList teams={profileTeams} loading={historyLoading} /></div>}
       </div>
     </div>
@@ -677,7 +716,7 @@ function ProfileStatCard({ icon: Icon, label, value, tone = "text-cyan" }) {
       <div className="relative flex h-full items-center gap-4">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-black/10"><Icon className={`h-4 w-4 ${tone}`} /></span>
         <div className="min-w-0">
-          <p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">{label}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-vapor">{label}</p>
           <p className="mt-1 truncate font-heading text-lg font-black text-white sm:text-xl">{value}</p>
         </div>
       </div>
@@ -705,79 +744,36 @@ function ProfileTrophyCount({ trophies = [], total = 0 }) {
   );
 }
 
-function PlayerOverviewPanel({ user, profile, name, rank, rankLabel, elo, wins, losses, earnedMoney, trophies, socialLinks }) {
-  return (
-    <section>
-      <ProfileSectionTitle title="Player overview" count="1 player" />
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-card">
-        <div className="hidden grid-cols-[minmax(180px,1.35fr)_minmax(130px,.9fr)_70px_75px_90px_minmax(190px,1.2fr)_90px] border-b border-white/[0.07] bg-white/[0.025] px-5 py-3 font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor lg:grid">
-          <span>Player</span><span>Gamertag</span><span>Record</span><span>ELO</span><span>Earnings</span><span>Trophies</span><span>Socials</span>
-        </div>
-        <div className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(180px,1.35fr)_minmax(130px,.9fr)_70px_75px_90px_minmax(190px,1.2fr)_90px] lg:items-center lg:gap-0">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-cyan/20 bg-cyan/10 font-black text-cyan">
-              {profile?.avatar_url || user?.avatar_url ? <img src={profile?.avatar_url || user?.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0)}
-            </div>
-            <div className="min-w-0">
-              <p data-name-effect={user?.display_name_color || undefined} style={user?.display_name_color ? { "--player-name-color": user.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white ${user?.display_name_color ? "player-name-color" : ""}`}>{name}</p>
-              <p className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{rankLabel || rank.name || rank.tier}</p>
-            </div>
-          </div>
-          <div className="min-w-0 lg:px-1"><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Gamertag</p><span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] text-white"><Gamepad2 className="h-3 w-3 text-cyan" /><span className="truncate">{activisionIdFor(user) || user?.handle || user?.username || "Not set"}</span></span></div>
-          <ProfileTableValue label="Record" value={`${wins}-${losses}`} />
-          <ProfileTableValue label="ELO" value={elo.toLocaleString()} tone="text-cyan" />
-          <ProfileTableValue label="Earnings" value={formatMoney(earnedMoney)} tone="text-green" />
-          <div><p className="mb-2 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Trophies</p><TrophyCounts trophies={(trophies || []).reduce((counts, trophy) => ({ ...counts, [trophy.key]: trophy.value }), {})} /></div>
-          <div><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">Socials</p>{socialLinks.length > 0 ? <div className="flex flex-wrap gap-1.5">{socialLinks.slice(0, 3).map((social) => social.url ? <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase text-cyan hover:text-orange">{social.label}</a> : <span key={social.key} className="text-[9px] font-black uppercase text-vapor">{social.label}</span>)}</div> : <span className="text-xs text-vapor">—</span>}</div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ProfileTableValue({ label, value, tone = "text-white" }) {
-  return <div><p className="mb-1 font-mono text-[8px] font-black uppercase tracking-wider text-vapor lg:hidden">{label}</p><p className={`font-mono text-xs font-black ${tone}`}>{value}</p></div>;
-}
-
 function ProfileSectionTitle({ title, count }) {
   return (
     <div className="mb-3 flex items-center gap-3">
       <span className="h-1.5 w-1.5 shrink-0 bg-orange" />
       <h2 className="font-heading text-sm font-black text-white">{title}</h2>
       <span className="h-px flex-1 bg-white/10" />
-      {count && <span className="font-mono text-[8px] font-bold uppercase tracking-wider text-vapor">{count}</span>}
+      {count && <span className="text-[10px] font-bold uppercase tracking-wider text-vapor">{count}</span>}
     </div>
   );
 }
 
-function SeasonRecordPanel({ rankedStats, wins, losses, winRate, currentStreak, earnedMoney }) {
-  const played = statNumber(rankedStats?.matches_played) || wins + losses;
-  const seasonLabel = "October 2026";
+function SeasonRecordPanel({ rankedStats }) {
+  const wins = Math.max(0, statNumber(rankedStats?.wins));
+  const losses = Math.max(0, statNumber(rankedStats?.losses));
+  const decided = wins + losses;
+  const played = Math.max(statNumber(rankedStats?.matches_played), decided);
+  const winRate = decided ? Math.round(wins / decided * 100) : 0;
+  const currentStreak = Math.max(0, statNumber(rankedStats?.win_streak));
+  const seasonLabel = rankedStats?.season ? `Season ${rankedStats.season}` : "No ranked season yet";
   return (
     <section>
-      <ProfileSectionTitle title="Season record" count={rankedStats ? "Live season" : "No season data"} />
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-card">
-        <div className="grid grid-cols-[minmax(120px,1.4fr)_repeat(4,minmax(52px,.55fr))] border-b border-white/[0.07] bg-white/[0.025] px-4 py-3 font-mono text-[8px] font-black uppercase tracking-[0.14em] text-vapor sm:grid-cols-[minmax(180px,1.8fr)_repeat(5,minmax(70px,.6fr))] sm:px-5">
-          <span>Season</span><span>Played</span><span>Wins</span><span>Losses</span><span>Win %</span><span className="hidden sm:block">Earnings</span>
+      <ProfileSectionTitle title="Ranked season" count="Ranked matches only" />
+      <div className="profile-season rounded-xl border border-white/10 bg-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div><h3 className="font-black text-white">{seasonLabel}</h3><p className="mt-1 text-xs text-vapor">Separate from your career totals across competitions.</p></div>
+          {currentStreak > 0 && <span className="inline-flex items-center gap-2 rounded-full border border-orange/20 bg-orange/10 px-3 py-1.5 text-xs font-bold text-orange"><Flame className="h-3.5 w-3.5" />{currentStreak} win streak</span>}
         </div>
-        <div className="grid grid-cols-[minmax(120px,1.4fr)_repeat(4,minmax(52px,.55fr))] items-center px-4 py-4 text-xs sm:grid-cols-[minmax(180px,1.8fr)_repeat(5,minmax(70px,.6fr))] sm:px-5">
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="truncate font-black text-white">{seasonLabel}</p>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded border border-green/20 bg-green/10 px-1.5 py-0.5 font-mono text-[7px] font-black uppercase tracking-wider text-green">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green" />
-              </span>
-              Live
-            </span>
-          </div>
-          <span className="font-mono font-black text-white">{played}</span>
-          <span className="font-mono font-black text-green">{wins}</span>
-          <span className="font-mono font-black text-red-300">{losses}</span>
-          <span className="font-mono font-black text-cyan">{winRate}%</span>
-          <span className="hidden font-mono font-black text-green sm:block">{formatMoney(earnedMoney)}</span>
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[{ label: "Played", value: played, tone: "text-white" }, { label: "Wins", value: wins, tone: "text-green" }, { label: "Losses", value: losses, tone: "text-red-300" }, { label: "Win rate", value: `${winRate}%`, tone: "text-cyan" }].map((stat) => <div key={stat.label}><p className="text-[10px] font-bold uppercase tracking-wider text-vapor">{stat.label}</p><p className={`mt-1 text-xl font-black tabular-nums ${stat.tone}`}>{stat.value}</p></div>)}
         </div>
-        {currentStreak > 0 && <div className="border-t border-white/[0.06] px-4 py-2 font-mono text-[8px] font-black uppercase tracking-wider text-orange sm:px-5">Current streak: {currentStreak} wins</div>}
       </div>
     </section>
   );
@@ -899,37 +895,58 @@ function TrophyOverview({ trophies, items = [] }) {
   );
 }
 
-function RecentMatchesPanel({ matches, userId, className = "", expanded = false, loading = false }) {
+function RecentMatchesPanel({ matches, userId, className = "", expanded = false, loading = false, onViewAll }) {
+  const [competition, setCompetition] = useState("All");
+  const categories = ["All", "Free 8s", "Money 8s", "Ranked", "XP Match", "Tournament", "Wager"];
+  const filtered = competition === "All" ? matches : matches.filter((match) => competitionLabelFor(match) === competition);
+  const visible = expanded ? filtered : filtered.slice(0, 6);
+  const completed = filtered.filter((match) => ["win", "loss"].includes(match.profile_result));
+  const recentWins = completed.filter((match) => match.profile_result === "win").length;
   return (
     <section className={className}>
-      <ProfileSectionTitle title={expanded ? "Match history" : "Recent matches"} count={`${matches.length} ${matches.length === 1 ? "match" : "matches"}`} />
+      <ProfileSectionTitle title={expanded ? "Match history" : "Recent matches"} count={loading ? "Loading" : `${visible.length} of ${filtered.length} recent matches`} />
+      <div className="profile-mode-filters mb-4 flex flex-wrap gap-2" aria-label="Filter matches by competition">
+        {categories.map((category) => <button key={category} type="button" aria-pressed={competition === category} onClick={() => setCompetition(category)} className="competition-action-pill profile-mode-pill">
+          {category === "All" ? "All modes" : category === "XP Match" ? "XP" : category === "Tournament" ? "Tournaments" : category === "Wager" ? "Wagers" : category}
+          <span className="profile-mode-count">{category === "All" ? matches.length : matches.filter((match) => competitionLabelFor(match) === category).length}</span>
+        </button>)}
+      </div>
+      {!loading && completed.length > 0 && <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-vapor"><p>Recent form <span className="ml-2 font-bold text-green">{recentWins}W</span><span className="ml-2 font-bold text-red-300">{completed.length - recentWins}L</span></p><span>Recent activity · up to 50 matches</span></div>}
       {loading ? (
         <div role="status" className="rounded-xl border border-white/10 bg-card p-5 text-sm text-vapor">Loading matches...</div>
-      ) : matches.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-card p-5"><EmptyPanel icon={Gamepad2} text="No matches found." /></div>
+      ) : visible.length === 0 ? (
+        <div className="rounded-xl border border-white/10 bg-card p-5"><EmptyPanel icon={Gamepad2} text={competition === "All" ? "No matches found." : "No matches for this mode in your recent activity."} /></div>
       ) : (
-        <div className="space-y-2">
-          {matches.map((match) => {
+        <div className="space-y-2.5">
+          {visible.map((match) => {
             const [result, resultColor, resultClass] = matchResultFor(match, userId);
             const competitionLabel = competitionLabelFor(match);
+            const score = matchScoreFor(match, userId);
+            const rewards = matchRewardsFor(match, userId);
+            const opponent = matchOpponentFor(match, userId);
             return (
-              <div
-                key={match.id}
-                className={`group grid min-h-[68px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/10 bg-card px-4 py-3 transition-colors hover:border-cyan/25 hover:bg-cyan/[0.035] sm:grid-cols-[38px_minmax(0,1fr)_90px_80px_118px] ${result === "Win" ? "border-l-green" : result === "Loss" ? "border-l-red-400" : "border-l-cyan"} border-l-2`}
+              <Link
+                key={`${competitionLabel}:${match.id}`}
+                to={matchRouteFor(match)}
+                aria-label={`${competitionLabel}: ${match.game_mode_display || match.game_mode || "Match"}, ${opponent}, ${result}, ${score.text}`}
+                className={`profile-match-row group grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/10 bg-card px-4 py-4 sm:grid-cols-[40px_minmax(0,1fr)_110px_95px_24px] ${result === "Win" ? "border-l-green" : result === "Loss" ? "border-l-red-400" : "border-l-cyan"} border-l-2`}
               >
-                <span className={`grid h-9 w-9 place-items-center rounded-lg border ${resultClass}`}><Swords className={`h-4 w-4 ${resultColor}`} /></span>
+                <span className={`grid h-9 w-9 place-items-center rounded-xl border ${resultClass}`}><Swords className={`h-4 w-4 ${resultColor}`} /></span>
                 <div className="min-w-0">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{match.game_mode_display || match.game_mode || "Match"}</p><span className={`shrink-0 rounded-md border px-2 py-1 font-mono text-[9px] font-black uppercase tracking-[0.12em] shadow-[inset_0_1px_0_rgba(255,255,255,.08)] ${competitionToneFor(competitionLabel)}`}>{competitionLabel}</span></div>
-                  <p className="mt-1 truncate font-mono text-[8px] uppercase tracking-wider text-vapor">{formatDate(match.match_completed_date || match.completed_date || match.created_date)} · {match.final_map_name || match.map_name || "Map pending"}</p>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-cyan">{match.game_mode_display || match.game_mode || "Match"}</p><span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-bold ${competitionToneFor(competitionLabel)}`}>{competitionLabel}</span></div>
+                  <p className="mt-1 truncate text-xs font-semibold text-white/80">{opponent}</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-vapor"><time dateTime={new Date(matchDateMs(match)).toISOString()}>{formatDate(match.match_completed_date || match.completed_date || match.created_date)}</time><span className="mx-1.5">·</span>{match.final_map_name || match.map_name || "Map unavailable"}</p>
+                  {rewards && <p className="mt-1 text-[11px] font-bold text-cyan">{rewards}</p>}
                 </div>
-                <p className="hidden font-mono text-xs font-black text-white sm:block">{matchScoreText(match)}</p>
-                <span className={`hidden rounded-md border px-2 py-1 text-center text-[9px] font-black uppercase sm:block ${resultClass} ${resultColor}`}>{result}</span>
-                <Link to={matchRouteFor(match)} className="inline-flex items-center justify-end gap-1 font-mono text-[9px] font-black uppercase tracking-wider text-cyan transition-colors hover:text-orange">View match <ChevronRight className="h-3.5 w-3.5" /></Link>
-              </div>
+                <div className="text-right sm:text-center"><p className="text-base font-black tabular-nums text-white">{score.text}</p><p className="mt-1 max-w-24 text-[10px] text-vapor sm:max-w-none">{score.label}</p><span className={`mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-black uppercase sm:hidden ${resultClass} ${resultColor}`}>{result}</span></div>
+                <span className={`hidden rounded-full border px-3 py-1.5 text-center text-[10px] font-black uppercase sm:block ${resultClass} ${resultColor}`}>{result}</span>
+                <ChevronRight aria-hidden="true" className="hidden h-4 w-4 text-cyan sm:block" />
+              </Link>
             );
           })}
         </div>
       )}
+      {!expanded && !loading && matches.length > 0 && <button type="button" onClick={onViewAll} className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-cyan hover:underline">View match history<ChevronRight className="h-3.5 w-3.5" /></button>}
     </section>
   );
 }
