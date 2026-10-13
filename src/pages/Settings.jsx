@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useCallback, useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   AtSign,
   Award,
   Coins,
-  ChevronDown,
+  ArrowUpRight,
+  ChevronRight,
+  Settings2,
   Gamepad2,
   Gift,
   KeyRound,
@@ -24,25 +26,25 @@ import GamingIdsSection from "@/components/settings/GamingIdsSection";
 import GameRankSection from "@/components/settings/GameRankSection";
 import SocialsSection from "@/components/settings/SocialsSection";
 import ReferralSection from "@/components/settings/ReferralSection";
-import PageHeader from "@/components/ui/PageHeader";
+import "@/styles/settings.css";
 import PageLoader from "@/components/ui/PageLoader";
 
 const settingGroups = [
   {
     id: "account",
     label: "Account",
-    description: "Identity & security",
+    description: "Profile, password & game rank",
     icon: UserRound,
     items: [
       { label: "Profile & username", icon: UserRound, target: "settings-account" },
       { label: "Game rank", icon: Award, target: "settings-rank" },
-      { label: "Password & security", icon: KeyRound, target: "settings-password" },
+      { label: "Password", icon: KeyRound, target: "settings-password" },
     ],
   },
   {
     id: "wallet",
     label: "Wallet & rewards",
-    description: "Credits & payments",
+    description: "Credits, payments & referrals",
     icon: WalletCards,
     items: [
       { label: "Credits", icon: Coins, target: "settings-credits" },
@@ -53,167 +55,144 @@ const settingGroups = [
   {
     id: "connections",
     label: "Connections",
-    description: "Social & gaming",
+    description: "Gaming accounts & social profiles",
     icon: Link2,
     items: [
-      { label: "Social profiles", icon: AtSign, target: "settings-socials" },
       { label: "Gaming IDs", icon: Gamepad2, target: "settings-gaming" },
+      { label: "Social profiles", icon: AtSign, target: "settings-socials" },
       { label: "Twitch", icon: MessageCircle, target: "settings-twitch" },
       { label: "Discord", icon: MessageCircle, target: "settings-discord" },
     ],
   },
 ];
 
-function scrollToSetting(target) {
-  document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+const legacyTargets = { "gaming-ids": "settings-gaming", credits: "settings-credits", discord: "settings-discord", twitch: "settings-twitch" };
+const groupDetails = {
+  account: { title: "Account & security", description: "Manage how players see you and keep your login up to date." },
+  wallet: { title: "Wallet & rewards", description: "View your credits, manage team payments and share your referral link." },
+  connections: { title: "Connected accounts", description: "Keep your gaming IDs, social profiles and community connections in one place." },
+};
+
+function settingTarget(hash, search) {
+  const rawTarget = hash.slice(1);
+  const target = legacyTargets[rawTarget] || rawTarget;
+  if (settingGroups.some(group => group.items.some(item => item.target === target))) return target;
+  const params = new URLSearchParams(search);
+  if (params.has("discord") || params.get("connect") === "discord") return "settings-discord";
+  if (params.has("twitch")) return "settings-twitch";
+  return "settings-account";
 }
 
-function GroupLabel({ icon: Icon, title, description }) {
-  return (
-    <div className="mb-4 flex items-center gap-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan/15 bg-cyan/[0.06] text-cyan">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div>
-        <h2 className="text-sm font-black uppercase tracking-[0.16em] text-white">{title}</h2>
-        <p className="mt-0.5 text-xs text-vapor">{description}</p>
-      </div>
-    </div>
-  );
+function scrollToSetting(target) {
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById(target)?.scrollIntoView({ behavior: reducedMotion ? "instant" : "smooth", block: "start" });
 }
 
 export default function Settings() {
-  const { hash } = useLocation();
+  const { pathname, hash, search } = useLocation();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [openGroup, setOpenGroup] = useState(() => hash === "#settings-rank" ? "account" : null);
+  const [error, setError] = useState("");
+  const [failedAvatar, setFailedAvatar] = useState("");
+  const target = settingTarget(hash, search);
+  const activeGroup = settingGroups.find(group => group.items.some(item => item.target === target));
+  const details = groupDetails[activeGroup.id];
+  const GroupIcon = activeGroup.icon;
 
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     const me = await base44.auth.me();
     setUser(me);
-  };
+  }, []);
 
   useEffect(() => {
     base44.auth.isAuthenticated().then(async (authed) => {
       if (authed) await loadUser();
-      setLoading(false);
-    });
-  }, []);
+    }).catch(() => setError("Your settings could not be loaded. Please refresh and try again."))
+      .finally(() => setLoading(false));
+  }, [loadUser]);
 
   useEffect(() => {
-    if (hash === "#settings-rank") setOpenGroup("account");
-  }, [hash]);
+    const params = new URLSearchParams(search);
+    if (!loading && (hash || params.has("discord") || params.has("twitch") || params.get("connect") === "discord")) scrollToSetting(target);
+  }, [loading, hash, search, target]);
 
-  useEffect(() => {
-    if (!loading && openGroup === "account" && hash === "#settings-rank") scrollToSetting("settings-rank");
-  }, [loading, openGroup, hash]);
+  const openSetting = nextTarget => {
+    if (target === nextTarget) {
+      scrollToSetting(nextTarget);
+      return;
+    }
+    navigate({ pathname, search: window.location.search, hash: `#${nextTarget}` });
+  };
 
   if (loading) return <PageLoader label="Loading settings" />;
-
   const displayName = user?.display_name || user?.full_name || user?.username || "Player";
-  const initials = displayName.slice(0, 2).toUpperCase();
+  const avatar = user?.avatar_url;
 
   return (
-    <div className="min-h-screen py-6 sm:py-8">
-      <div className="mx-auto max-w-7xl px-4 lg:px-6">
-        <PageHeader
-          eyebrow="Account control"
-          title="Settings"
-          description="Everything you need to manage your Topfragg account, security, payments and connected identities."
-          action={
-            <div className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-background/35 px-3 py-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan/20 bg-cyan/10 text-xs font-black text-cyan">
-                {initials}
-              </div>
-              <div className="hidden min-w-0 sm:block">
-                <p className="max-w-[150px] truncate text-xs font-bold text-white">{displayName}</p>
-                <p className="text-[9px] uppercase tracking-wider text-vapor">Account settings</p>
-              </div>
-            </div>
-          }
-        />
-
-        <div className="sticky top-3 z-20 mb-8 rounded-2xl border border-white/[0.07] bg-background/95 p-2 shadow-2xl backdrop-blur-xl">
-          <div className="space-y-1">
-            {settingGroups.map((group) => {
-              const Icon = group.icon;
-              const isOpen = openGroup === group.id;
-              return (
-                <div key={group.id} className="overflow-hidden rounded-xl border border-transparent">
-                  <button
-                    type="button"
-                    onClick={() => setOpenGroup(isOpen ? null : group.id)}
-                    aria-expanded={isOpen}
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition ${isOpen ? "border-cyan/15 bg-cyan/[0.06]" : "hover:bg-white/[0.025]"}`}
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan/15 bg-cyan/[0.06] text-cyan">
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span>
-                        <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-white">{group.label}</span>
-                        <span className="mt-0.5 block text-[9px] text-vapor">{group.description}</span>
-                      </span>
-                    </span>
-                    <ChevronDown className={`h-4 w-4 text-vapor transition-transform ${isOpen ? "rotate-180 text-cyan" : ""}`} />
-                  </button>
-
-                  {isOpen && (
-                    <div className="flex flex-wrap gap-1 px-2 pb-2 pt-1">
-                      {group.items.map((item) => {
-                        const ItemIcon = item.icon;
-                        return (
-                          <button
-                            key={item.target}
-                            type="button"
-                            onClick={() => scrollToSetting(item.target)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2 text-[10px] font-bold text-vapor transition hover:border-cyan/15 hover:bg-cyan/[0.06] hover:text-white"
-                          >
-                            <ItemIcon className="h-3.5 w-3.5" />
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+    <div className="settings-page">
+      <div className="settings-container">
+        <header className="settings-heading">
+          <div className="settings-heading-copy">
+            <span className="settings-eyebrow"><Settings2 size={14} aria-hidden="true" />Your Topfragg account</span>
+            <h1>Settings</h1>
+            <p>Your profile, security and connections. All in one place.</p>
           </div>
-        </div>
+          {user && <Link to={`/profile/${user.username || user.id}`} className="settings-profile-link" aria-label={`View ${displayName}'s profile`}>
+            <span className="settings-profile-avatar">{avatar && failedAvatar !== avatar ? <img src={avatar} alt="" onError={() => setFailedAvatar(avatar)} /> : displayName.slice(0, 2).toUpperCase()}</span>
+            <span className="settings-profile-copy"><strong>{displayName}</strong><span>View your profile</span></span>
+            <ArrowUpRight size={17} aria-hidden="true" />
+          </Link>}
+        </header>
 
-        <div className="space-y-10">
-          {openGroup === "account" && (
-            <section id="settings-account" className="scroll-mt-28">
-              <GroupLabel icon={UserRound} title="Account & security" description="Your identity, login credentials and account security." />
-              <AccountSection user={user} onUserUpdate={loadUser} />
-              <div id="settings-rank" className="mt-6 scroll-mt-28"><GameRankSection user={user} onUserUpdate={loadUser} /></div>
-            </section>
-          )}
-
-          {openGroup === "wallet" && (
-            <section className="scroll-mt-28">
-              <GroupLabel icon={WalletCards} title="Wallet & rewards" description="Credits, team payment permissions and your referral program." />
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div id="settings-credits" className="scroll-mt-28"><CreditsSection user={user} onUserUpdate={loadUser} /></div>
-                <div id="settings-referrals" className="scroll-mt-28"><ReferralSection /></div>
-                <div id="settings-payments" className="scroll-mt-28 lg:col-span-2"><PaymentPermissionsSection user={user} onUserUpdate={loadUser} /></div>
+        {error ? <p role="alert" className="settings-load-error">{error}</p> : !user ? <div className="settings-sign-in"><h2>Sign in to manage your account</h2><Link to="/login">Log in<ChevronRight size={16} /></Link></div> : (
+          <div className="settings-workspace">
+            <aside className="settings-sidebar">
+              <p className="settings-nav-label">Manage your account</p>
+              <nav aria-label="Settings categories" className="settings-categories">
+                {settingGroups.map(group => {
+                  const Icon = group.icon;
+                  const selected = activeGroup.id === group.id;
+                  return <button key={group.id} type="button" onClick={() => openSetting(group.items[0].target)} aria-current={selected ? "true" : undefined} className="settings-category">
+                    <span className="settings-category-icon"><Icon size={19} aria-hidden="true" /></span>
+                    <span className="settings-category-copy"><strong>{group.label}</strong><span>{group.description}</span></span>
+                    <ChevronRight size={15} className="settings-category-arrow" aria-hidden="true" />
+                  </button>;
+                })}
+              </nav>
+              <div className="settings-shortcuts">
+                <p className="settings-nav-label">In this section</p>
+                <nav aria-label={`${activeGroup.label} shortcuts`}>
+                  {activeGroup.items.map(item => {
+                    const Icon = item.icon;
+                    return <button key={item.target} type="button" onClick={() => openSetting(item.target)} aria-current={target === item.target ? "location" : undefined}><Icon size={16} aria-hidden="true" /><span>{item.label}</span><ChevronRight size={13} aria-hidden="true" /></button>;
+                  })}
+                </nav>
               </div>
-            </section>
-          )}
-
-          {openGroup === "connections" && (
-            <section className="scroll-mt-28">
-              <GroupLabel icon={Link2} title="Connected identities" description="Connect your gaming accounts and social profiles to Topfragg." />
-              <div className="space-y-6">
-                <div id="settings-socials" className="scroll-mt-28"><SocialsSection user={user} onUserUpdate={loadUser} /></div>
-                <div id="settings-gaming" className="scroll-mt-28"><GamingIdsSection user={user} onUserUpdate={loadUser} /></div>
-                <div id="settings-twitch" className="scroll-mt-28"><TwitchSection user={user} onUserUpdate={loadUser} /></div>
-                <div id="settings-discord" className="scroll-mt-28"><DiscordSection user={user} onUserUpdate={loadUser} /></div>
-              </div>
-            </section>
-          )}
-        </div>
+            </aside>
+            <div className="settings-content">
+              <header className="settings-section-heading">
+                <span><GroupIcon size={22} aria-hidden="true" /></span>
+                <div><h2>{details.title}</h2><p>{details.description}</p></div>
+              </header>
+              {activeGroup.id === "account" && <div className="settings-panel">
+                <div id="settings-account" className="settings-block"><AccountSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-rank" className="settings-block"><GameRankSection user={user} onUserUpdate={loadUser} /></div>
+              </div>}
+              {activeGroup.id === "wallet" && <div className="settings-panel">
+                <div id="settings-credits" className="settings-block"><CreditsSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-payments" className="settings-block"><PaymentPermissionsSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-referrals" className="settings-block"><ReferralSection /></div>
+              </div>}
+              {activeGroup.id === "connections" && <div className="settings-panel">
+                <div id="settings-gaming" className="settings-block"><GamingIdsSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-socials" className="settings-block"><SocialsSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-twitch" className="settings-block"><TwitchSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-discord" className="settings-block"><DiscordSection user={user} onUserUpdate={loadUser} /></div>
+              </div>}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

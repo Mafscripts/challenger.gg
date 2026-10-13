@@ -111,8 +111,8 @@ export default function AccountSection({ user, onUserUpdate }) {
           <User className="w-5 h-5 text-cyan" />
         </div>
         <div>
-          <h2 className="font-bold text-lg">Account</h2>
-          <p className="text-vapor text-xs">Update your username, display name and password</p>
+          <h2 className="font-bold text-lg">Profile & username</h2>
+          <p className="text-vapor text-xs">Your name and public identity on Topfragg</p>
         </div>
       </div>
 
@@ -173,7 +173,7 @@ export default function AccountSection({ user, onUserUpdate }) {
             className="flex items-center gap-2 px-5 py-2.5 bg-cyan/10 text-cyan text-sm font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all disabled:opacity-50"
           >
             {identitySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save
+            Save profile
           </button>
         </div>
 
