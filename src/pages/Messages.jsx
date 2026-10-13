@@ -67,6 +67,7 @@ export default function Messages() {
   const requestedPlayerId = searchParams.get("compose") || searchParams.get("conversation") || "";
   const chatEndRef = useRef(null);
   const chatScrollRef = useRef(null);
+  const displayedChatRef = useRef(null);
   const activePlayerIdRef = useRef(activePlayerId);
   const directMessagesLoadingRef = useRef(false);
 
@@ -215,11 +216,20 @@ export default function Messages() {
       .catch(() => null);
   }, [activePlayerId, activeMessages.length, currentUser?.id]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const chat = chatScrollRef.current;
-    if (!chat) return;
-    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
-  }, [activeMessages.length, activePlayerId]);
+    if (!chat) {
+      displayedChatRef.current = null;
+      return;
+    }
+
+    const openingConversation = displayedChatRef.current?.element !== chat
+      || displayedChatRef.current?.playerId !== activePlayerId;
+    // Position a newly opened conversation before paint; animate only later messages.
+    if (openingConversation) chat.scrollTop = chat.scrollHeight;
+    else chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+    displayedChatRef.current = { element: chat, playerId: activePlayerId };
+  }, [loading, activePlayer?.id, activeMessages.length, activePlayerId]);
 
   const selectPlayer = (player) => {
     setPlayers(current => ({ ...current, [player.id]: player }));
@@ -408,7 +418,7 @@ export default function Messages() {
                   </Link>
                 </div>
 
-                <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background/15 px-4 py-6 sm:px-7">
+                <div key={activePlayerId} ref={chatScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-auto bg-background/15 px-4 py-6 sm:px-7">
                   {activeMessages.length === 0 && (
                     <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
                       <PlayerAvatar player={activePlayer} size="lg" />

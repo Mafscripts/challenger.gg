@@ -11,6 +11,7 @@ export const TOPFRAGG_COLORS = {
   purple: 0x9858e8,
   red: 0xf04444,
   gold: 0xfacc15,
+  pink: 0xf472b6,
   graphite: 0x222a35,
 };
 
@@ -66,6 +67,7 @@ export const roleSpecs = [
   { name: "Premium", color: TOPFRAGG_COLORS.gold, hoist: true, permissions: [] },
   { name: "Team Captain", color: TOPFRAGG_COLORS.green, hoist: true, permissions: [] },
   { name: "Tournament Participant", color: TOPFRAGG_COLORS.orange, hoist: true, permissions: [] },
+  { name: "Verified Girl Player", color: TOPFRAGG_COLORS.pink, hoist: true, permissions: [] },
   { name: "Verified Player", color: TOPFRAGG_COLORS.cyan, hoist: true, permissions: [] },
   { name: "EU", color: 0, hoist: false, permissions: [] },
   { name: "NA", color: 0, hoist: false, permissions: [] },
