@@ -97,6 +97,7 @@ async function apiFetch(path, options = {}) {
     method,
     ...(options.credentials ? { credentials: options.credentials } : {}),
     headers: {
+      Accept: "application/json",
       "Content-Type": "application/json",
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
       ...(options.headers || {}),
@@ -104,7 +105,19 @@ async function apiFetch(path, options = {}) {
     body,
   }).then(async (response) => {
     const text = await response.text();
-    const data = text ? JSON.parse(text) : null;
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        const error = new Error(response.status >= 500
+          ? "The server is temporarily unavailable. Please try again shortly."
+          : "The server returned an unexpected response. Please try again shortly.");
+        error.status = response.status;
+        error.code = "INVALID_API_RESPONSE";
+        throw error;
+      }
+    }
     if (!response.ok) {
       const error = new Error(data?.error || data?.message || `Request failed (${response.status})`);
       error.status = response.status;

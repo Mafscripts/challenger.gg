@@ -72,10 +72,6 @@ export default function RankedEights() {
   const loading = isMoney ? moneyLoading : !comingSoon && freeOverview.isPending;
   const refreshFreeOverview = freeOverview.refetch;
 
-  useEffect(() => {
-    if (!isMoney && freeOverview.error) toast({ title: "8s unavailable", description: freeOverview.error.message || "Please try again.", variant: "destructive" });
-  }, [isMoney, freeOverview.error]);
-
   const load = useCallback(async (quiet = false) => {
     if (!isMoney) return refreshFreeOverview();
     if (!quiet) setLoading(true);
@@ -206,7 +202,18 @@ export default function RankedEights() {
           competitionTitle={isMoney ? undefined : <FreeEightsGameName game={selectedGame} prefix="Free 8s " />}
           headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : comingSoon ? "A new battlefield. A fresh leaderboard. MW4 Free 8s opens once its maps and competitive rules are ready. Black Ops 7 is live now." : "Join free, get shuffled into a 4v4 team and climb the 8s ELO standings."}
           matchfinder={(
-            <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : comingSoon ? "MW4 Free 8s is coming soon. Play Black Ops 7 while the next deployment gets ready." : "No 8s lobbies are open right now."}>
+            <>
+            {!isMoney && !comingSoon && freeOverview.error && (
+              <div role="status" className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan/20 bg-cyan/5 px-5 py-4 text-sm text-vapor">
+                <p>{freeOverview.data
+                  ? "Live updates are temporarily unavailable. Showing the last loaded lobbies."
+                  : "Free 8s could not be loaded. Please try again shortly."}</p>
+                <button type="button" disabled={freeOverview.isFetching} onClick={() => refreshFreeOverview()} className="rounded-full border border-cyan/25 px-4 py-2 text-xs font-bold text-cyan transition-colors hover:bg-cyan/10 disabled:opacity-50">
+                  {freeOverview.isFetching ? "Retrying..." : "Retry"}
+                </button>
+              </div>
+            )}
+            <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : comingSoon ? "MW4 Free 8s is coming soon. Play Black Ops 7 while the next deployment gets ready." : freeOverview.error ? "Lobbies are currently unavailable." : "No 8s lobbies are open right now."}>
               {lobbies.map((lobby) => {
                 const joined = counts[lobby.id] || 0;
                 const alreadyIn = activeLobby?.id === lobby.id;
@@ -229,12 +236,13 @@ export default function RankedEights() {
                 );
               })}
             </CompetitionMatchfinder>
+            </>
           )}
           action={<div className="competition-actions">{comingSoon ? (
             <Link to="/ranked/8s?game=bo7" className="competition-action-pill">Play Black Ops <span className="text-orange">7</span><ArrowRight className="h-4 w-4" /></Link>
           ) : !isMoney && !freeOverview.data ? (
-            <button type="button" disabled={!freeOverview.error} onClick={() => refreshFreeOverview()} className="competition-action-pill">
-              {freeOverview.error ? "Retry loading Free 8s" : "Loading Free 8s..."}
+            <button type="button" disabled={!freeOverview.error || freeOverview.isFetching} onClick={() => refreshFreeOverview()} className="competition-action-pill">
+              {freeOverview.isFetching ? "Loading Free 8s..." : freeOverview.error ? "Retry loading Free 8s" : "Loading Free 8s..."}
             </button>
           ) : activeLobby ? (
             <Link to={`/8s-match/${activeLobby.id}`} className="competition-action-pill">
