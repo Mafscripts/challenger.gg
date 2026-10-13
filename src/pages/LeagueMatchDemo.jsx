@@ -4,7 +4,7 @@ import { ArrowLeft, Check, Clock3, FlaskConical, LockKeyhole, Map as MapIcon, Me
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import { LEAGUE_DIVISIONS, leagueDivisionUrl } from "@/lib/topfraggLeague";
-import { LEAGUE_DEMO_MATCHES, leagueDemoTeam } from "@/lib/leagueDemo";
+import { LEAGUE_DEMO_MATCHES, leagueDemoTeam, leagueDemoSchedule } from "@/lib/leagueDemo";
 import { LeagueDemoLabel, LeagueDemoNotice } from "@/components/league/LeagueDemo";
 import LeagueTeamLogo from "@/components/league/LeagueTeamLogo";
 import "@/styles/league.css";
@@ -58,6 +58,7 @@ function LeagueMatchDemoView({ division, match }) {
   const scoreA = match.scoreA ?? 2;
   const scoreB = match.scoreB ?? 1;
   const winner = scoreA > scoreB ? teamA : teamB;
+  const schedule = leagueDemoSchedule(match);
   const maps = [
     { name: "Sample map A", mode: "Hardpoint", host: teamA.name, score: "250 – 183", winner: teamA.name },
     { name: "Sample map B", mode: "Search & Destroy", host: teamB.name, score: "4 – 6", winner: teamB.name },
@@ -73,7 +74,7 @@ function LeagueMatchDemoView({ division, match }) {
       </div>
       <section className="league-demo-room-score" aria-label="Example match score">
         <div className="text-orange"><LeagueTeamLogo team={teamA} size={44} /><strong>{teamA.name}</strong></div>
-        <div className="league-demo-score-center"><span>{showResult ? "Example final score" : "Scheduled · Demo"}</span><strong>{showResult ? `${scoreA} – ${scoreB}` : "VS"}</strong><small>{showResult ? `${winner.name} wins` : `${match.day === "Example result" ? "Example Friday" : match.day} · ${match.time === "Completed" ? "19:00 UTC" : match.time}`}</small></div>
+        <div className="league-demo-score-center"><span>{showResult ? "Example final score" : "Scheduled · Demo"}</span><strong>{showResult ? `${scoreA} – ${scoreB}` : "VS"}</strong><small>{showResult ? `${winner.name} wins` : <time dateTime={match.scheduledAt}>{schedule.fullDate} · {schedule.time} UTC</time>}</small></div>
         <div className="text-cyan"><LeagueTeamLogo team={teamB} size={44} /><strong>{teamB.name}</strong></div>
       </section>
     </>} teams={<>
@@ -98,7 +99,7 @@ function LeagueMatchDemoView({ division, match }) {
         <div className="league-demo-chat-messages"><p className="league-demo-chat-system">Example conversation · Not live</p><article><strong className="text-orange">{teamA.manager}<small>{teamA.name} manager</small></strong><p>Our selected four are ready. Let's get the lobby set up.</p></article><article><strong>{teamB.manager}<small>{teamB.name} manager</small></strong><p>Ready on our side too. Good luck!</p></article>{showResult && <p className="league-demo-chat-system"><Check className="inline h-3.5 w-3.5 text-green" />Example result confirmed: {winner.name} wins {scoreA}–{scoreB}.</p>}</div>
         <div className="league-demo-chat-input"><LockKeyhole className="h-3.5 w-3.5" /><span>Chat is read-only in this demo.</span></div>
       </section>
-      <section className="league-panel league-demo-room-info"><h2>Match details</h2><dl><div><dt>Division</dt><dd>{division.name}</dd></div><div><dt>Fixture</dt><dd>{match.round} · Example</dd></div><div><dt>Format</dt><dd>BO3 · Example</dd></div><div><dt>Match lineup</dt><dd>4 chosen players per team</dd></div><div><dt>Access at launch</dt><dd>Assigned teams only</dd></div></dl><p><ShieldCheck className="h-4 w-4 text-cyan" />Managers select who plays each match. The rest of the team roster stays outside the match lineup.</p><button type="button" disabled className="league-button league-button-primary"><LockKeyhole className="h-3.5 w-3.5" />Join match — coming soon</button><button type="button" disabled className="league-button"><Swords className="h-3.5 w-3.5" />Score reporting — demo only</button></section>
+      <section className="league-panel league-demo-room-info"><h2>Match details</h2><dl><div><dt>Division</dt><dd>{division.name}</dd></div><div><dt>Fixture</dt><dd>{match.round} · Example</dd></div><div><dt>Example date</dt><dd>{schedule.fullDate}</dd></div><div><dt>Match time</dt><dd>{schedule.time} UTC</dd></div><div><dt>Format</dt><dd>BO3 · Example</dd></div><div><dt>Match lineup</dt><dd>4 chosen players per team</dd></div><div><dt>Access at launch</dt><dd>Assigned teams only</dd></div></dl><p><ShieldCheck className="h-4 w-4 text-cyan" />Managers select who plays each match. The rest of the team roster stays outside the match lineup.</p><button type="button" disabled className="league-button league-button-primary"><LockKeyhole className="h-3.5 w-3.5" />Join match — coming soon</button><button type="button" disabled className="league-button"><Swords className="h-3.5 w-3.5" />Score reporting — demo only</button></section>
     </>} />
     <p className="league-footer-note"><FlaskConical className="inline h-3.5 w-3.5" />Fictional players and example statistics. Lineup selections only change this demo and are not saved to an account or league.</p>
   </div></div>;

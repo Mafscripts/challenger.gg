@@ -16,12 +16,22 @@ export const LEAGUE_DEMO_TEAMS = teamDefinitions.map(([id, name, tag, manager, p
 }));
 
 export const LEAGUE_DEMO_MATCHES = [
-  { id: "topfragg-nova", teamA: "topfragg", teamB: "nova-reign", round: "Week 4", day: "Friday", time: "19:00 UTC", status: "scheduled" },
-  { id: "wolves-neon", teamA: "iron-wolves", teamB: "neon-syndicate", round: "Week 4", day: "Saturday", time: "18:00 UTC", status: "scheduled" },
-  { id: "voltage-vortex", teamA: "voltage", teamB: "vortex-unit", round: "Week 4", day: "Saturday", time: "20:00 UTC", status: "scheduled" },
-  { id: "phantom-crimson", teamA: "phantom-crew", teamB: "crimson-edge", round: "Week 4", day: "Sunday", time: "19:00 UTC", status: "scheduled" },
-  { id: "topfragg-wolves", teamA: "topfragg", teamB: "iron-wolves", round: "Week 3", day: "Example result", time: "Completed", status: "completed", scoreA: 2, scoreB: 1 },
+  { id: "topfragg-nova", teamA: "topfragg", teamB: "nova-reign", round: "Week 4", scheduledAt: "2027-03-19T19:00:00Z", status: "scheduled" },
+  { id: "wolves-neon", teamA: "iron-wolves", teamB: "neon-syndicate", round: "Week 4", scheduledAt: "2027-03-20T18:00:00Z", status: "scheduled" },
+  { id: "voltage-vortex", teamA: "voltage", teamB: "vortex-unit", round: "Week 4", scheduledAt: "2027-03-20T20:00:00Z", status: "scheduled" },
+  { id: "phantom-crimson", teamA: "phantom-crew", teamB: "crimson-edge", round: "Week 4", scheduledAt: "2027-03-21T19:00:00Z", status: "scheduled" },
+  { id: "topfragg-wolves", teamA: "topfragg", teamB: "iron-wolves", round: "Week 3", scheduledAt: "2027-03-12T19:00:00Z", status: "completed", scoreA: 2, scoreB: 1 },
 ];
+
+// Fixed example dates, never a launch announcement or a real live schedule.
+const demoScheduleFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "UTC", weekday: "long", day: "2-digit", month: "short", year: "numeric",
+  hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+export const leagueDemoSchedule = (match) => {
+  const parts = Object.fromEntries(demoScheduleFormatter.formatToParts(new Date(match.scheduledAt)).map(({ type, value }) => [type, value]));
+  return { day: parts.day, month: parts.month.toUpperCase(), year: parts.year, weekday: parts.weekday, time: `${parts.hour}:${parts.minute}`, fullDate: `${parts.day} ${parts.month} ${parts.year}`, timezone: "UTC" };
+};
 
 export const leagueDemoTeam = (id) => LEAGUE_DEMO_TEAMS.find((team) => team.id === id);
 export const leagueDemoMatchUrl = (division, match = LEAGUE_DEMO_MATCHES[0]) => `/league/division/${division.id}/demo-match/${match.id}`;

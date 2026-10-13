@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, Clock3, FlaskConical, Users } from "lucide-react";
-import { LEAGUE_DEMO_TEAMS, LEAGUE_DEMO_MATCHES, leagueDemoTeam, leagueDemoMatchUrl } from "@/lib/leagueDemo";
+import { LEAGUE_DEMO_TEAMS, LEAGUE_DEMO_MATCHES, leagueDemoTeam, leagueDemoMatchUrl, leagueDemoSchedule } from "@/lib/leagueDemo";
 import { leagueDivisionUrl } from "@/lib/topfraggLeague";
 import LeagueTeamLogo from "@/components/league/LeagueTeamLogo";
 
@@ -38,7 +38,14 @@ export function LeagueDemoMatches({ division, upcomingOnly = false }) {
   return <div className="league-demo-fixtures">{matches.map((match) => {
     const a = leagueDemoTeam(match.teamA);
     const b = leagueDemoTeam(match.teamB);
-    return <Link key={match.id} to={leagueDemoMatchUrl(division, match)} className="league-demo-fixture"><span className="league-demo-fixture-date"><small>{match.round} · {match.day}</small><strong>{match.time}</strong></span><span className="league-demo-fixture-teams"><span className="league-demo-fixture-identity"><LeagueTeamLogo team={a} size={28} /><span>{a.name}</span></span><span className="league-demo-fixture-score">{match.status === "completed" ? `${match.scoreA} – ${match.scoreB}` : "vs"}</span><span className="league-demo-fixture-identity"><LeagueTeamLogo team={b} size={28} /><span>{b.name}</span></span></span><span className="league-demo-fixture-action">View demo<ArrowRight className="h-3.5 w-3.5" /></span></Link>;
+    const schedule = leagueDemoSchedule(match);
+    return <Link key={match.id} to={leagueDemoMatchUrl(division, match)} className="league-demo-fixture">
+      <time dateTime={match.scheduledAt} className="league-demo-fixture-date" aria-label={`Example fixture: ${schedule.weekday}, ${schedule.fullDate}, ${schedule.time} UTC`}>
+        <span className="league-fixture-calendar"><strong>{schedule.day}</strong><span>{schedule.month}</span></span>
+        <span className="league-fixture-time-details"><span className="league-fixture-time"><strong>{schedule.time}</strong><span>{schedule.timezone}</span></span><small>{schedule.weekday} · {schedule.year}</small><span className="league-fixture-round">{match.round}<span aria-hidden="true"> · </span><span className={match.status === "completed" ? "text-green" : "text-vapor"}>{match.status === "completed" ? "Completed" : "Scheduled"}</span></span></span>
+      </time>
+      <span className="league-demo-fixture-teams"><span className="league-demo-fixture-identity"><LeagueTeamLogo team={a} size={28} /><span>{a.name}</span></span><span className="league-demo-fixture-score">{match.status === "completed" ? `${match.scoreA} – ${match.scoreB}` : "vs"}</span><span className="league-demo-fixture-identity"><LeagueTeamLogo team={b} size={28} /><span>{b.name}</span></span></span><span className="league-demo-fixture-action">View demo<ArrowRight className="h-3.5 w-3.5" /></span>
+    </Link>;
   })}</div>;
 }
 
