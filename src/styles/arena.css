@@ -291,6 +291,23 @@ a.profile-social-pill:hover { color: white; border-color: hsl(var(--cyan) / .35)
 .profile-match-row:hover { border-color: hsl(var(--cyan) / .3); background: hsl(var(--cyan) / .035); }
 .profile-match-row:focus-visible, .profile-social-pill:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
 
+.team-collection-toolbar { border: 1px solid rgb(255 255 255 / .08); border-radius: 16px; background: var(--arena-inset); padding: 16px; }
+.team-collection-create.competition-action-pill { width: auto; padding-inline: 20px; }
+.team-summary-card { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid rgb(255 255 255 / .1); border-radius: 18px; background: var(--arena-card); transition: border-color 180ms var(--arena-ease), box-shadow 180ms var(--arena-ease); }
+.team-summary-card:hover { border-color: hsl(var(--cyan) / .3); box-shadow: 0 12px 32px rgb(0 0 0 / .18); }
+.team-summary-card > div:last-child { flex: 1; }
+.team-summary-cover { position: absolute; inset: 0 0 auto; height: 115px; background: radial-gradient(ellipse at 0% 0%, hsl(var(--cyan) / .12), transparent 80%); pointer-events: none; }
+.team-summary-cover img { height: 100%; width: 100%; object-fit: cover; opacity: .18; mask-image: linear-gradient(black, transparent); }
+.team-summary-badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgb(255 255 255 / .1); border-radius: 9999px; background: hsl(var(--background) / .6); padding: 7px 10px; font-size: 11px; font-weight: 700; color: hsl(var(--vapor)); }
+.team-summary-badge svg { flex-shrink: 0; }
+.team-summary-metric { border: 1px solid rgb(255 255 255 / .07); border-radius: 10px; background: hsl(var(--background) / .4); padding: 10px 12px; }
+.team-summary-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; border: 1px solid rgb(255 255 255 / .12); border-radius: 9999px; padding: 9px 10px; font-size: 11px; font-weight: 750; color: white; background: var(--arena-pill); transition: border-color 180ms var(--arena-ease), background-color 180ms var(--arena-ease); }
+.team-summary-primary { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .25); background: hsl(var(--cyan) / .08); }
+.team-summary-action { min-width: 0; text-align: center; }
+.team-summary-action svg { flex-shrink: 0; }
+.team-summary-action:hover { border-color: hsl(var(--cyan) / .45); background: hsl(var(--cyan) / .12); }
+.team-summary-action:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
+
 @keyframes arena-page-enter { from { opacity: .65; } to { opacity: 1; } }
 @media (hover: hover) and (pointer: fine) {
   .app-style-arena .app-content .premium-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgb(0 0 0 / .2); }
@@ -321,7 +338,7 @@ a.profile-social-pill:hover { color: white; border-color: hsl(var(--cyan) / .35)
 }
 @media (prefers-reduced-motion: reduce) {
   .app-style-arena .route-stage > :first-child { animation: none; }
-  .arena-button, .arena-field, .arena-tab, .home-mode-link, .home-stat-card, .profile-match-row,
+  .arena-button, .arena-field, .arena-tab, .home-mode-link, .home-stat-card, .profile-match-row, .team-summary-card, .team-summary-action,
   .app-style-arena .app-content :where(button, a)[class*="rounded-"] { transition-duration: 0ms; }
   .home-hub :is(.landing-copy-reveal, .landing-title-reveal, .home-featured-image, .home-featured-copy, .home-slide-progress) { animation: none !important; opacity: 1; transform: none; }
 }

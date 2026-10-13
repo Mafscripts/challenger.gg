@@ -30,6 +30,8 @@ import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
+import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
+import { teamPurposeFor } from "@/lib/teamPresentation";
 import { ScreenshotRankPill, GameRankSettingsLink } from "@/components/profile/ScreenshotRank";
 import { base44 } from "@/api/base44Client";
 import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
@@ -374,7 +376,7 @@ export default function Profile() {
         challengedXp,
         tournamentParticipants,
       ] = await Promise.all([
-        base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
+        base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 100).catch(() => []),
         base44.entities.Wager.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.Wager.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.WagerParticipant.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
@@ -386,7 +388,7 @@ export default function Profile() {
       ]);
       if (!isActive()) return;
 
-      const loadedTeams = await Promise.all((teamMemberRows || []).map(async (membership) => {
+      const loadedTeams = await Promise.all((teamMemberRows || []).filter((membership) => membership.is_active !== false).map(async (membership) => {
         const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
         return { ...membership, team };
       }));
@@ -480,7 +482,7 @@ export default function Profile() {
     ? activeNameColor
     : "";
   const trophyCount = profileTrophyCount(user, inventory);
-  const profileTeams = teams.filter((membership) => membership.team && membership.team.is_demo !== true);
+  const profileTeams = [...new Map(teams.filter((membership) => membership.team && membership.team.is_active !== false && membership.team.is_demo !== true).map((membership) => [String(membership.team.id), membership])).values()];
   const elo = Number(rankedStats?.elo || profile?.elo || 0);
   const nextRank = getNextRankForElo(elo);
   const rankProgress = getRankProgress(elo);
@@ -575,7 +577,7 @@ export default function Profile() {
     { id: "overview", label: "Overview", icon: Gamepad2 },
     { id: "statistics", label: "Statistics", icon: Target },
     { id: "matches", label: "Match History", icon: Swords },
-    { id: "teams", label: "My Teams", icon: Users },
+    { id: "teams", label: isOwnProfile ? "My Teams" : "Teams", icon: Users },
   ];
 
   return (
@@ -694,7 +696,7 @@ export default function Profile() {
           </div>
         )}
         {tab === "matches" && <div className="mt-5"><RecentMatchesPanel key={user.id} matches={matches} userId={user.id} loading={historyLoading} expanded /></div>}
-        {tab === "teams" && <div className="mt-5"><TeamsList teams={profileTeams} loading={historyLoading} /></div>}
+        {tab === "teams" && <div className="mt-5"><TeamsList key={user.id} teams={profileTeams} loading={historyLoading} profileUserId={user.id} isOwnProfile={isOwnProfile} /></div>}
       </div>
     </div>
   );
@@ -1166,54 +1168,39 @@ function InventoryShowcase({ items }) {
   );
 }
 
-function TeamsList({ teams, loading = false }) {
+function TeamsList({ teams, loading = false, profileUserId, isOwnProfile }) {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const categories = [{ id: "all", label: "All teams" }, { id: "tournament", label: "Tournaments" }, { id: "wager", label: "Wagers" }, { id: "ranked", label: "Ranked" }, { id: "general", label: "General" }];
+  const captainTeams = teams.filter(({ team }) => String(team.captain_id || "") === String(profileUserId));
+  const filtered = teams.filter(({ team }) => {
+    const captain = String(team.captain_id || "") === String(profileUserId);
+    const purpose = teamPurposeFor(team);
+    return (typeFilter === "all" || purpose.icon === typeFilter)
+      && (roleFilter === "all" || (roleFilter === "captain" ? captain : !captain))
+      && `${team.name || ""} ${team.tag || ""} ${team.region || ""} ${purpose.label}`.toLowerCase().includes(search.trim().toLowerCase());
+  });
   return (
-    <SectionCard className="p-5 sm:p-6">
-      <div className="mb-6">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan">Competitive rosters</p>
-        <h3 className="mt-1 text-xl font-black text-white">Teams</h3>
-        <p className="mt-1 text-sm text-vapor">Open a team to view its roster, results and tournaments.</p>
+    <section className="team-collection">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan">Competitive rosters</p><h2 className="mt-1 text-2xl font-black text-white">{isOwnProfile ? "My teams" : "Player teams"}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-vapor">Each team has its own competition and roster. Open a team for results, or go straight to its players.</p></div>
+        {isOwnProfile && <Link to="/teams?create=general" className="competition-action-pill team-collection-create"><Users className="h-4 w-4" />Create team</Link>}
       </div>
-      {loading ? (
-        <div role="status" className="text-sm text-vapor">Loading teams...</div>
-      ) : teams.length === 0 ? (
-        <EmptyPanel icon={Users} text="No teams joined yet." />
-      ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {teams.map((membership) => {
-            const team = membership.team;
-            const initials = String(team.tag || team.name || "TF").slice(0, 3).toUpperCase();
-            const typeLabel = ({ wager: "Wager", tournament: "Tournament", general: "General" })[team.team_type] || "Team";
-            return (
-              <Link key={membership.id} to={`/teams?team=${encodeURIComponent(team.id)}`} className="group relative min-h-56 overflow-hidden rounded-2xl border border-white/10 bg-background/40 p-5 transition-all hover:-translate-y-1 hover:border-cyan/35 hover:shadow-[0_18px_45px_rgba(0,0,0,0.3)]">
-                {team.banner_url && <img src={team.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15 transition-all duration-300 group-hover:scale-105 group-hover:opacity-25" />}
-                <div className="absolute inset-0 bg-gradient-to-br from-cyan/[0.08] via-card/85 to-orange/[0.06]" />
-                <div className="relative flex h-full flex-col">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan/20 bg-cyan/10 font-mono text-lg font-black text-cyan shadow-lg">
-                      {team.logo_url ? <img src={team.logo_url} alt="" className="h-full w-full object-cover" /> : initials}
-                    </div>
-                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-vapor">{typeLabel}</span>
-                  </div>
-                  <div className="mt-5 min-w-0">
-                    <h4 className="truncate text-xl font-black text-white transition-colors group-hover:text-cyan">{team.name}</h4>
-                    <p className="mt-1 font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">{team.tag || "No tag"}</p>
-                  </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-5 text-xs text-vapor">
-                    <span className="inline-flex items-center gap-1.5 capitalize"><Shield className="h-3.5 w-3.5 text-orange" /> {membership.role || "member"}</span>
-                    <span className="inline-flex items-center gap-1.5 uppercase"><Globe2 className="h-3.5 w-3.5 text-cyan" /> {team.region || "Global"}</span>
-                    <span className="inline-flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> {formatDate(membership.joined_date)}</span>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4 text-xs font-black uppercase tracking-wider text-cyan">
-                    View team <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
+      <div className="mb-5 flex flex-wrap gap-2 text-xs text-vapor"><span className="team-summary-badge">{loading ? "…" : teams.length} teams</span><span className="team-summary-badge"><Shield className="h-3.5 w-3.5 text-orange" />Captain of {loading ? "…" : captainTeams.length}</span><span className="team-summary-badge">Member of {loading ? "…" : teams.length - captainTeams.length}</span></div>
+      <div className="team-collection-toolbar mb-5">
+        <div className="profile-mode-filters flex flex-wrap gap-2" aria-label="Filter teams by competition">
+          {categories.map((category) => <button key={category.id} type="button" aria-pressed={typeFilter === category.id} onClick={() => setTypeFilter(category.id)} className="competition-action-pill profile-mode-pill">{category.label}<span className="profile-mode-count">{category.id === "all" ? teams.length : teams.filter(({ team }) => teamPurposeFor(team).icon === category.id).length}</span></button>)}
         </div>
-      )}
-    </SectionCard>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <label className="flex-1"><span className="sr-only">Search teams by name, tag or region</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by team name, tag or region..." className="arena-field w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm" /></label>
+          <label><span className="sr-only">Filter by team role</span><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="arena-field h-full w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm sm:w-48"><option value="all">All roles</option><option value="captain">Captain</option><option value="member">Member</option></select></label>
+        </div>
+      </div>
+      {loading ? <div role="status" className="rounded-xl border border-white/10 bg-card p-6 text-sm text-vapor">Loading teams...</div>
+        : filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-card p-6"><EmptyPanel icon={Users} text={teams.length === 0 ? "No teams joined yet." : "No teams match these filters."} />{teams.length > 0 && <button type="button" onClick={() => { setSearch(""); setTypeFilter("all"); setRoleFilter("all"); }} className="mt-3 text-sm font-bold text-cyan hover:underline">Clear filters</button>}</div>
+        : <><p className="mb-3 text-xs text-vapor">Showing {filtered.length} of {teams.length} teams</p><div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">{filtered.map((membership) => <TeamSummaryCard key={membership.team.id} team={membership.team} membership={membership} profileUserId={profileUserId} isOwnProfile={isOwnProfile} />)}</div></>}
+    </section>
   );
 }
 
