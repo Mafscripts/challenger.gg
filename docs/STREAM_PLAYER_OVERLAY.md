@@ -9,7 +9,7 @@ URL so renaming a player does not break their source.
 - Own profile: **Your Twitch player overlay**.
 - Settings: **Connections → Stream overlay**.
 - The settings panel includes a live preview, **Copy URL**, and setup instructions.
-- OBS source width: match the stream canvas (for example **1920** for 1080p or **2560** for 1440p), height **160**. Align at **X: 0, Y: 0** without shrinking the source.
+- OBS source width: match the stream canvas (for example **1920** for 1080p or **2560** for 1440p), height **90**. Align at **X: 0, Y: 0** without shrinking the source.
 - The document around the dark player bar is transparent, with no navigation or login.
 - The bar fills the browser viewport edge to edge with no outer padding or maximum width. It scales as a complete bar below 1920px and expands its layout above that width; it keeps every trophy counter.
 
@@ -18,7 +18,8 @@ URL so renaming a player does not break their source.
 The bar includes the existing Topfragg shield, TOPFRAGG.GG wordmark, player avatar,
 saved name color/animated effect, public badges, ranked ELO, wins/losses, win rate,
 lifetime USD earnings, and gold/silver/bronze/premium/Topfragg/hosted trophies, including zeros.
-Name effects reuse the website's CSS and assets.
+Name effects reuse the website's CSS and assets. The Topfragg shield makes a slow 3D turn
+every 12 seconds; the wordmark stays still. Reduced-motion preferences disable the logo animation.
 
 The source requests `GET /api/public/player-overlay/:identifier` every 15 seconds after
 the preceding request completes. It updates the existing components without refreshing
