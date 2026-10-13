@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import TrophyCounts from "@/components/ui/TrophyCounts";
+import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
+import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
 import { buildFreeEightsStandings } from "@/lib/freeEightsStandings";
 
 const navigation = [
@@ -202,6 +204,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const [tournaments, setTournaments] = useState([]);
   const [leaderboardTrophies, setLeaderboardTrophies] = useState({});
   const [loading, setLoading] = useState(true);
+  const standingsRef = useRef(null);
   const copy = mode === "eights" && gameId === "mw4" ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || modeCopy.xp;
   const activeTab = location.hash === "#matchfinder" ? "matchfinder" : "standings";
   const selectTab = (tab) => navigate(`${location.pathname}${location.search}#${tab}`);
@@ -254,12 +257,11 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
           score: number(user.total_wager_earnings),
           trophies: trophyCount(user),
         }))
-        .sort((a, b) => b.score - a.score || b.wins - a.wins || b.xp - a.xp)
-        .slice(0, 50);
+        .sort((a, b) => b.score - a.score || b.wins - a.wins || b.xp - a.xp);
     }
 
     if (mode === "eights") {
-      return buildFreeEightsStandings(eightsRows, usersById);
+      return buildFreeEightsStandings(eightsRows, usersById, eightsRows.length);
     }
 
     if (mode === "money8s") {
@@ -280,8 +282,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             trophies: trophyCount(user),
           };
         })
-        .sort((a, b) => b.score - a.score || b.wins - a.wins || a.losses - b.losses)
-        .slice(0, 50);
+        .sort((a, b) => b.score - a.score || b.wins - a.wins || a.losses - b.losses);
     }
 
     if (mode === "xp") {
@@ -303,8 +304,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
           };
         })
         .filter((row) => row.wins + row.losses + row.xp > 0)
-        .sort((a, b) => b.xp - a.xp || b.wins - a.wins)
-        .slice(0, 50);
+        .sort((a, b) => b.xp - a.xp || b.wins - a.wins);
     }
 
     const rowsByUser = new Map(rankedRows.map((row) => [String(row.user_id), row]));
@@ -328,11 +328,16 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         };
       })
       .filter((row) => row.wins + row.losses + row.xp + row.score > 0)
-      .sort((a, b) => b.xp - a.xp || b.wins - a.wins || b.score - a.score)
-      .slice(0, 50);
+      .sort((a, b) => b.xp - a.xp || b.wins - a.wins || b.score - a.score);
   }, [eightsRows, mode, moneyRows, rankedRows, users, usersById, xpByUser, xpRows]);
 
-  const standingsUserIds = useMemo(() => standings.map((row) => String(row.userId || "")).filter(Boolean).join("|"), [standings]);
+  const pagination = useLeaderboardPagination(standings, `${mode}:${gameId}`);
+  const changePage = (page) => {
+    pagination.setPage(page);
+    window.requestAnimationFrame(() => standingsRef.current?.scrollIntoView({ block: "start", behavior: "auto" }));
+  };
+  const paginationProps = { page: pagination.page, pageCount: pagination.pageCount, total: pagination.total, onPageChange: changePage };
+  const standingsUserIds = useMemo(() => pagination.visibleRows.map((row) => String(row.userId || "")).filter(Boolean).join("|"), [pagination.visibleRows]);
 
   useEffect(() => {
     let active = true;
@@ -396,8 +401,8 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         ))}
       </div>
 
-      <section id={activeTab} className="premium-panel scroll-mt-24 overflow-hidden rounded-xl border border-white/[0.08]">
-        <div className="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <section ref={standingsRef} id={activeTab} className="leaderboard-surface" style={mode === "eights" && gameId === "mw4" ? { "--ladder-accent": "#facc15" } : undefined}>
+        <div className="flex flex-col gap-4 border-b border-white/[0.07] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div><div className="flex items-center gap-2"><span className={`h-2 w-2 ${copy.line}`} /><h2 className="font-black">{competitionTitle || copy.title} {activeTab === "matchfinder" ? "matchfinder" : "standings"}</h2></div><p className="mt-1 text-xs text-vapor">{activeTab === "matchfinder" ? `${openCount} open ${openCount === 1 ? "match" : "matches"} in this competition.` : mode === "eights" ? "Ranked by 8s ELO, highest first." : "A separate leaderboard for this competition."}</p></div>
           <div className="flex rounded-lg border border-white/[0.07] bg-black/15 p-1 text-[9px] font-black uppercase tracking-wider">
             <button type="button" onClick={() => selectTab("standings")} className={`rounded-md px-3 py-2 ${activeTab === "standings" ? `${copy.accent} bg-white/[0.04]` : "text-vapor hover:text-white"}`}><Medal className="mr-1.5 inline h-3 w-3" /> Standings</button>
@@ -405,6 +410,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             <Link to="/rules" className="rounded-md px-3 py-2 text-vapor hover:text-white"><ShieldCheck className="mr-1.5 inline h-3 w-3" /> Rules</Link>
           </div>
         </div>
+        {activeTab === "standings" && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} compact />}
         {activeTab === "matchfinder" ? matchfinder : <div className="overflow-x-auto">
           <div className={mode === "eights" ? "min-w-[980px]" : "min-w-[1080px]"}>
             <div className={`grid ${standingColumns} gap-3 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor`}>
@@ -420,10 +426,10 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
                   </div>
                 ))}
               </div>
-            ) : standings.length === 0 ? <div className="px-5 py-12 text-center text-sm text-vapor">The standings begin when the first match is completed.</div> : standings.map((row, index) => (
-              <div key={row.id} className={`grid ${standingColumns} items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors hover:bg-white/[0.02] ${String(row.userId) === String(currentUser?.id) ? "bg-cyan/[0.035]" : ""}`}>
-                <span className={`font-mono font-black ${rankTone(index)}`}>{index < 3 ? <Trophy className="mr-2 inline h-3.5 w-3.5" /> : null}{index + 1}</span>
-                <Link to={`/profile/${row.slug}`} className="flex min-w-0 items-center gap-3 font-bold text-white hover:text-cyan"><span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.04] text-[10px] font-black">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" className="h-full w-full object-cover" /> : row.name.charAt(0).toUpperCase()}</span><span data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</span></Link>
+            ) : standings.length === 0 ? <div className="px-5 py-12 text-center text-sm text-vapor">The standings begin when the first match is completed.</div> : pagination.visibleRows.map((row, index) => (
+              <div key={row.id} className={`competition-standing-row grid min-h-[66px] ${standingColumns} items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors ${String(row.userId) === String(currentUser?.id) ? "!bg-cyan/[0.055]" : ""}`}>
+                <span className={`font-mono font-black ${rankTone(pagination.offset + index)}`}>{pagination.offset + index < 3 ? <Trophy className="mr-2 inline h-3.5 w-3.5" /> : null}#{pagination.offset + index + 1}</span>
+                <Link to={`/profile/${row.slug}`} className="flex min-w-0 items-center gap-3 font-bold text-white hover:text-cyan"><span className="leaderboard-avatar">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" loading="lazy" /> : row.name.charAt(0).toUpperCase()}</span><span data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</span></Link>
                 <span className="text-center font-mono font-black text-green">{row.wins}</span>
                 <span className="text-center font-mono font-black text-red-400">{row.losses}</span>
                 <span className="text-center font-mono font-black text-white">{pct(row.wins, row.losses)}</span>
@@ -443,7 +449,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             ))}
           </div>
         </div>}
-        {activeTab === "standings" && standings.length > 0 && <div className="flex items-center justify-end px-5 py-3 text-[9px] font-black uppercase tracking-wider text-vapor">Top {standings.length} players <ChevronRight className="ml-1 h-3.5 w-3.5" /></div>}
+        {activeTab === "standings" && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} />}
       </section>
     </div>
   );

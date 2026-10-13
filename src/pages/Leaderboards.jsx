@@ -1,17 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
-import { DollarSign, Flame, Trophy, TrendingUp } from "lucide-react";
+import { DollarSign, Flame, Globe2, Search, Trophy, TrendingUp, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
 import UserBadges from "@/components/ui/UserBadges";
-import PageHeader from "@/components/ui/PageHeader";
 import PageLoader from "@/components/ui/PageLoader";
+import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
+import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
 
 const tabs = [
-  { key: "elo", label: "ELO Rankings", icon: TrendingUp },
-  { key: "tournaments", label: "Tournament Wins", icon: Trophy },
-  { key: "wagers", label: "Wager Earnings", icon: DollarSign },
+  { key: "elo", label: "Ranked", title: "ELO rankings", metric: "ELO", icon: TrendingUp },
+  { key: "tournaments", label: "Tournaments", title: "Tournament wins", metric: "Wins", icon: Trophy },
+  { key: "wagers", label: "Cash Matches", title: "Cash match earnings", metric: "Earnings", icon: DollarSign },
 ];
 
 const regions = ["Global", "NA", "EU", "APAC", "SA", "OCE"];
@@ -19,19 +19,27 @@ const regions = ["Global", "NA", "EU", "APAC", "SA", "OCE"];
 const playerName = (row) => row.username || row.display_name || row.full_name || row.email || "Unnamed player";
 const playerSlug = (row) => row.username || row.user_id || row.id || "";
 
+function PlayerName({ row }) {
+  return <div className="leaderboard-player-name">
+    <Link to={`/profile/${row.slug}`} data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</Link>
+    <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} showMonitorCam tooltipPlacement="bottom" />
+  </div>;
+}
+
+function PlayerAvatar({ row }) {
+  return <span className="leaderboard-avatar">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" loading="lazy" /> : row.name.charAt(0).toUpperCase()}</span>;
+}
+
 export default function Leaderboards() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const validRequestedTab = tabs.some((tab) => tab.key === requestedTab) ? requestedTab : "elo";
-  const [activeTab, setActiveTab] = useState(validRequestedTab);
+  const activeTab = tabs.some((tab) => tab.key === requestedTab) ? requestedTab : "elo";
   const [region, setRegion] = useState("Global");
+  const [searchQuery, setSearchQuery] = useState("");
+  const standingsRef = useRef(null);
   const [rankedStats, setRankedStats] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setActiveTab(validRequestedTab);
-  }, [validRequestedTab]);
 
   useEffect(() => {
     loadData();
@@ -113,116 +121,84 @@ export default function Leaderboards() {
     })).sort((a, b) => b.value - a.value);
   }, [activeTab, region, rankedStats, users]);
 
-  const rankedRows = rows.map((row, index) => ({ ...row, rank: index + 1 }));
-  const podium = [rankedRows[1], rankedRows[0], rankedRows[2]].filter(Boolean);
+  const rankedRows = useMemo(() => rows.map((row, index) => ({ ...row, rank: index + 1 })), [rows]);
+  const filteredRows = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return query ? rankedRows.filter((row) => `${row.name} ${row.slug}`.toLowerCase().includes(query)) : rankedRows;
+  }, [rankedRows, searchQuery]);
+  const pagination = useLeaderboardPagination(filteredRows, `${activeTab}:${region}:${searchQuery}`);
+  const selectedTab = tabs.find((tab) => tab.key === activeTab);
+  const podium = rankedRows.slice(0, 3);
+  const changePage = (page) => {
+    pagination.setPage(page);
+    window.requestAnimationFrame(() => standingsRef.current?.scrollIntoView({ block: "start", behavior: "auto" }));
+  };
+  const paginationProps = { page: pagination.page, pageCount: pagination.pageCount, total: pagination.total, onPageChange: changePage };
+  const selectTab = (key) => setSearchParams((previous) => {
+    const next = new URLSearchParams(previous);
+    next.set("tab", key);
+    return next;
+  });
 
-  if (loading) {
-    return <PageLoader label="Loading leaderboards" />;
-  }
+  if (loading) return <PageLoader label="Loading leaderboards" />;
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <PageHeader eyebrow="Competitive rankings" title="Leaderboards" description="Live rankings from ranked, tournament and wager records." />
-
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === tab.key ? "bg-cyan/10 text-cyan border border-cyan/20" : "bg-secondary text-vapor hover:text-foreground"
-              }`}
-            >
-              <tab.icon className="w-3.5 h-3.5" /> {tab.label}
-            </button>
-          ))}
-          <div className="ml-auto flex gap-2">
-            {regions.map((item) => (
-              <button
-                key={item}
-                onClick={() => setRegion(item)}
-                className={`px-3 py-1.5 rounded text-xs font-semibold transition-all ${
-                  region === item ? "bg-white/10 text-foreground" : "text-vapor hover:text-foreground"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
+    <div className="leaderboard-page">
+      <div className="leaderboard-container">
+        <header className="leaderboard-hero">
+          <div>
+            <div className="leaderboard-eyebrow"><TrendingUp size={14} /> TopFragg / Competitive rankings</div>
+            <h1>Leaderboards</h1>
+            <p>The TopFragg leaderboards. Compare ranked ELO, tournament wins and cash match earnings, 50 players at a time.</p>
           </div>
+          <div className="leaderboard-hero-mark" aria-hidden="true"><Trophy size={32} strokeWidth={1.5} /></div>
+        </header>
+
+        <div className="leaderboard-filters">
+          <div className="leaderboard-tabs" role="group" aria-label="Leaderboard competition">
+            {tabs.map((tab) => <button type="button" key={tab.key} aria-pressed={activeTab === tab.key} onClick={() => selectTab(tab.key)}><tab.icon size={14} />{tab.label}</button>)}
+          </div>
+          <label className="leaderboard-region"><Globe2 size={14} /><span>Region</span><select value={region} onChange={(event) => setRegion(event.target.value)}>{regions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         </div>
 
-        {rankedRows.length === 0 ? (
-          <div className="glass rounded-xl border border-white/5 p-10 text-center text-vapor">No leaderboard records yet.</div>
-        ) : (
-          <>
-            <div className="dark-focus dark-media mb-8 overflow-hidden rounded-xl p-5 sm:p-7">
-              <div className="mb-6 flex items-end justify-between gap-4 border-b border-white/10 pb-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Top competitors</p>
-                  <h2 className="mt-1 text-xl font-black">Podium</h2>
-                </div>
-                <Trophy className="h-6 w-6 text-primary" />
-              </div>
-              <div className="mx-auto grid max-w-2xl grid-cols-3 gap-3 sm:gap-6">
-                {podium.map((row, index) => {
-                  const place = row.rank;
-                  const gradients = { 1: "from-yellow-400 to-orange", 2: "from-gray-300 to-gray-400", 3: "from-amber-600 to-amber-800" };
-                  return (
-                    <motion.div
-                      key={row.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.15 }}
-                      className={`flex flex-col items-center rounded-xl border border-white/10 bg-white/[0.04] px-2 py-5 text-center ${place === 1 ? "-translate-y-2" : ""}`}
-                    >
-                      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-lg font-black text-white sm:h-14 sm:w-14 ${gradients[place]}`}>
-                        #{place}
-                      </div>
-                      <div className="mb-1 flex w-full min-w-0 flex-wrap items-center justify-center gap-1.5">
-                        <Link to={`/profile/${row.slug}`} data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap text-xs font-bold transition-colors hover:text-primary sm:text-sm ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</Link>
-                        <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} showMonitorCam tooltipPlacement="bottom" />
-                      </div>
-                      <p className="mb-1 text-[10px] capitalize text-vapor sm:text-xs">{row.tier}</p>
-                      <p className="font-mono text-sm font-bold text-primary sm:text-lg">{row.display}</p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="glass rounded-xl border border-white/5 overflow-hidden">
-              <div className="hidden md:grid grid-cols-7 gap-4 px-5 py-3 border-b border-white/5 text-xs text-vapor uppercase tracking-wider font-semibold">
-                <span>Rank</span>
-                <span className="col-span-2">Player</span>
-                <span>Tier</span>
-                <span>Region</span>
-                <span>Streak</span>
-                <span>{activeTab === "elo" ? "ELO" : activeTab === "tournaments" ? "Wins" : "Earnings"}</span>
-              </div>
-              <div className="divide-y divide-white/5">
-                {rankedRows.map((row) => (
-                  <div
-                    key={row.id}
-                    className="grid grid-cols-3 items-center gap-2 px-5 py-4 transition-colors duration-75 hover:bg-white/[0.025] md:grid-cols-7 md:gap-4"
-                  >
-                    <span className={`text-sm font-bold font-mono ${row.rank <= 3 ? "text-orange" : "text-vapor"}`}>#{row.rank}</span>
-                    <div className="col-span-2 flex min-w-0 items-center gap-1.5">
-                      <Link to={`/profile/${row.slug}`} data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap text-sm font-semibold transition-colors duration-75 hover:text-cyan ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</Link>
-                      <UserBadges user={row.user} size="xs" iconOnly showForceStream={false} showMonitorCam tooltipPlacement="bottom" className="shrink-0" />
-                    </div>
-                    <span className="text-sm text-vapor hidden md:block capitalize">{row.tier}</span>
-                    <span className="text-xs text-vapor hidden md:block">{row.region}</span>
-                    <span className="text-sm font-mono hidden md:flex items-center gap-1">
-                      <Flame className={`w-3 h-3 ${row.streak >= 5 ? "text-orange" : "text-vapor"}`} /> {row.streak}
-                    </span>
-                    <span className="text-sm font-mono font-bold text-cyan">{row.display}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
+        {pagination.page === 1 && !searchQuery.trim() && podium.length > 0 && (
+          <section className="leaderboard-podium" aria-label={`${region} top three players`}>
+            {podium.map((row) => <article key={row.id} className="leaderboard-champion" data-place={row.rank}>
+              <div className="leaderboard-champion-place"><Trophy size={15} /> #{row.rank}</div>
+              <div className="leaderboard-champion-player"><PlayerAvatar row={row} /><div className="min-w-0"><PlayerName row={row} /><p className="leaderboard-player-detail">{row.tier} · {row.region}</p></div></div>
+              <div className="leaderboard-champion-score"><strong>{row.display}</strong><span>{selectedTab.metric}</span></div>
+            </article>)}
+          </section>
         )}
+
+        <section ref={standingsRef} className="leaderboard-surface" aria-label={selectedTab.title}>
+          <div className="leaderboard-list-heading">
+            <div><h2>{selectedTab.title}</h2><p>{region === "Global" ? "Worldwide standings" : `${region} standings`} · 50 players per page</p></div>
+            <label className="leaderboard-search"><Search size={15} /><span className="sr-only">Search players</span><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Find a player…" type="search" /></label>
+          </div>
+          <LeaderboardPagination {...paginationProps} compact />
+          <div role="table" aria-label={selectedTab.title}>
+            <div role="rowgroup">
+              <div role="row" className="leaderboard-columns leaderboard-table-head">
+                <span role="columnheader">Rank</span><span role="columnheader">Player</span><span role="columnheader" className="leaderboard-desktop">Tier</span><span role="columnheader" className="leaderboard-desktop">Region</span><span role="columnheader" className="leaderboard-desktop">Streak</span><span role="columnheader" className="text-right">{selectedTab.metric}</span>
+              </div>
+            </div>
+            <div role="rowgroup">
+              {pagination.visibleRows.map((row) => (
+                <div role="row" key={row.id} className="leaderboard-columns leaderboard-row">
+                  <span role="cell" className="leaderboard-rank" data-place={row.rank}>#{row.rank}</span>
+                  <div role="cell" className="leaderboard-player-cell"><PlayerAvatar row={row} /><div className="min-w-0"><PlayerName row={row} /><p className="leaderboard-mobile-detail">{row.region} · {row.tier} · {row.streak} streak</p></div></div>
+                  <span role="cell" className="leaderboard-tier leaderboard-desktop">{row.tier}</span>
+                  <span role="cell" className="leaderboard-location leaderboard-desktop">{row.region}</span>
+                  <span role="cell" className="leaderboard-streak leaderboard-desktop"><Flame size={13} className={row.streak >= 5 ? "text-orange" : "text-vapor"} />{row.streak}</span>
+                  <span role="cell" className="leaderboard-score">{row.display}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {filteredRows.length === 0 && <div className="leaderboard-empty"><Users size={26} strokeWidth={1.5} /><strong>{rankedRows.length ? "No players found" : "The ladder starts here"}</strong><p>{rankedRows.length ? "Try another player name or change the region." : "Rankings appear when players start competing in this region."}</p></div>}
+          {filteredRows.length > 0 && <LeaderboardPagination {...paginationProps} />}
+        </section>
       </div>
     </div>
   );
