@@ -1449,6 +1449,15 @@ export default function Navbar() {
                         <div className="profile-menu-identity"><p>Your Topfragg account</p><strong>{accountName}</strong></div>
                         <span className="profile-menu-role">{accountRole}</span>
                       </header>
+                      {canSeeAdminLink && (
+                        <div className="profile-menu-admin-access">
+                          <Link to="/admin" onClick={() => setProfileOpen(false)} className="profile-menu-link profile-menu-admin-shortcut">
+                            <span className="profile-menu-item-icon"><ShieldCheck size={16} aria-hidden="true" /></span>
+                            <span className="profile-menu-link-label">Admin Panel</span>
+                            <ChevronRight size={15} className="profile-menu-link-arrow" aria-hidden="true" />
+                          </Link>
+                        </div>
+                      )}
                       <div className="profile-menu-scroll">
                       <div>
                         <div className="profile-menu-search">
@@ -1534,9 +1543,6 @@ export default function Navbar() {
                         ]}
                         onSelect={() => setProfileOpen(false)}
                       />
-                      {canSeeAdminLink && (
-                        <ProfileMenuSection label="Admin" items={[{ label: "Admin Panel", path: "/admin", icon: ShieldCheck }]} onSelect={() => setProfileOpen(false)} />
-                      )}
                       </div>
                       <div className="profile-menu-footer">
                         <Link
