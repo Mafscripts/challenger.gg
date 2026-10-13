@@ -1,9 +1,14 @@
 export const MATCHFINDER_POST_LIFETIME_MS = 30 * 60 * 1000;
+export const FREE_EIGHTS_POST_LIFETIME_MS = 60 * 60 * 1000;
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+export function matchfinderPostLifetimeMs(post) {
+  return post?.match_type === "8s" ? FREE_EIGHTS_POST_LIFETIME_MS : MATCHFINDER_POST_LIFETIME_MS;
+}
 
 export function matchfinderPostExpiresAt(post) {
   const placedAt = new Date(post?.created_date || "").getTime();
-  return Number.isFinite(placedAt) ? placedAt + MATCHFINDER_POST_LIFETIME_MS : NaN;
+  return Number.isFinite(placedAt) ? placedAt + matchfinderPostLifetimeMs(post) : NaN;
 }
 
 export function isMatchfinderPostVisible(post, now = Date.now()) {

@@ -1,12 +1,13 @@
+import { Prisma } from "@prisma/client";
 import { serializeRow } from "./entity.js";
 import { publishEightsLobbyUpdate } from "./eights-live.js";
 import { wagerCancellationNotification } from "./wager-cancellation-notifications.js";
-import { MATCHFINDER_POST_LIFETIME_MS, matchfinderPostExpiresAt } from "../src/lib/matchfinderPosts.js";
+import { MATCHFINDER_POST_LIFETIME_MS, FREE_EIGHTS_POST_LIFETIME_MS, matchfinderPostExpiresAt, matchfinderPostLifetimeMs } from "../src/lib/matchfinderPosts.js";
 
 const matchEntities = { Wager: "wager", RankedMatch: "rankedMatch", XPMatch: "xPMatch" };
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 const money = (value) => Math.round((Number(value) || 0) * 100) / 100;
-const reason = "Automatically cancelled after 30 minutes in matchfinder";
+const cancellationReason = (match) => `Automatically cancelled after ${matchfinderPostLifetimeMs(match) / 60000} minutes in matchfinder`;
 
 export function isExpiredOpenMatch(match, now = Date.now()) {
   return match?.status === "open" && matchfinderPostExpiresAt(match) <= now;
@@ -38,7 +39,7 @@ async function refundExpiredEscrow(tx, match, participants, stamp) {
     await tx.walletTransaction.create({ data: { metadata: {
       user_id: userId, wallet_id: wallet.id, status: "completed", type: "wager_refund",
       amount: stake, balance_before: money(balance.available_balance), balance_after: available,
-      description: reason, reference_type: "Wager", reference_id: match.id, created_date: stamp,
+      description: cancellationReason(match), reference_type: "Wager", reference_id: match.id, created_date: stamp,
     } } });
     await tx.wagerParticipant.update({ where: { id: row.id }, data: { metadata: {
       ...player, escrow_released: true, escrow_released_date: stamp,
@@ -59,6 +60,7 @@ export async function cancelExpiredMatchfinderPost(db, entity, id, { now = Date.
     const row = await tx[delegate].findUnique({ where: { id } });
     const match = serializeRow(row);
     if (!isExpiredOpenMatch(match, now)) return null;
+    const reason = cancellationReason(match);
     const stamp = new Date(now).toISOString();
     const participants = entity === "Wager" ? await tx.wagerParticipant.findMany({ where: field("wager_id", id) }) : [];
     if (entity === "Wager" && match.match_type !== "8s") await refundExpiredEscrow(tx, match, participants, stamp);
@@ -95,7 +97,17 @@ export async function sweepExpiredMatchfinderPosts(db, { withLock = (_key, opera
   let cancelled = 0;
   for (const [entity, delegate] of Object.entries(matchEntities)) {
     const candidates = await db[delegate].findMany({ where: { AND: [
-      field("status", "open"), { created_date: { lte: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
+      field("status", "open"),
+      entity === "Wager" ? { OR: [
+        { AND: [field("match_type", "8s"), { created_date: { lte: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } }] },
+        { AND: [
+          { OR: [
+            { metadata: { path: ["match_type"], not: "8s" } },
+            { metadata: { path: ["match_type"], equals: Prisma.AnyNull } },
+          ] },
+          { created_date: { lte: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
+        ] },
+      ] } : { created_date: { lte: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
     ] }, orderBy: { created_date: "asc" }, take: 100, select: { id: true } });
     for (const { id } of candidates) {
       try {

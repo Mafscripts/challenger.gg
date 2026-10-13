@@ -1,7 +1,7 @@
 import { serializeRow } from "./entity.js";
 import { loadFreeEightsSkills } from "./free-eights-teams.js";
 import { findActiveFreeEightsMatch } from "./free-eights-membership.js";
-import { isMatchfinderPostVisible, MATCHFINDER_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
+import { isMatchfinderPostVisible, FREE_EIGHTS_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
 import { eightsGameId } from "../src/lib/freeEightsGames.js";
 
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
@@ -11,7 +11,7 @@ const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 export async function getFreeEightsOverview(db, userId, gameId = "bo7") {
   const now = Date.now();
   const [openRows, memberships] = await Promise.all([
-    db.wager.findMany({ where: { AND: [field("match_type", "8s"), field("status", "open"), { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } }] }, orderBy: { created_date: "desc" }, take: 600 }),
+    db.wager.findMany({ where: { AND: [field("match_type", "8s"), field("status", "open"), { created_date: { gt: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } }] }, orderBy: { created_date: "desc" }, take: 600 }),
     db.wagerParticipant.findMany({ where: field("user_id", userId), select: { metadata: true } }),
   ]);
   const open = openRows.filter((row) => (!gameId || eightsGameId(row.metadata?.game_id) === gameId) && isMatchfinderPostVisible(serializeRow(row), now)).slice(0, 30);

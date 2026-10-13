@@ -467,10 +467,10 @@ test("website lobby waits for voice before generation and both winning and losin
   assert.equal(f.moves.length, 16, "repeated completion does not move anyone twice");
 });
 
-test("30-minute automatic cancellation removes the Discord lobby without website polling", async () => {
+test("60-minute automatic cancellation removes the Discord lobby without website polling", async () => {
   const f = fixture();
   const now = Date.now();
-  f.match.created_date = new Date(now - 30 * 60 * 1000);
+  f.match.created_date = new Date(now - 60 * 60 * 1000);
   f.match.metadata.host_id = f.users[0].id;
   await f.sync();
   assert.equal(f.stats().creations, 3);

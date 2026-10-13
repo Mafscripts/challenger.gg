@@ -70,7 +70,7 @@ test("empty Free 8s overview skips empty batch queries", async () => {
 
 test("overview hides expired posts pending the background worker and releases cancelled membership", async () => {
   const expired = match("expired");
-  expired.created_date = new Date(Date.now() - 30 * 60 * 1000 - 1000);
+  expired.created_date = new Date(Date.now() - 60 * 60 * 1000 - 1000);
   const hidden = match("hidden");
   hidden.metadata.posted_to_matchfinder = false;
   const f = fixture({ wager: [expired, hidden, match("recent")], wagerParticipant: [
@@ -83,6 +83,15 @@ test("overview hides expired posts pending the background worker and releases ca
   assert.equal(result.active_lobby.status, "open");
   expired.metadata.status = "cancelled";
   assert.equal((await getFreeEightsOverview(f.db, "me")).active_lobby, null);
+});
+
+test("overview keeps 45-minute Free 8s lobbies visible for each game and the combined matchfinder", async () => {
+  const rows = ["bo7", "bo6", "mw3"].map((game_id) => ({ ...match(game_id), created_date: new Date(Date.now() - 45 * 60 * 1000), metadata: { match_type: "8s", status: "open", game_id } }));
+  const f = fixture({ wager: rows });
+  for (const game_id of ["bo7", "bo6", "mw3"]) {
+    assert.deepEqual((await getFreeEightsOverview(f.db, "me", game_id)).lobbies.map((row) => row.id), [game_id]);
+  }
+  assert.equal((await getFreeEightsOverview(f.db, "me", null)).lobbies.length, 3);
 });
 
 test("overview and enrollment use the same unresolved status rule and captain fallback", async () => {

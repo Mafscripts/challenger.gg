@@ -1,6 +1,6 @@
 import { prisma } from "./prisma.js";
 import { normalizeFreeEightsCancellationNotifications } from "./wager-cancellation-notifications.js";
-import { isMatchfinderPostVisible, MATCHFINDER_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
+import { isMatchfinderPostVisible, MATCHFINDER_POST_LIFETIME_MS, FREE_EIGHTS_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
 
 export const entityAliases = {
   SupportTicket: "supportTicket",
@@ -202,7 +202,13 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
       : undefined;
   if (matchfinderOnly) where = { AND: [
     ...(where ? [where] : []),
-    { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
+    entity === "Wager" ? { OR: [
+      { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
+      { AND: [
+        { metadata: { path: ["match_type"], equals: "8s" } },
+        { created_date: { gt: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } },
+      ] },
+    ] } : { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
   ] };
   const rows = entity === "Notification"
     ? await delegate.findMany({

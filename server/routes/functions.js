@@ -24,6 +24,7 @@ import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement
 import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
 import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
+import { matchfinderPostLifetimeMs } from "../../src/lib/matchfinderPosts.js";
 
 export const expireMatchfinderPosts = () => sweepExpiredMatchfinderPosts(prisma, { withLock: withTournamentMutationLock });
 
@@ -6651,7 +6652,7 @@ async function acceptWagerUnlocked(req) {
   if (!wager || wager.status !== "open") {
     return { success: false, error: "Wager is not open" };
   }
-  if (isExpiredOpenMatch(wager)) return { success: false, code: "MATCH_CANCELLED", error: "This lobby expired after 30 minutes. Join or create another match." };
+  if (isExpiredOpenMatch(wager)) return { success: false, code: "MATCH_CANCELLED", error: `This lobby expired after ${matchfinderPostLifetimeMs(wager) / 60000} minutes. Join or create another match.` };
   const discordError = freeEightsDiscordJoinError(wager.match_type, req.userRow);
   if (discordError) return discordError;
   const existingParticipant = await firstEntity("WagerParticipant", { wager_id: wager.id, user_id: req.user.id }).catch(() => null);

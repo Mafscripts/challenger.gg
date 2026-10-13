@@ -83,6 +83,13 @@ test("every unfinished Free 8s status blocks a different join and creation, incl
   }
 });
 
+test("a player can still join a 45-minute Free 8s post", async () => {
+  const lobby = match("open"); lobby.created_date = new Date(Date.now() - 45 * 60 * 1000);
+  const f = fixture([lobby]);
+  assert.equal((await joinFreeEightsLobby(f.db, "me", "open", "Me")).success, true);
+  assert.equal(f.members.size, 1);
+});
+
 test("a captain without a legacy participant row is still blocked", async () => {
   const f = fixture([match("old", "in_progress", "8s", "me"), match("next")]);
   assert.equal((await joinFreeEightsLobby(f.db, "me", "next", "Me")).active_match_id, "old");

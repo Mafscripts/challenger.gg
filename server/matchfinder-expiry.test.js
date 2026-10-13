@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
+import { Prisma } from "@prisma/client";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, startMatchfinderExpiryWorker, sweepExpiredMatchfinderPosts } from "./matchfinder-expiry.js";
 import { findActiveFreeEightsMatch, joinFreeEightsLobby } from "./free-eights-membership.js";
 import { prisma } from "./prisma.js";
@@ -8,7 +9,7 @@ import { signUser } from "./auth.js";
 import routes from "./routes/functions.js";
 
 const now = Date.parse("2026-10-09T15:13:17.123Z");
-const match = (id, extra = {}) => ({ id, created_date: new Date(now - 30 * 60 * 1000), metadata: { match_type: "8s", status: "open", host_id: "host", ...extra } });
+const match = (id, extra = {}) => ({ id, created_date: new Date(now - (extra.match_type === undefined || extra.match_type === "8s" ? 60 : 30) * 60 * 1000), metadata: { match_type: "8s", status: "open", host_id: "host", ...extra } });
 const member = (id, wager_id, user_id, extra = {}) => ({ id, metadata: { wager_id, user_id, ...extra } });
 
 function fixture(initial = {}) {
@@ -20,7 +21,12 @@ function fixture(initial = {}) {
     if (key === "AND") return value.every((part) => matchesWhere(row, part));
     if (key === "OR") return value.some((part) => matchesWhere(row, part));
     if (key === "NOT") return (Array.isArray(value) ? value : [value]).every((part) => !matchesWhere(row, part));
-    if (key === "metadata") return row.metadata?.[value.path[0]] === value.equals;
+    if (key === "metadata") {
+      const actual = row.metadata?.[value.path[0]];
+      if (value.equals === Prisma.AnyNull) return actual === undefined || actual === null;
+      if (value.not !== undefined) return actual !== undefined && actual !== null && actual !== value.not;
+      return actual === value.equals;
+    }
     if (value?.lte) return row[key] <= value.lte;
     if (value?.in) return value.in.includes(row[key]);
     if (value?.not) return row[key] !== value.not;
@@ -53,7 +59,7 @@ function fixture(initial = {}) {
     options: { now, publish: (...args) => events.push(args) } };
 }
 
-test("expiry starts at the exact 30-minute boundary and ignores matches already underway", () => {
+test("Free 8s expiry starts at the exact 60-minute boundary and ignores matches already underway", () => {
   const row = { ...match("free").metadata, created_date: match("free").created_date };
   assert.equal(isExpiredOpenMatch(row, now - 1), false);
   assert.equal(isExpiredOpenMatch(row, now), true);
@@ -68,6 +74,7 @@ test("Free 8s expiration cancels the room, clears membership and publishes once"
   assert.equal(await cancelExpiredMatchfinderPost(f.db, "Wager", "free", { ...f.options, now: now - 1 }), null);
   const cancelled = await cancelExpiredMatchfinderPost(f.db, "Wager", "free", f.options);
   assert.equal(cancelled.status, "cancelled");
+  assert.equal(cancelled.cancel_reason, "Automatically cancelled after 60 minutes in matchfinder");
   assert.equal(cancelled.roster_lock_deadline, "");
   assert.equal(cancelled.free_eights_waiting_for_voice, false);
   assert.equal(cancelled.eights_score_vote_status, "cancelled");
@@ -83,7 +90,7 @@ test("Free 8s expiration cancels the room, clears membership and publishes once"
 
 for (const [entity, delegate] of [["RankedMatch", "rankedMatch"], ["XPMatch", "xPMatch"]]) {
   test(`${entity} expiration notifies each roster member once and preserves running matches`, async () => {
-    const f = fixture({ [delegate]: [match("open", { team_alpha_player_ids: ["host", "a"], team_bravo_player_ids: ["b"], challenger_id: "b" }), match("live", { status: "in_progress" })] });
+    const f = fixture({ [delegate]: [match("open", { match_type: entity === "XPMatch" ? "xp" : "ranked", team_alpha_player_ids: ["host", "a"], team_bravo_player_ids: ["b"], challenger_id: "b" }), match("live", { status: "in_progress" })] });
     assert.equal((await cancelExpiredMatchfinderPost(f.db, entity, "open", f.options)).status, "cancelled");
     assert.deepEqual(f.rows().notification.map((row) => row.metadata.user_id).sort(), ["a", "b", "host"]);
     assert.equal(await cancelExpiredMatchfinderPost(f.db, entity, "live", f.options), null);
@@ -141,13 +148,23 @@ test("a stale candidate rechecks status after taking its row lock", async () => 
 
 test("background sweep works without a website visit and shares enrollment/start locks", async () => {
   const recent = match("recent"); recent.created_date = new Date(now - 1000);
-  const f = fixture({ wager: [match("old"), recent, match("live", { status: "in_progress" })], rankedMatch: [match("ranked")], xPMatch: [match("xp")] });
+  const f = fixture({ wager: [match("old"), recent, match("live", { status: "in_progress" })], rankedMatch: [match("ranked", { match_type: "ranked" })], xPMatch: [match("xp", { match_type: "xp" })] });
   const locks = [];
   assert.equal(await sweepExpiredMatchfinderPosts(f.db, { now, withLock: async (key, action) => { locks.push(key); return action(); } }), 3);
   assert.deepEqual(locks, ["wager-accept:old", "ranked-accept:ranked", "xp-accept:xp"]);
   assert.equal(f.rows().wager[1].metadata.status, "open");
   assert.equal(f.rows().wager[2].metadata.status, "in_progress");
   assert.equal(await sweepExpiredMatchfinderPosts(f.db, { now }), 0);
+});
+
+test("sweep preserves 30–60 minute Free 8s lobbies without blocking expired paid or legacy posts", async () => {
+  const pending = Array.from({ length: 100 }, (_, i) => ({ ...match(`pending-${i}`), created_date: new Date(now - 45 * 60 * 1000) }));
+  const legacy = match("legacy", { match_type: "wagers" }); delete legacy.metadata.match_type;
+  const f = fixture({ wager: [...pending, match("paid", { match_type: "money8s" }), legacy, match("free-expired")] });
+  const attempted = [];
+  assert.equal(await sweepExpiredMatchfinderPosts(f.db, { now, withLock: async (key, action) => { attempted.push(key); return action(); } }), 3);
+  assert.deepEqual(attempted, ["wager-accept:paid", "wager-accept:legacy", "wager-accept:free-expired"]);
+  assert.ok(f.rows().wager.slice(0, 100).every((row) => row.metadata.status === "open"));
 });
 
 test("the startup worker runs immediately, skips overlapping sweeps, and drains on shutdown", async () => {
@@ -164,16 +181,17 @@ test("the startup worker runs immediately, skips overlapping sweeps, and drains 
 });
 
 test("Free 8s enrollment rejects an expired room before writing a participant", async () => {
-  const expired = match("expired"); expired.created_date = new Date(Date.now() - 31 * 60 * 1000);
+  const expired = match("expired"); expired.created_date = new Date(Date.now() - 61 * 60 * 1000);
   const f = fixture({ wager: [expired] });
   const result = await joinFreeEightsLobby(f.db, "new-player", "expired", "New player");
   assert.equal(result.code, "MATCH_CANCELLED");
+  assert.match(result.error, /60 minutes/);
   assert.equal(f.rows().wagerParticipant.length, 0);
 });
 
 test("accept endpoints reject expired posts before taking payments or adding players", async (t) => {
   const user = { id: "new-player", email_verified: true, role: "user", metadata: { activision_id: "Player#1234567" } };
-  const expired = match("expired"); expired.created_date = new Date(Date.now() - 31 * 60 * 1000);
+  const expired = match("expired"); expired.created_date = new Date(Date.now() - 61 * 60 * 1000);
   const override = (target, method, action) => {
     const original = target[method]; target[method] = action;
     t.after(() => { target[method] = original; });
