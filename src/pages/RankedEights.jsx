@@ -182,17 +182,17 @@ export default function RankedEights() {
   };
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="competition-page min-h-screen py-8">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        {!isMoney && <nav className="eights-game-deployments" aria-label="Free 8s games">
-          {games.map((game) => <Link key={game.id} to={`${location.pathname}?game=${game.id}${location.hash}`} aria-current={gameId === game.id ? "page" : undefined} className={`eights-game-deployment ${game.id === "mw4" ? "eights-game-deployment-mw4" : ""}`}>
-            {game.id === "mw4" && <img src="/assets/mw4/logo.webp" alt="" />}
-            <span><span className="eights-game-kicker">Free 8s · Leaderboard</span><strong><FreeEightsGameName game={game} /></strong></span>
-            <span className="eights-game-status">{game.enabled ? "Play now" : "Coming soon"}</span><ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-          </Link>)}
-        </nav>}
         <CompetitionLadder
           key={`${isMoney ? "money" : "free"}-${gameId}`}
+          headerIntro={!isMoney && <nav className="eights-game-deployments" aria-label="Free 8s games">
+            {games.map((game) => <Link key={game.id} to={`${location.pathname}?game=${game.id}${location.hash}`} aria-current={gameId === game.id ? "page" : undefined} className={`eights-game-deployment ${game.id === "mw4" ? "eights-game-deployment-mw4" : ""}`}>
+              {game.id === "mw4" && <img src="/assets/mw4/logo.webp" alt="" />}
+              <span><span className="eights-game-kicker">Free 8s · Leaderboard</span><strong><FreeEightsGameName game={game} /></strong></span>
+              <span className="eights-game-status">{game.enabled ? "Play now" : "Coming soon"}</span><ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+            </Link>)}
+          </nav>}
           mode={isMoney ? "money8s" : "eights"}
           gameId={gameId}
           currentUser={user}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -20,6 +20,7 @@ import TrophyCounts from "@/components/ui/TrophyCounts";
 import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
 import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
 import { buildFreeEightsStandings } from "@/lib/freeEightsStandings";
+import { CompetitionHeaderContext } from "./CompetitionHeaderContext";
 
 const navigation = [
   { key: "ranked", label: "Ranked", to: "/ranked", icon: Medal },
@@ -126,7 +127,17 @@ function rankTone(index) {
   return "text-vapor";
 }
 
-export function CompetitionHeader({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride, gameId }) {
+export function CompetitionHeader(props) {
+  const registerHeader = useContext(CompetitionHeaderContext);
+  const { pathname, search } = useLocation();
+  const { mode, playerCount, action, className, titleOverride, eyebrowOverride, descriptionOverride, gameId, headerIntro } = props;
+  useLayoutEffect(() => {
+    if (registerHeader) registerHeader(`${pathname}${search}`, { mode, playerCount, action, className, titleOverride, eyebrowOverride, descriptionOverride, gameId, headerIntro });
+  }, [registerHeader, pathname, search, mode, playerCount, action, className, titleOverride, eyebrowOverride, descriptionOverride, gameId, headerIntro]);
+  return registerHeader ? null : <>{headerIntro}<CompetitionHeaderView {...props} /></>;
+}
+
+export function CompetitionHeaderView({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride, gameId }) {
   const isMw4 = mode === "eights" && gameId === "mw4";
   const copy = isMw4 ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || modeCopy.xp;
   const headerImage = isMw4 ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png";
@@ -134,7 +145,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
   return (
     <div className={`space-y-5 ${className}`}>
       <section className={`premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] ${headerHeight} ${isMw4 ? "mw4-feature" : ""}`}>
-        <img src={headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[center_34%] opacity-90" />
+        <img src={headerImage} alt="" fetchPriority="high" decoding="sync" className="absolute inset-0 h-full w-full object-cover object-[center_34%] opacity-90" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.96)_0%,hsl(var(--background)/0.76)_23%,hsl(var(--background)/0.12)_44%,transparent_72%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(0deg,hsl(var(--background)/0.42)_0%,transparent_48%)]" />
         <div className="landing-bullet-field absolute inset-0 z-[5]" aria-hidden="true">
@@ -162,7 +173,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
             <div className="mt-5 flex flex-wrap gap-2">
               <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">Cross platform</span>
               <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{monthLabel()}</span>
-              <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{playerCount} {mode === "tournaments" ? "events" : "players"}</span>
+              <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{playerCount ?? "—"} {mode === "tournaments" ? "events" : "players"}</span>
             </div>
           </div>
           {action && (
@@ -180,6 +191,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
             <Link
               key={key}
               to={to}
+              state={{ preserveCompetitionScroll: true }}
               aria-current={active ? "page" : undefined}
               className="arena-tab relative flex min-h-14 items-center justify-center gap-2 px-4 py-4 text-xs font-black transition-colors"
             >
@@ -193,7 +205,7 @@ export function CompetitionHeader({ mode = "xp", playerCount = 0, action, classN
   );
 }
 
-export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription, gameId = "bo7", competitionTitle }) {
+export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription, gameId = "bo7", competitionTitle, headerIntro }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -390,7 +402,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
 
   return (
     <div className="mb-7 space-y-5">
-      <CompetitionHeader mode={mode} gameId={gameId} playerCount={standings.length} action={action} titleOverride={headerTitle} eyebrowOverride={headerEyebrow} descriptionOverride={headerDescription} />
+      <CompetitionHeader mode={mode} gameId={gameId} playerCount={loading ? null : standings.length} action={action} titleOverride={headerTitle} eyebrowOverride={headerEyebrow} descriptionOverride={headerDescription} headerIntro={headerIntro} />
 
       <div className={`grid gap-3 sm:grid-cols-2 ${mode === "wagers" ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {summary.map(({ label, value, detail, icon: Icon, tone }) => (

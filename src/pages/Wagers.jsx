@@ -310,7 +310,7 @@ export default function Wagers() {
   };
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="competition-page min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <CompetitionLadder
           mode="wagers"

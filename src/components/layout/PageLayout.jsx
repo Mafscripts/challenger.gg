@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import PageLoader from "@/components/ui/PageLoader";
 import Navbar from "./Navbar";
+import CompetitionRouteFrame from "@/components/competition/CompetitionRouteFrame";
 
 const Footer = lazy(() => import("./Footer"));
 
@@ -40,7 +41,7 @@ export default function PageLayout() {
       <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">
         <Suspense fallback={<RouteFallback />}>
           <div className="route-stage">
-            <Outlet />
+            <CompetitionRouteFrame><Outlet /></CompetitionRouteFrame>
           </div>
         </Suspense>
       </main>

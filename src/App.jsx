@@ -8,6 +8,7 @@ import PageLoader from '@/components/ui/PageLoader';
 import { FreeEightsLoadingProvider } from '@/components/competition/FreeEightsLoading';
 import ScrollToTop from './components/ScrollToTop';
 import Ranked from '@/pages/Ranked';
+import XP from '@/pages/XP';
 import RankedEights from '@/pages/RankedEights';
 import Wagers from '@/pages/Wagers';
 import Tournaments from '@/pages/Tournaments';
@@ -24,7 +25,6 @@ const StreamerTournamentLobby = lazy(() => import('@/pages/StreamerTournamentLob
 const TournamentMatchRoom = lazy(() => import('@/pages/TournamentMatchRoom'));
 const MatchRoom = lazy(() => import('@/pages/MatchRoom'));
 const RankedMatchRoom = lazy(() => import('@/pages/RankedMatchRoom'));
-const XP = lazy(() => import('@/pages/XP'));
 const XPMatchRoom = lazy(() => import('@/pages/XPMatchRoom'));
 const WagersMatchRoom = lazy(() => import('@/pages/WagersMatchRoom'));
 const EightsMatchRoom = lazy(() => import('@/pages/EightsMatchRoom'));
