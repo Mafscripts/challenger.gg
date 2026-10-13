@@ -10,6 +10,7 @@ import {
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import NavbarMessages from "./NavbarMessages";
 import NavbarNotifications from "./NavbarNotifications";
+import { NavbarDestinations, NavbarMatches } from "./NavbarMenus";
 import "@/styles/navbar-profile.css";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -1211,41 +1212,11 @@ export default function Navbar() {
                         <ChevronDown className={`w-3.5 h-3.5 ${open ? "rotate-180" : ""}`} />
                       </button>
 
-                      {open && (
-                          <div className="nav-popover nav-popover-enter absolute left-0 top-12 w-[340px] rounded-xl p-2.5">
-                            <div className="mb-2 border-b border-white/[0.06] px-2 pb-2.5 pt-1">
-                              <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${groupTone.icon.split(" ").at(-1)}`}>{group.eyebrow}</p>
-                              <p className="mt-1 text-[11px] text-vapor">Choose where you want to go</p>
-                            </div>
-                            {group.items.map((item) => {
-                              const ItemIcon = item.icon;
-                              const itemActive = isCurrentNavItemActive(item.path);
-                              const itemTone = navTone[item.tone] || navTone.cyan;
-
-                              return (
-                                <Link
-                                  key={item.path}
-                                  to={item.path}
-                                  onClick={() => setNavMenuOpen(null)}
-                                  className={`group flex items-center gap-3 rounded-lg border px-2.5 py-2.5 ${
-                                    itemActive
-                                      ? `${itemTone.button}`
-                                      : "border-transparent text-vapor hover:border-white/[0.07] hover:bg-white/[0.045] hover:text-foreground"
-                                  }`}
-                                >
-                                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${itemTone.icon}`}><ItemIcon className="h-4 w-4" /></span>
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block text-[13px] font-black">{item.label}</span>
-                                    {item.description && (
-                                      <span className="mt-0.5 block truncate text-[10px] text-vapor">{item.description}</span>
-                                    )}
-                                  </span>
-                                  <span className="text-vapor/40 transition-transform duration-100 group-hover:translate-x-0.5 group-hover:text-foreground">→</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                      )}
+                      {open && <NavbarDestinations
+                        group={group}
+                        isActive={isCurrentNavItemActive}
+                        onSelect={() => setNavMenuOpen(null)}
+                      />}
                     </div>
                   );
                 })}
@@ -1295,82 +1266,13 @@ export default function Navbar() {
                     )}
                   </button>
 
-                  {matchesOpen && (
-                      <div className="nav-popover nav-popover-enter absolute left-0 top-11 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-xl">
-                        <div className="grid grid-cols-2 gap-2 p-2 border-b border-white/5">
-                          <Link
-                            to="/my-matches?view=active"
-                            onClick={() => setMatchesOpen(false)}
-                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
-                          >
-                            <Activity className="w-4 h-4 text-purple-300" />
-                            Active Matches
-                          </Link>
-                          <Link
-                            to={matchHistoryPath}
-                            onClick={() => setMatchesOpen(false)}
-                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-vapor hover:bg-white/5 hover:text-foreground"
-                          >
-                            <History className="w-4 h-4 text-purple-300" />
-                            Match History
-                          </Link>
-                        </div>
-                        <div className="px-4 py-3 border-b border-white/5">
-                          <h3 className="font-bold text-sm">Active Matches</h3>
-                          <p className="text-xs text-vapor mt-0.5">Jump into your ongoing games</p>
-                        </div>
-                        <div className="max-h-80 overflow-y-auto">
-                          {activeMatches.length === 0 ? (
-                            <div className="px-4 py-8 text-center">
-                              <Swords className="w-8 h-8 text-vapor/30 mx-auto mb-2" />
-                              <p className="text-xs text-vapor">No active matches</p>
-                            </div>
-                          ) : (
-                            activeMatches.map((match) => {
-                              const isTournament = match.entity_type === "tournament";
-                              const isHost = user?.id === match.host_id;
-                              const opponentName = isTournament
-                                ? (match.current_user_side === "team_a" ? match.team_b_name : match.team_a_name) || "Opponent pending"
-                                : isHost ? (match.challenger_name || "Opponent pending") : (match.host_name || "Host unavailable");
-                              const route = isTournament ? `/tournament-match/${match.id}` :
-                                           match.entity_type === 'ranked' ? `/ranked-match/${match.id}` :
-                                           match.entity_type === 'xp' ? `/xp-match/${match.id}` :
-                                           (match.match_type === '8s' || match.match_type === 'money8s') ? `/8s-match/${match.id}` :
-                                           `/wagers-match/${match.id}`;
-                              const matchType = isTournament ? "tournament" : match.entity_type === 'ranked' ? 'ranked' : match.entity_type === 'xp' ? 'xp' : match.match_type;
-                              const themeClasses = matchType === 'ranked' ? 'bg-cyan/10 text-cyan' :
-                                                  matchType === 'xp' ? 'bg-purple-400/10 text-purple-300' :
-                                                  matchType === 'tournament' ? 'bg-orange/10 text-orange' : 'bg-green/10 text-green';
-
-                              return (
-                                <Link
-                                  key={`${match.entity_type}:${match.id}`}
-                                  to={route}
-                                  onClick={() => setMatchesOpen(false)}
-                                  className="block px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-all"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${themeClasses}`}>
-                                      <Swords className="w-4 h-4" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-xs font-semibold truncate">{match.game_mode_display || match.game_mode}</p>
-                                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${themeClasses} font-bold uppercase`}>
-                                          {match.team_size}
-                                        </span>
-                                      </div>
-                                      <p className="text-[10px] text-vapor truncate">vs {opponentName}</p>
-                                    </div>
-                                    <ExternalLink className="w-3 h-3 shrink-0 text-vapor" />
-                                  </div>
-                                </Link>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                  )}
+                  {matchesOpen && <NavbarMatches
+                    matches={activeMatches}
+                    userId={user?.id}
+                    historyPath={matchHistoryPath}
+                    isActive={isCurrentNavItemActive}
+                    onSelect={() => setMatchesOpen(false)}
+                  />}
                 </div>
               </div>
             )}
