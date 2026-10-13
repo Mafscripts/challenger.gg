@@ -1,12 +1,14 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowUpRight, CheckCheck, ChevronRight, Clock3, Crown, FileText, Inbox, Loader2, MessageSquare, Paperclip, Plus, RefreshCw, Search, Send, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import { Dialog, DialogPortal, DialogOverlay, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { disputeEvidenceUrls, disputeReasonLabel } from "@/lib/matchDisputes";
 import "@/styles/support.css";
 
-const visibleProof = (ticket) => [...new Set([...(ticket.submitted_proof || []), ...(ticket.proof_urls || [])])].filter((url) => {
+const visibleProof = (ticket) => [...new Set([...(ticket.submitted_proof || []), ...(ticket.proof_urls || []), ...(ticket.additional_proof || [])])].filter((url) => {
   try { return disputeEvidenceUrls([url]).length > 0; } catch { return false; }
 });
 
@@ -53,6 +55,11 @@ export default function Support({ ticketCenter = false }) {
   const [tickets, setTickets] = useState([]);
   const [replyDrafts, setReplyDrafts] = useState({});
   const [busyId, setBusyId] = useState(null);
+  const [escalationTicket, setEscalationTicket] = useState(null);
+  const [escalationProof, setEscalationProof] = useState("");
+  const [escalationError, setEscalationError] = useState("");
+  const escalateTriggerRef = useRef(null);
+  const ticketDetailRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -128,11 +135,19 @@ export default function Support({ ticketCenter = false }) {
     }
   };
 
-  const handleEscalate = async (ticket) => {
-    const proofText = typeof window !== "undefined" ? window.prompt("Extra proof URLs (comma or line separated):", "") : "";
-    if (proofText === null) return;
-    const proofUrls = proofText.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
+  const handleEscalate = async (event) => {
+    event.preventDefault();
+    if (!escalationTicket || busyId) return;
+    const ticket = escalationTicket;
+    let proofUrls;
+    try {
+      proofUrls = disputeEvidenceUrls(escalationProof);
+    } catch (error) {
+      setEscalationError(error.message);
+      return;
+    }
 
+    setEscalationError("");
     setBusyId(`escalate:${ticket.id}`);
     try {
       const response = await base44.functions.invoke("escalateTicket", {
@@ -141,13 +156,16 @@ export default function Support({ ticketCenter = false }) {
         proof_urls: proofUrls,
       });
       if (response.data?.success) {
+        if (response.data.ticket) setTickets(current => current.map(row => row.id === ticket.id ? response.data.ticket : row));
+        setEscalationTicket(null);
+        setEscalationProof("");
         toast({ title: "Ticket escalated" });
         await loadSupportData();
       } else {
-        toast({ title: "Escalation failed", description: response.data?.error || "Could not escalate ticket.", variant: "destructive" });
+        setEscalationError(response.data?.error || "Could not escalate ticket. Please try again.");
       }
     } catch (error) {
-      toast({ title: "Escalation failed", description: error.message || "Could not escalate ticket.", variant: "destructive" });
+      setEscalationError(error.message || "Could not escalate ticket. Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -239,7 +257,7 @@ export default function Support({ ticketCenter = false }) {
               })}
             </div>
           </aside>
-          <section className="support-detail" aria-label={composing ? "Create a support ticket" : "Ticket details"}>
+          <section ref={ticketDetailRef} tabIndex={-1} className="support-detail" aria-label={composing ? "Create a support ticket" : "Ticket details"}>
             <button type="button" className="support-back" onClick={() => setMobileDetail(false)}><ArrowLeft size={17} />Back to tickets</button>
             {composing ? <form className="support-new-ticket" onSubmit={handleSubmit}>
               <header className="support-detail-heading"><div><span className="support-eyebrow">Start a conversation</span><h2>How can we help?</h2><p>Describe the issue so staff can review your request.</p></div><button type="button" className="support-icon-button" aria-label="Close new ticket" disabled={submitting} onClick={() => { setComposing(false); setMobileDetail(false); }}><X size={19} /></button></header>
@@ -274,12 +292,33 @@ export default function Support({ ticketCenter = false }) {
               </div>
               {!isClosed(selectedTicket) ? <footer className="support-reply-area">
                 <form onSubmit={event => { event.preventDefault(); handleReply(selectedTicket); }}><label htmlFor="support-ticket-reply">Reply to this ticket</label><textarea id="support-ticket-reply" rows={3} value={replyDrafts[selectedTicket.id] || ""} onChange={event => setReplyDrafts(current => ({ ...current, [selectedTicket.id]: event.target.value }))} placeholder="Add a message or share more evidence…" /><div className="support-reply-actions"><span>Visible to ticket participants and staff</span><button type="submit" className="support-primary" disabled={Boolean(busyId) || !(replyDrafts[selectedTicket.id] || "").trim()}>{busyId === `reply:${selectedTicket.id}` ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}{busyId === `reply:${selectedTicket.id}` ? "Sending…" : "Send reply"}</button></div></form>
-                {user?.is_premium && !selectedTicket.premium_escalated && <button type="button" className="support-escalate" onClick={() => handleEscalate(selectedTicket)} disabled={Boolean(busyId)}><Crown size={15} />{busyId === `escalate:${selectedTicket.id}` ? "Escalating…" : "Escalate with Premium"}<ChevronRight size={14} /></button>}
+                {user?.is_premium && !selectedTicket.premium_escalated && <button ref={escalateTriggerRef} type="button" className="support-escalate" onClick={() => { setEscalationProof(""); setEscalationError(""); setEscalationTicket(selectedTicket); }} disabled={Boolean(busyId)} aria-haspopup="dialog"><Crown size={15} />Escalate with Premium<ChevronRight size={14} /></button>}
               </footer> : <footer className="support-closed-note"><CheckCheck size={17} /><span>This ticket is {selectedTicket.status}. Need help with another issue?</span><button type="button" onClick={openComposer}>New ticket<Plus size={14} /></button></footer>}
             </> : <div className="support-detail-empty"><span><MessageSquare size={32} /></span><h2>{loading ? "Loading your requests" : "Your support conversations"}</h2><p>Select a ticket to see its details and reply to staff, or create a request for a new issue.</p><button type="button" className="support-primary" onClick={openComposer} disabled={loading || !user}><Plus size={17} />Create a ticket</button></div>}
           </section>
         </div>
       </div>
+      <Dialog open={Boolean(escalationTicket)} onOpenChange={open => { if (!open && !busyId) setEscalationTicket(null); }}>
+        <DialogPortal>
+          <DialogOverlay className="support-escalation-overlay" />
+          <DialogPrimitive.Content className="support-escalation-dialog" onCloseAutoFocus={event => { event.preventDefault(); (escalateTriggerRef.current || ticketDetailRef.current)?.focus({ preventScroll: true }); }}>
+            <header className="support-escalation-header">
+              <span className="support-escalation-mark"><Crown size={23} aria-hidden="true" /></span>
+              <div><span className="support-escalation-eyebrow">Premium support</span><DialogTitle>Escalate your ticket</DialogTitle></div>
+              <button type="button" className="support-escalation-close" aria-label="Close escalation" disabled={Boolean(busyId)} onClick={() => setEscalationTicket(null)}><X size={19} /></button>
+            </header>
+            <DialogDescription className="support-escalation-description">Request an escalated staff review. You can include extra evidence to help the team review this ticket.</DialogDescription>
+            <div className="support-escalation-context"><span>Ticket #{escalationTicket ? shortId(escalationTicket) : ""}</span><strong>{escalationTicket ? ticketTitle(escalationTicket) : ""}</strong></div>
+            <form onSubmit={handleEscalate}>
+              <label htmlFor="support-escalation-proof">Extra evidence links <span>Optional</span></label>
+              <textarea id="support-escalation-proof" rows={4} value={escalationProof} disabled={Boolean(busyId)} onChange={event => { setEscalationProof(event.target.value); setEscalationError(""); }} placeholder={"https://example.com/clip\nhttps://example.com/screenshot"} aria-describedby="support-escalation-help support-escalation-error" aria-invalid={Boolean(escalationError)} />
+              <p id="support-escalation-help" className="support-escalation-help">Add up to 10 web links, one per line or separated by commas. Existing evidence stays attached.</p>
+              <p id="support-escalation-error" className="support-escalation-error" role="alert">{escalationError}</p>
+              <footer><button type="button" className="support-escalation-cancel" disabled={Boolean(busyId)} onClick={() => setEscalationTicket(null)}>Cancel</button><button type="submit" className="support-escalation-confirm" disabled={Boolean(busyId)}>{busyId ? <Loader2 size={17} className="animate-spin" /> : <Crown size={17} />}{busyId ? "Escalating…" : "Confirm escalation"}</button></footer>
+            </form>
+          </DialogPrimitive.Content>
+        </DialogPortal>
+      </Dialog>
     </div>
   );
 }
