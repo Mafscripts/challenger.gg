@@ -57,3 +57,39 @@ Officiële handleidingen:
 - https://developers.cloudflare.com/turnstile/get-started/widget-management/dashboard/
 - https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/
 - https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
+
+## Bewaarde voortgang: Cloudflare voor de volledige website (13 oktober 2026)
+
+De gebruiker wil later verdergaan. Geen automatische opvolging aangevraagd.
+
+- Turnstile is gepubliceerd en de gebruiker heeft de widget op de registratiepagina
+  met **Success!** gezien. Volledige registratie en e-mailverificatie zijn nog niet
+  bevestigd als getest. De gebruiker doet zelf alle tests.
+- Cloudflare Free wordt voorbereid voor `topfragg.gg`; het domein wordt bij IONOS beheerd.
+- De twee A-records (`topfragg.gg` en `www`) wijzen naar `142.93.85.140` en staan
+  in Cloudflare op Proxied. De drie bestaande CNAME-records (`autodiscover`,
+  `_dmarc`, `_domainconnect`) zijn op DNS only gezet. De MX- en TXT-records zijn behouden.
+- Twee ontbrekende IONOS-DKIM-records zijn toegevoegd als CNAME met DNS only:
+  `s1-ionos._domainkey` naar `s1.dkim.ionos.com` en
+  `s2-ionos._domainkey` naar `s2.dkim.ionos.com`.
+- Cloudflare heeft `dawn.ns.cloudflare.com` en `terry.ns.cloudflare.com` toegewezen.
+  Het omzetten van de nameservers en de activering zijn nog niet bevestigd.
+- Domain Guard is actief. Alleen de partner van de gebruiker kan momenteel
+  inloggen op het e-mailadres voor de bevestiging. De partner moet de
+  deactivatie via **Deactivate Domain Guard Now** in de IONOS-mail bevestigen.
+  De gebruiker kent dat e-mailwachtwoord niet; wacht op beschikbaarheid van de partner.
+- Controleer vóór de nameserverwissel of DNSSEC uitstaat. De huidige DNSSEC-status is onbekend.
+
+Hervatten: bevestig eerst of de partner Domain Guard heeft gedeactiveerd en
+controleer DNSSEC. Stel daarna in IONOS uitsluitend de twee toegewezen Cloudflare-nameservers
+in en klik in Cloudflare op **I updated my nameservers**. Controleer de actuele
+status bij hervatten; de bovenstaande gegevens beschrijven de laatst gedeelde screenshots.
+
+Daarna volgen HTTPS-configuratie met controle van het servercertificaat,
+basis-WAF, één rate-limitingregel voor login en CDN voor statische bestanden.
+Persoonlijke en live API-gegevens blijven buiten de cache. Bot Fight Mode blijft
+voorlopig uit vanwege de API-integraties. Nameserveractivering alleen bevestigt
+niet dat alle beoogde beveiligingsinstellingen al zijn geconfigureerd.
+Controleer ook de verwerking van echte bezoekers-IP's achter Cloudflare voordat
+IP-bans en limieten worden beoordeeld. Het beperken van verkeer naar de webpoorten
+van de server tot Cloudflare komt pas na een werkende koppeling; behoud beheertoegang.
