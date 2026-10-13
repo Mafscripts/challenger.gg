@@ -13,12 +13,12 @@ import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRan
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
 
 const categories = [
-  { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", active: "border-cyan/35 bg-cyan/10 text-cyan", dot: "bg-cyan" },
-  { key: "elo", label: "ELO", icon: Shield, tone: "cyan", active: "border-purple-400/35 bg-purple-400/10 text-purple-300", dot: "bg-purple-400" },
-  { key: "eights", label: "Free 8s", icon: Users, tone: "orange", active: "border-orange/35 bg-orange/10 text-orange", dot: "bg-orange" },
-  { key: "money8s", label: "Money 8s", icon: DollarSign, tone: "green", active: "border-green/35 bg-green/10 text-green", dot: "bg-green" },
-  { key: "wagers", label: "Wagers", icon: Zap, tone: "green", active: "border-green/35 bg-green/10 text-green", dot: "bg-green" },
-  { key: "tournaments", label: "Scheduled tournaments", icon: Trophy, tone: "orange", active: "border-red-400/35 bg-red-400/10 text-red-300", dot: "bg-red-400" },
+  { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", dot: "bg-cyan" },
+  { key: "elo", label: "ELO", icon: Shield, tone: "cyan", dot: "bg-purple-400" },
+  { key: "eights", label: "Free 8s", icon: Users, tone: "orange", dot: "bg-orange" },
+  { key: "money8s", label: "Money 8s", icon: DollarSign, tone: "green", dot: "bg-green" },
+  { key: "wagers", label: "Wagers", icon: Zap, tone: "green", dot: "bg-green" },
+  { key: "tournaments", label: "Scheduled tournaments", icon: Trophy, tone: "orange", dot: "bg-red-400" },
 ];
 
 const openTournamentStatuses = new Set(["open", "registration", "live", "in_progress"]);
@@ -375,15 +375,14 @@ export default function Matchfinder() {
           </div>
         </section>
 
-        <nav className="mt-5 grid overflow-hidden rounded-xl border border-white/[0.08] bg-card sm:grid-cols-2 xl:grid-cols-6" aria-label="Matchfinder categories">
+        <nav className="matchfinder-mode-nav mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-6" aria-label="Matchfinder categories">
           {categories.map((category) => {
             const Icon = category.icon;
             const active = activeCategory === category.key;
             return (
-              <button key={category.key} type="button" onClick={() => setActiveCategory(category.key)} className={`relative flex min-h-16 items-center justify-between gap-3 border-b border-white/[0.06] px-5 text-left sm:border-r xl:border-b-0 ${active ? category.active : "text-vapor hover:bg-white/[0.025] hover:text-white"}`}>
-                <span className="flex min-w-0 items-center gap-2.5"><Icon className="h-4 w-4 shrink-0" /><span className="truncate text-[11px] font-black uppercase tracking-wide">{category.label}</span></span>
-                <span className="font-mono text-xs font-black">{matches[category.key]?.length || 0}</span>
-                {active && <span className={`absolute inset-x-0 bottom-0 h-0.5 ${category.dot}`} />}
+              <button key={category.key} type="button" onClick={() => setActiveCategory(category.key)} aria-pressed={active} title={category.label} className="competition-action-pill matchfinder-mode-pill">
+                <span className="flex min-w-0 items-center gap-2"><Icon className="h-4 w-4 shrink-0" /><span className="truncate">{category.label}</span></span>
+                <span className="matchfinder-mode-count">{matches[category.key]?.length || 0}</span>
               </button>
             );
           })}

@@ -145,6 +145,39 @@ body {
 .competition-action-pill:disabled { cursor: not-allowed; opacity: .5; }
 .competition-action-pill.competition-game-switch { justify-content: space-between; }
 
+.matchfinder-mode-nav {
+  border: 1px solid hsl(var(--cyan) / .12);
+  border-radius: 18px;
+  background: var(--arena-panel);
+  padding: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / .14);
+}
+.competition-action-pill.matchfinder-mode-pill {
+  justify-content: space-between;
+  color: hsl(var(--vapor));
+  text-align: left;
+}
+.competition-action-pill.matchfinder-mode-pill:hover { color: hsl(var(--cyan)); }
+.competition-action-pill.matchfinder-mode-pill[aria-pressed="true"] {
+  border-color: hsl(var(--cyan) / .4);
+  background: linear-gradient(135deg, hsl(var(--cyan) / .14), hsl(var(--cyan) / .06));
+  color: hsl(var(--cyan));
+}
+.matchfinder-mode-count {
+  display: inline-flex;
+  min-width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / .04);
+  padding-inline: 6px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.matchfinder-mode-pill[aria-pressed="true"] .matchfinder-mode-count { background: hsl(var(--cyan) / .12); }
+
 .arena-tabs {
   gap: 4px;
   padding: 5px;
