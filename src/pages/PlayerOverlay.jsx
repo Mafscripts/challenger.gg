@@ -5,7 +5,8 @@ import PlayerStatsBar, { PLAYER_OVERLAY_WIDTH, usePlayerOverlay } from "@/compon
 export default function PlayerOverlay() {
   const { identifier } = useParams();
   const [searchParams] = useSearchParams();
-  const theme = searchParams.get("theme") === "orange" ? "orange" : "blue";
+  const requestedTheme = searchParams.get("theme");
+  const theme = requestedTheme === "orange" || requestedTheme === "mono" ? requestedTheme : "blue";
   const [width, setWidth] = useState(window.innerWidth);
   const { data, error, loading, stale } = usePlayerOverlay(identifier);
   useEffect(() => {

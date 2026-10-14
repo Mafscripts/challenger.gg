@@ -30,7 +30,10 @@ const trophies = [
   { key: "hosted", label: "Hosted", image: "/assets/trophies/compact/hosted.png" },
 ];
 
-export const playerOverlayUrl = (identifier, theme = "blue") => `${window.location.origin}/overlay/player/${encodeURIComponent(identifier)}${theme === "orange" ? "?theme=orange" : ""}`;
+export const playerOverlayUrl = (identifier, theme = "blue") => {
+  const selectedTheme = theme === "orange" || theme === "mono" ? theme : "blue";
+  return `${window.location.origin}/overlay/player/${encodeURIComponent(identifier)}${selectedTheme === "blue" ? "" : `?theme=${selectedTheme}`}`;
+};
 
 export function usePlayerOverlay(identifier) {
   const [state, setState] = useState({ data: null, error: "", loading: true, stale: false });
@@ -72,7 +75,8 @@ export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) 
   const effect = player.display_name_color;
   const money = Number(stats.earnings || 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const updatedAt = data.updated_at || "initial";
-  return <div className="app-content stream-player-bar" data-theme={theme === "orange" ? "orange" : "blue"}>
+  const selectedTheme = theme === "orange" || theme === "mono" ? theme : "blue";
+  return <div className="app-content stream-player-bar" data-theme={selectedTheme}>
     <div className="stream-player-brand">
       <TopfraggLogo showWordmark={false} markClassName="stream-brand-mark" />
       <div><strong className="stream-brand-wordmark" aria-label="Topfragg.gg">{brandLetters.map(({ letter, tone, motion }, index) => <span key={index} className="stream-brand-letter" data-tone={tone} style={motion} aria-hidden="true">{letter}</span>)}</strong><span className="stream-brand-caption"><i aria-hidden="true" />Live player overview</span></div>
@@ -89,7 +93,7 @@ export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) 
       <div>{stats.has_ranked_matches && <img src={`/assets/ranks/compact/${rank.tier}.png`} alt="" />}<strong key={`ranked-${updatedAt}`}>{Number(stats.elo || 0).toLocaleString("en-US")}</strong></div>
       <small>{stats.has_ranked_matches ? rank.name : "Unranked"}</small>
     </div>
-    <div className="stream-player-stat stream-player-free-elo"><span className="stream-player-label"><Zap size={14} />8s ELO</span><strong key={`free-elo-${updatedAt}`}>{Number(stats.free_eights_elo || 0).toLocaleString("en-US")}</strong><small>Black Ops 7 ladder</small></div>
+    <div className="stream-player-stat stream-player-free-elo"><span className="stream-player-label"><Zap size={14} />8s ELO</span><strong key={`free-elo-${updatedAt}`}>{Number(stats.free_eights_elo || 0).toLocaleString("en-US")}</strong><small>Black Ops 7</small></div>
     <div className="stream-player-stat stream-player-free-sr" data-sr={stats.free_eights_sr_key || "newb"}><span className="stream-player-label"><Medal size={14} />8s SR</span><strong key={`free-sr-${updatedAt}`}>{stats.free_eights_sr || "Newb"}</strong><small>{stats.free_eights_sr_source === "screenshot" ? "Verified game rank" : "Free 8s skill rank"}</small></div>
     <div className="stream-player-stat"><span className="stream-player-label"><Swords size={14} />Record</span><strong key={`record-${updatedAt}`} className="stream-player-record"><span>{stats.wins}W</span><span> / </span><span>{stats.losses}L</span></strong><small>Wins / losses</small></div>
     <div className="stream-player-stat"><span className="stream-player-label"><Target size={14} />Win rate</span><strong key={`win-rate-${updatedAt}`}>{stats.win_rate}<span className="stream-player-percent">%</span></strong><small>Overall record</small></div>
