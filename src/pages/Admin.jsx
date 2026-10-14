@@ -3126,7 +3126,7 @@ export default function Admin() {
                           <p className="mt-1 text-xs leading-5 text-vapor">Paste image URLs and preview them before publishing.</p>
                         </div>
                         <div className="space-y-4">
-                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Thumbnail URL</span><input value={tournamentForm.image_url} onChange={(event) => setTournamentForm((prev) => ({ ...prev, image_url: event.target.value }))} placeholder="https://..." className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35" /><span className="block text-[9px] text-vapor/65">Recommended 800 × 800</span></label>
+                          <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Thumbnail URL</span><input value={tournamentForm.image_url} onChange={(event) => setTournamentForm((prev) => ({ ...prev, image_url: event.target.value }))} placeholder="https://..." className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35" /><span className="block text-[9px] text-vapor/65">Any dimensions · automatically fitted without cropping</span></label>
                           <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Featured banner URL</span><input value={tournamentForm.banner_url} onChange={(event) => setTournamentForm((prev) => ({ ...prev, banner_url: event.target.value }))} placeholder="https://..." className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35" /><span className="block text-[9px] text-vapor/65">Recommended 1920 × 640</span></label>
                         </div>
                       </section>
@@ -3156,9 +3156,9 @@ export default function Admin() {
                       {tournamentForm.image_url && (
                         <div className="overflow-hidden rounded-xl border border-white/5 bg-secondary/40">
                           <div className="aspect-square bg-background">
-                            <img src={tournamentForm.image_url} alt="Tournament thumbnail preview" className="h-full w-full object-cover" />
+                            <img src={tournamentForm.image_url} alt="Tournament thumbnail preview" className="block h-full w-full object-contain object-center" />
                           </div>
-                          <p className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-vapor">Thumbnail · 1:1</p>
+                          <p className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-vapor">Thumbnail · full image</p>
                         </div>
                       )}
                       {tournamentForm.banner_url && (
@@ -3397,7 +3397,7 @@ export default function Admin() {
                         <div className="flex min-w-0 items-start gap-4">
                           <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-white/[0.08] bg-background/50">
                             {tournament.image_url ? (
-                              <img src={tournament.image_url} alt="" className="h-full w-full object-cover" />
+                              <img src={tournament.image_url} alt="" className="block h-full w-full object-contain object-center" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-[9px] font-black uppercase tracking-wider text-vapor">No image</div>
                             )}

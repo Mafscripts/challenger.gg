@@ -31,6 +31,7 @@ const bulletImpacts = [
 ];
 
 const tournamentImage = (tournament) => {
+  if (tournament?.image_url) return tournament.image_url;
   const identity = String(tournament?.name || "").toLowerCase();
   return identity.includes("black ops 7") || identity.includes("test tournament") ? blackOps7Artwork : (tournament?.image_url || blackOps7Artwork);
 };
@@ -159,7 +160,7 @@ export default function PublicHomeOverview() {
             {!loading && data.tournaments.length === 0 && <div className="p-8 text-center text-sm text-vapor">No upcoming tournaments are scheduled yet.</div>}
             {data.tournaments.map((tournament) => (
               <Link key={tournament.id} to={protectedHref(`/tournaments/${tournament.id}`)} className="group grid min-h-[78px] grid-cols-[52px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-3 last:border-0 hover:bg-white/[0.035] sm:grid-cols-[56px_minmax(0,1fr)_100px_90px_140px] sm:px-5">
-                <img src={tournamentImage(tournament)} alt="" className="h-[52px] w-[52px] rounded-lg border border-white/10 object-cover" loading="lazy" />
+                <img src={tournamentImage(tournament)} alt="" className="h-[52px] w-[52px] shrink-0 rounded-lg border border-white/10 bg-background object-contain object-center" loading="lazy" />
                 <div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h3 className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{tournament.name}</h3></div><p className="mt-1 truncate text-[10px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p></div>
                 <PreviewMetric label="Prize" value={formatMoney(tournament.prize_pool)} tone="text-green" />
                 <PreviewMetric label="Teams" value={`${tournament.registered_teams} / ${tournament.max_teams || "—"}`} extra="hidden sm:block" />

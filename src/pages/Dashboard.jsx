@@ -85,6 +85,7 @@ const isCompleted = (row) => ["completed", "complete", "resolved"].includes(Stri
 const isOpen = (row) => ["open", "registration", "waiting", "available"].includes(String(row?.status || "open").toLowerCase());
 
 const tournamentImage = (tournament) => {
+  if (tournament?.image_url) return tournament.image_url;
   const identity = `${tournament?.name || ""} ${tournament?.game || ""} ${tournament?.game_name || ""}`.toLowerCase();
   if (identity.includes("black ops 7") || identity.includes("test tournament")) return blackOps7Artwork;
   return tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || blackOps7Artwork;
@@ -284,7 +285,7 @@ function TournamentRows({ tournaments, now, loading }) {
           const maxTeams = number(tournament.max_teams || tournament.team_limit || 0);
           return (
             <Link key={tournament.id} to={`/tournaments/${tournament.id}`} className="group grid min-h-[86px] grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-3 transition-colors last:border-0 hover:bg-white/[0.035] sm:grid-cols-[62px_minmax(0,1fr)_90px_100px_112px] sm:gap-5 sm:px-5 lg:grid-cols-[62px_minmax(0,1fr)_90px_100px_85px_112px]">
-              <img src={tournamentImage(tournament)} alt="" className="h-14 w-14 rounded-lg border border-white/10 object-cover sm:h-[62px] sm:w-[62px]" loading="lazy" />
+              <img src={tournamentImage(tournament)} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-white/10 bg-background object-contain object-center sm:h-[62px] sm:w-[62px]" loading="lazy" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="truncate font-heading text-sm font-black text-white transition-colors group-hover:text-orange sm:text-base">{tournament.name || "Tournament"}</h3>

@@ -117,9 +117,9 @@ const usesBlackOps7Artwork = (tournament) => {
   const identity = `${tournament?.name || ""} ${tournament?.game || ""} ${tournament?.game_name || ""}`.toLowerCase();
   return identity.includes("black ops 7") || identity.includes("test tournament");
 };
-const tournamentImageUrl = (tournament) => usesBlackOps7Artwork(tournament)
+const tournamentImageUrl = (tournament) => tournament?.image_url || (usesBlackOps7Artwork(tournament)
   ? blackOps7Artwork
-  : tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || (tournamentGameId(tournament) === "mw4" ? "/assets/mw4/hero.webp" : "");
+  : tournament?.banner_url || tournament?.cover_image_url || (tournamentGameId(tournament) === "mw4" ? "/assets/mw4/hero.webp" : ""));
 const isStreamerTournament = (tournament) => Boolean(
   tournament?.is_streamer_tournament
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
@@ -796,7 +796,7 @@ export default function Tournaments() {
                   <div className="flex min-w-0 items-center gap-4">
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-background">
                       {tournamentImageUrl(selectedTournament) ? (
-                        <img src={tournamentImageUrl(selectedTournament)} alt="" className="h-full w-full object-cover" />
+                        <img src={tournamentImageUrl(selectedTournament)} alt="" className="block h-full w-full object-contain object-center" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-vapor"><Trophy className="h-5 w-5" /></div>
                       )}
@@ -1315,7 +1315,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
     >
       <button type="button" onClick={() => onSelect(tournament.id)} className="absolute inset-0 z-0" aria-label={`View ${tournament.name} overview`} />
       <div className="pointer-events-none relative z-[1] h-12 w-12 overflow-hidden rounded-md border border-white/[0.07] bg-background">
-        <img src={imageUrl || "/assets/tournaments/black-ops-7.webp"} alt="" className="h-full w-full object-cover" />
+        <img src={imageUrl || "/assets/tournaments/black-ops-7.webp"} alt="" className="block h-full w-full object-contain object-center" />
       </div>
       <div className="pointer-events-none relative z-[1] min-w-0">
         <div className="flex min-w-0 items-center gap-2.5">

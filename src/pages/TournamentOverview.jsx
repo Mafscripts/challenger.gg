@@ -524,7 +524,7 @@ export default function TournamentOverview() {
           <Link to="/tournaments" className="mb-8 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:text-white"><ArrowLeft className="h-3.5 w-3.5" /> All tournaments</Link>
           <div className="grid gap-7 lg:grid-cols-[150px_minmax(0,1fr)_240px] lg:items-end">
             <div className="h-44 w-36 overflow-hidden rounded-xl border border-white/10 bg-background shadow-2xl sm:h-48 sm:w-40">
-              <img src={imageForTournament(tournament)} alt={`${gameName} artwork`} className="h-full w-full object-cover" />
+              <img src={tournament.image_url || imageForTournament(tournament)} alt={`${gameName} artwork`} className="block h-full w-full object-contain object-center" />
             </div>
             <div className="min-w-0 pb-1">
               <div className="flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em]">
