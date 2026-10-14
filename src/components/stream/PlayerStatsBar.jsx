@@ -68,7 +68,6 @@ export function usePlayerOverlay(identifier) {
 }
 
 export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) {
-  const [failedAvatar, setFailedAvatar] = useState("");
   const player = data.player;
   const stats = data.stats;
   const rank = getRankForElo(stats.elo);
@@ -79,10 +78,9 @@ export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) 
   return <div className="app-content stream-player-bar" data-theme={selectedTheme}>
     <div className="stream-player-brand">
       <TopfraggLogo showWordmark={false} markClassName="stream-brand-mark" />
-      <div><strong className="stream-brand-wordmark" aria-label="Topfragg.gg">{brandLetters.map(({ letter, tone, motion }, index) => <span key={index} className="stream-brand-letter" data-tone={tone} style={motion} aria-hidden="true">{letter}</span>)}</strong><span className="stream-brand-caption"><i aria-hidden="true" />Live player overview</span></div>
+      <div><strong className="stream-brand-wordmark" aria-label="Topfragg.gg">{brandLetters.map(({ letter, tone, motion }, index) => <span key={index} className="stream-brand-letter" data-tone={tone} style={motion} aria-hidden="true">{letter}</span>)}</strong><span className="stream-brand-caption"><i aria-hidden="true" />Live player</span></div>
     </div>
     <div className="stream-player-identity">
-      <span className="stream-player-avatar">{player.avatar_url && failedAvatar !== player.avatar_url ? <img src={player.avatar_url} alt="" onError={() => setFailedAvatar(player.avatar_url)} /> : player.display_name.slice(0, 1).toUpperCase()}</span>
       <div className="stream-player-identity-copy">
         <span className="stream-player-handle">{player.username ? `@${player.username}` : "Topfragg player"}</span>
         <div className="stream-player-name-row"><h1 className={`stream-player-name player-name-wrap ${effect ? "player-name-color" : ""}`} data-name-effect={effect || undefined} style={effect ? { "--player-name-color": effect } : undefined}>{player.display_name}</h1><UserBadges user={player} size="xs" iconOnly showTooltip={false} showForceStream={false} showMonitorCam={false} /></div>
