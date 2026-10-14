@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, Send, Shield } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import EmojiPicker from "@/components/chat/EmojiPicker";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { createMatchChatFeed } from "@/lib/matchChatFeed";
@@ -233,6 +234,21 @@ function MatchChatView({
     }
   };
 
+  const insertEmoji = (emoji) => {
+    const input = inputRef.current;
+    const start = input?.selectionStart ?? messageText.length;
+    const end = input?.selectionEnd ?? messageText.length;
+    const nextText = `${messageText.slice(0, start)}${emoji}${messageText.slice(end)}`;
+    if (nextText.length > 500) return;
+    const nextCursor = start + emoji.length;
+    setMessageText(nextText);
+    window.requestAnimationFrame(() => {
+      if (!input) return;
+      input.focus();
+      input.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
+
   return (
     <div className={`match-chat-panel glass overflow-hidden rounded-xl border border-white/[0.09] bg-card flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
       <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} shrink-0 bg-[var(--arena-raised)] border-b border-white/[0.07] flex items-center justify-between`}>
@@ -342,6 +358,7 @@ function MatchChatView({
           disabled={!currentUser || Boolean(disabledReason)}
           className="min-w-0 flex-1 rounded-lg border border-cyan/20 bg-background/80 px-3 py-2.5 text-sm text-white placeholder:text-vapor/65 shadow-inner focus:outline-none focus:border-cyan/60 focus:ring-2 focus:ring-cyan/10 disabled:opacity-50"
         />
+        <EmojiPicker onSelect={insertEmoji} disabled={!currentUser || Boolean(disabledReason)} />
         <button
           type="submit"
           disabled={!messageText.trim() || !currentUser || sending || Boolean(disabledReason)}

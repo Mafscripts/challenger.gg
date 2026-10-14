@@ -10,7 +10,6 @@ import {
   Plus,
   Search,
   Send,
-  Smile,
   Trophy,
   User,
   X,
@@ -19,6 +18,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
+import EmojiPicker from "@/components/chat/EmojiPicker";
 import "@/styles/messages.css";
 
 const initials = (name) => String(name || "Player").trim().slice(0, 1).toUpperCase();
@@ -45,15 +45,6 @@ const messageDayLabel = value => {
 const sameMessageGroup = (previous, current) => Boolean(previous && current
   && previous.sender_id === current.sender_id && messageDay(previous.created_date) === messageDay(current.created_date)
   && new Date(current.created_date) - new Date(previous.created_date) <= 5 * 60 * 1000);
-const MESSAGE_EMOJI_GROUPS = [
-  { id: "faces", label: "Faces", emojis: "😀 😃 😄 😁 😆 😅 😂 🤣 🥹 😊 😎 🤓 🤪 😜 😝 😛 🥳 🫠 🥴 🥸 🫡 😱 🤯 😵‍💫 🤨 🙄 😴 🥱 😭 😤 😈 👿 🤡 👻 💀 ☠️ 🤖 👽 🫣 🥲 😬 🗿".split(" ") },
-  { id: "gaming", label: "Gaming", emojis: "🎮 🕹️ 🎧 🎤 🖱️ ⌨️ 🏆 🥇 🥈 🥉 🎯 🎲 🧩 🛡️ ⚔️ 🔫 💣 🚀 👾 👑 🐉 🏹 🥊 🏁 🏎️ 🧠 💻 📡 🔋 🪖 🎖️ 🪄 🧙 🦾".split(" ") },
-  { id: "hype", label: "Hype", emojis: "🔥 ⚡ 💥 💯 🚨 👀 👏 🙌 💪 🫶 🤝 🤙 ✨ 🌟 ⭐ 💫 🎉 🎊 🥂 📣 📢 🚀 🧨 🏅 🏆 🐐 👑 🤑 😤 😮‍💨 🥵 🥶 🤩".split(" ") },
-  { id: "chaos", label: "Chaos", emojis: "🐸 🐒 🦆 🐔 🐓 🐀 🐁 🦝 🦨 🦖 🦕 🐙 🦑 🪼 🦀 🐢 🐍 🐛 🐝 🪲 🐌 🦟 🦇 🐈‍⬛ 🐕‍🦺 🦄 🧌 👹 👺 🤠 🫨 🤌 🫵 🤫 🤭 🫢 🫡 🧃".split(" ") },
-  { id: "hearts", label: "Hearts", emojis: "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 🩷 🩵 🩶 💘 💝 💖 💗 💓 💞 💕 💌 💟 ❣️ 💋 🫂".split(" ") },
-  { id: "snacks", label: "Snacks", emojis: "🍕 🍔 🍟 🌮 🌯 🍗 🍿 🍩 🍪 🎂 🍰 🧁 🍫 🍬 🍭 🍉 🍓 🍌 🥑 🥨 🧀 🍜 🍣 🍱 🥤 🧋 ☕ 🍺 🍻 🥤".split(" ") },
-];
-
 function PlayerAvatar({ player, size = "md" }) {
   const [failedAvatar, setFailedAvatar] = useState("");
   const dimensions = size === "lg" ? "h-12 w-12" : size === "sm" ? "h-7 w-7" : "h-10 w-10";
@@ -89,8 +80,7 @@ export default function Messages() {
   const [activePlayerId, setActivePlayerId] = useState(searchParams.get("conversation") || "");
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [emojiCategory, setEmojiCategory] = useState("faces");
+  const [emojiPickerCloseSignal, setEmojiPickerCloseSignal] = useState(0);
   const [sending, setSending] = useState(false);
   const [composerOpen, setComposerOpen] = useState(Boolean(searchParams.get("compose")));
   const [playerQuery, setPlayerQuery] = useState("");
@@ -105,7 +95,6 @@ export default function Messages() {
   const chatScrollRef = useRef(null);
   const displayedChatRef = useRef(null);
   const composerRef = useRef(null);
-  const emojiPickerRef = useRef(null);
   const followingChatRef = useRef(true);
   const activePlayerIdRef = useRef(activePlayerId);
   const directMessagesLoadingRef = useRef(false);
@@ -123,22 +112,6 @@ export default function Messages() {
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-
-  useEffect(() => {
-    if (!emojiPickerOpen) return undefined;
-    const closeOnOutsidePointer = (event) => {
-      if (!emojiPickerRef.current?.contains(event.target)) setEmojiPickerOpen(false);
-    };
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") setEmojiPickerOpen(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsidePointer);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePointer);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [emojiPickerOpen]);
 
   const loadInvitations = async (userId) => {
     const rows = await base44.entities.Message.filterFresh({ recipient_id: userId }, "-created_date", 100).catch(() => []);
@@ -351,7 +324,7 @@ export default function Messages() {
       if (!response.data?.success) throw new Error(response.data?.error || "Could not send message");
       setDirectMessages(current => [...current, response.data.message]);
       setDraft("");
-      setEmojiPickerOpen(false);
+      setEmojiPickerCloseSignal(signal => signal + 1);
       window.dispatchEvent(new CustomEvent("topfragg:messages-updated"));
     } catch (error) {
       toast({ title: "Message not sent", description: error.message, variant: "destructive" });
@@ -453,19 +426,7 @@ export default function Messages() {
               <form onSubmit={sendMessage} className="messages-composer">
                 <div className="messages-composer-field">
                   <textarea ref={composerRef} value={draft} onChange={event => setDraft(event.target.value.slice(0, 1000))} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); sendMessage(event); } }} rows={1} placeholder={`Message ${activePlayer.name}…`} aria-label={`Message ${activePlayer.name}`} />
-                  <div ref={emojiPickerRef} className="messages-emoji-anchor">
-                    <button type="button" className="messages-emoji-trigger" aria-label="Open emoji picker" aria-expanded={emojiPickerOpen} onMouseDown={event => event.preventDefault()} onClick={() => setEmojiPickerOpen(open => !open)}><Smile size={19} /></button>
-                    {emojiPickerOpen && <div className="messages-emoji-picker" role="dialog" aria-label="Choose an emoji">
-                      <div className="messages-emoji-picker-heading"><div><strong>Emoji chaos</strong><span>Pick your mood 😈</span></div><button type="button" aria-label="Close emoji picker" onClick={() => setEmojiPickerOpen(false)}><X size={16} /></button></div>
-                      <div className="messages-emoji-categories" role="tablist" aria-label="Emoji categories">
-                        {MESSAGE_EMOJI_GROUPS.map(group => <button key={group.id} type="button" role="tab" aria-selected={emojiCategory === group.id} onClick={() => setEmojiCategory(group.id)}>{group.label}</button>)}
-                      </div>
-                      <div className="messages-emoji-grid" role="group" aria-label={`${MESSAGE_EMOJI_GROUPS.find(group => group.id === emojiCategory)?.label || "Emoji"} emojis`}>
-                        {(MESSAGE_EMOJI_GROUPS.find(group => group.id === emojiCategory)?.emojis || MESSAGE_EMOJI_GROUPS[0].emojis).map((emoji, index) => <button key={`${emoji}-${index}`} type="button" aria-label={`Insert ${emoji}`} onMouseDown={event => event.preventDefault()} onClick={() => insertEmoji(emoji)}>{emoji}</button>)}
-                      </div>
-                      <div className="messages-emoji-picker-footer">Click a few. We won't judge. ✨</div>
-                    </div>}
-                  </div>
+                  <EmojiPicker onSelect={insertEmoji} closeSignal={emojiPickerCloseSignal} />
                   <button type="submit" disabled={!draft.trim() || sending} aria-label={sending ? "Sending message" : "Send message"}><Send size={18} /></button>
                 </div>
                 <div className="messages-composer-meta"><span><LockKeyhole size={10} />Private conversation</span><span className="messages-keyboard-hint">Enter to send · Shift + Enter for a new line</span><span>{sending ? "Sending…" : `${draft.length}/1000`}</span></div>
