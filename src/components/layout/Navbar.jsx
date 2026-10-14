@@ -725,7 +725,10 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const interval = window.setInterval(() => loadNotifications({ fresh: true }), 15000);
+    const interval = window.setInterval(() => {
+      loadNotifications({ fresh: true });
+      loadMessages({ fresh: true });
+    }, 15000);
     return () => window.clearInterval(interval);
   }, [isAuthenticated, authUser?.id]);
 
@@ -1382,11 +1385,11 @@ export default function Navbar() {
                     setProfileOpen(false);
                   }}
                   className="topbar-icon-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-colors"
-                  aria-label="Open messages"
+                  aria-label={unreadMessagesCount > 0 ? `Open messages, ${unreadMessagesCount} unread` : "Open messages"}
                 >
                   <MessageSquare className="w-4 h-4" />
                   {unreadMessagesCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-cyan rounded-full" />
+                    <span aria-hidden="true" className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-orange ring-2 ring-[#0b121a] shadow-[0_0_8px_hsl(var(--orange)/0.55)]" />
                   )}
                 </Link>
 
