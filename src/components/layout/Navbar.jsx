@@ -1507,7 +1507,6 @@ export default function Navbar() {
                         label="Account"
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
-                          ...(canSeeTryouts ? [{ label: "Try outs", path: "/try-outs", icon: Swords }] : []),
                           { label: "My Tickets", path: "/my-tickets", icon: Ticket },
                           { label: "My Matches", path: "/my-matches", icon: History },
                           { label: "Teams", path: "/teams", icon: Users },
@@ -1519,6 +1518,7 @@ export default function Navbar() {
                       <ProfileMenuSection
                         label="Competitive"
                         items={[
+                          ...(canSeeTryouts ? [{ label: "Try outs", path: "/try-outs", icon: Swords, featuredTryouts: true }] : []),
                           { label: "Topfragg League", path: "/league", icon: ShieldCheck, featuredLeague: true },
                           { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
                           ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
@@ -1694,7 +1694,7 @@ export default function Navbar() {
                       <User className="w-5 h-5" />
                       My Profile
                     </Link>
-                    {canSeeTryouts && <Link to="/try-outs" onClick={closeMobileMenu} className="flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium text-yellow-300 transition-all hover:bg-secondary"><Swords className="h-5 w-5" />Try outs</Link>}
+                    {canSeeTryouts && <FeaturedTryoutsLink onSelect={closeMobileMenu} />}
                     <Link
                       to="/league"
                       onClick={closeMobileMenu}
@@ -1782,6 +1782,20 @@ export default function Navbar() {
   );
 }
 
+function FeaturedTryoutsLink({ onSelect }) {
+  return (
+    <Link to="/try-outs" onClick={onSelect} className="profile-tryouts-menu-link">
+      <span className="profile-tryouts-menu-icon"><Swords size={24} aria-hidden="true" /></span>
+      <span className="profile-tryouts-menu-copy">
+        <span className="profile-tryouts-menu-tag">Challengers</span>
+        <span className="profile-tryouts-menu-title">Try outs</span>
+        <span className="profile-tryouts-menu-description">BO7 · Hardpoint · Best of 3</span>
+      </span>
+      <ArrowRight size={19} className="profile-tryouts-menu-arrow" aria-hidden="true" />
+    </Link>
+  );
+}
+
 function ProfileMenuSection({ label, items, onSelect }) {
   return (
     <section className="profile-menu-section" data-section={label}>
@@ -1789,6 +1803,8 @@ function ProfileMenuSection({ label, items, onSelect }) {
       <div className="profile-menu-section-links">
       {items.map((item) => {
         const Icon = item.icon;
+
+        if (item.featuredTryouts) return <FeaturedTryoutsLink key={item.path} onSelect={onSelect} />;
 
         if (item.featuredLeague) return (
           <Link key={item.path} to={item.path} onClick={onSelect} className="profile-league-menu-link">
