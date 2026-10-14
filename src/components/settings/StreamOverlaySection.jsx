@@ -44,7 +44,7 @@ export default function StreamOverlaySection({ user }) {
       <div className="stream-overlay-preview" ref={previewRef} style={{ height: previewWidth ? PLAYER_OVERLAY_HEIGHT * previewScale + 16 : 80 }}>
         {previewWidth > 0 && <iframe src={url} title="Live Topfragg player overlay preview" width={PLAYER_OVERLAY_WIDTH} height={PLAYER_OVERLAY_HEIGHT} tabIndex={-1} style={{ transform: `scale(${previewScale})` }} />}
       </div>
-      <p className="stream-overlay-preview-caption">Own logo, TOPFRAGG.GG, avatar, animated name, earnings, record, rank and all six trophy counters. Updates every 15 seconds.</p>
+      <p className="stream-overlay-preview-caption">Own logo, TOPFRAGG.GG, player name, Ranked ELO, Free 8s ELO + SR, earnings, record and all six trophy counters. Live stats refresh every 15 seconds.</p>
       <label className="stream-overlay-url-label" htmlFor="stream-overlay-url">Your browser source URL</label>
       <div className="stream-overlay-url"><input ref={urlRef} id="stream-overlay-url" readOnly value={url} onFocus={event => event.target.select()} /><button type="button" onClick={copyUrl}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? "Copied" : "Copy URL"}</button></div>
       <p className="stream-overlay-copy-status" role="status">{copyError || (copied ? "Overlay URL copied." : "")}</p>

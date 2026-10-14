@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { DollarSign, Swords, Target } from "lucide-react";
+import { DollarSign, Medal, Swords, Target, Zap } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import UserBadges from "@/components/ui/UserBadges";
 import { base44 } from "@/api/base44Client";
@@ -71,10 +71,11 @@ export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) 
   const rank = getRankForElo(stats.elo);
   const effect = player.display_name_color;
   const money = Number(stats.earnings || 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const updatedAt = data.updated_at || "initial";
   return <div className="app-content stream-player-bar" data-theme={theme === "orange" ? "orange" : "blue"}>
     <div className="stream-player-brand">
       <TopfraggLogo showWordmark={false} markClassName="stream-brand-mark" />
-      <div><strong className="stream-brand-wordmark" aria-label="Topfragg.gg">{brandLetters.map(({ letter, tone, motion }, index) => <span key={index} className="stream-brand-letter" data-tone={tone} style={motion} aria-hidden="true">{letter}</span>)}</strong><span className="stream-brand-caption">Player overview</span></div>
+      <div><strong className="stream-brand-wordmark" aria-label="Topfragg.gg">{brandLetters.map(({ letter, tone, motion }, index) => <span key={index} className="stream-brand-letter" data-tone={tone} style={motion} aria-hidden="true">{letter}</span>)}</strong><span className="stream-brand-caption"><i aria-hidden="true" />Live player overview</span></div>
     </div>
     <div className="stream-player-identity">
       <span className="stream-player-avatar">{player.avatar_url && failedAvatar !== player.avatar_url ? <img src={player.avatar_url} alt="" onError={() => setFailedAvatar(player.avatar_url)} /> : player.display_name.slice(0, 1).toUpperCase()}</span>
@@ -85,13 +86,15 @@ export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) 
     </div>
     <div className="stream-player-stat stream-player-rank">
       <span className="stream-player-label">Ranked ELO</span>
-      <div>{stats.has_ranked_matches && <img src={`/assets/ranks/compact/${rank.tier}.png`} alt="" />}<strong>{Number(stats.elo || 0).toLocaleString("en-US")}</strong></div>
+      <div>{stats.has_ranked_matches && <img src={`/assets/ranks/compact/${rank.tier}.png`} alt="" />}<strong key={`ranked-${updatedAt}`}>{Number(stats.elo || 0).toLocaleString("en-US")}</strong></div>
       <small>{stats.has_ranked_matches ? rank.name : "Unranked"}</small>
     </div>
-    <div className="stream-player-stat"><span className="stream-player-label"><Swords size={14} />Record</span><strong className="stream-player-record"><span>{stats.wins}W</span><span> / </span><span>{stats.losses}L</span></strong><small>Wins / losses</small></div>
-    <div className="stream-player-stat"><span className="stream-player-label"><Target size={14} />Win rate</span><strong>{stats.win_rate}<span className="stream-player-percent">%</span></strong><small>Overall record</small></div>
-    <div className="stream-player-stat stream-player-earnings"><span className="stream-player-label"><DollarSign size={14} />Earnings</span><strong>{money}</strong><small>Lifetime · USD</small></div>
-    <div className="stream-player-trophies"><span className="stream-player-label">Trophy cabinet</span><div>{trophies.map(trophy => <div key={trophy.key} className="stream-player-trophy" data-tier={trophy.key}><img src={trophy.image} alt="" /><strong>{data.trophies[trophy.key] || 0}</strong><span>{trophy.label}</span></div>)}</div></div>
+    <div className="stream-player-stat stream-player-free-elo"><span className="stream-player-label"><Zap size={14} />8s ELO</span><strong key={`free-elo-${updatedAt}`}>{Number(stats.free_eights_elo || 0).toLocaleString("en-US")}</strong><small>Black Ops 7 ladder</small></div>
+    <div className="stream-player-stat stream-player-free-sr" data-sr={stats.free_eights_sr_key || "newb"}><span className="stream-player-label"><Medal size={14} />8s SR</span><strong key={`free-sr-${updatedAt}`}>{stats.free_eights_sr || "Newb"}</strong><small>{stats.free_eights_sr_source === "screenshot" ? "Verified game rank" : "Free 8s skill rank"}</small></div>
+    <div className="stream-player-stat"><span className="stream-player-label"><Swords size={14} />Record</span><strong key={`record-${updatedAt}`} className="stream-player-record"><span>{stats.wins}W</span><span> / </span><span>{stats.losses}L</span></strong><small>Wins / losses</small></div>
+    <div className="stream-player-stat"><span className="stream-player-label"><Target size={14} />Win rate</span><strong key={`win-rate-${updatedAt}`}>{stats.win_rate}<span className="stream-player-percent">%</span></strong><small>Overall record</small></div>
+    <div className="stream-player-stat stream-player-earnings"><span className="stream-player-label"><DollarSign size={14} />Earnings</span><strong key={`earnings-${updatedAt}`}>{money}</strong><small>Lifetime · USD</small></div>
+    <div className="stream-player-trophies"><span className="stream-player-label">Trophy cabinet</span><div>{trophies.map(trophy => <div key={trophy.key} className="stream-player-trophy" data-tier={trophy.key}><img src={trophy.image} alt="" /><strong key={`${trophy.key}-${updatedAt}`}>{data.trophies[trophy.key] || 0}</strong><span>{trophy.label}</span></div>)}</div></div>
     {stale && <span className="stream-player-reconnecting">Reconnecting · last saved stats</span>}
   </div>;
 }

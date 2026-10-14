@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { serializeRow } from "../entity.js";
 import { trophyCountsFor } from "../lib/trophyCounts.js";
+import { getFreeEightsSkill } from "../../src/lib/freeEightsSkill.js";
 
 const router = Router();
 const snapshots = new Map();
@@ -24,11 +25,12 @@ async function playerSnapshot(identifier) {
     throw error;
   }
   const ownedByPlayer = { metadata: { path: ["user_id"], equals: row.id } };
-  const [profileRow, rankedRows, walletRow, inventoryRows] = await Promise.all([
+  const [profileRow, rankedRows, walletRow, inventoryRows, eightsRows] = await Promise.all([
     prisma.playerProfile.findFirst({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true } }),
     prisma.rankedStats.findMany({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true } }),
     prisma.wallet.findFirst({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true } }),
     prisma.userInventory.findMany({ where: ownedByPlayer, select: { metadata: true } }),
+    prisma.eightsStats.findMany({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true, free_eights_elo: true } }),
   ]);
   const user = serializeRow(row);
   const profile = profileRow?.metadata || {};
@@ -39,6 +41,9 @@ async function playerSnapshot(identifier) {
   })[0] || {};
   const wins = Math.max(number(profile.total_wins), number(ranked.wins) + number(user.wager_wins), number(ranked.wins), number(user.wager_wins));
   const losses = Math.max(number(profile.total_losses), number(ranked.losses) + number(user.wager_losses), number(ranked.losses), number(user.wager_losses));
+  const freeEights = eightsRows.find(item => String(item.metadata?.game_id || "bo7").toLowerCase() === "bo7") || {};
+  const freeEightsElo = number(freeEights.free_eights_elo);
+  const freeEightsSkill = getFreeEightsSkill(freeEightsElo, user.screenshot_rank);
   const counts = trophyCountsFor(user, profile, inventoryRows.map(item => item.metadata));
   const badges = Array.isArray(user.badges) ? user.badges : [];
 
@@ -61,6 +66,10 @@ async function playerSnapshot(identifier) {
       win_rate: wins + losses > 0 ? Math.round(wins / (wins + losses) * 100) : 0,
       elo: number(ranked.elo || profile.elo),
       has_ranked_matches: number(ranked.matches_played) > 0 || number(ranked.wins) + number(ranked.losses) > 0,
+      free_eights_elo: freeEightsElo,
+      free_eights_sr: freeEightsSkill.name,
+      free_eights_sr_key: freeEightsSkill.key,
+      free_eights_sr_source: freeEightsSkill.source,
     },
     trophies: Object.fromEntries(Object.entries(counts).map(([key, value]) => [key, Math.floor(number(value))])),
     updated_at: new Date().toISOString(),
