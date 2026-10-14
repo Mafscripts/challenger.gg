@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import PlayerStatsBar, { PLAYER_OVERLAY_WIDTH, usePlayerOverlay } from "@/components/stream/PlayerStatsBar";
+import PlayerStatsBar, { PLAYER_OVERLAY_WIDTH, normalizePlayerOverlayTheme, usePlayerOverlay } from "@/components/stream/PlayerStatsBar";
 
 export default function PlayerOverlay() {
   const { identifier } = useParams();
   const [searchParams] = useSearchParams();
-  const requestedTheme = searchParams.get("theme");
-  const theme = requestedTheme === "orange" || requestedTheme === "mono" ? requestedTheme : "blue";
+  const theme = normalizePlayerOverlayTheme(searchParams.get("theme"));
   const [width, setWidth] = useState(window.innerWidth);
   const { data, error, loading, stale } = usePlayerOverlay(identifier);
   useEffect(() => {

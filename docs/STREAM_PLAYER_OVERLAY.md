@@ -9,23 +9,30 @@ URL so renaming a player does not break their source.
 - Own profile: **Your Twitch player overlay**.
 - Settings: **Connections → Stream overlay**.
 - The settings panel includes a live preview, **Copy URL**, and setup instructions.
-- Choose **Original blue** or **Orange** in the settings preview. The orange URL adds
-  `?theme=orange`; existing URLs retain blue. Only the surrounding accents and dark tint
-  change: the Topfragg shield and white/cyan wordmark retain their original branding,
-  and player name effects, trophy colors and record colors are preserved.
+- Choose **Original blue**, **Orange**, **Black & white**, or **Christmas** in the settings
+  preview. Their URLs use no theme parameter, `?theme=orange`, `?theme=mono`, and
+  `?theme=xmas` respectively. Existing URLs retain their original theme. The Topfragg
+  shield and white/cyan wordmark retain their original branding in every variant.
+  Christmas adds ivory stats, an evergreen player panel, red accents, a Santa hat and
+  holly on the shield, snowy pines, gently twinkling lights, falling snow, and a candy-striped trim.
 - OBS source width: match the stream canvas (for example **1920** for 1080p or **2560** for 1440p), height **80**. Align at **X: 0, Y: 0** without shrinking the source.
-- The document around the dark player bar is transparent, with no navigation or login.
+- The document around the player bar is transparent, with no navigation or login.
 - The bar fills the browser viewport edge to edge with no outer padding or maximum width. It scales as a complete bar below 1920px and expands its layout above that width; it keeps every trophy counter.
 
 ## Presentation and updates
 
-The bar includes the existing Topfragg shield, TOPFRAGG.GG wordmark, player avatar,
-saved name color/animated effect, public badges, ranked ELO, wins/losses, win rate,
+The bar includes the existing Topfragg shield, TOPFRAGG.GG wordmark,
+saved name color/animated effect, public badges, ranked ELO, Free 8s ELO and SR, wins/losses, win rate,
 lifetime USD earnings, and gold/silver/bronze/premium/Topfragg/hosted trophies, including zeros.
 Name effects reuse the website's CSS and assets. The Topfragg shield stays still.
 The TOPFRAGG.GG letters fly into place, hold together for three seconds, then fall apart
 and repeat in an eight-second cycle. Only transforms and opacity animate; stable letter keys
 keep the animation running across data refreshes. Reduced-motion preferences show a static wordmark.
+Christmas decorations also keep stable keys across updates and animate only transforms
+and opacity. Reduced-motion preferences show static lights, hat, and snow. Every theme
+stays within the same 80px browser source; decorations do not extend outside the bar.
+Christmas values animate when the displayed value changes, rather than flashing on
+every background refresh.
 
 The source requests `GET /api/public/player-overlay/:identifier` every 15 seconds after
 the preceding request completes. It updates the existing components without refreshing
@@ -42,12 +49,16 @@ use `Cache-Control: no-store` for browsers and proxies.
 ## Deployment
 
 Deploy both the frontend and API changes. No database migration is needed.
+Adding the Christmas theme to an existing overlay deployment requires only the frontend.
 The overlay route bypasses the normal authenticated app shell and the API requires no session,
 so OBS can load it without signing in. The web server must serve the SPA entry point for
 `/overlay/player/*`, as it does for other client-side routes.
 
-No builds, tests, type checks, or browser/OBS verification were run, per the current workflow.
-Player stats, transparency, animated names, URLs after a username change, and reconnecting
-behavior remain for the user's deployment checks.
+The Christmas addition was verified with a production frontend build, targeted ESLint,
+and browser checks using public player stats at 1920×80 and 2560×80. The four theme
+URLs, all six trophies, transparent page background, existing animated player name,
+and the settings theme picker/preview URL were checked. A shared app-shell minimum
+height no longer expands an overlay preview beyond its intended 80px height.
+OBS itself, username changes, and reconnecting behavior were not exercised in these checks.
 
 OBS reference: https://obsproject.com/kb/browser-source

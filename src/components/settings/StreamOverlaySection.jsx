@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, MonitorPlay } from "lucide-react";
-import { PLAYER_OVERLAY_HEIGHT, PLAYER_OVERLAY_WIDTH, playerOverlayUrl } from "@/components/stream/PlayerStatsBar";
+import { PLAYER_OVERLAY_HEIGHT, PLAYER_OVERLAY_WIDTH, PLAYER_OVERLAY_THEMES, playerOverlayUrl } from "@/components/stream/PlayerStatsBar";
 import "@/styles/stream-overlay-settings.css";
 
 export default function StreamOverlaySection({ user }) {
@@ -40,7 +40,8 @@ export default function StreamOverlaySection({ user }) {
     <header><span className="stream-overlay-settings-mark"><MonitorPlay size={22} /></span><div><h3>Twitch player overlay</h3><p>Your live Topfragg stats, ready for your stream.</p></div><span className="stream-overlay-settings-status">Auto updates</span></header>
     <div className="stream-overlay-settings-body">
       <div className="stream-overlay-preview-heading"><strong>Your player bar</strong><a href={url} target="_blank" rel="noopener noreferrer">Open full preview<ExternalLink size={14} /></a></div>
-      <div className="stream-overlay-theme-picker" role="group" aria-label="Overlay theme"><span>Overlay style</span>{["blue", "orange", "mono"].map(option => <button type="button" key={option} data-theme={option} aria-pressed={theme === option} onClick={() => setTheme(option)}><span aria-hidden="true" />{option === "blue" ? "Original blue" : option === "orange" ? "Orange" : "Black & white"}{theme === option && <Check size={14} aria-hidden="true" />}</button>)}</div>
+      <div className="stream-overlay-theme-picker" role="group" aria-label="Overlay theme"><span>Overlay style</span>{PLAYER_OVERLAY_THEMES.map(option => <button type="button" key={option.key} data-theme={option.key} aria-pressed={theme === option.key} onClick={() => setTheme(option.key)}><span aria-hidden="true" />{option.label}{theme === option.key && <Check size={14} aria-hidden="true" />}</button>)}</div>
+      {theme === "xmas" && <p className="stream-overlay-seasonal-caption">Merry Fragmas! Snow-white stats, festive lights and falling snow, with your original Topfragg branding.</p>}
       <div className="stream-overlay-preview" ref={previewRef} style={{ height: previewWidth ? PLAYER_OVERLAY_HEIGHT * previewScale + 16 : 80 }}>
         {previewWidth > 0 && <iframe src={url} title="Live Topfragg player overlay preview" width={PLAYER_OVERLAY_WIDTH} height={PLAYER_OVERLAY_HEIGHT} tabIndex={-1} style={{ transform: `scale(${previewScale})` }} />}
       </div>

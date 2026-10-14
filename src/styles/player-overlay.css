@@ -2,6 +2,7 @@ html.stream-overlay-document, html.stream-overlay-document body { min-width: 0; 
 html.stream-overlay-document #root { min-height: 0; }
 .stream-overlay-page { width: 100%; padding: 0; }
 .stream-overlay-canvas { transform-origin: top left; }
+.stream-player-bar.app-content { min-height: 0; }
 .stream-player-bar { position: relative; isolation: isolate; display: grid; grid-template-columns: 190px minmax(210px, 1.4fr) 138px 118px 124px 135px 100px 145px minmax(470px, 2fr); align-items: center; gap: 0; width: 100%; height: 80px; padding: 6px 22px; overflow: hidden; border: 1px solid rgb(20 216 255 / .3); border-radius: 11px; background: linear-gradient(115deg, rgb(7 15 22 / .995), rgb(10 22 30 / .99) 38%, rgb(6 13 20 / .995)); color: #f1f7fa; box-shadow: inset 0 1px 0 rgb(255 255 255 / .07), 0 10px 30px rgb(0 0 0 / .24); }
 .stream-player-bar > * { position: relative; z-index: 1; }
 .stream-player-bar::after { content: ""; position: absolute; z-index: 0; top: -50%; left: -24%; width: 16%; height: 200%; pointer-events: none; opacity: .13; background: linear-gradient(90deg, transparent, rgb(20 216 255 / .5), rgb(255 138 36 / .34), transparent); transform: skewX(-18deg); animation: stream-bar-sweep 9s cubic-bezier(.45, 0, .55, 1) infinite; }
@@ -96,3 +97,73 @@ html.stream-overlay-document #root { min-height: 0; }
 .stream-player-bar[data-theme="mono"] :is(.stream-player-identity, .stream-player-stat, .stream-player-trophies) { border-color: rgb(255 255 255 / .13); }
 .stream-player-bar[data-theme="mono"] .stream-player-trophy { border-color: rgb(255 255 255 / .12); background: rgb(255 255 255 / .035); }
 .stream-player-bar[data-theme="mono"] .stream-player-trophy > img, .stream-player-bar[data-theme="mono"] .stream-player-rank > div > img { filter: grayscale(1) brightness(1.3); }
+
+/* Christmas is an additive theme: original branding and saved name effects stay intact. */
+.stream-player-bar[data-theme="xmas"] {
+  grid-template-columns: 190px minmax(240px, .75fr) 138px 118px 124px 135px 100px 145px minmax(530px, 2.25fr);
+  border-color: #bfd2c5;
+  border-radius: 9px;
+  background: linear-gradient(115deg, #fffdf6, #f3f6ed 56%, #fff9f0);
+  color: #163f30;
+  box-shadow: inset 0 1px 0 #fff, 0 8px 24px rgb(0 0 0 / .2);
+}
+.stream-player-bar[data-theme="xmas"]::before { left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #db344b, #f9efe0 28%, #37865a 62%, #db344b); }
+.stream-player-bar[data-theme="xmas"]::after { opacity: .3; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .8), transparent); animation-duration: 14s; }
+.stream-player-bar[data-theme="xmas"] .stream-player-brand { align-self: stretch; margin: -6px 0 -6px -22px; padding-left: 22px; background: #0b3025; }
+.stream-player-bar[data-theme="xmas"] .stream-player-identity { height: calc(100% + 12px); margin: -6px 0; padding-left: 20px; border-left: 0; border-right: 3px solid #cf3045; background: linear-gradient(110deg, #0b3025, #123d2d); }
+.stream-player-bar[data-theme="xmas"] .stream-player-identity::before { content: ""; position: absolute; top: 20px; bottom: 20px; left: 0; width: 1px; background: rgb(232 244 231 / .22); }
+.stream-player-bar[data-theme="xmas"] .stream-brand-caption { color: #d6e7d6; font-size: 8px; letter-spacing: .12em; }
+.stream-player-bar[data-theme="xmas"] .stream-brand-caption > i { background: #6ddd93; box-shadow: 0 0 7px rgb(109 221 147 / .6); animation-name: stream-xmas-live; }
+.stream-player-bar[data-theme="xmas"] .stream-player-handle { color: #b9d6c3; }
+.stream-player-bar[data-theme="xmas"] .stream-player-identity-copy { position: relative; z-index: 1; }
+.stream-xmas-player-scene { position: absolute; right: 9px; bottom: 0; width: 100px; height: 62px; opacity: .2; pointer-events: none; }
+.stream-xmas-tree-star { animation: stream-xmas-light 5s -1.5s ease-in-out infinite; }
+.stream-player-bar[data-theme="xmas"] .stream-player-stat { height: 60px; border-left-color: rgb(40 85 62 / .13); }
+.stream-player-bar[data-theme="xmas"] .stream-player-rank { border-left: 0; }
+.stream-player-bar[data-theme="xmas"] .stream-player-label { color: #546c5d; font-size: 10px; letter-spacing: .085em; }
+.stream-player-bar[data-theme="xmas"] .stream-player-label > svg { color: #bd2d42; }
+.stream-player-bar[data-theme="xmas"] .stream-player-stat > small { color: #64786b; }
+.stream-player-bar[data-theme="xmas"] .stream-player-rank strong { color: #184d37; }
+.stream-player-bar[data-theme="xmas"] .stream-player-free-elo > strong { color: #bd2d42; }
+.stream-player-bar[data-theme="xmas"] .stream-player-free-sr > strong { color: #254f3d; text-shadow: none; }
+.stream-player-bar[data-theme="xmas"] .stream-player-record > span:first-child { color: #1b784c; }
+.stream-player-bar[data-theme="xmas"] .stream-player-record > span:nth-child(2) { color: #97a699; }
+.stream-player-bar[data-theme="xmas"] .stream-player-record > span:last-child { color: #bd2d42; }
+.stream-player-bar[data-theme="xmas"] .stream-player-percent { color: #bd2d42; }
+.stream-player-bar[data-theme="xmas"] .stream-player-earnings > strong { color: #1b784c; }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophies { border-left-color: rgb(40 85 62 / .13); }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy { grid-template-columns: 26px minmax(0, max-content); justify-content: center; gap: 1px 5px; height: 44px; border-color: rgb(40 85 62 / .13); border-radius: 6px; background: rgb(255 255 255 / .7); }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy > img { width: 26px; height: 30px; }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy > strong { font-size: 21px; }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy > span { color: #627767; font-size: 9px; }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy[data-tier="gold"] > strong { color: #9b7422; }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy[data-tier="bronze"] > strong { color: #a15d32; }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy[data-tier="premium"] > strong { color: #8056ae; }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy[data-tier="topfragg"] > strong { color: #078497; }
+.stream-player-bar[data-theme="xmas"] .stream-player-trophy[data-tier="hosted"] > strong { color: #1b784c; }
+.stream-player-bar[data-theme="xmas"] .stream-player-reconnecting { bottom: 5px; color: #a0253a; background: #fffdf6; padding: 0 4px; }
+.stream-player-bar > .stream-xmas-decor { position: absolute; z-index: 2; inset: 0; overflow: hidden; pointer-events: none; }
+.stream-xmas-lights { position: absolute; top: 2px; left: 16px; right: 16px; display: flex; justify-content: space-between; height: 8px; border-top: 1px solid rgb(64 114 76 / .28); }
+.stream-xmas-lights > i { position: relative; width: 4px; height: 6px; flex: 0 0 auto; border-radius: 2px 2px 3px 3px; background: #e23d50; box-shadow: 0 1px 5px rgb(226 61 80 / .3); animation: stream-xmas-light 4s var(--light-delay) ease-in-out infinite; }
+.stream-xmas-lights > i:nth-child(3n + 2) { background: #57b479; box-shadow: 0 1px 5px rgb(87 180 121 / .35); }
+.stream-xmas-lights > i:nth-child(3n) { background: #eedebe; box-shadow: 0 1px 5px rgb(255 240 200 / .45); }
+.stream-xmas-lights > i::before { content: ""; position: absolute; top: -2px; left: 1px; width: 2px; height: 2px; background: #4d6953; }
+.stream-xmas-snow { position: absolute; inset: 0; }
+.stream-xmas-flake { position: absolute; top: -12px; left: var(--snow-left); width: var(--snow-size); height: var(--snow-size); border-radius: 50%; color: #638b72; background: currentColor; animation: stream-xmas-snowfall var(--snow-duration) var(--snow-delay) linear infinite; will-change: transform, opacity; }
+.stream-xmas-flake[data-crystal="true"] { background: none; }
+.stream-xmas-flake:nth-child(4n + 1) { color: #fffdf5; }
+.stream-xmas-flake:nth-child(4n + 3) { color: #c33d4b; }
+.stream-xmas-flake > svg { display: block; width: 100%; height: 100%; }
+.stream-xmas-ribbon { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: repeating-linear-gradient(120deg, #cf3045 0 9px, #fffdf6 9px 18px, #317c53 18px 27px, #fffdf6 27px 36px); }
+.stream-xmas-brand-mark { position: relative; display: inline-flex; flex: 0 0 44px; width: 44px; height: 44px; }
+.stream-xmas-hat { position: absolute; top: -12px; left: 1px; width: 47px; height: 28px; transform: rotate(-12deg); transform-origin: 16px 24px; animation: stream-xmas-hat 7s ease-in-out infinite; }
+.stream-xmas-holly { position: absolute; right: -4px; bottom: -4px; width: 23px; height: 18px; }
+@keyframes stream-xmas-snowfall { 0% { opacity: 0; transform: translate3d(0, 0, 0); } 15%, 70% { opacity: .4; } 100% { opacity: 0; transform: translate3d(var(--snow-drift), 100px, 0); } }
+@keyframes stream-xmas-light { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes stream-xmas-hat { 0%, 45%, 100% { transform: rotate(-12deg); } 55% { transform: rotate(-8deg); } 65% { transform: rotate(-12deg); } }
+@keyframes stream-xmas-live { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .stream-xmas-lights > i, .stream-xmas-hat, .stream-xmas-tree-star, .stream-player-bar[data-theme="xmas"] .stream-brand-caption > i { animation: none; }
+  .stream-xmas-flake { animation: none; opacity: .18; top: 16px; transform: none; will-change: auto; }
+  .stream-xmas-flake:nth-child(even) { top: 60px; }
+}
