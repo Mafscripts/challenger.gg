@@ -1,9 +1,15 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, BadgeCheck, Crown, Monitor } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Crown, Monitor, Swords } from "lucide-react";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 
 const specialBadgeConfig = {
+  challengers: {
+    label: "Challengers",
+    description: "Selected for Topfragg Challengers try outs.",
+    className: "border-yellow-400/35 bg-yellow-400/10 text-yellow-300 shadow-[0_0_14px_rgba(250,204,21,0.18)]",
+    icon: Swords,
+  },
   verified_player: {
     label: "Verified Player",
     description: "This player is verified.",

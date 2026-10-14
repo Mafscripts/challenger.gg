@@ -14,6 +14,7 @@ import { NavbarDestinations, NavbarMatches } from "./NavbarMenus";
 import "@/styles/navbar-profile.css";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { canAccessTryouts } from "@/lib/tryouts";
 import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
 
 const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 12 * 60 * 60 * 1000;
@@ -420,6 +421,7 @@ export default function Navbar() {
     ? (staffRoles.has(user?.admin_role) ? user.admin_role : user?.role || "Staff").replaceAll("_", " ")
     : "Player";
   const canSeeStreamerShortcut = isStreamerUser(user || authUser);
+  const canSeeTryouts = canAccessTryouts(user || authUser);
   const matchHistoryPath = "/my-matches?view=history";
 
   useEffect(() => {
@@ -1505,6 +1507,7 @@ export default function Navbar() {
                         label="Account"
                         items={[
                           { label: "My Profile", path: profilePath, icon: User },
+                          ...(canSeeTryouts ? [{ label: "Try outs", path: "/try-outs", icon: Swords }] : []),
                           { label: "My Tickets", path: "/my-tickets", icon: Ticket },
                           { label: "My Matches", path: "/my-matches", icon: History },
                           { label: "Teams", path: "/teams", icon: Users },
@@ -1691,6 +1694,7 @@ export default function Navbar() {
                       <User className="w-5 h-5" />
                       My Profile
                     </Link>
+                    {canSeeTryouts && <Link to="/try-outs" onClick={closeMobileMenu} className="flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium text-yellow-300 transition-all hover:bg-secondary"><Swords className="h-5 w-5" />Try outs</Link>}
                     <Link
                       to="/league"
                       onClick={closeMobileMenu}

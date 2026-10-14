@@ -26,6 +26,8 @@ import { wagerCancellationNotification } from "../wager-cancellation-notificatio
 import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
 import { matchfinderPostLifetimeMs } from "../../src/lib/matchfinderPosts.js";
+import { tryoutHandlers } from "../tryouts.js";
+import { canManageTryouts } from "../../src/lib/tryouts.js";
 
 export const expireMatchfinderPosts = () => sweepExpiredMatchfinderPosts(prisma, { withLock: withTournamentMutationLock });
 
@@ -142,10 +144,11 @@ const tournamentGameModeDetails = {
   control: { game_mode: "control", mode: "Control" },
 };
 const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
-const specialUserBadgeTypes = new Set(["verified_player", "streamer"]);
+const specialUserBadgeTypes = new Set(["verified_player", "streamer", "challengers"]);
 const specialUserBadgeLabels = {
   verified_player: "Verified Player",
   streamer: "Streamer",
+  challengers: "Challengers",
 };
 const streamerTournamentTypes = new Set(["streamer", "streamer_tournament"]);
 const streamerSwitchFormats = new Set(["2v2", "4v4"]);
@@ -10493,6 +10496,7 @@ function booleanFromBody(body = {}, keys = []) {
 
 async function updateUserBadges(req) {
   assertStaff(req, "admin");
+  if (!canManageTryouts(req.user)) return { success: false, error: "Admin or higher is required to manage badges" };
   const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
   if (!target) return { success: false, error: "User not found" };
   if (!canModerateUser(req.user.role, target.role)) {
@@ -11014,6 +11018,7 @@ async function postDiscordCelebration(req) {
 }
 
 const handlers = {
+  ...tryoutHandlers,
   completeRegistration,
   createWallet: completeRegistration,
   createTicket,

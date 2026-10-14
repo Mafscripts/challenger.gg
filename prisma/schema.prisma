@@ -336,6 +336,13 @@ model Tournament {
   metadata     Json     @default("{}")
 }
 
+model TryoutRoom {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+}
+
 model TournamentParticipant {
   id           String   @id @default(cuid())
   created_date DateTime @default(now())

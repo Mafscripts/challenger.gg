@@ -51,6 +51,7 @@ import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
 import { useAdminConsoleData } from "@/hooks/useAdminConsoleData";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
+import { canManageTryouts, hasChallengersBadge } from "@/lib/tryouts";
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm } from "@/lib/tournamentGames";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
@@ -885,6 +886,7 @@ export default function Admin() {
     preset,
     forceStream = Boolean(targetUser.force_stream_required || targetUser.stream_override_required),
     monitorCamRequired = Boolean(targetUser.monitor_cam_required || targetUser.required_monitor_cam || targetUser.moni_cam_required),
+    challengers = hasChallengersBadge(targetUser),
   ) => {
     if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage badges.", variant: "destructive" });
@@ -896,7 +898,7 @@ export default function Admin() {
     try {
       const response = await base44.functions.invoke("updateUserBadges", {
         user_id: targetUser.id,
-        badge_types: option.types,
+        badge_types: [...option.types, ...(challengers ? ["challengers"] : [])],
         force_stream_required: forceStream,
         monitor_cam_required: monitorCamRequired,
       });
@@ -2391,6 +2393,10 @@ export default function Admin() {
                                             <option key={option.value} value={option.value}>{option.label}</option>
                                           ))}
                                         </select>
+                                        {canManageTryouts(currentUser) && <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-yellow-300">
+                                          <input type="checkbox" checked={hasChallengersBadge(user)} onChange={(event) => handleSetUserBadges(user, userBadgePreset(user), Boolean(user.force_stream_required || user.stream_override_required), Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required), event.target.checked)} disabled={busyId === `${user.id}:badges`} className="accent-yellow-400" />
+                                          Challengers · Try outs access
+                                        </label>}
                                         <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-vapor">
                                           <input
                                             type="checkbox"
