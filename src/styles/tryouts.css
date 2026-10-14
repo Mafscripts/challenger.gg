@@ -50,6 +50,18 @@
 .tryout-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; border: 1px solid var(--tryout-border); border-radius: 7px; background: rgba(255,255,255,.035); color: #ced7df; }
 .tryout-icon-button:hover:not(:disabled) { border-color: rgba(250,204,21,.4); color: var(--tryout-gold); }
 .tryout-text-link { display: inline-flex; align-items: center; gap: 6px; color: var(--tryout-gold); font-size: 11px !important; font-weight: 800 !important; }
+.tryout-delete-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid rgba(250,140,154,.25); border-radius: 7px; padding: 8px 10px; background: rgba(250,140,154,.04); color: #fa8c9a; font-size: 9px !important; font-weight: 800 !important; white-space: nowrap; }
+.tryout-delete-button:hover:not(:disabled) { background: rgba(250,140,154,.1); border-color: rgba(250,140,154,.5); }
+.tryout-admin-scores { margin-top: 20px; padding: 20px; border: 1px solid rgba(250,204,21,.2); border-radius: 12px; background: rgba(250,204,21,.025); }
+.tryout-admin-scores .tryout-section-heading { margin: 0 0 12px; }
+.tryout-admin-scores .tryout-section-label { display: flex; align-items: center; gap: 6px; }
+.tryout-admin-scores h2 { font-size: 18px; }
+.tryout-admin-scores > p { margin-bottom: 16px; color: #9fadb7; font-size: 11px; line-height: 1.7; }
+.tryout-admin-scores .tryout-score-editor { max-width: 480px; gap: 10px; }
+.tryout-admin-scores .tryout-score-editor label > span { font-size: 10px; margin-bottom: 7px; }
+.tryout-admin-scores .tryout-score-editor input { padding: 10px 8px; font-size: 18px; font-weight: 800; }
+.tryout-admin-scores .tryout-score-editor input:disabled { opacity: .4; }
+.tryout-admin-scores .tryout-score-editor > button { padding: 14px 12px; }
 .tryout-session-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
 .tryout-session-card { position: relative; overflow: hidden; border: 1px solid var(--tryout-border); border-radius: 13px; padding: 22px; background: linear-gradient(145deg,rgba(255,255,255,.04),rgba(255,255,255,.015)); transition: border-color .2s, box-shadow .2s; }
 .tryout-session-card:hover { border-color: rgba(250,204,21,.25); box-shadow: 0 18px 36px -30px rgba(250,204,21,.5); }
@@ -199,6 +211,8 @@
   .tryout-chat-feed { height: 275px; }
 }
 @media (max-width: 600px) {
+  .tryout-admin-scores .tryout-score-editor { display: grid; grid-template-columns: minmax(0,1fr) 12px minmax(0,1fr); }
+  .tryout-admin-scores .tryout-score-editor > button { grid-column: 1 / -1; margin-top: 4px; }
   .tryouts-page { padding: 16px 14px 55px; }
   .tryout-hero { min-height: 285px; padding: 26px 22px; border-radius: 14px; }
   .tryout-hero-emblem { display: none; }

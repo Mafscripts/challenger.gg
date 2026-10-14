@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, ChevronRight, Crosshair, Flag, Gamepad2, GripVertical, Loader2, LockKeyhole, Map as MapIcon, MessageSquare, Play, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronRight, Crosshair, Flag, Gamepad2, GripVertical, Loader2, LockKeyhole, Map as MapIcon, MessageSquare, Play, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Swords, Trash2, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "@/components/ui/use-toast";
@@ -14,14 +14,14 @@ import "@/styles/tryouts.css";
 const statusLabel = { lobby: "Registration open", live: "Match live", completed: "Completed", cancelled: "Cancelled" };
 const enter = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35 } };
 
-function ScoreEditor({ map, index, busy, onSave }) {
+function ScoreEditor({ map, index, busy, disabled = false, onSave }) {
   const [alpha, setAlpha] = useState("");
   const [bravo, setBravo] = useState("");
   return <form className="tryout-score-editor" onSubmit={(event) => { event.preventDefault(); onSave({ map_index: index, alpha_score: Number(alpha), bravo_score: Number(bravo) }); }}>
-    <label><span>Alpha</span><input type="number" min="0" max="250" required value={alpha} onChange={(event) => setAlpha(event.target.value)} aria-label={`Alpha score for ${map.name}`} /></label>
+    <label><span>Team Alpha</span><input type="number" min="0" max="250" required disabled={busy || disabled} value={alpha} onChange={(event) => setAlpha(event.target.value)} aria-label={`Alpha score for ${map.name}`} /></label>
     <span className="tryout-score-separator">:</span>
-    <label><span>Bravo</span><input type="number" min="0" max="250" required value={bravo} onChange={(event) => setBravo(event.target.value)} aria-label={`Bravo score for ${map.name}`} /></label>
-    <button className="tryout-icon-button" type="submit" disabled={busy} aria-label={`Save result for ${map.name}`}><Check size={16} /></button>
+    <label><span>Team Bravo</span><input type="number" min="0" max="250" required disabled={busy || disabled} value={bravo} onChange={(event) => setBravo(event.target.value)} aria-label={`Bravo score for ${map.name}`} /></label>
+    <button className="tryout-button" type="submit" disabled={busy || disabled} aria-label={`Save result for ${map.name}`}><Check size={16} />Save score</button>
   </form>;
 }
 
@@ -78,6 +78,7 @@ export default function Tryouts() {
     } catch (failure) {
       if (routeRef.current !== route) return;
       setError(failure.message || "Could not load Try outs.");
+      if (failure.status === 404 && roomId) setRoom(null);
       if (failure.status === 403) { setDenied(true); setRoom(null); setRooms([]); }
     } finally { if (routeRef.current === route) setLoading(false); }
   }, [allowed, roomId]);
@@ -127,6 +128,26 @@ export default function Tryouts() {
       navigate(`/try-outs/${data.room.id}`);
     } catch (failure) { toast({ title: "Could not create Try out", description: failure.message, variant: "destructive" }); }
     finally { pendingRef.current = false; setBusy(""); }
+  };
+
+  const deleteRoom = async (target) => {
+    if (!admin || pendingRef.current) return;
+    if (!window.confirm(`Delete "${target.name}"? Its players, maps and chat will be permanently removed.`)) return;
+    mutationRevision.current += 1;
+    pendingRef.current = true; setBusy(`delete:${target.id}`);
+    let refresh = false;
+    try {
+      await base44.functions.invoke("deleteTryoutRoom", { room_id: target.id, expected_version: target.version });
+      setRooms((current) => current.filter((entry) => entry.id !== target.id));
+      if (routeRef.current === target.id) { setRoom(null); navigate("/try-outs"); }
+      toast({ title: "Room deleted", description: `${target.name} has been removed.` });
+    } catch (failure) {
+      toast({ title: "Could not delete room", description: failure.message, variant: "destructive" });
+      if (failure.status === 409 || failure.status === 404) refresh = true;
+    } finally {
+      pendingRef.current = false; setBusy("");
+      if (refresh) load(true);
+    }
   };
 
   const drop = (userId, team, swapId) => {
@@ -186,7 +207,7 @@ export default function Tryouts() {
       {!hasActivisionId(user) && <div className="tryout-notice"><Gamepad2 size={19} /><span>Add your Activision ID to join a try out.</span><Link className="tryout-text-link" to="/settings">Open gaming settings <ArrowRight size={14} /></Link></div>}
       {admin && <form className="tryout-create-panel" onSubmit={create}><div><ShieldCheck size={21} /><span><strong>Admin controls</strong><small>Create a session, build your teams and run the series.</small></span></div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} required aria-label="Try out name" placeholder="Session name" /><button className="tryout-button" disabled={Boolean(busy)}><Plus size={16} />Create Try out</button></form>}
       <div className="tryout-session-grid">{rooms.map((entry, index) => <motion.article {...enter} transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.25) }} key={entry.id} className={`tryout-session-card status-${entry.status}`}>
-        <div className="tryout-session-top"><span className={`tryout-status status-${entry.status}`}><span />{statusLabel[entry.status]}</span><Crosshair size={22} /></div>
+        <div className="tryout-session-top"><span className={`tryout-status status-${entry.status}`}><span />{statusLabel[entry.status]}</span>{admin && ["lobby", "cancelled"].includes(entry.status) ? <button type="button" className="tryout-delete-button" disabled={Boolean(busy)} onClick={() => deleteRoom(entry)} aria-label={`Delete ${entry.name}`}><Trash2 size={14} />Delete room</button> : <Crosshair size={22} />}</div>
         <h3>{entry.name}</h3><p>Black Ops 7 · Hardpoint · BO3</p>
         <div className="tryout-session-rosters"><span>ALPHA<strong>{entry.alpha_count}/4</strong></span><span className="tryout-vs">VS</span><span>BRAVO<strong>{entry.bravo_count}/4</strong></span></div>
         <div className="tryout-session-footer"><span><Users size={13} />{entry.player_count}/{TRYOUT_CAPACITY} players</span>{admin || entry.joined ? <Link className="tryout-text-link" to={`/try-outs/${entry.id}`}>Open matchroom <ChevronRight size={16} /></Link> : <button className="tryout-text-link" disabled={Boolean(busy) || entry.status !== "lobby" || entry.player_count >= TRYOUT_CAPACITY || !hasActivisionId(user)} onClick={() => action("join", {}, entry.id)}>{entry.status === "lobby" ? entry.player_count >= TRYOUT_CAPACITY ? "Full" : "Join Try out" : "Closed"}<ArrowRight size={15} /></button>}</div>
@@ -203,6 +224,7 @@ export default function Tryouts() {
         {me && editable && <button className="tryout-button secondary" disabled={Boolean(busy)} onClick={() => action("leave")}>Leave</button>}
         {admin && !["lobby", "cancelled"].includes(room.status) && <button className="tryout-icon-button" disabled={Boolean(busy)} onClick={() => confirmAction("reset", "Reset this series and clear all map results? Teams return to the lobby.")} aria-label="Reset series"><RotateCcw size={16} /></button>}
         {admin && !["completed", "cancelled"].includes(room.status) && <button className="tryout-icon-button" disabled={Boolean(busy)} onClick={() => confirmAction("cancel", "Cancel this Try out and close its matchroom?")} aria-label="Cancel Try out"><X size={16} /></button>}
+        {admin && ["lobby", "cancelled"].includes(room.status) && <button type="button" className="tryout-delete-button" disabled={Boolean(busy)} onClick={() => deleteRoom(room)}><Trash2 size={14} />Delete room</button>}
       </div></div>
       {busy && <p className="tryout-saving" role="status"><Loader2 size={13} className="animate-spin" />Updating matchroom...</p>}
 
@@ -210,9 +232,14 @@ export default function Tryouts() {
         <section className="tryout-map-section"><div className="tryout-section-heading"><div><span className="tryout-section-label">The battlefield</span><h2>Hardpoint map series</h2></div><span className="tryout-mini-tag">BO7 · BO3</span></div>
           {!room.maps.length ? <div className="tryout-empty-state small"><MapIcon size={26} /><p>{admin ? "Generate three maps from the Black Ops 7 Hardpoint pool." : "Your admin will generate the three Hardpoint maps."}</p></div> : <div className="tryout-map-grid">{room.maps.map((map, index) => <article key={`${map.name}-${index}`} className={`tryout-map-card ${room.status === "live" && nextMap === index ? "is-active" : ""}`}>
             <div className="tryout-map-image">{map.image && <img src={map.image} alt={map.name} loading="lazy" />}<span>MAP {index + 1}</span>{map.alpha_score !== null && <div className="tryout-map-result"><Check size={13} />FINAL</div>}</div>
-            <div className="tryout-map-details"><span>HARDPOINT</span><h3>{map.name}</h3>{map.alpha_score !== null ? <div className="tryout-map-score"><strong className={map.alpha_score > map.bravo_score ? "winner" : ""}>{map.alpha_score}</strong><span>:</span><strong className={map.bravo_score > map.alpha_score ? "winner" : ""}>{map.bravo_score}</strong></div> : admin && room.status === "live" && nextMap === index ? <ScoreEditor key={`${room.id}-${room.version}-${index}`} map={map} index={index} busy={Boolean(busy)} onSave={(values) => action("score", values)} /> : <p>{room.status === "completed" ? "Not played" : room.status === "live" && nextMap === index ? "Up next" : "Awaiting match"}</p>}</div>
+            <div className="tryout-map-details"><span>HARDPOINT</span><h3>{map.name}</h3>{map.alpha_score !== null ? <div className="tryout-map-score"><strong className={map.alpha_score > map.bravo_score ? "winner" : ""}>{map.alpha_score}</strong><span>:</span><strong className={map.bravo_score > map.alpha_score ? "winner" : ""}>{map.bravo_score}</strong></div> : <p>{room.status === "completed" ? "Not played" : room.status === "live" && nextMap === index ? "Up next" : "Awaiting match"}</p>}</div>
           </article>)}</div>}
         </section>
+        {admin && room.maps.length > 0 && ["lobby", "live"].includes(room.status) && nextMap >= 0 && <section className="tryout-admin-scores">
+          <div className="tryout-section-heading"><div><span className="tryout-section-label"><ShieldCheck size={12} />Admin score entry</span><h2>Map {nextMap + 1} · {room.maps[nextMap].name}</h2></div><span className="tryout-mini-tag">ADMINS ONLY</span></div>
+          <p>{room.status === "lobby" ? "Start the match to enter results. Assign four players to each team first." : "Enter the final Hardpoint score for each team. The winner scores 250; the opponent scores 0–249."}</p>
+          <ScoreEditor key={`${room.id}-${nextMap}`} map={room.maps[nextMap]} index={nextMap} busy={Boolean(busy)} disabled={room.status !== "live"} onSave={(values) => action("score", values)} />
+        </section>}
       </div><aside className="tryout-room-sidebar"><section className="tryout-chat"><header><div><MessageSquare size={16} /><h2>Matchroom chat</h2></div><span className="tryout-mini-tag">PRIVATE</span></header><div className="tryout-chat-feed" role="log" aria-label="Matchroom messages" aria-live="polite">
         {!room.messages.length && <div className="tryout-chat-empty"><MessageSquare size={28} /><p>Coordinate your match.<br />Keep it competitive. Keep it respectful.</p></div>}
         {room.messages.map((entry) => <div className={`tryout-chat-message ${entry.user_id === user.id ? "is-own" : ""}`} key={entry.id}><div><strong>{entry.user_name}</strong>{entry.is_admin && <ShieldCheck size={11} />}<time>{new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div><p>{entry.text}</p></div>)}<div ref={chatEnd} />

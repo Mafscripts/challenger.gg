@@ -45,9 +45,16 @@ Existing sign-in requirements, such as email verification and bans, still apply.
    Sake, Colossus, Den, Scar, Gridlock and Hacienda.
 5. Start the match once both teams contain four eligible players and the maps
    are ready. Teams and map picks lock while the match is live.
-6. Record each map's result in order. Hardpoint winners score 250 and opponents
+6. Use **Admin score entry** below the map cards to record each map's result
+   in order. The input fields unlock when the match starts. Only Admin, Super
+   Admin and CEO accounts can save scores. Hardpoint winners score 250 and opponents
    score 0–249. The first team to win two maps wins the BO3; a third map is not
    played after a 2–0 result.
+
+Admins can use **Delete room** on the overview or inside the room to permanently
+remove an open or cancelled session, including its roster, maps and chat. The
+button asks for confirmation, deletion is audited, and active memberships are
+released. Live matches and completed results cannot be deleted this way.
 
 Admins can reset a series to correct results or cancel a session. Resetting
 clears map results and unlocks the rosters while keeping the selected maps.

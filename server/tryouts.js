@@ -14,7 +14,7 @@ const roomFor = (row) => ({ ...row.metadata, id: row.id, created_date: row.creat
 const playerFor = (user) => ({ user_id: user.id, user_name: nameFor(user), avatar_url: user.avatar_url || null, activision_id: activisionFor(user), team: "bench", joined_at: new Date().toISOString() });
 const canReadRoom = (user, room) => canManageTryouts(user) || room.players.some((player) => player.user_id === user.id);
 const roomSummary = (room, user) => ({
-  id: room.id, name: room.name, status: room.status, created_date: room.created_date,
+  id: room.id, name: room.name, status: room.status, version: room.version, created_date: room.created_date,
   player_count: room.players.length, capacity: TRYOUT_CAPACITY,
   alpha_count: room.players.filter((player) => player.team === "alpha").length,
   bravo_count: room.players.filter((player) => player.team === "bravo").length,
@@ -198,4 +198,25 @@ async function updateTryoutRoom(req) {
   }, { timeout: 15000, maxWait: 15000 });
 }
 
-export const tryoutHandlers = { getTryouts, getTryoutRoom, createTryoutRoom, updateTryoutRoom };
+async function deleteTryoutRoom(req) {
+  requireAdmin(req.user);
+  const id = String(req.body.room_id || "");
+  if (!id || id.length > 200) fail("Try out room ID required");
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT id FROM "TryoutRoom" WHERE id = ${id} FOR UPDATE`;
+    const row = await tx.tryoutRoom.findUnique({ where: { id } });
+    if (!row) fail("Try out room not found", 404);
+    const room = row.metadata;
+    if (!["lobby", "cancelled"].includes(room.status)) fail("Only open or cancelled rooms can be deleted", 409);
+    if (req.body.expected_version !== room.version) fail("The room has changed. Refresh and confirm deletion again.", 409);
+    await tx.adminAction.create({ data: { metadata: {
+      action_type: "tryout_delete", admin_id: req.user.id, admin_name: nameFor(req.user),
+      room_id: id, room_name: room.name, previous_status: room.status,
+      player_count: room.players.length, created_date: new Date().toISOString(),
+    } } });
+    await tx.tryoutRoom.delete({ where: { id } });
+    return { success: true, deleted_room_id: id };
+  }, { timeout: 15000, maxWait: 15000 });
+}
+
+export const tryoutHandlers = { getTryouts, getTryoutRoom, createTryoutRoom, updateTryoutRoom, deleteTryoutRoom };
