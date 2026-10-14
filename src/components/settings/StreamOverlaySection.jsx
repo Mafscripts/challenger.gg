@@ -42,6 +42,7 @@ export default function StreamOverlaySection({ user }) {
       <div className="stream-overlay-preview-heading"><strong>Your player bar</strong><a href={url} target="_blank" rel="noopener noreferrer">Open full preview<ExternalLink size={14} /></a></div>
       <div className="stream-overlay-theme-picker" role="group" aria-label="Overlay theme"><span>Overlay style</span>{PLAYER_OVERLAY_THEMES.map(option => <button type="button" key={option.key} data-theme={option.key} aria-pressed={theme === option.key} onClick={() => setTheme(option.key)}><span aria-hidden="true" />{option.label}{theme === option.key && <Check size={14} aria-hidden="true" />}</button>)}</div>
       {theme === "xmas" && <p className="stream-overlay-seasonal-caption">Merry Fragmas! Snow-white stats, festive lights and falling snow, with your original Topfragg branding.</p>}
+      {theme === "signal" && <p className="stream-overlay-signal-caption">Signal / 05 — a fresh broadcast layout in acid lime, charcoal and lavender, with a dedicated trophy strip.</p>}
       <div className="stream-overlay-preview" ref={previewRef} style={{ height: previewWidth ? PLAYER_OVERLAY_HEIGHT * previewScale + 16 : 80 }}>
         {previewWidth > 0 && <iframe src={url} title="Live Topfragg player overlay preview" width={PLAYER_OVERLAY_WIDTH} height={PLAYER_OVERLAY_HEIGHT} tabIndex={-1} style={{ transform: `scale(${previewScale})` }} />}
       </div>

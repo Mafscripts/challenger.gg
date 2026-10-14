@@ -3,6 +3,7 @@ import { DollarSign, Medal, Swords, Target, Zap } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import UserBadges from "@/components/ui/UserBadges";
 import ChristmasOverlayDecorations, { ChristmasBrandMark, ChristmasPlayerScene } from "./ChristmasOverlayDecorations";
+import SignalPlayerStatsBar from "./SignalPlayerStatsBar";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
 import "@/styles/player-overlay.css";
@@ -14,6 +15,7 @@ export const PLAYER_OVERLAY_THEMES = [
   { key: "orange", label: "Orange" },
   { key: "mono", label: "Black & white" },
   { key: "xmas", label: "Christmas" },
+  { key: "signal", label: "Signal" },
 ];
 export const normalizePlayerOverlayTheme = theme => PLAYER_OVERLAY_THEMES.some(option => option.key === theme) ? theme : "blue";
 const REFRESH_MS = 15000;
@@ -84,6 +86,7 @@ export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) 
   const updatedAt = data.updated_at || "initial";
   const selectedTheme = normalizePlayerOverlayTheme(theme);
   const isChristmas = selectedTheme === "xmas";
+  if (selectedTheme === "signal") return <SignalPlayerStatsBar data={data} stale={stale} rank={rank} money={money} trophies={trophies} />;
   const valueKey = (name, value) => `${name}-${isChristmas ? value : updatedAt}`;
   const logo = <TopfraggLogo showWordmark={false} markClassName="stream-brand-mark" />;
   return <div className="app-content stream-player-bar" data-theme={selectedTheme}>

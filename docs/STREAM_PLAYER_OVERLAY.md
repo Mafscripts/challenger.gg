@@ -9,12 +9,17 @@ URL so renaming a player does not break their source.
 - Own profile: **Your Twitch player overlay**.
 - Settings: **Connections → Stream overlay**.
 - The settings panel includes a live preview, **Copy URL**, and setup instructions.
-- Choose **Original blue**, **Orange**, **Black & white**, or **Christmas** in the settings
+- Choose **Original blue**, **Orange**, **Black & white**, **Christmas**, or **Signal** in the settings
   preview. Their URLs use no theme parameter, `?theme=orange`, `?theme=mono`, and
   `?theme=xmas` respectively. Existing URLs retain their original theme. The Topfragg
-  shield and white/cyan wordmark retain their original branding in every variant.
+  shield and white/cyan wordmark retain their original branding in the first four variants.
   Christmas adds ivory stats, an evergreen player panel, red accents, a Santa hat and
   holly on the shield, snowy pines, gently twinkling lights, falling snow, and a candy-striped trim.
+- **Signal**, the fifth style, uses `?theme=signal`. It has its own layout: an acid-lime
+  brand tab, charcoal player and stat panels, lavender earnings, and an ivory trophy strip.
+  The shield uses the Signal palette and the wordmark stays visible. A subtle scan moves
+  along the player panel; values animate only when they change. Saved player name effects,
+  badges, every stat, all six trophy counters, and the 1920×80 base dimensions are retained.
 - OBS source width: match the stream canvas (for example **1920** for 1080p or **2560** for 1440p), height **80**. Align at **X: 0, Y: 0** without shrinking the source.
 - The document around the player bar is transparent, with no navigation or login.
 - The bar fills the browser viewport edge to edge with no outer padding or maximum width. It scales as a complete bar below 1920px and expands its layout above that width; it keeps every trophy counter.
@@ -25,7 +30,7 @@ The bar includes the existing Topfragg shield, TOPFRAGG.GG wordmark,
 saved name color/animated effect, public badges, ranked ELO, Free 8s ELO and SR, wins/losses, win rate,
 lifetime USD earnings, and gold/silver/bronze/premium/Topfragg/hosted trophies, including zeros.
 Name effects reuse the website's CSS and assets. The Topfragg shield stays still.
-The TOPFRAGG.GG letters fly into place, hold together for three seconds, then fall apart
+In the first four themes, the TOPFRAGG.GG letters fly into place, hold together for three seconds, then fall apart
 and repeat in an eight-second cycle. Only transforms and opacity animate; stable letter keys
 keep the animation running across data refreshes. Reduced-motion preferences show a static wordmark.
 Christmas decorations also keep stable keys across updates and animate only transforms
@@ -49,7 +54,7 @@ use `Cache-Control: no-store` for browsers and proxies.
 ## Deployment
 
 Deploy both the frontend and API changes. No database migration is needed.
-Adding the Christmas theme to an existing overlay deployment requires only the frontend.
+Adding the Christmas or Signal theme to an existing overlay deployment requires only the frontend.
 The overlay route bypasses the normal authenticated app shell and the API requires no session,
 so OBS can load it without signing in. The web server must serve the SPA entry point for
 `/overlay/player/*`, as it does for other client-side routes.

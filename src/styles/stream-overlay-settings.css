@@ -16,10 +16,13 @@
 .stream-overlay-theme-picker button[data-theme="orange"] > span { background: #ff8a24; }
 .stream-overlay-theme-picker button[data-theme="mono"] > span { border: 1px solid rgb(255 255 255 / .45); background: linear-gradient(135deg, #090a0c 0 48%, #f5f6f8 49% 100%); }
 .stream-overlay-theme-picker button[data-theme="xmas"] > span { border: 1px solid rgb(255 255 255 / .35); background: conic-gradient(#d72d45 0 33%, #fffdf3 33% 66%, #32a466 66% 100%); }
+.stream-overlay-theme-picker button[data-theme="signal"] > span { border-radius: 2px; background: linear-gradient(135deg, #d7ff5f 0 50%, #c7b7ff 50% 100%); }
 .stream-overlay-theme-picker button[aria-pressed="true"] { border-color: rgb(20 216 255 / .4); background: rgb(20 216 255 / .06); }
 .stream-overlay-theme-picker button[data-theme="orange"][aria-pressed="true"] { border-color: rgb(255 138 36 / .4); background: rgb(255 138 36 / .06); }
 .stream-overlay-theme-picker button[data-theme="mono"][aria-pressed="true"] { border-color: rgb(255 255 255 / .38); background: rgb(255 255 255 / .07); }
 .stream-overlay-theme-picker button[data-theme="xmas"][aria-pressed="true"] { border-color: rgb(74 190 123 / .55); background: linear-gradient(110deg, rgb(50 164 102 / .12), rgb(215 45 69 / .08)); }
+.stream-overlay-theme-picker button[data-theme="signal"][aria-pressed="true"] { border-color: rgb(215 255 95 / .55); background: #232833; color: #d7ff5f; }
+.stream-overlay-signal-caption { margin: -3px 0 14px; color: #c7b7ff; font-size: 12px; line-height: 1.6; }
 .stream-overlay-seasonal-caption { margin: -3px 0 14px; color: #b9d7c4; font-size: 12px; line-height: 1.6; }
 .stream-overlay-theme-picker button:hover { border-color: rgb(255 255 255 / .24); background-color: rgb(255 255 255 / .04); }
 .stream-overlay-theme-picker button:focus-visible { outline: 2px solid rgb(255 255 255 / .65); outline-offset: 2px; }
