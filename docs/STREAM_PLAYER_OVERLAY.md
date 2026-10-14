@@ -9,9 +9,9 @@ URL so renaming a player does not break their source.
 - Own profile: **Your Twitch player overlay**.
 - Settings: **Connections → Stream overlay**.
 - The settings panel includes a live preview, **Copy URL**, and setup instructions.
-- Choose **Original blue**, **Orange**, **Black & white**, **Christmas**, or **Signal** in the settings
-  preview. Their URLs use no theme parameter, `?theme=orange`, `?theme=mono`, and
-  `?theme=xmas` respectively. Existing URLs retain their original theme. The Topfragg
+- Choose one of ten styles in the settings preview. Original blue uses no theme
+  parameter; Orange, Black & white and Christmas use `?theme=orange`, `?theme=mono`,
+  and `?theme=xmas`. Existing URLs retain their original theme. The Topfragg
   shield and white/cyan wordmark retain their original branding in the first four variants.
   Christmas adds ivory stats, an evergreen player panel, red accents, a Santa hat and
   holly on the shield, snowy pines, gently twinkling lights, falling snow, and a candy-striped trim.
@@ -20,9 +20,22 @@ URL so renaming a player does not break their source.
   The shield uses the Signal palette and the wordmark stays visible. A subtle scan moves
   along the player panel; values animate only when they change. Saved player name effects,
   badges, every stat, all six trophy counters, and the 1920×80 base dimensions are retained.
+- Five additional designs use the same data and canvas, with independent layouts:
+
+  | Style | URL parameter | Design |
+  | --- | --- | --- |
+  | Apex | `?theme=apex` | Red racing masthead, angular player panel, white timing board and dark trophies. |
+  | Obsidian | `?theme=obsidian` | Black and champagne, trophy gallery before a centered serif player nameplate. |
+  | Aurora | `?theme=aurora` | Indigo, mint and violet floating panels with transparent gutters and separate stat capsules. |
+  | Terminal | `?theme=terminal` | Green phosphor, monospace typography and two rows of inline stats and trophies. |
+  | Editorial | `?theme=editorial` | Ivory score sheet, vermilion masthead, dark green nameplate, trophies before serif stat columns. |
+
+  Values animate only when they change. Reduced-motion preferences disable the
+  decorative light and cursor animations. Every design retains saved name effects,
+  badges, the six stats, all six trophy counters and a reconnecting indicator.
 - OBS source width: match the stream canvas (for example **1920** for 1080p or **2560** for 1440p), height **80**. Align at **X: 0, Y: 0** without shrinking the source.
 - The document around the player bar is transparent, with no navigation or login.
-- The bar fills the browser viewport edge to edge with no outer padding or maximum width. It scales as a complete bar below 1920px and expands its layout above that width; it keeps every trophy counter.
+- The canvas uses the full browser viewport width with no maximum width. It scales as a complete bar below 1920px and expands its layout above that width; it keeps every trophy counter. Aurora includes transparent gutters inside that same canvas.
 
 ## Presentation and updates
 
@@ -54,7 +67,7 @@ use `Cache-Control: no-store` for browsers and proxies.
 ## Deployment
 
 Deploy both the frontend and API changes. No database migration is needed.
-Adding the Christmas or Signal theme to an existing overlay deployment requires only the frontend.
+Adding themes to an existing overlay deployment requires only the frontend.
 The overlay route bypasses the normal authenticated app shell and the API requires no session,
 so OBS can load it without signing in. The web server must serve the SPA entry point for
 `/overlay/player/*`, as it does for other client-side routes.

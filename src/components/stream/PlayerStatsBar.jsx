@@ -4,6 +4,7 @@ import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import UserBadges from "@/components/ui/UserBadges";
 import ChristmasOverlayDecorations, { ChristmasBrandMark, ChristmasPlayerScene } from "./ChristmasOverlayDecorations";
 import SignalPlayerStatsBar from "./SignalPlayerStatsBar";
+import StudioPlayerStatsBar, { STUDIO_OVERLAY_THEMES } from "./StudioPlayerStatsBar";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
 import "@/styles/player-overlay.css";
@@ -11,11 +12,12 @@ import "@/styles/player-overlay.css";
 export const PLAYER_OVERLAY_WIDTH = 1920;
 export const PLAYER_OVERLAY_HEIGHT = 80;
 export const PLAYER_OVERLAY_THEMES = [
-  { key: "blue", label: "Original blue" },
-  { key: "orange", label: "Orange" },
-  { key: "mono", label: "Black & white" },
-  { key: "xmas", label: "Christmas" },
-  { key: "signal", label: "Signal" },
+  { key: "blue", label: "Original blue", caption: "The Topfragg original" },
+  { key: "orange", label: "Orange", caption: "Warm amber glow" },
+  { key: "mono", label: "Black & white", caption: "Pure monochrome" },
+  { key: "xmas", label: "Christmas", caption: "Merry Fragmas", description: "Merry Fragmas! Snow-white stats, festive lights and falling snow, with your original Topfragg branding." },
+  { key: "signal", label: "Signal", caption: "Acid lime & lavender", description: "Signal / 05 — a fresh broadcast layout in acid lime, charcoal and lavender, with a dedicated trophy strip." },
+  ...STUDIO_OVERLAY_THEMES,
 ];
 export const normalizePlayerOverlayTheme = theme => PLAYER_OVERLAY_THEMES.some(option => option.key === theme) ? theme : "blue";
 const REFRESH_MS = 15000;
@@ -87,6 +89,7 @@ export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) 
   const selectedTheme = normalizePlayerOverlayTheme(theme);
   const isChristmas = selectedTheme === "xmas";
   if (selectedTheme === "signal") return <SignalPlayerStatsBar data={data} stale={stale} rank={rank} money={money} trophies={trophies} />;
+  if (STUDIO_OVERLAY_THEMES.some(option => option.key === selectedTheme)) return <StudioPlayerStatsBar data={data} stale={stale} theme={selectedTheme} rank={rank} money={money} trophies={trophies} />;
   const valueKey = (name, value) => `${name}-${isChristmas ? value : updatedAt}`;
   const logo = <TopfraggLogo showWordmark={false} markClassName="stream-brand-mark" />;
   return <div className="app-content stream-player-bar" data-theme={selectedTheme}>

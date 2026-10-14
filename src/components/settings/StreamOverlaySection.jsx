@@ -12,6 +12,7 @@ export default function StreamOverlaySection({ user }) {
   const urlRef = useRef(null);
   const resetRef = useRef(null);
   const url = playerOverlayUrl(user.id, theme);
+  const selectedDesign = PLAYER_OVERLAY_THEMES.find(option => option.key === theme);
   useEffect(() => {
     setCopied(false);
     setCopyError("");
@@ -40,9 +41,8 @@ export default function StreamOverlaySection({ user }) {
     <header><span className="stream-overlay-settings-mark"><MonitorPlay size={22} /></span><div><h3>Twitch player overlay</h3><p>Your live Topfragg stats, ready for your stream.</p></div><span className="stream-overlay-settings-status">Auto updates</span></header>
     <div className="stream-overlay-settings-body">
       <div className="stream-overlay-preview-heading"><strong>Your player bar</strong><a href={url} target="_blank" rel="noopener noreferrer">Open full preview<ExternalLink size={14} /></a></div>
-      <div className="stream-overlay-theme-picker" role="group" aria-label="Overlay theme"><span>Overlay style</span>{PLAYER_OVERLAY_THEMES.map(option => <button type="button" key={option.key} data-theme={option.key} aria-pressed={theme === option.key} onClick={() => setTheme(option.key)}><span aria-hidden="true" />{option.label}{theme === option.key && <Check size={14} aria-hidden="true" />}</button>)}</div>
-      {theme === "xmas" && <p className="stream-overlay-seasonal-caption">Merry Fragmas! Snow-white stats, festive lights and falling snow, with your original Topfragg branding.</p>}
-      {theme === "signal" && <p className="stream-overlay-signal-caption">Signal / 05 — a fresh broadcast layout in acid lime, charcoal and lavender, with a dedicated trophy strip.</p>}
+      <div className="stream-overlay-theme-picker" role="group" aria-label="Overlay theme"><span>Choose your overlay · {PLAYER_OVERLAY_THEMES.length} styles</span>{PLAYER_OVERLAY_THEMES.map(option => <button type="button" key={option.key} data-theme={option.key} aria-pressed={theme === option.key} onClick={() => setTheme(option.key)}><span className="stream-overlay-theme-swatch" aria-hidden="true" /><span className="stream-overlay-theme-copy"><strong>{option.label}</strong><small>{option.caption}</small></span>{theme === option.key && <Check size={14} aria-hidden="true" />}</button>)}</div>
+      {selectedDesign?.description && <p className="stream-overlay-theme-description" role="status">{selectedDesign.description}</p>}
       <div className="stream-overlay-preview" ref={previewRef} style={{ height: previewWidth ? PLAYER_OVERLAY_HEIGHT * previewScale + 16 : 80 }}>
         {previewWidth > 0 && <iframe src={url} title="Live Topfragg player overlay preview" width={PLAYER_OVERLAY_WIDTH} height={PLAYER_OVERLAY_HEIGHT} tabIndex={-1} style={{ transform: `scale(${previewScale})` }} />}
       </div>
