@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "./prisma.js";
 import { publicUser } from "./auth.js";
 import { containsBlockedLanguage } from "./profanity-filter.js";
+import { issueTryoutLiveToken, publishTryoutUpdate } from "./tryout-live.js";
 import { getMapImage } from "../src/lib/cdlMaps.js";
 import { TRYOUT_CAPACITY, TRYOUT_HP_MAPS, TRYOUT_TEAM_SIZE, canAccessTryouts, canManageTryouts, tryoutSeriesScore } from "../src/lib/tryouts.js";
 
@@ -43,7 +44,7 @@ async function createTryoutRoom(req) {
   requireAdmin(req.user);
   const name = String(req.body.name || "Challengers Try out").trim().slice(0, 80);
   if (!name) fail("Give the try out a name");
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const row = await tx.tryoutRoom.create({ data: { metadata: {
       name, status: "lobby", game_id: "bo7", game_name: "Black Ops 7", game_mode: "Hardpoint",
       best_of: 3, team_size: "4v4", players: [], maps: [], messages: [], version: 1,
@@ -55,6 +56,8 @@ async function createTryoutRoom(req) {
     } } });
     return { success: true, room: roomFor(row) };
   });
+  publishTryoutUpdate(result.room.id);
+  return result;
 }
 
 async function eligibleRoster(tx, room) {
@@ -77,7 +80,7 @@ async function updateTryoutRoom(req) {
   const action = String(req.body.action || "");
   const selfActions = ["join", "leave", "chat"];
   if (!selfActions.includes(action)) requireAdmin(req.user);
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT id FROM "TryoutRoom" WHERE id = ${id} FOR UPDATE`;
     const row = await tx.tryoutRoom.findUnique({ where: { id } });
     if (!row) fail("Try out room not found", 404);
@@ -196,13 +199,15 @@ async function updateTryoutRoom(req) {
     } } });
     return { success: true, ...(action === "leave" ? {} : { room: roomFor(updated) }) };
   }, { timeout: 15000, maxWait: 15000 });
+  publishTryoutUpdate(id);
+  return result;
 }
 
 async function deleteTryoutRoom(req) {
   requireAdmin(req.user);
   const id = String(req.body.room_id || "");
   if (!id || id.length > 200) fail("Try out room ID required");
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT id FROM "TryoutRoom" WHERE id = ${id} FOR UPDATE`;
     const row = await tx.tryoutRoom.findUnique({ where: { id } });
     if (!row) fail("Try out room not found", 404);
@@ -217,6 +222,14 @@ async function deleteTryoutRoom(req) {
     await tx.tryoutRoom.delete({ where: { id } });
     return { success: true, deleted_room_id: id };
   }, { timeout: 15000, maxWait: 15000 });
+  publishTryoutUpdate(id);
+  return result;
 }
 
-export const tryoutHandlers = { getTryouts, getTryoutRoom, createTryoutRoom, updateTryoutRoom, deleteTryoutRoom };
+async function getTryoutLiveUpdatesToken(req) {
+  requireAccess(req.user);
+  if (req.body.room_id) await getTryoutRoom(req);
+  return { success: true, ...issueTryoutLiveToken(req.user.id, req.body.room_id || null) };
+}
+
+export const tryoutHandlers = { getTryouts, getTryoutRoom, createTryoutRoom, updateTryoutRoom, deleteTryoutRoom, getTryoutLiveUpdatesToken };

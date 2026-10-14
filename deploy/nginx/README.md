@@ -10,3 +10,7 @@ The production site must forward WebSocket upgrades for
 
 A working endpoint accepts the WebSocket upgrade. Without these headers,
 Nginx forwards the request as a normal HTTP GET and Express returns 404.
+
+Try outs also uses `/api/tryout-live`. Add the location from
+`topfragg-tryout-live.conf` to the same HTTPS server block, using the port of
+the running API, then validate and reload Nginx as above.

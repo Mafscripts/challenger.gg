@@ -23,6 +23,7 @@ const ME_CACHE_MS = 60_000;
 const readOnlyFunctions = new Set([
   "getTryouts",
   "getTryoutRoom",
+  "getTryoutLiveUpdatesToken",
   "getFreeEightsOverview",
   "getFreeEightsPlayerStats",
   "getDirectMessages",

@@ -17,8 +17,10 @@ npm run prisma:generate
 
 Build the website and restart the API using the project's usual deployment
 process. No Discord bot restart or Discord permissions are needed. Test and
-publish the changes when ready; no automated tests were added or run for this
-feature at the user's request.
+publish the changes when ready. For immediate live updates, forward WebSocket
+upgrades for `/api/tryout-live` to the API using
+`deploy/nginx/topfragg-tryout-live.conf` (adjust the upstream port if needed).
+The API must restart to register this endpoint.
 
 ## Give a player access
 
@@ -65,8 +67,12 @@ team; joining as a player still requires an Activision ID.
 
 Every room has private chat for its joined players and admins. Messages are
 limited to 1,500 characters, a brief posting cooldown applies, and the most
-recent 200 messages are retained. The page refreshes room state every five
-seconds while visible, pausing during drag operations. Room edits are atomic,
+recent 200 messages are retained. The page receives immediate notifications
+after room changes commit, including joins, departures, team edits and chat.
+It fetches the latest protected room state on each notification and reconnects
+automatically after a lost connection. A two-second refresh while visible is a
+fallback, and returning to the tab refreshes immediately. Refreshes pause during
+drag operations and mutations, then resume immediately afterward. Room edits are atomic,
 admin controls check the current version, and admin changes are audited.
 
 Try out results stay in their own rooms. They do not change Free 8s ELO, wagers,

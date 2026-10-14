@@ -13,6 +13,7 @@ import rankVerificationRoutes from "./routes/rank-verification.js";
 import { disconnectPrisma } from "./prisma.js";
 import { attachRankedVoiceServer } from "./ranked-voice.js";
 import { attachEightsLiveServer } from "./eights-live.js";
+import { attachTryoutLiveServer } from "./tryout-live.js";
 import { startMatchfinderExpiryWorker } from "./matchfinder-expiry.js";
 
 const app = express();
@@ -70,6 +71,7 @@ const server = app.listen(port, () => {
 });
 attachRankedVoiceServer(server);
 attachEightsLiveServer(server);
+attachTryoutLiveServer(server);
 const stopMatchfinderExpiry = startMatchfinderExpiryWorker(expireMatchfinderPosts);
 
 const shutdown = async () => {

@@ -9,6 +9,7 @@ import PageLoader from "@/components/ui/PageLoader";
 import UserBadges from "@/components/ui/UserBadges";
 import { hasActivisionId } from "@/lib/activision";
 import { TRYOUT_CAPACITY, TRYOUT_TEAM_SIZE, canAccessTryouts, canManageTryouts, tryoutSeriesScore, tryoutTeamLabel } from "@/lib/tryouts";
+import { subscribeTryoutUpdates, tryoutLiveUrl } from "@/lib/tryoutLive";
 import "@/styles/tryouts.css";
 
 const statusLabel = { lobby: "Registration open", live: "Match live", completed: "Completed", cancelled: "Cancelled" };
@@ -61,6 +62,8 @@ export default function Tryouts() {
   const draggingRef = useRef(false);
   const pendingRef = useRef(false);
   const mutationRevision = useRef(0);
+  const loadRevision = useRef(0);
+  const loadInFlight = useRef(null);
   const routeRef = useRef(roomId);
   const chatEnd = useRef(null);
   routeRef.current = roomId;
@@ -68,28 +71,60 @@ export default function Tryouts() {
   const load = useCallback(async (quiet = false) => {
     if (!allowed || pendingRef.current || draggingRef.current) return;
     if (!quiet) setLoading(true);
+    if (loadInFlight.current && loadInFlight.current.route === roomId) {
+      loadInFlight.current.queued = true;
+      return;
+    }
+    const request = { route: roomId, queued: false };
+    loadInFlight.current = request;
     const route = roomId;
     const revision = mutationRevision.current;
+    const requestRevision = ++loadRevision.current;
     try {
       const { data } = await base44.functions.invoke(roomId ? "getTryoutRoom" : "getTryouts", roomId ? { room_id: roomId } : {});
-      if (routeRef.current !== route || pendingRef.current || draggingRef.current || mutationRevision.current !== revision) return;
+      if (routeRef.current !== route || requestRevision !== loadRevision.current || pendingRef.current || draggingRef.current || mutationRevision.current !== revision) return;
       if (roomId) setRoom(data.room); else setRooms(data.rooms);
       setError(""); setDenied(false);
     } catch (failure) {
-      if (routeRef.current !== route) return;
+      if (routeRef.current !== route || requestRevision !== loadRevision.current || pendingRef.current || draggingRef.current || mutationRevision.current !== revision) return;
       setError(failure.message || "Could not load Try outs.");
       if (failure.status === 404 && roomId) setRoom(null);
       if (failure.status === 403) { setDenied(true); setRoom(null); setRooms([]); }
-    } finally { if (routeRef.current === route) setLoading(false); }
+    } finally {
+      if (routeRef.current === route && requestRevision === loadRevision.current) setLoading(false);
+      if (loadInFlight.current === request) {
+        loadInFlight.current = null;
+        if (request.queued && routeRef.current === route) load(true);
+      }
+    }
   }, [allowed, roomId]);
 
   useEffect(() => {
     setRoom(null); setRooms([]); setMessage(""); setError(""); setDenied(false);
     if (!allowed) { setLoading(false); return undefined; }
     load();
-    const timer = window.setInterval(() => { if (document.visibilityState !== "hidden") load(true); }, 5000);
-    return () => window.clearInterval(timer);
+    const refresh = () => { if (document.visibilityState !== "hidden") load(true); };
+    const timer = window.setInterval(refresh, 2000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      loadRevision.current += 1;
+      loadInFlight.current = null;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [allowed, load]);
+
+  useEffect(() => {
+    if (!allowed || denied) return undefined;
+    return subscribeTryoutUpdates({
+      roomId,
+      requestToken: () => base44.functions.invoke("getTryoutLiveUpdatesToken", roomId ? { room_id: roomId } : {}),
+      urlForToken: tryoutLiveUrl,
+      onUpdate: () => load(true),
+    });
+  }, [allowed, denied, roomId, load]);
 
   useEffect(() => {
     const feed = chatEnd.current?.parentElement;
@@ -115,7 +150,7 @@ export default function Tryouts() {
       return false;
     } finally {
       pendingRef.current = false; setBusy("");
-      if (refresh) load(true);
+      if (refresh || routeRef.current === targetId) load(true);
     }
   };
 
@@ -155,7 +190,7 @@ export default function Tryouts() {
     if (room?.players.find((player) => player.user_id === userId)?.team === team) return;
     if (userId && userId !== swapId) action("move", { user_id: userId, team, ...(swapId ? { swap_user_id: swapId } : {}) });
   };
-  const stopDrag = () => { draggingRef.current = false; setDragging(""); setDropTeam(""); };
+  const stopDrag = () => { draggingRef.current = false; setDragging(""); setDropTeam(""); load(true); };
   const confirmAction = (kind, prompt) => { if (window.confirm(prompt)) action(kind); };
 
   if (!allowed || denied) return <div className="tryouts-page"><section className="tryout-access-gate"><LockKeyhole size={38} /><h1>{denied ? "Try outs access unavailable" : "Challengers access required"}</h1><p>{denied ? error || "Join a session from the Try outs page first." : "Try outs is reserved for players with the Challengers badge and Topfragg admins."}</p><Link to={allowed ? "/try-outs" : "/profile"} className="tryout-button">{allowed ? "Back to Try outs" : "Back to profile"} <ArrowRight size={15} /></Link></section></div>;
