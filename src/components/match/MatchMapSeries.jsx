@@ -1,6 +1,6 @@
 import React from "react";
 import { Map as MapIcon } from "lucide-react";
-import { getMapImage } from "@/lib/cdlMaps";
+import { tournamentMapImage } from "@/lib/tournamentGames";
 
 const mapName = (map) => typeof map === "string" ? map : (map?.map || map?.name || "Map pending");
 const mapMode = (map, fallback) => typeof map === "string" ? fallback : (map?.mode || map?.game_mode_display || map?.game_mode || fallback);
@@ -8,6 +8,7 @@ const mapHost = (map, fallback) => typeof map === "string" ? fallback : (map?.ho
 
 export default function MatchMapSeries({
   maps = [],
+  gameId = "bo7",
   title = "Map Series",
   mode = "Search and Destroy",
   host = "TBD",
@@ -44,7 +45,7 @@ export default function MatchMapSeries({
           <div className="rounded-lg border border-white/[0.06] bg-black/15 p-4 text-sm text-vapor">{emptyText}</div>
         ) : visibleMaps.map((map, index) => {
           const name = mapName(map);
-          const image = (typeof map === "object" && map?.image) || getMapImage(name);
+          const image = (typeof map === "object" && map?.image) || tournamentMapImage(name, gameId);
           const mapNumber = typeof map === "string" ? index + 1 : (map?.game || map?.number || index + 1);
           const currentHost = mapHost(map, list ? (index === 0 ? host : "") : host);
 

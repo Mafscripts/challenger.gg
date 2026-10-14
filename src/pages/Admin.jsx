@@ -51,6 +51,7 @@ import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
 import { useAdminConsoleData } from "@/hooks/useAdminConsoleData";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
+import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm } from "@/lib/tournamentGames";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
@@ -61,12 +62,6 @@ const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGam
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
 const tournamentRewardCategories = new Set(["knife", "weapon_skin", "trophy"]);
-const defaultTournamentSndMaps = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
-const defaultTournamentHpMaps = ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"];
-const defaultTournamentOverloadMaps = ["Scar", "Gridlock", "Den", "Exposure"];
-const defaultTournamentSndMapsText = defaultTournamentSndMaps.join("\n");
-const defaultTournamentHpMapsText = defaultTournamentHpMaps.join("\n");
-const defaultTournamentOverloadMapsText = defaultTournamentOverloadMaps.join("\n");
 const tournamentGameModeOptions = [
   { value: "Best of 1", label: "Best of 1" },
   { value: "Best of 3", label: "Best of 3" },
@@ -79,6 +74,10 @@ const tournamentModeSetOptions = [
   { value: "hp_only", label: "Hardpoint — Best of 1", gameModes: ["hp"], gameMode: "Best of 1" },
   { value: "snd_only", label: "Search & Destroy — Best of 3", gameModes: ["snd"], gameMode: "Best of 3" },
   { value: "cdl_var", label: "CDL Variant — Best of 3 · Hardpoint / Search & Destroy / Overload", gameModes: ["hp", "snd", "overload"], gameMode: "Best of 3" },
+  { value: "cdl_control", label: "CDL Variant — Best of 3 · Hardpoint / Search & Destroy / Control", gameModes: ["hp", "snd", "control"], gameMode: "Best of 3" },
+  { value: "control_only", label: "Control — Best of 3", gameModes: ["control"], gameMode: "Best of 3" },
+  { value: "overload_only", label: "Overload — Best of 3", gameModes: ["overload"], gameMode: "Best of 3" },
+  { value: "custom", label: "Custom mode selection" },
 ];
 const legacyTournamentBestOf = {
   bo1_snd: 1,
@@ -108,6 +107,9 @@ const tournamentModeSetFor = (tournament) => {
     ? tournament.game_modes.map((mode) => String(mode || "").toLowerCase()).filter(Boolean)
     : [];
   const legacyMode = String(tournament?.game_mode || "").toLowerCase();
+  if (gameModes.includes("control")) return gameModes.length === 1 ? "control_only" : (gameModes.join(",") === "hp,snd,control" ? "cdl_control" : "custom");
+  if (gameModes.length === 1 && gameModes[0] === "overload") return "overload_only";
+  if (gameModes.length > 0 && !tournamentModeSetOptions.some((option) => option.gameModes && [...new Set(option.gameModes)].join(",") === gameModes.join(","))) return "custom";
   const isBestOfOne = legacyMode === "bo1_snd" || /\b(?:bo|best[\s-]*of)\s*1\b/i.test(legacyMode);
   if ((gameModes.length === 1 && gameModes[0] === "snd" && isBestOfOne) || legacyMode === "bo1_snd") return "bo1_snd";
   if (gameModes.length === 2 && gameModes[0] === "hp" && gameModes[1] === "snd") return "hp_snd_hp";
@@ -118,7 +120,9 @@ const tournamentModeSetFor = (tournament) => {
   return "cdl_var";
 };
 const tournamentModeSetLabel = (tournament) => (
-  tournamentModeSetOptions.find((option) => option.value === tournamentModeSetFor(tournament))?.label || "CDL VAR"
+  tournamentModeSetFor(tournament) === "custom"
+    ? (tournament.game_modes || []).map((id) => TOURNAMENT_MODES.find((mode) => mode.id === id)?.name || id).join(" / ")
+    : tournamentModeSetOptions.find((option) => option.value === tournamentModeSetFor(tournament))?.label || "CDL VAR"
 );
 const tournamentTeamSizeOptions = Array.from({ length: 8 }, (_, index) => `${index + 1}v${index + 1}`);
 const userBadgeOptions = [
@@ -167,6 +171,9 @@ const defaultTournamentForm = {
   name: "",
   image_url: "",
   banner_url: "",
+  game_id: "bo7",
+  game_map_drafts: {},
+  custom_game_modes: ["hp", "snd"],
   game_mode: "Best of 3",
   game_mode_set: "cdl_var",
   team_size: "2v2",
@@ -175,9 +182,7 @@ const defaultTournamentForm = {
   prize_pool: "0",
   first_place_prize: "0",
   second_place_prize: "0",
-  snd_maps: defaultTournamentSndMapsText,
-  hp_maps: defaultTournamentHpMapsText,
-  overload_maps: defaultTournamentOverloadMapsText,
+  ...tournamentMapForm({ game_id: "bo7" }),
   max_teams: "8",
   bracket_type: "single_elimination",
   status: "open",
@@ -399,16 +404,6 @@ const tournamentPrizeSummary = (tournament) => {
   if (first > 0 || second > 0) return `#1 ${formatMoney(first)} | #2 ${formatMoney(second)}`;
   return formatMoney(tournament?.prize_pool);
 };
-const parseMapList = (value, fallback = []) => {
-  const rows = String(value || "")
-    .split(/[\n,]+/)
-    .map((row) => row.trim())
-    .filter(Boolean);
-  return [...new Set(rows.length > 0 ? rows : fallback)];
-};
-const mapListText = (value, fallback = []) => (
-  Array.isArray(value) && value.length > 0 ? value.join("\n") : fallback.join("\n")
-);
 const userBadgeTypes = (user) => {
   const badges = Array.isArray(user?.badges) ? user.badges : [];
   const types = new Set(badges.map((badge) => badge?.type).filter(Boolean));
@@ -1351,15 +1346,16 @@ export default function Admin() {
     };
     const firstPlacePrize = Number(tournamentForm.first_place_prize || 0);
     const secondPlacePrize = Number(tournamentForm.second_place_prize || 0);
-    const sndMaps = parseMapList(tournamentForm.snd_maps, defaultTournamentSndMaps);
-    const hpMaps = parseMapList(tournamentForm.hp_maps, defaultTournamentHpMaps);
-    const overloadMaps = parseMapList(tournamentForm.overload_maps, defaultTournamentOverloadMaps);
+    const pools = Object.fromEntries(TOURNAMENT_MODES.map(({ id }) => [id, parseTournamentMapList(tournamentForm[`${id}_maps`])]));
     return {
       name: tournamentForm.name.trim(),
       image_url: tournamentForm.image_url.trim(),
       banner_url: tournamentForm.banner_url.trim(),
+      game_id: tournamentForm.game_id,
+      game_name: tournamentGameName(tournamentForm),
+      game: tournamentGameName(tournamentForm),
       game_mode: tournamentGameModeValue(tournamentForm.game_mode),
-      game_modes: tournamentGameModesForSet(tournamentForm.game_mode_set),
+      game_modes: tournamentForm.game_mode_set === "custom" ? tournamentForm.custom_game_modes : tournamentGameModesForSet(tournamentForm.game_mode_set),
       team_size: tournamentForm.team_size,
       entry_fee: Number(tournamentForm.entry_fee || 0),
       entry_type: entryType,
@@ -1368,12 +1364,8 @@ export default function Admin() {
         first_amount: Number.isFinite(firstPlacePrize) ? firstPlacePrize : 0,
         second_amount: Number.isFinite(secondPlacePrize) ? secondPlacePrize : 0,
       },
-      map_pools: {
-        snd: sndMaps,
-        hp: hpMaps,
-        overload: overloadMaps,
-      },
-      maps: sndMaps,
+      map_pools: pools,
+      maps: pools.snd,
       max_teams: Number(tournamentForm.max_teams || 0),
       status: tournamentForm.status,
       format: tournamentForm.bracket_type,
@@ -1413,6 +1405,11 @@ export default function Admin() {
       return;
     }
 
+    if (tournamentForm.game_mode_set === "custom" && !tournamentForm.custom_game_modes.length) {
+      toast({ title: "Game mode required", description: "Select at least one game mode.", variant: "destructive" });
+      return;
+    }
+
     setBusyId("tournament:create");
     try {
       const payload = tournamentPayload();
@@ -1441,6 +1438,8 @@ export default function Admin() {
       name: tournament.name || "",
       image_url: tournament.image_url || "",
       banner_url: tournament.banner_url || "",
+      game_id: tournamentGameId(tournament),
+      custom_game_modes: tournament.game_modes?.length ? [...new Set(tournament.game_modes)] : ["hp", "snd"],
       game_mode: tournamentGameModeLabel(tournament.game_mode || "snd"),
       game_mode_set: tournamentModeSetFor(tournament),
       team_size: tournament.team_size || "2v2",
@@ -1449,9 +1448,7 @@ export default function Admin() {
       prize_pool: String(tournament.prize_pool ?? 0),
       first_place_prize: tournamentPlacementPrizeValue(tournament, 1),
       second_place_prize: tournamentPlacementPrizeValue(tournament, 2),
-      snd_maps: mapListText(tournament.map_pools?.snd || tournament.snd_map_pool || tournament.snd_maps || tournament.maps, defaultTournamentSndMaps),
-      hp_maps: mapListText(tournament.map_pools?.hp || tournament.hp_map_pool || tournament.hp_maps, defaultTournamentHpMaps),
-      overload_maps: mapListText(tournament.map_pools?.overload || tournament.overload_map_pool || tournament.overload_maps, defaultTournamentOverloadMaps),
+      ...tournamentMapForm(tournament),
       max_teams: String(tournament.max_teams ?? 8),
       bracket_type: tournament.bracket_type || tournament.format || "single_elimination",
       status: tournament.status || "open",
@@ -3047,10 +3044,25 @@ export default function Admin() {
                             <input value={tournamentForm.name} onChange={(event) => setTournamentForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="e.g. Topfragg Open #12" className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35 focus:bg-secondary" />
                           </label>
                           <label className="space-y-1.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Game</span>
+                            <select value={tournamentForm.game_id} onChange={(event) => setTournamentForm((prev) => switchTournamentGame(prev, event.target.value))} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35">
+                              {TOURNAMENT_GAMES.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
+                            </select>
+                          </label>
+                          <label className="space-y-1.5">
                             <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Series / Best of</span>
                             <input list="admin-tournament-game-modes" value={tournamentForm.game_mode} onChange={(event) => setTournamentForm((prev) => ({ ...prev, game_mode: event.target.value }))} placeholder="Best of 3" maxLength={80} required className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35 focus:bg-secondary" />
                             <datalist id="admin-tournament-game-modes">{tournamentGameModeOptions.map((option) => <option key={option.value} value={option.label} />)}</datalist>
                           </label>
+                          {tournamentForm.game_mode_set === "custom" && (
+                            <fieldset className="space-y-2 md:col-span-2">
+                              <legend className="text-[10px] font-black uppercase tracking-wider text-vapor">Select game modes</legend>
+                              <div className="flex flex-wrap gap-4">
+                                {TOURNAMENT_MODES.map((mode) => <label key={mode.id} className="flex items-center gap-2 text-xs text-vapor"><input type="checkbox" checked={tournamentForm.custom_game_modes.includes(mode.id)} onChange={(event) => { const checked = event.target.checked; setTournamentForm((prev) => ({ ...prev, custom_game_modes: checked ? [...prev.custom_game_modes, mode.id] : prev.custom_game_modes.filter((id) => id !== mode.id) })); }} />{mode.name}</label>)}
+                              </div>
+                              <p className="text-[10px] text-vapor">Selected modes repeat in the order you select them until the series is complete.</p>
+                            </fieldset>
+                          )}
                           <label className="space-y-1.5">
                             <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Game modes</span>
                             <select value={tournamentForm.game_mode_set} onChange={(event) => { const gameModeSet = event.target.value; const preset = tournamentModeSetOptions.find((option) => option.value === gameModeSet); setTournamentForm((prev) => ({ ...prev, game_mode_set: gameModeSet, ...(preset?.gameMode ? { game_mode: preset.gameMode } : {}) })); }} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35">
@@ -3124,7 +3136,8 @@ export default function Admin() {
                         <div className="mt-4 space-y-3">
                           {[
                             ["Format", tournamentForm.game_mode || "Not set"],
-                            ["Mode set", tournamentModeSetOptions.find((option) => option.value === tournamentForm.game_mode_set)?.label || tournamentForm.game_mode_set],
+                            ["Game", tournamentGameName(tournamentForm)],
+                            ["Mode set", tournamentForm.game_mode_set === "custom" ? tournamentForm.custom_game_modes.map((id) => TOURNAMENT_MODES.find((mode) => mode.id === id)?.name).join(" / ") || "Not set" : tournamentModeSetOptions.find((option) => option.value === tournamentForm.game_mode_set)?.label || tournamentForm.game_mode_set],
                             ["Teams", `${tournamentForm.team_size || "—"} · max ${tournamentForm.max_teams || "—"}`],
                             ["Entry", tournamentForm.entry_type === "free" ? "Free" : `${tournamentForm.entry_type}${Number(tournamentForm.entry_fee || 0) > 0 ? ` · ${tournamentForm.entry_fee}` : ""}`],
                             ["Prize pool", Number(tournamentForm.prize_pool || 0).toLocaleString()],
@@ -3159,20 +3172,15 @@ export default function Admin() {
                     </div>
                   )}
                   <details className="mt-4 rounded-2xl border border-white/[0.07] bg-secondary/25">
-                    <summary className="cursor-pointer px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:text-white">Map pools · optional</summary>
-                    <div className="grid gap-3 border-t border-white/[0.06] p-4 md:grid-cols-3">
-                      <label className="space-y-1">
-                        <span className="text-[10px] uppercase text-vapor">SND maps</span>
-                        <textarea value={tournamentForm.snd_maps} onChange={(event) => setTournamentForm((prev) => ({ ...prev, snd_maps: event.target.value }))} rows={5} className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm focus:border-cyan/30 focus:outline-none" />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-[10px] uppercase text-vapor">HP maps</span>
-                        <textarea value={tournamentForm.hp_maps} onChange={(event) => setTournamentForm((prev) => ({ ...prev, hp_maps: event.target.value }))} rows={5} className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm focus:border-cyan/30 focus:outline-none" />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-[10px] uppercase text-vapor">Overload maps</span>
-                        <textarea value={tournamentForm.overload_maps} onChange={(event) => setTournamentForm((prev) => ({ ...prev, overload_maps: event.target.value }))} rows={5} className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm focus:border-cyan/30 focus:outline-none" />
-                      </label>
+                    <summary className="cursor-pointer px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:text-white">Map pools · {tournamentGameName(tournamentForm)}</summary>
+                    <div className="border-t border-white/[0.06] p-4">
+                      <p className="mb-4 text-xs text-vapor">Add your own map names, one per line or separated by commas. You can save without maps and add them later, before generating the bracket. Only the modes selected above need maps.</p>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {TOURNAMENT_MODES.map((mode) => <label key={mode.id} className="space-y-1">
+                          <span className="text-[10px] uppercase text-vapor">{mode.name} maps</span>
+                          <textarea value={tournamentForm[`${mode.id}_maps`]} onChange={(event) => setTournamentForm((prev) => ({ ...prev, [`${mode.id}_maps`]: event.target.value }))} rows={5} placeholder="Enter map names, one per line" className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm focus:border-cyan/30 focus:outline-none" />
+                        </label>)}
+                      </div>
                     </div>
                   </details>
 
@@ -3402,6 +3410,7 @@ export default function Admin() {
                             </div>
                             <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
                               <span className="rounded-lg border border-white/[0.07] bg-secondary/35 px-2.5 py-1.5 text-vapor">{tournamentModeSetLabel(tournament)}</span>
+                              <span className="rounded-lg border border-cyan/15 bg-cyan/5 px-2.5 py-1.5 text-cyan">{tournamentGameName(tournament)}</span>
                               <span className="rounded-lg border border-white/[0.07] bg-secondary/35 px-2.5 py-1.5 text-vapor">{formatLabel}</span>
                               <span className="rounded-lg border border-white/[0.07] bg-secondary/35 px-2.5 py-1.5 text-vapor">{entryType}{Number(tournament.entry_fee || 0) > 0 ? ` · ${tournament.entry_fee} credits` : ""}</span>
                             </div>

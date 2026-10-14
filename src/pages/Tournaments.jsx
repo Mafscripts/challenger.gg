@@ -21,6 +21,7 @@ import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
+import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
 
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const adminRoles = new Set(["ceo", "super_admin", "admin"]);
@@ -110,14 +111,15 @@ const tournamentSchedulePriority = (status) => ({
 const tournamentScheduleDate = (tournament) => new Date(
   tournament?.created_date || tournament?.updated_date || tournament?.start_date || 0,
 ).getTime();
-const compactModeLabel = (tournament) => `${tournament?.team_size || "1v1"} - ${modeLabels[tournament?.game_mode] || tournament?.game_mode || "Mode TBD"}`;
+const compactModeLabel = (tournament) => `${tournamentGameName(tournament)} · ${tournament?.team_size || "1v1"} - ${modeLabels[tournament?.game_mode] || tournament?.game_mode || "Mode TBD"}`;
 const usesBlackOps7Artwork = (tournament) => {
+  if (tournament.game_id && tournamentGameId(tournament) !== "bo7") return false;
   const identity = `${tournament?.name || ""} ${tournament?.game || ""} ${tournament?.game_name || ""}`.toLowerCase();
   return identity.includes("black ops 7") || identity.includes("test tournament");
 };
 const tournamentImageUrl = (tournament) => usesBlackOps7Artwork(tournament)
   ? blackOps7Artwork
-  : tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || "";
+  : tournament?.image_url || tournament?.banner_url || tournament?.cover_image_url || (tournamentGameId(tournament) === "mw4" ? "/assets/mw4/hero.webp" : "");
 const isStreamerTournament = (tournament) => Boolean(
   tournament?.is_streamer_tournament
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())

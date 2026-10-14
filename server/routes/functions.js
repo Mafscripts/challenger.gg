@@ -16,6 +16,7 @@ import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 import { loadEightsGames, saveEightsGames, eightsLobbySettings, uploadEightsMapImage, EIGHTS_CONFIG_ID } from "../free-eights-games.js";
 import { eightsGameId, generateEightsSeries } from "../../src/lib/freeEightsGames.js";
+import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, tournamentGameId, tournamentGameName, tournamentMapImage, tournamentMapPools } from "../../src/lib/tournamentGames.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 import { editEightsTeamsAsAdmin } from "../eights-admin-teams.js";
 import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
@@ -133,11 +134,12 @@ const tournamentSeriesDefinitions = {
   bo3_hp_overload_snd: { label: "HP / Overload / SND", games: tournamentHpOverloadSndModes },
   bo5_hp_overload_snd_hp_snd: { label: "HP / Overload / SND / HP / SND", games: tournamentHpOverloadSndHpSndModes },
 };
-const validTournamentGameModes = new Set(["snd", "hp", "overload"]);
+const validTournamentGameModes = new Set(TOURNAMENT_MODES.map((mode) => mode.id));
 const tournamentGameModeDetails = {
   snd: { game_mode: "snd", mode: "Search and Destroy" },
   hp: { game_mode: "hp", mode: "Hardpoint" },
   overload: { game_mode: "overload", mode: "Overload" },
+  control: { game_mode: "control", mode: "Control" },
 };
 const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const specialUserBadgeTypes = new Set(["verified_player", "streamer"]);
@@ -1760,12 +1762,7 @@ function normalizeMapPool(value, fallback) {
 }
 
 function tournamentMapPoolsFor(tournament = {}) {
-  const pools = tournament?.map_pools || {};
-  return {
-    snd: normalizeMapPool(pools.snd || tournament?.snd_map_pool || tournament?.snd_maps || tournament?.maps, tournamentSndMapPool),
-    hp: normalizeMapPool(pools.hp || tournament?.hp_map_pool || tournament?.hp_maps, tournamentHpMapPool),
-    overload: normalizeMapPool(pools.overload || tournament?.overload_map_pool || tournament?.overload_maps, tournamentOverloadMapPool),
-  };
+  return tournamentMapPools(tournament);
 }
 
 function streamerMapPoolsForBody(body = {}, tournament = {}) {
@@ -1779,28 +1776,23 @@ function streamerMapPoolsForBody(body = {}, tournament = {}) {
 }
 
 function combinedMapPool(pools = {}) {
-  return [...new Set([
-    ...(Array.isArray(pools.snd) ? pools.snd : []),
-    ...(Array.isArray(pools.hp) ? pools.hp : []),
-    ...(Array.isArray(pools.overload) ? pools.overload : []),
-  ])];
+  return [...new Set(Object.values(pools).flatMap((maps) => Array.isArray(maps) ? maps : []))];
 }
 
 function mapPoolForGameMode(gameMode, pools) {
-  if (gameMode === "hp") return pools.hp;
-  if (gameMode === "overload") return pools.overload;
-  return pools.snd;
+  return pools[gameMode] || [];
 }
 
 function normalizeTournamentGameModes(value, fallbackGameMode = "") {
   const modes = (Array.isArray(value) ? value : [])
     .map((mode) => String(mode || "").trim().toLowerCase())
     .filter((mode) => validTournamentGameModes.has(mode));
-  if (modes.length > 0) return [...new Set(modes)].slice(0, 3);
+  if (modes.length > 0) return [...new Set(modes)].slice(0, TOURNAMENT_MODES.length);
   const legacyMode = String(fallbackGameMode || "").trim().toLowerCase();
   if (["bo1_snd", "snd"].includes(legacyMode)) return ["snd"];
   if (legacyMode === "hp") return ["hp"];
   if (legacyMode === "overload") return ["overload"];
+  if (legacyMode === "control") return ["control"];
   if (legacyMode) return ["hp", "snd", "overload"];
   return [];
 }
@@ -1810,11 +1802,7 @@ function tournamentMapSeriesFor(gameMode, mapPools = {}, configuredGameModes = [
   const key = rawMode.toLowerCase();
   const presetDefinition = tournamentSeriesDefinitions[key];
   const explicitGameModes = normalizeTournamentGameModes(configuredGameModes);
-  const pools = {
-    snd: normalizeMapPool(mapPools.snd, tournamentSndMapPool),
-    hp: normalizeMapPool(mapPools.hp, tournamentHpMapPool),
-    overload: normalizeMapPool(mapPools.overload, tournamentOverloadMapPool),
-  };
+  const pools = Object.fromEntries(TOURNAMENT_MODES.map(({ id }) => [id, parseTournamentMapList(mapPools[id])]));
   const requestedBestOf = key.match(/\b(?:bo|best[\s-]*of)\s*(\d{1,2})\b/i)?.[1];
   const customBestOf = Math.max(1, Math.min(15, Number(
     requestedBestOf || presetDefinition?.games.length || defaultTournamentBestOf
@@ -1826,6 +1814,7 @@ function tournamentMapSeriesFor(gameMode, mapPools = {}, configuredGameModes = [
     .map((token) => {
       if (["hp", "hardpoint"].includes(token)) return { game_mode: "hp", mode: "Hardpoint" };
       if (token === "overload") return { game_mode: "overload", mode: "Overload" };
+      if (token === "control") return { game_mode: "control", mode: "Control" };
       if (["snd", "search and destroy", "search & destroy"].includes(token)) return { game_mode: "snd", mode: "Search and Destroy" };
       return null;
     })
@@ -1870,8 +1859,15 @@ function tournamentMapSeriesForMatch(match, tournament = null) {
   );
 }
 
+function tournamentMissingMapsError(tournament) {
+  const series = tournamentMapSeriesForMatch(null, tournament);
+  const missing = [...new Set(series.games.filter((game) => !game.pool.length).map((game) => game.mode))];
+  return missing.length ? `Add ${tournamentGameName(tournament)} map names for ${missing.join(", ")} in Admin > Tournaments > Map pools before generating or starting the bracket.` : null;
+}
+
 function generatedMapForSeriesGame(match, game, index, series) {
-  const pool = game.pool || tournamentSndMapPool;
+  const pool = game.pool || [];
+  if (!pool.length) return "Map pending";
   const round = Math.max(1, Number(match?.round || 1));
   const sameModeOffset = series.games
     .slice(0, index)
@@ -1891,6 +1887,7 @@ function generatedMapPoolForMatch(match, series = tournamentMapSeriesForMatch(ma
 
 function mapGenerationKey(match, series = tournamentMapSeriesForMatch(match)) {
   return [
+    ...(tournamentGameId(match) === "bo7" ? [] : [tournamentGameId(match)]),
     `bo${series.bestOf || series.games.length}-${series.key}`,
     match?.tournament_id || "tournament",
     match?.bracket || "winner",
@@ -1973,6 +1970,7 @@ function generatedTournamentMaps(match, participantA, participantB, series = tou
     game_mode: series.games[index]?.game_mode || "snd",
     mode: series.games[index]?.mode || "Search and Destroy",
     map,
+    image: tournamentMapImage(map, tournamentGameId(match)),
     host_team_id: hosts[index]?.id || null,
     host_team_name: hosts[index]?.name || "TBD",
     host_seed: hosts[index]?.seed || null,
@@ -1995,7 +1993,7 @@ function tournamentMatchSetupPatch(match, participants = [], tournament = null) 
   const participantB = byId[match.team_b_participant_id] || byId[match.team_b_id] || null;
   const teamASeed = match.team_a_seed || participantA?.seed || (match.team_a_id ? 1 : null);
   const teamBSeed = match.team_b_seed || participantB?.seed || (match.team_b_id ? 2 : null);
-  const seededMatch = { ...match, team_a_seed: teamASeed, team_b_seed: teamBSeed };
+  const seededMatch = { ...match, game_id: tournamentGameId(tournament || match), team_a_seed: teamASeed, team_b_seed: teamBSeed };
   const series = tournamentMapSeriesForMatch(seededMatch, tournament);
   const firstHost = firstHostForMatch(seededMatch, participantA, participantB);
   const generationKey = mapGenerationKey(seededMatch, series);
@@ -2004,6 +2002,9 @@ function tournamentMatchSetupPatch(match, participants = [], tournament = null) 
     : generatedTournamentMaps(seededMatch, participantA, participantB, series);
 
   return {
+    game_id: tournamentGameId(tournament || match),
+    game_name: tournamentGameName(tournament || match),
+    map_pools: tournamentMapPoolsFor(tournament || match),
     best_of: series.bestOf,
     game_mode: series.label,
     tournament_game_mode: series.key,
@@ -4587,11 +4588,33 @@ async function updateTournament(req) {
   assertStaff(req, "admin");
   const previousTournament = await getEntity("Tournament", req.body.tournament_id);
   const patch = await normalizeTournamentPlacementTrophyFields(req.body.patch || {});
+  if (Object.prototype.hasOwnProperty.call(patch, "game_id")) {
+    if (!TOURNAMENT_GAMES.some((game) => game.id === patch.game_id)) return { success: false, error: "Choose a supported tournament game" };
+    patch.game_name = tournamentGameName(patch);
+    patch.game = patch.game_name;
+    // Selecting another game must never reuse the previous game's maps.
+    if (patch.game_id !== tournamentGameId(previousTournament) && !patch.map_pools) {
+      patch.map_pools = tournamentMapPoolsFor({ game_id: patch.game_id });
+      patch.maps = patch.map_pools.snd;
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(patch, "game_mode")) {
     patch.game_mode = String(patch.game_mode || "").trim().slice(0, 80) || "snd_hp_snd";
   }
   if (Object.prototype.hasOwnProperty.call(patch, "game_modes")) {
     patch.game_modes = normalizeTournamentGameModes(patch.game_modes, patch.game_mode || previousTournament.game_mode);
+  }
+  if (patch.map_pools) {
+    patch.map_pools = tournamentMapPoolsFor({ ...previousTournament, ...patch });
+    patch.maps = patch.map_pools.snd;
+  }
+  if (previousTournament.bracket_generated) {
+    const mapError = tournamentMissingMapsError({ ...previousTournament, ...patch });
+    if (mapError) return { success: false, error: mapError };
+    if (patch.game_id && patch.game_id !== tournamentGameId(previousTournament)) {
+      const matches = await listEntities("TournamentMatch", { tournament_id: previousTournament.id }, "round", 500);
+      if (matches.some(tournamentMatchHasScoreActivity)) return { success: false, error: "The game cannot be changed after match results have been reported" };
+    }
   }
   const requestedBracketType = patch.bracket_type || patch.format;
   if (
@@ -4618,6 +4641,7 @@ async function updateTournament(req) {
   const shouldRefreshMaps = Object.prototype.hasOwnProperty.call(patch, "map_pools")
     || Object.prototype.hasOwnProperty.call(patch, "maps")
     || Object.prototype.hasOwnProperty.call(patch, "game_mode")
+    || Object.prototype.hasOwnProperty.call(patch, "game_id")
     || Object.prototype.hasOwnProperty.call(patch, "game_modes");
   const refreshedMatches = [];
 
@@ -4683,6 +4707,12 @@ async function updateTournament(req) {
 async function createTournament(req) {
   assertStaff(req, "admin");
   const tournamentBody = await normalizeTournamentPlacementTrophyFields(req.body || {});
+  if (tournamentBody.game_id && !TOURNAMENT_GAMES.some((game) => game.id === tournamentBody.game_id)) return { success: false, error: "Choose a supported tournament game" };
+  tournamentBody.game_id = tournamentGameId(tournamentBody);
+  tournamentBody.game_name = tournamentGameName(tournamentBody);
+  tournamentBody.game = tournamentBody.game_name;
+  tournamentBody.map_pools = tournamentMapPoolsFor(tournamentBody);
+  tournamentBody.maps = tournamentBody.map_pools.snd;
   const name = String(tournamentBody.name || "").trim().slice(0, 80);
   if (!name) return { success: false, error: "Tournament name is required" };
   const invitedUserIds = [...new Set((tournamentBody.invited_user_ids || []).filter(Boolean).map(String))];
@@ -9264,6 +9294,8 @@ async function generateTournamentBracket(req) {
   assertStaff(req, "admin");
   const tournamentId = req.body.tournament_id;
   const tournament = await getEntity("Tournament", tournamentId);
+  const mapError = tournamentMissingMapsError(tournament);
+  if (mapError) return { success: false, error: mapError };
   const participants = await listEntities("TournamentParticipant", { tournament_id: tournamentId }, "seed", 256);
   if (participants.length < 2) return { success: false, error: "At least two participants are required" };
   const existing = await listEntities("TournamentMatch", { tournament_id: tournamentId }, "round", 500);
@@ -9727,6 +9759,8 @@ async function ensureTournamentMatchSetup(req) {
 async function startTournament(req) {
   assertStaff(req, "admin");
   let tournament = await getEntity("Tournament", req.body.tournament_id);
+  const mapError = tournamentMissingMapsError(tournament);
+  if (mapError) return { success: false, error: mapError };
   // A tournament that was marked completed without a winner is a stale
   // lifecycle state (usually from an old/empty bracket), not a real result.
   // Clear it before starting so the live status cannot stay stuck on Completed.

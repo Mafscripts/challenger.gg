@@ -1461,10 +1461,11 @@ function TournamentMatchRoomView() {
               />
               <MatchMapSeries
                 maps={tournamentMapPicks}
+                gameId={match.game_id || tournament?.game_id || "bo7"}
                 mode={match.game_mode || match.tournament_game_mode || "Tournament match"}
                 host={match.first_host_team_name || "TBD"}
                 hostLabel="First host"
-                context={match.map_display_source === "tournament_schedule" ? "Tournament schedule" : ""}
+                context={match.game_name || (match.map_display_source === "tournament_schedule" ? "Tournament schedule" : "")}
                 bestOf={bestOf}
                 compact
                 list

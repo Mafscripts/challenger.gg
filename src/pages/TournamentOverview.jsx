@@ -26,6 +26,7 @@ import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
 import PageLoader from "@/components/ui/PageLoader";
+import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +81,10 @@ const formatShortDate = (value) => {
 };
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 const imageForTournament = (tournament) => {
+  if (tournament.game_id && tournamentGameId(tournament) !== "bo7") {
+    return tournament.banner_url || tournament.cover_image_url || tournament.image_url
+      || (tournamentGameId(tournament) === "mw4" ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png");
+  }
   const identity = `${tournament?.name || ""} ${tournament?.game || ""} ${tournament?.game_name || ""}`.toLowerCase();
   if (identity.includes("black ops 7") || identity.includes("test tournament")) return BLACK_OPS_7_ART;
   return tournament?.banner_url || tournament?.cover_image_url || tournament?.image_url || BLACK_OPS_7_ART;
@@ -506,7 +511,7 @@ export default function TournamentOverview() {
   const secondPrize = Number(distribution.second_amount ?? distribution.second ?? tournament.second_place_prize ?? 0);
   const thirdPrize = Number(distribution.third_amount ?? distribution.third ?? tournament.third_place_prize ?? 0);
   const registrationDate = tournament.registration_end || tournament.start_date;
-  const gameName = tournament.game || tournament.game_name || "Call of Duty: Black Ops 7";
+  const gameName = tournamentGameName(tournament);
   const modeName = modeLabels[tournament.game_mode] || tournament.game_mode || "Search & Destroy";
 
   return (
