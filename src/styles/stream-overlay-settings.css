@@ -27,6 +27,12 @@
 .stream-overlay-theme-picker button[data-theme="terminal"] { --overlay-accent: #87f5a3; --overlay-swatch: repeating-linear-gradient(0deg, #0c1e14 0 6px, #87f5a3 6px 7px, #0c1e14 7px 12px); }
 .stream-overlay-theme-picker button[data-theme="editorial"] { --overlay-accent: #e6be97; --overlay-swatch: linear-gradient(90deg, #c94932 0 22%, #25352e 22% 50%, #f1eee5 50% 100%); }
 .stream-overlay-theme-picker button[data-theme="hyperdrive"] { --overlay-accent: #83eaff; --overlay-swatch: linear-gradient(135deg, #55efff, #15234b 40%, #27143d 60%, #ff80d6); }
+.stream-overlay-theme-picker button[data-theme="solar"] { --overlay-accent: #ffce70; --overlay-swatch: conic-gradient(from 25deg, #ffce70, #6c2114, #24110c, #ff7043, #ffce70); }
+.stream-overlay-theme-picker button[data-theme="hologram"] { --overlay-accent: #87f9ed; --overlay-swatch: repeating-linear-gradient(0deg, transparent 0 5px, #87f9ed55 5px 6px), linear-gradient(145deg, #87f9ed, #0c2736 45%, #a5d7ff); }
+.stream-overlay-theme-picker button[data-theme="quantum"] { --overlay-accent: #bda5ff; --overlay-swatch: radial-gradient(ellipse at 20% 30%, #bda5ff, transparent 60%), linear-gradient(135deg, #2c1f45, #143b3a 65%, #86ffcf); }
+.stream-overlay-theme-picker button:is([data-theme="solar"], [data-theme="hologram"], [data-theme="quantum"]) .stream-overlay-theme-swatch { position: relative; overflow: hidden; }
+.stream-overlay-theme-picker button:is([data-theme="solar"], [data-theme="hologram"], [data-theme="quantum"]) .stream-overlay-theme-swatch::after { content: ""; position: absolute; inset: -50%; background: linear-gradient(110deg, transparent 40%, rgb(255 255 255 / .4) 50%, transparent 60%); animation: overlay-hyperdrive-preview 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .stream-overlay-theme-picker button:is([data-theme="solar"], [data-theme="hologram"], [data-theme="quantum"]) .stream-overlay-theme-swatch::after { animation: none; } }
 .stream-overlay-theme-picker button[data-theme="hyperdrive"] .stream-overlay-theme-swatch { position: relative; overflow: hidden; }
 .stream-overlay-theme-picker button[data-theme="hyperdrive"] .stream-overlay-theme-swatch::after { content: ""; position: absolute; inset: -50%; background: linear-gradient(110deg, transparent 40%, rgb(255 255 255 / .5) 50%, transparent 60%); animation: overlay-hyperdrive-preview 4s ease-in-out infinite; }
 @keyframes overlay-hyperdrive-preview { 0%, 15% { transform: translateX(-65%); } 85%, 100% { transform: translateX(65%); } }

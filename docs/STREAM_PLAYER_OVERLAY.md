@@ -9,7 +9,7 @@ URL so renaming a player does not break their source.
 - Own profile: **Your Twitch player overlay**.
 - Settings: **Connections → Stream overlay**.
 - The settings panel includes a live preview, **Copy URL**, and setup instructions.
-- Choose one of eleven styles in the settings preview. Original blue uses no theme
+- Choose one of fourteen styles in the settings preview. Original blue uses no theme
   parameter; Orange, Black & white and Christmas use `?theme=orange`, `?theme=mono`,
   and `?theme=xmas`. Existing URLs retain their original theme. The Topfragg
   shield and white/cyan wordmark retain their original branding in the first four variants.
@@ -42,6 +42,18 @@ URL so renaming a player does not break their source.
   All effects stay inside the same 1920×80 base canvas. Reduced-motion preferences
   show the complete design without movement. No video, audio or additional API
   polling is used for animation.
+- Three more fully animated styles share the same live data and 1920×80 base canvas:
+
+  | Style | URL parameter | Motion design |
+  | --- | --- | --- |
+  | Solar Flare / 12 | `?theme=solar` | A rolling solar corona, rising embers, molten light currents, rotating logo rings and glowing trophy pedestals. |
+  | Hologram / 13 | `?theme=hologram` | A rotating radar, moving grid, projection scans, cyan stat panels and levitating trophies. |
+  | Quantum / 14 | `?theme=quantum` | A central player nameplate, drifting violet/mint nebulae, orbiting geometry, floating particles and trophy gallery. |
+
+  Decorative loops have stable keys and use transform/opacity animation so polling
+  does not restart them. All six stats and trophy counts remain visible. Saved name
+  effects and badges are retained. Reduced-motion preferences stop the animations.
+  These are frontend-only additions with no video, audio or extra data requests.
 - OBS source width: match the stream canvas (for example **1920** for 1080p or **2560** for 1440p), height **80**. Align at **X: 0, Y: 0** without shrinking the source.
 - The document around the player bar is transparent, with no navigation or login.
 - The canvas uses the full browser viewport width with no maximum width. It scales as a complete bar below 1920px and expands its layout above that width; it keeps every trophy counter. Aurora includes transparent gutters inside that same canvas.
@@ -52,7 +64,7 @@ The bar includes the existing Topfragg shield, TOPFRAGG.GG wordmark,
 saved name color/animated effect, public badges, ranked ELO, Free 8s ELO and SR, wins/losses, win rate,
 lifetime USD earnings, and gold/silver/bronze/premium/Topfragg/hosted trophies, including zeros.
 Name effects reuse the website's CSS and assets. The Topfragg shield stays still
-except in Hyperdrive, where it floats inside animated rings.
+except in Hyperdrive, Solar Flare, Hologram and Quantum, which animate the shield and its surrounding rings.
 In the first four themes, the TOPFRAGG.GG letters fly into place, hold together for three seconds, then fall apart
 and repeat in an eight-second cycle. Only transforms and opacity animate; stable letter keys
 keep the animation running across data refreshes. Reduced-motion preferences show a static wordmark.

@@ -1,0 +1,158 @@
+/* 12–14: three continuous-motion scenes, clipped to the shared 80px OBS canvas. */
+.studio-player-bar.cinema-player-bar {
+  --cinema-secondary: #ff7043;
+  --cinema-panel: #21100de8;
+  position: relative;
+  grid-template-columns: 176px minmax(300px, 1fr) minmax(840px, 2fr) minmax(460px, 1.1fr);
+  border: 1px solid var(--studio-line);
+  border-radius: 4px;
+}
+.cinema-player-bar > :is(.studio-brand, .studio-identity, .studio-stats, .studio-cabinet) { position: relative; z-index: 1; }
+.cinema-scene { position: absolute; inset: 0; overflow: hidden; contain: paint; pointer-events: none; z-index: 0; }
+.cinema-edge { position: absolute; left: 0; right: 0; height: 2px; overflow: hidden; background: var(--studio-line); }
+.cinema-edge-top { top: 0; }
+.cinema-edge-bottom { bottom: 0; }
+.cinema-edge > i { display: block; width: 100%; height: 100%; background: linear-gradient(90deg, transparent 20%, var(--studio-accent) 45%, #fff7df 50%, var(--cinema-secondary) 55%, transparent 80%); animation: cinema-travel 9s linear infinite; }
+.cinema-edge-bottom > i { animation-delay: -4s; animation-direction: reverse; }
+.cinema-player-bar .studio-brand { gap: 10px; padding-inline: 16px; }
+.cinema-player-bar .studio-brand-mark { width: 32px; height: 32px; }
+.cinema-player-bar .studio-brand-mark::before, .cinema-player-bar .studio-brand-mark::after { content: ""; position: absolute; inset: -7px; pointer-events: none; border: 1px solid var(--studio-accent); border-radius: 50%; opacity: .6; }
+.cinema-player-bar .studio-brand-mark::after { inset: -11px; border-color: var(--cinema-secondary); opacity: .35; }
+.cinema-player-bar .cinema-wordmark { font-size: 12px; line-height: 1.4; white-space: nowrap; }
+.cinema-player-bar .cinema-wordmark > span { display: inline-block; margin: 0; font-size: inherit; letter-spacing: inherit; color: var(--studio-ink); animation: cinema-glyph 7s calc(var(--glyph-index) * 110ms - 7s) ease-in-out infinite; }
+.cinema-player-bar .cinema-wordmark > span:nth-child(n + 4) { color: var(--studio-accent); }
+.cinema-player-bar .cinema-wordmark > span:nth-child(n + 9) { color: var(--cinema-secondary); }
+.cinema-player-bar .studio-edition { font-size: 7px; letter-spacing: .13em; color: var(--studio-muted); }
+.cinema-player-bar .studio-identity { margin: 6px 0; padding-inline: 18px; border: 1px solid var(--studio-line); background: var(--cinema-panel); }
+.cinema-player-bar .studio-identity > :not(.studio-identity-decoration) { position: relative; z-index: 1; }
+.cinema-player-bar .studio-identity::before { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 20%, rgb(255 255 255 / .09) 50%, transparent 80%); animation: cinema-travel 11s ease-in-out infinite; }
+.cinema-player-bar .studio-name { font-size: 28px; }
+.cinema-player-bar .studio-identity-decoration { position: absolute; left: 18px; right: 18px; bottom: 4px; display: flex; gap: 3px; height: 2px; }
+.cinema-player-bar .studio-identity-decoration > i { flex: 1; background: var(--studio-accent); transform-origin: left; animation: cinema-energy 6s ease-in-out infinite; }
+.cinema-player-bar .studio-identity-decoration > i:nth-child(2) { animation-delay: -2s; background: var(--cinema-secondary); }
+.cinema-player-bar .studio-identity-decoration > i:nth-child(3) { animation-delay: -4s; }
+.cinema-player-bar .studio-status > i { animation: cinema-pulse 4s ease-in-out infinite; }
+.cinema-player-bar .studio-status[data-stale="true"] > i { animation: none; }
+.cinema-player-bar .studio-stats { gap: 5px; padding: 6px; }
+.cinema-player-bar .studio-stat { --cinema-phase: 0s; position: relative; isolation: isolate; overflow: hidden; height: 100%; padding-inline: 10px; border: 1px solid var(--studio-line); background: var(--cinema-panel); }
+.cinema-player-bar :is(.studio-stat, .studio-trophy):nth-child(2) { --cinema-phase: -1.5s; }
+.cinema-player-bar :is(.studio-stat, .studio-trophy):nth-child(3) { --cinema-phase: -3s; }
+.cinema-player-bar :is(.studio-stat, .studio-trophy):nth-child(4) { --cinema-phase: -4.5s; }
+.cinema-player-bar :is(.studio-stat, .studio-trophy):nth-child(5) { --cinema-phase: -6s; }
+.cinema-player-bar :is(.studio-stat, .studio-trophy):nth-child(6) { --cinema-phase: -7.5s; }
+.cinema-player-bar .studio-stat > * { position: relative; z-index: 1; }
+.cinema-player-bar .studio-stat::before { content: ""; position: absolute; inset: 0; pointer-events: none; border: 1px solid var(--studio-accent); border-radius: inherit; opacity: .1; animation: cinema-panel-light 9s var(--cinema-phase) ease-in-out infinite; }
+.cinema-player-bar .studio-stat::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--studio-accent), var(--cinema-secondary), transparent); animation: cinema-travel 9s var(--cinema-phase) ease-in-out infinite; }
+.cinema-player-bar .studio-stat-label { font-size: 8px; letter-spacing: .07em; }
+.cinema-player-bar .studio-stat-detail { font-size: 8px; }
+.cinema-player-bar .studio-stat-eights .studio-stat-value { color: var(--studio-accent); }
+.cinema-player-bar .studio-stat-earnings .studio-stat-value { color: var(--cinema-secondary); font-size: 23px; }
+.cinema-player-bar .studio-cabinet { padding-inline: 12px; border-left: 0; }
+.cinema-player-bar .studio-cabinet-heading { font-size: 7px; }
+.cinema-player-bar .studio-cabinet-heading > i { position: relative; overflow: hidden; }
+.cinema-player-bar .studio-cabinet-heading > i::after { content: ""; position: absolute; inset: 0; background: var(--studio-accent); animation: cinema-travel 6s linear infinite; }
+.cinema-player-bar .studio-trophies { gap: 5px; }
+.cinema-player-bar .studio-trophy { --cinema-phase: 0s; position: relative; grid-template-columns: 24px minmax(0, 1fr); gap: 3px; padding: 4px 3px; border-bottom: 1px solid var(--studio-line); }
+.cinema-player-bar .studio-trophy > img { width: 24px; height: 26px; animation: cinema-trophy-float 6s var(--cinema-phase) ease-in-out infinite; }
+.cinema-player-bar .studio-trophy > strong { color: var(--studio-ink); font-size: 20px; }
+.cinema-player-bar .studio-trophy > span { color: var(--studio-muted); font-size: 7px; text-align: center; }
+.cinema-player-bar .studio-trophy::after { content: ""; position: absolute; left: 10%; right: 10%; bottom: -1px; height: 2px; background: var(--studio-accent); transform-origin: center; animation: cinema-energy 9s var(--cinema-phase) ease-in-out infinite; }
+.cinema-particles { position: absolute; inset: 0; }
+.cinema-particles > i { position: absolute; left: var(--particle-x); top: var(--particle-y); width: var(--particle-size); height: var(--particle-size); border-radius: 50%; background: var(--studio-accent); }
+
+/* SOLAR FLARE: a rolling corona, molten currents and rising sparks. */
+.cinema-player-bar[data-theme="solar"] { --studio-accent: #ffce70; --cinema-secondary: #ff9870; --studio-ink: #fff3dd; --studio-muted: #c0a38f; --studio-line: #79502d; --cinema-panel: #21130deb; background: #1c0907; border-radius: 4px 16px 4px 16px; }
+[data-theme="solar"] .studio-brand { background: linear-gradient(110deg, #602416b3, #29140a80); }
+[data-theme="solar"] .studio-brand-mark { animation: solar-logo-rise 7s ease-in-out infinite; }
+[data-theme="solar"] .studio-brand-mark::before { border-style: dashed; animation: cinema-spin 18s linear infinite; }
+[data-theme="solar"] .studio-brand-mark::after { border-width: 2px; border-left-color: transparent; border-bottom-color: transparent; animation: cinema-spin 10s linear infinite reverse; }
+[data-theme="solar"] .studio-identity { border-left: 3px solid #e68c42; border-radius: 2px 12px 2px 12px; }
+[data-theme="solar"] .studio-stat { border-radius: 5px; }
+[data-theme="solar"] .studio-stat::before { background: radial-gradient(ellipse at 50% 120%, #ff873933, transparent 75%); }
+[data-theme="solar"] .studio-cabinet { background: linear-gradient(90deg, transparent, #4e211170); }
+[data-theme="solar"] .studio-trophy { background: linear-gradient(0deg, #ed9b2720, transparent 65%); }
+.solar-corona { position: absolute; top: -165px; left: -80px; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, #ffbb3833 0 20%, transparent 60%); }
+.solar-corona > i { position: absolute; inset: 35px; border: 2px solid #ffc04c44; border-left-color: #ffc04ccc; border-right-color: transparent; border-radius: 46% 54% 48% 52%; animation: cinema-spin 26s linear infinite; }
+.solar-corona > i:nth-child(2) { inset: 60px; border-color: #ff572b66; border-top-color: transparent; animation-duration: 19s; animation-direction: reverse; }
+.solar-corona > i:nth-child(3) { inset: 85px; border-style: dashed; animation-duration: 40s; }
+.solar-stream { position: absolute; top: -65px; left: 5%; width: 65%; height: 200px; border-radius: 50%; background: radial-gradient(ellipse, #ff5b193d, transparent 68%); animation: solar-current 15s ease-in-out infinite alternate; }
+.solar-stream-two { left: 45%; top: -40px; background: radial-gradient(ellipse, #ffb63133, transparent 68%); animation-delay: -7s; animation-direction: alternate-reverse; }
+.solar-embers > i { box-shadow: 0 0 5px #ff8b3e88; animation: solar-ember var(--particle-duration) var(--particle-delay) linear infinite; }
+.solar-embers > i:nth-child(even) { background: #ff7652; }
+
+/* HOLOGRAM: ice-blue projection panels and a slowly rotating radar. */
+.cinema-player-bar[data-theme="hologram"] { --studio-accent: #87f9ed; --cinema-secondary: #a5d7ff; --studio-ink: #e3ffff; --studio-muted: #8cbfc8; --studio-line: #32616f; --cinema-panel: #0c2736ed; background: #061a28; border-radius: 0; }
+[data-theme="hologram"] .studio-brand { border-right: 1px solid #32616f; }
+[data-theme="hologram"] .studio-brand-mark { animation: hologram-project 8s ease-in-out infinite; }
+[data-theme="hologram"] .studio-brand-mark::before { border-radius: 5px; border-style: dashed; animation: cinema-spin 24s linear infinite; }
+[data-theme="hologram"] .studio-brand-mark::after { inset: -11px -5px; border-top-color: transparent; border-bottom-color: transparent; border-radius: 50%; animation: cinema-spin 14s linear infinite reverse; }
+[data-theme="hologram"] .cinema-wordmark > span { animation-name: hologram-glyph; }
+[data-theme="hologram"] .studio-identity { border: 0; border-inline: 2px solid #87f9ed88; margin-inline: 8px; background: linear-gradient(120deg, #15434ae8, #0a263be8); }
+[data-theme="hologram"] .studio-identity::before { animation-name: hologram-panel-scan; background: linear-gradient(0deg, transparent, #87f9ed26, transparent); }
+[data-theme="hologram"] .studio-stat { border: 0; border-top: 1px solid #8df6ec88; border-bottom: 1px solid #6fbde988; border-radius: 0; }
+[data-theme="hologram"] .studio-stat::before { border: 0; background: repeating-linear-gradient(0deg, #87f9ed08 0 1px, transparent 1px 4px); }
+[data-theme="hologram"] .studio-stat-value { font-family: var(--font-mono, monospace); font-size: 24px; letter-spacing: -.07em; }
+[data-theme="hologram"] .studio-stat-skill .studio-stat-value { font-size: 17px; }
+[data-theme="hologram"] .studio-stat-record .studio-stat-value { font-size: 18px; }
+[data-theme="hologram"] .studio-stat-earnings .studio-stat-value { font-size: 21px; }
+[data-theme="hologram"] .studio-trophy > img { filter: saturate(.45); animation-name: hologram-trophy; }
+[data-theme="hologram"] .studio-trophy::before { content: ""; position: absolute; left: 6px; top: 29px; width: 20px; height: 5px; border: 1px solid #87f9ed66; border-radius: 50%; animation: cinema-pulse 6s var(--cinema-phase) ease-in-out infinite; }
+.hologram-grid { position: absolute; inset: -20px; background-image: linear-gradient(#87f9ed12 1px, transparent 1px), linear-gradient(90deg, #87f9ed12 1px, transparent 1px); background-size: 20px 20px; animation: hologram-grid 5s linear infinite; }
+.hologram-radar { position: absolute; right: 13%; top: -140px; width: 360px; height: 360px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 65%, #87f9ed30 99%, #87f9ed99); animation: cinema-spin 22s linear infinite; }
+.hologram-radar > i { position: absolute; inset: 25px; border: 1px solid #87f9ed33; border-radius: 50%; }
+.hologram-radar > i:nth-child(2) { inset: 65px; }
+.hologram-radar > i:nth-child(3) { inset: 105px; }
+.hologram-scan { position: absolute; inset: -20px 0; background: linear-gradient(90deg, transparent 35%, #87f9ed15 49.8%, #a5d7ff55 50%, transparent 50.2%); animation: cinema-travel 13s linear infinite; }
+.hologram-scan-secondary { animation-direction: reverse; animation-duration: 21s; opacity: .4; }
+.hologram-ticks { position: absolute; left: 0; right: -24px; bottom: 3px; height: 4px; background: repeating-linear-gradient(90deg, #87f9ed66 0 1px, transparent 1px 12px); animation: hologram-grid 5s linear infinite reverse; }
+
+/* QUANTUM: central identity, floating trophy gallery and orbital geometry. */
+.cinema-player-bar[data-theme="quantum"] { --studio-accent: #bda5ff; --cinema-secondary: #86ffcf; --studio-ink: #f1eaff; --studio-muted: #b3a5d1; --studio-line: #625183; --cinema-panel: #1b1534ed; grid-template-areas: "brand trophies identity stats"; grid-template-columns: 176px minmax(450px, 1fr) minmax(320px, 1fr) minmax(850px, 2fr); border-radius: 14px; background: #100c24; }
+[data-theme="quantum"] .studio-brand-mark { animation: quantum-logo 10s ease-in-out infinite; }
+[data-theme="quantum"] .studio-brand-mark::before { border-radius: 8px; animation: cinema-spin 16s linear infinite; }
+[data-theme="quantum"] .studio-brand-mark::after { border-radius: 8px; animation: cinema-spin 23s linear infinite reverse; }
+[data-theme="quantum"] .studio-identity { margin: 5px; border-radius: 12px 3px 12px 3px; text-align: center; background: linear-gradient(110deg, #2c1f45ed, #143b3aed); }
+[data-theme="quantum"] .studio-name-row { justify-content: center; animation: quantum-name 9s ease-in-out infinite; }
+[data-theme="quantum"] .studio-identity-meta { justify-content: center; }
+[data-theme="quantum"] .studio-status { position: absolute; top: -7px; right: -8px; font-size: 6px; }
+[data-theme="quantum"] .studio-handle { max-width: 55%; }
+[data-theme="quantum"] .studio-stat { border-radius: 9px 3px 9px 3px; }
+[data-theme="quantum"] .studio-stat::before { background: radial-gradient(ellipse at 0 0, #bda5ff24, transparent 70%); }
+[data-theme="quantum"] .studio-cabinet { background: linear-gradient(90deg, transparent, #32234877, transparent); }
+[data-theme="quantum"] .studio-trophy { border: 1px solid #6d559066; border-radius: 7px; background: #211837d9; }
+[data-theme="quantum"] .studio-trophy > img { animation-name: quantum-trophy; }
+.quantum-nebula { position: absolute; top: -120px; left: 12%; width: 600px; height: 300px; background: radial-gradient(ellipse, #9a59e54d, transparent 65%); animation: quantum-drift 20s ease-in-out infinite alternate; }
+.quantum-nebula-two { left: 50%; background: radial-gradient(ellipse, #39dfa733, transparent 65%); animation-delay: -10s; animation-direction: alternate-reverse; }
+.quantum-geometry { position: absolute; inset: 0; }
+.quantum-geometry > i { position: absolute; left: calc(8% + var(--shape-index) * 19%); top: -35px; width: 150px; height: 150px; border: 1px solid #bda5ff44; border-radius: 23px; animation: cinema-spin calc(28s + var(--shape-index) * 4s) calc(var(--shape-index) * -7s) linear infinite; }
+.quantum-geometry > i::before { content: ""; position: absolute; inset: 20px; border: 1px solid #86ffcf44; border-radius: 50%; }
+.quantum-geometry > i::after { content: ""; position: absolute; top: -3px; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: #86ffcf; box-shadow: 0 0 7px #86ffcf99; }
+.quantum-particles > i { animation: quantum-particle var(--particle-duration) var(--particle-delay) ease-in-out infinite; box-shadow: 0 0 5px #bda5ff88; }
+.quantum-particles > i:nth-child(even) { background: #86ffcf; }
+.quantum-wave { position: absolute; top: 0; bottom: 0; left: -10%; width: 120%; background: repeating-linear-gradient(115deg, transparent 0 100px, #bda5ff0d 101px 102px, transparent 103px 202px); animation: quantum-wave 12s linear infinite; }
+
+@keyframes cinema-travel { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes cinema-spin { to { transform: rotate(360deg); } }
+@keyframes cinema-glyph { 0%, 30%, 100% { transform: translateY(0); } 15% { transform: translateY(-2px); } }
+@keyframes cinema-energy { 0%, 100% { transform: scaleX(.25); opacity: .3; } 50% { transform: scaleX(1); opacity: .9; } }
+@keyframes cinema-pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes cinema-panel-light { 0%, 45%, 100% { opacity: .1; } 20% { opacity: .75; } }
+@keyframes cinema-trophy-float { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-2px) rotate(3deg); } }
+@keyframes solar-logo-rise { 0%, 100% { transform: translateY(1px) scale(.97); } 50% { transform: translateY(-2px) scale(1.03); } }
+@keyframes solar-current { from { transform: translateX(-160px) rotate(-8deg); opacity: .5; } to { transform: translateX(240px) rotate(8deg); opacity: 1; } }
+@keyframes solar-ember { 0% { transform: translate(0, 45px) scale(.5); opacity: 0; } 25%, 65% { opacity: .7; } 100% { transform: translate(70px, -70px) scale(.8); opacity: 0; } }
+@keyframes hologram-grid { from { transform: translateX(0); } to { transform: translateX(20px); } }
+@keyframes hologram-project { 0%, 100% { transform: translateY(1px) rotate(-4deg); } 50% { transform: translateY(-2px) rotate(4deg); } }
+@keyframes hologram-glyph { 0%, 35%, 100% { transform: translateY(0); opacity: 1; } 18% { transform: translateY(-1px); opacity: .65; } }
+@keyframes hologram-panel-scan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+@keyframes hologram-trophy { 0%, 100% { transform: translateY(-1px); } 50% { transform: translateY(-4px); } }
+@keyframes quantum-logo { 0%, 100% { transform: rotate(-8deg) translateY(0); } 50% { transform: rotate(8deg) translateY(-2px); } }
+@keyframes quantum-name { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+@keyframes quantum-trophy { 0%, 100% { transform: translate(0, 0) rotate(-5deg); } 50% { transform: translate(1px, -2px) rotate(5deg); } }
+@keyframes quantum-drift { from { transform: translateX(-100px) scale(.9); opacity: .6; } to { transform: translateX(300px) scale(1.2); opacity: 1; } }
+@keyframes quantum-particle { 0%, 100% { transform: translate(0, 0); opacity: .15; } 50% { transform: translate(30px, -12px); opacity: .8; } }
+@keyframes quantum-wave { from { transform: translateX(0); } to { transform: translateX(202px); } }
+@media (prefers-reduced-motion: reduce) {
+  .cinema-player-bar *, .cinema-player-bar *::before, .cinema-player-bar *::after { animation: none !important; transition: none !important; }
+  .cinema-particles, .hologram-scan, .cinema-edge > i { display: none; }
+}
