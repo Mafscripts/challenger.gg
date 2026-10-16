@@ -21,15 +21,29 @@
 @media (min-width: 1024px) {
   .app-layout-sidebar { --navigation-sidebar-width: 220px; }
   .app-layout-sidebar > .app-content, .app-layout-sidebar > .app-footer-wrap { margin-left: var(--navigation-sidebar-width); }
-  .app-layout-sidebar .app-topbar { left: var(--navigation-sidebar-width); }
-  .app-layout-sidebar .topbar-primary-nav, .app-layout-sidebar .navigation-mobile-toggle, .app-layout-sidebar .mobile-menu-enter, .app-layout-sidebar .topbar-brand-link { display: none; }
-  .app-layout-sidebar .topbar-shell { justify-content: space-between; }
+  .app-layout-sidebar > .app-content { padding-top: 0; }
+  .app-layout-sidebar .navigation-mobile-toggle, .app-layout-sidebar .mobile-menu-enter { display: none; }
   .app-layout-sidebar .layout-sidebar {
     position: fixed; inset: 0 auto 0 0; z-index: 45; display: flex; flex-direction: column;
     width: var(--navigation-sidebar-width); border-right: 1px solid rgb(255 255 255 / .075);
     background: linear-gradient(160deg, hsl(var(--cyan) / .035), transparent 32%), #0c121a;
   }
   .layout-sidebar-brand { display: flex; align-items: center; height: 68px; flex-shrink: 0; padding: 0 22px; border-bottom: 1px solid rgb(255 255 255 / .06); }
+  .layout-sidebar .sidebar-account-controls { position: relative; flex-shrink: 0; padding: 12px; background: transparent; box-shadow: none; border-bottom: 1px solid rgb(255 255 255 / .06); }
+  .layout-sidebar .sidebar-account-controls::before, .layout-sidebar .sidebar-account-controls::after, .layout-sidebar .sidebar-account-controls .topbar-actions::before { display: none; }
+  .layout-sidebar .sidebar-account-controls .topbar-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 0; }
+  .layout-sidebar .sidebar-account-controls .topbar-wallet-summary { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 0; border: 0; background: transparent; }
+  .layout-sidebar .sidebar-account-controls .topbar-balance { min-width: 0; width: 100%; height: 43px; border-radius: 8px; }
+  .layout-sidebar .sidebar-account-controls .topbar-balance-main { min-width: 0; flex: 1; gap: 0; padding: 7px 8px; }
+  .layout-sidebar .sidebar-account-controls .topbar-balance-icon { display: none; }
+  .layout-sidebar .sidebar-account-controls .topbar-balance-add { width: 22px; flex-shrink: 0; }
+  .layout-sidebar .sidebar-account-controls .topbar-balance-kicker { display: block; font-size: 7px; }
+  .layout-sidebar .sidebar-account-controls .topbar-actions > .navigation-layout-toggle { grid-column: 1; grid-row: 2; }
+  .layout-sidebar .sidebar-account-controls .topbar-actions > .nav-dropdown-anchor { min-width: 0; }
+  .layout-sidebar .sidebar-account-controls .topbar-icon-button, .layout-sidebar .sidebar-account-controls .topbar-profile.topbar-account-button { width: 100%; height: 36px; min-width: 0; padding: 3px; justify-content: center; border-radius: 8px; }
+  .layout-sidebar .sidebar-account-controls .topbar-account-avatar { width: 27px; height: 27px; border-radius: 7px; }
+  .layout-sidebar .sidebar-account-controls .topbar-account-copy, .layout-sidebar .sidebar-account-controls .topbar-account-chevron { display: none; }
+  .layout-sidebar .sidebar-account-controls .nav-popover { position: fixed; top: 16px; left: calc(var(--navigation-sidebar-width) + 12px); right: auto; max-height: calc(100dvh - 32px); }
   .layout-sidebar-caption { display: flex; align-items: center; gap: 7px; padding: 18px 22px 8px; color: hsl(var(--vapor)); font-size: 9px; }
   .layout-sidebar-caption > span:first-child { width: 5px; height: 5px; border-radius: 100%; background: hsl(var(--cyan)); }
   .layout-sidebar-nav { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #24323e transparent; padding: 0 12px 16px; }

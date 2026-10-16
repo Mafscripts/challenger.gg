@@ -15,6 +15,7 @@ import { NavbarDestinations, NavbarMatches } from "./NavbarMenus";
 import { navGroups, playNavGroup, mobileNavSections } from "./navigationGroups";
 import { useNavigationLayout } from "./NavigationLayoutProvider";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
+import NavigationChrome from "./NavigationChrome";
 import "@/styles/navbar-profile.css";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -214,6 +215,7 @@ const formatMessageTime = (value) => {
 
 export default function Navbar() {
   const navigationLayout = useNavigationLayout()?.layout || "topbar";
+  const [sidebarWidth, setSidebarWidth] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [navMenuOpen, setNavMenuOpen] = useState(null);
@@ -240,6 +242,13 @@ export default function Navbar() {
     desktop.addEventListener("change", closeMobileMenu);
     return () => desktop.removeEventListener("change", closeMobileMenu);
   }, [navigationLayout]);
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => setSidebarWidth(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const messagePreviews = useMemo(() => {
     const seen = new Set();
     return messages.filter((message) => {
@@ -1014,6 +1023,318 @@ export default function Navbar() {
     }
   };
 
+  const accountActions = (
+    <div className="topbar-actions flex shrink-0 items-center gap-2">
+      {user ? (
+        <>
+      <NavigationLayoutToggle />
+      {/* Wallet summary */}
+      <div className="topbar-wallet-summary hidden items-center rounded-xl border border-white/[0.06] bg-white/[0.025] px-1 md:flex">
+        <div className="topbar-balance topbar-wallet flex h-10 items-center overflow-hidden">
+          <Link to="/wallet" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
+            <span className="topbar-balance-icon"><Wallet className="h-3.5 w-3.5" /></span>
+            <span className="topbar-balance-copy">
+              <span className="topbar-balance-kicker">Balance</span>
+              <span className="font-mono text-[11px] font-black">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </span>
+          </Link>
+          <Link to="/wallet" title="Add funds" aria-label="Add funds" className="topbar-balance-add flex h-full w-7 items-center justify-center transition-colors">
+            <Plus className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <span aria-hidden="true" className="h-6 w-px bg-white/[0.08]" />
+        <div className="topbar-balance topbar-credits flex h-10 items-center overflow-hidden">
+          <Link to="/marketplace" title="Marketplace credits" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
+            <span className="topbar-balance-icon"><Coins className="h-3.5 w-3.5" /></span>
+            <span className="topbar-balance-copy">
+              <span className="topbar-balance-kicker">Credits</span>
+              <span className="font-mono text-[11px] font-black">{creditBalance.toLocaleString("en-US")}</span>
+            </span>
+          </Link>
+          <Link to="/marketplace" title="Get credits" aria-label="Get credits" className="topbar-balance-add flex h-full w-7 items-center justify-center transition-colors">
+            <Plus className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Notifications */}
+      <div
+        className="nav-dropdown-anchor relative"
+        onMouseEnter={() => {
+          if (!supportsDesktopHover()) return;
+          cancelDropdownClose();
+          setNotifOpen(true);
+          setNavMenuOpen(null);
+          setMatchesOpen(false);
+          setMessagesOpen(false);
+          setProfileOpen(false);
+          loadNotifications({ fresh: true });
+        }}
+        onMouseLeave={() => scheduleDropdownClose(() => setNotifOpen(false))}
+      >
+        <button
+          type="button"
+          aria-label="Open notifications"
+          aria-expanded={notifOpen}
+          aria-controls="nav-notifications-preview"
+          onClick={() => {
+            cancelDropdownClose();
+            setNotifOpen((current) => !current);
+            setNavMenuOpen(null);
+            setMatchesOpen(false);
+            setMessagesOpen(false);
+            setProfileOpen(false);
+            loadNotifications({ fresh: true });
+          }}
+          className="topbar-icon-button topbar-notification-button relative flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl text-vapor transition-all"
+        >
+          <Bell className="w-4 h-4" />
+          {unreadNotifCount > 0 && (
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
+          )}
+        </button>
+
+        {notifOpen && <NavbarNotifications
+          notifications={notifications}
+          unreadCount={unreadNotifCount}
+          formatTime={formatMessageTime}
+          onRead={markNotifAsRead}
+          onClose={() => setNotifOpen(false)}
+        />}
+      </div>
+
+      {/* Messages */}
+      <div
+        className="nav-dropdown-anchor relative hidden sm:block"
+        onMouseEnter={() => {
+          if (!supportsDesktopHover()) return;
+          cancelDropdownClose();
+          setMessagesOpen(true);
+          setNavMenuOpen(null);
+          setMatchesOpen(false);
+          setNotifOpen(false);
+          setProfileOpen(false);
+          loadMessages({ fresh: true });
+        }}
+        onMouseLeave={() => scheduleDropdownClose(() => setMessagesOpen(false))}
+      >
+        <Link
+          to="/messages"
+          onClick={() => {
+            setMessagesOpen(false);
+            setNotifOpen(false);
+            setProfileOpen(false);
+          }}
+          className="topbar-icon-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-colors"
+          aria-label={unreadMessagesCount > 0 ? `Open messages, ${unreadMessagesCount} unread` : "Open messages"}
+        >
+          <MessageSquare className="w-4 h-4" />
+          {unreadMessagesCount > 0 && (
+            <span aria-hidden="true" className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-orange ring-2 ring-[#0b121a] shadow-[0_0_8px_hsl(var(--orange)/0.55)]" />
+          )}
+        </Link>
+
+        <NavbarMessages
+          key={user?.id || authUser?.id || "guest"}
+          open={messagesOpen}
+          messages={messagePreviews}
+          unreadCount={unreadMessagesCount}
+          formatTime={formatMessageTime}
+          onRead={markMessageAsRead}
+          onClose={() => setMessagesOpen(false)}
+        />
+      </div>
+
+      {/* Profile */}
+      <div
+        className="nav-dropdown-anchor relative"
+        onMouseEnter={() => {
+          if (!supportsDesktopHover()) return;
+          cancelDropdownClose();
+          setProfileOpen(true);
+          setNavMenuOpen(null);
+          setMatchesOpen(false);
+          setNotifOpen(false);
+          setMessagesOpen(false);
+        }}
+        onMouseLeave={() => scheduleDropdownClose(() => setProfileOpen(false))}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            cancelDropdownClose();
+            setProfileOpen((current) => !current);
+            setNavMenuOpen(null);
+            setMatchesOpen(false);
+            setNotifOpen(false);
+            setMessagesOpen(false);
+          }}
+          className={`topbar-profile topbar-account-button ${profileOpen ? "is-open" : ""}`}
+          aria-label={`Open account menu for ${accountName}`}
+          title={`${accountName} · ${accountRole}`}
+          aria-expanded={profileOpen}
+          aria-controls="nav-account-menu"
+        >
+          <span className="topbar-avatar topbar-account-avatar" aria-hidden="true">
+            <User size={18} />
+            {profileAvatar && <img key={profileAvatar} src={profileAvatar} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+          </span>
+          <span className="topbar-account-copy">
+            <span className="topbar-account-name">{accountName}</span>
+            <span className="topbar-account-role" data-staff={canSeeAdminLink}>{canSeeAdminLink && <ShieldCheck size={11} aria-hidden="true" />}{accountRole}</span>
+          </span>
+          <span className="topbar-account-chevron" aria-hidden="true"><ChevronDown size={14} /></span>
+        </button>
+
+        {profileOpen && (
+            <div id="nav-account-menu" className="nav-popover nav-popover-enter nav-profile-popover absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-1rem))] rounded-2xl">
+              <header className="profile-menu-header">
+                <span className="profile-menu-avatar"><User size={20} />{profileAvatar && <img src={profileAvatar} alt="" onError={event => { event.currentTarget.style.display = "none"; }} />}</span>
+                <div className="profile-menu-identity"><p>Your Topfragg account</p><strong>{accountName}</strong></div>
+                <span className="profile-menu-role">{accountRole}</span>
+              </header>
+              {canSeeAdminLink && (
+                <div className="profile-menu-admin-access">
+                  <Link to="/admin" onClick={() => setProfileOpen(false)} className="profile-menu-link profile-menu-admin-shortcut">
+                    <span className="profile-menu-item-icon"><ShieldCheck size={16} aria-hidden="true" /></span>
+                    <span className="profile-menu-link-label">Admin Panel</span>
+                    <ChevronRight size={15} className="profile-menu-link-arrow" aria-hidden="true" />
+                  </Link>
+                </div>
+              )}
+              <div className="profile-menu-scroll">
+              <div>
+                <div className="profile-menu-search">
+                  <Search className="h-4 w-4 shrink-0 text-vapor" />
+                  <input
+                    value={profilePlayerQuery}
+                    onChange={(event) => setProfilePlayerQuery(event.target.value)}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    placeholder="Search players..."
+                    aria-label="Search Topfragg players"
+                  />
+                </div>
+                {profilePlayerQuery.trim().length >= 2 && (
+                  <div className="profile-menu-search-results">
+                    {profilePlayerSearching ? (
+                      <p className="px-3 py-5 text-center text-xs text-vapor">Searching...</p>
+                    ) : profilePlayerResults.length === 0 ? (
+                      <p className="px-3 py-5 text-center text-xs text-vapor">No players found</p>
+                    ) : profilePlayerResults.map((player) => (
+                      <Link
+                        key={player.id}
+                        to={`/profile/${player.username || player.id}`}
+                        onClick={() => {
+                          setProfileOpen(false);
+                          setProfilePlayerQuery("");
+                        }}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-vapor transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-cyan">
+                          {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4" />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold">{player.name}</span>
+                          <span className="block truncate text-[10px] text-vapor">@{player.handle || player.username || "player"}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <ProfileMenuSection
+                label="Account"
+                items={[
+                  { label: "My Profile", path: profilePath, icon: User },
+                  { label: "My Tickets", path: "/my-tickets", icon: Ticket },
+                  { label: "My Matches", path: "/my-matches", icon: History },
+                  { label: "Teams", path: "/teams", icon: Users },
+                  { label: "Wallet", path: "/wallet", icon: Wallet },
+                  { label: "Settings", path: "/settings", icon: Settings },
+                ]}
+                onSelect={() => setProfileOpen(false)}
+              />
+              <ProfileMenuSection
+                label="Competitive"
+                items={[
+                  ...(canSeeTryouts ? [{ label: "Try outs", path: "/try-outs", icon: Swords, featuredTryouts: true }] : []),
+                  { label: "Topfragg League", path: "/league", icon: ShieldCheck, featuredLeague: true },
+                  { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
+                  ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
+                ]}
+                onSelect={() => setProfileOpen(false)}
+              />
+              <ProfileMenuSection
+                label="Premium"
+                items={[
+                  { label: "Topfragg Premium", path: "/premium", icon: Crown },
+                ]}
+                onSelect={() => setProfileOpen(false)}
+              />
+              <ProfileMenuSection
+                label="Community"
+                items={[
+                  { label: "Find Players Chat", path: "/find-players", icon: MessageSquare },
+                  { label: "Rules", path: "/rules", icon: ShieldCheck },
+                ]}
+                onSelect={() => setProfileOpen(false)}
+              />
+              <ProfileMenuSection
+                label="Collection"
+                items={[
+                  { label: "Marketplace", path: "/marketplace", icon: ShoppingBag },
+                  { label: "Inventory", path: "/inventory", icon: Package },
+                  { label: "Trading", path: "/trading", icon: Activity },
+                ]}
+                onSelect={() => setProfileOpen(false)}
+              />
+              </div>
+              <div className="profile-menu-footer">
+                <Link
+                  to="/logout"
+                  onClick={() => setProfileOpen(false)}
+                  className="profile-menu-logout"
+                >
+                  <span><LogOut size={15} />Log out</span><ChevronRight size={13} />
+                </Link>
+              </div>
+            </div>
+        )}
+      </div>
+        </>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all text-sm font-semibold"
+          >
+            <LogIn className="w-4 h-4" />
+            Login
+          </Link>
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-2 rounded-lg bg-orange px-4 py-2 text-sm font-bold text-background shadow-[0_0_24px_rgba(255,108,0,.16)] transition-all hover:bg-orange/90"
+          >
+            <UserPlus className="w-4 h-4" />
+            Register
+          </Link>
+        </div>
+      )}
+
+      {/* Mobile Toggle */}
+      <button
+        onClick={() => setMobileOpen(!mobileOpen)}
+        type="button"
+        aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+        aria-expanded={mobileOpen}
+        className={`navigation-mobile-toggle ${user ? "xl:hidden" : "hidden"} p-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all`}
+      >
+        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+    </div>
+  );
+  const sidebarDesktop = navigationLayout === "sidebar" && sidebarWidth && Boolean(authUser?.id);
+
   return (
     <>
       <BalancePopup notification={balancePopup} onClose={closeBalancePopup} />
@@ -1085,6 +1406,7 @@ export default function Navbar() {
           </div>
         );
       })()}
+      <NavigationChrome sidebar={sidebarDesktop} accountActions={accountActions}>
       <nav
         data-scrolled={scrolled ? "true" : "false"}
         data-season="mw4"
@@ -1230,318 +1552,11 @@ export default function Navbar() {
               </div>
             )}
 
-            {/* Right Side */}
-            <div className="topbar-actions flex shrink-0 items-center gap-2">
-              {user ? (
-                <>
-              <NavigationLayoutToggle />
-              {/* Wallet summary */}
-              <div className="topbar-wallet-summary hidden items-center rounded-xl border border-white/[0.06] bg-white/[0.025] px-1 md:flex">
-                <div className="topbar-balance topbar-wallet flex h-10 items-center overflow-hidden">
-                  <Link to="/wallet" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
-                    <span className="topbar-balance-icon"><Wallet className="h-3.5 w-3.5" /></span>
-                    <span className="topbar-balance-copy">
-                      <span className="topbar-balance-kicker">Balance</span>
-                      <span className="font-mono text-[11px] font-black">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </span>
-                  </Link>
-                  <Link to="/wallet" title="Add funds" aria-label="Add funds" className="topbar-balance-add flex h-full w-7 items-center justify-center transition-colors">
-                    <Plus className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-                <span aria-hidden="true" className="h-6 w-px bg-white/[0.08]" />
-                <div className="topbar-balance topbar-credits flex h-10 items-center overflow-hidden">
-                  <Link to="/marketplace" title="Marketplace credits" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
-                    <span className="topbar-balance-icon"><Coins className="h-3.5 w-3.5" /></span>
-                    <span className="topbar-balance-copy">
-                      <span className="topbar-balance-kicker">Credits</span>
-                      <span className="font-mono text-[11px] font-black">{creditBalance.toLocaleString("en-US")}</span>
-                    </span>
-                  </Link>
-                  <Link to="/marketplace" title="Get credits" aria-label="Get credits" className="topbar-balance-add flex h-full w-7 items-center justify-center transition-colors">
-                    <Plus className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* Notifications */}
-              <div
-                className="nav-dropdown-anchor relative"
-                onMouseEnter={() => {
-                  if (!supportsDesktopHover()) return;
-                  cancelDropdownClose();
-                  setNotifOpen(true);
-                  setNavMenuOpen(null);
-                  setMatchesOpen(false);
-                  setMessagesOpen(false);
-                  setProfileOpen(false);
-                  loadNotifications({ fresh: true });
-                }}
-                onMouseLeave={() => scheduleDropdownClose(() => setNotifOpen(false))}
-              >
-                <button
-                  type="button"
-                  aria-label="Open notifications"
-                  aria-expanded={notifOpen}
-                  aria-controls="nav-notifications-preview"
-                  onClick={() => {
-                    cancelDropdownClose();
-                    setNotifOpen((current) => !current);
-                    setNavMenuOpen(null);
-                    setMatchesOpen(false);
-                    setMessagesOpen(false);
-                    setProfileOpen(false);
-                    loadNotifications({ fresh: true });
-                  }}
-                  className="topbar-icon-button topbar-notification-button relative flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl text-vapor transition-all"
-                >
-                  <Bell className="w-4 h-4" />
-                  {unreadNotifCount > 0 && (
-                    <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
-                  )}
-                </button>
-
-                {notifOpen && <NavbarNotifications
-                  notifications={notifications}
-                  unreadCount={unreadNotifCount}
-                  formatTime={formatMessageTime}
-                  onRead={markNotifAsRead}
-                  onClose={() => setNotifOpen(false)}
-                />}
-              </div>
-
-              {/* Messages */}
-              <div
-                className="nav-dropdown-anchor relative hidden sm:block"
-                onMouseEnter={() => {
-                  if (!supportsDesktopHover()) return;
-                  cancelDropdownClose();
-                  setMessagesOpen(true);
-                  setNavMenuOpen(null);
-                  setMatchesOpen(false);
-                  setNotifOpen(false);
-                  setProfileOpen(false);
-                  loadMessages({ fresh: true });
-                }}
-                onMouseLeave={() => scheduleDropdownClose(() => setMessagesOpen(false))}
-              >
-                <Link
-                  to="/messages"
-                  onClick={() => {
-                    setMessagesOpen(false);
-                    setNotifOpen(false);
-                    setProfileOpen(false);
-                  }}
-                  className="topbar-icon-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-colors"
-                  aria-label={unreadMessagesCount > 0 ? `Open messages, ${unreadMessagesCount} unread` : "Open messages"}
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  {unreadMessagesCount > 0 && (
-                    <span aria-hidden="true" className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-orange ring-2 ring-[#0b121a] shadow-[0_0_8px_hsl(var(--orange)/0.55)]" />
-                  )}
-                </Link>
-
-                <NavbarMessages
-                  key={user?.id || authUser?.id || "guest"}
-                  open={messagesOpen}
-                  messages={messagePreviews}
-                  unreadCount={unreadMessagesCount}
-                  formatTime={formatMessageTime}
-                  onRead={markMessageAsRead}
-                  onClose={() => setMessagesOpen(false)}
-                />
-              </div>
-
-              {/* Profile */}
-              <div
-                className="nav-dropdown-anchor relative"
-                onMouseEnter={() => {
-                  if (!supportsDesktopHover()) return;
-                  cancelDropdownClose();
-                  setProfileOpen(true);
-                  setNavMenuOpen(null);
-                  setMatchesOpen(false);
-                  setNotifOpen(false);
-                  setMessagesOpen(false);
-                }}
-                onMouseLeave={() => scheduleDropdownClose(() => setProfileOpen(false))}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    cancelDropdownClose();
-                    setProfileOpen((current) => !current);
-                    setNavMenuOpen(null);
-                    setMatchesOpen(false);
-                    setNotifOpen(false);
-                    setMessagesOpen(false);
-                  }}
-                  className={`topbar-profile topbar-account-button ${profileOpen ? "is-open" : ""}`}
-                  aria-label={`Open account menu for ${accountName}`}
-                  title={`${accountName} · ${accountRole}`}
-                  aria-expanded={profileOpen}
-                  aria-controls="nav-account-menu"
-                >
-                  <span className="topbar-avatar topbar-account-avatar" aria-hidden="true">
-                    <User size={18} />
-                    {profileAvatar && <img key={profileAvatar} src={profileAvatar} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
-                  </span>
-                  <span className="topbar-account-copy">
-                    <span className="topbar-account-name">{accountName}</span>
-                    <span className="topbar-account-role" data-staff={canSeeAdminLink}>{canSeeAdminLink && <ShieldCheck size={11} aria-hidden="true" />}{accountRole}</span>
-                  </span>
-                  <span className="topbar-account-chevron" aria-hidden="true"><ChevronDown size={14} /></span>
-                </button>
-
-                {profileOpen && (
-                    <div id="nav-account-menu" className="nav-popover nav-popover-enter nav-profile-popover absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-1rem))] rounded-2xl">
-                      <header className="profile-menu-header">
-                        <span className="profile-menu-avatar"><User size={20} />{profileAvatar && <img src={profileAvatar} alt="" onError={event => { event.currentTarget.style.display = "none"; }} />}</span>
-                        <div className="profile-menu-identity"><p>Your Topfragg account</p><strong>{accountName}</strong></div>
-                        <span className="profile-menu-role">{accountRole}</span>
-                      </header>
-                      {canSeeAdminLink && (
-                        <div className="profile-menu-admin-access">
-                          <Link to="/admin" onClick={() => setProfileOpen(false)} className="profile-menu-link profile-menu-admin-shortcut">
-                            <span className="profile-menu-item-icon"><ShieldCheck size={16} aria-hidden="true" /></span>
-                            <span className="profile-menu-link-label">Admin Panel</span>
-                            <ChevronRight size={15} className="profile-menu-link-arrow" aria-hidden="true" />
-                          </Link>
-                        </div>
-                      )}
-                      <div className="profile-menu-scroll">
-                      <div>
-                        <div className="profile-menu-search">
-                          <Search className="h-4 w-4 shrink-0 text-vapor" />
-                          <input
-                            value={profilePlayerQuery}
-                            onChange={(event) => setProfilePlayerQuery(event.target.value)}
-                            onKeyDown={(event) => event.stopPropagation()}
-                            placeholder="Search players..."
-                            aria-label="Search Topfragg players"
-                          />
-                        </div>
-                        {profilePlayerQuery.trim().length >= 2 && (
-                          <div className="profile-menu-search-results">
-                            {profilePlayerSearching ? (
-                              <p className="px-3 py-5 text-center text-xs text-vapor">Searching...</p>
-                            ) : profilePlayerResults.length === 0 ? (
-                              <p className="px-3 py-5 text-center text-xs text-vapor">No players found</p>
-                            ) : profilePlayerResults.map((player) => (
-                              <Link
-                                key={player.id}
-                                to={`/profile/${player.username || player.id}`}
-                                onClick={() => {
-                                  setProfileOpen(false);
-                                  setProfilePlayerQuery("");
-                                }}
-                                className="flex items-center gap-3 rounded-lg px-3 py-2 text-vapor transition-colors hover:bg-white/[0.04] hover:text-foreground"
-                              >
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-cyan">
-                                  {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4" />}
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-sm font-bold">{player.name}</span>
-                                  <span className="block truncate text-[10px] text-vapor">@{player.handle || player.username || "player"}</span>
-                                </span>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <ProfileMenuSection
-                        label="Account"
-                        items={[
-                          { label: "My Profile", path: profilePath, icon: User },
-                          { label: "My Tickets", path: "/my-tickets", icon: Ticket },
-                          { label: "My Matches", path: "/my-matches", icon: History },
-                          { label: "Teams", path: "/teams", icon: Users },
-                          { label: "Wallet", path: "/wallet", icon: Wallet },
-                          { label: "Settings", path: "/settings", icon: Settings },
-                        ]}
-                        onSelect={() => setProfileOpen(false)}
-                      />
-                      <ProfileMenuSection
-                        label="Competitive"
-                        items={[
-                          ...(canSeeTryouts ? [{ label: "Try outs", path: "/try-outs", icon: Swords, featuredTryouts: true }] : []),
-                          { label: "Topfragg League", path: "/league", icon: ShieldCheck, featuredLeague: true },
-                          { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
-                          ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
-                        ]}
-                        onSelect={() => setProfileOpen(false)}
-                      />
-                      <ProfileMenuSection
-                        label="Premium"
-                        items={[
-                          { label: "Topfragg Premium", path: "/premium", icon: Crown },
-                        ]}
-                        onSelect={() => setProfileOpen(false)}
-                      />
-                      <ProfileMenuSection
-                        label="Community"
-                        items={[
-                          { label: "Find Players Chat", path: "/find-players", icon: MessageSquare },
-                          { label: "Rules", path: "/rules", icon: ShieldCheck },
-                        ]}
-                        onSelect={() => setProfileOpen(false)}
-                      />
-                      <ProfileMenuSection
-                        label="Collection"
-                        items={[
-                          { label: "Marketplace", path: "/marketplace", icon: ShoppingBag },
-                          { label: "Inventory", path: "/inventory", icon: Package },
-                          { label: "Trading", path: "/trading", icon: Activity },
-                        ]}
-                        onSelect={() => setProfileOpen(false)}
-                      />
-                      </div>
-                      <div className="profile-menu-footer">
-                        <Link
-                          to="/logout"
-                          onClick={() => setProfileOpen(false)}
-                          className="profile-menu-logout"
-                        >
-                          <span><LogOut size={15} />Log out</span><ChevronRight size={13} />
-                        </Link>
-                      </div>
-                    </div>
-                )}
-              </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all text-sm font-semibold"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    Login
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="inline-flex items-center gap-2 rounded-lg bg-orange px-4 py-2 text-sm font-bold text-background shadow-[0_0_24px_rgba(255,108,0,.16)] transition-all hover:bg-orange/90"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Register
-                  </Link>
-                </div>
-              )}
-
-              {/* Mobile Toggle */}
-              <button
-                onClick={() => setMobileOpen(!mobileOpen)}
-                type="button"
-                aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
-                aria-expanded={mobileOpen}
-                className={`navigation-mobile-toggle ${user ? "xl:hidden" : "hidden"} p-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all`}
-              >
-                {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
+            {accountActions}
           </div>
         </div>
       </nav>
+      </NavigationChrome>
 
       {/* Mobile Menu */}
       {user && mobileOpen && (

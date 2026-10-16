@@ -60,9 +60,15 @@ test("real layout controls render both choices, preserve Free/Money 8s navigatio
       import { NavigationLayoutProvider } from "./src/components/layout/NavigationLayoutProvider.jsx";
       import NavigationLayoutSection from "./src/components/settings/NavigationLayoutSection.jsx";
       import Sidebar from "./src/components/layout/Sidebar.jsx";
+      import NavigationChrome from "./src/components/layout/NavigationChrome.jsx";
       export function render(user, route) {
         setTestUser(user);
         return renderToStaticMarkup(<MemoryRouter initialEntries={[route]}><NavigationLayoutProvider><Sidebar /><NavigationLayoutSection /></NavigationLayoutProvider></MemoryRouter>);
+      }
+      export function renderChrome(user, sidebar) {
+        setTestUser(user);
+        const actions = <div><button>Account</button><button>Notifications</button><a href="/wallet">Balance</a></div>;
+        return renderToStaticMarkup(<MemoryRouter><NavigationLayoutProvider><NavigationChrome sidebar={sidebar} accountActions={actions}><nav aria-label="Topbar navigation">{actions}</nav></NavigationChrome></NavigationLayoutProvider></MemoryRouter>);
       }
     ` },
     bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"],
@@ -94,4 +100,17 @@ test("real layout controls render both choices, preserve Free/Money 8s navigatio
   assert.match(admin, /aria-label="Use sidebar navigation"/);
   assert.match(admin, /<input(?=[^>]*value="topbar")(?=[^>]*checked="")/);
   assert.doesNotMatch(admin, /<a(?=[^>]*href="\/leaderboards")(?=[^>]*aria-current="page")/);
+  const sidebar = module.exports.renderChrome({ id: "player", role: "user", navigation_layout: "sidebar" }, true);
+  assert.match(sidebar, /aria-label="Sidebar navigation"/);
+  assert.doesNotMatch(sidebar, /aria-label="Topbar navigation"/);
+  assert.match(sidebar, /class="sidebar-account-controls app-topbar-v2"/);
+  assert.equal(sidebar.match(/<button>Notifications<\/button>/g)?.length, 1);
+  assert.equal(sidebar.match(/<button>Account<\/button>/g)?.length, 1);
+  assert.match(sidebar, /href="\/wallet">Balance/);
+  for (const layout of ["topbar", "sidebar"]) {
+    const topbar = module.exports.renderChrome({ id: "player", role: "user", navigation_layout: layout }, false);
+    assert.match(topbar, /aria-label="Topbar navigation"/);
+    assert.doesNotMatch(topbar, /aria-label="Sidebar navigation"/);
+    assert.equal(topbar.match(/<button>Notifications<\/button>/g)?.length, 1);
+  }
 });

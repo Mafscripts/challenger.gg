@@ -16,7 +16,7 @@ function activeDestination(location, path) {
   return [...expected].every(([key, value]) => new URLSearchParams(location.search).get(key) === value);
 }
 
-export default function Sidebar() {
+export default function Sidebar({ accountActions }) {
   const location = useLocation();
   const { user } = useAuth();
   const sections = [
@@ -33,6 +33,7 @@ export default function Sidebar() {
   };
   return <aside className="layout-sidebar" aria-label="Sidebar navigation">
     <Link to="/dashboard" className="layout-sidebar-brand" aria-label="Topfragg dashboard"><TopfraggLogo markClassName="h-8 w-8" wordmarkClassName="text-[15px]" /></Link>
+    {accountActions && <div className="sidebar-account-controls app-topbar-v2">{accountActions}</div>}
     <div className="layout-sidebar-caption"><span /><span>Welcome to your arena</span></div>
     <nav className="layout-sidebar-nav" aria-label="Primary navigation">{sections.map((section) => <div key={section.label} className="layout-sidebar-section"><p>{section.label}</p>{section.items.map(navLink)}</div>)}</nav>
     <div className="layout-sidebar-footer">
