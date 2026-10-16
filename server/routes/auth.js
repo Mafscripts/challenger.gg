@@ -320,10 +320,14 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       "display_name_color",
       "allow_team_credit_payments",
       "allow_team_wager_payments",
+      "navigation_layout",
     ]);
     const unsupportedFields = Object.keys(rest).filter((field) => !selfServiceFields.has(field));
     if (unsupportedFields.length > 0) {
       return res.status(403).json({ error: "One or more account fields require an admin action" });
+    }
+    if (Object.hasOwn(rest, "navigation_layout") && !["topbar", "sidebar"].includes(rest.navigation_layout)) {
+      return res.status(400).json({ error: "Choose topbar or sidebar navigation" });
     }
     let user = current;
     const requestedNameColor = String(rest.display_name_color || "").trim();

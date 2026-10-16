@@ -13,6 +13,7 @@ import {
   Link2,
   MessageCircle,
   MonitorPlay,
+  PanelLeft,
   ShieldCheck,
   UserRound,
   WalletCards,
@@ -25,6 +26,7 @@ import DiscordSection from "@/components/settings/DiscordSection";
 import TwitchSection from "@/components/settings/TwitchSection";
 import GamingIdsSection from "@/components/settings/GamingIdsSection";
 import GameRankSection from "@/components/settings/GameRankSection";
+import NavigationLayoutSection from "@/components/settings/NavigationLayoutSection";
 import SocialsSection from "@/components/settings/SocialsSection";
 import ReferralSection from "@/components/settings/ReferralSection";
 import StreamOverlaySection from "@/components/settings/StreamOverlaySection";
@@ -32,6 +34,10 @@ import "@/styles/settings.css";
 import PageLoader from "@/components/ui/PageLoader";
 
 const settingGroups = [
+  {
+    id: "appearance", label: "Appearance", description: "Topbar or sidebar navigation", icon: PanelLeft,
+    items: [{ label: "Navigation layout", icon: PanelLeft, target: "settings-navigation" }],
+  },
   {
     id: "account",
     label: "Account",
@@ -71,6 +77,7 @@ const settingGroups = [
 
 const legacyTargets = { "gaming-ids": "settings-gaming", credits: "settings-credits", discord: "settings-discord", twitch: "settings-twitch" };
 const groupDetails = {
+  appearance: { title: "Your navigation, your choice", description: "Choose the layout that feels right for you." },
   account: { title: "Account & security", description: "Manage how players see you and keep your login up to date." },
   wallet: { title: "Wallet & rewards", description: "View your credits, manage team payments and share your referral link." },
   connections: { title: "Connected accounts", description: "Keep your gaming IDs, social profiles and community connections in one place." },
@@ -181,6 +188,7 @@ export default function Settings() {
                 <span><GroupIcon size={22} aria-hidden="true" /></span>
                 <div><h2>{details.title}</h2><p>{details.description}</p></div>
               </header>
+              {activeGroup.id === "appearance" && <div className="settings-panel"><div id="settings-navigation" className="settings-block"><NavigationLayoutSection /></div></div>}
               {activeGroup.id === "account" && <div className="settings-panel">
                 <div id="settings-account" className="settings-block"><AccountSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-rank" className="settings-block"><GameRankSection user={user} onUserUpdate={loadUser} /></div>

@@ -1,124 +1,45 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  BarChart3,
-  BookOpen,
-  Crosshair,
-  History,
-  House,
-  LogOut,
-  Newspaper,
-  Package,
-  Settings,
-  ShieldCheck,
-  ShoppingBag,
-  Swords,
-  Ticket,
-  Trophy,
-  User,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { Activity, BookOpen, ChevronRight, House, LogOut, MessageSquare, Settings, ShieldCheck, Ticket, Users } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { useAuth } from "@/lib/AuthContext";
+import { isStaffUser } from "@/lib/roles";
+import { mobileNavSections } from "./navigationGroups";
+import NavigationLayoutToggle from "./NavigationLayoutToggle";
 
-const sections = [
-  {
-    label: "Arena",
-    items: [
-      { label: "Home", path: "/dashboard", icon: House },
-      { label: "Profile", path: "/profile", icon: User, matchPrefix: "/profile/" },
-      { label: "My Tickets", path: "/my-tickets", icon: Ticket },
-      { label: "XP Matches", path: "/ranked", icon: Crosshair },
-      { label: "Wagers", path: "/wagers", icon: Swords },
-      { label: "Tournaments", path: "/tournaments", icon: Trophy },
-    ],
-  },
-  {
-    label: "Community",
-    items: [
-      { label: "Teams", path: "/teams", icon: Users },
-      { label: "Leaderboards", path: "/leaderboards", icon: BarChart3 },
-      { label: "CDL Live", path: "/cdl", icon: History },
-      { label: "News", path: "/news", icon: Newspaper },
-    ],
-  },
-  {
-    label: "Armory",
-    items: [
-      { label: "Marketplace", path: "/marketplace", icon: ShoppingBag },
-      { label: "Inventory", path: "/inventory", icon: Package },
-      { label: "Trading", path: "/trading", icon: Wallet },
-      { label: "Premium", path: "/premium", icon: Trophy },
-    ],
-  },
-];
-
-const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
+function activeDestination(location, path) {
+  const [pathname, query] = path.split("?");
+  if (location.pathname !== pathname) return false;
+  const expected = new URLSearchParams(query);
+  if (pathname === "/ranked/8s") return (new URLSearchParams(location.search).get("mode") === "money") === (expected.get("mode") === "money");
+  if (pathname === "/leaderboards") return (new URLSearchParams(location.search).get("tab") || "") === (expected.get("tab") || "");
+  return [...expected].every(([key, value]) => new URLSearchParams(location.search).get(key) === value);
+}
 
 export default function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
-  const canSeeAdmin = user?.is_admin === true
-    || staffRoles.has(user?.role)
-    || staffRoles.has(user?.admin_role);
-
-  const isActive = (item) => (
-    location.pathname === item.path
-    || (item.matchPrefix && location.pathname.startsWith(item.matchPrefix))
-  );
-
-  return (
-    <aside className="arena-sidebar fixed inset-y-0 left-0 z-[60] hidden w-60 flex-col xl:flex">
-      <Link to="/dashboard" className="arena-sidebar-brand" aria-label="Topfragg dashboard">
-        <TopfraggLogo markClassName="h-7 w-7" wordmarkClassName="text-[15px]" />
-      </Link>
-
-      <nav className="arena-sidebar-nav" aria-label="Primary navigation">
-        {sections.map((section) => (
-          <div key={section.label} className="arena-sidebar-section">
-            <p className="arena-sidebar-label">{section.label}</p>
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item);
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`arena-sidebar-link ${active ? "is-active" : ""}`}
-                  >
-                    <Icon className="h-4 w-4" strokeWidth={1.8} />
-                    <span>{item.label}</span>
-                    {active && <span className="arena-sidebar-active-dot" aria-hidden="true" />}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      <div className="arena-sidebar-footer">
-        {canSeeAdmin && (
-          <Link to="/admin" className={`arena-sidebar-link ${location.pathname === "/admin" ? "is-active" : ""}`}>
-            <ShieldCheck className="h-4 w-4" strokeWidth={1.8} />
-            <span>Admin Panel</span>
-          </Link>
-        )}
-        <Link to="/rules" className={`arena-sidebar-link ${location.pathname === "/rules" ? "is-active" : ""}`}>
-          <BookOpen className="h-4 w-4" strokeWidth={1.8} />
-          <span>Rules</span>
-        </Link>
-        <Link to="/settings" className={`arena-sidebar-link ${location.pathname === "/settings" ? "is-active" : ""}`}>
-          <Settings className="h-4 w-4" strokeWidth={1.8} />
-          <span>Settings</span>
-        </Link>
-        <Link to="/logout" className="arena-sidebar-link arena-sidebar-logout">
-          <LogOut className="h-4 w-4" strokeWidth={1.8} />
-          <span>Logout</span>
-        </Link>
-      </div>
-    </aside>
-  );
+  const sections = [
+    { label: "Your arena", items: [{ label: "Home", path: "/dashboard", icon: House }, { label: "My Matches", path: "/my-matches", icon: Activity }, { label: "Messages", path: "/messages", icon: MessageSquare }] },
+    ...mobileNavSections.filter((section) => section.label !== "Teams"),
+    { label: "Community", items: [{ label: "Teams", path: "/teams", icon: Users }, { label: "My Tickets", path: "/my-tickets", icon: Ticket }] },
+  ];
+  const navLink = (item) => {
+    const Icon = item.icon;
+    const active = activeDestination(location, item.path);
+    return <Link key={item.path} to={item.path} className="layout-sidebar-link" aria-current={active ? "page" : undefined}>
+      <Icon size={16} strokeWidth={1.8} aria-hidden="true" /><span>{item.label}</span>{active && <span className="layout-sidebar-current" aria-hidden="true" />}
+    </Link>;
+  };
+  return <aside className="layout-sidebar" aria-label="Sidebar navigation">
+    <Link to="/dashboard" className="layout-sidebar-brand" aria-label="Topfragg dashboard"><TopfraggLogo markClassName="h-8 w-8" wordmarkClassName="text-[15px]" /></Link>
+    <div className="layout-sidebar-caption"><span /><span>Welcome to your arena</span></div>
+    <nav className="layout-sidebar-nav" aria-label="Primary navigation">{sections.map((section) => <div key={section.label} className="layout-sidebar-section"><p>{section.label}</p>{section.items.map(navLink)}</div>)}</nav>
+    <div className="layout-sidebar-footer">
+      {isStaffUser(user) && navLink({ label: "Admin Panel", path: "/admin", icon: ShieldCheck })}
+      <div className="layout-sidebar-utilities">{navLink({ label: "Rules", path: "/rules", icon: BookOpen })}{navLink({ label: "Settings", path: "/settings", icon: Settings })}</div>
+      <NavigationLayoutToggle showLabel />
+      <Link to="/logout" className="layout-sidebar-signout"><LogOut size={14} aria-hidden="true" /><span>Log out</span><ChevronRight size={13} aria-hidden="true" /></Link>
+    </div>
+  </aside>;
 }
