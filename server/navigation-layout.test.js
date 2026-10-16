@@ -69,7 +69,7 @@ test("real layout controls render both choices, preserve Free/Money 8s navigatio
       export function renderChrome(user, sidebar) {
         setTestUser(user);
         const actions = <div className="sidebar-account-actions"><SidebarBalances walletBalance={16} creditBalance={125} /><button>Account</button><button>Notifications</button></div>;
-        return renderToStaticMarkup(<MemoryRouter><NavigationLayoutProvider><NavigationChrome sidebar={sidebar} accountActions={actions} unreadMessages={2} unreadMatchUpdates={3}><nav aria-label="Topbar navigation">{actions}</nav></NavigationChrome></NavigationLayoutProvider></MemoryRouter>);
+        return renderToStaticMarkup(<MemoryRouter><NavigationLayoutProvider><NavigationChrome sidebar={sidebar} accountActions={actions}><nav aria-label="Topbar navigation">{actions}</nav></NavigationChrome></NavigationLayoutProvider></MemoryRouter>);
       }
     ` },
     bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"],
@@ -105,8 +105,9 @@ test("real layout controls render both choices, preserve Free/Money 8s navigatio
   assert.match(sidebar, /aria-label="Sidebar navigation"/);
   assert.doesNotMatch(sidebar, /aria-label="Topbar navigation"/);
   assert.match(sidebar, /class="sidebar-account-controls app-topbar-v2"/);
-  assert.match(sidebar, /href="\/messages"[^>]*>[\s\S]*?aria-label="2 unread messages"/);
-  assert.match(sidebar, /href="\/my-matches"[^>]*>[\s\S]*?aria-label="3 unread match updates"/);
+  assert.match(sidebar, /href="\/profile\/player"/);
+  assert.match(sidebar, /My Profile/);
+  assert.doesNotMatch(sidebar, /href="\/(messages|my-matches)"/);
   assert.equal(sidebar.match(/<button>Notifications<\/button>/g)?.length, 1);
   assert.equal(sidebar.match(/<button>Account<\/button>/g)?.length, 1);
   assert.match(sidebar, /title="Balance: \$16\.00"/);

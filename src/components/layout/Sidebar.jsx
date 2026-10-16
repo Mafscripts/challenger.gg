@@ -1,12 +1,11 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Activity, BookOpen, ChevronRight, House, LogOut, MessageSquare, Settings, ShieldCheck, Ticket, Users } from "lucide-react";
+import { BookOpen, ChevronRight, House, LogOut, Settings, ShieldCheck, Ticket, User, Users } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { useAuth } from "@/lib/AuthContext";
 import { isStaffUser } from "@/lib/roles";
 import { mobileNavSections } from "./navigationGroups";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
-import NavigationUnreadBadge from "./NavigationUnreadBadge";
 
 function activeDestination(location, path) {
   const [pathname, query] = path.split("?");
@@ -17,19 +16,20 @@ function activeDestination(location, path) {
   return [...expected].every(([key, value]) => new URLSearchParams(location.search).get(key) === value);
 }
 
-export default function Sidebar({ accountActions, unreadMessages = 0, unreadMatchUpdates = 0 }) {
+export default function Sidebar({ accountActions }) {
   const location = useLocation();
   const { user } = useAuth();
+  const profilePath = user ? `/profile/${encodeURIComponent(user.username || user.id)}` : "/profile";
   const sections = [
-    { label: "Your arena", items: [{ label: "Home", path: "/dashboard", icon: House, tone: "orange" }, { label: "My Matches", path: "/my-matches", icon: Activity, tone: "cyan", unread: unreadMatchUpdates, unreadLabel: "unread match updates" }, { label: "Messages", path: "/messages", icon: MessageSquare, tone: "cyan", unread: unreadMessages, unreadLabel: "unread messages" }] },
+    { label: "Your arena", items: [{ label: "Home", path: "/dashboard", icon: House, tone: "orange" }, { label: "My Profile", path: profilePath, icon: User, tone: "cyan" }] },
     ...mobileNavSections.filter((section) => section.label !== "Teams"),
     { label: "Community", items: [{ label: "Teams", path: "/teams", icon: Users, tone: "orange" }, { label: "My Tickets", path: "/my-tickets", icon: Ticket, tone: "orange" }] },
   ];
   const navLink = (item) => {
     const Icon = item.icon;
-    const active = activeDestination(location, item.path);
+    const active = activeDestination(location, item.path) || (item.path === profilePath && location.pathname === "/profile");
     return <Link key={item.path} to={item.path} className="layout-sidebar-link" data-tone={item.tone || "cyan"} aria-current={active ? "page" : undefined}>
-      <span className="layout-sidebar-item-icon"><Icon size={15} strokeWidth={1.8} aria-hidden="true" /></span><span className="layout-sidebar-item-label">{item.label}</span><NavigationUnreadBadge count={item.unread} label={item.unreadLabel} inline />{active && !item.unread && <ChevronRight className="layout-sidebar-current" size={13} aria-hidden="true" />}
+      <span className="layout-sidebar-item-icon"><Icon size={15} strokeWidth={1.8} aria-hidden="true" /></span><span className="layout-sidebar-item-label">{item.label}</span>{active && <ChevronRight className="layout-sidebar-current" size={13} aria-hidden="true" />}
     </Link>;
   };
   return <aside className="layout-sidebar" aria-label="Sidebar navigation">

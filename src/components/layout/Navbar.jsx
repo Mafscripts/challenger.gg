@@ -1388,7 +1388,7 @@ export default function Navbar() {
           </div>
         );
       })()}
-      <NavigationChrome sidebar={sidebarDesktop} accountActions={accountActions} unreadMessages={unreadMessagesCount} unreadMatchUpdates={notifications.filter((notification) => !notification.is_read && notification.type === "match").length}>
+      <NavigationChrome sidebar={sidebarDesktop} accountActions={accountActions}>
       <nav
         data-scrolled={scrolled ? "true" : "false"}
         data-season="mw4"
