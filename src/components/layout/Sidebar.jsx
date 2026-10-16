@@ -33,7 +33,7 @@ export default function Sidebar({ accountActions, unreadMessages = 0, unreadMatc
     </Link>;
   };
   return <aside className="layout-sidebar" aria-label="Sidebar navigation">
-    <Link to="/dashboard" className="layout-sidebar-brand" aria-label="Topfragg dashboard"><TopfraggLogo markClassName="h-9 w-9" wordmarkClassName="text-[16px]" /><span className="layout-sidebar-brand-caption">Competitive arena</span></Link>
+    <Link to="/dashboard" className="layout-sidebar-brand" aria-label="Topfragg dashboard"><TopfraggLogo markClassName="h-9 w-9" wordmarkClassName="text-[16px]" /></Link>
     {accountActions && <div className="sidebar-account-controls app-topbar-v2">{accountActions}</div>}
     <nav className="layout-sidebar-nav" aria-label="Primary navigation">
       {sections.map((section) => <div key={section.label} className="layout-sidebar-section"><p>{section.label}</p>{section.items.map(navLink)}</div>)}

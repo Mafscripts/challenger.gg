@@ -31,8 +31,7 @@
     background: radial-gradient(ellipse at 0 0, hsl(var(--cyan) / .07), transparent 40%), #0b1119;
     box-shadow: 12px 0 32px rgb(0 0 0 / .12);
   }
-  .layout-sidebar-brand { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; height: 80px; flex-shrink: 0; padding: 0 20px; border-bottom: 1px solid rgb(255 255 255 / .06); }
-  .layout-sidebar-brand-caption { padding-left: 46px; color: hsl(var(--vapor) / .65); font-size: 7px; font-weight: 750; letter-spacing: .18em; text-transform: uppercase; }
+  .layout-sidebar-brand { display: flex; align-items: center; height: 56px; flex-shrink: 0; padding: 0 20px; border-bottom: 1px solid rgb(255 255 255 / .06); }
   .layout-sidebar .sidebar-account-controls {
     position: relative; height: auto; min-height: 0; flex: 0 0 auto; padding: 12px;
     background: transparent; box-shadow: none; backdrop-filter: none;
@@ -62,7 +61,7 @@
   .layout-sidebar .sidebar-profile-button .topbar-account-role { font-size: 8px; font-weight: 600; }
   .layout-sidebar .sidebar-profile-button .topbar-account-chevron { display: grid; place-items: center; width: 16px; height: auto; flex: 0 0 16px; margin: 0; border: 0; color: hsl(var(--vapor) / .65); }
   .layout-sidebar .sidebar-account-controls .nav-popover { position: fixed; top: 16px; left: calc(var(--navigation-sidebar-width) + 12px); right: auto; max-height: calc(100dvh - 32px); }
-  .layout-sidebar-nav { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #24323e transparent; padding: 0 12px 16px; }
+  .layout-sidebar-nav { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #24323e transparent; padding: 0 12px 12px; }
   .layout-sidebar-section { flex-shrink: 0; padding-top: 15px; }
   .layout-sidebar-section:first-child { padding-top: 13px; }
   .layout-sidebar-section > p { display: flex; align-items: center; gap: 10px; margin: 0 7px 6px; color: hsl(var(--vapor) / .7); font-size: 8px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
@@ -79,7 +78,7 @@
   .layout-sidebar-link[aria-current="page"]::before { content: ""; position: absolute; left: -1px; top: 8px; bottom: 8px; width: 2px; background: hsl(var(--sidebar-accent)); box-shadow: 0 0 10px hsl(var(--sidebar-accent) / .4); }
   .layout-sidebar-link[aria-current="page"] .layout-sidebar-item-icon { color: hsl(var(--sidebar-accent)); background: hsl(var(--sidebar-accent) / .12); }
   .layout-sidebar-current { flex-shrink: 0; color: hsl(var(--sidebar-accent)); }
-  .layout-sidebar-game-wrap { flex-shrink: 0; margin-top: auto; padding-top: 22px; }
+  .layout-sidebar-game-wrap { flex-shrink: 0; margin-top: auto; padding-top: 16px; }
   .layout-sidebar-game { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; overflow: hidden; min-height: 112px; padding: 15px 12px; border: 1px solid hsl(var(--cyan) / .2); border-radius: 4px 4px 16px 4px; background: #101e29; }
   .layout-sidebar-game::before { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, #09131dee 15%, #09131d55), url('/assets/mw4/hero.webp') center 40% / cover; transition: opacity 150ms; opacity: .8; }
   .layout-sidebar-game:hover::before { opacity: 1; }
