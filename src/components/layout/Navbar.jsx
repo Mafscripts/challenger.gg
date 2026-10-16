@@ -16,6 +16,7 @@ import { navGroups, playNavGroup, mobileNavSections } from "./navigationGroups";
 import { useNavigationLayout } from "./NavigationLayoutProvider";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
 import NavigationChrome from "./NavigationChrome";
+import SidebarBalances from "./SidebarBalances";
 import "@/styles/navbar-profile.css";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -1023,13 +1024,15 @@ export default function Navbar() {
     }
   };
 
+  const sidebarDesktop = navigationLayout === "sidebar" && sidebarWidth && Boolean(authUser?.id);
+
   const accountActions = (
-    <div className="topbar-actions flex shrink-0 items-center gap-2">
+    <div className={sidebarDesktop ? "sidebar-account-actions" : "topbar-actions flex shrink-0 items-center gap-2"}>
       {user ? (
         <>
-      <NavigationLayoutToggle />
+      {!sidebarDesktop && <NavigationLayoutToggle />}
       {/* Wallet summary */}
-      <div className="topbar-wallet-summary hidden items-center rounded-xl border border-white/[0.06] bg-white/[0.025] px-1 md:flex">
+      {sidebarDesktop ? <SidebarBalances walletBalance={walletBalance} creditBalance={creditBalance} /> : <div className="topbar-wallet-summary hidden items-center rounded-xl border border-white/[0.06] bg-white/[0.025] px-1 md:flex">
         <div className="topbar-balance topbar-wallet flex h-10 items-center overflow-hidden">
           <Link to="/wallet" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
             <span className="topbar-balance-icon"><Wallet className="h-3.5 w-3.5" /></span>
@@ -1055,11 +1058,11 @@ export default function Navbar() {
             <Plus className="h-3.5 w-3.5" />
           </Link>
         </div>
-      </div>
+      </div>}
 
       {/* Notifications */}
       <div
-        className="nav-dropdown-anchor relative"
+        className={`nav-dropdown-anchor relative ${sidebarDesktop ? "sidebar-updates-anchor" : ""}`}
         onMouseEnter={() => {
           if (!supportsDesktopHover()) return;
           cancelDropdownClose();
@@ -1086,9 +1089,10 @@ export default function Navbar() {
             setProfileOpen(false);
             loadNotifications({ fresh: true });
           }}
-          className="topbar-icon-button topbar-notification-button relative flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl text-vapor transition-all"
+          className={sidebarDesktop ? "sidebar-utility-button" : "topbar-icon-button topbar-notification-button relative flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl text-vapor transition-all"}
         >
           <Bell className="w-4 h-4" />
+          {sidebarDesktop && <span>Updates</span>}
           {unreadNotifCount > 0 && (
             <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
           )}
@@ -1105,7 +1109,7 @@ export default function Navbar() {
 
       {/* Messages */}
       <div
-        className="nav-dropdown-anchor relative hidden sm:block"
+        className={`nav-dropdown-anchor relative ${sidebarDesktop ? "sidebar-inbox-anchor" : "hidden sm:block"}`}
         onMouseEnter={() => {
           if (!supportsDesktopHover()) return;
           cancelDropdownClose();
@@ -1125,10 +1129,11 @@ export default function Navbar() {
             setNotifOpen(false);
             setProfileOpen(false);
           }}
-          className="topbar-icon-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-colors"
+          className={sidebarDesktop ? "sidebar-utility-button" : "topbar-icon-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-colors"}
           aria-label={unreadMessagesCount > 0 ? `Open messages, ${unreadMessagesCount} unread` : "Open messages"}
         >
           <MessageSquare className="w-4 h-4" />
+          {sidebarDesktop && <span>Inbox</span>}
           {unreadMessagesCount > 0 && (
             <span aria-hidden="true" className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-orange ring-2 ring-[#0b121a] shadow-[0_0_8px_hsl(var(--orange)/0.55)]" />
           )}
@@ -1147,7 +1152,7 @@ export default function Navbar() {
 
       {/* Profile */}
       <div
-        className="nav-dropdown-anchor relative"
+        className={`nav-dropdown-anchor relative ${sidebarDesktop ? "sidebar-profile-anchor" : ""}`}
         onMouseEnter={() => {
           if (!supportsDesktopHover()) return;
           cancelDropdownClose();
@@ -1169,7 +1174,7 @@ export default function Navbar() {
             setNotifOpen(false);
             setMessagesOpen(false);
           }}
-          className={`topbar-profile topbar-account-button ${profileOpen ? "is-open" : ""}`}
+          className={`${sidebarDesktop ? "sidebar-profile-button" : "topbar-profile topbar-account-button"} ${profileOpen ? "is-open" : ""}`}
           aria-label={`Open account menu for ${accountName}`}
           title={`${accountName} · ${accountRole}`}
           aria-expanded={profileOpen}
@@ -1333,7 +1338,6 @@ export default function Navbar() {
       </button>
     </div>
   );
-  const sidebarDesktop = navigationLayout === "sidebar" && sidebarWidth && Boolean(authUser?.id);
 
   return (
     <>
