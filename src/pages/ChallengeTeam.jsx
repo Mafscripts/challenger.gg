@@ -77,7 +77,7 @@ export default function ChallengeTeam() {
   const openJoin = (entry) => { setTeamId(""); setJoining(entry); };
   const ladderRows = data?.standings?.[ladder] || [];
   const active = (data?.matches || []).filter((entry) => !["completed", "cancelled"].includes(entry.status));
-  return <div className="cat-page"><div className="cat-container">
+  return <div className="competition-page cat-page min-h-screen py-8"><div className="cat-container mx-auto w-full max-w-[1600px] px-4 lg:px-6">
     {id && <Link to="/challenge-a-team" className="cat-back"><ArrowLeft size={14} />Challenge a Team</Link>}
     <header className={`cat-hero ${id ? "cat-hero-room" : ""}`}>
       <div><p className="cat-eyebrow"><Crosshair size={14} />TOPFRAGG / CHALLENGE A TEAM <span>NEW</span></p><h1>{id ? <>{match?.alpha_team?.name || "Your squad"}<span className="cat-vs"> vs </span>{match?.bravo_team?.name || "Solo challengers"}</> : <>Your squad.<br /><em>Their next challenge.</em></>}</h1><p>{id ? `${match?.size || "—"}v${match?.size || "—"} · ${match?.game_name || "Loading game"} · ${match?.format_name || ""}` : "Post your roster. Face another team or a side of solo challengers. Build your own legacy, one win at a time."}</p>
