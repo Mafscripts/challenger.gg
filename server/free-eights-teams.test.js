@@ -139,7 +139,7 @@ test("generation batches trusted account ranks and latest Free 8s stats, ignorin
   assert.deepEqual(f.calls[1].query.orderBy, { created_date: "desc" });
   assert.equal(result.balance.players.u0.rank, "Newb");
   assert.equal(result.balance.players.u0.free_eights_elo, 0);
-  assert.equal(result.balance.players.u4.rank, "Diamond");
+  assert.equal(result.balance.players.u4.rank, "Titan");
   assert.equal(result.balance.strength_gap, 100);
   assert.equal(JSON.stringify(result).includes("secret"), false);
   assert.deepEqual(f.users[7].metadata.screenshot_rank, "iridescent");

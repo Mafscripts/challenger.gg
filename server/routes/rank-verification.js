@@ -18,11 +18,11 @@ export function createRankVerificationRouter(db = prisma) {
     try { const { state, user } = await stateFor(req.user.id); res.json(publicRankState(state, user.metadata?.screenshot_rank)); } catch (error) { next(error); }
   });
   // Old clients must not auto-award Top 250 through image recognition.
-  router.post("/submit", (_req, res) => res.status(410).json({ error: "Choose your game rank in Settings. Top 250 requires an admin request." }));
+  router.post("/submit", (_req, res) => res.status(410).json({ error: "Choose your game rank in Settings. Legend (Top 250) requires an admin request." }));
   router.post("/select", async (req, res, next) => {
     try {
       const rank = req.body?.rank;
-      if (rank !== null && !selfSelectableRanks.some((item) => item.id === rank)) throw rankError("Choose Diamond, Crimson or Iridescent. Top 250 requires an admin request.");
+      if (rank !== null && !selfSelectableRanks.some((item) => item.id === rank)) throw rankError("Choose Titan, Master or Apex. Legend (Top 250) requires an admin request.");
       const response = await withRankLock(db, req.user.id, async (tx) => {
         const current = await tx.rankVerification.findUnique({ where: { user_id: req.user.id } }) || initialRankState(req.user.id);
         // Selecting an ordinary rank keeps any pending admin request in its queue.
@@ -45,14 +45,14 @@ export function createRankVerificationRouter(db = prisma) {
         if (!user) throw rankError("Player not found", 404);
         const current = await tx.rankVerification.findUnique({ where: { user_id: user.id } }) || initialRankState(user.id);
         if (current.status === "manual_review") return publicRankState(current, user.metadata?.screenshot_rank);
-        if (user.metadata?.screenshot_rank === "top250") throw rankError("Top 250 is already assigned to your account.", 409);
+        if (user.metadata?.screenshot_rank === "top250") throw rankError("Legend is already assigned to your account.", 409);
         if (current.last_submitted_at && Date.now() - new Date(current.last_submitted_at) < 30_000) throw rankError("Wait 30 seconds before sending another request.", 429);
         const request = { id: crypto.randomUUID(), kind: "top250_request", rank: "top250", note: note.trim(), submitted_at: new Date().toISOString(), ...(image ? { hash: image.hash, image: image.bytes.toString("base64") } : {}) };
         const update = { status: "manual_review", failed_attempts: 0, last_submitted_at: new Date(), reviewed_by: null, review_reason: null, attempts: [...(current.attempts || []), request].slice(-5) };
         const row = await tx.rankVerification.upsert({ where: { user_id: user.id }, create: { user_id: user.id, ...update }, update });
         const admins = await tx.user.findMany({ where: { OR: [{ role: { in: ["admin", "super_admin", "ceo"] } }, { admin_role: { in: ["admin", "super_admin", "ceo"] } }, { is_admin: true }] }, select: { id: true, role: true, admin_role: true, is_admin: true } });
         for (const admin of admins.filter((admin) => hasRole(admin, "admin"))) await tx.notification.create({ data: { metadata: {
-          user_id: admin.id, type: "system", title: "Top 250 rank request", message: `${user.display_name || user.username || user.id} requested the Top 250 rank. Review and assign it in Verify Rank.`, is_read: false,
+          user_id: admin.id, type: "system", title: "Legend rank request", message: `${user.display_name || user.username || user.id} requested Legend (Top 250). Review and assign it in Verify Rank.`, is_read: false,
           action_url: `/admin?tab=verifyRank&player=${encodeURIComponent(user.id)}`, related_entity_id: user.id, related_entity_type: "RankVerification", rank_request_id: request.id,
         } } });
         return publicRankState(row, user.metadata?.screenshot_rank);
@@ -85,7 +85,7 @@ export function createRankVerificationRouter(db = prisma) {
     try {
       const { action, rank, reason, expected_updated_date: expected } = req.body || {};
       if (!["set_rank", "reject", "reset"].includes(action) || typeof reason !== "string" || reason.trim().length < 3 || reason.length > 500) throw rankError("Choose an action and enter a reason (3–500 characters).");
-      if (action === "set_rank" && rank !== null && !screenshotRankFor(rank)) throw rankError("Choose Diamond, Crimson, Iridescent, Top 250 or no rank.");
+      if (action === "set_rank" && rank !== null && !screenshotRankFor(rank)) throw rankError("Choose Titan, Master, Apex, Legend or no rank.");
       const response = await withRankLock(db, req.params.userId, async (tx) => {
         const user = await tx.user.findUnique({ where: { id: req.params.userId } });
         if (!user) throw rankError("Player not found", 404);

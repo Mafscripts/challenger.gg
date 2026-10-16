@@ -9,7 +9,7 @@ export function freeEightsRankJoinError(matchType, storedRank) {
   return {
     success: false,
     code: "FREE_EIGHTS_RANK_REQUIRED",
-    error: "Choose Diamond, Crimson or Iridescent in Settings to join Free 8s. Top 250 requires admin approval.",
+    error: "Choose Titan, Master or Apex in Settings to join Free 8s. Legend (Top 250) requires admin approval.",
     action_url: freeEightsRankUploadUrl,
   };
 }
