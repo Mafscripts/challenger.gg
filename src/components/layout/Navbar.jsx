@@ -401,6 +401,7 @@ export default function Navbar() {
     });
   }, [adminDispute?.id]);
   const messagesLoadedAt = useRef(0);
+  const messagesRequestId = useRef(0);
   const dropdownCloseTimer = useRef(null);
   const location = useLocation();
   const { isAuthenticated, user: authUser } = useAuth();
@@ -569,6 +570,8 @@ export default function Navbar() {
     shownBalancePopupIds.current.clear();
     shownBalancePopupKeys.current.clear();
     setMessages([]);
+    messagesRequestId.current += 1;
+    messagesLoadedAt.current = 0;
     setUnreadNotifCount(0);
     setUnreadMessagesCount(0);
     setWalletBalance(0);
@@ -944,12 +947,14 @@ export default function Navbar() {
   const loadMessages = async ({ fresh = false, userId = null } = {}) => {
     try {
       if (fresh && Date.now() - messagesLoadedAt.current < 10000) return;
+      const requestId = ++messagesRequestId.current;
       const resolvedUserId = userId || user?.id || authUser?.id || (await base44.auth.me())?.id;
       if (!resolvedUserId) return;
       const messageQuery = fresh
         ? base44.entities.Message.filterFresh
         : base44.entities.Message.filter;
       const data = await messageQuery({ recipient_id: resolvedUserId }, '-created_date', 25);
+      if (requestId !== messagesRequestId.current) return;
       const rows = data || [];
       setMessages(rows);
       setUnreadMessagesCount(rows.filter(m => !m.is_read).length);
@@ -1061,10 +1066,17 @@ export default function Navbar() {
   };
 
   const markMessageAsRead = async (id) => {
+    const message = messages.find((row) => row.id === id);
+    if (!message || message.is_read) return;
     try {
-      await base44.entities.Message.update(id, { is_read: true });
+      if (message.message_type === "direct_message") {
+        const response = await base44.functions.invoke("markDirectConversationRead", { other_user_id: message.sender_id, message_ids: [id] });
+        if (!response.data?.success) throw new Error(response.data?.error || "Could not mark message as read");
+        window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
+      } else await base44.entities.Message.update(id, { is_read: true });
       setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: true } : m));
-      setUnreadMessagesCount(prev => Math.max(0, prev - 1));
+      messagesLoadedAt.current = 0;
+      await loadMessages({ fresh: true });
     } catch (error) {
       console.error('Failed to mark message as read:', error);
     }

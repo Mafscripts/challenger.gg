@@ -95,7 +95,7 @@ const metadataFilterEntities = new Set([
 const metadataFilterKeys = [
   "user_id", "host_id", "challenger_id", "tournament_id", "team_id", "wager_id",
   "sender_id", "recipient_id", "conversation_id",
-  "status", "match_type", "invited_user_id",
+  "status", "match_type", "message_type", "invited_user_id",
 ];
 
 const sortRows = (rows, order) => {
@@ -217,7 +217,7 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
     : await delegate.findMany({
       ...(where ? { where } : {}),
       ...(orderBy ? { orderBy } : {}),
-      take: 500,
+      take: entity === "Message" ? take : 500,
     });
   let flattened = rows.map(serializeRow);
 

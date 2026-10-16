@@ -5984,7 +5984,9 @@ async function acknowledgeDispute(req) {
 
 async function sendMessage(req) {
   const recipientId = String(req.body.recipient_id || "").trim();
-  const content = String(req.body.content || req.body.message || "").trim();
+  const rawContent = req.body.content ?? req.body.message;
+  if (typeof rawContent !== "string") return { success: false, error: "Message is required" };
+  const content = rawContent.trim();
   if (!recipientId) return { success: false, error: "Choose a player first" };
   if (recipientId === req.user.id) return { success: false, error: "You cannot message yourself" };
   if (!content) return { success: false, error: "Message is required" };
@@ -6015,7 +6017,7 @@ async function sendMessage(req) {
     related_entity_id: message.id,
     related_entity_type: "Message",
     created_date: new Date().toISOString(),
-  });
+  }).catch((error) => console.warn("[Direct messages] Notification failed after message was saved", error.code || "notification-unavailable"));
   return { success: true, message };
 }
 
@@ -6315,8 +6317,8 @@ async function moderateFindPlayersChatUser(req) {
 
 async function getDirectMessages(req) {
   const [incoming, outgoing] = await Promise.all([
-    listEntities("Message", { recipient_id: req.user.id }, "-created_date", 500).catch(() => []),
-    listEntities("Message", { sender_id: req.user.id }, "-created_date", 500).catch(() => []),
+    listEntities("Message", { recipient_id: req.user.id, message_type: "direct_message" }, "-created_date", 500),
+    listEntities("Message", { sender_id: req.user.id, message_type: "direct_message" }, "-created_date", 500),
   ]);
   const messages = [...incoming, ...outgoing]
     .filter(message => message.message_type === "direct_message")
@@ -6336,22 +6338,29 @@ async function getDirectMessages(req) {
 
 async function markDirectConversationRead(req) {
   const otherUserId = String(req.body.other_user_id || "").trim();
-  if (!otherUserId) return { success: false, error: "Conversation is required" };
+  if (!otherUserId || otherUserId === req.user.id) return { success: false, error: "Conversation is required" };
+  const requestedIds = req.body.message_ids;
+  if (requestedIds !== undefined && (!Array.isArray(requestedIds) || requestedIds.length > 1000
+    || requestedIds.some((id) => typeof id !== "string" || !id || id.length > 200))) {
+    return { success: false, error: "Invalid message IDs" };
+  }
   const incoming = await listEntities("Message", {
-    sender_id: otherUserId,
-    recipient_id: req.user.id,
-  }, "-created_date", 500).catch(() => []);
-  const unread = incoming.filter(message => message.message_type === "direct_message" && !message.is_read);
+    sender_id: otherUserId, recipient_id: req.user.id, message_type: "direct_message",
+  }, "-created_date", 500);
+  const selected = requestedIds ? incoming.filter((message) => requestedIds.includes(message.id)) : incoming;
+  const unread = selected.filter((message) => !message.is_read);
   await Promise.all(unread.map(message => updateEntity("Message", message.id, { is_read: true })));
 
-  if (unread.length) {
-    const unreadIds = new Set(unread.map(message => message.id));
-    const notifications = await listEntities("Notification", { user_id: req.user.id }, "-created_date", 500).catch(() => []);
+  // Include already-read IDs: opening an inbox preview can mark the message
+  // first, while its separate notification still needs acknowledgement.
+  if (selected.length) {
+    const ids = new Set(selected.map(message => message.id));
+    const notifications = await listEntities("Notification", { user_id: req.user.id }, "-created_date", 500);
     await Promise.all(notifications
-      .filter(notification => unreadIds.has(notification.related_entity_id) && !notification.is_read)
+      .filter(notification => notification.related_entity_type === "Message" && ids.has(notification.related_entity_id) && !notification.is_read)
       .map(notification => updateEntity("Notification", notification.id, { is_read: true })));
   }
-  return { success: true, read_count: unread.length };
+  return { success: true, read_count: unread.length, read_message_ids: selected.map((message) => message.id) };
 }
 
 async function sendMatchRoomMessage(req) {

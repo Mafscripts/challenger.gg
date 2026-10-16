@@ -19,6 +19,7 @@ import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
 import EmojiPicker from "@/components/chat/EmojiPicker";
+import { clearSentDraft, createDirectMessageInbox } from "@/lib/directMessageInbox";
 import "@/styles/messages.css";
 
 const initials = (name) => String(name || "Player").trim().slice(0, 1).toUpperCase();
@@ -79,7 +80,9 @@ export default function Messages() {
   const [activeInvitation, setActiveInvitation] = useState(null);
   const [activePlayerId, setActivePlayerId] = useState(searchParams.get("conversation") || "");
   const [loading, setLoading] = useState(true);
-  const [draft, setDraft] = useState("");
+  const [drafts, setDrafts] = useState({});
+  const draft = drafts[activePlayerId] || "";
+  const setDraft = (value) => setDrafts((current) => ({ ...current, [activePlayerId]: value }));
   const [emojiPickerCloseSignal, setEmojiPickerCloseSignal] = useState(0);
   const [sending, setSending] = useState(false);
   const [composerOpen, setComposerOpen] = useState(Boolean(searchParams.get("compose")));
@@ -97,7 +100,12 @@ export default function Messages() {
   const composerRef = useRef(null);
   const followingChatRef = useRef(true);
   const activePlayerIdRef = useRef(activePlayerId);
-  const directMessagesLoadingRef = useRef(false);
+  const inboxRef = useRef(null);
+  const sendingRef = useRef(false);
+  const readRequestsRef = useRef(new Set());
+  const readInvitationIdsRef = useRef(new Set());
+  const [readRetry, setReadRetry] = useState(0);
+  const [pageVisible, setPageVisible] = useState(document.visibilityState !== "hidden");
 
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
@@ -113,33 +121,14 @@ export default function Messages() {
     return () => media.removeEventListener("change", update);
   }, []);
 
-  const loadInvitations = async (userId) => {
-    const rows = await base44.entities.Message.filterFresh({ recipient_id: userId }, "-created_date", 100).catch(() => []);
-    setInvitations((rows || []).filter(message => message.message_type === "tournament_invitation"));
-  };
-
-  const loadDirectMessages = async ({ initial = false, viewerId = "" } = {}) => {
-    if (directMessagesLoadingRef.current) return;
-    directMessagesLoadingRef.current = true;
+  const loadInvitations = async (userId, stillActive = () => true) => {
     try {
-      const response = await base44.functions.invoke("getDirectMessages");
-      const data = response.data || {};
-      const nextPlayers = Object.fromEntries((data.users || []).map(player => [player.id, player]));
-      setDirectMessages(data.messages || []);
-      setPlayers(current => ({ ...current, ...nextPlayers }));
-
-      if (!activePlayerIdRef.current && data.messages?.length) {
-        const latest = data.messages[data.messages.length - 1];
-        const ownId = viewerId || currentUser?.id;
-        const otherId = latest.sender_id === ownId ? latest.recipient_id : latest.sender_id;
-        setActivePlayerId(otherId);
-      }
-    } catch (error) {
-      if (initial) toast({ title: "Messages unavailable", description: error.message, variant: "destructive" });
-    } finally {
-      directMessagesLoadingRef.current = false;
-    }
+      const rows = await base44.entities.Message.filterFresh({ recipient_id: userId, message_type: "tournament_invitation" }, "-created_date", 100);
+      if (stillActive()) setInvitations((rows || []).map((row) => readInvitationIdsRef.current.has(row.id) ? { ...row, is_read: true } : row));
+    } catch { /* Keep the existing invitations on a temporary failure. */ }
   };
+
+  const loadDirectMessages = (options = {}) => inboxRef.current?.refresh(options);
 
   useEffect(() => {
     let active = true;
@@ -148,7 +137,29 @@ export default function Messages() {
         const user = await base44.auth.me();
         if (!active) return;
         setCurrentUser(user);
-        await Promise.all([loadDirectMessages({ initial: true, viewerId: user.id }), loadInvitations(user.id)]);
+        const inbox = createDirectMessageInbox({
+          userId: user.id,
+          read: async () => (await base44.functions.invoke("getDirectMessages")).data,
+          onMessages: setDirectMessages,
+          onUsers: (rows, initialMessages) => {
+            const nextPlayers = Object.fromEntries(rows.map((player) => [player.id, player]));
+            // Keep past conversations accessible when an account is unavailable.
+            for (const message of initialMessages || []) {
+              const otherId = message.sender_id === user.id ? message.recipient_id : message.sender_id;
+              if (!nextPlayers[otherId]) nextPlayers[otherId] = { id: otherId, name: message.sender_id === user.id ? message.recipient_name : message.sender_name };
+            }
+            setPlayers((current) => ({ ...current, ...nextPlayers }));
+            if (!activePlayerIdRef.current && initialMessages?.length) {
+              const latest = initialMessages[initialMessages.length - 1];
+              const otherId = latest.sender_id === user.id ? latest.recipient_id : latest.sender_id;
+              activePlayerIdRef.current = otherId;
+              setActivePlayerId(otherId);
+            }
+          },
+          onError: (error, initial) => { if (initial) toast({ title: "Messages unavailable", description: error.message, variant: "destructive" }); },
+        });
+        inboxRef.current = inbox;
+        await Promise.all([inbox.refresh({ initial: true }), loadInvitations(user.id, () => active)]);
       } catch (error) {
         if (active) toast({ title: "Messages unavailable", description: error.message, variant: "destructive" });
       } finally {
@@ -156,35 +167,45 @@ export default function Messages() {
       }
     };
     initialize();
-    return () => { active = false; };
+    return () => { active = false; inboxRef.current?.dispose(); inboxRef.current = null; };
   }, []);
 
   useEffect(() => {
-    if (!currentUser?.id || !requestedPlayerId || (
-      activePlayerIdRef.current === requestedPlayerId && players[requestedPlayerId]
-    )) return undefined;
+    if (!currentUser?.id || !requestedPlayerId) return undefined;
     let active = true;
-    base44.functions.invoke("searchMessageRecipients", { recipient_id: requestedPlayerId })
-      .then((response) => {
-        const player = response.data?.users?.[0];
-        if (!active || !player) return;
-        setPlayers(current => ({ ...current, [player.id]: player }));
-        setActivePlayerId(player.id);
-        setActiveInvitation(null);
-        setMobileChatOpen(true);
-        setComposerOpen(false);
-        if (searchParams.has("compose")) setSearchParams({ conversation: player.id }, { replace: true });
-      })
+    const open = (player) => {
+      if (!active || !player) return;
+      setPlayers((current) => ({ ...current, [player.id]: player }));
+      activePlayerIdRef.current = player.id;
+      setActivePlayerId(player.id);
+      setActiveInvitation(null);
+      setMobileChatOpen(true);
+      setComposerOpen(false);
+      if (searchParams.has("compose")) setSearchParams({ conversation: player.id }, { replace: true });
+    };
+    if (players[requestedPlayerId]) open(players[requestedPlayerId]);
+    else base44.functions.invoke("searchMessageRecipients", { recipient_id: requestedPlayerId })
+      .then((response) => open(response.data?.users?.[0]))
       .catch(() => null);
     return () => { active = false; };
-  }, [currentUser?.id, players, requestedPlayerId]);
+  }, [currentUser?.id, requestedPlayerId]);
+
+  useEffect(() => {
+    const update = () => setPageVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
 
   useEffect(() => {
     if (!currentUser?.id) return undefined;
-    const interval = window.setInterval(() => {
-      if (document.visibilityState !== "hidden") loadDirectMessages();
-    }, 1500);
-    return () => window.clearInterval(interval);
+    let active = true;
+    const refresh = () => { if (document.visibilityState !== "hidden") loadDirectMessages(); };
+    const interval = window.setInterval(refresh, 1500);
+    const invitationsInterval = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") loadInvitations(currentUser.id, () => active);
+    }, 15000);
+    window.addEventListener("focus", refresh);
+    return () => { active = false; window.clearInterval(interval); window.clearInterval(invitationsInterval); window.removeEventListener("focus", refresh); };
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -232,7 +253,7 @@ export default function Messages() {
     return [player?.name, player?.handle, player?.username, fallbackName]
       .filter(Boolean).some(value => String(value).toLowerCase().includes(conversationQuery.trim().toLowerCase()));
   });
-  const unreadCount = conversations.reduce((total, conversation) => total + conversation.unread, 0);
+  const unreadCount = conversations.reduce((total, conversation) => total + conversation.unread, 0) + invitations.filter((invitation) => !invitation.is_read).length;
   const activeMessages = useMemo(() => directMessages.filter(message => (
     currentUser?.id && activePlayerId
     && [message.sender_id, message.recipient_id].includes(currentUser.id)
@@ -241,23 +262,31 @@ export default function Messages() {
   const activePlayer = players[activePlayerId] || null;
   const latestMessage = activeMessages[activeMessages.length - 1];
 
+  const unreadMessageKey = activeMessages.filter((message) => message.recipient_id === currentUser?.id && !message.is_read).map((message) => message.id).join(",");
   useEffect(() => {
-    if (activeInvitation || !activePlayerId || !currentUser?.id || (!desktopView && !mobileChatOpen)) return;
+    if (activeInvitation || !activePlayerId || !currentUser?.id || !pageVisible || (!desktopView && !mobileChatOpen)) return;
     const unreadIds = activeMessages
       .filter(message => message.recipient_id === currentUser.id && !message.is_read)
       .map(message => message.id);
     if (!unreadIds.length) return;
 
-    setDirectMessages(current => current.map(message => (
-      unreadIds.includes(message.id) ? { ...message, is_read: true } : message
-    )));
-    base44.functions.invoke("markDirectConversationRead", { other_user_id: activePlayerId })
-      .then(() => {
+    const key = `${activePlayerId}:${unreadIds.join(",")}`;
+    if (readRequestsRef.current.has(key)) return;
+    readRequestsRef.current.add(key);
+    const inbox = inboxRef.current;
+    let retryTimer;
+    base44.functions.invoke("markDirectConversationRead", { other_user_id: activePlayerId, message_ids: unreadIds })
+      .then((response) => {
+        if (!response.data?.success) throw new Error(response.data?.error || "Could not mark messages as read");
+        if (inboxRef.current !== inbox) return;
+        inbox.markRead(response.data.read_message_ids || unreadIds);
         window.dispatchEvent(new CustomEvent("topfragg:messages-updated"));
         window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
       })
-      .catch(() => null);
-  }, [activeInvitation, activePlayerId, activeMessages.length, currentUser?.id, desktopView, mobileChatOpen]);
+      .catch(() => { if (inboxRef.current === inbox) retryTimer = window.setTimeout(() => setReadRetry((value) => value + 1), 3000); })
+      .finally(() => { readRequestsRef.current.delete(key); });
+    return () => window.clearTimeout(retryTimer);
+  }, [activeInvitation, activePlayerId, unreadMessageKey, currentUser?.id, desktopView, mobileChatOpen, pageVisible, readRetry]);
 
   useLayoutEffect(() => {
     const chat = chatScrollRef.current;
@@ -288,6 +317,7 @@ export default function Messages() {
 
   const selectPlayer = (player) => {
     setPlayers(current => ({ ...current, [player.id]: player }));
+    activePlayerIdRef.current = player.id;
     setActivePlayerId(player.id);
     setActiveInvitation(null);
     setMobileChatOpen(true);
@@ -298,38 +328,46 @@ export default function Messages() {
 
   const selectInvitation = async (invitation) => {
     setActiveInvitation(invitation);
+    activePlayerIdRef.current = "";
     setActivePlayerId("");
     setMobileChatOpen(true);
     setSearchParams({}, { replace: true });
     if (!invitation.is_read) {
-      setInvitations(current => current.map(item => (
-        item.id === invitation.id ? { ...item, is_read: true } : item
-      )));
-      setActiveInvitation({ ...invitation, is_read: true });
-      await base44.entities.Message.update(invitation.id, { is_read: true }).catch(() => null);
-      window.dispatchEvent(new CustomEvent("topfragg:messages-updated"));
+      try {
+        await base44.entities.Message.update(invitation.id, { is_read: true });
+        readInvitationIdsRef.current.add(invitation.id);
+        setInvitations(current => current.map(item => item.id === invitation.id ? { ...item, is_read: true } : item));
+        setActiveInvitation(current => current?.id === invitation.id ? { ...current, is_read: true } : current);
+        window.dispatchEvent(new CustomEvent("topfragg:messages-updated"));
+      } catch (error) {
+        toast({ title: "Could not mark invitation as read", description: error.message, variant: "destructive" });
+      }
     }
   };
 
   const sendMessage = async (event) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!activePlayerId || !content || sending) return;
+    if (!activePlayerId || !content || sendingRef.current) return;
+    sendingRef.current = true;
+    const recipientId = activePlayerId, submittedDraft = draft, inbox = inboxRef.current;
     setSending(true);
     try {
       const response = await base44.functions.invoke("sendMessage", {
-        recipient_id: activePlayerId,
+        recipient_id: recipientId,
         content,
       });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not send message");
-      setDirectMessages(current => [...current, response.data.message]);
-      setDraft("");
+      if (inboxRef.current !== inbox) return;
+      inbox.addConfirmed(response.data.message);
+      setDrafts((current) => clearSentDraft(current, recipientId, submittedDraft));
       setEmojiPickerCloseSignal(signal => signal + 1);
       window.dispatchEvent(new CustomEvent("topfragg:messages-updated"));
     } catch (error) {
       toast({ title: "Message not sent", description: error.message, variant: "destructive" });
     } finally {
-      setSending(false);
+      sendingRef.current = false;
+      if (inboxRef.current === inbox) setSending(false);
     }
   };
 
@@ -371,7 +409,7 @@ export default function Messages() {
             <div className="messages-sidebar-scroll">
               {invitations.length > 0 && <div className="messages-invitations">
                 <p className="messages-list-label">Tournament invitations<span>{invitations.length}</span></p>
-                {invitations.slice(0, 3).map(invite => <button key={invite.id} type="button" onClick={() => selectInvitation(invite)} className="messages-invitation-link" data-selected={activeInvitation?.id === invite.id}>
+                {invitations.map(invite => <button key={invite.id} type="button" onClick={() => selectInvitation(invite)} className="messages-invitation-link" data-selected={activeInvitation?.id === invite.id}>
                   <span className="messages-invitation-icon"><Trophy size={16} /></span><span className="messages-invitation-copy"><strong>{invite.subject || "Tournament invitation"}</strong><small>View invitation</small></span>{!invite.is_read && <span className="messages-invitation-dot" />}<ArrowRight size={13} />
                 </button>)}
               </div>}
