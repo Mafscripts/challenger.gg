@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronRight, Crown, MessageSquare, Trophy } from "lucide-react";
+import { ArrowRight, ChevronRight, Crown, MessageSquare, Trophy, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import "@/styles/navbar-messages.css";
@@ -41,10 +41,10 @@ export default function NavbarMessages({ open, messages, unreadCount, formatTime
 
   if (!open) return null;
 
-  return <div className="nav-popover nav-popover-enter nav-messages-popover absolute right-0 top-12 z-50 w-[min(400px,calc(100vw-1rem))] overflow-hidden rounded-2xl" aria-label="Messages preview">
+  return <div id="nav-messages-preview" className="nav-popover nav-popover-enter nav-messages-popover absolute right-0 top-12 z-50 w-[min(400px,calc(100vw-1rem))] overflow-hidden rounded-2xl" role="region" aria-label="Messages preview">
     <header className="nav-messages-header">
       <div><p className="nav-messages-eyebrow">Private inbox</p><h3>Messages<span className="nav-messages-title-dot" /></h3></div>
-      <span className="nav-messages-header-icon"><MessageSquare size={21} /></span>
+      <button type="button" onClick={onClose} className="nav-notifications-close" aria-label="Close messages"><X size={18} /></button>
       {unreadCount > 0 && <span className="nav-messages-unread-count">{unreadCount} unread</span>}
     </header>
     <div className="nav-messages-list-label"><span>Latest messages</span><span>{messages.length ? `${messages.length} shown` : "Your inbox"}</span></div>

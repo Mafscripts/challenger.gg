@@ -6,3 +6,9 @@ export function applyNotificationChange(rows, detail = {}) {
     ...(detail.disputeId && row.related_entity_id === detail.disputeId ? { popup_suppressed: true } : {}),
   }));
 }
+
+export function notifyMatchPostedResponse(result, functionName) {
+  if (typeof window === "undefined" || result?.success !== true
+    || !["createWager", "createRankedMatch", "createXPMatch"].includes(functionName)) return;
+  window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
+}

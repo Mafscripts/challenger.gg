@@ -13,17 +13,25 @@ const bundle = await build({
     import { MemoryRouter } from "react-router-dom";
     import Menu from "./src/components/layout/NavbarNotificationMenu.jsx";
     import Preview from "./src/components/layout/NavbarNotifications.jsx";
-    export { Menu, Preview };
+    import MessageMenu from "./src/components/layout/NavbarMessageMenu.jsx";
+    import NavigationUnreadBadge from "./src/components/layout/NavigationUnreadBadge.jsx";
+    export { Menu, Preview, MessageMenu };
     export const html = props => renderToStaticMarkup(<MemoryRouter><Preview {...props}/></MemoryRouter>);
+    export const menusHtml = props => renderToStaticMarkup(<MemoryRouter><Menu {...props}/><MessageMenu {...props}/></MemoryRouter>);
+    export const badgeHtml = props => renderToStaticMarkup(<NavigationUnreadBadge {...props}/>);
   ` },
   bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"],
   external: ["react", "react-dom/server", "react-router-dom"],
   alias: { "@": `${root.replaceAll("\\", "/").replace(/\/$/, "")}/src` },
   loader: { ".css": "empty" },
+  plugins: [{ name: "message-api-boundary", setup(bundle) {
+    bundle.onResolve({ filter: /^@\/api\/base44Client$/ }, () => ({ path: "api", namespace: "notification-test" }));
+    bundle.onLoad({ filter: /.*/, namespace: "notification-test" }, () => ({ contents: "export const base44 = {functions: {invoke: async () => ({data: {users: []}})}};" }));
+  } }],
 });
 const compiled = { exports: {} };
 new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), compiled, compiled.exports);
-const { Menu, Preview, html } = compiled.exports;
+const { Menu, Preview, MessageMenu, html, menusHtml, badgeHtml } = compiled.exports;
 const defaults = { notifications: [], unreadCount: 0, formatTime: () => "Now", onRead() {}, onClose() {} };
 const children = (node) => [node, ...[node?.props?.children].flat(Infinity).filter(Boolean).flatMap(children)];
 
@@ -86,4 +94,35 @@ test("confirmed reads and deletes synchronize bell and page without double-decre
   assert.deepEqual(applyNotificationChange(twice, { removedId: "a" }), [initial[1]]);
   assert.equal(applyNotificationChange(initial, { markAllRead: true }).filter((row) => !row.is_read).length, 0);
   assert.deepEqual(applyNotificationChange(initial, { clearAll: true }), []);
+});
+
+test("messages open and stay open by click only in both layouts, and clicking again closes them", () => {
+  for (const sidebar of [false, true]) {
+    let open = false;
+    const render = () => MessageMenu({ ...defaults, sidebar, open, messages: [], onToggle: () => { open = !open; } });
+    let menu = render();
+    menu.props.onMouseEnter?.();
+    assert.equal(open, false);
+    children(menu).find((node) => node.type === "button").props.onClick();
+    menu = render();
+    assert.equal(children(menu).find((node) => node.type === "button").props["aria-expanded"], true);
+    menu.props.onMouseLeave?.();
+    assert.equal(open, true);
+    children(menu).find((node) => node.type === "button").props.onClick();
+    assert.equal(open, false);
+  }
+});
+
+test("notification and message badges show the unread count in topbar and sidebar, clear at zero and cap only the visual count", (t) => {
+  const originalError = console.error;
+  t.mock.method(console, "error", (...args) => { if (!String(args[0]).includes("useLayoutEffect does nothing on the server")) originalError(...args); });
+  for (const sidebar of [false, true]) {
+    const output = menusHtml({ ...defaults, sidebar, open: false, messages: [], unreadCount: 3 });
+    assert.match(output, /aria-label="3 unread notifications"/);
+    assert.match(output, /aria-label="3 unread messages"/);
+    assert.equal(output.match(/class="navigation-unread-badge"/g).length, 2);
+    assert.equal(output.match(new RegExp(`data-inline="${sidebar}"`, "g")).length, 2);
+  }
+  assert.equal(badgeHtml({ count: 0, label: "unread messages" }), "");
+  assert.match(badgeHtml({ count: 127, label: "unread messages" }), /aria-label="127 unread messages">99\+/);
 });

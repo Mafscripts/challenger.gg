@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { isStaffUser } from "@/lib/roles";
 import { mobileNavSections } from "./navigationGroups";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
+import NavigationUnreadBadge from "./NavigationUnreadBadge";
 
 function activeDestination(location, path) {
   const [pathname, query] = path.split("?");
@@ -16,11 +17,11 @@ function activeDestination(location, path) {
   return [...expected].every(([key, value]) => new URLSearchParams(location.search).get(key) === value);
 }
 
-export default function Sidebar({ accountActions }) {
+export default function Sidebar({ accountActions, unreadMessages = 0, unreadMatchUpdates = 0 }) {
   const location = useLocation();
   const { user } = useAuth();
   const sections = [
-    { label: "Your arena", items: [{ label: "Home", path: "/dashboard", icon: House, tone: "orange" }, { label: "My Matches", path: "/my-matches", icon: Activity, tone: "cyan" }, { label: "Messages", path: "/messages", icon: MessageSquare, tone: "cyan" }] },
+    { label: "Your arena", items: [{ label: "Home", path: "/dashboard", icon: House, tone: "orange" }, { label: "My Matches", path: "/my-matches", icon: Activity, tone: "cyan", unread: unreadMatchUpdates, unreadLabel: "unread match updates" }, { label: "Messages", path: "/messages", icon: MessageSquare, tone: "cyan", unread: unreadMessages, unreadLabel: "unread messages" }] },
     ...mobileNavSections.filter((section) => section.label !== "Teams"),
     { label: "Community", items: [{ label: "Teams", path: "/teams", icon: Users, tone: "orange" }, { label: "My Tickets", path: "/my-tickets", icon: Ticket, tone: "orange" }] },
   ];
@@ -28,7 +29,7 @@ export default function Sidebar({ accountActions }) {
     const Icon = item.icon;
     const active = activeDestination(location, item.path);
     return <Link key={item.path} to={item.path} className="layout-sidebar-link" data-tone={item.tone || "cyan"} aria-current={active ? "page" : undefined}>
-      <span className="layout-sidebar-item-icon"><Icon size={15} strokeWidth={1.8} aria-hidden="true" /></span><span className="layout-sidebar-item-label">{item.label}</span>{active && <ChevronRight className="layout-sidebar-current" size={13} aria-hidden="true" />}
+      <span className="layout-sidebar-item-icon"><Icon size={15} strokeWidth={1.8} aria-hidden="true" /></span><span className="layout-sidebar-item-label">{item.label}</span><NavigationUnreadBadge count={item.unread} label={item.unreadLabel} inline />{active && !item.unread && <ChevronRight className="layout-sidebar-current" size={13} aria-hidden="true" />}
     </Link>;
   };
   return <aside className="layout-sidebar" aria-label="Sidebar navigation">

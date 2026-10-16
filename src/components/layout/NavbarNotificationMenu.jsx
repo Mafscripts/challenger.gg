@@ -1,6 +1,7 @@
 import React from "react";
 import { Bell } from "lucide-react";
 import NavbarNotifications from "./NavbarNotifications";
+import NavigationUnreadBadge from "./NavigationUnreadBadge";
 
 // Keep this menu click-controlled: hover followed by click used to close it
 // immediately, and the sidebar's detached panel could not be reached in time.
@@ -16,7 +17,7 @@ export default function NavbarNotificationMenu({ sidebar, open, unreadCount, onT
     >
       <Bell className="w-4 h-4" />
       {sidebar && <span>Updates</span>}
-      {unreadCount > 0 && <span aria-label="Unread notifications" className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />}
+      <NavigationUnreadBadge count={unreadCount} label="unread notifications" inline={sidebar} />
     </button>
     {open && <NavbarNotifications unreadCount={unreadCount} {...previewProps} />}
   </div>;

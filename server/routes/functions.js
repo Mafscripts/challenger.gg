@@ -24,6 +24,7 @@ import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
 import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membership.js";
 import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
 import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
+import { matchPostedNotification } from "../match-posted-notification.js";
 import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
 import { matchfinderPostLifetimeMs } from "../../src/lib/matchfinderPosts.js";
@@ -6549,7 +6550,10 @@ async function createWager(req) {
 
   if (matchType === "8s") {
     const result = await createFreeEightsLobby(prisma, req.user.id, wagerPayload, nameFor(req.user));
-    if (result.success) freeEightsVoiceLog("queue-join", { match_id: result.wager_id, user_id: req.user.id, action: "create" });
+    if (result.success) {
+      freeEightsVoiceLog("queue-join", { match_id: result.wager_id, user_id: req.user.id, action: "create" });
+      await notifyUser(req.user.id, matchPostedNotification("Wager", result.wager));
+    }
     else freeEightsVoiceLog("queue-join-blocked", { user_id: req.user.id, active_match_id: result.active_match_id });
     return result;
   }
@@ -6599,7 +6603,7 @@ async function createWager(req) {
       });
     }
   }
-  if (matchType === "8s") freeEightsVoiceLog("queue-join", { match_id: wager.id, user_id: req.user.id, action: "create" });
+  await notifyUser(req.user.id, matchPostedNotification("Wager", wager));
   return { success: true, wager, wager_id: wager.id };
 }
 
@@ -8075,6 +8079,7 @@ async function createRankedMatch(req) {
     match_start_deadline: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     created_date: new Date().toISOString(),
   });
+  await notifyUser(req.user.id, matchPostedNotification("RankedMatch", match));
   return { success: true, ranked_match: match, ranked_match_id: match.id };
 }
 
@@ -8212,6 +8217,7 @@ async function createXPMatch(req) {
     match_start_deadline: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     created_date: nowIso(),
   });
+  await notifyUser(req.user.id, matchPostedNotification("XPMatch", match));
   return { success: true, xp_match: match, xp_match_id: match.id, match };
 }
 

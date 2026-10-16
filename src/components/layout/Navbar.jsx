@@ -8,7 +8,7 @@ import {
   Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket, Crown
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
-import NavbarMessages from "./NavbarMessages";
+import NavbarMessageMenu from "./NavbarMessageMenu";
 import NavbarNotificationMenu from "./NavbarNotificationMenu";
 import { isCurrentNotification } from "@/lib/notificationRetention";
 import { applyNotificationChange } from "@/lib/notificationInbox";
@@ -497,7 +497,7 @@ export default function Navbar() {
   };
 
   const supportsDesktopHover = () => (
-    !notifOpen && (typeof window === "undefined"
+    !notifOpen && !messagesOpen && (typeof window === "undefined"
     || window.matchMedia("(hover: hover) and (pointer: fine)").matches)
   );
 
@@ -898,9 +898,9 @@ export default function Navbar() {
     }
   };
 
-  const loadMessages = async ({ fresh = false, userId = null } = {}) => {
+  const loadMessages = async ({ fresh = false, userId = null, force = false } = {}) => {
     try {
-      if (fresh && Date.now() - messagesLoadedAt.current < 10000) return;
+      if (!force && fresh && Date.now() - messagesLoadedAt.current < 10000) return;
       const requestId = ++messagesRequestId.current;
       const resolvedUserId = userId || user?.id || authUser?.id || (await base44.auth.me())?.id;
       if (!resolvedUserId) return;
@@ -1111,47 +1111,25 @@ export default function Navbar() {
       />
 
       {/* Messages */}
-      <div
-        className={`nav-dropdown-anchor relative ${sidebarDesktop ? "sidebar-inbox-anchor" : "hidden sm:block"}`}
-        onMouseEnter={() => {
-          if (!supportsDesktopHover()) return;
+      <NavbarMessageMenu
+        key={user?.id || authUser?.id || "guest"}
+        sidebar={sidebarDesktop}
+        open={messagesOpen}
+        onToggle={() => {
           cancelDropdownClose();
-          setMessagesOpen(true);
+          setMessagesOpen((current) => !current);
           setNavMenuOpen(null);
           setMatchesOpen(false);
           setNotifOpen(false);
           setProfileOpen(false);
-          loadMessages({ fresh: true });
+          if (!messagesOpen) loadMessages({ fresh: true, force: true });
         }}
-        onMouseLeave={() => scheduleDropdownClose(() => setMessagesOpen(false))}
-      >
-        <Link
-          to="/messages"
-          onClick={() => {
-            setMessagesOpen(false);
-            setNotifOpen(false);
-            setProfileOpen(false);
-          }}
-          className={sidebarDesktop ? "sidebar-utility-button" : "topbar-icon-button relative flex h-10 w-10 items-center justify-center rounded-xl text-vapor transition-colors"}
-          aria-label={unreadMessagesCount > 0 ? `Open messages, ${unreadMessagesCount} unread` : "Open messages"}
-        >
-          <MessageSquare className="w-4 h-4" />
-          {sidebarDesktop && <span>Inbox</span>}
-          {unreadMessagesCount > 0 && (
-            <span aria-hidden="true" className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-orange ring-2 ring-[#0b121a] shadow-[0_0_8px_hsl(var(--orange)/0.55)]" />
-          )}
-        </Link>
-
-        <NavbarMessages
-          key={user?.id || authUser?.id || "guest"}
-          open={messagesOpen}
           messages={messagePreviews}
           unreadCount={unreadMessagesCount}
           formatTime={formatMessageTime}
           onRead={markMessageAsRead}
           onClose={() => setMessagesOpen(false)}
-        />
-      </div>
+      />
 
       {/* Profile */}
       <div
@@ -1413,7 +1391,7 @@ export default function Navbar() {
           </div>
         );
       })()}
-      <NavigationChrome sidebar={sidebarDesktop} accountActions={accountActions}>
+      <NavigationChrome sidebar={sidebarDesktop} accountActions={accountActions} unreadMessages={unreadMessagesCount} unreadMatchUpdates={notifications.filter((notification) => !notification.is_read && notification.type === "match").length}>
       <nav
         data-scrolled={scrolled ? "true" : "false"}
         data-season="mw4"

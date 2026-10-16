@@ -18,6 +18,8 @@
 .navigation-layout-toggle-labeled { width: 100%; height: 36px; font-size: 10px; font-weight: 700; color: hsl(var(--cyan)); }
 
 .layout-sidebar { display: none; }
+.navigation-unread-badge { position: absolute; top: 1px; right: 1px; z-index: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 16px; height: 16px; padding: 0 4px; border: 1px solid #0b1119; border-radius: 5px; background: #ef4444; color: #fff; font-family: ui-monospace, monospace; font-size: 9px; font-weight: 800; line-height: 1; }
+.navigation-unread-badge[data-inline="true"] { position: static; margin-left: auto; min-width: 18px; height: 18px; }
 @media (min-width: 1024px) {
   .app-layout-sidebar { --navigation-sidebar-width: 236px; }
   .app-layout-sidebar > .app-content, .app-layout-sidebar > .app-footer-wrap { margin-left: var(--navigation-sidebar-width); }

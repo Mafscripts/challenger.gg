@@ -4,6 +4,7 @@ import {
   publicCommerceEnabled,
 } from "@/lib/commerce";
 import { notifyCancelledMatch, notifyCancelledMatchResponse } from "@/lib/cancelledMatchRoom";
+import { notifyMatchPostedResponse } from "@/lib/notificationInbox";
 
 const normalizeApiBase = (value) => String(value || "").replace(/\/+$/, "");
 
@@ -418,6 +419,7 @@ export const base44 = {
         invalidateMeCache();
       }
       notifyCancelledMatchResponse(data, name);
+      notifyMatchPostedResponse(data, name);
       if (["completeRegistration", "createWallet"].includes(name)) {
         meCache = { value: data.user || data, expiresAt: now() + ME_CACHE_MS, promise: null };
       }
