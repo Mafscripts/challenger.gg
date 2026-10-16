@@ -32,7 +32,6 @@
     box-shadow: 12px 0 32px rgb(0 0 0 / .12);
   }
   .layout-sidebar-brand { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; height: 80px; flex-shrink: 0; padding: 0 20px; border-bottom: 1px solid rgb(255 255 255 / .06); }
-  .layout-sidebar-brand::before { content: ""; position: absolute; top: 0; left: 20px; width: 42px; height: 2px; background: hsl(var(--cyan)); box-shadow: 47px 0 0 #fb923c; }
   .layout-sidebar-brand-caption { padding-left: 46px; color: hsl(var(--vapor) / .65); font-size: 7px; font-weight: 750; letter-spacing: .18em; text-transform: uppercase; }
   .layout-sidebar .sidebar-account-controls {
     position: relative; height: auto; min-height: 0; flex: 0 0 auto; padding: 12px;
