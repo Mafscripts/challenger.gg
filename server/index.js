@@ -10,7 +10,8 @@ import discordRoutes from "./routes/discord.js";
 import twitchRoutes from "./routes/twitch.js";
 import profileRoutes from "./routes/profile.js";
 import rankVerificationRoutes from "./routes/rank-verification.js";
-import { disconnectPrisma } from "./prisma.js";
+import { disconnectPrisma, prisma } from "./prisma.js";
+import { purgeExpiredNotifications, startNotificationRetentionWorker } from "./notification-retention.js";
 import { attachRankedVoiceServer } from "./ranked-voice.js";
 import { attachEightsLiveServer } from "./eights-live.js";
 import { attachTryoutLiveServer } from "./tryout-live.js";
@@ -73,10 +74,11 @@ attachRankedVoiceServer(server);
 attachEightsLiveServer(server);
 attachTryoutLiveServer(server);
 const stopMatchfinderExpiry = startMatchfinderExpiryWorker(expireMatchfinderPosts);
+const stopNotificationRetention = startNotificationRetentionWorker(() => purgeExpiredNotifications(prisma));
 
 const shutdown = async () => {
   server.close(async () => {
-    await stopMatchfinderExpiry();
+    await Promise.all([stopMatchfinderExpiry(), stopNotificationRetention()]);
     await disconnectPrisma();
     process.exit(0);
   });

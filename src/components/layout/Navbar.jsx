@@ -10,6 +10,7 @@ import {
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import NavbarMessages from "./NavbarMessages";
 import NavbarNotifications from "./NavbarNotifications";
+import { isCurrentNotification } from "@/lib/notificationRetention";
 import { NavbarDestinations, NavbarMatches } from "./NavbarMenus";
 import "@/styles/navbar-profile.css";
 import { base44 } from "@/api/base44Client";
@@ -929,7 +930,7 @@ export default function Navbar() {
         ? base44.entities.Notification.filterFresh
         : base44.entities.Notification.filter;
       const data = await notificationQuery({ user_id: resolvedUserId }, '-created_date', 10);
-      const rows = data || [];
+      const rows = (data || []).filter((notification) => isCurrentNotification(notification));
       const unreadCount = rows.filter(n => !n.is_read).length;
       setNotifications(rows);
       setUnreadNotifCount(unreadCount);

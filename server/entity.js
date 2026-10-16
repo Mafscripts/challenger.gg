@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import { notificationCutoff } from "../src/lib/notificationRetention.js";
 import { normalizeFreeEightsCancellationNotifications } from "./wager-cancellation-notifications.js";
 import { isMatchfinderPostVisible, MATCHFINDER_POST_LIFETIME_MS, FREE_EIGHTS_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
 
@@ -121,12 +122,9 @@ const orderByFor = (entity, order) => {
 
 const notificationWhereFor = (filter = {}) => {
   const userId = filter?.user_id;
-  if (!userId) return undefined;
   return {
-    metadata: {
-      path: ["user_id"],
-      equals: userId,
-    },
+    created_date: { gt: notificationCutoff() },
+    ...(userId ? { metadata: { path: ["user_id"], equals: userId } } : {}),
   };
 };
 

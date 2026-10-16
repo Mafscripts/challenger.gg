@@ -150,6 +150,8 @@ model Notification {
   created_date DateTime @default(now())
   updated_date DateTime @updatedAt
   metadata     Json     @default("{}")
+
+  @@index([created_date])
 }
 
 model PlayerProfile {

@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/ui/PageHeader";
 import PageLoader from "@/components/ui/PageLoader";
+import { isCurrentNotification } from "@/lib/notificationRetention";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -28,6 +29,10 @@ export default function Notifications() {
 
   useEffect(() => {
     loadNotifications();
+    const timer = window.setInterval(() => {
+      setNotifications((current) => current.filter((notification) => isCurrentNotification(notification)));
+    }, 60000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const loadNotifications = async () => {
@@ -40,7 +45,7 @@ export default function Notifications() {
         '-created_date',
         50
       );
-      setNotifications(data || []);
+      setNotifications((data || []).filter((notification) => isCurrentNotification(notification)));
     } catch (error) {
       console.error('Failed to load notifications:', error);
       toast({ title: "Error", description: "Failed to load notifications", variant: "destructive" });
@@ -163,7 +168,7 @@ export default function Notifications() {
         <PageHeader
           eyebrow="Your activity"
           title="Notifications"
-          description={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}.` : "All caught up."}
+          description={`${unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}.` : "All caught up."} Notifications are automatically deleted after 24 hours.`}
           action={<div className="flex flex-wrap items-center gap-2">
             <button
               onClick={markAllAsRead}

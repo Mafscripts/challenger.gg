@@ -49,6 +49,6 @@ export default function NavbarNotifications({ notifications, unreadCount, format
           </Link>;
         })}
     </div>
-    <footer className="nav-messages-footer"><Link to="/notifications" onClick={onClose} className="nav-messages-inbox-link"><span><strong>View all notifications</strong><small>Manage your updates and read status</small></span><span className="nav-messages-inbox-arrow"><ArrowRight size={18} /></span></Link></footer>
+    <footer className="nav-messages-footer"><Link to="/notifications" onClick={onClose} className="nav-messages-inbox-link"><span><strong>View all notifications</strong><small>Automatically deleted after 24 hours</small></span><span className="nav-messages-inbox-arrow"><ArrowRight size={18} /></span></Link></footer>
   </div>;
 }
