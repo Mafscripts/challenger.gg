@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Bell, CheckCheck, Trash2, AlertCircle, Info, Trophy, Star, ShieldCheck } from "lucide-react";
@@ -7,12 +7,16 @@ import { toast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/ui/PageHeader";
 import PageLoader from "@/components/ui/PageLoader";
 import { isCurrentNotification } from "@/lib/notificationRetention";
+import { applyNotificationChange } from "@/lib/notificationInbox";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [removingAll, setRemovingAll] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
+  const pendingReads = useRef(new Set());
 
   const syncNotificationBell = (detail) => {
     window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail }));
@@ -29,13 +33,29 @@ export default function Notifications() {
 
   useEffect(() => {
     loadNotifications();
+    const refresh = () => { if (document.visibilityState !== "hidden") loadNotifications(); };
+    const onChange = (event) => {
+      requestId.current += 1;
+      setLoading(false);
+      setNotifications((rows) => applyNotificationChange(rows, event.detail));
+      if (event.detail?.refresh) refresh();
+    };
     const timer = window.setInterval(() => {
       setNotifications((current) => current.filter((notification) => isCurrentNotification(notification)));
-    }, 60000);
-    return () => window.clearInterval(timer);
+      refresh();
+    }, 30000);
+    window.addEventListener("topfragg:notifications-updated", onChange);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      requestId.current += 1;
+      window.clearInterval(timer);
+      window.removeEventListener("topfragg:notifications-updated", onChange);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, []);
 
   const loadNotifications = async () => {
+    const currentRequest = ++requestId.current;
     try {
       const user = await base44.auth.me();
       if (!user) return;
@@ -45,19 +65,24 @@ export default function Notifications() {
         '-created_date',
         50
       );
+      if (currentRequest !== requestId.current) return;
       setNotifications((data || []).filter((notification) => isCurrentNotification(notification)));
+      setLoadError(false);
     } catch (error) {
+      if (currentRequest !== requestId.current) return;
       console.error('Failed to load notifications:', error);
-      toast({ title: "Error", description: "Failed to load notifications", variant: "destructive" });
+      setLoadError(true);
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   };
 
   const markAsRead = async (id) => {
+    const notification = notifications.find(n => n.id === id);
+    if (!notification || pendingReads.current.has(id) || (notification.is_read && notification.type !== "dispute")) return;
+    pendingReads.current.add(id);
     try {
-      const notification = notifications.find(n => n.id === id);
-      await base44.entities.Notification.update(id, { is_read: true });
+      if (!notification.is_read) await base44.entities.Notification.update(id, { is_read: true });
       await acknowledgeDisputeNotification(notification);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
       const wasUnread = notifications.some(n => n.id === id && !n.is_read);
@@ -66,9 +91,11 @@ export default function Notifications() {
         readId: id,
         disputeId: notification?.type === "dispute" ? notification.related_entity_id : undefined,
       });
-      toast({ title: "Marked as read", description: "Notification marked as read" });
     } catch (error) {
       console.error('Failed to mark as read:', error);
+      toast({ title: "Error", description: "Could not mark notification as read. Please try again.", variant: "destructive" });
+    } finally {
+      pendingReads.current.delete(id);
     }
   };
 
@@ -209,8 +236,9 @@ export default function Notifications() {
         </div>
 
         {/* Notifications List */}
+        {loadError && <div role="alert" className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm"><span>Could not load notifications.</span><button type="button" onClick={loadNotifications} className="font-bold text-cyan">Try again</button></div>}
         <div className="space-y-3">
-          {filteredNotifications.length === 0 ? (
+          {filteredNotifications.length === 0 && !loadError ? (
             <div className="glass rounded-xl border border-white/5 p-12 text-center">
               <Bell className="w-16 h-16 text-vapor/30 mx-auto mb-4" />
               <h3 className="text-lg font-bold mb-2">No notifications</h3>
@@ -281,7 +309,7 @@ export default function Notifications() {
                     {notification.action_url && (
                       <Link
                         to={notification.title === "Wager refunded" ? "/wallet" : notification.action_url}
-                        onClick={(event) => event.stopPropagation()}
+                        onClick={(event) => { event.stopPropagation(); markAsRead(notification.id); }}
                         className="inline-flex mt-3 text-xs text-cyan hover:underline font-semibold"
                       >
                         Open

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Wallet, Bell, MessageSquare, ChevronDown, ChevronRight, User,
+  Wallet, MessageSquare, ChevronDown, ChevronRight, User,
   Menu, X, House, Swords, Trophy, ShoppingBag,
   Users,
   AlertCircle, ExternalLink, LogIn, UserPlus,
@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import NavbarMessages from "./NavbarMessages";
-import NavbarNotifications from "./NavbarNotifications";
+import NavbarNotificationMenu from "./NavbarNotificationMenu";
 import { isCurrentNotification } from "@/lib/notificationRetention";
+import { applyNotificationChange } from "@/lib/notificationInbox";
 import { NavbarDestinations, NavbarMatches } from "./NavbarMenus";
 import { navGroups, playNavGroup, mobileNavSections } from "./navigationGroups";
 import { useNavigationLayout } from "./NavigationLayoutProvider";
@@ -226,11 +227,13 @@ export default function Navbar() {
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [notificationsHydrated, setNotificationsHydrated] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
   const [messages, setMessages] = useState([]);
   const [profilePlayerQuery, setProfilePlayerQuery] = useState("");
   const [profilePlayerResults, setProfilePlayerResults] = useState([]);
   const [profilePlayerSearching, setProfilePlayerSearching] = useState(false);
-  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const unreadNotifCount = notifications.filter((notification) => !notification.is_read).length;
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   useEffect(() => {
     setMobileOpen(false); setNavMenuOpen(null); setMatchesOpen(false);
@@ -280,6 +283,8 @@ export default function Navbar() {
   const soundedAdminDisputes = useRef(new Set());
   const pendingAdminDisputeSoundId = useRef(null);
   const notificationsLoadedAt = useRef(0);
+  const notificationsRequestId = useRef(0);
+  const pendingNotificationReads = useRef(new Set());
   const balancePopupsReady = useRef(false);
   const shownBalancePopupIds = useRef(new Set());
   const shownBalancePopupKeys = useRef(new Set());
@@ -347,6 +352,8 @@ export default function Navbar() {
   const dropdownCloseTimer = useRef(null);
   const location = useLocation();
   const { isAuthenticated, user: authUser } = useAuth();
+  const notificationOwner = useRef(authUser?.id);
+  notificationOwner.current = authUser?.id;
   const activeEightMatchType = activeMatches.find((match) => (
     (match?.match_type === "8s" || match?.match_type === "money8s")
       && location.pathname === `/8s-match/${match.id}`
@@ -490,8 +497,8 @@ export default function Navbar() {
   };
 
   const supportsDesktopHover = () => (
-    typeof window === "undefined"
-    || window.matchMedia("(hover: hover) and (pointer: fine)").matches
+    !notifOpen && (typeof window === "undefined"
+    || window.matchMedia("(hover: hover) and (pointer: fine)").matches)
   );
 
   useEffect(() => {
@@ -500,13 +507,23 @@ export default function Navbar() {
       closeDropdowns();
     };
     document.addEventListener("pointerdown", handleOutsidePointer);
-    return () => document.removeEventListener("pointerdown", handleOutsidePointer);
+    const handleEscape = (event) => { if (event.key === "Escape") closeDropdowns(); };
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsidePointer);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   const clearUserState = () => {
     setUser(null);
     setNotifications([]);
     setNotificationsHydrated(false);
+    setNotificationsLoading(false);
+    setNotificationsError("");
+    notificationsLoadedAt.current = 0;
+    notificationsRequestId.current += 1;
+    pendingNotificationReads.current.clear();
     setBalancePopup(null);
     balancePopupsReady.current = false;
     shownBalancePopupIds.current.clear();
@@ -514,7 +531,6 @@ export default function Navbar() {
     setMessages([]);
     messagesRequestId.current += 1;
     messagesLoadedAt.current = 0;
-    setUnreadNotifCount(0);
     setUnreadMessagesCount(0);
     setWalletBalance(0);
     setCreditBalance(0);
@@ -576,6 +592,7 @@ export default function Navbar() {
 
   useEffect(() => () => {
     if (dropdownCloseTimer.current) window.clearTimeout(dropdownCloseTimer.current);
+    notificationsRequestId.current += 1;
   }, []);
 
   useEffect(() => {
@@ -592,6 +609,12 @@ export default function Navbar() {
     if (authUser) {
       setUser(authUser);
     }
+    notificationsRequestId.current += 1;
+    notificationsLoadedAt.current = 0;
+    setNotifications([]);
+    setNotificationsHydrated(false);
+    setNotificationsLoading(false);
+    setNotificationsError("");
 
     const refreshHeader = () => {
       if (document.visibilityState === "hidden") return;
@@ -626,30 +649,16 @@ export default function Navbar() {
   useEffect(() => {
     const handleNotificationsUpdated = (event) => {
       const detail = event.detail || {};
+      // A poll started before this confirmed change must not restore unread
+      // or deleted rows when its response arrives later.
+      notificationsRequestId.current += 1;
+      setNotificationsLoading(false);
       if (detail.refresh) {
         notificationsLoadedAt.current = 0;
         loadNotifications({ fresh: true });
         return;
       }
-      if (Number.isFinite(detail.unreadCount)) setUnreadNotifCount(detail.unreadCount);
-      if (detail.clearAll) {
-        setNotifications([]);
-      } else if (detail.markAllRead) {
-        setNotifications(prev => prev.map(notification => ({ ...notification, is_read: true })));
-      } else if (detail.readId) {
-        setNotifications(prev => prev.map(notification => (
-          notification.id === detail.readId ? { ...notification, is_read: true } : notification
-        )));
-      } else if (detail.removedId) {
-        setNotifications(prev => prev.filter(notification => notification.id !== detail.removedId));
-      }
-      if (detail.disputeId) {
-        setNotifications(prev => prev.map(notification => (
-          notification.related_entity_id === detail.disputeId
-            ? { ...notification, popup_suppressed: true }
-            : notification
-        )));
-      }
+      setNotifications(prev => applyNotificationChange(prev, detail));
       notificationsLoadedAt.current = 0;
     };
 
@@ -866,23 +875,26 @@ export default function Navbar() {
     }
   };
 
-  const loadNotifications = async ({ fresh = false, userId = null } = {}) => {
+  const loadNotifications = async ({ userId = null, force = false } = {}) => {
+    if (!force && Date.now() - notificationsLoadedAt.current < 12000) return;
+    const requestId = ++notificationsRequestId.current;
+    const ownerId = userId || notificationOwner.current;
+    if (!ownerId) return;
+    setNotificationsLoading(true);
+    setNotificationsError("");
     try {
-      if (fresh && Date.now() - notificationsLoadedAt.current < 12000) return;
-      const resolvedUserId = userId || user?.id || authUser?.id || (await base44.auth.me())?.id;
-      if (!resolvedUserId) return;
-      const notificationQuery = fresh
-        ? base44.entities.Notification.filterFresh
-        : base44.entities.Notification.filter;
-      const data = await notificationQuery({ user_id: resolvedUserId }, '-created_date', 10);
+      const data = await base44.entities.Notification.filterFresh({ user_id: ownerId }, '-created_date', 50);
+      if (requestId !== notificationsRequestId.current || ownerId !== notificationOwner.current) return;
       const rows = (data || []).filter((notification) => isCurrentNotification(notification));
-      const unreadCount = rows.filter(n => !n.is_read).length;
       setNotifications(rows);
-      setUnreadNotifCount(unreadCount);
       setNotificationsHydrated(true);
       notificationsLoadedAt.current = Date.now();
     } catch (error) {
+      if (requestId !== notificationsRequestId.current || ownerId !== notificationOwner.current) return;
+      setNotificationsError("Could not load notifications.");
       console.error('Failed to load notifications:', error);
+    } finally {
+      if (requestId === notificationsRequestId.current) setNotificationsLoading(false);
     }
   };
 
@@ -998,12 +1010,27 @@ export default function Navbar() {
   };
 
   const markNotifAsRead = async (id) => {
+    const ownerId = notificationOwner.current;
+    const notification = notifications.find((row) => row.id === id);
+    if (!notification || pendingNotificationReads.current.has(id)) return;
+    pendingNotificationReads.current.add(id);
     try {
-      await base44.entities.Notification.update(id, { is_read: true });
+      if (!notification.is_read) await base44.entities.Notification.update(id, { is_read: true });
+      if (notification.type === "dispute" && notification.related_entity_id) {
+        await base44.functions.invoke("acknowledgeDispute", { dispute_id: notification.related_entity_id }).catch((error) => {
+          console.error("Failed to acknowledge dispute popup:", error);
+        });
+      }
+      if (ownerId !== notificationOwner.current) return;
+      notificationsRequestId.current += 1;
+      notificationsLoadedAt.current = 0;
+      setNotificationsLoading(false);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadNotifCount(prev => Math.max(0, prev - 1));
+      window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { readId: id, disputeId: notification.type === "dispute" ? notification.related_entity_id : undefined } }));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
+    } finally {
+      pendingNotificationReads.current.delete(id);
     }
   };
 
@@ -1061,51 +1088,27 @@ export default function Navbar() {
       </div>}
 
       {/* Notifications */}
-      <div
-        className={`nav-dropdown-anchor relative ${sidebarDesktop ? "sidebar-updates-anchor" : ""}`}
-        onMouseEnter={() => {
-          if (!supportsDesktopHover()) return;
-          cancelDropdownClose();
-          setNotifOpen(true);
-          setNavMenuOpen(null);
-          setMatchesOpen(false);
-          setMessagesOpen(false);
-          setProfileOpen(false);
-          loadNotifications({ fresh: true });
-        }}
-        onMouseLeave={() => scheduleDropdownClose(() => setNotifOpen(false))}
-      >
-        <button
-          type="button"
-          aria-label="Open notifications"
-          aria-expanded={notifOpen}
-          aria-controls="nav-notifications-preview"
-          onClick={() => {
+      <NavbarNotificationMenu
+          sidebar={sidebarDesktop}
+          open={notifOpen}
+          onToggle={() => {
             cancelDropdownClose();
             setNotifOpen((current) => !current);
             setNavMenuOpen(null);
             setMatchesOpen(false);
             setMessagesOpen(false);
             setProfileOpen(false);
-            loadNotifications({ fresh: true });
+            if (!notifOpen) loadNotifications({ force: true });
           }}
-          className={sidebarDesktop ? "sidebar-utility-button" : "topbar-icon-button topbar-notification-button relative flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl text-vapor transition-all"}
-        >
-          <Bell className="w-4 h-4" />
-          {sidebarDesktop && <span>Updates</span>}
-          {unreadNotifCount > 0 && (
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
-          )}
-        </button>
-
-        {notifOpen && <NavbarNotifications
           notifications={notifications}
           unreadCount={unreadNotifCount}
+          loading={notificationsLoading}
+          error={notificationsError}
+          onRetry={() => loadNotifications({ force: true })}
           formatTime={formatMessageTime}
           onRead={markNotifAsRead}
           onClose={() => setNotifOpen(false)}
-        />}
-      </div>
+      />
 
       {/* Messages */}
       <div

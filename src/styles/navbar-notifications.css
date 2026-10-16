@@ -3,6 +3,12 @@
 .nav-notifications-popover .nav-notification-row .nav-message-identity strong { white-space: normal; overflow-wrap: anywhere; }
 .nav-notifications-popover .nav-notification-row .nav-message-meta { min-width: 30px; }
 .nav-notifications-popover .nav-notification-amount { display: inline-block; margin-top: 7px; color: var(--notice-accent); font-size: 11px; font-weight: 800; font-family: var(--font-mono); }
+.nav-notifications-close { display: grid; place-items: center; margin-left: auto; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid hsl(var(--cyan) / .18); border-radius: 9px; color: hsl(var(--cyan)); }
+.nav-notifications-close:hover { background: hsl(var(--cyan) / .08); }
+.nav-notifications-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 16px; padding: 12px; border: 1px solid rgb(248 113 113 / .2); border-radius: 8px; color: #fca5a5; font-size: 11px; }
+.nav-notifications-error button { flex-shrink: 0; color: hsl(var(--cyan)); font-weight: 750; }
+.nav-notifications-error button:disabled { opacity: .5; }
+.nav-notifications-popover button:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 2px; }
 @media (max-width: 639px) {
   .app-topbar-v2 .nav-popover.nav-notifications-popover { position: fixed; top: 64px; left: 8px; right: 8px; width: auto; }
 }

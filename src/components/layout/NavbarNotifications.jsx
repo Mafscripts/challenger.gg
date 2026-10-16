@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, ArrowRight, Bell, ChevronRight, Info, MessageSquare, ShieldCheck, ShoppingBag, Swords, Trophy, Users, Wallet } from "lucide-react";
+import { AlertCircle, ArrowRight, Bell, ChevronRight, Info, LoaderCircle, MessageSquare, ShieldCheck, ShoppingBag, Swords, Trophy, Users, Wallet, X } from "lucide-react";
 import "@/styles/navbar-messages.css";
 import "@/styles/navbar-notifications.css";
 
@@ -26,23 +26,25 @@ function notificationKind(notification) {
   return notificationKinds[notification.type] || { icon: Bell, label: "Notification", color: "hsl(var(--cyan))" };
 }
 
-export default function NavbarNotifications({ notifications, unreadCount, formatTime, onRead, onClose }) {
-  return <div id="nav-notifications-preview" className="nav-popover nav-popover-enter nav-messages-popover nav-notifications-popover absolute right-0 top-12 z-50 w-[min(400px,calc(100vw-1rem))] overflow-hidden rounded-2xl" aria-label="Notifications preview">
+export default function NavbarNotifications({ notifications, unreadCount, formatTime, onRead, onClose, loading = false, error = "", onRetry }) {
+  return <div id="nav-notifications-preview" className="nav-popover nav-popover-enter nav-messages-popover nav-notifications-popover absolute right-0 top-12 z-50 w-[min(400px,calc(100vw-1rem))] overflow-hidden rounded-2xl" role="region" aria-label="Notifications preview" aria-busy={loading}>
     <header className="nav-messages-header">
       <div><p className="nav-messages-eyebrow">Activity feed</p><h3>Notifications<span className="nav-messages-title-dot" /></h3></div>
-      <span className="nav-messages-header-icon"><Bell size={21} /></span>
+      <button type="button" onClick={onClose} className="nav-notifications-close" aria-label="Close notifications"><X size={18} /></button>
       {unreadCount > 0 && <span className="nav-messages-unread-count">{unreadCount} unread</span>}
     </header>
     <div className="nav-messages-list-label"><span>Latest updates</span><span>{notifications.length ? `${notifications.length} shown` : "All quiet"}</span></div>
+    {error && <div className="nav-notifications-error" role="alert"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading}>Try again</button></div>}
     <div className="nav-messages-list">
-      {notifications.length === 0 ? <div className="nav-messages-empty"><Bell size={26} /><strong>You're all caught up.</strong><p>Match updates, rewards and team activity will appear here.</p></div>
+      {loading && notifications.length === 0 ? <div className="nav-messages-empty" role="status"><LoaderCircle size={26} className="animate-spin" /><strong>Loading notifications…</strong></div>
+        : notifications.length === 0 && !error ? <div className="nav-messages-empty"><Bell size={26} /><strong>You're all caught up.</strong><p>Match updates, rewards and team activity will appear here.</p></div>
         : notifications.map(notification => {
           const kind = notificationKind(notification);
           const Icon = kind.icon;
           const amount = Number(notification.balance_change || 0);
           const hasAmount = Number.isFinite(amount) && amount !== 0;
           const destination = notification.title === "Wager refunded" ? "/wallet" : notification.action_url || "/notifications";
-          return <Link key={notification.id} to={destination} className="nav-message-row nav-notification-row" data-unread={!notification.is_read} style={{ "--notice-accent": kind.color }} onClick={() => { if (!notification.is_read) onRead(notification.id); onClose(); }}>
+          return <Link key={notification.id} to={destination} className="nav-message-row nav-notification-row" data-unread={!notification.is_read} style={{ "--notice-accent": kind.color }} onClick={() => { if (!notification.is_read || notification.type === "dispute") onRead(notification.id); onClose(); }}>
             <span className="nav-notification-icon" aria-hidden="true"><Icon size={20} /></span>
             <div className="nav-message-copy"><span className="nav-notification-kind">{kind.label}</span><div className="nav-message-identity"><strong>{notification.title || "Topfragg update"}</strong></div><p>{notification.message || "Open this notification for details."}</p>{hasAmount && <span className="nav-notification-amount">{amount > 0 ? "+" : "−"}{notification.balance_type === "wallet" ? `$${Math.abs(amount).toFixed(2)}` : `${Math.abs(amount).toLocaleString()} credits`}</span>}</div>
             <div className="nav-message-meta"><time dateTime={notification.created_date || undefined}>{formatTime(notification.created_date)}</time>{!notification.is_read ? <span className="nav-message-unread-dot" aria-label="Unread" /> : <ChevronRight size={14} />}</div>
