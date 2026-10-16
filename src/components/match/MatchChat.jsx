@@ -101,11 +101,17 @@ function MatchChatView({
   teamAColor = "cyan",
   teamBColor = "orange",
   messageLimit = 100,
+  messages: suppliedMessages,
+  onSendMessage,
+  maxMessageLength = 500,
 }) {
-  const [messages, setMessages] = useState([]);
+  const [loadedMessages, setMessages] = useState([]);
+  const messages = suppliedMessages ?? loadedMessages;
   const { user: currentUser } = useAuth();
   const [messageText, setMessageText] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loadingState, setLoading] = useState(true);
+  const controlled = suppliedMessages !== undefined;
+  const loading = !controlled && loadingState;
   const [sending, setSending] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const chatBodyRef = useRef(null);
@@ -140,6 +146,10 @@ function MatchChatView({
   }, [messages, loading]);
 
   useEffect(() => {
+    if (controlled) {
+      mountedRef.current = true;
+      return () => { mountedRef.current = false; };
+    }
     let mounted = true;
     mountedRef.current = true;
     const feed = createMatchChatFeed({
@@ -176,12 +186,32 @@ function MatchChatView({
       window.removeEventListener("focus", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [conversationId, live, messageLimit, pollIntervalMs]);
+  }, [conversationId, live, messageLimit, pollIntervalMs, controlled]);
 
   const handleSend = async (event) => {
     event.preventDefault();
     const content = messageText.trim();
     if (!content || !conversationId || !currentUser?.id || disabledReason || sendInFlightRef.current) return;
+
+    if (controlled) {
+      if (!onSendMessage) return;
+      sendInFlightRef.current = true;
+      setSending(true);
+      try {
+        const sent = await onSendMessage(content);
+        if (mountedRef.current && sent) {
+          setMessageText((draft) => draft === messageText ? "" : draft);
+          followingChatRef.current = true;
+          scrollChatToBottom("auto");
+        }
+      } catch (error) {
+        if (mountedRef.current) toast({ title: "Message failed", description: error.message || "Could not send chat message.", variant: "destructive" });
+      } finally {
+        sendInFlightRef.current = false;
+        if (mountedRef.current) { setSending(false); inputRef.current?.focus(); }
+      }
+      return;
+    }
 
     sendInFlightRef.current = true;
     const feed = feedRef.current;
@@ -239,7 +269,7 @@ function MatchChatView({
     const start = input?.selectionStart ?? messageText.length;
     const end = input?.selectionEnd ?? messageText.length;
     const nextText = `${messageText.slice(0, start)}${emoji}${messageText.slice(end)}`;
-    if (nextText.length > 500) return;
+    if (nextText.length > maxMessageLength) return;
     const nextCursor = start + emoji.length;
     setMessageText(nextText);
     window.requestAnimationFrame(() => {
@@ -353,7 +383,7 @@ function MatchChatView({
           ref={inputRef}
           value={messageText}
           onChange={(event) => setMessageText(event.target.value)}
-          maxLength={500}
+          maxLength={maxMessageLength}
           placeholder={disabledReason || placeholder}
           disabled={!currentUser || Boolean(disabledReason)}
           className="min-w-0 flex-1 rounded-lg border border-cyan/20 bg-background/80 px-3 py-2.5 text-sm text-white placeholder:text-vapor/65 shadow-inner focus:outline-none focus:border-cyan/60 focus:ring-2 focus:ring-cyan/10 disabled:opacity-50"

@@ -131,7 +131,20 @@ export function createChallengeHandlers({ db = prisma, checkMembership = async (
     const row = await db.challengeMatch.findUnique({ where: { id: String(req.body.match_id || "") } });
     if (!row) fail("Challenge not found", 404);
     const match = flat(row);
-    const state = await db.discordEventDispatch.findUnique({ where: { event_key: challengeVoiceKey(match.id) } });
+    const ids = match.players.map((player) => player.user_id);
+    const teamIds = [match.alpha_team?.id, match.bravo_team?.id].filter(Boolean);
+    const [state, users, standings] = await Promise.all([
+      db.discordEventDispatch.findUnique({ where: { event_key: challengeVoiceKey(match.id) } }),
+      db.user.findMany({ where: { id: { in: ids } }, select: { id: true, metadata: true, is_premium: true, premium_expires: true, discord_username: true } }),
+      db.challengeStanding.findMany({ where: { OR: [{ kind: "solo", subject_id: { in: ids } }, { kind: "team", subject_id: { in: teamIds } }] } }),
+    ]);
+    // Match tables receive public presentation fields only, never account details.
+    const profiles = new Map(users.map((user) => [user.id, {
+      ...Object.fromEntries(["avatar_url", "display_name_color", "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer", "force_stream_required", "monitor_cam_required", "twitter", "twitch", "youtube", "website"].filter((key) => user.metadata?.[key] !== undefined).map((key) => [key, user.metadata[key]])),
+      is_premium: user.is_premium, premium_expires: user.premium_expires, discord_username: user.discord_username,
+    }]));
+    match.players = match.players.map((player) => ({ ...player, ...profiles.get(player.user_id) }));
+    match.standings = standings.map(({ kind, subject_id, xp, wins, losses }) => ({ kind, subject_id, xp, wins, losses }));
     return { success: true, match: visible(match, req.user, challengeVoiceStatus(match, state?.metadata)) };
   }
   async function mutate(req) {

@@ -172,6 +172,8 @@ test("real API requires authentication and blocks generic ladder/roster writes; 
   const f = fixture(t, 2), match = await f.create();
   const override = (object, name, fn) => { const previous = object[name]; object[name] = fn; t.after(() => { object[name] = previous; }); };
   override(prisma.user, "findUnique", async ({ where }) => structuredClone(f.users.find((user) => user.id === where.id)));
+  override(prisma.user, "findMany", f.db.user.findMany);
+  override(prisma.challengeStanding, "findMany", f.db.challengeStanding.findMany);
   override(prisma.ban, "findMany", async () => []);
   override(prisma.challengeMatch, "findUnique", f.db.challengeMatch.findUnique);
   override(prisma.challengeMatch, "findMany", f.db.challengeMatch.findMany);
@@ -191,6 +193,20 @@ test("real API requires authentication and blocks generic ladder/roster writes; 
   const forged = await request("/functions/challengeAction", { action: "cancel", match_id: match.id, user_id: "p0", host_id: "p12", reason: "Forged captain identity" });
   assert.equal(forged.status, 403);
   assert.equal(f.rows("challengeMatch")[0].status, "open");
+});
+
+test("room tables use public player presentation and the correct team or solo standing without account secrets", async (t) => {
+  const f = fixture(t, 2), match = await f.create();
+  Object.assign(f.rows("user")[0], { email: "private@example.com", password_hash: "secret", is_premium: true });
+  Object.assign(f.rows("user")[0].metadata, { avatar_url: "/avatar.png", display_name_color: "#00ffff", twitch: "player", password_reset_token_hash: "hidden", last_login_ip: "private" });
+  await f.db.challengeStanding.create({ data: { kind: "team", subject_id: "alpha", name: "Alpha", xp: 1234, wins: 8, losses: 3 } });
+  const result = await f.handlers.getChallengeRoom(f.request(12, { match_id: match.id }));
+  const player = result.match.players[0];
+  assert.equal(player.avatar_url, "/avatar.png"); assert.equal(player.is_premium, true);
+  assert.equal(player.display_name_color, "#00ffff"); assert.equal(player.twitch, "player");
+  for (const key of ["email", "password_hash", "password_reset_token_hash", "last_login_ip", "metadata"]) assert.equal(player[key], undefined);
+  assert.deepEqual(result.match.standings, [{ kind: "team", subject_id: "alpha", xp: 1234, wins: 8, losses: 3 }]);
+  assert.equal(result.match.voice, null); assert.deepEqual(result.match.messages, []);
 });
 
 test("a failed standings write rolls back the full result, and voice readiness rejects stale or changed rosters", async (t) => {
