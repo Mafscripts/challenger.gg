@@ -24,11 +24,11 @@ const rosterFor = async (db, matchId) => (await db.wagerParticipant.findMany({
   where: { metadata: { path: ["wager_id"], equals: matchId } },
 })).map((row) => row.metadata);
 
-export const canAssignFreeEightsVoice = (match, participants) => match?.match_type === "8s"
+export const canAssignFreeEightsVoice = (match, participants, teamSize = 4) => match?.match_type === "8s"
   && !freeEightsVoiceClosed.has(match.status) && Boolean(match.teams_generated_at)
-  && participants.length === 8 && new Set(participants.map((row) => row.user_id)).size === 8
-  && participants.filter((row) => row.team === "host").length === 4
-  && participants.filter((row) => row.team === "challenger").length === 4;
+  && participants.length === teamSize * 2 && new Set(participants.map((row) => row.user_id)).size === teamSize * 2
+  && participants.filter((row) => row.team === "host").length === teamSize
+  && participants.filter((row) => row.team === "challenger").length === teamSize;
 
 async function channelOwner(db, guild, state, side, id) {
   const row = await db.discordEventDispatch.findUnique({ where: { event_key: freeEightsChannelKey(id) } });
@@ -173,6 +173,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
   const key = freeEightsVoiceKey(matchId);
   const previous = await db.discordEventDispatch.findUnique({ where: { event_key: key } });
   const state = structuredClone(previous?.metadata || { match_id: matchId });
+  state.mode_label = config.modeLabel || "Free 8s";
   if (state.match_id !== matchId) throw new Error("Voice state belongs to another match");
   const workerToken = crypto.randomUUID();
   state.worker_token = workerToken;
@@ -206,7 +207,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
   const participants = row ? await rosterFor(db, matchId) : [];
   const signature = voiceRosterSignature(match, participants);
   const closed = !match || match.match_type !== "8s" || freeEightsVoiceClosed.has(match.status);
-  const assign = config.enabled && canAssignFreeEightsVoice(match, participants);
+  const assign = config.enabled && canAssignFreeEightsVoice(match, participants, config.teamSize?.(match) || 4);
   for (const side of channelSides) {
     if (!state.channels[side] && state.provisions[side]) {
       await guard();
@@ -301,7 +302,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       }
       for (const side of prepareSides) {
         if (!capacity && !exists(side)) continue;
-        const channelName = freeEightsVoiceChannelName(matchId, side);
+        const channelName = (config.channelName || freeEightsVoiceChannelName)(matchId, side);
         const visibleToEveryone = side !== "waiting" && assign && visibleTeamStatuses.has(match.status);
         const members = participants.filter((player) => side === "waiting" || player.team === side).map((player) => identities.get(player.user_id)).filter(hasDiscordLink);
         // Manage Roles is inherited from the bot's guild role. Discord only lets
@@ -331,7 +332,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
               state.discord_channels_created_at = null;
               await save();
             }
-            const provision = { reason: `Topfragg Free8s ${matchId} ${side} ${crypto.randomUUID()}`, started_at: new Date().toISOString() };
+            const provision = { reason: `Topfragg ${config.modeLabel || "Free8s"} ${matchId} ${side} ${crypto.randomUUID()}`, started_at: new Date().toISOString() };
             state.provisions[side] = provision;
             state.discord_channels_cleaned_at = null;
             await save(); // Reserve BEFORE Discord creation.
@@ -339,7 +340,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
               await guard();
               channel = await guild.channels.create({ name: channelName,
                 type: ChannelType.GuildVoice, parent: state.category_id, permissionOverwrites: overwrites,
-                reason: provision.reason, userLimit: side === "waiting" ? 8 : 4 });
+                reason: provision.reason, userLimit: (config.teamSize?.(match) || 4) * (side === "waiting" ? 2 : 1) });
               releaseSlot();
             } catch (error) {
               // A definite rejection permits retry. Ambiguous outcomes retain
@@ -431,7 +432,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
         await guard();
         const latest = await db.wager.findUnique({ where: { id: matchId } });
         const roster = await rosterFor(db, matchId);
-        if (!canAssignFreeEightsVoice(latest?.metadata, roster) || voiceRosterSignature(latest.metadata, roster) !== signature) {
+        if (!canAssignFreeEightsVoice(latest?.metadata, roster, config.teamSize?.(latest?.metadata) || 4) || voiceRosterSignature(latest.metadata, roster) !== signature) {
           log("roster-changed-during-assignment", { match_id: matchId });
           state.roster_signature = "";
           await save();

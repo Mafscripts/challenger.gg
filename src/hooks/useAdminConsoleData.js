@@ -17,7 +17,7 @@ const sectionKeys = {
   dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "adminActions", "systemLogs"],
   users: ["users", "wallets"], roles: ["users"], alerts: ["adminAlerts", "tickets"],
   tickets: ["tickets", "messages"], disputes: ["disputes", "tickets"], wagers: ["wagers"],
-  live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
+  challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
   verifyRank: ["users"],
   tournaments: ["tournaments", "tournamentMatches", "tournamentParticipants", "users", "marketplace"],
   tournamentMatches: ["tournamentMatches"], wallets: ["wallets", "users"],

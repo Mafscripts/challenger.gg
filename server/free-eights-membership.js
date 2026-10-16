@@ -3,6 +3,12 @@ import { matchfinderPostExpiresAt } from "../src/lib/matchfinderPosts.js";
 
 const terminalStatuses = ["completed", "cancelled", "expired", "closed"];
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
+async function challengeConflict(tx, userId) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`voice-membership:${userId}`}))`;
+  if (!tx.challengeMatch) return null;
+  const row = await tx.challengeMatch.findFirst({ where: { status: { in: ["open", "ready_check", "in_progress", "awaiting_confirmation", "disputed"] }, metadata: { path: ["players"], array_contains: [{ user_id: userId }] } } });
+  return row ? { success: false, code: "CHALLENGE_ACTIVE_MATCH", error: "Finish your Challenge a Team match before joining Free 8s.", active_match_id: row.id, action_url: `/challenge-a-team/${encodeURIComponent(row.id)}` } : null;
+}
 
 export async function findActiveFreeEightsMatch(db, userId, { excludeMatchId, membershipIds } = {}) {
   const ids = membershipIds ?? (await db.wagerParticipant.findMany({ where: field("user_id", userId), select: { metadata: true } }))
@@ -25,6 +31,7 @@ const activeError = (match) => ({ success: false, code: "FREE_EIGHTS_ACTIVE_MATC
 export async function createFreeEightsLobby(db, userId, payload, userName) {
   return db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`free8s-membership:${userId}`}))`;
+    const challenge = await challengeConflict(tx, userId); if (challenge) return challenge;
     const active = await findActiveFreeEightsMatch(tx, userId);
     if (active) return activeError(active);
     const match = await tx.wager.create({ data: dataForEntity("Wager", { ...payload, match_type: "8s", host_id: userId, status: "open" }) });
@@ -40,6 +47,7 @@ export async function createFreeEightsLobby(db, userId, payload, userName) {
 export async function joinFreeEightsLobby(db, userId, matchId, userName) {
   return db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`free8s-membership:${userId}`}))`;
+    const challenge = await challengeConflict(tx, userId); if (challenge) return challenge;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`free8s-enrollment:${matchId}`}))`;
     const match = await tx.wager.findUnique({ where: { id: matchId } });
     if (match?.metadata?.match_type !== "8s" || match.metadata.status !== "open") return { success: false, error: "Free 8s lobby is not open" };

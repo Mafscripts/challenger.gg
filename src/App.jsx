@@ -32,6 +32,7 @@ const Leaderboards = lazy(() => import('@/pages/Leaderboards'));
 const Matchfinder = lazy(() => import('@/pages/Matchfinder'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const MyMatches = lazy(() => import('@/pages/MyMatches'));
+const ChallengeTeam = lazy(() => import('@/pages/ChallengeTeam'));
 const League = lazy(() => import('@/pages/League'));
 const LeagueMatchDemo = lazy(() => import('@/pages/LeagueMatchDemo'));
 const Teams = lazy(() => import('@/pages/Teams'));
@@ -133,6 +134,8 @@ const AuthenticatedApp = () => {
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/matchfinder" element={<Matchfinder />} />
           <Route path="/my-matches" element={<MyMatches />} />
+          <Route path="/challenge-a-team" element={<ChallengeTeam />} />
+          <Route path="/challenge-a-team/:id" element={<ChallengeTeam />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:username" element={<Profile />} />
           <Route path="/teams" element={<Teams />} />
@@ -179,7 +182,7 @@ function App() {
     };
   }, []);
 
-  if (/^\/overlay\/player\/[^/]+\/?$/.test(window.location.pathname)) {
+  if (typeof window !== "undefined" && /^\/overlay\/player\/[^/]+\/?$/.test(window.location.pathname)) {
     return <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Suspense fallback={null}><Routes><Route path="/overlay/player/:identifier" element={<PlayerOverlay />} /></Routes></Suspense>
     </Router>;

@@ -345,6 +345,31 @@ model TryoutRoom {
   metadata     Json     @default("{}")
 }
 
+model ChallengeMatch {
+  id           String   @id @default(cuid())
+  status       String   @default("open")
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+
+  @@index([status, created_date])
+  @@index([metadata], type: Gin)
+}
+
+model ChallengeStanding {
+  id           String   @id @default(cuid())
+  kind         String
+  subject_id   String
+  name         String
+  xp           Int      @default(0)
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  updated_date DateTime @updatedAt
+
+  @@unique([kind, subject_id])
+  @@index([kind, xp])
+}
+
 model TournamentParticipant {
   id           String   @id @default(cuid())
   created_date DateTime @default(now())

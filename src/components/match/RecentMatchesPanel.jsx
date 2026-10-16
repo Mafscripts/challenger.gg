@@ -13,7 +13,7 @@ function EmptyPanel({ icon: Icon, text }) {
 export default function RecentMatchesPanel({ matches, userId, className = "", expanded = false, loading = false, onViewAll, title, activityLimit = 50 }) {
   const [competition, setCompetition] = useState("All");
   const [page, setPage] = useState(0);
-  const categories = ["All", "Free 8s", "Money 8s", "Ranked", "XP Match", "Tournament", "Wager"];
+  const categories = ["All", "Challenge a Team", "Free 8s", "Money 8s", "Ranked", "XP Match", "Tournament", "Wager"];
   const filtered = competition === "All" ? matches : matches.filter((match) => competitionLabelFor(match) === competition);
   const pageCount = Math.max(1, Math.ceil(filtered.length / activityLimit));
   const currentPage = Math.min(page, pageCount - 1);

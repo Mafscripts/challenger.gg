@@ -25,6 +25,7 @@ import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membe
 import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
 import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
 import { matchPostedNotification } from "../match-posted-notification.js";
+import { challengeHandlers } from "../challenges.js";
 import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
 import { matchfinderPostLifetimeMs } from "../../src/lib/matchfinderPosts.js";
@@ -2968,7 +2969,7 @@ async function hydrateTeamMemberIdentities(members = []) {
 function normalizeTeamType(value) {
   const type = String(value || "8s").toLowerCase();
   if (type === "eights") return "8s";
-  if (["8s", "wager", "tournament", "ranked", "general"].includes(type)) return type;
+  if (["8s", "wager", "tournament", "ranked", "general", "challenge"].includes(type)) return type;
   return "8s";
 }
 
@@ -3117,6 +3118,7 @@ async function manageTeam(req) {
     const tag = String(req.body.tag || "").trim().toUpperCase().slice(0, 6);
     const teamType = normalizeTeamType(req.body.team_type);
     const rosterSize = Math.min(4, Math.max(1, Number(req.body.roster_size || (teamType === "8s" ? 4 : 2))));
+    if (teamType === "challenge" && ![1, 2, 3, 4].includes(rosterSize)) return { success: false, error: "Choose a solo, duo, trio or squad roster" };
     if (!name || !tag) return { success: false, error: "Team name and tag are required" };
     if (teamType === "tournament") {
       const activeTournamentTeams = await activeTournamentTeamMemberships(req.user.id);
@@ -3154,6 +3156,13 @@ async function manageTeam(req) {
 
   const team = await getEntity("Team", req.body.team_id || "").catch(() => null);
   if (!team) return { success: false, error: "Team not found" };
+
+  if (team.team_type === "challenge" && ["kick", "leave", "disband"].includes(action)) {
+    const active = await prisma.challengeMatch.findFirst({ where: { status: { in: ["open", "ready_check", "in_progress", "awaiting_confirmation", "disputed"] }, OR: [
+      { metadata: { path: ["alpha_team", "id"], equals: team.id } }, { metadata: { path: ["bravo_team", "id"], equals: team.id } },
+    ] } });
+    if (active) return { success: false, error: "Finish or cancel your active challenge before changing this roster" };
+  }
 
   if (action === "update_assets") {
     if (team.captain_id !== req.user.id) return { success: false, error: "Only the team captain can update team visuals" };
@@ -11044,6 +11053,7 @@ async function postDiscordCelebration(req) {
 }
 
 const handlers = {
+  ...challengeHandlers,
   completeRegistration,
   createWallet: completeRegistration,
   createTicket,

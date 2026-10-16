@@ -27,9 +27,9 @@ export default function Sidebar({ accountActions }) {
   ];
   const navLink = (item) => {
     const Icon = item.icon;
-    const active = activeDestination(location, item.path) || (item.path === profilePath && location.pathname === "/profile");
+    const active = activeDestination(location, item.path) || (item.path === "/challenge-a-team" && location.pathname.startsWith("/challenge-a-team/")) || (item.path === profilePath && location.pathname === "/profile");
     return <Link key={item.path} to={item.path} className="layout-sidebar-link" data-tone={item.tone || "cyan"} aria-current={active ? "page" : undefined}>
-      <span className="layout-sidebar-item-icon"><Icon size={15} strokeWidth={1.8} aria-hidden="true" /></span><span className="layout-sidebar-item-label">{item.label}</span>{active && <ChevronRight className="layout-sidebar-current" size={13} aria-hidden="true" />}
+      <span className="layout-sidebar-item-icon"><Icon size={15} strokeWidth={1.8} aria-hidden="true" /></span><span className="layout-sidebar-item-label">{item.label}</span>{item.isNew && <span className="challenge-new-tag">New</span>}{active && !item.isNew && <ChevronRight className="layout-sidebar-current" size={13} aria-hidden="true" />}
     </Link>;
   };
   return <aside className="layout-sidebar" aria-label="Sidebar navigation">

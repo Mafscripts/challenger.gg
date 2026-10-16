@@ -70,6 +70,18 @@ function fixture(initialMatches = [], initialMembers = []) {
   return { db, matches, members, acquired, failParticipant: (value) => { failMember = value; } };
 }
 
+test("an active Challenge a Team match blocks Free 8s enrollment using the shared voice-membership lock", async () => {
+  const f = fixture([match("open-room")]);
+  const transaction = f.db.$transaction;
+  f.db.$transaction = (fn) => transaction((tx) => fn({ ...tx, challengeMatch: { findFirst: async () => ({ id: "challenge-room" }) } }));
+  const creation = await createFreeEightsLobby(f.db, "player", {}, "Player");
+  const joining = await joinFreeEightsLobby(f.db, "player", "open-room", "Player");
+  assert.equal(creation.code, "CHALLENGE_ACTIVE_MATCH");
+  assert.equal(joining.action_url, "/challenge-a-team/challenge-room");
+  assert.equal(f.members.size, 0);
+  assert.ok(f.acquired.includes("voice-membership:player"));
+});
+
 test("every unfinished Free 8s status blocks a different join and creation, including score approval pending completion", async () => {
   for (const status of ["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed", "accepted", "score_reported"]) {
     const f = fixture([match("old", status), match("next")], [member("old-member", "me", "old")]);
@@ -119,7 +131,7 @@ test("simultaneous joins/creation by one account enroll in exactly one match", a
   assert.equal(results.filter((result) => result.success).length, 1);
   assert.equal(results.filter((result) => result.code === "FREE_EIGHTS_ACTIVE_MATCH").length, 2);
   assert.equal([...f.members.values()].filter((row) => row.metadata.user_id === "me").length, 1);
-  assert.ok(f.acquired.every((key) => key.startsWith("free8s-membership:") || key.startsWith("free8s-enrollment:")));
+  assert.ok(f.acquired.every((key) => key.startsWith("free8s-membership:") || key.startsWith("free8s-enrollment:") || key.startsWith("voice-membership:")));
 });
 
 test("rejoining the same lobby is idempotent even when multiple requests arrive", async () => {

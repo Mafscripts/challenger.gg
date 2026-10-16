@@ -13,7 +13,7 @@ export async function loadPlayerMatchActivity(api, userId) {
       return fallback;
     }
   };
-  const [hostedWagers, challengedWagers, participants, hostedRanked, challengedRanked, hostedXp, challengedXp, tournamentParticipants] = await Promise.all([
+  const [hostedWagers, challengedWagers, participants, hostedRanked, challengedRanked, hostedXp, challengedXp, tournamentParticipants, challenges] = await Promise.all([
     read("Wagers", () => api.entities.Wager.filterFresh({ host_id: userId }, "-created_date", 50)),
     read("Wagers", () => api.entities.Wager.filterFresh({ challenger_id: userId }, "-created_date", 50)),
     read("8s and team matches", () => api.entities.WagerParticipant.filterFresh({ user_id: userId }, "-joined_date", 50)),
@@ -22,8 +22,9 @@ export async function loadPlayerMatchActivity(api, userId) {
     read("XP", () => api.entities.XPMatch.filterFresh({ host_id: userId }, "-created_date", 50)),
     read("XP", () => api.entities.XPMatch.filterFresh({ challenger_id: userId }, "-created_date", 50)),
     read("Tournaments", () => api.profile.tournamentParticipants(userId)),
+    read("Challenge a Team", async () => { const { data } = await api.functions.invoke("getChallengeActivity", { user_id: userId }); return data?.matches || []; }),
   ]);
-  if (failures.length === 8) throw new Error("Your matches could not be loaded. Please try again shortly.");
+  if (failures.length === 9) throw new Error("Your matches could not be loaded. Please try again shortly.");
 
   const knownWagers = new Set([...hostedWagers, ...challengedWagers].map((row) => String(row.id)));
   const joinedIds = [...new Set(participants.map((row) => row.wager_id).filter(Boolean))].filter((id) => !knownWagers.has(String(id)));
@@ -43,6 +44,7 @@ export async function loadPlayerMatchActivity(api, userId) {
     return { ...normalized, profile_side: profileMatchSideFor(normalized, userId, options), profile_result: profileMatchOutcome(normalized, userId, options) };
   };
   const matches = [
+    ...challenges,
     ...[...hostedWagers, ...challengedWagers, ...joinedWagers.filter(Boolean)].map((match) => enrich(match, "wager", { wagerParticipants: participantByMatch.get(String(match.id)) || [] })),
     ...[...hostedRanked, ...challengedRanked].map((match) => enrich(match, "ranked")),
     ...[...hostedXp, ...challengedXp].map((match) => enrich(match, "xp")),

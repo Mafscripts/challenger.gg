@@ -52,7 +52,7 @@ const stateSignature = (payload, secret) => crypto
   .digest("base64url");
 
 export const safeDiscordReturnTo = (path) => {
-  if (path === "/ranked/8s" || path === "/matchfinder?category=eights" || /^\/8s-match\/[a-zA-Z0-9_-]{1,100}$/.test(String(path || ""))) return path;
+  if (path === "/challenge-a-team" || /^\/challenge-a-team\/[a-zA-Z0-9_-]{1,100}$/.test(String(path || "")) || path === "/ranked/8s" || path === "/matchfinder?category=eights" || /^\/8s-match\/[a-zA-Z0-9_-]{1,100}$/.test(String(path || ""))) return path;
   return "/settings";
 };
 
@@ -91,6 +91,8 @@ const settingsRedirect = (res, origin, status, returnTo = "/settings") => {
 };
 
 const activeFreeEightsMembership = async (userId) => {
+  const challenge = await prisma.challengeMatch.findFirst({ where: { status: { in: ["open", "ready_check", "in_progress", "awaiting_confirmation", "disputed"] }, metadata: { path: ["players"], array_contains: [{ user_id: userId }] } } });
+  if (challenge) return true;
   const rows = await prisma.wagerParticipant.findMany({ where: { metadata: { path: ["user_id"], equals: userId } } });
   const ids = rows.map((row) => row.metadata?.wager_id).filter(Boolean);
   if (!ids.length) return false;
@@ -300,7 +302,7 @@ router.post("/sync", requireAuth, async (req, res, next) => {
 router.delete("/connection", requireAuth, async (req, res, next) => {
   try {
     if (await activeFreeEightsMembership(req.user.id)) {
-      return res.status(409).json({ error: "Finish or leave your active Free 8s lobby before disconnecting Discord" });
+      return res.status(409).json({ error: "Finish or leave your active Free 8s or Challenge a Team match before disconnecting Discord" });
     }
     // Verified Player belongs to server members independently of website linking.
     await prisma.user.update({

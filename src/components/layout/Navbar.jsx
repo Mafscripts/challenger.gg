@@ -13,7 +13,7 @@ import NavbarNotificationMenu from "./NavbarNotificationMenu";
 import { isCurrentNotification } from "@/lib/notificationRetention";
 import { applyNotificationChange } from "@/lib/notificationInbox";
 import { NavbarDestinations, NavbarMatches } from "./NavbarMenus";
-import { navGroups, playNavGroup, mobileNavSections } from "./navigationGroups";
+import { challengeNavItem, navGroups, playNavGroup, mobileNavSections } from "./navigationGroups";
 import { useNavigationLayout } from "./NavigationLayoutProvider";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
 import NavigationChrome from "./NavigationChrome";
@@ -933,6 +933,7 @@ export default function Navbar() {
         hostedXP,
         challengedXP,
         tournamentParticipants,
+        challengeActivity,
       ] = await Promise.all([
         base44.entities.Wager[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
         base44.entities.Wager[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
@@ -942,9 +943,11 @@ export default function Navbar() {
         base44.entities.XPMatch[fresh ? "filterFresh" : "filter"]({ host_id: user.id }).catch(() => []),
         base44.entities.XPMatch[fresh ? "filterFresh" : "filter"]({ challenger_id: user.id }).catch(() => []),
         base44.profile.tournamentParticipants(user.id).catch(() => []),
+        base44.functions.invoke("getChallengeActivity").then((response) => response.data?.matches || []).catch(() => []),
       ]);
 
       const byId = new Map();
+      challengeActivity.forEach((match) => byId.set(`challenge:${match.id}`, match));
       const knownWagerIds = new Set([...hostedWagers, ...challengedWagers].map((match) => String(match.id)));
       const participantWagerIds = [...new Set((wagerParticipants || []).map((participant) => participant?.wager_id).filter(Boolean))]
         .filter((id) => !knownWagerIds.has(String(id)));
@@ -992,7 +995,7 @@ export default function Navbar() {
         .filter((match) => (
           match.entity_type === "tournament"
             ? activeTournamentStatuses.has(match.status) && !match.completed
-            : activeMatchStatuses.has(match.status) || ((match.match_type === "8s" || match.match_type === "money8s") && match.status === "open")
+            : activeMatchStatuses.has(match.status) || (match.entity_type === "challenge" && ["open", "ready_check", "awaiting_confirmation"].includes(match.status)) || ((match.match_type === "8s" || match.match_type === "money8s") && match.status === "open")
         ))
         .sort((a, b) => (
           (new Date(b.match_started_date || b.assigned_date || b.created_date || 0).getTime() || 0)
@@ -1427,6 +1430,7 @@ export default function Navbar() {
                   </span>
                   Home
                 </Link>
+                <Link to={challengeNavItem.path} onClick={closeDropdowns} title="Challenge a Team" aria-label="Challenge a Team — New" className="topnav-challenge-link" aria-current={location.pathname.startsWith(challengeNavItem.path) ? "page" : undefined}><challengeNavItem.icon size={15} /><span>Challenge<span className="hidden 2xl:inline"> a Team</span></span><span className="challenge-new-tag">New</span></Link>
                 {[playNavGroup, navGroups.find((group) => group.label === "Cash Matches"), navGroups.find((group) => group.label === "Matchfinder"), navGroups.find((group) => group.label === "Tournaments")].map((group) => {
                   const GroupIcon = group.icon;
                   const active = group.items.some((item) => isCurrentNavItemActive(item.path));
@@ -1587,7 +1591,7 @@ export default function Navbar() {
                             ${active ? "bg-cyan/10 text-cyan" : "text-vapor hover:text-foreground hover:bg-secondary"}`}
                         >
                           <Icon className="w-5 h-5" />
-                          {link.label}
+                          {link.label}{link.isNew && <span className="challenge-new-tag">New</span>}
                         </Link>
                       );
                     })}

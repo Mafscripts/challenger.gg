@@ -22,6 +22,7 @@ test("disconnecting the website identity preserves the automatic Discord communi
   override(prisma.user, "findUnique", async () => structuredClone(user));
   override(prisma.ban, "findMany", async () => []);
   override(prisma.wagerParticipant, "findMany", async () => []);
+  override(prisma.challengeMatch, "findFirst", async () => null);
   override(prisma.user, "update", async ({ where, data }) => {
     assert.equal(where.id, user.id);
     assert.equal(data.discord_user_id, null);

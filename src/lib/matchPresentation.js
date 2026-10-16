@@ -3,6 +3,7 @@ import { profileMatchOutcome, profileMatchSideFor } from "@/lib/profileMatchResu
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
 export const matchRouteFor = (match) => {
   const type = cleanKey(match?.match_type || match?.competition_type || match?.competition);
+  if (type === "challenge") return `/challenge-a-team/${encodeURIComponent(match.id)}`;
   if (match?.tournament_id || type === "tournament" || type === "tournament_match" || type === "streamer_tournament") {
     return `/tournament-match/${match.id}`;
   }
@@ -65,6 +66,7 @@ export const matchDateMs = (match) => new Date(
 ).getTime() || 0;
 export const competitionLabelFor = (match) => {
   const type = cleanKey(match?.match_type || match?.competition_type || match?.competition);
+  if (type === "challenge") return "Challenge a Team";
   if (type === "money8s" || type === "money-8s" || type === "money_8s" || type === "money 8s") return "Money 8s";
   if (type === "8s" || type === "eights" || type === "free8s" || type === "free-8s" || type === "free_8s") return "Free 8s";
   if (type === "tournament" || type === "streamer_tournament" || type === "tournament_match" || match?.tournament_id) return "Tournament";
@@ -74,6 +76,7 @@ export const competitionLabelFor = (match) => {
   return "Match";
 };
 export const competitionToneFor = (label) => {
+  if (label === "Challenge a Team") return "border-purple-300/20 bg-purple-300/10 text-purple-200";
   if (label === "Money 8s") return "border-green/20 bg-green/10 text-green";
   if (label === "Free 8s") return "border-cyan/20 bg-cyan/10 text-cyan";
   if (label === "Tournament") return "border-orange/20 bg-orange/10 text-orange";

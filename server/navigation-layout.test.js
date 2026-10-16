@@ -107,6 +107,8 @@ test("real layout controls render both choices, preserve Free/Money 8s navigatio
   assert.match(sidebar, /class="sidebar-account-controls app-topbar-v2"/);
   assert.match(sidebar, /href="\/profile\/player"/);
   assert.match(sidebar, /My Profile/);
+  assert.match(sidebar, /href="\/challenge-a-team"/);
+  assert.match(sidebar, /class="challenge-new-tag">New/);
   assert.doesNotMatch(sidebar, /href="\/(messages|my-matches)"/);
   assert.equal(sidebar.match(/<button>Notifications<\/button>/g)?.length, 1);
   assert.equal(sidebar.match(/<button>Account<\/button>/g)?.length, 1);

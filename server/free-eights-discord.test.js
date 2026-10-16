@@ -49,6 +49,7 @@ test("authenticated Free 8s API and existing OAuth integration", async (t) => {
   override(prisma.user, "findUnique", async ({ where }) => where.discord_user_id ? owner : account);
   override(prisma.user, "update", async ({ data }) => { updates++; account = { ...account, ...data }; return account; });
   override(prisma.ban, "findMany", async () => []);
+  override(prisma.challengeMatch, "findFirst", async () => null);
   override(prisma.wager, "findUnique", async () => ({ id: "match1", metadata: { match_type: matchType, status: "open" } }));
   override(prisma.wager, "findMany", async () => active ? [{ id: "match1", metadata: { match_type: "8s", status: "open" } }] : []);
   override(prisma.wagerParticipant, "findMany", async () => participant ? [{ metadata: { user_id: account.id, wager_id: "match1", team: "host" } }] : []);

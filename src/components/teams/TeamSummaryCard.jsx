@@ -4,7 +4,7 @@ import { ArrowRight, CheckCircle, Crown, Gamepad2, Globe2, Shield, Swords, Troph
 import { normalizeTeamRosterSize } from "@/lib/teamFormats";
 import { teamPageUrl, teamPlayerFormat, teamPurposeFor } from "@/lib/teamPresentation";
 
-const purposeIcons = { tournament: Trophy, wager: Swords, ranked: Shield, general: Users };
+const purposeIcons = { challenge: Swords, tournament: Trophy, wager: Swords, ranked: Shield, general: Users };
 const nonNegative = (value) => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 
 export default function TeamSummaryCard({ team, membership, profileUserId, isOwnProfile = true, members, usersById = {}, activeMatch, currentTournament, onOpen }) {

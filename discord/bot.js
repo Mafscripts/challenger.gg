@@ -32,6 +32,7 @@ import { assignVerifiedPlayerRole, syncVerifiedPlayerRoles } from "./member-veri
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
+import { syncChallengeVoice } from "./challenge-voice.js";
 import { createFreeEightsVoiceUpdater, startFreeEightsLiveUpdates } from "./free-eights-live.js";
 import { syncFreeEightsResults } from "./free-eights-results.js";
 import { createCommunityCommandHandler } from "./community-commands.js";
@@ -63,6 +64,14 @@ async function runMemberVerificationSync(guild) {
   }
 }
 let freeEightsVoiceSyncRunning = false;
+let challengeVoiceRunning = false;
+async function runChallengeVoiceSync(guild) {
+  if (challengeVoiceRunning) return;
+  challengeVoiceRunning = true;
+  try { await syncChallengeVoice(guild); }
+  catch (error) { console.error("[Challenge a Team Discord]", error.message); }
+  finally { challengeVoiceRunning = false; }
+}
 let freeEightsVoiceSyncQueued = false;
 let freeEightsVoiceInventoryRefreshQueued = false;
 let freeEightsResultsSyncRunning = false;
@@ -549,6 +558,8 @@ client.once(Events.ClientReady, async (readyClient) => {
   setInterval(() => runMemberVerificationSync(guild), 60_000);
   const voiceUpdates = createFreeEightsVoiceUpdater((id) => syncFreeEightsVoice(guild, { matchIds: [id], refreshInventory: false }));
   void runFreeEightsVoiceSync(guild);
+  void runChallengeVoiceSync(guild);
+  setInterval(() => runChallengeVoiceSync(guild), 5000);
   setInterval(() => runFreeEightsVoiceSync(guild), 5000);
   try {
     startFreeEightsLiveUpdates({ guildId: config.guildId, publicUrl: config.publicUrl,
@@ -579,6 +590,7 @@ client.on(Events.GuildMemberRemove, syncMemberCountFromEvent);
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   if (newState.guild.id === config.guildId && oldState.channelId !== newState.channelId) {
     void runFreeEightsVoiceSync(newState.guild, { refreshInventory: false });
+    void runChallengeVoiceSync(newState.guild);
   }
 });
 

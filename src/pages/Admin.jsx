@@ -58,6 +58,7 @@ import { getRankForElo } from "@/lib/ranks";
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
 const DisputeReviewCard = lazy(() => import("@/components/admin/DisputeReviewCard"));
 const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGamesAdmin"));
+const ChallengeTeamAdmin = lazy(() => import("@/components/admin/ChallengeTeamAdmin"));
 
 const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
@@ -243,6 +244,7 @@ const tabs = [
   { id: "disputes", label: "Disputes", icon: Gavel },
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
   { id: "live8s", label: "Live 8s Rooms", icon: Radio },
+  { id: "challenges", label: "Challenge a Team", icon: Swords },
   { id: "eightsGames", label: "8s Games & Maps", icon: Swords },
   { id: "ranked", label: "Ranked Management", icon: Swords },
   { id: "verifyRank", label: "Verify Rank", icon: UserCheck },
@@ -2102,6 +2104,7 @@ export default function Admin() {
           )}
 
           {activeTab === "eightsGames" && <FreeEightsGamesAdmin />}
+          {activeTab === "challenges" && <ChallengeTeamAdmin />}
           {activeTab === "live8s" && (
             <div className="p-6">
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -18,6 +18,9 @@
 .navigation-layout-toggle-labeled { width: 100%; height: 36px; font-size: 10px; font-weight: 700; color: hsl(var(--cyan)); }
 
 .layout-sidebar { display: none; }
+.challenge-new-tag { display: inline-flex; align-items: center; padding: 2px 5px; border: 1px solid #c4b5fd55; border-radius: 3px; background: #a78bfa18; color: #ddd6fe; font-size: 7px; font-weight: 900; line-height: 1.2; letter-spacing: .08em; text-transform: uppercase; }
+.topnav-challenge-link { display: flex; align-items: center; gap: 6px; padding: 9px 7px; border: 1px solid #a78bfa33; border-radius: 6px; color: #ddd6fe; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.topnav-challenge-link:hover, .topnav-challenge-link[aria-current="page"] { background: #a78bfa18; border-color: #a78bfa88; }
 .navigation-unread-badge { position: absolute; top: 1px; right: 1px; z-index: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 16px; height: 16px; padding: 0 4px; border: 1px solid #0b1119; border-radius: 5px; background: #ef4444; color: #fff; font-family: ui-monospace, monospace; font-size: 9px; font-weight: 800; line-height: 1; }
 .navigation-unread-badge[data-inline="true"] { position: static; margin-left: auto; min-width: 18px; height: 18px; }
 @media (min-width: 1024px) {
@@ -71,6 +74,7 @@
   .layout-sidebar-link[data-tone="gold"] { --sidebar-accent: 45 95% 62%; }
   .layout-sidebar-link[data-tone="orange"] { --sidebar-accent: 25 100% 63%; }
   .layout-sidebar-link[data-tone="red"] { --sidebar-accent: 355 90% 70%; }
+  .layout-sidebar-link[data-tone="purple"] { --sidebar-accent: 263 90% 78%; }
   .layout-sidebar-item-icon { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border: 1px solid hsl(var(--sidebar-accent) / .12); border-radius: 3px; color: hsl(var(--sidebar-accent) / .85); background: hsl(var(--sidebar-accent) / .045); }
   .layout-sidebar-item-label { flex: 1; min-width: 0; line-height: 1.4; }
   .layout-sidebar-link:hover { color: hsl(var(--foreground)); background: hsl(var(--sidebar-accent) / .05); }

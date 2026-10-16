@@ -54,7 +54,7 @@ const playerEarnings = (user) => Math.max(
 const formatDate = (value) => value ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "TBD";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "TBD";
 const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
-const teamTypeLabel = (team) => ({ ranked: "Ranked", wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
+const teamTypeLabel = (team) => ({ challenge: "Challenge a Team", ranked: "Ranked", wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
 const titleCase = (value) => String(value || "pending").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const teamBannerMaxBytes = 1.5 * 1024 * 1024;
 const statNumber = (value) => {
@@ -669,7 +669,7 @@ export default function Teams() {
         ) : view === "my_teams" ? (
           <section className="min-w-0">
             <div className="profile-mode-filters mb-4 flex flex-wrap gap-2" aria-label="Filter teams by competition">
-              {[{ id: "all", label: "All competitions" }, { id: "tournament", label: "Tournaments" }, { id: "wager", label: "Wagers" }, { id: "ranked", label: "Ranked" }, { id: "general", label: "General" }].map((type) => <button key={type.id} type="button" aria-pressed={typeFilter === type.id} onClick={() => setTypeFilter(type.id)} className="competition-action-pill profile-mode-pill">{type.label}<span className="profile-mode-count">{type.id === "all" ? teamSummaries.length : teamSummaries.filter((summary) => teamPurposeFor(summary.team).icon === type.id).length}</span></button>)}
+              {[{ id: "all", label: "All competitions" }, { id: "challenge", label: "Challenge a Team" }, { id: "tournament", label: "Tournaments" }, { id: "wager", label: "Wagers" }, { id: "ranked", label: "Ranked" }, { id: "general", label: "General" }].map((type) => <button key={type.id} type="button" aria-pressed={typeFilter === type.id} onClick={() => setTypeFilter(type.id)} className="competition-action-pill profile-mode-pill">{type.label}<span className="profile-mode-count">{type.id === "all" ? teamSummaries.length : teamSummaries.filter((summary) => teamPurposeFor(summary.team).icon === type.id).length}</span></button>)}
             </div>
             <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-card/55 p-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-wrap gap-1.5" aria-label="Filter teams by roster status">
@@ -747,7 +747,7 @@ export default function Teams() {
         ) : null}
       </div>
 
-      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedRosterSize} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={handleTeamCreated} />
+      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["challenge", "ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedRosterSize} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "challenge" ? "Create Challenge a Team Roster" : requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "challenge" ? "Create a solo, duo, trio or squad with its own team XP." : requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={handleTeamCreated} />
       <InvitePlayerModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} team={selectedTeam} value={inviteIdentifier} onChange={setInviteIdentifier} onSubmit={handleInvite} busy={Boolean(busyAction)} />
     </div>
   );

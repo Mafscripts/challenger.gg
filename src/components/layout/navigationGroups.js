@@ -1,4 +1,6 @@
-import { DollarSign, Monitor, Search, Swords, Trophy, Users, Zap } from "lucide-react";
+import { Crosshair, DollarSign, Monitor, Search, Swords, Trophy, Users, Zap } from "lucide-react";
+
+export const challengeNavItem = { label: "Challenge a Team", path: "/challenge-a-team", icon: Crosshair, tone: "purple", isNew: true };
 
 export const navGroups = [
   {
@@ -76,6 +78,7 @@ export const playNavGroup = {
 };
 
 export const mobileNavSections = [
+  { label: "Team challenges", items: [challengeNavItem] },
   { label: "Play", items: playNavGroup.items },
   { label: "Cash Matches", items: navGroups[1].items },
   { label: "Matchfinder", items: navGroups[2].items },

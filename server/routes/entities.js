@@ -4,6 +4,9 @@ import { requireAuth } from "../middleware/auth.js";
 import { hasRole } from "../roles.js";
 
 const protectedMutationEntities = new Set([
+  "Team",
+  "TeamMember",
+  "TeamInvite",
   "MapPool",
   // These records contain match results, escrow, support state, or bracket
   // routing and must only be changed through their server-side actions.
@@ -108,6 +111,7 @@ const participantIdentityValues = (participant) => {
 
 const router = Router();
 router.use("/:entity", (req, res, next) => {
+  if (["challengematch", "challengestanding"].includes(String(req.params.entity).toLowerCase())) return res.status(403).json({ error: "Use the protected Challenge a Team actions" });
   if (String(req.params.entity).toLowerCase() === "tryoutroom") return res.status(404).json({ error: "Entity not found" });
   if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method) && Object.hasOwn(req.body || {}, "badges")) return res.status(403).json({ error: "Use admin badge management" });
   if (String(req.params.entity).toLowerCase() === "mappool" && ["POST", "PATCH", "DELETE"].includes(req.method)) return res.status(403).json({ error: "Use the Free 8s game configuration action" });

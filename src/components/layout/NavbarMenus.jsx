@@ -30,6 +30,7 @@ export function NavbarDestinations({ group, isActive, onSelect }) {
 }
 
 const matchKinds = {
+  challenge: { label: "Challenge a Team", tone: "purple", icon: Swords },
   tournament: { label: "Tournament", tone: "orange", icon: Trophy },
   ranked: { label: "Ranked", tone: "cyan", icon: Swords },
   xp: { label: "XP match", tone: "purple", icon: Swords },
@@ -48,11 +49,11 @@ export function NavbarMatches({ matches, userId, historyPath, isActive, onSelect
       {matches.length === 0 ? <div className="nav-destination-empty"><Swords size={25} /><strong>No active matches</strong><p>Your current match rooms will appear here.</p></div>
         : matches.map(match => {
           const isTournament = match.entity_type === "tournament";
-          const isHost = userId === match.host_id;
+          const isHost = match.entity_type === "challenge" ? match.profile_side === "alpha" : userId === match.host_id;
           const opponent = isTournament
             ? (match.current_user_side === "team_a" ? match.team_b_name : match.team_a_name) || "Opponent pending"
             : isHost ? match.challenger_name || "Opponent pending" : match.host_name || "Host unavailable";
-          const path = isTournament ? `/tournament-match/${match.id}`
+          const path = match.entity_type === "challenge" ? `/challenge-a-team/${match.id}` : isTournament ? `/tournament-match/${match.id}`
             : match.entity_type === "ranked" ? `/ranked-match/${match.id}`
               : match.entity_type === "xp" ? `/xp-match/${match.id}`
                 : (match.match_type === "8s" || match.match_type === "money8s") ? `/8s-match/${match.id}` : `/wagers-match/${match.id}`;
