@@ -21,7 +21,6 @@ import PageLayout from '@/components/layout/PageLayout';
 const Home = lazy(() => import('@/pages/Home'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const StreamerTournaments = lazy(() => import('@/pages/StreamerTournaments'));
-const Tryouts = lazy(() => import('@/pages/Tryouts'));
 const StreamerTournamentLobby = lazy(() => import('@/pages/StreamerTournamentLobby'));
 const TournamentMatchRoom = lazy(() => import('@/pages/TournamentMatchRoom'));
 const MatchRoom = lazy(() => import('@/pages/MatchRoom'));
@@ -124,8 +123,6 @@ const AuthenticatedApp = () => {
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/tournaments/:id" element={<TournamentOverview />} />
           <Route path="/streamer-tournaments" element={<StreamerTournaments />} />
-          <Route path="/try-outs" element={<Tryouts />} />
-          <Route path="/try-outs/:id" element={<Tryouts />} />
           <Route path="/streamer-tournament/:id" element={<StreamerTournamentLobby />} />
           <Route path="/tournament-match/:id" element={<TournamentMatchRoom />} />
           <Route path="/match-room/:id" element={<MatchRoom />} />

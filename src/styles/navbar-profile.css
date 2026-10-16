@@ -51,20 +51,6 @@
 .nav-profile-popover .profile-league-menu-title { font-size: 12px; }
 .nav-profile-popover .profile-league-menu-description { font-size: 9px; }
 .nav-profile-popover .profile-league-menu-status { margin-top: 5px; padding: 1px 5px; font-size: 7px; }
-.profile-tryouts-menu-link,
-.app-topbar-v2 .nav-popover.nav-profile-popover .profile-tryouts-menu-link { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr) 19px; align-items: center; gap: 12px; min-height: 96px; margin: 2px 0 8px; padding: 16px 13px; border: 1px solid rgb(250 204 21 / .4); border-radius: 11px; background: linear-gradient(115deg, #323019, #15242a 65%, #102029); color: #fff; text-decoration: none; box-shadow: inset 3px 0 0 #facc15, 0 0 22px rgb(250 204 21 / .055); transition: border-color 160ms ease, box-shadow 160ms ease; }
-.profile-tryouts-menu-link:hover,
-.app-topbar-v2 .nav-popover.nav-profile-popover .profile-tryouts-menu-link:hover { border-color: rgb(250 204 21 / .75); box-shadow: inset 3px 0 0 #facc15, 0 0 26px rgb(250 204 21 / .12); }
-.profile-tryouts-menu-link:focus-visible { outline: 2px solid #facc15; outline-offset: 2px; }
-.profile-tryouts-menu-icon { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid rgb(250 204 21 / .28); border-radius: 11px; background: rgb(250 204 21 / .075); color: #facc15; }
-.profile-tryouts-menu-copy { min-width: 0; }
-.profile-tryouts-menu-tag { display: block; margin-bottom: 4px; color: #facc15; font-size: 8px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
-.profile-tryouts-menu-title { display: block; color: #fff4c2; font-size: 20px; font-weight: 900; line-height: 1.2; letter-spacing: -.02em; }
-.profile-tryouts-menu-description { display: block; margin-top: 5px; color: #b8c8d0; font-size: 9px; line-height: 1.5; }
-.profile-tryouts-menu-arrow { color: #facc15; }
-@media (prefers-reduced-motion: reduce) {
-  .profile-tryouts-menu-link { transition: none !important; }
-}
 .nav-profile-popover .profile-menu-footer { flex-shrink: 0; padding: 9px 12px; border-top: 1px solid rgb(255 255 255 / .07); background: #0a141d; }
 .nav-profile-popover .profile-menu-logout { display: flex; align-items: center; justify-content: space-between; min-height: 38px; padding: 8px 10px; border-radius: 7px; color: #f87171; font-size: 11px; font-weight: 700; }
 .nav-profile-popover .profile-menu-logout > span { display: flex; align-items: center; gap: 10px; }

@@ -14,7 +14,6 @@ import { disconnectPrisma, prisma } from "./prisma.js";
 import { purgeExpiredNotifications, startNotificationRetentionWorker } from "./notification-retention.js";
 import { attachRankedVoiceServer } from "./ranked-voice.js";
 import { attachEightsLiveServer } from "./eights-live.js";
-import { attachTryoutLiveServer } from "./tryout-live.js";
 import { startMatchfinderExpiryWorker } from "./matchfinder-expiry.js";
 
 const app = express();
@@ -72,7 +71,6 @@ const server = app.listen(port, () => {
 });
 attachRankedVoiceServer(server);
 attachEightsLiveServer(server);
-attachTryoutLiveServer(server);
 const stopMatchfinderExpiry = startMatchfinderExpiryWorker(expireMatchfinderPosts);
 const stopNotificationRetention = startNotificationRetentionWorker(() => purgeExpiredNotifications(prisma));
 

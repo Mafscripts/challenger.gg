@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, MessageSquare, ChevronDown, ChevronRight, User,
-  Menu, X, House, Swords, Trophy, ShoppingBag,
+  Menu, X, House, Trophy, ShoppingBag,
   Users,
   AlertCircle, ExternalLink, LogIn, UserPlus,
   Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket, Crown
@@ -21,7 +21,6 @@ import SidebarBalances from "./SidebarBalances";
 import "@/styles/navbar-profile.css";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { canAccessTryouts } from "@/lib/tryouts";
 import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
 
 const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 12 * 60 * 60 * 1000;
@@ -372,7 +371,6 @@ export default function Navbar() {
     ? (staffRoles.has(user?.admin_role) ? user.admin_role : user?.role || "Staff").replaceAll("_", " ")
     : "Player";
   const canSeeStreamerShortcut = isStreamerUser(user || authUser);
-  const canSeeTryouts = canAccessTryouts(user || authUser);
   const matchHistoryPath = "/my-matches?view=history";
 
   useEffect(() => {
@@ -1243,7 +1241,6 @@ export default function Navbar() {
               <ProfileMenuSection
                 label="Competitive"
                 items={[
-                  ...(canSeeTryouts ? [{ label: "Try outs", path: "/try-outs", icon: Swords, featuredTryouts: true }] : []),
                   { label: "Topfragg League", path: "/league", icon: ShieldCheck, featuredLeague: true },
                   { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
                   ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
@@ -1640,7 +1637,6 @@ export default function Navbar() {
                       <User className="w-5 h-5" />
                       My Profile
                     </Link>
-                    {canSeeTryouts && <FeaturedTryoutsLink onSelect={closeMobileMenu} />}
                     <Link
                       to="/league"
                       onClick={closeMobileMenu}
@@ -1728,20 +1724,6 @@ export default function Navbar() {
   );
 }
 
-function FeaturedTryoutsLink({ onSelect }) {
-  return (
-    <Link to="/try-outs" onClick={onSelect} className="profile-tryouts-menu-link">
-      <span className="profile-tryouts-menu-icon"><Swords size={24} aria-hidden="true" /></span>
-      <span className="profile-tryouts-menu-copy">
-        <span className="profile-tryouts-menu-tag">Challengers</span>
-        <span className="profile-tryouts-menu-title">Try outs</span>
-        <span className="profile-tryouts-menu-description">BO7 · Hardpoint · Best of 3</span>
-      </span>
-      <ArrowRight size={19} className="profile-tryouts-menu-arrow" aria-hidden="true" />
-    </Link>
-  );
-}
-
 function ProfileMenuSection({ label, items, onSelect }) {
   return (
     <section className="profile-menu-section" data-section={label}>
@@ -1749,8 +1731,6 @@ function ProfileMenuSection({ label, items, onSelect }) {
       <div className="profile-menu-section-links">
       {items.map((item) => {
         const Icon = item.icon;
-
-        if (item.featuredTryouts) return <FeaturedTryoutsLink key={item.path} onSelect={onSelect} />;
 
         if (item.featuredLeague) return (
           <Link key={item.path} to={item.path} onClick={onSelect} className="profile-league-menu-link">

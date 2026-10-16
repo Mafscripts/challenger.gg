@@ -1,15 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, BadgeCheck, Crown, Monitor, Swords } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Crown, Monitor } from "lucide-react";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 
 const specialBadgeConfig = {
-  challengers: {
-    label: "Challengers",
-    description: "Selected for Topfragg Challengers try outs.",
-    className: "border-yellow-400/35 bg-yellow-400/10 text-yellow-300 shadow-[0_0_14px_rgba(250,204,21,0.18)]",
-    icon: Swords,
-  },
   verified_player: {
     label: "Verified Player",
     description: "This player is verified.",
@@ -73,7 +67,7 @@ export default function UserBadges({
   const suppliedBadges = Array.isArray(badges) ? badges : [];
   const automaticBadges = userSpecialBadges(user);
   const rows = [...suppliedBadges, ...automaticBadges].filter((badge, index, all) => (
-    badge?.type && all.findIndex(candidate => candidate?.type === badge.type) === index
+    specialBadgeConfig[badge?.type] && all.findIndex(candidate => candidate?.type === badge.type) === index
   ));
   const forcedStream = showForceStream && Boolean(user?.force_stream_required || user?.stream_override_required);
   const monitorCamRequired = showMonitorCam && Boolean(user?.monitor_cam_required || user?.required_monitor_cam || user?.moni_cam_required || user?.monitor_cam_override_required);

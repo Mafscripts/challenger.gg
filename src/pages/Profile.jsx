@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import {
   Award,
   BadgeCheck,
-  Calendar,
   Camera,
   ChevronRight,
   DollarSign,
@@ -396,7 +395,7 @@ export default function Profile() {
   const losses = Math.max(Number(profile?.total_losses ?? 0), rankedLosses + wagerLosses, rankedLosses, wagerLosses);
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
-  const badges = useMemo(() => user?.badges || [], [user]);
+  const badges = useMemo(() => (Array.isArray(user?.badges) ? user.badges : []).filter((badge) => badge?.type !== "challengers"), [user]);
   const isOwnProfile = Boolean(currentUser?.id && user?.id && currentUser.id === user.id);
   const isVerifiedPlayer = Boolean(user?.verified_player || user?.is_verified_player || badges.some((badge) => badge.type === "verified_player"));
   const isPremium = Boolean(user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires).getTime() > Date.now()));
