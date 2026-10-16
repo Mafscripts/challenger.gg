@@ -13,6 +13,7 @@ import { challengerIdentityAfterAccept } from "../wager-acceptance.js";
 import { getAnimatedNameFreeTrial, upsertAnimatedNameFreeTrial } from "../freeTrial.js";
 import { freeEightsDiscordConfig, freeEightsDiscordJoinError, freeEightsDiscordMembershipJoinError, freeEightsVoiceKey, freeEightsVoiceLog, freeEightsWaitingRoomReady } from "../free-eights-discord.js";
 import { completeFreeEightsWithElo } from "../free-eights-elo.js";
+import { captureFreeEightsRewards, revertFreeEightsResult } from "../free-eights-revert.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 import { loadEightsGames, saveEightsGames, eightsLobbySettings, uploadEightsMapImage, EIGHTS_CONFIG_ID } from "../free-eights-games.js";
 import { eightsGameId, generateEightsSeries } from "../../src/lib/freeEightsGames.js";
@@ -7099,6 +7100,17 @@ async function adminResetEightsLobby(req) {
   });
 }
 
+async function adminRevertFreeEightsResult(req) {
+  assertStaff(req, "admin");
+  const wagerId = req.body.wager_id;
+  return withTournamentMutationLock(`wager-accept:${wagerId}`, async () => {
+    const wager = await revertFreeEightsResult(prisma, req.user, wagerId, req.body.expected_match_completed_date);
+    publishEightsLobbyUpdate(wagerId, "result-reverted");
+    await createMatchRoomSystemMessage("8s", wager, `${nameFor(req.user)} reverted the result. Match rewards were reversed; the correct result can now be reported.`, req.user).catch(() => null);
+    return { success: true, wager };
+  });
+}
+
 async function leaveEightsLobbyUnlocked(req) {
   const wager = await getEntity("Wager", req.body.wager_id || req.body.id);
   if (!wager || !isEightsMatchType(wager.match_type)) return { success: false, error: "8s lobby not found" };
@@ -7661,6 +7673,7 @@ async function completeWagerUnlocked(req) {
     } : {}),
   };
   if (wager.match_type === "8s") {
+    completion.free_eights_reward_snapshot = await captureFreeEightsRewards(prisma, [...winnerUserIds, ...loserUserIds], eightsGameId(wager.game_id));
     const result = await completeFreeEightsWithElo(prisma, wager.id, completion);
     if (!result.applied) return { success: false, error: "Match is already completed" };
   } else {
@@ -11070,6 +11083,7 @@ const handlers = {
   adminReshuffleEightsTeams,
   adminSwapEightsPlayers,
   adminResetEightsLobby,
+  adminRevertFreeEightsResult,
   leaveEightsLobby,
   getMoneyEightsStandings,
   settleEightsMonthlyPrize,

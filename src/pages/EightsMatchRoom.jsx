@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, DollarSign, Flag, LogOut, RefreshCw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock3, Crown, DollarSign, Flag, LogOut, RefreshCw, RotateCcw, Shield, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchDisputeDialog from "@/components/match/MatchDisputeDialog";
@@ -633,6 +633,26 @@ function EightsMatchRoomView() {
     }
   };
 
+  const adminRevertResult = async () => {
+    if (adminBusy || !window.confirm("Revert this Free 8s result? ELO, XP and win/loss rewards will be reversed. You can then report the correct winner.")) return;
+    setAdminBusy(true);
+    try {
+      const response = await base44.functions.invoke("adminRevertFreeEightsResult", {
+        wager_id: match.id, expected_match_completed_date: match.match_completed_date,
+      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not revert result");
+      setMatch(response.data.wager);
+      setScoreA("");
+      setScoreB("");
+      // Refresh player progression after reversing the completed match rewards.
+      hydratedRosterRef.current = "";
+      toast({ title: "Result reverted", description: "Rewards reversed. Report the correct score or choose the winning team in Admin tools." });
+      await loadRoom(true);
+    } catch (error) {
+      toast({ title: "Revert failed", description: error.message, variant: "destructive" });
+    } finally { setAdminBusy(false); }
+  };
+
   const adminCancelMatch = async () => {
     if (typeof window !== "undefined" && !window.confirm(`Cancel this ${roomLabel} match? This cannot be undone.`)) return;
     setAdminBusy(true);
@@ -736,16 +756,18 @@ function EightsMatchRoomView() {
                     </button>
                   </div>
                   {(match.admin_request_status || match.requested_admin) && <p className="mt-2 text-center text-[8px] font-bold text-red-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
-                  {isStaff && !closedStatuses.has(match.status) && <details className="group mt-3 border-t border-white/[0.06] pt-3">
+                  {isStaff && (!closedStatuses.has(match.status) || (isAdmin && !isMoneyEights && isComplete)) && <details className="group mt-3 border-t border-white/[0.06] pt-3">
                     <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-blue-400/15 bg-blue-400/[0.05] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/10 [&::-webkit-details-marker]:hidden">
                       <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5" /> Admin tools</span><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
                     </summary>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      {isComplete ? <button type="button" onClick={adminRevertResult} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-yellow-300/25 bg-yellow-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-yellow-200 disabled:opacity-40 sm:col-span-2"><RotateCcw className="h-3.5 w-3.5" />{adminBusy ? "Reverting..." : "Revert result"}</button> : <>
                       <button type="button" onClick={() => adminGrantWin("approve_team_a")} disabled={adminBusy} className="rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/15 disabled:opacity-40">Alpha wins</button>
                       <button type="button" onClick={() => adminGrantWin("approve_team_b")} disabled={adminBusy} className="rounded-lg border border-orange/20 bg-orange/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15 disabled:opacity-40">Bravo wins</button>
                       {isAdmin && <button type="button" onClick={adminReshuffleTeams} disabled={adminBusy || !canEditTeams} title={!canEditTeams ? "Available while the lobby is open and the reshuffle window is active" : "Randomize both teams again"} className="flex items-center justify-center gap-2 rounded-lg border border-purple-300/25 bg-purple-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-purple-200 transition-colors hover:bg-purple-300/15 disabled:opacity-40"><Shuffle className="h-3.5 w-3.5" /> Random shuffle</button>}
                       {isAdmin && <button type="button" onClick={adminResetLobby} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-yellow-300/25 bg-yellow-300/[0.08] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-yellow-200 transition-colors hover:bg-yellow-300/15 disabled:opacity-40"><Clock3 className="h-3.5 w-3.5" /> Reset {reshuffleMinutes} min timer</button>}
                       <button type="button" onClick={adminCancelMatch} disabled={adminBusy} className="flex items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-300 transition-colors hover:bg-red-400/15 disabled:opacity-40"><AlertTriangle className="h-3.5 w-3.5" /> {adminBusy ? "Updating..." : "Cancel match"}</button>
+                      </>}
                     </div>
                   </details>}
                 </div>
