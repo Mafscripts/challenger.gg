@@ -4922,10 +4922,12 @@ async function createMatchRoomSystemMessage(matchType, match, content, actor) {
   if (!match?.id || !content) return null;
   const actorRole = effectiveChatRole(actor);
   const senderName = actor ? nameFor(actor) : "Match Staff";
+  const senderProfile = actor?.id ? await firstEntity("PlayerProfile", { user_id: actor.id }, "-created_date").catch(() => null) : null;
   return createEntity("ChatMessage", {
     conversation_id: match.id,
     sender_id: actor?.id || "system",
     sender_name: senderName,
+    sender_avatar_url: senderProfile?.avatar_url || senderProfile?.profile_picture_url || actor?.avatar_url || actor?.metadata?.avatar_url || "",
     sender_role: actorRole,
     staff_badge: staffRoles.includes(actorRole),
     recipient_id: match.id,

@@ -146,6 +146,8 @@ function MatchChatView({
   const loading = !controlled && loadingState;
   const [sending, setSending] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [staffAvatars, setStaffAvatars] = useState({});
+  const requestedStaffAvatarsRef = useRef(new Set());
   const chatBodyRef = useRef(null);
   const inputRef = useRef(null);
   const followingChatRef = useRef(true);
@@ -162,6 +164,27 @@ function MatchChatView({
     [...teamAPlayerIds, ...teamBPlayerIds]
       .flatMap((player) => playerIdentifiers(player).map((id) => [id, player])),
   ), [teamAPlayerIds, teamBPlayerIds]);
+
+  // Older system messages have no saved avatar, and staff need not be on a team.
+  // Resolve each missing staff photo once per room, independently of chat polling.
+  useEffect(() => {
+    const ids = [...new Set(messages.filter((message) => isStaffMessage(message) && !message.sender_avatar_url)
+      .map((message) => String(message.sender_id || "")).filter((id) => id && id !== "system"))];
+    for (const id of ids) {
+      if (requestedStaffAvatarsRef.current.has(id) || playersById.get(id)?.avatar_url || (id === currentUser?.id && currentUser?.avatar_url)) continue;
+      requestedStaffAvatarsRef.current.add(id);
+      void Promise.all([
+        base44.entities.PlayerProfile.filter({ user_id: id }, "-created_date", 1).catch(() => null),
+        base44.entities.User.get(id).catch(() => null),
+      ]).then(([profiles, sender]) => {
+        if (!mountedRef.current) return;
+        const profile = profiles?.[0];
+        const avatar = profile?.avatar_url || profile?.profile_picture_url || sender?.avatar_url || "";
+        if (avatar) setStaffAvatars((previous) => ({ ...previous, [id]: avatar }));
+        if (!profiles && !sender) requestedStaffAvatarsRef.current.delete(id);
+      });
+    }
+  }, [messages, playersById, currentUser?.id, currentUser?.avatar_url]);
 
   const scrollChatToBottom = (behavior = "smooth") => {
     window.requestAnimationFrame(() => {
@@ -351,7 +374,7 @@ function MatchChatView({
             || message.sender_name_color
             || senderPlayer?.display_name_color
             || "";
-          const senderAvatar = message.sender_avatar_url || senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "") || "";
+          const senderAvatar = message.sender_avatar_url || staffAvatars[senderId] || senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "") || "";
           if (staff) return <StaffChatMessage key={message.id} message={message} senderName={senderName} senderAvatar={senderAvatar} compact={compact} first={messageIndex === 0} />;
           const previousMessage = messages[messageIndex - 1];
           const groupedWithPrevious = Boolean(
