@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { AuditLogEvent, ChannelType, OverwriteType, PermissionFlagsBits } from "discord.js";
 import { prisma } from "../server/prisma.js";
 import { freeEightsVoiceChannelName } from "../src/lib/freeEightsRoomIdentity.js";
+import { freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
 import {
   freeEightsChannelKey, freeEightsDiscordConfig, freeEightsVoiceClosed, freeEightsVoiceKey,
   freeEightsVoiceCategoryIds, freeEightsVoiceLog, hasDiscordLink, validDiscordId, voiceRosterSignature,
@@ -24,7 +25,7 @@ const rosterFor = async (db, matchId) => (await db.wagerParticipant.findMany({
   where: { metadata: { path: ["wager_id"], equals: matchId } },
 })).map((row) => row.metadata);
 
-export const canAssignFreeEightsVoice = (match, participants, teamSize = 4) => match?.match_type === "8s"
+export const canAssignFreeEightsVoice = (match, participants, teamSize = freeEightsTeamSize(match)) => match?.match_type === "8s"
   && !freeEightsVoiceClosed.has(match.status) && Boolean(match.teams_generated_at)
   && participants.length === teamSize * 2 && new Set(participants.map((row) => row.user_id)).size === teamSize * 2
   && participants.filter((row) => row.team === "host").length === teamSize
@@ -207,7 +208,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
   const participants = row ? await rosterFor(db, matchId) : [];
   const signature = voiceRosterSignature(match, participants);
   const closed = !match || match.match_type !== "8s" || freeEightsVoiceClosed.has(match.status);
-  const assign = config.enabled && canAssignFreeEightsVoice(match, participants, config.teamSize?.(match) || 4);
+  const assign = config.enabled && canAssignFreeEightsVoice(match, participants, config.teamSize?.(match) || freeEightsTeamSize(match));
   for (const side of channelSides) {
     if (!state.channels[side] && state.provisions[side]) {
       await guard();
@@ -340,7 +341,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
               await guard();
               channel = await guild.channels.create({ name: channelName,
                 type: ChannelType.GuildVoice, parent: state.category_id, permissionOverwrites: overwrites,
-                reason: provision.reason, userLimit: (config.teamSize?.(match) || 4) * (side === "waiting" ? 2 : 1) });
+                reason: provision.reason, userLimit: (config.teamSize?.(match) || freeEightsTeamSize(match)) * (side === "waiting" ? 2 : 1) });
               releaseSlot();
             } catch (error) {
               // A definite rejection permits retry. Ambiguous outcomes retain
@@ -432,7 +433,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
         await guard();
         const latest = await db.wager.findUnique({ where: { id: matchId } });
         const roster = await rosterFor(db, matchId);
-        if (!canAssignFreeEightsVoice(latest?.metadata, roster, config.teamSize?.(latest?.metadata) || 4) || voiceRosterSignature(latest.metadata, roster) !== signature) {
+        if (!canAssignFreeEightsVoice(latest?.metadata, roster, config.teamSize?.(latest?.metadata) || freeEightsTeamSize(latest?.metadata)) || voiceRosterSignature(latest.metadata, roster) !== signature) {
           log("roster-changed-during-assignment", { match_id: matchId });
           state.roster_signature = "";
           await save();

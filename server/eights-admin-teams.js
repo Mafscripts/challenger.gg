@@ -3,19 +3,21 @@ import { hasRole } from "./roles.js";
 import { loadFreeEightsSkills } from "./free-eights-teams.js";
 import { getFreeEightsSkill } from "../src/lib/freeEightsSkill.js";
 import { eightsReshuffleWindowMs } from "../src/lib/eightsLobbyTimer.js";
+import { eightsGameId } from "../src/lib/freeEightsGames.js";
+import { freeEightsTeamSize, freeEightsTeamPartitions, eightsMajorityVotes } from "../src/lib/freeEightsFormat.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
-const validRoster = (players) => players.length === 8 && players.every((player) => player.user_id)
-  && new Set(players.map((player) => player.user_id)).size === 8
-  && ["host", "challenger"].every((side) => players.filter((player) => player.team === side).length === 4);
+const validRoster = (players, teamSize = players.length / 2) => [2, 3, 4].includes(teamSize)
+  && players.length === teamSize * 2 && players.every((player) => player.user_id)
+  && new Set(players.map((player) => player.user_id)).size === teamSize * 2
+  && ["host", "challenger"].every((side) => players.filter((player) => player.team === side).length === teamSize);
 
-// Uniform over all different 4v4 assignments, excluding the current split and
+// Uniform over all different assignments, excluding the current split and
 // its mirror. Rank and ELO never select or correct an administrator's teams.
 export function randomEightsTeams(players, random = Math.random) {
-  if (!validRoster(players)) fail("A complete, distinct 4v4 roster is required");
+  if (!validRoster(players)) fail("A complete, distinct 2v2, 3v3 or 4v4 roster is required");
   const candidates = [];
-  for (let a = 1; a < 6; a++) for (let b = a + 1; b < 7; b++) for (let c = b + 1; c < 8; c++) {
-    const indices = new Set([0, a, b, c]);
+  for (const indices of freeEightsTeamPartitions(players.length)) {
     const alpha = players.filter((_, index) => indices.has(index));
     const bravo = players.filter((_, index) => !indices.has(index));
     if (alpha.every((player) => player.team === "host") || alpha.every((player) => player.team === "challenger")) continue;
@@ -44,7 +46,7 @@ export async function editEightsTeamsAsAdmin(db, user, matchId, input, random = 
     }
     const rows = await tx.wagerParticipant.findMany({ where: { metadata: { path: ["wager_id"], equals: matchId } }, orderBy: { created_date: "asc" } });
     const players = rows.map(serializeRow);
-    if (!validRoster(players)) fail("A complete, distinct 4v4 roster is required", 409);
+    if (!validRoster(players, freeEightsTeamSize(match))) fail("A complete, distinct roster for the selected format is required", 409);
     let alpha, bravo;
     if (input.mode === "random") ({ alpha, bravo } = randomEightsTeams(players, random));
     else {
@@ -59,7 +61,7 @@ export async function editEightsTeamsAsAdmin(db, user, matchId, input, random = 
       bravo.push(first.team === "host" ? first : second);
     }
     if (match.match_type === "8s") {
-      const skills = await loadFreeEightsSkills(tx, players.map((player) => player.user_id));
+      const skills = await loadFreeEightsSkills(tx, players.map((player) => player.user_id), eightsGameId(match.game_id));
       alpha = alpha.map((player) => ({ ...player, ...skills[player.user_id] }));
       bravo = bravo.map((player) => ({ ...player, ...skills[player.user_id] }));
     }
@@ -83,6 +85,7 @@ export async function editEightsTeamsAsAdmin(db, user, matchId, input, random = 
       roster_lock_deadline: new Date(Date.now() + eightsReshuffleWindowMs(match.match_type)).toISOString(),
       eights_reshuffle_vote_user_ids: [], eights_reshuffle_vote_count: 0, eights_reshuffle_vote_status: null,
       eights_reshuffle_vote_started_date: null,
+      eights_reshuffle_vote_required: eightsMajorityVotes(match),
     };
     if (match.match_type === "8s") {
       const strength = (team) => team.reduce((sum, player) => sum + getFreeEightsSkill(player.free_eights_elo, player.screenshot_rank).strength, 0);

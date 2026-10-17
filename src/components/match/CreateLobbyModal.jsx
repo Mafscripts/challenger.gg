@@ -299,9 +299,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           const response = await base44.functions.invoke('createWager', {
             game_mode: gameModeObj.id,
             game_mode_display: gameModeObj.name,
-            team_size: isEightsLobby ? "4v4" : selectedTeamSize,
+            team_size: isMoneyEights ? "4v4" : selectedTeamSize,
             amount: isMoneyEights ? enteredAmount : 0,
-            max_players: isEightsLobby ? 8 : teamSizeObj.players,
+            max_players: isMoneyEights ? 8 : teamSizeObj.players,
             best_of: isEightsLobby ? selectedMode.modes.length : 1,
             game_id: isEights ? gameConfig?.id || "bo7" : undefined,
             team_id: selectedTeamId || undefined,
@@ -356,7 +356,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
           toast({
             title: isMoneyEights ? "Money 8s lobby created!" : isEights ? "8s lobby created!" : "Lobby created!",
-            description: `${isMoneyEights ? `$${enteredAmount.toFixed(2)} entry · ` : ""}Created ${isEightsLobby ? "4v4" : selectedTeamSize} ${gameModeObj.name}`,
+            description: `${isMoneyEights ? `$${enteredAmount.toFixed(2)} entry · ` : ""}Created ${isMoneyEights ? "4v4" : selectedTeamSize} ${gameModeObj.name}`,
           });
           createdResult = {
             wager_id: response.data.wager_id || response.data.id || response.data.wager?.id,
@@ -447,7 +447,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
             <div>
               <h2 className="text-xl font-black">{isMoneyEights ? "Create Money 8s Lobby" : isEights ? "Create 8s Lobby" : isRanked ? "Create XP Match" : "Create Wager"}</h2>
-              <p className="text-xs text-vapor mt-0.5">{isEightsLobby ? "Pick a series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
+              <p className="text-xs text-vapor mt-0.5">{isEights ? "Choose 2v2, 3v3 or 4v4; all formats share the same leaderboard" : isMoneyEights ? "Pick a series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-vapor" />
@@ -462,7 +462,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">1</span>
-                  {isEightsLobby ? "Select BO3 Series" : "Select Game Mode"}
+                  {isEightsLobby ? "Select Series" : "Select Game Mode"}
                 </h3>
                 <div className={`grid gap-4 ${isEightsLobby ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                   {modeChoices.map((mode) => {
@@ -496,7 +496,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => {
-                      if (isEightsLobby) {
+                      if (isMoneyEights) {
                         setSelectedTeamSize("4v4");
                         setStep(3);
                       } else {
@@ -519,8 +519,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">2</span>
                   Select Team Size
                 </h3>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {teamSizes.map((size) => {
+                {isEights && <p className="mb-4 text-xs text-vapor">Join as solo players. Teams are balanced automatically, and every format counts towards the same Free 8s leaderboard.</p>}
+                <div className={`grid gap-4 ${isEights ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                  {teamSizes.filter((size) => !isEights || size.id !== "1v1").map((size) => {
                     const isSelected = selectedTeamSize === size.id;
                     const tone = choiceTones[size.tone];
                     return (
@@ -767,7 +768,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     <div>
                       <p className="font-bold text-sm">{modeChoices.find(gm => gm.id === selectedGameMode)?.name}</p>
                       {isEightsLobby && <p className="mt-0.5 text-[10px] text-cyan">{modeChoices.find(gm => gm.id === selectedGameMode)?.description}</p>}
-                      <p className="text-xs text-vapor">{isEightsLobby ? "4v4 · 8 solo players" : teamSizes.find(ts => ts.id === selectedTeamSize)?.name}</p>
+                      <p className="text-xs text-vapor">{isEightsLobby ? `${selectedTeamSize} · ${teamSizes.find(ts => ts.id === selectedTeamSize)?.players} solo players` : teamSizes.find(ts => ts.id === selectedTeamSize)?.name}</p>
                     </div>
                   </div>
                   <p className="text-xs text-green font-bold">{isMoneyEights ? `$${enteredAmount.toFixed(2)} ENTRY · WALLET ESCROW · RANDOM TEAMS` : isEights ? "FREE · RANDOM TEAMS · XP ENABLED" : "FREE TO PLAY"}</p>
@@ -782,7 +783,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 </div>
                 <div className="flex justify-between">
                   <button
-                    onClick={() => setStep(isEightsLobby ? 1 : 2)}
+                    onClick={() => setStep(isMoneyEights ? 1 : 2)}
                     className="px-6 py-2.5 bg-secondary text-vapor font-bold text-xs rounded-lg hover:bg-white/10 transition-all uppercase tracking-wider"
                   >
                     Back

@@ -1,5 +1,6 @@
 import { getFreeEightsRank, normalizeFreeEightsElo } from "./freeEightsRanks.js";
 import { screenshotRankFor } from "./screenshotRanks.js";
+import { freeEightsTeamPartitions } from "./freeEightsFormat.js";
 
 // Provisional strength values, not awarded ELO. Only Topfragger overrides a game rank.
 export const FREE_EIGHTS_SCREENSHOT_STRENGTH = { diamond: 200, crimson: 350, iridescent: 450, top250: 550 };
@@ -17,16 +18,15 @@ export function getFreeEightsSkill(elo = 0, screenshotRank) {
 }
 
 export function balanceFreeEightsTeams(players, random = Math.random, { avoidCurrentTeams = false } = {}) {
-  if (players.length !== 8 || players.some((player) => !player.user_id) || new Set(players.map((player) => player.user_id)).size !== 8) throw new Error("Free 8s balancing requires eight distinct players");
+  if (![4, 6, 8].includes(players.length) || players.some((player) => !player.user_id) || new Set(players.map((player) => player.user_id)).size !== players.length) throw new Error("Free 8s balancing requires a complete, distinct 2v2, 3v3 or 4v4 roster");
+  const teamSize = players.length / 2;
   const skills = players.map((player) => getFreeEightsSkill(player.free_eights_elo, player.screenshot_rank));
   const ranks = [...new Set(skills.map((skill) => skill.key))];
   let best = [], bestEliteImbalance = Infinity, bestImbalance = Infinity, bestGap = Infinity;
   let partitionsChecked = 0;
-  // Anchor player 0: exactly 35 unique 4v4 partitions, without mirror duplicates.
-  for (let a = 1; a < 6; a++) for (let b = a + 1; b < 7; b++) for (let c = b + 1; c < 8; c++) {
-    const indices = new Set([0, a, b, c]);
+  for (const indices of freeEightsTeamPartitions(players.length)) {
     // A veto must change teammates, not merely exchange the team labels.
-    if (avoidCurrentTeams && ["host", "challenger"].some((side) => players.filter((player) => player.team === side).length === 4
+    if (avoidCurrentTeams && ["host", "challenger"].some((side) => players.filter((player) => player.team === side).length === teamSize
       && players.every((player, index) => indices.has(index) === (player.team === side)))) continue;
     partitionsChecked++;
     // Spread the strongest ranks first, then let a weaker player compensate

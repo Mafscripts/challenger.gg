@@ -2,6 +2,7 @@ import { calculateFreeEightsElo } from "../src/lib/freeEightsRanks.js";
 import { serializeRow } from "./entity.js";
 import { findEightsStatsRow } from "./free-eights-games.js";
 import { eightsGameId } from "../src/lib/freeEightsGames.js";
+import { freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
 
 // Match completion and ELO are committed together. A database lock serializes
 // this small ladder update across API workers and overlapping match rosters.
@@ -29,7 +30,8 @@ export async function completeFreeEightsWithElo(db, matchId, completion) {
       statsByUser.set(userId, stats);
       (team === winningSide ? winners : losers).push({ user_id: userId, elo: stats.free_eights_elo });
     }
-    if (winners.length !== 4 || losers.length !== 4) throw new Error("Free 8s ELO requires a complete 4v4 roster");
+    const teamSize = freeEightsTeamSize(match.metadata);
+    if (winners.length !== teamSize || losers.length !== teamSize || statsByUser.size !== teamSize * 2) throw new Error("Free 8s ELO requires a complete, distinct roster for the selected format");
     const changes = calculateFreeEightsElo(winners, losers);
     for (const [userId, change] of Object.entries(changes)) {
       // A dedicated column prevents legacy/Money 8s JSON stat updates from

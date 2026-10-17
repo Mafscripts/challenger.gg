@@ -56,7 +56,7 @@ const modeCopy = {
   eights: {
     eyebrow: "Free 8s ELO ladder",
     title: "8s",
-    description: "Join solo, get shuffled into a 4v4 team and climb the 8s ELO standings.",
+    description: "Join solo for 2v2, 3v3 or 4v4 with balanced teams and climb the same 8s ELO standings.",
     accent: "text-orange",
     line: "bg-orange",
   },
@@ -386,8 +386,8 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     { label: "Ladder winnings", value: `$${totalScore.toLocaleString()}`, detail: `${standings.length} ranked players`, icon: Trophy, tone: "text-green" },
     { label: "Next tournament", value: formatDate(nextTournament?.start_date), detail: nextTournament?.name || "No event announced", icon: CalendarDays, tone: "text-orange" },
   ] : mode === "eights" ? [
-    gameId === "bo7" ? { label: "Monthly prize", value: "$100", detail: "Winner takes the prize", icon: Trophy, tone: "text-green" } : { label: "Format", value: "4v4", detail: "Free entry", icon: Trophy, tone: "text-green" },
-    { label: "Open lobbies", value: openCount, detail: "4v4 random teams", icon: Gamepad2, tone: "text-cyan" },
+    gameId === "bo7" ? { label: "Monthly prize", value: "$100", detail: "Winner takes the prize", icon: Trophy, tone: "text-green" } : { label: "Formats", value: "2v2 / 3v3 / 4v4", detail: "Free entry", icon: Trophy, tone: "text-green" },
+    { label: "Open lobbies", value: openCount, detail: "2v2 / 3v3 / 4v4", icon: Gamepad2, tone: "text-cyan" },
     { label: "Players", value: standings.length, detail: "On the 8s ELO ladder", icon: Users, tone: "text-purple-300" },
     { label: gameId === "bo7" ? "Prize month" : "Season", value: monthLabel(), detail: gameId === "bo7" ? "Monthly prize period" : "Separate game standings", icon: Clock3, tone: "text-orange" },
   ] : mode === "money8s" ? [

@@ -3,6 +3,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, escapeMarkd
 import { prisma } from "../server/prisma.js";
 import { TOPFRAGG_COLORS } from "./config.js";
 import { eightsMatchGameName } from "../src/lib/freeEightsGames.js";
+import { freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 export const freeEightsResultKey = (guildId, matchId) => `free8s-result:${guildId}:${matchId}`;
@@ -22,11 +23,12 @@ export function freeEightsResultPayload(match, participants, publicUrl) {
   if (match.winner_score == null || match.loser_score == null
     || !Number.isInteger(winnerScore) || !Number.isInteger(loserScore)
     || loserScore < 0 || winnerScore <= loserScore || !Number.isFinite(completedAt)) return null;
-  if (participants.length !== 8 || participants.some((player) => !player.user_id || player.wager_id !== match.id)
-    || new Set(participants.map((player) => player.user_id)).size !== 8) return null;
+  const teamSize = freeEightsTeamSize(match);
+  if (participants.length !== teamSize * 2 || participants.some((player) => !player.user_id || player.wager_id !== match.id)
+    || new Set(participants.map((player) => player.user_id)).size !== teamSize * 2) return null;
   const alpha = participants.filter((player) => player.team === "host");
   const bravo = participants.filter((player) => player.team === "challenger");
-  if (alpha.length !== 4 || bravo.length !== 4) return null;
+  if (alpha.length !== teamSize || bravo.length !== teamSize) return null;
   const names = (players) => players.map((player) => `• ${escapeMarkdown(String(player.user_name || "Player").replace(/[\r\n]/g, " ").slice(0, 80))}`).join("\n");
   const alphaScore = wonAlpha ? winnerScore : loserScore;
   const bravoScore = wonAlpha ? loserScore : winnerScore;
@@ -34,7 +36,7 @@ export function freeEightsResultPayload(match, participants, publicUrl) {
   const embed = new EmbedBuilder()
     .setColor(TOPFRAGG_COLORS.green)
     .setTitle(`🏆 Free 8s ${eightsMatchGameName(match)} · Match result`)
-    .setDescription(`**Team ${wonAlpha ? "Alpha" : "Bravo"} wins ${winnerScore}–${loserScore}!**\n${mode} · 4v4`)
+    .setDescription(`**Team ${wonAlpha ? "Alpha" : "Bravo"} wins ${winnerScore}–${loserScore}!**\n${mode} · ${teamSize}v${teamSize}`)
     .addFields(
       { name: `🔵 Team Alpha · ${alphaScore}${wonAlpha ? " · WINNERS" : ""}`, value: names(alpha), inline: true },
       { name: `🟠 Team Bravo · ${bravoScore}${wonAlpha ? "" : " · WINNERS"}`, value: names(bravo), inline: true },

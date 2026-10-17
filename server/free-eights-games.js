@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import sharp from "sharp";
 import { DEFAULT_EIGHTS_GAMES, DEFAULT_EIGHTS_GAME, eightsGameId, eightsGameName, withMw4Preview } from "../src/lib/freeEightsGames.js";
+import { FREE_EIGHTS_FORMATS, freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
 
 export const EIGHTS_CONFIG_ID = "free-eights-game-config";
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
@@ -67,7 +68,10 @@ export function eightsLobbySettings(games, body) {
   if (!game) fail("This Free 8s game is unavailable");
   const format = game.formats.find((row) => row.id === (body.series_format || "cdl_bo3"));
   if (!format) fail("Select a configured series format");
-  return { game_id: game.id, game_name: eightsGameName(game), game_config: structuredClone(game), series_format: format.id, series_mode_ids: [...format.modes], game_mode: format.modes[0], game_mode_display: format.name, best_of: format.modes.length, team_size: "4v4", required_players_per_team: 4, max_players: 8, maps: [...new Set(format.modes.flatMap((id) => game.modes.find((row) => row.id === id).maps.map((map) => map.name)))] };
+  const teamSize = body.team_size ?? "4v4";
+  if (!FREE_EIGHTS_FORMATS.includes(teamSize)) fail("Select 2v2, 3v3 or 4v4 for Free 8s");
+  const playersPerTeam = freeEightsTeamSize({ team_size: teamSize });
+  return { game_id: game.id, game_name: eightsGameName(game), game_config: structuredClone(game), series_format: format.id, series_mode_ids: [...format.modes], game_mode: format.modes[0], game_mode_display: format.name, best_of: format.modes.length, team_size: teamSize, required_players_per_team: playersPerTeam, max_players: playersPerTeam * 2, maps: [...new Set(format.modes.flatMap((id) => game.modes.find((row) => row.id === id).maps.map((map) => map.name)))] };
 }
 // Legacy rows without a game belong to BO7; newer games always have an ID.
 export async function findEightsStatsRow(db, userId, gameId = DEFAULT_EIGHTS_GAME) {

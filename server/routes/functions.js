@@ -21,6 +21,7 @@ import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, tournamentG
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 import { editEightsTeamsAsAdmin } from "../eights-admin-teams.js";
 import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
+import { eightsMajorityVotes } from "../../src/lib/freeEightsFormat.js";
 import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membership.js";
 import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
 import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
@@ -78,7 +79,6 @@ const RANKED_LOSS_ELO = -15;
 const RANKED_ELO_SCALE = 400;
 const RANKED_MIN_CHANGE = 5;
 const RANKED_MAX_CHANGE = 40;
-const EIGHTS_RESHUFFLE_REQUIRED_VOTES = 5;
 const adminPremiumGrantDays = 30;
 const animatedNameFreeTrialDays = 30;
 const staffRoles = ["ceo", "super_admin", "admin", "moderator"];
@@ -6539,7 +6539,7 @@ async function createWager(req) {
     amount: entryFee,
     team_entry_fee: roundedMoney(entryFee * requiredSize),
     total_prize_pool: totalPrizePool,
-    required_players_per_team: matchType === "8s" ? 4 : requiredSize,
+    required_players_per_team: matchType === "8s" ? gameSettings.required_players_per_team : requiredSize,
     roster_locked: isTeamMatch,
     play_rule: playRule,
     maps: gameSettings.maps || RANKED_MAPS_BY_MODE[req.body.game_mode] || RANKED_MAPS_BY_MODE.snd,
@@ -6636,7 +6636,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     ? await generateBalancedFreeEightsTeams(prisma, shuffled, Math.random, { avoidCurrentTeams: preserveSeries, gameId: eightsGameId(wager.game_id) })
     : { alpha: shuffled.slice(0, requiredSize), bravo: shuffled.slice(requiredSize, requiredSize * 2) };
   const skillsByParticipant = new Map([...alpha, ...bravo].map((row) => [row.id, row]));
-  if (wager.match_type === "8s") freeEightsVoiceLog("eight-players-found", { match_id: wager.id, players: shuffled.length });
+  if (wager.match_type === "8s") freeEightsVoiceLog("roster-full", { match_id: wager.id, players: shuffled.length });
   await Promise.all(shuffled.map((participant) => {
     const team = alpha.some((row) => row.id === participant.id) ? "host" : "challenger";
     return updateEntity("WagerParticipant", participant.id, {
@@ -6673,7 +6673,7 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
     eights_team_override: null,
     eights_reshuffle_vote_user_ids: [],
     eights_reshuffle_vote_count: 0,
-    eights_reshuffle_vote_required: EIGHTS_RESHUFFLE_REQUIRED_VOTES,
+    eights_reshuffle_vote_required: eightsMajorityVotes(wager),
     eights_reshuffle_vote_status: null,
     eights_reshuffle_vote_started_date: null,
     status: "open",
@@ -7007,21 +7007,22 @@ async function voteEightsReshuffle(req) {
       ? existingVotes.filter((userId) => userId !== req.user.id)
       : [...existingVotes, req.user.id];
 
-    if (voteIds.length >= EIGHTS_RESHUFFLE_REQUIRED_VOTES) {
+    const requiredVotes = eightsMajorityVotes(wager);
+    if (voteIds.length >= requiredVotes) {
       const updated = await randomizeEightsTeams(wager, participants, { preserveSeries: true });
-      await createMatchRoomSystemMessage("8s", updated, "Teams were reshuffled after 5 players agreed.", req.user).catch(() => null);
-      return { success: true, wager: updated, reshuffled: true, vote_count: EIGHTS_RESHUFFLE_REQUIRED_VOTES, required_votes: EIGHTS_RESHUFFLE_REQUIRED_VOTES };
+      await createMatchRoomSystemMessage("8s", updated, `Teams were reshuffled after ${requiredVotes} players agreed.`, req.user).catch(() => null);
+      return { success: true, wager: updated, reshuffled: true, vote_count: requiredVotes, required_votes: requiredVotes };
     }
 
     const updated = await updateEntity("Wager", wager.id, {
       eights_reshuffle_vote_user_ids: voteIds,
       eights_reshuffle_vote_count: voteIds.length,
-      eights_reshuffle_vote_required: EIGHTS_RESHUFFLE_REQUIRED_VOTES,
+      eights_reshuffle_vote_required: requiredVotes,
       eights_reshuffle_vote_status: voteIds.length ? "pending" : null,
       eights_reshuffle_vote_started_date: voteIds.length ? (wager.eights_reshuffle_vote_started_date || nowIso()) : null,
     });
     publishEightsLobbyUpdate(wager.id, "reshuffle-vote");
-    return { success: true, wager: updated, reshuffled: false, voted: !alreadyVoted, vote_count: voteIds.length, required_votes: EIGHTS_RESHUFFLE_REQUIRED_VOTES };
+    return { success: true, wager: updated, reshuffled: false, voted: !alreadyVoted, vote_count: voteIds.length, required_votes: requiredVotes };
   });
 }
 
@@ -7097,7 +7098,7 @@ async function adminResetEightsLobby(req) {
       eights_score_vote_started_date: null,
       eights_reshuffle_vote_user_ids: [],
       eights_reshuffle_vote_count: 0,
-      eights_reshuffle_vote_required: EIGHTS_RESHUFFLE_REQUIRED_VOTES,
+      eights_reshuffle_vote_required: eightsMajorityVotes(wager),
       eights_reshuffle_vote_status: null,
       eights_reshuffle_vote_started_date: null,
       dispute_id: null,
@@ -7111,7 +7112,7 @@ async function adminResetEightsLobby(req) {
     await createMatchRoomSystemMessage(
       wager.match_type,
       reset,
-      `${nameFor(req.user)} reset the lobby${waitingForVoice ? ". Maps and the timer are waiting for all eight players to join the Discord Waiting Room." : restartTimer ? `. The ${eightsReshuffleWindowMs(wager.match_type) / 60000}-minute reshuffle window has restarted.` : ". The lobby is open until all eight players are present."}`,
+      `${nameFor(req.user)} reset the lobby${waitingForVoice ? ". Maps and the timer are waiting for all players in the lobby to join the Discord Waiting Room." : restartTimer ? `. The ${eightsReshuffleWindowMs(wager.match_type) / 60000}-minute reshuffle window has restarted.` : ". The lobby is open until all players in the lobby are present."}`,
       req.user,
     ).catch(() => null);
     publishEightsLobbyUpdate(wager.id, "lobby-reset");

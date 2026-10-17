@@ -2,6 +2,7 @@ import { serializeRow } from "./entity.js";
 import { hasRole } from "./roles.js";
 import { findEightsStatsRow } from "./free-eights-games.js";
 import { eightsGameId } from "../src/lib/freeEightsGames.js";
+import { freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
 
 const fail = (message, status = 409) => { throw Object.assign(new Error(message), { status }); };
 const subtract = (value, amount) => Math.max(0, Number(value || 0) - amount);
@@ -56,8 +57,9 @@ export async function revertFreeEightsResult(db, admin, matchId, expectedComplet
     const rewards = match.xp_changes || {};
     const roster = await tx.wagerParticipant.findMany({ where: { metadata: { path: ["wager_id"], equals: matchId } } });
     const players = roster.map((p) => p.metadata);
-    if (players.length !== 8 || new Set(players.map((p) => p.user_id)).size !== 8
-      || !["host", "challenger"].every((team) => players.filter((p) => p.team === team).length === 4)) fail("A complete 4v4 roster is required");
+    const teamSize = freeEightsTeamSize(match);
+    if (players.length !== teamSize * 2 || players.some((p) => !p.user_id) || new Set(players.map((p) => p.user_id)).size !== teamSize * 2
+      || !["host", "challenger"].every((team) => players.filter((p) => p.team === team).length === teamSize)) fail("A complete roster for the selected format is required");
     const winningSide = match.winner_id === match.host_id ? "host" : "challenger";
     if (![match.host_id, match.challenger_id].includes(match.winner_id)) fail("Stored match winner is invalid");
     const month = String(match.match_completed_date).slice(0, 7);

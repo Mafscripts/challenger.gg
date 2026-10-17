@@ -1,4 +1,5 @@
 import { discordGuildMembership, discordInviteUrl } from "./discord.js";
+import { freeEightsTeamSize, freeEightsCapacity } from "../src/lib/freeEightsFormat.js";
 
 export const freeEightsVoiceKey = (id) => `free8s-voice:${id}`;
 export const freeEightsChannelKey = (id) => `free8s-channel:${id}`;
@@ -7,6 +8,7 @@ export const validDiscordId = (id) => /^\d{17,20}$/.test(String(id || ""));
 export const hasDiscordLink = (user) => validDiscordId(user?.discord_user_id) && Boolean(user?.discord_connected_at);
 
 export const freeEightsDiscordConfig = () => ({
+  teamSize: freeEightsTeamSize,
   enabled: process.env.DISCORD_FREE_8S_VOICE_ENABLED === "true",
   guildId: String(process.env.DISCORD_GUILD_ID || "").trim(),
   waitingRoomId: String(process.env.DISCORD_FREE_8S_WAITING_ROOM_ID || "").trim(),
@@ -92,8 +94,9 @@ export const publicFreeEightsVoiceStatus = (config, match, participants, state, 
 // generation. Presence in another match's team voice is not Waiting Room readiness.
 export const freeEightsWaitingRoomReady = (config, match, participants, state, now = Date.now()) => {
   if (match?.match_type !== "8s") return true;
-  if (participants.length !== 8 || participants.some((player) => !player.user_id)
-    || new Set(participants.map((player) => player.user_id)).size !== 8) return false;
+  const capacity = freeEightsCapacity(match);
+  if (participants.length !== capacity || participants.some((player) => !player.user_id)
+    || new Set(participants.map((player) => player.user_id)).size !== capacity) return false;
   const voice = publicFreeEightsVoiceStatus(config, match, participants, state, now);
   return voice.enabled && voice.configured && voice.fresh
     && voice.players.every((player) => player.status === "in_waiting_room");

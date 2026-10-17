@@ -15,6 +15,7 @@ import UserBadges from "@/components/ui/UserBadges";
 import { loadWagerParticipants } from "@/lib/wagerParticipants";
 import { loadFreeEightsProgression } from "@/lib/freeEightsData";
 import { eightsReshuffleWindowMs } from "@/lib/eightsLobbyTimer";
+import { freeEightsTeamSize, eightsMajorityVotes } from "@/lib/freeEightsFormat";
 import { isStaffUser } from "@/lib/roles";
 import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
@@ -404,7 +405,9 @@ function EightsMatchRoomView() {
     });
   }, [isMoneyEights, isStaff, location.search, match?.admin_request_status, match?.admin_request_ticket_id, match?.id, match?.requested_admin, user?.id]);
 
-  const openSpots = Math.max(0, 8 - joined);
+  const playersPerTeam = freeEightsTeamSize(match);
+  const playerCapacity = playersPerTeam * 2;
+  const openSpots = Math.max(0, playerCapacity - joined);
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
   const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || countdown === 0);
   const isComplete = match?.status === "completed";
@@ -413,7 +416,6 @@ function EightsMatchRoomView() {
   const bravoWinner = isComplete && match?.winner_id === match?.challenger_id;
   const scoreVoteIds = Array.isArray(match?.eights_score_vote_user_ids) ? match.eights_score_vote_user_ids : [];
   const scoreVoteCount = scoreVoteIds.length || Number(match?.eights_score_vote_count || 0);
-  const playersPerTeam = Math.max(1, Number.parseInt(String(match?.team_size || "4v4"), 10) || 4);
   const requiredScoreVotes = Number(match?.eights_score_vote_required || playersPerTeam + 1);
   const hasScoreProposal = match?.eights_score_vote_status === "pending"
     && match?.eights_score_vote_alpha !== undefined
@@ -423,9 +425,9 @@ function EightsMatchRoomView() {
   const currentUserAgreed = Boolean(user?.id && scoreVoteIds.includes(user.id));
   const reshuffleVoteIds = Array.isArray(match?.eights_reshuffle_vote_user_ids) ? match.eights_reshuffle_vote_user_ids : [];
   const reshuffleVoteCount = reshuffleVoteIds.length || Number(match?.eights_reshuffle_vote_count || 0);
-  const requiredReshuffleVotes = Number(match?.eights_reshuffle_vote_required || 5);
+  const requiredReshuffleVotes = Number(match?.eights_reshuffle_vote_required || eightsMajorityVotes(match));
   const hasReshuffleVote = Boolean(user?.id && reshuffleVoteIds.includes(user.id));
-  const reshuffleOpen = joined === 8 && !locked && countdown !== null && countdown > 0 && !closedStatuses.has(match?.status);
+  const reshuffleOpen = joined === playerCapacity && !locked && countdown !== null && countdown > 0 && !closedStatuses.has(match?.status);
   const canEditTeams = isAdmin && reshuffleOpen && match?.status === "open" && Boolean(match?.teams_generated_at) && !match?.free_eights_waiting_for_voice;
   useEffect(() => { setSwapPlayer(null); }, [match?.teams_generated_at]);
   const seriesMaps = (Array.isArray(match?.series_maps) ? match.series_maps : []).map((map, index) => (
@@ -579,7 +581,7 @@ function EightsMatchRoomView() {
         title: "Lobby reset",
         description: response.data.full
           ? `The ${reshuffleMinutes}-minute reshuffle window restarted.`
-          : "The lobby is open until all eight players are present.",
+          : "The lobby is open until all players have joined.",
       });
       await loadRoom(true);
     } catch (error) {
@@ -712,17 +714,17 @@ function EightsMatchRoomView() {
           </div>
         ) : <FreeEightsMatchHeader match={match} actions={headerActions} />} beforeTeams={(
           <>
-        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} players={allPlayers} user={user} waitingForMaps={match.free_eights_waiting_for_voice} voiceView={voiceView} />}
+        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} playerCapacity={playerCapacity} user={user} waitingForMaps={match.free_eights_waiting_for_voice} voiceView={voiceView} />}
         {canEditTeams && <section className="m-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan/25 bg-cyan/[0.06] p-4 sm:m-4"><div><p className="text-xs font-black text-cyan">Admin team controls</p><p className="mt-1 text-xs text-vapor" role="status">{swapPlayer ? "Choose a player on the other team to swap, or select the same player to cancel." : "Drag a player onto someone on the other team to swap. You can also select two players using their swap buttons."}</p><p className="mt-1 text-[10px] text-vapor">Admin changes override automatic balancing and update Discord team assignments.</p></div><button type="button" onClick={adminReshuffleTeams} disabled={adminBusy} className="inline-flex items-center gap-2 rounded-lg border border-cyan/30 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan disabled:opacity-50"><Shuffle className="h-4 w-4" />Random shuffle</button></section>}
         {!locked && !closedStatuses.has(match.status) && (
           <section className="m-3 rounded-xl border border-purple-300/20 bg-card p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Shuffle className="h-5 w-5" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-purple-300">Automatic team generator</p><p className="mt-1 font-black">{joined < 8 ? `Waiting for ${8 - joined} more ${8 - joined === 1 ? "player" : "players"}` : match.free_eights_waiting_for_voice ? "Waiting for all 8 players in Discord" : "Teams shuffled · veto window open"}</p></div></div>
-              <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"><Users className="h-4 w-4 text-cyan" /><span className="font-mono font-black">{joined}/8</span>{countdown !== null && joined === 8 && <><span className="text-vapor">·</span><Clock3 className="h-4 w-4 text-yellow-300" /><span className="font-mono font-black text-yellow-300">{formatCountdown(countdown)}</span></>}</div>
+              <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Shuffle className="h-5 w-5" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-purple-300">Automatic team generator</p><p className="mt-1 font-black">{joined < playerCapacity ? `Waiting for ${playerCapacity - joined} more ${playerCapacity - joined === 1 ? "player" : "players"}` : match.free_eights_waiting_for_voice ? `Waiting for all ${playerCapacity} players in Discord` : "Teams shuffled · veto window open"}</p></div></div>
+              <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"><Users className="h-4 w-4 text-cyan" /><span className="font-mono font-black">{joined}/{playerCapacity}</span>{countdown !== null && joined === playerCapacity && <><span className="text-vapor">·</span><Clock3 className="h-4 w-4 text-yellow-300" /><span className="font-mono font-black text-yellow-300">{formatCountdown(countdown)}</span></>}</div>
             </div>
             {reshuffleOpen && (
               <div className="mt-4 flex flex-col gap-3 border-t border-purple-300/15 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <div><p className="text-[10px] font-black uppercase tracking-wider text-white">Team reshuffle veto</p><p className="mt-1 text-xs text-vapor">Five players must agree before the match starts.</p></div>
+                <div><p className="text-[10px] font-black uppercase tracking-wider text-white">Team reshuffle veto</p><p className="mt-1 text-xs text-vapor">{requiredReshuffleVotes} players must agree before the match starts.</p></div>
                 <div className="flex items-center gap-3"><span className="rounded-lg border border-purple-300/20 bg-black/20 px-3 py-2 font-mono text-sm font-black text-purple-200">{reshuffleVoteCount}/{requiredReshuffleVotes}</span>{isParticipant && <button type="button" onClick={voteForReshuffle} disabled={reshuffleBusy} className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[10px] font-black uppercase tracking-wider disabled:opacity-50 ${hasReshuffleVote ? "border-white/15 bg-white/[0.06] text-white" : "border-purple-300/30 bg-purple-300/10 text-purple-200 hover:bg-purple-300/20"}`}><Shuffle className={`h-3.5 w-3.5 ${reshuffleBusy ? "animate-spin" : ""}`} />{hasReshuffleVote ? "Withdraw veto" : "Vote reshuffle"}</button>}</div>
               </div>
             )}
@@ -732,9 +734,9 @@ function EightsMatchRoomView() {
           </>
         )} teams={(
           <>
-            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
+            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} emptySlots={Math.max(0, playersPerTeam - teamAlpha.length)} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
             <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
-            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
+            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} emptySlots={Math.max(0, playersPerTeam - teamBravo.length)} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
           </>
         )} sidebar={(
           <>
@@ -773,7 +775,7 @@ function EightsMatchRoomView() {
                 </div>
               )}
             />
-            <MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} emptyText={match.match_type === "8s" ? "Maps will be generated once all eight players have joined the Discord Waiting Room." : undefined} compact stacked />
+            <MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} emptyText={match.match_type === "8s" ? "Maps will be generated once every player in this lobby has joined the Discord Waiting Room." : undefined} compact stacked />
           </>
         )} />
 

@@ -1,5 +1,6 @@
 import { dataForEntity, serializeRow } from "./entity.js";
 import { matchfinderPostExpiresAt } from "../src/lib/matchfinderPosts.js";
+import { freeEightsCapacity } from "../src/lib/freeEightsFormat.js";
 
 const terminalStatuses = ["completed", "cancelled", "expired", "closed"];
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
@@ -57,7 +58,7 @@ export async function joinFreeEightsLobby(db, userId, matchId, userName) {
     if (existing) return { success: true, rejoined: true, wager: serializeRow(match), wager_id: matchId };
     const active = await findActiveFreeEightsMatch(tx, userId, { excludeMatchId: matchId });
     if (active) return activeError(active);
-    if (rows.length >= 8) return { success: false, error: "This 8s lobby is full" };
+    if (rows.length >= freeEightsCapacity(match.metadata)) return { success: false, error: "This 8s lobby is full" };
     const hosts = rows.filter((row) => row.metadata.team === "host").length;
     const challengers = rows.filter((row) => row.metadata.team === "challenger").length;
     const team = hosts <= challengers ? "host" : "challenger";

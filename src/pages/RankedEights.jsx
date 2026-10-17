@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { freeEightsTeamSize } from "@/lib/freeEightsFormat";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, CalendarDays, Crown, Plus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -193,7 +194,7 @@ export default function RankedEights() {
           headerEyebrow={isMoney ? "Wallet-backed 8s" : comingSoon ? "Next deployment // Coming soon" : "Free 8s ELO ladder"}
           headerTitle={isMoney ? "Money 8s" : <FreeEightsGameName game={selectedGame} prefix="Free 8s " />}
           competitionTitle={isMoney ? undefined : <FreeEightsGameName game={selectedGame} prefix="Free 8s " />}
-          headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : comingSoon ? "A new battlefield. A fresh leaderboard. MW4 Free 8s opens once its maps and competitive rules are ready. Black Ops 7 is live now." : "Join free, get shuffled into a 4v4 team and climb the 8s ELO standings."}
+          headerDescription={isMoney ? "Choose a wallet entry fee, get shuffled into a 4v4 team and play for the full prize pool." : comingSoon ? "A new battlefield. A fresh leaderboard. MW4 Free 8s opens once its maps and competitive rules are ready. Black Ops 7 is live now." : "Play 2v2, 3v3 or 4v4 with shuffled teams and climb the same Free 8s ELO leaderboard."}
           matchfinder={(
             <>
             {!isMoney && !comingSoon && freeOverview.error && (
@@ -209,19 +210,21 @@ export default function RankedEights() {
             <CompetitionMatchfinder loading={loading} emptyMessage={isMoney ? "No Money 8s lobbies are open right now." : comingSoon ? "MW4 Free 8s is coming soon. Play Black Ops 7 while the next deployment gets ready." : freeOverview.error ? "Lobbies are currently unavailable." : "No 8s lobbies are open right now."}>
               {lobbies.map((lobby) => {
                 const joined = counts[lobby.id] || 0;
+                const teamSize = isMoney ? 4 : freeEightsTeamSize(lobby);
+                const capacity = teamSize * 2;
                 const alreadyIn = activeLobby?.id === lobby.id;
                 return (
                   <CompetitionMatchfinderRow
                     key={lobby.id}
                     game={lobby.game_mode_display || lobby.game_mode}
-                    gameDetail={`4v4 · ${joined}/8 joined`}
+                    gameDetail={`${teamSize}v${teamSize} · ${joined}/${capacity} joined`}
                     competition={isMoney ? "Money 8s" : `Free 8s ${eightsGameName(selectedGame)}`}
                     competitionDetail={`Hosted by ${lobby.host_name || "Player"} · BO${lobby.best_of || 3}`}
                     playRule={lobby.play_rule}
                     postedAt={lobby.created_date}
                     tone="orange"
                     action={user ? (
-                      <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || (joined >= 8 && (isMoney || !alreadyIn))} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
+                      <button disabled={joining === lobby.id || (activeLobby && !alreadyIn) || (joined >= capacity && (isMoney || !alreadyIn))} onClick={() => alreadyIn ? navigate(`/8s-match/${lobby.id}`) : joinLobby(lobby)} className="min-w-48 rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-45">
                         {joining === lobby.id ? "Joining..." : alreadyIn ? "Open match room" : activeLobby ? `Finish active ${isMoney ? "Money 8s" : "8s"} first` : "Accept This Match"}
                       </button>
                     ) : null}
