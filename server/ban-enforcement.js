@@ -15,6 +15,7 @@ export const normalizeIpAddress = (value) => {
     if (net.isIP(mappedIpv4) === 4) ip = mappedIpv4;
   }
 
+  if (net.isIP(ip) === 6) return new URL(`http://[${ip}]/`).hostname.slice(1, -1).toLowerCase();
   return net.isIP(ip) ? ip.toLowerCase() : null;
 };
 
@@ -24,12 +25,22 @@ const isTrackableIp = (value) => {
   if (ip === "0.0.0.0" || ip === "::") return false;
   if (ip === "::1" || ip.startsWith("127.")) return false;
   if (ip.startsWith("169.254.") || ip.startsWith("fe80:")) return false;
+  if (ip.startsWith("10.") || ip.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return false;
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip) || /^f[cd]/.test(ip)) return false;
   return true;
 };
 
 export const requestIpAddress = (req) => {
   const ip = normalizeIpAddress(req.ip || req.socket?.remoteAddress);
-  return isTrackableIp(ip) ? ip : null;
+  if (isTrackableIp(ip)) return ip;
+  const peer = normalizeIpAddress(req.socket?.remoteAddress);
+  const trust = req.app?.get("trust proxy fn");
+  // Only a trusted proxy may supply this fallback; direct client headers are ignored.
+  if (peer && typeof trust === "function" && trust(peer, 0) && !req.headers?.["x-forwarded-for"]) {
+    const realIp = normalizeIpAddress(req.headers?.["x-real-ip"]);
+    if (isTrackableIp(realIp)) return realIp;
+  }
+  return null;
 };
 
 export const knownUserIpAddresses = (user) => {
@@ -39,8 +50,10 @@ export const knownUserIpAddresses = (user) => {
     : (Array.isArray(user?.ip_history) ? user.ip_history : []);
   return [...new Set([
     metadata.last_login_ip,
+    metadata.last_seen_ip,
     metadata.registration_ip,
     user?.last_login_ip,
+    user?.last_seen_ip,
     user?.registration_ip,
     ...history.map((entry) => entry?.ip),
   ].map(normalizeIpAddress).filter(isTrackableIp))];

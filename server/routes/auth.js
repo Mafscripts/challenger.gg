@@ -15,6 +15,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { dataForEntity } from "../entity.js";
 import { isEmailConfigured, sendPasswordResetEmail, sendVerificationEmail } from "../email.js";
 import { evaluateAccess, requestIpAddress } from "../ban-enforcement.js";
+import { recordUserIp } from "../user-ip-history.js";
 import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
 import { getAnimatedNameFreeTrial } from "../freeTrial.js";
 import { registrationSecurityConfig, verifyRegistrationTurnstile } from "../turnstile.js";
@@ -184,21 +185,7 @@ const clearVerificationMetadata = (metadata) => {
 };
 
 const recordIp = async (user, req, field) => {
-  const ip = requestIpAddress(req);
-  if (!ip) return user;
-  const metadata = safeUserMetadata(user.metadata);
-  const ipHistory = Array.isArray(metadata.ip_history) ? metadata.ip_history : [];
-  const nextHistory = [
-    ...ipHistory,
-    { ip, event: field, date: new Date().toISOString() },
-  ].slice(-50);
-  return prisma.user.update({
-    where: { id: user.id },
-    data: dataForEntity("User", {
-      [field]: ip,
-      ip_history: nextHistory,
-    }, metadata),
-  });
+  return recordUserIp(prisma, user, req, field);
 };
 
 export const registerHandler = async (req, res, next) => {

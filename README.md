@@ -44,7 +44,7 @@ only when you intentionally want to run the website without the local API.
 
 **Reverse proxy and IP bans**
 
-When the API runs behind a reverse proxy, set `TRUST_PROXY` to the number of trusted proxy hops (commonly `1`). Leave it unset when the API is exposed directly. Correct proxy configuration is required for reliable IP logging and IP-ban enforcement.
+The API trusts loopback proxies by default, for Nginx running on the same host. For other deployments, set `TRUST_PROXY` to the trusted proxy addresses/CIDRs or hop count. Use `TRUST_PROXY=false` to disable proxy trust. The proxy must send `X-Forwarded-For` (or `X-Real-IP` when no forwarded chain is present). IPs are captured at registration, login and when an authenticated session first uses a different public address; private/loopback addresses are excluded.
 
 **Publish your changes**
 

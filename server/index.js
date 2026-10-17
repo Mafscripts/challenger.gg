@@ -19,12 +19,14 @@ import { startMatchfinderExpiryWorker } from "./matchfinder-expiry.js";
 const app = express();
 const port = Number(process.env.PORT || 4000);
 
-const configuredTrustProxy = String(process.env.TRUST_PROXY || "").trim();
+// Nginx on this host connects over loopback. Never trust arbitrary remote peers.
+const configuredTrustProxy = String(process.env.TRUST_PROXY || "loopback").trim() || "loopback";
 if (configuredTrustProxy) {
   const numericTrustProxy = Number(configuredTrustProxy);
   app.set(
     "trust proxy",
-    configuredTrustProxy === "true" ? true : (Number.isInteger(numericTrustProxy) ? numericTrustProxy : configuredTrustProxy),
+    configuredTrustProxy === "true" ? true : configuredTrustProxy === "false" ? false
+      : (Number.isInteger(numericTrustProxy) ? numericTrustProxy : configuredTrustProxy.split(",").map((entry) => entry.trim())),
   );
 }
 

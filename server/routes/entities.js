@@ -127,6 +127,7 @@ const sensitiveIpFields = new Set([
   "ip_addresses",
   "registration_ip",
   "last_login_ip",
+  "last_seen_ip",
   "ip_history",
 ]);
 
@@ -454,6 +455,9 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
     }
     if (req.params.entity === "User") {
       const payload = req.body || {};
+      if (["registration_ip", "last_login_ip", "last_seen_ip", "ip_history"].some((key) => Object.hasOwn(payload, key) || Object.hasOwn(payload.metadata || {}, key))) {
+        return res.status(403).json({ error: "IP history is recorded by the server" });
+      }
       const changingRole = Object.keys(payload).some((key) => roleFields.has(key));
       const changingModeration = ["is_banned", "ban_reason"].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
       const changingEconomy = Object.keys(payload).some((key) => economyUserFields.has(key));
@@ -476,6 +480,9 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
 
 router.delete("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
+    if (String(req.params.entity).toLowerCase() === "user") {
+      return res.status(403).json({ error: "Use the protected account deletion action" });
+    }
     if (["Message", "TradeOffer"].includes(req.params.entity)) {
       return res.status(403).json({ error: "This record cannot be deleted directly" });
     }

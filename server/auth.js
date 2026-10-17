@@ -81,6 +81,7 @@ export const publicUser = (user) => {
     "password_reset_expires_at",
     "registration_ip",
     "last_login_ip",
+    "last_seen_ip",
     "ip_history",
   ];
   sensitiveFields.forEach((field) => delete serialized[field]);

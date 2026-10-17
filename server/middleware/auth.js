@@ -2,6 +2,7 @@ import { prisma } from "../prisma.js";
 import { publicUser, verifyToken } from "../auth.js";
 import { hasRole } from "../roles.js";
 import { evaluateAccess } from "../ban-enforcement.js";
+import { recordUserIp } from "../user-ip-history.js";
 
 export const requireAuth = async (req, res, next) => {
   try {
@@ -31,7 +32,7 @@ export const requireAuth = async (req, res, next) => {
     if (access.blocked) {
       return res.status(access.status).json({ error: access.message, code: access.code });
     }
-    user = access.user;
+    user = await recordUserIp(prisma, access.user, req);
 
     req.user = publicUser(user);
     req.userRow = user;

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket } from "../admin-tickets.js";
+import { getAdminUserSecurity, deleteAdminUser } from "../admin-users.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
@@ -10941,6 +10942,8 @@ async function postDiscordCelebration(req) {
 
 const handlers = {
   ...challengeHandlers,
+  getAdminUserSecurity: (req) => getAdminUserSecurity(prisma, req),
+  deleteAdminUser: (req) => deleteAdminUser(prisma, req.user, req.body),
   getAdminTickets: (req) => getAdminTickets(prisma, req.user, req.body),
   getAdminTicketCounts: (req) => getAdminTicketCounts(prisma, req.user),
   deleteAdminTicket: (req) => deleteAdminTicket(prisma, req.user, req.body),

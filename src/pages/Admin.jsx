@@ -40,6 +40,10 @@ import {
   X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import UserSecurityPanel from "@/components/admin/UserSecurityPanel";
+import DeleteUserAccount from "@/components/admin/DeleteUserAccount";
+import "@/styles/admin-users.css";
 import { toast } from "@/components/ui/use-toast";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
@@ -333,27 +337,23 @@ const hasActivePremium = (user) => {
   const expiresAt = new Date(user.premium_expires).getTime();
   return Number.isFinite(expiresAt) && expiresAt > Date.now();
 };
-const ipComparisonKey = (value) => String(value || "").trim().toLowerCase().replace(/^::ffff:/, "");
+const ipComparisonKey = (value) => {
+  const ip = String(value || "").trim().toLowerCase().replace(/^::ffff:/, "");
+  try { return ip.includes(":") ? new URL(`http://[${ip}]/`).hostname.slice(1, -1) : ip; } catch { return ip; }
+};
 const isTrackableUserIp = (value) => {
   const ip = ipComparisonKey(value);
   if (!ip || ip === "0.0.0.0" || ip === "::" || ip === "::1" || ip.startsWith("127.") || ip.startsWith("169.254.") || ip.startsWith("fe80:")) return false;
+  if (ip.startsWith("10.") || ip.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(ip) || /^f[cd]/.test(ip)) return false;
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip)) return false;
   return true;
 };
 const knownIpAddresses = (user) => [...new Map([
+  user?.last_seen_ip,
   user?.last_login_ip,
   user?.registration_ip,
   ...((user?.ip_history || []).slice().reverse().map((entry) => entry?.ip)),
 ].filter(isTrackableUserIp).map((ip) => [ipComparisonKey(ip), ip])).values()];
-const ipHistoryEntries = (user) => {
-  const rows = Array.isArray(user?.ip_history) ? user.ip_history : [];
-  return rows
-    .map((entry) => ({
-      ip: entry?.ip,
-      date: entry?.date || entry?.created_date || entry?.timestamp,
-    }))
-    .filter((entry) => isTrackableUserIp(entry.ip))
-    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-};
 const ipHistoryText = (user) => knownIpAddresses(user).join(", ") || "No public IP captured yet";
 const marketplacePlacementText = (item) => [
   item.is_featured === true ? "Featured" : null,
@@ -525,6 +525,7 @@ export default function Admin() {
   const currentUser = authUser;
   const [data, setData] = useState(initialData);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sharedIpOnly, setSharedIpOnly] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [marketplaceForm, setMarketplaceForm] = useState(defaultMarketplaceForm);
   const [editingMarketplaceId, setEditingMarketplaceId] = useState(null);
@@ -624,14 +625,6 @@ export default function Admin() {
     };
   }, [activeTab, currentUser?.id]);
 
-  const filteredUsers = useMemo(() => (
-    data.users.filter((user) => {
-      const visibleIps = canViewUserIps(currentRole) ? knownIpAddresses(user).join(" ") : "";
-      const haystack = `${userName(user)} ${user.email || ""} ${user.role || ""} ${visibleIps}`.toLowerCase();
-      return haystack.includes(searchQuery.toLowerCase());
-    })
-  ), [currentRole, data.users, searchQuery]);
-
   const walletByUserId = useMemo(() => (
     Object.fromEntries(data.wallets.map((wallet) => [wallet.user_id, wallet]))
   ), [data.wallets]);
@@ -718,6 +711,15 @@ export default function Admin() {
 
   const sharedIpCount = (targetUser) => sharedIpAccounts.get(targetUser.id)?.length || 0;
   const sharedIpAccountNames = (targetUser) => (sharedIpAccounts.get(targetUser.id) || []).map(userName);
+
+  const filteredUsers = useMemo(() => (
+    data.users.filter((user) => {
+      if (activeTab === "users" && sharedIpOnly && canViewUserIps(currentRole) && !(sharedIpAccounts.get(user.id)?.length)) return false;
+      const visibleIps = canViewUserIps(currentRole) ? knownIpAddresses(user).join(" ") : "";
+      const haystack = `${userName(user)} ${user.email || ""} ${user.role || ""} ${visibleIps}`.toLowerCase();
+      return haystack.includes(searchQuery.toLowerCase());
+    })
+  ), [activeTab, currentRole, data.users, searchQuery, sharedIpOnly, sharedIpAccounts]);
 
   const auditRows = useMemo(() => ([
     ...data.adminActions.map((row) => ({
@@ -948,7 +950,7 @@ export default function Admin() {
       return;
     }
     if (action === "ip_ban") {
-      const sharedAccounts = sharedIpCount(targetUser);
+      const sharedAccounts = targetUser.shared_ip_account_count ?? sharedIpCount(targetUser);
       const warning = sharedAccounts > 0
         ? `This permanently blocks all known IP addresses for ${userName(targetUser)}. ${sharedAccounts} other account(s) share one of those addresses and may also be blocked. Continue?`
         : `This permanently blocks all known IP addresses for ${userName(targetUser)}. Continue?`;
@@ -2136,9 +2138,11 @@ export default function Admin() {
           )}
 
           {activeTab === "users" && (
-            <div className="p-6">
+            <div className="admin-users p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <h2 className="text-lg font-bold">Users</h2>
+                <div><span className="au-eyebrow">PLAYER DIRECTORY</span><h2 className="text-lg font-bold">Users <span className="au-count">{filteredUsers.length}</span></h2><p className="au-directory-hint">Manage accounts, permissions and account security.</p></div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {canViewUserIps(currentRole) && <button className="au-filter" aria-pressed={sharedIpOnly} onClick={() => setSharedIpOnly((value) => !value)}><CircleAlert size={14} /> Shared IPs</button>}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-vapor" />
                   <input
@@ -2148,7 +2152,8 @@ export default function Admin() {
                     placeholder="Search users..."
                     className="pl-10 pr-4 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                   />
-                </div>
+                  </div>
+              </div>
               </div>
               {walletAdjustmentOpen && canAddWalletAdjustment(currentRole) && (
                 <form id="wallet-adjustment-form" onSubmit={handleSubmitWalletAdjustment} className="relative z-20 mb-4 rounded-lg border border-cyan/15 bg-secondary/70 p-4 shadow-xl shadow-black/20">
@@ -2225,7 +2230,6 @@ export default function Admin() {
                     <tr className="border-b border-white/5 text-xs text-vapor uppercase">
                       <th className="text-left py-3 px-4">User</th>
                       <th className="text-left py-3 px-4">Role</th>
-                      <th className="text-left py-3 px-4">Badges</th>
                       <th className="text-left py-3 px-4">Status</th>
                       <th className="text-left py-3 px-4">Wallet</th>
                       {canViewUserIps(currentRole) && <th className="text-left py-3 px-4">IP Addresses</th>}
@@ -2242,20 +2246,16 @@ export default function Admin() {
                             {canViewUserIps(currentRole) && sharedIpCount(user) > 0 && (
                               <span
                                 className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-red-400"
-                                title={`Possible multi-account: shared IP with ${sharedIpAccountNames(user).join(", ")}`}
+                                title={`Shared IP with ${sharedIpAccountNames(user).join(", ")}`}
                               >
-                                <CircleAlert className="h-3.5 w-3.5" /> Multi account
+                                <CircleAlert className="h-3.5 w-3.5" /> Shared IP ({sharedIpCount(user)})
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-vapor">{user.email}</p>
+                          <p className="text-xs text-vapor">{user.email}</p><UserBadges user={user} size="xs" />
                         </td>
                         <td className="py-3 px-4"><RoleBadge role={user.role || "user"} /></td>
-                        <td className="py-3 px-4 min-w-[220px]">
-                          <div className="space-y-2">
-                            <UserBadges user={user} size="xs" />
-                          </div>
-                        </td>
+
                         <td className="py-3 px-4 min-w-[155px]">
                           <div className="flex flex-col items-start gap-1.5">
                             <StatusPill status={user.is_banned ? "banned" : "active"} />
@@ -2271,11 +2271,11 @@ export default function Admin() {
                           <td className="py-3 px-4 text-xs text-vapor" title={ipHistoryText(user)}>
                             {knownIpAddresses(user).length > 0 ? (
                               <div className="space-y-1 font-mono">
-                                {knownIpAddresses(user).slice(0, 3).map((ip) => <div key={ip}>{ip}</div>)}
-                                {knownIpAddresses(user).length > 3 && <div className="font-sans text-[10px] text-cyan">+{knownIpAddresses(user).length - 3} more</div>}
+                                {knownIpAddresses(user).slice(0, 1).map((ip) => <div key={ip}>{ip}</div>)}
+                                {knownIpAddresses(user).length > 1 && <div className="font-sans text-[10px] text-cyan">+{knownIpAddresses(user).length - 1} more</div>}
                                 {sharedIpCount(user) > 0 && <div className="font-sans font-bold text-red-400">! shared by {sharedIpCount(user)} account(s)</div>}
                               </div>
-                            ) : <span className="text-[10px] text-vapor/70">Not captured</span>}
+                            ) : <span className="text-[10px] text-vapor/70">Awaiting activity</span>}
                           </td>
                         )}
                         <td className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
@@ -2291,18 +2291,22 @@ export default function Admin() {
                                 Manage
                               </button>
                               {openManageUserId === user.id && (
-                              <div className="fixed right-6 top-24 z-[9999] max-h-[calc(100vh-7rem)] w-80 overflow-y-auto rounded-xl border border-white/10 bg-popover p-2 shadow-2xl shadow-black/60">
-                                <div className="border-b border-white/5 px-3 py-2">
-                                  <p className="text-xs font-bold text-foreground">{userName(user)}</p>
-                                  <p className="text-[10px] text-vapor">{user.role || "user"} · account actions</p>
-                                </div>
-                                <div className="space-y-1 p-1">
-                                  {canAdjustUserWallet(currentRole, user.role || "user") && (
+                                <Dialog open onOpenChange={(open) => { if (!open) setOpenManageUserId(null); }}>
+                                  <DialogContent className="admin-user-dialog">
+                                    <header className="au-dialog-heading">
+                                      <div className="au-user-initial">{userName(user).slice(0, 1).toUpperCase()}</div>
+                                      <div><span className="au-eyebrow">ACCOUNT MANAGEMENT</span><DialogTitle>{userName(user)}</DialogTitle><DialogDescription>{user.email}</DialogDescription></div>
+                                      <RoleBadge role={effectiveRoleFor(user)} />
+                                    </header>
+                                    <div className="au-manage-body">
+                                  {(canAdjustUserWallet(currentRole, effectiveRoleFor(user)) || canGrantUserPremium(currentRole, effectiveRoleFor(user))) && (
                                     <div className="rounded-lg border border-white/5 bg-white/[0.02] p-1">
                                       <p className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-vapor">Wallet & Premium</p>
                                       <div className="grid grid-cols-2 gap-1">
-                                        <button onClick={() => openWalletAdjustment(user, "credits")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-green hover:bg-white/5">Add Credits</button>
-                                        <button onClick={() => openWalletAdjustment(user, "money")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-cyan hover:bg-white/5">Add Money</button>
+                                        {canAdjustUserWallet(currentRole, effectiveRoleFor(user)) && <>
+                                          <button onClick={() => openWalletAdjustment(user, "credits")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-green hover:bg-white/5">Add Credits</button>
+                                          <button onClick={() => openWalletAdjustment(user, "money")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-cyan hover:bg-white/5">Add Money</button>
+                                        </>}
                                         {canManageWallets(currentRole) && canGrantUserPremium(currentRole, user.role || "user") && (
                                           <button type="button" onClick={() => handleGrantPremium(user)} disabled={busyId === `${user.id}:premium`} className="col-span-2 rounded-md px-2 py-2 text-left text-[11px] font-bold text-orange hover:bg-white/5 disabled:opacity-50">
                                             {hasActivePremium(user) ? "Extend Premium +30d" : "Give Premium 30d"}
@@ -2382,32 +2386,18 @@ export default function Admin() {
                                       {user.is_banned && <button onClick={() => handleModerateUser(user, "remove_ban")} className="rounded-md px-2 py-2 text-left text-[11px] font-bold text-green hover:bg-white/5">Unban</button>}
                                     </div>
                                   </div>
-                                  {canViewUserIps(currentRole) && (
-                                    <div className="rounded-lg border border-cyan/10 bg-cyan/[0.03] p-1">
-                                      <p className="px-2 py-1 text-[9px] font-black uppercase tracking-widest text-cyan">IP & Security</p>
-                                      <div className="flex items-center justify-between gap-2 rounded-md px-2 py-2">
-                                        <span className="text-[11px] text-vapor">{knownIpAddresses(user).length} known public IP{knownIpAddresses(user).length === 1 ? "" : "s"}</span>
-                                        {knownIpAddresses(user).length > 0 ? (
-                                          <button onClick={() => handleModerateUser(user, "ip_ban")} disabled={busyId === `${user.id}:ip_ban`} className="rounded-md bg-red-500/10 px-2 py-1.5 text-[10px] font-black text-red-400 hover:bg-red-500/20 disabled:opacity-40">
-                                            {busyId === `${user.id}:ip_ban` ? "Banning…" : "Ban IPs"}
-                                          </button>
-                                        ) : (
-                                          <span className="text-[10px] text-vapor/60">Not captured</span>
-                                        )}
-                                      </div>
-                                      <div className="rounded-md px-2 pb-2">
-                                        {knownIpAddresses(user).length > 0 ? (
-                                          <div className="space-y-1 font-mono text-[10px]">
-                                            {knownIpAddresses(user).slice(0, 6).map((ip) => <div key={ip} className="flex items-center justify-between gap-2"><span>{ip}</span>{sharedIpCount(user) > 0 && <span className="font-sans text-[9px] font-bold text-red-400">shared</span>}</div>)}
-                                          </div>
-                                        ) : (
-                                          <p className="text-[10px] leading-relaxed text-vapor">A valid client IP will appear here after the next login through the production proxy.</p>
-                                        )}
-                                      </div>
+
+                                      {canViewUserIps(currentRole) && <UserSecurityPanel user={user} busy={busyId === `${user.id}:ip_ban`}
+                                        onBanIps={(security) => handleModerateUser({ ...user, shared_ip_account_count: security.shared_accounts.length }, "ip_ban")} />}
+                                      <DeleteUserAccount user={user} actor={currentUser} onDeleted={async (id) => {
+                                        setOpenManageUserId(null);
+                                        setData((current) => ({ ...current, users: current.users.filter((row) => row.id !== id), wallets: current.wallets.filter((row) => row.user_id !== id) }));
+                                        toast({ title: "Account permanently deleted" });
+                                        await loadAdminData();
+                                      }} />
                                     </div>
-                                  )}
-                                </div>
-                              </div>
+                                  </DialogContent>
+                                </Dialog>
                               )}
                             </div>
                           </div>
@@ -2429,7 +2419,7 @@ export default function Admin() {
                   <div key={user.id} className="border border-white/5 rounded-lg p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div>
                       <p className="font-semibold text-sm">{userName(user)}</p>
-                      <p className="text-xs text-vapor">{user.email}</p>
+                      <p className="text-xs text-vapor">{user.email}</p><UserBadges user={user} size="xs" />
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <RoleBadge role={user.role || "user"} />

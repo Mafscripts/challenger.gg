@@ -1,0 +1,74 @@
+.admin-users .au-eyebrow, .admin-user-dialog .au-eyebrow { color: hsl(var(--cyan)); font-size: 9px; font-weight: 900; letter-spacing: .14em; }
+.admin-users h2 { display: flex; align-items: center; gap: 9px; margin-top: 5px; font-weight: 900; }
+.admin-users .au-count { padding: 3px 7px; border: 1px solid hsl(var(--border)); border-radius: 5px; color: hsl(var(--vapor)); font-size: 10px; }
+.admin-users .au-directory-hint { margin-top: 5px; color: hsl(var(--vapor)); font-size: 11px; }
+.admin-users table { border-collapse: separate; border-spacing: 0; }
+.admin-users thead { background: var(--arena-inset); }
+.admin-users th { padding-top: 14px; padding-bottom: 14px; color: hsl(var(--vapor)); font-size: 9px !important; letter-spacing: .08em; }
+.admin-users tbody td { padding-top: 16px; padding-bottom: 16px; border-bottom-color: hsl(var(--border)); }
+.admin-users tbody tr:last-child td { border-bottom: 0; }
+.admin-users tbody tr:hover { background: hsl(var(--cyan) / .025); }
+.admin-users td:first-child { min-width: 230px; }
+.admin-users td:first-child > p { margin-top: 4px; font-size: 11px; }
+.admin-users td:first-child > :last-child:not(p) { margin-top: 6px; }
+.admin-users .au-filter { display: inline-flex; align-items: center; gap: 7px; min-height: 35px; padding: 8px 12px; border: 1px solid hsl(var(--border)); border-radius: 8px; color: hsl(var(--vapor)); font-size: 11px; font-weight: 800; }
+.admin-users .au-filter[aria-pressed="true"] { border-color: hsl(var(--orange) / .3); background: hsl(var(--orange) / .07); color: hsl(var(--orange)); }
+.admin-user-dialog { position: fixed; left: 50%; top: 50%; right: auto; bottom: auto; display: flex; flex-direction: column; gap: 0; width: min(880px, calc(100vw - 32px)); max-width: 880px; max-height: min(850px, calc(100dvh - 48px)); padding: 0; overflow: hidden; transform: translate(-50%, -50%); border: 1px solid hsl(var(--border)); border-radius: 15px; background: hsl(var(--card)); color: hsl(var(--foreground)); }
+.admin-user-dialog .au-dialog-heading { display: flex; flex-shrink: 0; align-items: center; gap: 15px; padding: 25px 55px 25px 26px; border-bottom: 1px solid hsl(var(--border)); background: var(--arena-inset); }
+.admin-user-dialog .au-user-initial { display: grid; flex-shrink: 0; place-items: center; width: 52px; height: 52px; border: 1px solid hsl(var(--cyan) / .25); border-radius: 12px; background: hsl(var(--cyan) / .05); color: hsl(var(--cyan)); font-size: 20px; font-weight: 900; }
+.admin-user-dialog .au-dialog-heading > div:nth-child(2) { min-width: 0; flex: 1; }
+.admin-user-dialog .au-dialog-heading h2 { margin-top: 5px; font-size: 21px; font-weight: 900; overflow-wrap: anywhere; }
+.admin-user-dialog .au-dialog-heading p { margin-top: 5px; color: hsl(var(--vapor)); font-size: 11px; overflow-wrap: anywhere; }
+.admin-user-dialog .au-manage-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; align-items: start; gap: 16px; overflow-y: auto; overscroll-behavior: contain; padding: 22px 26px 26px; }
+.admin-user-dialog .au-manage-body > div { padding: 14px; border: 1px solid hsl(var(--border)); border-radius: 10px; background: var(--arena-inset); }
+.admin-user-dialog .au-manage-body > div > p { padding: 0 0 12px; font-size: 9px; }
+.admin-user-dialog .au-manage-body > div button { min-height: 36px; border: 1px solid hsl(var(--border)); background: hsl(var(--secondary) / .25); border-radius: 7px; }
+.admin-user-dialog .au-manage-body > div button:hover:not(:disabled) { border-color: hsl(var(--cyan) / .3); background: hsl(var(--cyan) / .045); }
+.admin-user-dialog button:disabled { opacity: .5; cursor: default; }
+.admin-user-dialog button:focus-visible, .admin-user-dialog a:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 2px; }
+.admin-user-dialog select, .admin-user-dialog input:not([type="checkbox"]), .admin-user-dialog textarea { width: 100%; padding: 10px 12px; border: 1px solid hsl(var(--border)); border-radius: 7px; background: var(--arena-inset); color: hsl(var(--foreground)); font-size: 12px; }
+.admin-user-dialog select:focus, .admin-user-dialog input:focus, .admin-user-dialog textarea:focus { outline: none; border-color: hsl(var(--cyan) / .45); }
+.admin-user-dialog .au-security { grid-column: 1 / -1; padding: 18px; border: 1px solid hsl(var(--border)); border-radius: 10px; background: var(--arena-inset); }
+.admin-user-dialog .au-card-heading { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+.admin-user-dialog h3 { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; }
+.admin-user-dialog .au-card-heading h3 > svg { color: hsl(var(--cyan)); }
+.admin-user-dialog .au-ip-ban { border: 1px solid rgb(255 119 119 / .2); border-radius: 6px; padding: 6px 10px; background: rgb(255 119 119 / .05); color: #ff9b9b; font-size: 10px; font-weight: 800; }
+.admin-user-dialog .au-hint { display: flex; align-items: center; gap: 7px; margin-top: 12px; color: hsl(var(--vapor)); font-size: 11px; line-height: 1.8; }
+.admin-user-dialog .au-ip-list { display: grid; gap: 8px; margin-top: 15px; }
+.admin-user-dialog .au-ip-list > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid hsl(var(--border)); border-radius: 7px; }
+.admin-user-dialog .au-ip-list code { color: hsl(var(--foreground)); font-size: 11px; overflow-wrap: anywhere; }
+.admin-user-dialog .au-ip-list > div > span { color: hsl(var(--vapor)); font-size: 9px; }
+.admin-user-dialog .au-linked-heading { display: flex; align-items: center; gap: 9px; margin-top: 20px; padding-top: 16px; border-top: 1px solid hsl(var(--border)); font-size: 11px; }
+.admin-user-dialog .au-linked-heading > span { color: hsl(var(--cyan)); font-weight: 800; }
+.admin-user-dialog .au-linked-accounts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.admin-user-dialog .au-linked-accounts a { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 12px; border: 1px solid hsl(var(--border)); border-radius: 8px; }
+.admin-user-dialog .au-linked-accounts a:hover { border-color: hsl(var(--cyan) / .3); }
+.admin-user-dialog .au-linked-avatar { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 7px; background: hsl(var(--cyan) / .07); color: hsl(var(--cyan)); font-size: 11px; font-weight: 800; }
+.admin-user-dialog .au-linked-accounts a > span:nth-child(2) { display: grid; flex: 1; min-width: 0; gap: 4px; }
+.admin-user-dialog .au-linked-accounts strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; }
+.admin-user-dialog .au-linked-accounts small { color: hsl(var(--vapor)); font-size: 9px; overflow-wrap: anywhere; }
+.admin-user-dialog .au-linked-accounts a > span:last-child { flex-shrink: 0; color: hsl(var(--cyan)); font-size: 9px; }
+.admin-user-dialog .au-history { margin-top: 16px; padding-top: 12px; border-top: 1px solid hsl(var(--border)); }
+.admin-user-dialog .au-history summary { cursor: pointer; font-size: 11px; font-weight: 700; }
+.admin-user-dialog .au-history > div { max-height: 160px; margin-top: 10px; overflow-y: auto; }
+.admin-user-dialog .au-history p { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 7px 0; font-size: 10px; }
+.admin-user-dialog .au-history time { color: hsl(var(--vapor)); }
+.admin-user-dialog .au-diagnostic { margin-top: 12px; padding: 11px; border: 1px solid hsl(var(--orange) / .2); border-radius: 7px; color: hsl(var(--orange)); font-size: 11px; line-height: 1.8; }
+.admin-user-dialog .au-error { margin-top: 12px; color: #ff9b9b; font-size: 11px; line-height: 1.8; }
+.admin-user-dialog .au-error > button { text-decoration: underline; }
+.admin-user-dialog .au-delete-account { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; grid-column: 1 / -1; gap: 14px; margin-top: 2px; padding: 18px; border: 1px solid rgb(255 119 119 / .2); border-radius: 10px; }
+.admin-user-dialog .au-delete-account h3 { color: #ff9b9b; }
+.admin-user-dialog .au-delete-account p { margin-top: 7px; color: hsl(var(--vapor)); font-size: 11px; line-height: 1.8; }
+.admin-user-dialog .au-delete-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 12px; border: 1px solid rgb(255 119 119 / .3); border-radius: 7px; background: rgb(255 119 119 / .06); color: #ff9b9b; font-size: 11px; font-weight: 800; }
+.admin-user-dialog .au-delete-form { width: 100%; }
+.admin-user-dialog .au-delete-form label { display: block; margin-top: 13px; color: hsl(var(--vapor)); font-size: 11px; }
+.admin-user-dialog .au-delete-form label > strong { color: hsl(var(--foreground)); }
+.admin-user-dialog .au-delete-form input, .admin-user-dialog .au-delete-form textarea { display: block; margin-top: 7px; }
+.admin-user-dialog .au-delete-form > div { display: flex; align-items: center; justify-content: flex-end; gap: 15px; margin-top: 15px; font-size: 11px; }
+@media (max-width: 650px) {
+  .admin-user-dialog .au-dialog-heading { gap: 10px; padding: 20px 40px 20px 18px; }
+  .admin-user-dialog .au-user-initial { width: 40px; height: 40px; font-size: 16px; }
+  .admin-user-dialog .au-dialog-heading h2 { font-size: 18px; }
+  .admin-user-dialog .au-manage-body { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 12px; }
+  .admin-user-dialog .au-linked-accounts { grid-template-columns: minmax(0, 1fr); }
+}
