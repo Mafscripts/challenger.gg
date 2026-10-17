@@ -10,6 +10,72 @@ const sqlTable = (table) => Prisma.raw(`"${table}"`); // Names below are applica
 const references = (id) => Prisma.sql`jsonb_path_exists(metadata, '$.** ? (@ == $userId)'::jsonpath, jsonb_build_object('userId', ${id}::text))`;
 const nameFor = (user) => user.display_name || user.full_name || user.username || "Player";
 
+export async function getAdminUserCount(db, actor) {
+  if (!hasRole(actor, "moderator")) fail("Moderator access required", 403);
+  return { success: true, total: await db.user.count() };
+}
+
+const directoryFields = ["id", "username", "handle", "display_name", "full_name", "role", "admin_role", "is_admin",
+  "created_date", "updated_date", "account_created_date", "is_banned", "is_premium", "premium_expires", "region",
+  "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer", "force_stream_required",
+  "stream_override_required", "monitor_cam_required", "required_monitor_cam", "moni_cam_required", "monitor_cam_override_required"];
+
+export async function getAdminUsers(db, actor, body = {}) {
+  if (!hasRole(actor, "moderator")) fail("Moderator access required", 403);
+  const admin = hasRole(actor, "admin");
+  const search = String(body.search || "").trim().toLowerCase().slice(0, 200);
+  const sharedOnly = admin && body.shared_only === true;
+  let cursor = null;
+  if (body.cursor) {
+    try {
+      cursor = JSON.parse(Buffer.from(String(body.cursor), "base64url").toString("utf8"));
+      if (!cursor.id || typeof cursor.id !== "string" || cursor.id.length > 200 || !Number.isFinite(Date.parse(cursor.date))) throw new Error();
+    } catch { fail("Invalid user page. Refresh the list."); }
+  }
+  // Only the small IP/identity index is read across accounts. Full account rows
+  // are fetched in pages of 25, including when searching or filtering shared IPs.
+  const ipRows = admin ? await db.$queryRaw`SELECT id, username, display_name, full_name,
+    jsonb_build_object('registration_ip', metadata->'registration_ip', 'last_login_ip', metadata->'last_login_ip',
+      'last_seen_ip', metadata->'last_seen_ip', 'ip_history', metadata->'ip_history') AS metadata FROM "User"` : [];
+  const byIp = new Map(), shared = new Map();
+  for (const user of ipRows) for (const ip of knownUserIpAddresses(user)) {
+    if (!byIp.has(ip)) byIp.set(ip, []);
+    byIp.get(ip).push(user);
+  }
+  for (const users of byIp.values()) if (users.length > 1) for (const user of users) {
+    if (!shared.has(user.id)) shared.set(user.id, new Map());
+    for (const other of users) if (other.id !== user.id) shared.get(user.id).set(other.id, nameFor(other));
+  }
+  const sharedIds = [...shared.keys()];
+  const sharedWhere = sharedOnly ? (sharedIds.length ? Prisma.sql`id IN (${Prisma.join(sharedIds)})` : Prisma.sql`FALSE`) : Prisma.sql`TRUE`;
+  const searchWhere = search ? Prisma.sql`(
+    POSITION(${search} IN LOWER(CONCAT_WS(' ', username, handle, display_name, full_name, role, admin_role))) > 0
+    ${admin ? Prisma.sql`OR POSITION(${search} IN LOWER(COALESCE(email, ''))) > 0
+      OR POSITION(${search} IN CONCAT_WS(' ', metadata->>'registration_ip', metadata->>'last_login_ip', metadata->>'last_seen_ip', metadata->'ip_history')) > 0` : Prisma.empty}
+  )` : Prisma.sql`TRUE`;
+  const cursorWhere = cursor ? Prisma.sql`(created_date, id) < (${new Date(cursor.date)}, ${cursor.id})` : Prisma.sql`TRUE`;
+  const [candidates, counts] = await Promise.all([
+    db.$queryRaw`SELECT * FROM "User" WHERE ${sharedWhere} AND ${searchWhere} AND ${cursorWhere} ORDER BY created_date DESC, id DESC LIMIT 26`,
+    db.$queryRaw`SELECT COUNT(*)::int AS total FROM "User" WHERE ${sharedWhere} AND ${searchWhere}`,
+  ]);
+  const page = candidates.slice(0, 25);
+  const rows = page.map((user) => {
+    const flat = { ...user.metadata, ...user };
+    const result = Object.fromEntries(directoryFields.filter((key) => flat[key] !== undefined).map((key) => [key, flat[key]]));
+    if (admin || user.id === actor.id) result.email = user.email;
+    if (admin) {
+      for (const key of ["credits", "wallet_balance", "ban_reason"]) result[key] = user[key];
+      for (const key of ["registration_ip", "last_login_ip", "last_seen_ip", "ip_history"]) result[key] = user.metadata?.[key];
+      result.shared_ip_account_count = shared.get(user.id)?.size || 0;
+      result.shared_ip_account_names = [...(shared.get(user.id)?.values() || [])];
+    }
+    return result;
+  });
+  const last = page.at(-1);
+  return { success: true, rows, total: counts[0].total, next_cursor: candidates.length > 25 && last
+    ? Buffer.from(JSON.stringify({ id: last.id, date: last.created_date.toISOString() })).toString("base64url") : null };
+}
+
 export async function getAdminUserSecurity(db, req) {
   requireAdmin(req.user);
   const user = await db.user.findUnique({ where: { id: String(req.body.user_id || "") } });

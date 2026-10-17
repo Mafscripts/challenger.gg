@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useInfiniteQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, effectiveRoleForUser } from "@/lib/roles";
 
@@ -12,10 +12,10 @@ const entities = {
   inventory: "UserInventory", adminActions: "AdminAction", systemLogs: "SystemLog",
   messages: "Message",
 };
-const overviewKeys = ["users", "adminAlerts", "ticketCounts", "wagers", "rankedMatches", "tournaments", "withdrawals", "wallets"];
+const overviewKeys = ["userCount", "adminAlerts", "ticketCounts", "wagers", "rankedMatches", "tournaments", "withdrawals", "wallets"];
 const sectionKeys = {
   dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "adminActions", "systemLogs"],
-  users: ["users", "wallets"], roles: ["users"], alerts: ["adminAlerts", "tickets"],
+  users: ["wallets"], roles: ["users"], alerts: ["adminAlerts", "tickets"],
   tickets: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
   verifyRank: ["users"],
@@ -25,7 +25,7 @@ const sectionKeys = {
   withdrawals: ["withdrawals", "users"], marketplace: ["marketplace"],
   inventory: ["inventory", "users"], audit: ["adminActions", "systemLogs"],
 };
-const queryKeys = [...Object.keys(entities), "ticketCounts", "referralProgram", "animatedNameFreeTrial"];
+const queryKeys = [...Object.keys(entities), "userCount", "ticketCounts", "referralProgram", "animatedNameFreeTrial"];
 const combineQueries = (results) => ({
   data: Object.fromEntries(results.flatMap((result, index) => result.data === undefined ? [] : [[queryKeys[index], result.data]])),
   status: Object.fromEntries(results.map((result, index) => [queryKeys[index], {
@@ -35,6 +35,11 @@ const combineQueries = (results) => ({
 });
 
 async function loadRows(key) {
+  if (key === "userCount") {
+    const response = await base44.functions.invoke("getAdminUserCount", {});
+    if (!response.data?.success) throw new Error(response.data?.error || "Could not load user count");
+    return response.data;
+  }
   if (key === "ticketCounts") {
     const response = await base44.functions.invoke("getAdminTicketCounts", {});
     if (!response.data?.success) throw new Error(response.data?.error || "Could not load ticket counts");
@@ -59,7 +64,7 @@ async function loadRows(key) {
   return response.data.trial;
 }
 
-export function useAdminConsoleData(user, activeTab) {
+export function useAdminConsoleData(user, activeTab, userFilters = {}) {
   const queryClient = useQueryClient();
   const role = effectiveRoleForUser(user);
   const allowed = Boolean(user?.id) && canAccessAdminPanel(role);
@@ -69,6 +74,26 @@ export function useAdminConsoleData(user, activeTab) {
   const required = sectionKeys[activeTab] || sectionKeys.dashboard;
   // Give the opened section priority before starting unrelated overview reads.
   const enabledKeys = new Set([...required, ...(overviewReady ? overviewKeys : [])]);
+  const [userSearch, setUserSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setUserSearch(String(userFilters.search || "").trim()), 300);
+    return () => clearTimeout(timer);
+  }, [userFilters.search]);
+  const userDirectory = useInfiniteQuery({
+    queryKey: ["admin-console", user?.id, role, "userDirectory", userSearch, Boolean(userFilters.sharedOnly)],
+    initialPageParam: null,
+    queryFn: async ({ pageParam }) => {
+      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, shared_only: Boolean(userFilters.sharedOnly) });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not load users");
+      return response.data;
+    },
+    getNextPageParam: (page) => page.next_cursor || undefined,
+    enabled: allowed && activeTab === "users",
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  });
+  const directoryRows = useMemo(() => [...new Map((userDirectory.data?.pages || [])
+    .flatMap((page) => page.rows).map((row) => [row.id, row])).values()], [userDirectory.data]);
   const queries = useQueries({
     queries: queryKeys.map((key) => ({
       queryKey: ["admin-console", user?.id, role, key],
@@ -80,6 +105,8 @@ export function useAdminConsoleData(user, activeTab) {
     combine: combineQueries,
   });
   const sectionLoading = allowed && required.some((key) => !queries.status[key].ready && queries.status[key].pending);
+  const data = useMemo(() => activeTab === "users" ? { ...queries.data, users: directoryRows } : queries.data,
+    [activeTab, queries.data, directoryRows]);
 
   useEffect(() => {
     if (allowed && !sectionLoading) setOverviewScope(scope);
@@ -101,9 +128,20 @@ export function useAdminConsoleData(user, activeTab) {
 
   return {
     ...queries,
+    data,
+    userDirectory: { ...userDirectory, rows: directoryRows, total: userDirectory.data?.pages[0]?.total ?? 0,
+      searchPending: userSearch !== String(userFilters.search || "").trim() },
+    updateUser: (updated) => {
+      if (!updated?.id) return;
+      queryClient.setQueriesData({ queryKey: ["admin-console", user?.id, role, "userDirectory"] }, (current) => current && ({
+        ...current, pages: current.pages.map((page) => ({ ...page,
+          rows: page.rows.map((row) => row.id === updated.id ? { ...row, ...updated } : row),
+        })),
+      }));
+    },
     sectionLoading,
     sectionError: required.find((key) => !queries.status[key].ready && queries.status[key].error),
-    refreshing: [...enabledKeys].some((key) => queries.status[key]?.fetching),
+    refreshing: [...enabledKeys].some((key) => queries.status[key]?.fetching) || (activeTab === "users" && userDirectory.isFetching),
     refresh: () => queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role] }),
   };
 }

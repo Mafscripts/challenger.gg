@@ -269,6 +269,7 @@ const initialAdminTab = () => {
 
 const initialData = {
   users: [],
+  userCount: null,
   adminAlerts: [],
   tickets: [],
   ticketCounts: null,
@@ -551,7 +552,7 @@ export default function Admin() {
   const [animatedNameFreeTrial, setAnimatedNameFreeTrial] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
 
-  const adminQueries = useAdminConsoleData(currentUser, activeTab);
+  const adminQueries = useAdminConsoleData(currentUser, activeTab, { search: searchQuery, sharedOnly: sharedIpOnly });
   const receivedRows = useRef({});
   const receivedScope = useRef(null);
   const loadAdminData = adminQueries.refresh;
@@ -713,17 +714,17 @@ export default function Admin() {
     }));
   }, [data.users, currentRole]);
 
-  const sharedIpCount = (targetUser) => sharedIpAccounts.get(targetUser.id)?.length || 0;
-  const sharedIpAccountNames = (targetUser) => (sharedIpAccounts.get(targetUser.id) || []).map(userName);
+  const sharedIpCount = (targetUser) => targetUser.shared_ip_account_count ?? (sharedIpAccounts.get(targetUser.id)?.length || 0);
+  const sharedIpAccountNames = (targetUser) => targetUser.shared_ip_account_names ?? (sharedIpAccounts.get(targetUser.id) || []).map(userName);
 
   const filteredUsers = useMemo(() => (
-    data.users.filter((user) => {
-      if (activeTab === "users" && sharedIpOnly && canViewUserIps(currentRole) && !(sharedIpAccounts.get(user.id)?.length)) return false;
+    (activeTab === "users" ? adminQueries.userDirectory.rows : data.users).filter((user) => {
+      if (activeTab === "users") return true; // Search and shared-IP filtering cover all accounts on the server.
       const visibleIps = canViewUserIps(currentRole) ? knownIpAddresses(user).join(" ") : "";
       const haystack = `${userName(user)} ${user.email || ""} ${user.role || ""} ${visibleIps}`.toLowerCase();
       return haystack.includes(searchQuery.toLowerCase());
     })
-  ), [activeTab, currentRole, data.users, searchQuery, sharedIpOnly, sharedIpAccounts]);
+  ), [activeTab, currentRole, data.users, searchQuery, adminQueries.userDirectory.rows]);
 
   const auditRows = useMemo(() => ([
     ...data.adminActions.map((row) => ({
@@ -747,7 +748,7 @@ export default function Admin() {
   ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))), [data.adminActions, data.systemLogs]);
 
   const stats = useMemo(() => ({
-    totalUsers: data.users.length,
+    totalUsers: data.userCount?.total ?? 0,
     openTickets: data.ticketCounts?.open ?? 0,
     matchTickets: data.ticketCounts?.match_open ?? 0,
     activeWagers: data.wagers.filter((wager) => ["open", "in_progress", "ready", "score_conflict"].includes(wager.status)).length,
@@ -850,6 +851,7 @@ export default function Admin() {
       });
       if (response.data?.success) {
         toast({ title: "Badges updated", description: `${userName(targetUser)} badges saved.` });
+        adminQueries.updateUser(response.data.user);
         setData((prev) => ({
           ...prev,
           users: prev.users.map((user) => (user.id === targetUser.id ? { ...user, ...response.data.user } : user)),
@@ -899,6 +901,7 @@ export default function Admin() {
         title: "Temporary password set",
         description: `${userName(targetUser)} must create a new password after logging in.`,
       });
+      adminQueries.updateUser(response.data.user);
       setData((prev) => ({
         ...prev,
         users: prev.users.map((row) => (row.id === targetUser.id ? { ...row, ...response.data.user } : row)),
@@ -933,6 +936,7 @@ export default function Admin() {
       }
 
       const updatedUser = response.data.user;
+      adminQueries.updateUser(updatedUser);
       setData((prev) => ({
         ...prev,
         users: prev.users.map((user) => (user.id === targetUser.id ? { ...user, ...updatedUser } : user)),
@@ -1988,7 +1992,7 @@ export default function Admin() {
         />
 
         <div className="admin-stat-grid mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-9">
-          <StatCard icon={Users} label="Users" value={adminQueries.status.users.ready ? stats.totalUsers : "…"} />
+          <StatCard icon={Users} label="Users" value={adminQueries.status.userCount.ready ? stats.totalUsers : "…"} />
           <StatCard icon={BellRing} label="Alerts" value={adminQueries.status.adminAlerts.ready ? stats.openAdminAlerts : "…"} color="text-red-400" />
           <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.ticketCounts.ready ? stats.openTickets : "…"} color="text-orange" />
           <StatCard icon={Gavel} label="Match Tickets" value={adminQueries.status.ticketCounts.ready ? stats.matchTickets : "…"} color="text-yellow-400" />
@@ -2144,7 +2148,7 @@ export default function Admin() {
           {activeTab === "users" && (
             <div className="admin-users p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <div><span className="au-eyebrow">PLAYER DIRECTORY</span><h2 className="text-lg font-bold">Users <span className="au-count">{filteredUsers.length}</span></h2><p className="au-directory-hint">Manage accounts, permissions and account security.</p></div>
+                <div><span className="au-eyebrow">PLAYER DIRECTORY</span><h2 className="text-lg font-bold">Users <span className="au-count">{filteredUsers.length} / {adminQueries.userDirectory.total}</span></h2><p className="au-directory-hint">Manage accounts, permissions and account security.</p></div>
                 <div className="flex flex-wrap items-center gap-2">
                   {canViewUserIps(currentRole) && <button className="au-filter" aria-pressed={sharedIpOnly} onClick={() => setSharedIpOnly((value) => !value)}><CircleAlert size={14} /> Shared IPs</button>}
                 <div className="relative">
@@ -2412,6 +2416,13 @@ export default function Admin() {
                 </table>
                 </div>
               </div>
+              {(adminQueries.userDirectory.isPending || adminQueries.userDirectory.searchPending) && <p role="status" className="mt-4 flex items-center gap-2 text-xs text-vapor"><Loader2 size={14} className="animate-spin" /> Loading players...</p>}
+              {adminQueries.userDirectory.isError && <div role="alert" className="mt-4 text-xs text-red-300"><p>{adminQueries.userDirectory.error?.message || "Could not load players."}</p><button className="mt-2 text-cyan" disabled={adminQueries.userDirectory.isFetching} onClick={() => adminQueries.userDirectory.isFetchNextPageError ? adminQueries.userDirectory.fetchNextPage() : adminQueries.userDirectory.refetch()}>Try again</button></div>}
+              {!filteredUsers.length && !adminQueries.userDirectory.isPending && !adminQueries.userDirectory.isError && !adminQueries.userDirectory.searchPending && <p className="py-8 text-center text-xs text-vapor">No players found.</p>}
+              {!!filteredUsers.length && <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-4"><p className="text-xs text-vapor">{filteredUsers.length} of {adminQueries.userDirectory.total} players loaded</p>
+                {adminQueries.userDirectory.hasNextPage && <button className="inline-flex items-center gap-2 rounded-lg border border-cyan/20 bg-cyan/10 px-4 py-2.5 text-xs font-bold text-cyan hover:bg-cyan/20 disabled:opacity-50" disabled={adminQueries.userDirectory.isFetching || adminQueries.userDirectory.searchPending} onClick={() => adminQueries.userDirectory.fetchNextPage()}>
+                  {adminQueries.userDirectory.isFetchingNextPage ? <Loader2 size={14} className="animate-spin" /> : <ChevronDown size={14} />} Load next 25</button>}
+              </footer>}
             </div>
           )}
 
