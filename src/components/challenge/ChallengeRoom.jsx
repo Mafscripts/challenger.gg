@@ -65,7 +65,7 @@ export default function ChallengeRoom({ match, user, busy, action, onJoin, onRef
       </div>
     </details>}
   </>;
-  const messages = (match.messages || []).map((entry) => ({ id: entry.id, sender_id: entry.user_id, sender_name: entry.user_name, staff_badge: entry.staff, content: entry.text, created_date: entry.at }));
+  const messages = (match.messages || []).map((entry) => ({ id: entry.id, sender_id: entry.user_id, sender_name: entry.user_name, sender_role: entry.sender_role, sender_avatar_url: entry.sender_avatar_url, staff_badge: entry.staff, content: entry.text, created_date: entry.at }));
   return <>
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <Link to="/challenge-a-team" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" />Challenge a Team</Link>

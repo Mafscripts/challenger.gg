@@ -283,7 +283,7 @@ export function createChallengeHandlers({ db = prisma, checkMembership = async (
         const text = String(req.body.message || "").trim(); if (!text || text.length > 1000 || containsBlockedLanguage(text)) fail("Enter an appropriate message (up to 1000 characters)");
         const last = (match.messages || []).findLast((message) => message.user_id === req.user.id);
         if (last && Date.now() - Date.parse(last.at) < 1500) fail("Please slow down", 429);
-        match.messages = [...(match.messages || []), { id: crypto.randomUUID(), user_id: req.user.id, user_name: nameFor(req.user), staff: staff(req), text, at: new Date().toISOString() }].slice(-100); await update(tx, match);
+        match.messages = [...(match.messages || []), { id: crypto.randomUUID(), user_id: req.user.id, user_name: nameFor(req.user), staff: staff(req), sender_role: ["ceo", "super_admin", "admin", "moderator"].find((role) => hasRole(req.user, role)) || "user", sender_avatar_url: req.user.avatar_url || "", text, at: new Date().toISOString() }].slice(-100); await update(tx, match);
       } else fail("Unknown Challenge a Team action");
       return { success: true, match };
     }, { timeout: 20000, maxWait: 10000 });

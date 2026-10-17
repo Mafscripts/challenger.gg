@@ -50,23 +50,32 @@ const displayMessageContent = (message, staff) => (
   staff ? stripStaffPrefix(message.content) : message.content
 );
 
+const staffChatTones = {
+  ceo: { badge: "border-green/25 bg-green/[0.08] text-green", name: "text-green", bubble: "border-green/20 bg-green/[0.035]" },
+  super_admin: { badge: "border-pink-400/25 bg-pink-400/[0.08] text-pink-300", name: "text-pink-300", bubble: "border-pink-400/20 bg-pink-400/[0.035]" },
+  admin: { badge: "border-red-400/25 bg-red-400/[0.08] text-red-300", name: "text-red-300", bubble: "border-red-400/20 bg-red-400/[0.035]" },
+  moderator: { badge: "border-yellow-400/25 bg-yellow-400/[0.08] text-yellow-300", name: "text-yellow-300", bubble: "border-yellow-400/20 bg-yellow-400/[0.035]" },
+  user: { badge: "border-white/15 bg-white/5 text-vapor", name: "text-white", bubble: "border-white/10 bg-white/[0.025]" },
+};
+
 function StaffChatMessage({ message, senderName, senderAvatar, compact, first }) {
   const role = effectiveRoleForUser({ role: message.sender_role, admin_role: message.sender_admin_role || message.admin_role });
   const label = role === "user" ? "Staff" : getRoleConfig(role).label;
+  const tone = staffChatTones[role] || staffChatTones.user;
   return (
     <article aria-label={`${label} message from ${senderName}`} className={`min-w-0 ${first ? "mt-0" : "mt-3"}`}>
       <header className="flex min-w-0 items-center gap-2.5">
-        <Avatar className="h-8 w-8 rounded-lg border border-cyan/20 bg-cyan/[0.07] text-cyan" aria-hidden="true">
+        <Avatar className={`h-8 w-8 rounded-lg border ${tone.badge}`} aria-hidden="true">
           <AvatarImage src={senderAvatar || undefined} alt="" className="object-cover" />
           <AvatarFallback className="rounded-lg bg-transparent"><ShieldCheck className="h-4 w-4" /></AvatarFallback>
         </Avatar>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="min-w-0 break-words text-xs font-bold leading-5 text-white [overflow-wrap:anywhere]">{senderName}</span>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded border border-cyan/20 bg-cyan/[0.07] px-1.5 py-0.5 text-[8px] font-black uppercase leading-3 tracking-wider text-cyan"><ShieldCheck className="h-2.5 w-2.5" aria-hidden="true" />{label}</span>
+          <span className={`min-w-0 break-words text-xs font-bold leading-5 [overflow-wrap:anywhere] ${tone.name}`}>{senderName}</span>
+          <span className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[8px] font-black uppercase leading-3 tracking-wider ${tone.badge}`}><ShieldCheck className="h-2.5 w-2.5" aria-hidden="true" />{label}</span>
         </div>
         <time dateTime={message.created_date} className="shrink-0 self-start pt-1 text-[9px] font-medium tabular-nums text-vapor/65">{formatDate(message.created_date)}</time>
       </header>
-      <p className={`mt-2.5 whitespace-pre-wrap break-words leading-relaxed text-foreground/90 [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[15px]"}`}>{displayMessageContent(message, true)}</p>
+      <div className={`mt-2 w-fit max-w-full rounded-lg border px-3 py-2 ${tone.bubble}`}><p className={`whitespace-pre-wrap break-words leading-relaxed text-foreground/90 [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[15px]"}`}>{displayMessageContent(message, true)}</p></div>
     </article>
   );
 }
