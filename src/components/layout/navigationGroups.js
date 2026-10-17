@@ -1,4 +1,4 @@
-import { Crosshair, DollarSign, Monitor, Search, Swords, Trophy, Users, Zap } from "lucide-react";
+import { Activity, BookOpen, Crosshair, DollarSign, Grid2X2, MessageSquare, Monitor, Package, Search, ShieldCheck, ShoppingBag, Swords, Trophy, Users, Zap } from "lucide-react";
 
 export const challengeNavItem = { label: "Challenge a Team", path: "/challenge-a-team", icon: Crosshair, tone: "purple", isNew: true };
 
@@ -91,8 +91,23 @@ export const topbarPlayNavGroup = {
   ...playNavGroup,
   items: [...playNavGroup.items, { ...challengeNavItem, description: "1v1 to 4v4 team challenges with a separate XP ladder" }],
 };
-export const topbarNavGroups = [topbarPlayNavGroup, navGroups[1], navGroups[2], navGroups[0]];
+const topbarMatchfinderGroup = { ...navGroups[2], playerSearch: true, items: [...navGroups[2].items,
+  { label: "Find Players Chat", description: "Meet players and find your next squad", path: "/find-players", icon: MessageSquare, tone: "cyan" },
+] };
+const topbarTournamentGroup = { ...navGroups[0], items: [...navGroups[0].items,
+  { label: "Topfragg League", description: "Modern Warfare 4 · Coming soon", path: "/league", icon: ShieldCheck, tone: "cyan" },
+] };
+const topbarMoreGroup = { label: "More", icon: Grid2X2, eyebrow: "Explore Topfragg", tone: "cyan", items: [
+  { label: "Marketplace", description: "Browse the item market", path: "/marketplace", icon: ShoppingBag, tone: "cyan" },
+  { label: "Inventory", description: "Your collected items", path: "/inventory", icon: Package, tone: "cyan" },
+  { label: "Trading", description: "Trade with other players", path: "/trading", icon: Activity, tone: "cyan" },
+  { label: "Rules", description: "Platform and competition rules", path: "/rules", icon: BookOpen, tone: "cyan" },
+] };
+export const topbarNavGroups = [topbarPlayNavGroup, navGroups[1], topbarMatchfinderGroup, topbarTournamentGroup, topbarMoreGroup];
 export const topbarMobileSections = mobileNavSections
   .filter((section) => section.label !== "Team challenges")
-  .map((section) => section.label === "Play" ? { ...section, items: topbarPlayNavGroup.items } : section);
+  .map((section) => {
+    const replacement = topbarNavGroups.find((group) => group.label === section.label);
+    return replacement ? { ...section, items: replacement.items } : section;
+  }).concat({ label: "More", items: topbarMoreGroup.items });
 

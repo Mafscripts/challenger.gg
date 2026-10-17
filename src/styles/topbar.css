@@ -68,7 +68,6 @@
 .app-topbar.topbar-clean .nav-destination-copy strong { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
 .app-topbar.topbar-clean .nav-destination-copy small { margin-top: 2px; font-size: 10px; }
 .app-topbar.topbar-clean .nav-mode-new { border-color: hsl(var(--cyan) / .2); background: hsl(var(--cyan) / .06); color: hsl(var(--cyan)); font-size: 7px; font-weight: 750; }
-.app-topbar.topbar-clean .topbar-layout-choice { margin-bottom: 7px; }
 .app-topbar.topbar-clean :is(button,a):focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
 @media (min-width: 1280px) { .app-topbar.topbar-clean .navigation-mobile-toggle { display: none; } }
 @media (min-width: 1280px) and (max-width: 1439px) { .app-topbar.topbar-clean .topbar-shell { gap: 18px; } .app-topbar.topbar-clean .clean-nav-link { gap: 5px; padding-inline: 8px; font-size: 11px; } .app-topbar.topbar-clean .topbar-account-copy { display: none; } }

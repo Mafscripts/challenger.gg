@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Activity, ArrowRight, ChevronRight, History, Swords, Trophy } from "lucide-react";
 import "@/styles/navbar-menus.css";
+import NavbarPlayerSearch from "./NavbarPlayerSearch";
 
 const menuColors = {
   cyan: "hsl(var(--cyan))", green: "hsl(var(--green))", orange: "hsl(var(--orange))",
@@ -25,6 +26,7 @@ function MenuLink({ path, label, description, icon: Icon, tone, active = false, 
 
 export function NavbarDestinations({ group, isActive, onSelect }) {
   return <MenuPanel title={group.label} eyebrow={group.eyebrow} icon={group.icon} tone={group.tone}>
+    {group.playerSearch && <NavbarPlayerSearch onSelect={onSelect} />}
     <div className="nav-destination-links">{group.items.map(item => <MenuLink key={item.path} path={item.path} label={item.label} description={item.description} icon={item.icon} tone={item.tone} isNew={item.isNew} active={isActive(item.path)} onSelect={onSelect} />)}</div>
   </MenuPanel>;
 }

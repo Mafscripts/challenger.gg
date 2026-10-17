@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Wallet, MessageSquare, ChevronDown, ChevronRight, User,
-  Menu, X, House, Trophy, ShoppingBag,
-  Users,
+  Wallet, MessageSquare, ChevronDown, User,
+  Menu, X, House,
   AlertCircle, ExternalLink, LogIn, UserPlus,
-  Activity, History, Settings, Package, LogOut, ShieldCheck, Monitor, Plus, Coins, Search, ArrowRight, Ticket, Crown
+  Activity, History, ShieldCheck, Plus, Coins, Ticket
 } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import NavbarMessageMenu from "./NavbarMessageMenu";
@@ -15,7 +14,7 @@ import { applyNotificationChange } from "@/lib/notificationInbox";
 import TopbarNavigation from "./TopbarNavigation";
 import { topbarMobileSections } from "./navigationGroups";
 import { useNavigationLayout } from "./NavigationLayoutProvider";
-import NavigationLayoutToggle from "./NavigationLayoutToggle";
+import AccountMenu from "./AccountMenu";
 import NavigationChrome from "./NavigationChrome";
 import SidebarBalances from "./SidebarBalances";
 import "@/styles/navbar-profile.css";
@@ -83,11 +82,6 @@ const isStaffUser = (candidate) => (
   || staffRoles.has(candidate?.admin_role)
   || candidate?.is_admin === true
 );
-const isStreamerUser = (candidate) => {
-  const badges = Array.isArray(candidate?.badges) ? candidate.badges : [];
-  return Boolean(candidate?.streamer_badge || candidate?.is_streamer || badges.some((badge) => badge?.type === "streamer"));
-};
-
 const activeMatchStatuses = new Set([
   "accepted",
   "escrow_paid",
@@ -220,9 +214,6 @@ export default function Navbar() {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState("");
   const [messages, setMessages] = useState([]);
-  const [profilePlayerQuery, setProfilePlayerQuery] = useState("");
-  const [profilePlayerResults, setProfilePlayerResults] = useState([]);
-  const [profilePlayerSearching, setProfilePlayerSearching] = useState(false);
   const unreadNotifCount = notifications.filter((notification) => !notification.is_read).length;
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   useEffect(() => {
@@ -361,7 +352,6 @@ export default function Navbar() {
   const accountRole = canSeeAdminLink
     ? (staffRoles.has(user?.admin_role) ? user.admin_role : user?.role || "Staff").replaceAll("_", " ")
     : "Player";
-  const canSeeStreamerShortcut = isStreamerUser(user || authUser);
   const matchHistoryPath = "/my-matches?view=history";
 
   useEffect(() => {
@@ -557,27 +547,6 @@ export default function Navbar() {
     };
   }, []);
 
-  useEffect(() => {
-    const query = profilePlayerQuery.trim();
-    if (!profileOpen || query.length < 2) {
-      setProfilePlayerResults([]);
-      setProfilePlayerSearching(false);
-      return undefined;
-    }
-
-    const timer = window.setTimeout(async () => {
-      setProfilePlayerSearching(true);
-      try {
-        const response = await base44.functions.invoke("searchMessageRecipients", { query });
-        setProfilePlayerResults(response.data?.users || []);
-      } catch {
-        setProfilePlayerResults([]);
-      } finally {
-        setProfilePlayerSearching(false);
-      }
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [profileOpen, profilePlayerQuery]);
 
   useEffect(() => () => {
     if (dropdownCloseTimer.current) window.clearTimeout(dropdownCloseTimer.current);
@@ -1163,120 +1132,15 @@ export default function Navbar() {
           <span className="topbar-account-chevron" aria-hidden="true"><ChevronDown size={14} /></span>
         </button>
 
-        {profileOpen && (
-            <div id="nav-account-menu" className="nav-popover nav-popover-enter nav-profile-popover absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-1rem))] rounded-2xl">
-              <header className="profile-menu-header">
-                <span className="profile-menu-avatar"><User size={20} />{profileAvatar && <img src={profileAvatar} alt="" onError={event => { event.currentTarget.style.display = "none"; }} />}</span>
-                <div className="profile-menu-identity"><p>Your Topfragg account</p><strong>{accountName}</strong></div>
-                <span className="profile-menu-role">{accountRole}</span>
-              </header>
-              {canSeeAdminLink && (
-                <div className="profile-menu-admin-access">
-                  <Link to="/admin" onClick={() => setProfileOpen(false)} className="profile-menu-link profile-menu-admin-shortcut">
-                    <span className="profile-menu-item-icon"><ShieldCheck size={16} aria-hidden="true" /></span>
-                    <span className="profile-menu-link-label">Admin Panel</span>
-                    <ChevronRight size={15} className="profile-menu-link-arrow" aria-hidden="true" />
-                  </Link>
-                </div>
-              )}
-              <div className="profile-menu-scroll">
-              <div>
-                <div className="profile-menu-search">
-                  <Search className="h-4 w-4 shrink-0 text-vapor" />
-                  <input
-                    value={profilePlayerQuery}
-                    onChange={(event) => setProfilePlayerQuery(event.target.value)}
-                    onKeyDown={(event) => event.stopPropagation()}
-                    placeholder="Search players..."
-                    aria-label="Search Topfragg players"
-                  />
-                </div>
-                {profilePlayerQuery.trim().length >= 2 && (
-                  <div className="profile-menu-search-results">
-                    {profilePlayerSearching ? (
-                      <p className="px-3 py-5 text-center text-xs text-vapor">Searching...</p>
-                    ) : profilePlayerResults.length === 0 ? (
-                      <p className="px-3 py-5 text-center text-xs text-vapor">No players found</p>
-                    ) : profilePlayerResults.map((player) => (
-                      <Link
-                        key={player.id}
-                        to={`/profile/${player.username || player.id}`}
-                        onClick={() => {
-                          setProfileOpen(false);
-                          setProfilePlayerQuery("");
-                        }}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-vapor transition-colors hover:bg-white/[0.04] hover:text-foreground"
-                      >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-cyan">
-                          {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : <User className="h-4 w-4" />}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-bold">{player.name}</span>
-                          <span className="block truncate text-[10px] text-vapor">@{player.handle || player.username || "player"}</span>
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <ProfileMenuSection
-                label="Account"
-                items={[
-                  { label: "My Profile", path: profilePath, icon: User },
-                  { label: "My Tickets", path: "/my-tickets", icon: Ticket },
-                  { label: "My Matches", path: "/my-matches", icon: History },
-                  { label: "Teams", path: "/teams", icon: Users },
-                  { label: "Wallet", path: "/wallet", icon: Wallet },
-                  { label: "Settings", path: "/settings", icon: Settings },
-                ]}
-                onSelect={() => setProfileOpen(false)}
-              />
-              <ProfileMenuSection
-                label="Competitive"
-                items={[
-                  { label: "Topfragg League", path: "/league", icon: ShieldCheck, featuredLeague: true },
-                  { label: "My Ranked Stats", path: "/ranked", icon: Trophy },
-                  ...(canSeeStreamerShortcut ? [{ label: "Streamer Tournaments", path: "/streamer-tournaments", icon: Monitor }] : []),
-                ]}
-                onSelect={() => setProfileOpen(false)}
-              />
-              <ProfileMenuSection
-                label="Premium"
-                items={[
-                  { label: "Topfragg Premium", path: "/premium", icon: Crown },
-                ]}
-                onSelect={() => setProfileOpen(false)}
-              />
-              <ProfileMenuSection
-                label="Community"
-                items={[
-                  { label: "Find Players Chat", path: "/find-players", icon: MessageSquare },
-                  { label: "Rules", path: "/rules", icon: ShieldCheck },
-                ]}
-                onSelect={() => setProfileOpen(false)}
-              />
-              <ProfileMenuSection
-                label="Collection"
-                items={[
-                  { label: "Marketplace", path: "/marketplace", icon: ShoppingBag },
-                  { label: "Inventory", path: "/inventory", icon: Package },
-                  { label: "Trading", path: "/trading", icon: Activity },
-                ]}
-                onSelect={() => setProfileOpen(false)}
-              />
-              </div>
-              <div className="profile-menu-footer">
-                {!sidebarDesktop && <div className="topbar-layout-choice"><NavigationLayoutToggle showLabel /></div>}
-                <Link
-                  to="/logout"
-                  onClick={() => setProfileOpen(false)}
-                  className="profile-menu-logout"
-                >
-                  <span><LogOut size={15} />Log out</span><ChevronRight size={13} />
-                </Link>
-              </div>
-            </div>
-        )}
+        {profileOpen && <AccountMenu
+          name={accountName}
+          role={accountRole}
+          avatar={profileAvatar}
+          profilePath={profilePath}
+          staff={canSeeAdminLink}
+          sidebar={sidebarDesktop}
+          onClose={() => setProfileOpen(false)}
+        />}
       </div>
         </>
       ) : (
@@ -1596,44 +1460,6 @@ export default function Navbar() {
           </div>
       )}
     </>
-  );
-}
-
-function ProfileMenuSection({ label, items, onSelect }) {
-  return (
-    <section className="profile-menu-section" data-section={label}>
-      <p>{label}</p>
-      <div className="profile-menu-section-links">
-      {items.map((item) => {
-        const Icon = item.icon;
-
-        if (item.featuredLeague) return (
-          <Link key={item.path} to={item.path} onClick={onSelect} className="profile-league-menu-link">
-            <span className="profile-league-menu-icon"><Icon className="h-5 w-5" aria-hidden="true" /></span>
-            <span className="profile-league-menu-copy">
-              <span className="profile-league-menu-title">{item.label}</span>
-              <span className="profile-league-menu-description">Modern Warfare <span className="text-yellow-300">4</span><span aria-hidden="true"> · </span>13 divisions</span>
-              <span className="profile-league-menu-status">Coming soon</span>
-            </span>
-            <ArrowRight className="profile-league-menu-arrow h-4 w-4" aria-hidden="true" />
-          </Link>
-        );
-
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            onClick={onSelect}
-            className="profile-menu-link"
-          >
-            <span className="profile-menu-item-icon"><Icon size={14} aria-hidden="true" /></span>
-            <span className="profile-menu-link-label">{item.label}</span>
-            <ChevronRight className="profile-menu-link-arrow" size={12} aria-hidden="true" />
-          </Link>
-        );
-      })}
-      </div>
-    </section>
   );
 }
 
