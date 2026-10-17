@@ -54,7 +54,7 @@ function StaffChatMessage({ message, senderName, senderAvatar, compact, first })
   const role = effectiveRoleForUser({ role: message.sender_role, admin_role: message.sender_admin_role || message.admin_role });
   const label = role === "user" ? "Staff" : getRoleConfig(role).label;
   return (
-    <article aria-label={`${label} message from ${senderName}`} className={`min-w-0 rounded-xl border border-white/[0.09] border-l-2 border-l-cyan/60 bg-transparent p-3 shadow-[0_4px_16px_-12px_rgba(0,0,0,0.6)] ${first ? "mt-0" : "mt-3"}`}>
+    <article aria-label={`${label} message from ${senderName}`} className={`min-w-0 ${first ? "mt-0" : "mt-3"}`}>
       <header className="flex min-w-0 items-center gap-2.5">
         <Avatar className="h-8 w-8 rounded-lg border border-cyan/20 bg-cyan/[0.07] text-cyan" aria-hidden="true">
           <AvatarImage src={senderAvatar || undefined} alt="" className="object-cover" />
