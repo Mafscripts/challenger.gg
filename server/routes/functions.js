@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
+import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket } from "../admin-tickets.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
@@ -5411,8 +5412,11 @@ async function resolveTicket(req) {
   let actionResult = null;
 
   if (ticket.dispute_id && !action) {
-    actionResult = await moderateDispute({ ...req, body: { dispute_id: ticket.dispute_id, action: "resolve_dispute", notes: req.body.resolution || req.body.notes || "Resolved by staff" } });
-    if (actionResult?.success === false) return actionResult;
+    const linkedDispute = await getEntity("Dispute", ticket.dispute_id);
+    if (linkedDispute && !["resolved", "closed", "rejected"].includes(linkedDispute.status)) {
+      actionResult = await moderateDispute({ ...req, body: { dispute_id: ticket.dispute_id, action: "resolve_dispute", notes: req.body.resolution || req.body.notes || "Resolved by staff" } });
+      if (actionResult?.success === false) return actionResult;
+    }
   }
 
   if (action && ["approve_team_a", "approve_team_b", "force_replay"].includes(action) && ticket.match_id) {
@@ -10937,6 +10941,9 @@ async function postDiscordCelebration(req) {
 
 const handlers = {
   ...challengeHandlers,
+  getAdminTickets: (req) => getAdminTickets(prisma, req.user, req.body),
+  getAdminTicketCounts: (req) => getAdminTicketCounts(prisma, req.user),
+  deleteAdminTicket: (req) => deleteAdminTicket(prisma, req.user, req.body),
   completeRegistration,
   createWallet: completeRegistration,
   createTicket,

@@ -12,11 +12,11 @@ const entities = {
   inventory: "UserInventory", adminActions: "AdminAction", systemLogs: "SystemLog",
   messages: "Message",
 };
-const overviewKeys = ["users", "adminAlerts", "tickets", "disputes", "wagers", "rankedMatches", "tournaments", "withdrawals", "wallets"];
+const overviewKeys = ["users", "adminAlerts", "ticketCounts", "wagers", "rankedMatches", "tournaments", "withdrawals", "wallets"];
 const sectionKeys = {
   dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "adminActions", "systemLogs"],
   users: ["users", "wallets"], roles: ["users"], alerts: ["adminAlerts", "tickets"],
-  tickets: ["tickets", "messages"], disputes: ["disputes", "tickets"], wagers: ["wagers"],
+  tickets: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
   verifyRank: ["users"],
   tournaments: ["tournaments", "tournamentMatches", "tournamentParticipants", "users", "marketplace"],
@@ -25,7 +25,7 @@ const sectionKeys = {
   withdrawals: ["withdrawals", "users"], marketplace: ["marketplace"],
   inventory: ["inventory", "users"], audit: ["adminActions", "systemLogs"],
 };
-const queryKeys = [...Object.keys(entities), "referralProgram", "animatedNameFreeTrial"];
+const queryKeys = [...Object.keys(entities), "ticketCounts", "referralProgram", "animatedNameFreeTrial"];
 const combineQueries = (results) => ({
   data: Object.fromEntries(results.flatMap((result, index) => result.data === undefined ? [] : [[queryKeys[index], result.data]])),
   status: Object.fromEntries(results.map((result, index) => [queryKeys[index], {
@@ -35,6 +35,11 @@ const combineQueries = (results) => ({
 });
 
 async function loadRows(key) {
+  if (key === "ticketCounts") {
+    const response = await base44.functions.invoke("getAdminTicketCounts", {});
+    if (!response.data?.success) throw new Error(response.data?.error || "Could not load ticket counts");
+    return response.data;
+  }
   if (entities[key]) {
     try {
       return await base44.entities[entities[key]].filterFresh({}, "-created_date", 500);

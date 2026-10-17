@@ -57,7 +57,7 @@ import { getRankForElo } from "@/lib/ranks";
 import { disputeReasonLabel } from "@/lib/matchDisputes";
 
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
-const DisputeReviewCard = lazy(() => import("@/components/admin/DisputeReviewCard"));
+const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
 const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGamesAdmin"));
 const ChallengeTeamAdmin = lazy(() => import("@/components/admin/ChallengeTeamAdmin"));
 
@@ -242,7 +242,6 @@ const tabs = [
   { id: "roles", label: "Roles", icon: KeyRound },
   { id: "alerts", label: "Alerts", icon: BellRing },
   { id: "tickets", label: "Tickets", icon: Ticket },
-  { id: "disputes", label: "Disputes", icon: Gavel },
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
   { id: "live8s", label: "Live 8s Rooms", icon: Radio },
   { id: "challenges", label: "Challenge a Team", icon: Swords },
@@ -262,6 +261,7 @@ const tabs = [
 const initialAdminTab = () => {
   if (typeof window === "undefined") return "dashboard";
   const requested = new URLSearchParams(window.location.search).get("tab") || window.sessionStorage.getItem("adminActiveTab");
+  if (requested === "disputes") return "tickets";
   return tabs.some((tab) => tab.id === requested) ? requested : "dashboard";
 };
 
@@ -269,6 +269,7 @@ const initialData = {
   users: [],
   adminAlerts: [],
   tickets: [],
+  ticketCounts: null,
   disputes: [],
   wagers: [],
   eightsMatches: [],
@@ -766,8 +767,8 @@ export default function Admin() {
 
   const stats = useMemo(() => ({
     totalUsers: data.users.length,
-    openTickets: data.tickets.filter((ticket) => !["resolved", "closed"].includes(ticket.status)).length,
-    pendingDisputes: data.disputes.filter((dispute) => ["pending", "under_review"].includes(dispute.status)).length,
+    openTickets: data.ticketCounts?.open ?? 0,
+    matchTickets: data.ticketCounts?.match_open ?? 0,
     activeWagers: data.wagers.filter((wager) => ["open", "in_progress", "ready", "score_conflict"].includes(wager.status)).length,
     activeRanked: data.rankedMatches.filter((match) => ["open", "ready_check", "ready", "in_progress", "score_conflict"].includes(match.status)).length,
     activeTournaments: data.tournaments.filter((tournament) => ["live", "in_progress", "registration", "open"].includes(tournament.status)).length,
@@ -2045,8 +2046,8 @@ export default function Admin() {
         <div className="admin-stat-grid mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-9">
           <StatCard icon={Users} label="Users" value={adminQueries.status.users.ready ? stats.totalUsers : "…"} />
           <StatCard icon={BellRing} label="Alerts" value={adminQueries.status.adminAlerts.ready ? stats.openAdminAlerts : "…"} color="text-red-400" />
-          <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.tickets.ready ? stats.openTickets : "…"} color="text-orange" />
-          <StatCard icon={Gavel} label="Disputes" value={adminQueries.status.disputes.ready ? stats.pendingDisputes : "…"} color="text-yellow-400" />
+          <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.ticketCounts.ready ? stats.openTickets : "…"} color="text-orange" />
+          <StatCard icon={Gavel} label="Match Tickets" value={adminQueries.status.ticketCounts.ready ? stats.matchTickets : "…"} color="text-yellow-400" />
           <StatCard icon={BadgeDollarSign} label="Wagers" value={adminQueries.status.wagers.ready ? stats.activeWagers : "…"} color="text-green" />
           <StatCard icon={Swords} label="Ranked" value={adminQueries.status.rankedMatches.ready ? stats.activeRanked : "…"} color="text-cyan" />
           <StatCard icon={Trophy} label="Tournaments" value={adminQueries.status.tournaments.ready ? stats.activeTournaments : "…"} color="text-purple-400" />
@@ -2069,7 +2070,7 @@ export default function Admin() {
                 <SummaryPanel title="Support Queue" rows={[
                   ["Open alerts", stats.openAdminAlerts],
                   ["Open tickets", stats.openTickets],
-                  ["Pending disputes", stats.pendingDisputes],
+                  ["Open match tickets", stats.matchTickets],
                 ]} />
                 <SummaryPanel title="Match Activity" rows={[
                   ["Active wagers", stats.activeWagers],
@@ -2581,15 +2582,15 @@ export default function Admin() {
           )}
 
           {activeTab === "tickets" && (
-            <ListSection
-              title="Support Tickets"
-              rows={data.tickets}
-              empty="No support tickets."
-              render={(ticket) => {
+            <AdminTickets
+              user={currentUser}
+              onRefresh={loadAdminData}
+              renderTicket={(ticket, linkedDisputes) => {
                 const messages = messagesForTicket(ticket);
                 const notes = ticket.internal_notes || [];
                 const proofUrls = ticketProofUrls(ticket);
-                const isResolved = ["resolved", "closed"].includes(ticket.status);
+                const isResolved = ["resolved", "closed", "rejected"].includes(ticket.status);
+                const hasOpenMatchCase = linkedDisputes.some((dispute) => !["resolved", "closed", "rejected"].includes(dispute.status));
                 return (
                   <div className="px-5 py-4 space-y-4">
                     <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
@@ -2727,7 +2728,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    {!isResolved && (
+                    {!isResolved && !hasOpenMatchCase && (
                       <div className="rounded-lg bg-secondary/30 border border-white/5 p-3">
                         <textarea
                           value={ticketResolutionDrafts[ticket.id] || ""}
@@ -2736,7 +2737,7 @@ export default function Admin() {
                           className="w-full min-h-[64px] px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none mb-3"
                         />
                         <div className="flex flex-wrap gap-2">
-                          {ticket.match_id && [
+                          {ticket.match_id && linkedDisputes.length === 0 && [
                             ["approve_team_a", `Choose ${ticket.team_a_name || "Team A"}`],
                             ["approve_team_b", `Choose ${ticket.team_b_name || "Team B"}`],
                             ["force_replay", "Force Replay"],
@@ -2766,11 +2767,6 @@ export default function Admin() {
             />
           )}
 
-          {activeTab === "disputes" && (
-            <ListSection title="Disputes" rows={data.disputes} empty="No disputes." render={(dispute) => (
-              <DisputeReviewCard dispute={dispute} ticket={ticketById[dispute.ticket_id]} onRefresh={loadAdminData} />
-            )} />
-          )}
           {activeTab === "wagers" && (
             <ListSection title="Wagers" rows={data.wagers} empty="No wagers." render={(wager) => (
               <RowGrid columns={[
