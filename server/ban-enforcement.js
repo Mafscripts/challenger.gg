@@ -1,5 +1,6 @@
 import net from "node:net";
 import { prisma } from "./prisma.js";
+import { isCloudflareIp } from "../src/lib/cloudflareIps.js";
 
 export const normalizeIpAddress = (value) => {
   let ip = String(value || "").trim();
@@ -22,21 +23,53 @@ export const normalizeIpAddress = (value) => {
 const isTrackableIp = (value) => {
   const ip = normalizeIpAddress(value);
   if (!ip) return false;
+  if (isCloudflareIp(ip)) return false;
   if (ip === "0.0.0.0" || ip === "::") return false;
   if (ip === "::1" || ip.startsWith("127.")) return false;
   if (ip.startsWith("169.254.") || ip.startsWith("fe80:")) return false;
   if (ip.startsWith("10.") || ip.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return false;
   if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip) || /^f[cd]/.test(ip)) return false;
+  if (net.isIP(ip) === 4 && Number(ip.split(".")[0]) >= 224) return false;
   return true;
 };
 
 export const requestIpAddress = (req) => {
-  const ip = normalizeIpAddress(req.ip || req.socket?.remoteAddress);
-  if (isTrackableIp(ip)) return ip;
   const peer = normalizeIpAddress(req.socket?.remoteAddress);
   const trust = req.app?.get("trust proxy fn");
-  // Only a trusted proxy may supply this fallback; direct client headers are ignored.
-  if (peer && typeof trust === "function" && trust(peer, 0) && !req.headers?.["x-forwarded-for"]) {
+  const trusted = (ip, hop) => isCloudflareIp(ip) || (typeof trust === "function" && trust(ip, hop));
+  const forwarded = String(req.headers?.["x-forwarded-for"] || "").split(",").map((ip) => ip.trim()).filter(Boolean).reverse();
+  if (forwarded.length > 64) return null;
+  let current = peer;
+  let cloudflareSeen = isCloudflareIp(current);
+  let hop = 0;
+  // Walk from the TCP peer towards the visitor, stopping at the first untrusted
+  // hop. A client cannot gain trust by inserting a Cloudflare address on the left.
+  for (const value of forwarded) {
+    if (!current || !trusted(current, hop)) break;
+    if (isCloudflareIp(current)) cloudflareSeen = true;
+    const next = normalizeIpAddress(value);
+    if (!next) return null;
+    current = next;
+    hop += 1;
+    if (cloudflareSeen && !isCloudflareIp(current)) break;
+  }
+  cloudflareSeen ||= isCloudflareIp(current);
+  if (cloudflareSeen) {
+    // Cloudflare supplies this header. Accept it only after establishing an
+    // actual Cloudflare hop through the trusted right-hand side of the chain.
+    const visitor = normalizeIpAddress(req.headers?.["cf-connecting-ip"]);
+    if (isTrackableIp(visitor)) return visitor;
+    if (visitor && /^(24\d|25[0-5])\./.test(visitor)) {
+      const ipv6 = normalizeIpAddress(req.headers?.["cf-connecting-ipv6"]);
+      if (net.isIP(ipv6 || "") === 6 && isTrackableIp(ipv6)) return ipv6;
+    }
+    return isTrackableIp(current) ? current : null;
+  }
+  if (isTrackableIp(current)) return current;
+  // Support deployments where Express has already restored the visitor address.
+  const ip = normalizeIpAddress(req.ip);
+  if (isTrackableIp(ip)) return ip;
+  if (peer && typeof trust === "function" && trust(peer, 0) && !forwarded.length) {
     const realIp = normalizeIpAddress(req.headers?.["x-real-ip"]);
     if (isTrackableIp(realIp)) return realIp;
   }
@@ -85,7 +118,7 @@ const findActiveScopedBan = async (scope, field, value) => {
 
 export const findActiveIpBan = async (ip) => {
   const normalizedIp = normalizeIpAddress(ip);
-  return normalizedIp ? findActiveScopedBan("ip", "ip", normalizedIp) : null;
+  return isTrackableIp(normalizedIp) ? findActiveScopedBan("ip", "ip", normalizedIp) : null;
 };
 
 export const findActiveEmailBan = async (email) => {

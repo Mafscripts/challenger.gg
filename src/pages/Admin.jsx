@@ -44,6 +44,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import UserSecurityPanel from "@/components/admin/UserSecurityPanel";
 import DeleteUserAccount from "@/components/admin/DeleteUserAccount";
 import "@/styles/admin-users.css";
+import { isCloudflareIp } from "@/lib/cloudflareIps";
 import { toast } from "@/components/ui/use-toast";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
@@ -343,9 +344,12 @@ const ipComparisonKey = (value) => {
 };
 const isTrackableUserIp = (value) => {
   const ip = ipComparisonKey(value);
+  if (isCloudflareIp(ip)) return false;
   if (!ip || ip === "0.0.0.0" || ip === "::" || ip === "::1" || ip.startsWith("127.") || ip.startsWith("169.254.") || ip.startsWith("fe80:")) return false;
   if (ip.startsWith("10.") || ip.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(ip) || /^f[cd]/.test(ip)) return false;
   if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip)) return false;
+  if (!ip.includes(":") && Number(ip.split(".")[0]) >= 224) return false;
+  if (!ip.includes(":") && Number(ip.split(".")[0]) >= 224) return false;
   return true;
 };
 const knownIpAddresses = (user) => [...new Map([

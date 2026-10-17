@@ -19,6 +19,7 @@ export default function UserSecurityPanel({ user, onBanIps, busy }) {
     {query.isPending && <p className="au-hint"><Loader2 size={14} className="animate-spin" /> Loading account security...</p>}
     {query.isError && <p role="alert" className="au-error">{query.error.message} <button onClick={() => query.refetch()}>Retry</button></p>}
     {security && <>
+      {!!security.excluded_proxy_ip_count && <p className="au-hint">{security.excluded_proxy_ip_count} Cloudflare proxy {security.excluded_proxy_ip_count === 1 ? "address was" : "addresses were"} excluded from account matching. Only visitor IPs are compared.</p>}
       {security.ips.length ? <div className="au-ip-list">{security.ips.map((ip) => <div key={ip}><code>{ip}</code><span>{security.shared_accounts.some((account) => account.shared_ips.includes(ip)) ? "Shared IP" : "Recorded"}</span></div>)}</div>
         : <p className="au-hint">No public IP recorded yet. An address is saved when this player next signs in or uses an active session.</p>}
       {!security.incoming_ip_captured && <p className="au-diagnostic">This request has no public client IP. Check the production proxy headers and TRUST_PROXY setting.</p>}

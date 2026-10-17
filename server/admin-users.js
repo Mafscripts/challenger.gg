@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { hasRole } from "./roles.js";
-import { knownUserIpAddresses, requestIpAddress } from "./ban-enforcement.js";
+import { knownUserIpAddresses, normalizeIpAddress, requestIpAddress } from "./ban-enforcement.js";
 import { effectiveRoleForUser, hasRolePower } from "../src/lib/roles.js";
+import { isCloudflareIp } from "../src/lib/cloudflareIps.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const requireAdmin = (actor) => { if (!hasRole(actor, "admin")) fail("Admin access required", 403); };
@@ -24,7 +25,11 @@ export async function getAdminUserSecurity(db, req) {
     return matching.length ? [{ id: candidate.id, username: candidate.username, name: nameFor(candidate),
       shared_ips: matching, is_banned: candidate.is_banned, created_date: candidate.created_date }] : [];
   });
-  return { success: true, ips, history: user.metadata?.ip_history || [], shared_accounts: shared,
+  const history = Array.isArray(user.metadata?.ip_history) ? user.metadata.ip_history : [];
+  const proxyIps = new Set([user.metadata?.registration_ip, user.metadata?.last_login_ip, user.metadata?.last_seen_ip,
+    ...history.map((entry) => entry?.ip)].filter(isCloudflareIp));
+  return { success: true, ips, history: history.filter((entry) => ips.includes(normalizeIpAddress(entry?.ip))), shared_accounts: shared,
+    excluded_proxy_ip_count: proxyIps.size,
     incoming_ip_captured: Boolean(requestIpAddress(req)),
     proxy_header_present: Boolean(req.headers["x-forwarded-for"] || req.headers["x-real-ip"]),
   };

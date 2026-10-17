@@ -46,6 +46,8 @@ only when you intentionally want to run the website without the local API.
 
 The API trusts loopback proxies by default, for Nginx running on the same host. For other deployments, set `TRUST_PROXY` to the trusted proxy addresses/CIDRs or hop count. Use `TRUST_PROXY=false` to disable proxy trust. The proxy must send `X-Forwarded-For` (or `X-Real-IP` when no forwarded chain is present). IPs are captured at registration, login and when an authenticated session first uses a different public address; private/loopback addresses are excluded.
 
+For Cloudflare -> Nginx -> API, preserve the chain using `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`. The API recognizes Cloudflare's published networks and only accepts `CF-Connecting-IP` after verifying a Cloudflare hop from the TCP peer through trusted proxies. Cloudflare edge addresses are excluded from player-IP matching, visitor history and IP-ban targets, including previously stored addresses. Real visitor addresses populate on subsequent activity. Keep `src/lib/cloudflareIps.js` aligned with Cloudflare's official IPv4/IPv6 lists. Do not replace the chain with unverified client-supplied headers.
+
 **Publish your changes**
 
 Open [Base44.com](http://Base44.com) and click on Publish.
