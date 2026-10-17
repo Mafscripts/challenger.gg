@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, Send, Shield } from "lucide-react";
+import { MessageSquare, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { createMatchChatFeed } from "@/lib/matchChatFeed";
+import { effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const chatAccent = {
   icon: "text-blue-400",
@@ -47,6 +49,27 @@ const isStaffMessage = (message) => {
 const displayMessageContent = (message, staff) => (
   staff ? stripStaffPrefix(message.content) : message.content
 );
+
+function StaffChatMessage({ message, senderName, senderAvatar, compact, first }) {
+  const role = effectiveRoleForUser({ role: message.sender_role, admin_role: message.sender_admin_role || message.admin_role });
+  const label = role === "user" ? "Staff" : getRoleConfig(role).label;
+  return (
+    <article aria-label={`${label} message from ${senderName}`} className={`min-w-0 rounded-xl border border-white/[0.09] border-l-2 border-l-cyan/60 bg-[var(--arena-raised)] p-3 shadow-[0_4px_16px_-12px_rgba(0,0,0,0.6)] ${first ? "mt-0" : "mt-3"}`}>
+      <header className="flex min-w-0 items-center gap-2.5">
+        <Avatar className="h-8 w-8 rounded-lg border border-cyan/20 bg-cyan/[0.07] text-cyan" aria-hidden="true">
+          <AvatarImage src={senderAvatar || undefined} alt="" className="object-cover" />
+          <AvatarFallback className="rounded-lg bg-transparent"><ShieldCheck className="h-4 w-4" /></AvatarFallback>
+        </Avatar>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="min-w-0 break-words text-xs font-bold leading-5 text-white [overflow-wrap:anywhere]">{senderName}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded border border-cyan/20 bg-cyan/[0.07] px-1.5 py-0.5 text-[8px] font-black uppercase leading-3 tracking-wider text-cyan"><ShieldCheck className="h-2.5 w-2.5" aria-hidden="true" />{label}</span>
+        </div>
+        <time dateTime={message.created_date} className="shrink-0 self-start pt-1 text-[9px] font-medium tabular-nums text-vapor/65">{formatDate(message.created_date)}</time>
+      </header>
+      <p className={`mt-2.5 whitespace-pre-wrap break-words leading-relaxed text-foreground/90 [overflow-wrap:anywhere] ${compact ? "text-[13px]" : "text-[15px]"}`}>{displayMessageContent(message, true)}</p>
+    </article>
+  );
+}
 
 const playerIdentifiers = (player) => {
   if (typeof player === "string") return [player];
@@ -285,7 +308,7 @@ function MatchChatView({
         <h3 className="font-bold text-sm flex items-center gap-2">
           <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> {title}
         </h3>
-        <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} messages` : "No messages"}</span>
+        <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} ${messages.length === 1 ? "message" : "messages"}` : "No messages"}</span>
       </div>
       {loadError && <div role="status" className="flex shrink-0 items-center justify-between gap-2 border-b border-orange/20 px-3 py-2 text-[11px] text-orange"><span>{live ? "Chat connection interrupted. Retrying..." : "Could not load chat."}</span><button type="button" onClick={() => refreshRef.current?.()} className="shrink-0 font-bold underline">Retry</button></div>}
       <div ref={chatBodyRef} onScroll={(event) => { const body = event.currentTarget; followingChatRef.current = body.scrollHeight - body.scrollTop - body.clientHeight < 96; }} className={`min-h-0 flex-1 overflow-y-auto bg-[var(--arena-inset)] ${compact ? "p-3" : "p-4"}`}>
@@ -320,6 +343,7 @@ function MatchChatView({
             || senderPlayer?.display_name_color
             || "";
           const senderAvatar = message.sender_avatar_url || senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "") || "";
+          if (staff) return <StaffChatMessage key={message.id} message={message} senderName={senderName} senderAvatar={senderAvatar} compact={compact} first={messageIndex === 0} />;
           const previousMessage = messages[messageIndex - 1];
           const groupedWithPrevious = Boolean(
             previousMessage
@@ -329,13 +353,6 @@ function MatchChatView({
           );
           const avatar = groupedWithPrevious ? (
             <span className="w-9 shrink-0" aria-hidden="true" />
-          ) : staff ? (
-            <span className="flex w-9 shrink-0 flex-col items-center justify-center gap-1 text-center">
-              <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-red-400/35 bg-red-500/10 text-red-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_2px_6px_rgba(0,0,0,0.2)]">
-                <Shield className="h-[17px] w-[17px] fill-red-500/15" />
-              </span>
-              <span className="block w-full text-center text-[7px] font-black uppercase leading-none tracking-[0.08em] text-red-300">Admin</span>
-            </span>
           ) : (
             <span className="flex w-9 shrink-0 justify-center">
               <span className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-black/30 text-[10px] font-black ${teamTone?.border || "border-white/10 text-white"}`}>
