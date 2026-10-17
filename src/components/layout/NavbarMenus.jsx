@@ -9,23 +9,23 @@ const menuColors = {
 };
 
 function MenuPanel({ title, eyebrow, icon: Icon, tone, children }) {
-  return <div className="nav-popover nav-popover-enter nav-destination-popover absolute left-0 top-12 z-50 w-[360px] overflow-hidden rounded-2xl" style={{ "--menu-accent": menuColors[tone] || menuColors.cyan }} aria-label={`${title} navigation`}>
+  return <div id={`nav-menu-${title.toLowerCase().replaceAll(" ", "-")}`} className="nav-popover nav-popover-enter nav-destination-popover absolute left-0 top-12 z-50 w-[360px] overflow-hidden rounded-2xl" style={{ "--menu-accent": menuColors[tone] || menuColors.cyan }} aria-label={`${title} navigation`}>
     <header className="nav-destination-header"><div><p>{eyebrow}</p><h3>{title}<span aria-hidden="true" /></h3></div><span className="nav-destination-header-icon" aria-hidden="true"><Icon size={21} /></span></header>
     {children}
   </div>;
 }
 
-function MenuLink({ path, label, description, icon: Icon, tone, active = false, onSelect, children }) {
+function MenuLink({ path, label, description, icon: Icon, tone, active = false, onSelect, children, isNew = false }) {
   return <Link to={path} onClick={onSelect} className="nav-destination-link" data-active={active} aria-current={active ? "page" : undefined} style={{ "--menu-item-accent": menuColors[tone] || menuColors.cyan }}>
     <span className="nav-destination-icon" aria-hidden="true"><Icon size={18} /></span>
-    <span className="nav-destination-copy"><strong>{label}</strong>{description && <small>{description}</small>}{children}</span>
+    <span className="nav-destination-copy"><strong>{label}{isNew && <span className="challenge-new-tag nav-mode-new">New</span>}</strong>{description && <small>{description}</small>}{children}</span>
     {active ? <span className="nav-destination-current">Current</span> : <ChevronRight className="nav-destination-arrow" size={14} aria-hidden="true" />}
   </Link>;
 }
 
 export function NavbarDestinations({ group, isActive, onSelect }) {
   return <MenuPanel title={group.label} eyebrow={group.eyebrow} icon={group.icon} tone={group.tone}>
-    <div className="nav-destination-links">{group.items.map(item => <MenuLink key={item.path} path={item.path} label={item.label} description={item.description} icon={item.icon} tone={item.tone} active={isActive(item.path)} onSelect={onSelect} />)}</div>
+    <div className="nav-destination-links">{group.items.map(item => <MenuLink key={item.path} path={item.path} label={item.label} description={item.description} icon={item.icon} tone={item.tone} isNew={item.isNew} active={isActive(item.path)} onSelect={onSelect} />)}</div>
   </MenuPanel>;
 }
 

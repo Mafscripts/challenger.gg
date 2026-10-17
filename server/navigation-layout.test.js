@@ -62,6 +62,7 @@ test("real layout controls render both choices, preserve Free/Money 8s navigatio
       import Sidebar from "./src/components/layout/Sidebar.jsx";
       import NavigationChrome from "./src/components/layout/NavigationChrome.jsx";
       import SidebarBalances from "./src/components/layout/SidebarBalances.jsx";
+      import TopbarNavigation from "./src/components/layout/TopbarNavigation.jsx";
       export function render(user, route) {
         setTestUser(user);
         return renderToStaticMarkup(<MemoryRouter initialEntries={[route]}><NavigationLayoutProvider><Sidebar /><NavigationLayoutSection /></NavigationLayoutProvider></MemoryRouter>);
@@ -71,10 +72,13 @@ test("real layout controls render both choices, preserve Free/Money 8s navigatio
         const actions = <div className="sidebar-account-actions"><SidebarBalances walletBalance={16} creditBalance={125} /><button>Account</button><button>Notifications</button></div>;
         return renderToStaticMarkup(<MemoryRouter><NavigationLayoutProvider><NavigationChrome sidebar={sidebar} accountActions={actions}><nav aria-label="Topbar navigation">{actions}</nav></NavigationChrome></NavigationLayoutProvider></MemoryRouter>);
       }
+      export function renderTopbar(openMenu) {
+        return renderToStaticMarkup(<MemoryRouter><TopbarNavigation isActive={path => path === '/challenge-a-team'} openMenu={openMenu} matchesOpen={false} activeMatches={[]} onMenuToggle={()=>{}} onMatchesToggle={()=>{}} onClose={()=>{}} userId="player" historyPath="/my-matches?view=history" /></MemoryRouter>);
+      }
     ` },
     bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"],
     external: ["react", "react-dom/server", "react-router-dom"],
-    alias: { "@": `${root.replaceAll("\\", "/").replace(/\/$/, "")}/src` },
+    alias: { "@": `${root.replaceAll("\\", "/").replace(/\/$/, "")}/src` }, loader: { ".css": "empty" },
     plugins: [{ name: "navigation-test-boundaries", setup(bundle) {
       bundle.onResolve({ filter: /^@\/lib\/AuthContext$/ }, () => ({ path: "auth", namespace: "navigation-test" }));
       bundle.onResolve({ filter: /^@\/api\/base44Client$/ }, () => ({ path: "api", namespace: "navigation-test" }));
@@ -118,6 +122,15 @@ test("real layout controls render both choices, preserve Free/Money 8s navigatio
   assert.match(sidebar, /aria-label="Get credits"/);
   assert.doesNotMatch(sidebar, /topbar-wallet-summary|h-6 w-px/);
   assert.doesNotMatch(sidebar, /Welcome to your arena/);
+  const closedTopbar = module.exports.renderTopbar(null);
+  assert.doesNotMatch(closedTopbar, /href="\/challenge-a-team"|topnav-challenge-link/);
+  assert.match(closedTopbar, /aria-controls="nav-menu-play"[^>]*data-current="true"/);
+  const playMenu = module.exports.renderTopbar("Play");
+  assert.match(playMenu, /aria-label="Play navigation"/);
+  assert.equal(playMenu.match(/href="\/challenge-a-team"/g)?.length, 1);
+  assert.match(playMenu, /Challenge a Team<span class="challenge-new-tag nav-mode-new">New/);
+  assert.match(playMenu, /href="\/ranked\/8s\?mode=money"/);
+  assert.match(playMenu, /href="\/ranked\/8s"/);
   for (const layout of ["topbar", "sidebar"]) {
     const topbar = module.exports.renderChrome({ id: "player", role: "user", navigation_layout: layout }, false);
     assert.match(topbar, /aria-label="Topbar navigation"/);

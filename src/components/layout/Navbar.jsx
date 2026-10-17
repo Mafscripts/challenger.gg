@@ -12,13 +12,14 @@ import NavbarMessageMenu from "./NavbarMessageMenu";
 import NavbarNotificationMenu from "./NavbarNotificationMenu";
 import { isCurrentNotification } from "@/lib/notificationRetention";
 import { applyNotificationChange } from "@/lib/notificationInbox";
-import { NavbarDestinations, NavbarMatches } from "./NavbarMenus";
-import { challengeNavItem, navGroups, playNavGroup, mobileNavSections } from "./navigationGroups";
+import TopbarNavigation from "./TopbarNavigation";
+import { topbarMobileSections } from "./navigationGroups";
 import { useNavigationLayout } from "./NavigationLayoutProvider";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
 import NavigationChrome from "./NavigationChrome";
 import SidebarBalances from "./SidebarBalances";
 import "@/styles/navbar-profile.css";
+import "@/styles/topbar.css";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
@@ -148,17 +149,6 @@ const playDisputeAlertSound = async () => {
   return true;
 };
 
-const navButtonClass = "nav-primary-button relative inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-2.5 text-[13px] font-bold";
-const navTone = {
-  cyan: { button: "border-cyan/25 bg-cyan/10 text-cyan", icon: "border-cyan/20 bg-cyan/10 text-cyan" },
-  gold: { button: "border-yellow-400/25 bg-yellow-400/10 text-yellow-300", icon: "border-yellow-400/20 bg-yellow-400/10 text-yellow-300" },
-  purple: { button: "border-purple-400/25 bg-purple-400/10 text-purple-300", icon: "border-purple-400/20 bg-purple-400/10 text-purple-300" },
-  gray: { button: "border-white/10 bg-white/[0.055] text-foreground", icon: "border-white/10 bg-white/[0.045] text-vapor" },
-  green: { button: "border-green/25 bg-green/10 text-green", icon: "border-green/20 bg-green/10 text-green" },
-  orange: { button: "border-orange/25 bg-orange/10 text-orange", icon: "border-orange/20 bg-orange/10 text-orange" },
-  red: { button: "border-red-400/25 bg-red-400/10 text-red-300", icon: "border-red-400/20 bg-red-400/10 text-red-300" },
-};
-
 const participantKeys = (participant) => [
   participant?.id,
   participant?.team_id,
@@ -198,6 +188,7 @@ const navItemIsActive = (pathname, path, hash = "", search = "", activeEightMatc
     || (targetPath === "/ranked" && pathname.startsWith("/ranked-match/"))
     || (targetPath === "/xp" && pathname.startsWith("/xp-match/"))
     || (targetPath === "/wagers" && pathname.startsWith("/wagers-match/"))
+    || (targetPath === "/challenge-a-team" && pathname.startsWith("/challenge-a-team/"))
     || (targetPath === "/dashboard" && pathname.startsWith("/match-room/"));
 };
 
@@ -1058,9 +1049,8 @@ export default function Navbar() {
     <div className={sidebarDesktop ? "sidebar-account-actions" : "topbar-actions flex shrink-0 items-center gap-2"}>
       {user ? (
         <>
-      {!sidebarDesktop && <NavigationLayoutToggle />}
       {/* Wallet summary */}
-      {sidebarDesktop ? <SidebarBalances walletBalance={walletBalance} creditBalance={creditBalance} /> : <div className="topbar-wallet-summary hidden items-center rounded-xl border border-white/[0.06] bg-white/[0.025] px-1 md:flex">
+      {sidebarDesktop ? <SidebarBalances walletBalance={walletBalance} creditBalance={creditBalance} /> : <div className="topbar-wallet-summary hidden items-center md:flex">
         <div className="topbar-balance topbar-wallet flex h-10 items-center overflow-hidden">
           <Link to="/wallet" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
             <span className="topbar-balance-icon"><Wallet className="h-3.5 w-3.5" /></span>
@@ -1073,7 +1063,7 @@ export default function Navbar() {
             <Plus className="h-3.5 w-3.5" />
           </Link>
         </div>
-        <span aria-hidden="true" className="h-6 w-px bg-white/[0.08]" />
+        <span aria-hidden="true" className="topbar-wallet-divider" />
         <div className="topbar-balance topbar-credits flex h-10 items-center overflow-hidden">
           <Link to="/marketplace" title="Marketplace credits" className="topbar-balance-main flex h-full items-center gap-2.5 px-2 transition-colors">
             <span className="topbar-balance-icon"><Coins className="h-3.5 w-3.5" /></span>
@@ -1136,7 +1126,7 @@ export default function Navbar() {
       <div
         className={`nav-dropdown-anchor relative ${sidebarDesktop ? "sidebar-profile-anchor" : ""}`}
         onMouseEnter={() => {
-          if (!supportsDesktopHover()) return;
+          if (!sidebarDesktop || !supportsDesktopHover()) return;
           cancelDropdownClose();
           setProfileOpen(true);
           setNavMenuOpen(null);
@@ -1144,7 +1134,7 @@ export default function Navbar() {
           setNotifOpen(false);
           setMessagesOpen(false);
         }}
-        onMouseLeave={() => scheduleDropdownClose(() => setProfileOpen(false))}
+        onMouseLeave={() => { if (sidebarDesktop) scheduleDropdownClose(() => setProfileOpen(false)); }}
       >
         <button
           type="button"
@@ -1276,6 +1266,7 @@ export default function Navbar() {
               />
               </div>
               <div className="profile-menu-footer">
+                {!sidebarDesktop && <div className="topbar-layout-choice"><NavigationLayoutToggle showLabel /></div>}
                 <Link
                   to="/logout"
                   onClick={() => setProfileOpen(false)}
@@ -1394,149 +1385,29 @@ export default function Navbar() {
       <NavigationChrome sidebar={sidebarDesktop} accountActions={accountActions}>
       <nav
         data-scrolled={scrolled ? "true" : "false"}
-        data-season="mw4"
-        className={`app-topbar app-topbar-v2 topbar-mw4 fixed top-0 left-0 right-0 z-50 ${scrolled ? "glass-nav" : ""}`}
+        aria-label="Topbar navigation"
+        className={`app-topbar app-topbar-v2 topbar-clean fixed top-0 left-0 right-0 z-50 ${scrolled ? "glass-nav" : ""}`}
       >
         <div className="app-topbar-inner mx-auto max-w-[1720px] px-3 lg:px-5">
           <div className="topbar-shell flex h-14 items-center justify-between gap-4 px-2.5 lg:px-3.5">
             {/* Logo + primary destination */}
             <div className="topbar-brand flex items-center gap-3 shrink-0">
               <Link to="/" className="topbar-brand-link flex items-center gap-2.5" aria-label="Topfragg.gg home">
-                <TopfraggLogo className="topbar-logo" markClassName="topbar-logo-mark h-9 w-9" wordmarkClassName="hidden text-[17px] sm:inline-flex" />
-              </Link>
-              <Link to="/ranked/8s?game=mw4" className="topbar-season-badge" aria-label="Modern Warfare 4 Free 8s">
-                <img src="/assets/mw4/logo.webp" alt="MW4" />
-                <span>Next deployment</span>
+                <TopfraggLogo className="topbar-logo" markClassName="topbar-logo-mark h-9 w-9" wordmarkClassName="topbar-logo-wordmark" />
               </Link>
             </div>
 
-            {/* Desktop Nav */}
-            {user && (
-              <div className="topbar-primary-nav hidden xl:flex items-center justify-center gap-1 p-1">
-                <Link
-                  to="/dashboard"
-                  data-nav-item
-                  data-tone="orange"
-                  data-active={isCurrentNavItemActive("/dashboard") ? "true" : "false"}
-                  onMouseEnter={closeDropdowns}
-                  className={`${navButtonClass} nav-dashboard-link ${
-                    isCurrentNavItemActive("/dashboard")
-                      ? navTone.orange.button
-                      : "border-transparent text-vapor hover:border-orange/20 hover:bg-orange/[0.07] hover:text-orange"
-                  }`}
-                >
-                  <span className={`nav-primary-icon nav-dashboard-icon flex h-7 w-7 items-center justify-center rounded-lg border ${isCurrentNavItemActive("/dashboard") ? navTone.orange.icon : "border-white/[0.06] bg-white/[0.035] text-vapor"}`}>
-                    <House className="h-3.5 w-3.5" />
-                  </span>
-                  Home
-                </Link>
-                <Link to={challengeNavItem.path} onClick={closeDropdowns} title="Challenge a Team" aria-label="Challenge a Team — New" className="topnav-challenge-link" aria-current={location.pathname.startsWith(challengeNavItem.path) ? "page" : undefined}><challengeNavItem.icon size={15} /><span>Challenge<span className="hidden 2xl:inline"> a Team</span></span><span className="challenge-new-tag">New</span></Link>
-                {[playNavGroup, navGroups.find((group) => group.label === "Cash Matches"), navGroups.find((group) => group.label === "Matchfinder"), navGroups.find((group) => group.label === "Tournaments")].map((group) => {
-                  const GroupIcon = group.icon;
-                  const active = group.items.some((item) => isCurrentNavItemActive(item.path));
-                  const open = navMenuOpen === group.label;
-                  const groupTone = navTone[group.tone] || navTone.cyan;
-
-                  return (
-                    <div
-                      key={group.label}
-                      data-tone={group.tone}
-                      className="nav-dropdown-anchor relative"
-                      onMouseEnter={() => {
-                        if (!supportsDesktopHover()) return;
-                        cancelDropdownClose();
-                        setNavMenuOpen(group.label);
-                        setMatchesOpen(false);
-                        setNotifOpen(false);
-                        setMessagesOpen(false);
-                        setProfileOpen(false);
-                      }}
-                      onMouseLeave={() => scheduleDropdownClose(() => setNavMenuOpen(null))}
-                    >
-                      <button
-                        type="button"
-                        data-nav-item
-                        data-active={active || open ? "true" : "false"}
-                        aria-expanded={open}
-                        onClick={() => {
-                          cancelDropdownClose();
-                          setNavMenuOpen((current) => current === group.label ? null : group.label);
-                        }}
-                        className={`${navButtonClass} ${
-                          active || open
-                            ? groupTone.button
-                            : "border-transparent text-vapor hover:border-white/10 hover:bg-white/5 hover:text-foreground"
-                        }`}
-                      >
-                        <GroupIcon className={`nav-primary-icon h-4 w-4 shrink-0 ${active || open ? groupTone.icon.split(" ").at(-1) : "text-vapor"}`} />
-                        {group.label}
-                        <ChevronDown className={`w-3.5 h-3.5 ${open ? "rotate-180" : ""}`} />
-                      </button>
-
-                      {open && <NavbarDestinations
-                        group={group}
-                        isActive={isCurrentNavItemActive}
-                        onSelect={() => setNavMenuOpen(null)}
-                      />}
-                    </div>
-                  );
-                })}
-
-                <div
-                  data-tone="purple"
-                  className="nav-dropdown-anchor relative"
-                  onMouseEnter={() => {
-                    if (!supportsDesktopHover()) return;
-                    cancelDropdownClose();
-                    setMatchesOpen(true);
-                    setNavMenuOpen(null);
-                    setNotifOpen(false);
-                    setMessagesOpen(false);
-                    setProfileOpen(false);
-                    loadActiveMatches();
-                  }}
-                  onMouseLeave={() => scheduleDropdownClose(() => setMatchesOpen(false))}
-                >
-                  <button
-                    type="button"
-                    data-nav-item
-                    data-active={matchesOpen ? "true" : "false"}
-                    aria-expanded={matchesOpen}
-                    onClick={() => {
-                      cancelDropdownClose();
-                      setMatchesOpen((current) => !current);
-                      setNavMenuOpen(null);
-                      setNotifOpen(false);
-                      setMessagesOpen(false);
-                      setProfileOpen(false);
-                      loadActiveMatches();
-                    }}
-                    className={`${navButtonClass} ${
-                      matchesOpen
-                        ? "border-purple-400/25 bg-purple-400/10 text-purple-300"
-                        : "border-transparent text-vapor hover:border-white/10 hover:bg-white/5 hover:text-foreground"
-                    }`}
-                  >
-                    <Activity className={`nav-primary-icon h-4 w-4 shrink-0 ${matchesOpen ? "text-purple-300" : "text-vapor"}`} />
-                    My Matches
-                    <ChevronDown className={`w-3.5 h-3.5 ${matchesOpen ? "rotate-180" : ""}`} />
-                    {activeMatches.length > 0 && (
-                      <span aria-label={`${activeMatches.length} active match${activeMatches.length === 1 ? "" : "es"}`} className="absolute -right-1.5 -top-1.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-orange px-1 font-mono text-[8px] font-black leading-none text-white">
-                        {activeMatches.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {matchesOpen && <NavbarMatches
-                    matches={activeMatches}
-                    userId={user?.id}
-                    historyPath={matchHistoryPath}
-                    isActive={isCurrentNavItemActive}
-                    onSelect={() => setMatchesOpen(false)}
-                  />}
-                </div>
-              </div>
-            )}
+            {user && <TopbarNavigation
+              isActive={isCurrentNavItemActive}
+              openMenu={navMenuOpen}
+              matchesOpen={matchesOpen}
+              activeMatches={activeMatches}
+              userId={user.id}
+              historyPath={matchHistoryPath}
+              onClose={closeDropdowns}
+              onMenuToggle={(label) => { const next = navMenuOpen === label ? null : label; closeDropdowns(); setNavMenuOpen(next); }}
+              onMatchesToggle={() => { const next = !matchesOpen; closeDropdowns(); setMatchesOpen(next); if (next) loadActiveMatches(); }}
+            />}
 
             {accountActions}
           </div>
@@ -1575,7 +1446,7 @@ export default function Navbar() {
                 <House className="h-5 w-5" />
                 Home
               </Link>
-              {mobileNavSections.map((section) => (
+              {topbarMobileSections.map((section) => (
                 <div key={section.label} className="pt-3">
                   <p className="px-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-vapor/60">{section.label}</p>
                   <div className="space-y-1">

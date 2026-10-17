@@ -86,3 +86,13 @@ export const mobileNavSections = [
   { label: "Teams", items: navGroups[3].items },
 ];
 
+// The sidebar keeps its own grouping. Topbar modes live together under Play.
+export const topbarPlayNavGroup = {
+  ...playNavGroup,
+  items: [...playNavGroup.items, { ...challengeNavItem, description: "1v1 to 4v4 team challenges with a separate XP ladder" }],
+};
+export const topbarNavGroups = [topbarPlayNavGroup, navGroups[1], navGroups[2], navGroups[0]];
+export const topbarMobileSections = mobileNavSections
+  .filter((section) => section.label !== "Team challenges")
+  .map((section) => section.label === "Play" ? { ...section, items: topbarPlayNavGroup.items } : section);
+
