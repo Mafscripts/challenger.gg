@@ -15,7 +15,7 @@ const entities = {
 const overviewKeys = ["userCount", "adminAlerts", "ticketCounts", "wagers", "rankedMatches", "tournaments", "withdrawals", "wallets"];
 const sectionKeys = {
   dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "adminActions", "systemLogs"],
-  users: ["wallets"], roles: ["users"], alerts: ["adminAlerts", "tickets"],
+  users: ["wallets"], roles: [], alerts: ["adminAlerts", "tickets"],
   tickets: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
   verifyRank: ["users"],
@@ -69,26 +69,30 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}) {
   const role = effectiveRoleForUser(user);
   const allowed = Boolean(user?.id) && canAccessAdminPanel(role);
   const scope = `${user?.id}:${role}`;
+  const directoryTab = ["users", "roles"].includes(activeTab);
+  const sharedOnly = activeTab === "users" && Boolean(userFilters.sharedOnly);
   const [overviewScope, setOverviewScope] = useState(null);
   const overviewReady = overviewScope === scope;
   const required = sectionKeys[activeTab] || sectionKeys.dashboard;
   // Give the opened section priority before starting unrelated overview reads.
   const enabledKeys = new Set([...required, ...(overviewReady ? overviewKeys : [])]);
-  const [userSearch, setUserSearch] = useState("");
+  const [directorySearches, setDirectorySearches] = useState({});
+  const searchScope = `${scope}:${activeTab}`;
+  const userSearch = directorySearches[searchScope] || "";
   useEffect(() => {
-    const timer = setTimeout(() => setUserSearch(String(userFilters.search || "").trim()), 300);
+    const timer = setTimeout(() => setDirectorySearches((current) => ({ ...current, [searchScope]: String(userFilters.search || "").trim() })), 300);
     return () => clearTimeout(timer);
-  }, [userFilters.search]);
+  }, [userFilters.search, searchScope]);
   const userDirectory = useInfiniteQuery({
-    queryKey: ["admin-console", user?.id, role, "userDirectory", userSearch, Boolean(userFilters.sharedOnly)],
+    queryKey: ["admin-console", user?.id, role, "userDirectory", activeTab, userSearch, sharedOnly],
     initialPageParam: null,
     queryFn: async ({ pageParam }) => {
-      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, shared_only: Boolean(userFilters.sharedOnly) });
+      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, shared_only: sharedOnly, include_security: activeTab !== "roles" });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not load users");
       return response.data;
     },
     getNextPageParam: (page) => page.next_cursor || undefined,
-    enabled: allowed && activeTab === "users",
+    enabled: allowed && directoryTab,
     staleTime: 30000,
     refetchOnWindowFocus: false,
   });
@@ -105,8 +109,8 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}) {
     combine: combineQueries,
   });
   const sectionLoading = allowed && required.some((key) => !queries.status[key].ready && queries.status[key].pending);
-  const data = useMemo(() => activeTab === "users" ? { ...queries.data, users: directoryRows } : queries.data,
-    [activeTab, queries.data, directoryRows]);
+  const data = useMemo(() => directoryTab ? { ...queries.data, users: directoryRows } : queries.data,
+    [directoryTab, queries.data, directoryRows]);
 
   useEffect(() => {
     if (allowed && !sectionLoading) setOverviewScope(scope);
@@ -141,7 +145,7 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}) {
     },
     sectionLoading,
     sectionError: required.find((key) => !queries.status[key].ready && queries.status[key].error),
-    refreshing: [...enabledKeys].some((key) => queries.status[key]?.fetching) || (activeTab === "users" && userDirectory.isFetching),
+    refreshing: [...enabledKeys].some((key) => queries.status[key]?.fetching) || (directoryTab && userDirectory.isFetching),
     refresh: () => queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role] }),
   };
 }

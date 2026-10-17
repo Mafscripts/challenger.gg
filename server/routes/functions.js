@@ -10400,7 +10400,7 @@ async function updateUserRole(req) {
     details: { role: nextRole },
     created_date: nowIso(),
   }).catch(() => null);
-  return { success: true, user };
+  return { success: true, user: publicUser(user) };
 }
 
 function normalizedSpecialBadges(types = []) {

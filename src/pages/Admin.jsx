@@ -60,10 +60,10 @@ import { getRankForElo } from "@/lib/ranks";
 
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
 const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
+const RoleManagement = lazy(() => import("@/components/admin/RoleManagement"));
 const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGamesAdmin"));
 const ChallengeTeamAdmin = lazy(() => import("@/components/admin/ChallengeTeamAdmin"));
 
-const roleOptions = ["ceo", "super_admin", "admin", "moderator", "user"];
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
 const tournamentRewardCategories = new Set(["knife", "weapon_skin", "trophy"]);
 const tournamentGameModeOptions = [
@@ -325,7 +325,6 @@ const adminAlertActionUrl = (alert, ticket) => {
   return "/admin";
 };
 const effectiveRoleFor = (user) => effectiveRoleForUser(user);
-const rolePowerFor = (role) => getRoleConfig(role).power;
 const canAddWalletAdjustment = (role) => ["ceo", "super_admin"].includes(role || "user");
 const canAdjustUserWallet = (actorRole, targetRole) => canAddWalletAdjustment(actorRole) && (actorRole === "ceo" || targetRole !== "ceo");
 const canGrantUserPremium = (actorRole, targetRole) => (
@@ -530,6 +529,7 @@ export default function Admin() {
   const currentUser = authUser;
   const [data, setData] = useState(initialData);
   const [searchQuery, setSearchQuery] = useState("");
+  const [roleSearch, setRoleSearch] = useState("");
   const [sharedIpOnly, setSharedIpOnly] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [marketplaceForm, setMarketplaceForm] = useState(defaultMarketplaceForm);
@@ -552,7 +552,7 @@ export default function Admin() {
   const [animatedNameFreeTrial, setAnimatedNameFreeTrial] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
 
-  const adminQueries = useAdminConsoleData(currentUser, activeTab, { search: searchQuery, sharedOnly: sharedIpOnly });
+  const adminQueries = useAdminConsoleData(currentUser, activeTab, { search: activeTab === "roles" ? roleSearch : searchQuery, sharedOnly: sharedIpOnly });
   const receivedRows = useRef({});
   const receivedScope = useRef(null);
   const loadAdminData = adminQueries.refresh;
@@ -799,31 +799,6 @@ export default function Admin() {
       toast({ title: "Alert acknowledged" });
     } catch (error) {
       toast({ title: "Alert update failed", description: error.message || "Could not acknowledge alert.", variant: "destructive" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleSetRole = async (targetUser, role) => {
-    if (!canManageRoles(currentRole)) {
-      toast({ title: "Not allowed", description: "Super Admin or CEO is required to manage roles.", variant: "destructive" });
-      return;
-    }
-
-    setBusyId(`${targetUser.id}:${role}`);
-    try {
-      const response = await base44.functions.invoke("updateUserRole", {
-        user_id: targetUser.id,
-        role,
-      });
-      if (response.data?.success) {
-        toast({ title: "Role updated", description: `${userName(targetUser)} is now ${role}.` });
-        loadAdminData();
-      } else {
-        toast({ title: "Role update failed", description: response.data?.error || "Could not update role.", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Role update failed", description: error.message || "Could not update role.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -2427,38 +2402,8 @@ export default function Admin() {
           )}
 
           {activeTab === "roles" && (
-            <div className="p-6">
-              <h2 className="text-lg font-bold mb-4">Role Management</h2>
-              <div className="space-y-3">
-                {filteredUsers.map((user) => (
-                  <div key={user.id} className="border border-white/5 rounded-lg p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-sm">{userName(user)}</p>
-                      <p className="text-xs text-vapor">{user.email}</p><UserBadges user={user} size="xs" />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <RoleBadge role={user.role || "user"} />
-                      {roleOptions.map((role) => (
-                        <button
-                          key={role}
-                          onClick={() => handleSetRole(user, role)}
-                          disabled={
-                            !canManageRoles(currentRole) ||
-                            (rolePowerFor(currentRole) <= rolePowerFor(user.role) && currentRole !== "ceo") ||
-                            (rolePowerFor(currentRole) <= rolePowerFor(role) && currentRole !== "ceo") ||
-                            busyId === `${user.id}:${role}` ||
-                            user.role === role
-                          }
-                          className="px-3 py-1.5 bg-secondary text-vapor text-[10px] font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-40"
-                        >
-                          {busyId === `${user.id}:${role}` ? <Loader2 className="w-3 h-3 animate-spin" /> : role.replace("_", " ")}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <RoleManagement key={`${currentUser.id}:${currentRole}`} directory={adminQueries.userDirectory} actorRole={currentRole}
+              search={roleSearch} onSearch={setRoleSearch} onUserUpdated={adminQueries.updateUser} onRefresh={loadAdminData} />
           )}
 
           {activeTab === "alerts" && (

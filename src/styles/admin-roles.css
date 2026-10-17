@@ -1,0 +1,55 @@
+.admin-roles { color: hsl(var(--foreground)); }
+.admin-roles .ar-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-bottom: 1px solid hsl(var(--border)); }
+.admin-roles .ar-eyebrow { color: hsl(var(--cyan)); font-size: 9px; font-weight: 900; letter-spacing: .14em; }
+.admin-roles h2 { display: flex; align-items: center; gap: 9px; margin-top: 6px; font-size: 20px; font-weight: 900; letter-spacing: -.02em; }
+.admin-roles h2 svg { color: hsl(var(--cyan)); }
+.admin-roles .ar-heading p { margin-top: 6px; color: hsl(var(--vapor)); font-size: 12px; }
+.admin-roles .ar-search { display: flex; align-items: center; gap: 10px; width: min(340px, 100%); min-height: 42px; padding: 0 13px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: var(--arena-inset); color: hsl(var(--vapor)); }
+.admin-roles .ar-search:focus-within { border-color: hsl(var(--cyan) / .4); }
+.admin-roles .ar-search input { min-width: 0; width: 100%; padding: 12px 0; outline: none; background: transparent; color: hsl(var(--foreground)); font-size: 12px; }
+.admin-roles .ar-search input::placeholder { color: hsl(var(--vapor)); }
+.admin-roles .ar-search > svg, .admin-roles .ar-search button { flex-shrink: 0; }
+.admin-roles .ar-search button { display: grid; place-items: center; padding: 5px; border-radius: 4px; }
+.admin-roles .ar-search button:hover { color: hsl(var(--cyan)); }
+.admin-roles .ar-access-note { display: flex; align-items: center; gap: 7px; padding: 15px 24px; border-bottom: 1px solid hsl(var(--border)); color: hsl(var(--vapor)); font-size: 11px; }
+.admin-roles .ar-list-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px; font-size: 11px; }
+.admin-roles .ar-list-summary > span { color: hsl(var(--vapor)); font-size: 10px; }
+.admin-roles .ar-table-wrap { overflow-x: auto; }
+.admin-roles table { width: 100%; min-width: 650px; border-collapse: collapse; }
+.admin-roles th { padding: 12px 24px; background: var(--arena-inset); color: hsl(var(--vapor)); text-align: left; font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.admin-roles td { padding: 15px 24px; border-top: 1px solid hsl(var(--border)); }
+.admin-roles tbody tr:hover { background: hsl(var(--cyan) / .02); }
+.admin-roles th:first-child { width: 45%; }
+.admin-roles th:nth-child(2) { width: 17%; }
+.admin-roles th:nth-child(3) { width: 23%; }
+.admin-roles .ar-player { display: flex; align-items: center; gap: 12px; }
+.admin-roles .ar-avatar { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border: 1px solid hsl(var(--cyan) / .18); border-radius: 8px; background: hsl(var(--cyan) / .04); color: hsl(var(--cyan)); font-size: 12px; font-weight: 900; }
+.admin-roles .ar-player > div { display: grid; min-width: 0; gap: 5px; }
+.admin-roles .ar-player strong { font-size: 13px; font-weight: 800; overflow-wrap: anywhere; }
+.admin-roles .ar-player > div > span { color: hsl(var(--vapor)); font-size: 11px; overflow-wrap: anywhere; }
+.admin-roles .ar-select { position: relative; max-width: 220px; min-width: 140px; }
+.admin-roles .ar-select select { width: 100%; padding: 9px 32px 9px 12px; appearance: none; border: 1px solid hsl(var(--border)); border-radius: 7px; background: var(--arena-inset); color: hsl(var(--foreground)); font-size: 12px; outline: none; }
+.admin-roles .ar-select select:focus { border-color: hsl(var(--cyan) / .4); }
+.admin-roles .ar-select > svg { position: absolute; right: 11px; top: 50%; pointer-events: none; transform: translateY(-50%); color: hsl(var(--vapor)); }
+.admin-roles .ar-protected { display: inline-flex; align-items: center; gap: 6px; color: hsl(var(--vapor)); font-size: 11px; white-space: nowrap; }
+.admin-roles .ar-action { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.admin-roles .ar-action button, .admin-roles .ar-footer button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 13px; border: 1px solid hsl(var(--cyan) / .22); border-radius: 7px; background: hsl(var(--cyan) / .08); color: hsl(var(--cyan)); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.admin-roles .ar-action button:hover:not(:disabled), .admin-roles .ar-footer button:hover:not(:disabled) { background: hsl(var(--cyan) / .14); }
+.admin-roles .ar-action button:disabled { border-color: hsl(var(--border)); background: transparent; color: hsl(var(--vapor)); }
+.admin-roles .ar-action p { max-width: 230px; color: #ff9b9b; font-size: 10px; line-height: 1.7; }
+.admin-roles button:disabled, .admin-roles select:disabled { cursor: default; opacity: .5; }
+.admin-roles button:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
+.admin-roles .ar-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px; border-top: 1px solid hsl(var(--border)); }
+.admin-roles .ar-footer p { color: hsl(var(--vapor)); font-size: 11px; }
+.admin-roles .ar-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 20px 24px; color: hsl(var(--vapor)); font-size: 12px; line-height: 1.8; }
+.admin-roles .ar-error { color: #ff9b9b; }
+.admin-roles .ar-error button { color: hsl(var(--cyan)); font-weight: 700; }
+.admin-roles .ar-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 50px 24px; color: hsl(var(--vapor)); }
+.admin-roles .ar-empty strong { color: hsl(var(--foreground)); font-size: 13px; }
+.admin-roles .ar-empty p { font-size: 11px; text-align: center; }
+@media (max-width: 700px) {
+  .admin-roles .ar-heading, .admin-roles .ar-footer { padding: 20px 18px; }
+  .admin-roles .ar-search { width: 100%; }
+  .admin-roles th, .admin-roles td { padding-left: 18px; padding-right: 18px; }
+  .admin-roles .ar-list-summary { padding: 16px 18px; }
+}

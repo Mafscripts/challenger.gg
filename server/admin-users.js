@@ -25,6 +25,7 @@ export async function getAdminUsers(db, actor, body = {}) {
   const admin = hasRole(actor, "admin");
   const search = String(body.search || "").trim().toLowerCase().slice(0, 200);
   const sharedOnly = admin && body.shared_only === true;
+  const includeSecurity = admin && (body.include_security !== false || sharedOnly);
   let cursor = null;
   if (body.cursor) {
     try {
@@ -34,7 +35,7 @@ export async function getAdminUsers(db, actor, body = {}) {
   }
   // Only the small IP/identity index is read across accounts. Full account rows
   // are fetched in pages of 25, including when searching or filtering shared IPs.
-  const ipRows = admin ? await db.$queryRaw`SELECT id, username, display_name, full_name,
+  const ipRows = includeSecurity ? await db.$queryRaw`SELECT id, username, display_name, full_name,
     jsonb_build_object('registration_ip', metadata->'registration_ip', 'last_login_ip', metadata->'last_login_ip',
       'last_seen_ip', metadata->'last_seen_ip', 'ip_history', metadata->'ip_history') AS metadata FROM "User"` : [];
   const byIp = new Map(), shared = new Map();
@@ -65,9 +66,11 @@ export async function getAdminUsers(db, actor, body = {}) {
     if (admin || user.id === actor.id) result.email = user.email;
     if (admin) {
       for (const key of ["credits", "wallet_balance", "ban_reason"]) result[key] = user[key];
-      for (const key of ["registration_ip", "last_login_ip", "last_seen_ip", "ip_history"]) result[key] = user.metadata?.[key];
-      result.shared_ip_account_count = shared.get(user.id)?.size || 0;
-      result.shared_ip_account_names = [...(shared.get(user.id)?.values() || [])];
+      if (includeSecurity) {
+        for (const key of ["registration_ip", "last_login_ip", "last_seen_ip", "ip_history"]) result[key] = user.metadata?.[key];
+        result.shared_ip_account_count = shared.get(user.id)?.size || 0;
+        result.shared_ip_account_names = [...(shared.get(user.id)?.values() || [])];
+      }
     }
     return result;
   });
