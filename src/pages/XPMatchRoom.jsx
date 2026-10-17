@@ -894,7 +894,7 @@ function XPMatchRoomView() {
                 ))}
               </div>
             </section>
-            {xpStake && !["completed", "cancelled"].includes(match.status) && <section className="rounded-xl border border-cyan/15 bg-card p-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan">XP at stake</p><div className="mt-3 grid grid-cols-2 gap-3"><div><p className="text-[9px] text-vapor">Win</p><p className="mt-1 font-mono text-lg font-black text-green">+{xpStake.win} XP</p></div><div><p className="text-[9px] text-vapor">Loss, up to</p><p className="mt-1 font-mono text-lg font-black text-red-300">−{xpStake.loss} XP</p></div></div><p className="mt-3 text-[11px] leading-5 text-vapor">Based on average team XP when this lobby filled. Your total cannot drop below zero.</p></section>}
+            {xpStake && !["completed", "cancelled"].includes(match.status) && <section className="rounded-xl border border-cyan/15 bg-card p-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan">XP at stake</p><div className="mt-3 grid grid-cols-2 gap-3"><div><p className="text-[9px] text-vapor">Win</p><p className="mt-1 font-mono text-lg font-black text-green">+{xpStake.win} XP</p></div><div><p className="text-[9px] text-vapor">Loss, up to</p><p className="mt-1 font-mono text-lg font-black text-red-300">−{xpStake.loss} XP</p></div></div></section>}
             {isParticipant && !["completed", "cancelled"].includes(match.status) && (
               <section className="rounded-xl border border-white/10 bg-card p-4">
                 <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white"><Users className="h-4 w-4 text-orange" /> Match cancellation</p>

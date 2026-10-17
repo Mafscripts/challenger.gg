@@ -341,7 +341,6 @@ export default function XP() {
               <span className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 font-mono text-sm font-black text-cyan">{xp.toLocaleString()} XP</span>
             </div>
             <div className="p-5">
-              <p className="mb-5 rounded-lg border border-cyan/15 bg-cyan/[0.04] px-4 py-3 text-xs leading-5 text-vapor"><span className="font-bold text-white">Every opponent matters.</span> Equal teams play for +100 / −100 XP. Beat stronger teams for more XP; losing to weaker teams costs more. Team strength uses average XP when the lobby fills. Changes range from 10 to 190 XP per player, with a minimum total of 0.</p>
               <div className="flex items-end justify-between gap-4">
                 <div><p className="text-xs text-vapor">Current level progress</p><p className="mt-1 text-2xl font-black">{Number(currentStats?.current_xp ?? (xp % xpToNext)).toLocaleString()} <span className="text-sm text-vapor">/ {xpToNext.toLocaleString()} XP</span></p></div>
                 <p className="font-mono text-sm font-black text-cyan">{progress}%</p>
