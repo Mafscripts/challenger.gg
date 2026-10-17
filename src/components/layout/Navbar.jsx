@@ -700,6 +700,7 @@ export default function Navbar() {
           if (!active) return;
           const openRequests = (rows || []).filter((alert) => (
             alert.status === "open"
+            && String(alert.match_type || "").toLowerCase() !== "xp"
             && alert.match_id
             && !hiddenMatchTypes.has(String(alert.match_type || "").toLowerCase())
           ));
@@ -744,6 +745,7 @@ export default function Navbar() {
           if (!active) return;
           const pendingDisputes = (rows || []).filter((dispute) => (
             ["pending", "under_review", "escalated"].includes(dispute.status)
+            && String(dispute.match_type || "").toLowerCase() !== "xp"
             && dispute.admin_popup_suppressed !== true
             && isRecentAdminDispute(dispute)
             && !hiddenMatchTypes.has(String(dispute.match_type || "").toLowerCase())

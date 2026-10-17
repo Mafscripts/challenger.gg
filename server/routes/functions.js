@@ -101,7 +101,7 @@ const blockedPublicCommerceFunctions = new Set([
 const commerceUnavailableMessage = "Purchases are temporarily unavailable during public testing. Credits and funds can only be granted by Topfragg staff.";
 const tournamentStatusesOpenForRegistration = ["open", "registration"];
 const tournamentStatusesStarted = ["live", "in_progress"];
-const openTicketStatuses = ["open", "waiting_for_admin", "admin_joined", "waiting_for_user", "escalated"];
+const openTicketStatuses = ["open", "in_progress", "waiting_for_admin", "admin_joined", "waiting_for_user", "escalated"];
 const tournamentTeamSizeOptions = new Set(Array.from({ length: 8 }, (_, index) => `${index + 1}v${index + 1}`));
 const tournamentSndMapPool = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 const tournamentHpMapPool = ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"];
@@ -4950,6 +4950,12 @@ async function openMatchAdminTicket(matchId, ticketId) {
 }
 
 function resultReportFor(matchType, match) {
+  if (matchType === "xp") return {
+    reported_score_alpha: match.reported_score_alpha, reported_score_bravo: match.reported_score_bravo,
+    reported_score_by: match.reported_score_by, best_of: match.best_of,
+    confirmed_score_alpha: match.confirmed_score_alpha, confirmed_score_bravo: match.confirmed_score_bravo,
+    winner_id: match.winner_id, winner_name: match.winner_name, status: match.status,
+  };
   if (matchType === "tournament") {
     return {
       team_a_score: match.team_a_score,
@@ -5075,6 +5081,9 @@ async function createTicket(req) {
 }
 
 async function requestAdminAlert(req) {
+  if (normalizeMatchType(req.body.match_type) === "xp") {
+    return { success: false, code: "XP_TICKET_REQUIRED", error: "XP match support is handled through Submit ticket and My Tickets." };
+  }
   const context = await ticketMatchContext(req.body.match_type, req.body.match_id);
   if (!context.match) return { success: false, error: "Match not found" };
   if (context.matchType === "tournament" && context.is_streamer_tournament) {
@@ -5208,7 +5217,7 @@ async function joinTicket(req) {
   const firstJoinForStaff = !joinedStaffIds.has(req.user.id);
   joinedStaffIds.add(req.user.id);
   const updated = await updateEntity("Ticket", ticket.id, {
-    status: "admin_joined",
+    status: matchType === "xp" ? "in_progress" : "admin_joined",
     assigned_admin_id: req.user.id,
     assigned_admin_name: nameFor(req.user),
     assigned_admin_role: effectiveChatRole(req.user),
@@ -5216,7 +5225,7 @@ async function joinTicket(req) {
     joined_date: nowIso(),
     updated_date: nowIso(),
   });
-  if (ticket.match_id) {
+  if (ticket.match_id && matchType !== "xp") {
     await updateEntity(entityName, ticket.match_id, {
       admin_request_status: "admin_joined",
       assigned_admin_id: req.user.id,
@@ -5227,13 +5236,13 @@ async function joinTicket(req) {
       admin_request_updated_date: nowIso(),
     }).catch(() => null);
   }
-  if (match && firstJoinForStaff && ["wager", "8s", "xp", "tournament", "ranked"].includes(matchType)) {
+  if (match && firstJoinForStaff && ["wager", "8s", "tournament", "ranked"].includes(matchType)) {
     await createMatchRoomSystemMessage(matchType, match, staffJoinMessageFor(req.user), req.user);
   }
   const alerts = await listEntities("AdminAlert", { ticket_id: ticket.id }, "-created_date", 20).catch(() => []);
   await Promise.all(alerts.map((alert) => updateEntity("AdminAlert", alert.id, { status: "acknowledged" }).catch(() => null)));
   await notifyTicketUsers(updated, {
-    title: "Admin joined",
+    title: matchType === "xp" ? "Staff reviewing your ticket" : "Admin joined",
     message: `${nameFor(req.user)} joined your ticket.`,
   });
   return { success: true, ticket: updated };
@@ -5242,6 +5251,7 @@ async function joinTicket(req) {
 async function joinMatchRoomAsAdmin(req) {
   assertStaff(req, "moderator");
   const matchType = normalizeMatchType(req.body.match_type);
+  if (matchType === "xp") return { success: false, code: "XP_TICKET_REQUIRED", error: "Review and resolve XP match issues through the linked support ticket." };
   if (!["wager", "8s", "money8s", "xp", "tournament", "ranked"].includes(matchType)) {
     return { success: false, error: "Admin room join is not available for this match type" };
   }
@@ -5341,7 +5351,8 @@ async function replyTicket(req) {
     ? ticket.status
     : isStaff
       ? "waiting_for_user"
-      : (ticket.assigned_admin_id ? "admin_joined" : "waiting_for_admin");
+      : normalizeMatchType(ticket.match_type) === "xp" ? (ticket.assigned_admin_id ? "in_progress" : "open")
+        : (ticket.assigned_admin_id ? "admin_joined" : "waiting_for_admin");
   const updated = await updateEntity("Ticket", ticket.id, {
     status: nextStatus,
     messages,
@@ -5353,7 +5364,7 @@ async function replyTicket(req) {
     updated_date: nowIso(),
   });
 
-  if (ticket.match_id && !internal) {
+  if (ticket.match_id && !internal && normalizeMatchType(ticket.match_type) !== "xp") {
     await updateEntity(matchEntityFor(normalizeMatchType(ticket.match_type)), ticket.match_id, {
       admin_request_status: nextStatus,
       admin_request_ticket_id: ticket.id,
@@ -5364,9 +5375,9 @@ async function replyTicket(req) {
   if (!internal) {
     if (isStaff) {
       await notifyTicketUsers(updated, {
-        title: "Admin replied",
+        title: normalizeMatchType(ticket.match_type) === "xp" ? "Staff replied" : "Admin replied",
         message: `${nameFor(req.user)} replied: ${content.slice(0, 140)}`,
-        action_url: "/support",
+        action_url: normalizeMatchType(ticket.match_type) === "xp" ? "/my-tickets" : "/support",
       });
     } else if (ticket.assigned_admin_id) {
       await notifyUser(ticket.assigned_admin_id, {
@@ -5471,7 +5482,7 @@ async function resolveTicket(req) {
     resolved_date: nowIso(),
     updated_date: nowIso(),
   });
-  if (ticket.match_id) {
+  if (ticket.match_id && normalizeMatchType(ticket.match_type) !== "xp") {
     await updateEntity(matchEntityFor(normalizeMatchType(ticket.match_type)), ticket.match_id, {
       admin_request_status: "resolved",
       admin_request_ticket_id: ticket.id,
@@ -5481,7 +5492,7 @@ async function resolveTicket(req) {
   await notifyTicketUsers(updated, {
     title: "Ticket resolved",
     message: resolution,
-    action_url: "/support",
+    action_url: normalizeMatchType(ticket.match_type) === "xp" ? "/my-tickets" : "/support",
   });
   return { success: true, ticket: updated, result: actionResult };
 }
@@ -5489,6 +5500,7 @@ async function resolveTicket(req) {
 async function adminResolveMatchRoom(req) {
   assertStaff(req, "moderator");
   const matchType = normalizeMatchType(req.body.match_type);
+  if (matchType === "xp") return { success: false, code: "XP_TICKET_REQUIRED", error: "Resolve XP match issues through the linked support ticket." };
   if (!["wager", "8s", "money8s", "xp", "tournament"].includes(matchType)) {
     return { success: false, error: "Admin match resolution is only available for wagers, 8s, Money 8s, XP, and tournaments" };
   }
@@ -5616,6 +5628,7 @@ async function adminResolveMatchRoom(req) {
 
 async function adminResetMatchDispute(req) {
   assertStaff(req, "moderator");
+  if (normalizeMatchType(req.body.match_type) === "xp") return { success: false, code: "XP_TICKET_REQUIRED", error: "Review and replay XP matches through the linked support ticket." };
   const requestedType = String(req.body.match_type || "wager").toLowerCase();
   const matchType = normalizeMatchType(requestedType);
   const entityName = matchEntityFor(matchType);
@@ -5910,14 +5923,14 @@ async function reopenTicket(req) {
   const ticket = await getEntity("Ticket", req.body.ticket_id);
   if (!ticket) return { success: false, error: "Ticket not found" };
   const updated = await updateEntity("Ticket", ticket.id, {
-    status: ticket.requested_admin ? "waiting_for_admin" : "open",
+    status: normalizeMatchType(ticket.match_type) !== "xp" && ticket.requested_admin ? "waiting_for_admin" : "open",
     reopened_by: req.user.id,
     reopened_by_name: nameFor(req.user),
     reopened_date: nowIso(),
     resolution: null,
     updated_date: nowIso(),
   });
-  if (ticket.match_id) {
+  if (ticket.match_id && normalizeMatchType(ticket.match_type) !== "xp") {
     await updateEntity(matchEntityFor(normalizeMatchType(ticket.match_type)), ticket.match_id, {
       admin_request_status: updated.status,
       admin_request_ticket_id: ticket.id,
@@ -9910,6 +9923,40 @@ async function completeTournamentMatch(req) {
   );
 }
 
+async function ensureXPDisputeTicket(req, match, dispute) {
+  const context = await ticketMatchContext("xp", match.id);
+  const existing = dispute.ticket_id ? await getEntity("Ticket", dispute.ticket_id).catch(() => null)
+    : serializeRow(await prisma.ticket.findFirst({ where: { metadata: { path: ["dispute_id"], equals: dispute.id } } }));
+  const payload = {
+    user_id: existing?.user_id || dispute.reported_by, username: existing?.username || dispute.reported_by_name,
+    subject: `XP match dispute ${match.id}`, description: dispute.description,
+    category: "xp", priority: existing?.priority || (req.user.is_premium ? "high" : "medium"),
+    status: existing && !["resolved", "closed"].includes(existing.status) ? existing.status : "open",
+    requested_admin: false, request_type: "dispute", ticket_only: true,
+    action_url: "/my-tickets", match_url: matchRouteFor("xp", match), match_type: "xp", match_id: match.id,
+    related_entity_id: match.id, related_entity_type: "XPMatch", dispute_id: dispute.id,
+    dispute_reason: dispute.reason, reported_against: dispute.reported_against,
+    reported_against_name: dispute.reported_against_name, participant_user_ids: context.participantUserIds,
+    team_a_id: context.team_a_id, team_a_name: context.team_a_name, team_b_id: context.team_b_id, team_b_name: context.team_b_name,
+    match_roster: dispute.match_roster || [], match_details: context.match_details,
+    submitted_proof: dispute.submitted_evidence || [], proof_urls: dispute.submitted_evidence || [],
+    chat_logs: context.chat_logs, match_history: context.match_history, result_report: context.result_report,
+    disputes: context.disputes, dispute_submissions: dispute.submissions || [],
+    messages: existing?.messages || [], internal_notes: existing?.internal_notes || [],
+    created_date: existing?.created_date || nowIso(), updated_date: nowIso(),
+  };
+  const ticket = existing ? await updateEntity("Ticket", existing.id, payload) : await createEntity("Ticket", payload);
+  const linked = await updateEntity("Dispute", dispute.id, { ticket_id: ticket.id, ticket_only: true, admin_popup_suppressed: true });
+  await updateEntity("XPMatch", match.id, { support_ticket_id: ticket.id,
+    requested_admin: false, admin_request_ticket_id: null, admin_request_status: null });
+  if (!existing) {
+    await notifyStaff({ title: "New XP support ticket", message: `${dispute.reported_by_name || "A player"} submitted: ${disputeReasonLabel(dispute.reason)}`,
+      type: "support", action_url: "/admin?tab=tickets", related_entity_id: ticket.id, related_entity_type: "Ticket" });
+    await notifyTicketUsers(ticket, { title: "XP ticket submitted", message: "Staff will review the report and evidence. Follow the conversation in My Tickets." });
+  }
+  return { dispute: linked, ticket };
+}
+
 async function createDispute(req) {
   const type = normalizeMatchType(req.body.match_type || "wager");
   const id = req.body.match_id || req.body.wager_id || req.body.ranked_match_id || req.body.xp_match_id || req.body.tournament_match_id;
@@ -9925,6 +9972,7 @@ async function createDisputeUnlocked(req) {
   if (!match) return { success: false, error: "Match not found" };
 
   const isEightsDispute = isEightsMatchType(matchType);
+  const structuredDispute = isEightsDispute || matchType === "xp";
   if (isEightsDispute && match.match_type !== matchType) return { success: false, error: "Match type does not match this lobby." };
   if (["completed", "cancelled", "expired", "closed"].includes(match.status)) return { success: false, error: "This match is already closed." };
 
@@ -9952,10 +10000,15 @@ async function createDisputeUnlocked(req) {
   }
 
   let roster = [];
-  if (isEightsDispute) {
+  if (structuredDispute) {
     let input;
     try { input = validateMatchDispute(req.body); } catch (error) { return { success: false, error: error.message }; }
-    const participants = await listEntities("WagerParticipant", { wager_id: match.id }, "joined_date", 100);
+    const participants = isEightsDispute
+      ? await listEntities("WagerParticipant", { wager_id: match.id }, "joined_date", 100)
+      : [
+        ...rankedRosterIds(match, "alpha").map((user_id) => ({ user_id, team: "host", is_captain: user_id === match.host_id })),
+        ...rankedRosterIds(match, "bravo").map((user_id) => ({ user_id, team: "challenger", is_captain: user_id === match.challenger_id })),
+      ];
     const userRows = await prisma.user.findMany({ where: { id: { in: participants.map((player) => player.user_id).filter(Boolean) } } });
     const usersById = new Map(userRows.map((user) => [user.id, user]));
     roster = participants.map((player) => {
@@ -9975,10 +10028,11 @@ async function createDisputeUnlocked(req) {
     ...(req.body.screenshots || []),
     ...(req.body.videos || []),
   ];
-  const sourceMatchType = String(matchType === "ranked" ? "ranked" : (match?.match_type || matchType)).toLowerCase();
+  const sourceMatchType = String(["ranked", "xp"].includes(matchType) ? matchType : (match?.match_type || matchType)).toLowerCase();
   const createsPlayerTicket = ["ranked", "8s", "eights", "money8s", "xp"].includes(sourceMatchType);
   const ensureDisputeTicket = async (dispute) => {
     if (!createsPlayerTicket || !dispute) return { dispute, ticket: null };
+    if (matchType === "xp") return ensureXPDisputeTicket(req, match, dispute);
     if (dispute.ticket_id) {
       const ticket = await getEntity("Ticket", dispute.ticket_id).catch(() => null);
       if (ticket) return { dispute, ticket };
@@ -10010,7 +10064,7 @@ async function createDisputeUnlocked(req) {
   const existingDisputes = await listEntities("Dispute", { match_id: match.id }, "-created_date", 20).catch(() => []);
   const existingOpenDispute = existingDisputes.find((row) => !["resolved", "rejected", "closed"].includes(row.status));
   if (existingOpenDispute) {
-    if (isEightsDispute) {
+    if (structuredDispute) {
       const submission = { reason: req.body.reason, description: req.body.description,
         reported_by: req.user.id, reported_by_name: nameFor(req.user), reported_against: req.body.reported_against,
         reported_against_name: req.body.reported_against_name, evidence_urls: submittedEvidence, created_date: nowIso() };
@@ -10071,12 +10125,13 @@ async function createDisputeUnlocked(req) {
     wager_id: matchType === "wager" || isEightsDispute ? match.id : undefined,
     match_id: match.id,
     match_type: matchType,
+    ...(matchType === "xp" ? { ticket_only: true, admin_popup_suppressed: true } : {}),
     wager_details: match,
     match_status_before_dispute: match.status,
     action_url: matchRouteFor(matchType, match),
     match_roster: roster,
     result_report: resultReportFor(matchType, match),
-    ...(isEightsDispute ? { submissions: [{ reason: req.body.reason, description: req.body.description,
+    ...(structuredDispute ? { submissions: [{ reason: req.body.reason, description: req.body.description,
       reported_by: req.user.id, reported_by_name: nameFor(req.user), reported_against: req.body.reported_against,
       reported_against_name: req.body.reported_against_name, evidence_urls: submittedEvidence, created_date: nowIso() }] } : {}),
     match_logs: [match],
@@ -10107,7 +10162,7 @@ async function createDisputeUnlocked(req) {
 
   if (isEightsDispute) publishEightsLobbyUpdate(match.id, "disputed");
 
-  await notifyStaff({
+  if (matchType !== "xp") await notifyStaff({
     title: "New dispute",
     message: `${nameFor(req.user)} opened a ${matchType} dispute.`,
     type: "dispute",

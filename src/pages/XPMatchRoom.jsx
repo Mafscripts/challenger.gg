@@ -1,14 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
 import {
   AlertCircle,
-  ChevronDown,
   Check,
   Clock,
   Flame,
   Flag,
-  Gavel,
   Percent,
   RefreshCw,
   Swords,
@@ -22,6 +20,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
+import MatchDisputeDialog from "@/components/match/MatchDisputeDialog";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
 import { useRoomRecord } from "@/components/match/useRoomRecord";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
@@ -30,7 +29,6 @@ import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import PageLoader from "@/components/ui/PageLoader";
 import { getRankForElo, getRankProgress } from "@/lib/ranks";
-import { isStaffUser } from "@/lib/roles";
 import { trophyCountsFor, trophyFields } from "@/lib/trophyCounts";
 import { xpMatchOutcome } from "@/lib/xpMatchRating";
 
@@ -209,32 +207,6 @@ function PlayerPanel({ label, teamName, color, players = [], slots = 1, score, i
   );
 }
 
-function RankedAdminTools({ match, busy, onResetDispute, onCancel, onRefresh }) {
-  return (
-    <details className="group rounded-xl border border-white/[0.08] bg-card p-4">
-      <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 transition-colors hover:bg-blue-400/15 [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-2"><Gavel className="h-3.5 w-3.5" /> Admin tools</span>
-        <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-      </summary>
-      <div className="mt-2 grid gap-2 rounded-lg border border-white/[0.06] bg-black/15 p-2">
-        {["score_conflict", "disputed"].includes(match.status) && (
-          <button type="button" onClick={onResetDispute} disabled={busy} className="flex items-center justify-center gap-2 rounded-lg border border-cyan/20 bg-cyan/[0.07] px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15 disabled:opacity-40">
-            <RefreshCw className="h-3.5 w-3.5" /> Reset dispute
-          </button>
-        )}
-        <button type="button" onClick={onRefresh} className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-secondary/60 px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-vapor hover:text-white">
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh room
-        </button>
-        {!['completed', 'cancelled'].includes(match.status) && (
-          <button type="button" onClick={onCancel} className="flex items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-[9px] font-black uppercase tracking-wider text-red-400 hover:bg-red-500/20">
-            <Flag className="h-3.5 w-3.5" /> Staff cancel
-          </button>
-        )}
-      </div>
-    </details>
-  );
-}
-
 function RankedResultOverlay({ match, result, onContinue }) {
   const reduceMotion = useReducedMotion();
   const [showContinue, setShowContinue] = useState(Boolean(reduceMotion));
@@ -315,11 +287,9 @@ function XPMatchRoomView() {
   const [xpRanks, setXpRanks] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [supporting, setSupporting] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(false);
   const [disputing, setDisputing] = useState(false);
   const [cancelVoting, setCancelVoting] = useState(false);
-  const [resettingDispute, setResettingDispute] = useState(false);
-  const joinedAdminRooms = useRef(new Set());
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -410,10 +380,9 @@ function XPMatchRoomView() {
 
   const isHost = user?.id === match?.host_id;
   const isOpposingCaptain = user?.id === match?.challenger_id;
-  const isStaff = isStaffUser(user);
   const scoreReportOpen = ["accepted", "in_progress", "awaiting_host_report", "awaiting_challenger_report", "awaiting_team_alpha_report", "awaiting_team_bravo_report"].includes(match?.status);
   const ownScoreSubmitted = (isHost || isOpposingCaptain) && match?.reported_score_by === user?.id;
-  const canSubmitScore = (isHost || isOpposingCaptain || isStaff) && scoreReportOpen && roomRosterFull(match) && !ownScoreSubmitted;
+  const canSubmitScore = (isHost || isOpposingCaptain) && scoreReportOpen && roomRosterFull(match) && !ownScoreSubmitted;
   const scoreIsValid = validSeriesScore(match, scoreA, scoreB);
   const winsNeeded = winsNeededFor(match);
   const cancelRequest = match?.xp_cancel_request;
@@ -429,26 +398,6 @@ function XPMatchRoomView() {
   const currentUserReady = Boolean(user?.id && readyPlayerIds.includes(user.id));
   const rankedParticipantIds = [...roomRosterIds(match, "alpha"), ...roomRosterIds(match, "bravo")];
   const everyoneReady = rankedParticipantIds.length > 0 && rankedParticipantIds.every((playerId) => readyPlayerIds.includes(playerId));
-
-  useEffect(() => {
-    if (!match?.id || !user?.id || !isStaff) return;
-    if (joinedAdminRooms.current.has(match.id)) return;
-    const hasOpenRequest = Boolean(match.requested_admin && match.admin_request_ticket_id)
-      && !["admin_joined", "resolved", "closed"].includes(match.admin_request_status);
-
-    joinedAdminRooms.current.add(match.id);
-    base44.functions.invoke("joinMatchRoomAsAdmin", {
-      match_type: "ranked",
-      match_id: match.id,
-      ...(hasOpenRequest ? { ticket_id: match.admin_request_ticket_id } : {}),
-      silent_join: !hasOpenRequest,
-    }).then((response) => {
-      if (response.data?.success && response.data?.match) setMatch(response.data.match);
-    }).catch((error) => {
-      joinedAdminRooms.current.delete(match.id);
-      console.error("Failed to join ranked room as admin:", error);
-    });
-  }, [match?.id, match?.requested_admin, match?.admin_request_status, match?.admin_request_ticket_id, user?.id, isStaff]);
 
   const visibleRosterPlayers = (side, loadedPlayers) => {
     const names = roomRosterNames(match, side);
@@ -669,59 +618,18 @@ function XPMatchRoomView() {
     }
   };
 
-  const handleSupportTicket = async (reason) => {
-    setSupporting(true);
-    try {
-      const response = await base44.functions.invoke("requestAdminAlert", {
-        match_type: "xp",
-        match_id: match.id,
-        subject: `XP match support ${match.id}`,
-        description: `${reason}\n\nMatch: ${match.id}\nStatus: ${match.status}\nParticipants: ${match.host_name || "Host unavailable"} vs ${match.challenger_name || "Opponent pending"}`,
-        priority: "high",
-      });
-
-      if (response.data?.success) {
-        toast({ title: "Admin requested", description: "Staff were notified for this XP match." });
-        await loadRoom();
-      } else {
-        toast({ title: "Request failed", description: response.data?.error || "Could not request admin.", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Request failed", description: error.message || "Could not request admin.", variant: "destructive" });
-    } finally {
-      setSupporting(false);
-    }
-  };
-
-  const handleCreateDispute = async () => {
-    const evidenceText = typeof window !== "undefined" ? window.prompt("Evidence URLs (comma or line separated):", "") : "";
-    if (evidenceText === null) return;
-    const evidenceUrls = evidenceText.split(/[\n,]+/).map((url) => url.trim()).filter(Boolean);
+  const handleCreateDispute = async (payload) => {
     setDisputing(true);
     try {
       const response = await base44.functions.invoke("createDispute", {
-        match_type: "xp",
-        match_id: match.id,
-        xp_match_id: match.id,
-        reason: "score_dispute",
-        description: `Dispute submitted from XP match room ${match.id}. ${match.host_name || "Host"} vs ${match.challenger_name || "Opponent"}`,
-        reported_against: user?.id === match.host_id ? match.challenger_id : match.host_id,
-        reported_against_name: user?.id === match.host_id ? match.challenger_name : match.host_name,
-        evidence_urls: evidenceUrls,
-        escalated: Boolean(user?.is_premium),
+        match_type: "xp", match_id: match.id, xp_match_id: match.id,
+        ...payload, escalated: Boolean(user?.is_premium),
       });
-
-      if (response.data?.success) {
-        toast({ title: response.data.escalated ? "Ticket escalated" : "Ticket created", description: "You can follow this dispute under My Tickets." });
-        await loadRoom();
-      } else {
-        toast({ title: "Dispute failed", description: response.data?.error || "Could not create dispute.", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Dispute failed", description: error.message || "Could not create dispute.", variant: "destructive" });
-    } finally {
-      setDisputing(false);
-    }
+      if (!response.data?.success || !response.data.ticket?.id) throw new Error(response.data?.error || "Could not create your support ticket.");
+      toast({ title: "Ticket submitted", description: "Follow staff replies and the decision in My Tickets." });
+      await loadRoom();
+      return response.data;
+    } finally { setDisputing(false); }
   };
 
   const handleCancel = async (staffOverride = false) => {
@@ -738,30 +646,6 @@ function XPMatchRoomView() {
       }
     } catch (error) {
       toast({ title: "Cancel failed", description: error.message || "Could not cancel match.", variant: "destructive" });
-    }
-  };
-
-  const handleAdminResetDispute = async () => {
-    const confirmed = typeof window === "undefined" || window.confirm("Reset this dispute, clear both reports, and let the players continue?");
-    if (!confirmed) return;
-    setResettingDispute(true);
-    try {
-      const response = await base44.functions.invoke("adminResetMatchDispute", {
-        match_type: "xp",
-        match_id: match.id,
-      });
-      if (!response.data?.success) {
-        toast({ title: "Reset failed", description: response.data?.error || "Could not reset dispute.", variant: "destructive" });
-        return;
-      }
-      setScoreA(0);
-      setScoreB(0);
-      await loadRoom();
-      toast({ title: "Dispute reset", description: "The match is live again and both sides can report again." });
-    } catch (error) {
-      toast({ title: "Reset failed", description: error.message || "Could not reset dispute.", variant: "destructive" });
-    } finally {
-      setResettingDispute(false);
     }
   };
 
@@ -825,6 +709,10 @@ function XPMatchRoomView() {
 
   return (
     <div className="match-room-theme min-h-screen bg-obsidian py-6">
+      <MatchDisputeDialog open={disputeOpen} onOpenChange={setDisputeOpen} match={{ ...match, match_type: "xp" }} players={[
+        ...visibleAlphaPlayers.map((player) => ({ ...player, user_id: player.id, user_name: player.name, team: "host" })),
+        ...visibleBravoPlayers.map((player) => ({ ...player, user_id: player.id, user_name: player.name, team: "challenger" })),
+      ]} userId={user?.id} submitting={disputing} onSubmit={handleCreateDispute} />
       <div className="max-w-[1740px] mx-auto px-4 lg:px-6">
         <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/55 via-white/10 to-orange/55" />
@@ -858,24 +746,10 @@ function XPMatchRoomView() {
                 teamAPlayers={visibleAlphaPlayers}
                 teamBPlayers={visibleBravoPlayers}
                 inputActions={(
-                  <details className="group">
-                    <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2 text-[8px] font-black uppercase tracking-wider text-vapor hover:text-white [&::-webkit-details-marker]:hidden">
-                      <span className="flex items-center gap-2"><Gavel className="h-3 w-3 text-blue-300" /> Match support</span>
-                      <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-                    </summary>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => handleSupportTicket("I need support for this XP match.")} disabled={!isParticipant || supporting} className="flex items-center justify-center gap-2 rounded-lg border border-blue-400/20 bg-blue-400/[0.07] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-blue-300 hover:bg-blue-400/15 disabled:opacity-40">
-                        <Gavel className="h-3.5 w-3.5" /> {supporting ? "Requesting..." : "Request admin"}
-                      </button>
-                      <button type="button" onClick={handleCreateDispute} disabled={!isParticipant || disputing} className="flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-2 py-2.5 text-[9px] font-black uppercase tracking-wider text-orange hover:bg-orange/15 disabled:opacity-40">
-                        <Ticket className="h-3.5 w-3.5" /> {disputing ? "Submitting..." : "Submit ticket"}
-                      </button>
-                      <button type="button" onClick={() => handleSupportTicket("Opponent no-show report.")} disabled={!isParticipant || supporting} className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-secondary/60 px-2 py-2 text-[8px] font-black uppercase tracking-wider text-vapor hover:text-white disabled:opacity-40">
-                        <Flag className="h-3 w-3" /> Report no show
-                      </button>
-                      {(match.admin_request_status || match.requested_admin) && <p className="col-span-2 mt-1 text-center text-[8px] font-bold text-blue-300">Admin request: {{ waiting_for_admin: "Waiting for admin", admin_joined: match.assigned_admin_name ? `${match.assigned_admin_name} joined` : "Admin joined", waiting_for_user: "Waiting for you", escalated: "Escalated", resolved: "Resolved", closed: "Closed" }[match.admin_request_status || "waiting_for_admin"] || "Waiting for admin"}</p>}
-                    </div>
-                  </details>
+                  <div className="flex items-center justify-between gap-3">
+                    <Link to="/my-tickets" className="text-[10px] font-bold text-vapor transition-colors hover:text-cyan">My Tickets</Link>
+                    <button type="button" onClick={() => setDisputeOpen(true)} disabled={!isParticipant || disputing || ["completed", "cancelled"].includes(match.status)} className="inline-flex items-center justify-center gap-2 rounded-lg border border-orange/25 bg-orange/[0.08] px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-orange transition-colors hover:bg-orange/15 disabled:opacity-40"><Ticket className="h-3.5 w-3.5" />Submit ticket</button>
+                  </div>
                 )}
               />
             </div>
@@ -936,7 +810,6 @@ function XPMatchRoomView() {
               </section>
             )}
 
-            {isStaff && <RankedAdminTools match={match} busy={resettingDispute} onResetDispute={handleAdminResetDispute} onCancel={() => handleCancel(true)} onRefresh={loadRoom} />}
           </div>
         </div>
 

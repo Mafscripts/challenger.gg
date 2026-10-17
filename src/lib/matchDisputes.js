@@ -4,6 +4,7 @@ export const matchDisputeReasons = [
   { value: "wrong_activision", label: "Wrong Activision ID", detail: "A player is using a different account" },
   { value: "smurfing", label: "Smurfing", detail: "An alternate account or misleading rank" },
   { value: "score_dispute", label: "Score dispute", detail: "An incorrect result or score report" },
+  { value: "no_show", label: "Opponent no-show", detail: "The opponent did not arrive for the match" },
   { value: "other", label: "Other issue", detail: "Explain what staff need to review" },
 ];
 

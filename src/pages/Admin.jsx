@@ -54,6 +54,7 @@ import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm } from "@/lib/tournamentGames";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
+import { disputeReasonLabel } from "@/lib/matchDisputes";
 
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
 const DisputeReviewCard = lazy(() => import("@/components/admin/DisputeReviewCard"));
@@ -2597,6 +2598,7 @@ export default function Admin() {
                           <StatusPill status={ticket.status} />
                           <StatusPill status={ticket.priority} />
                           {ticket.requested_admin && <StatusPill status="admin request" />}
+                          {ticket.dispute_reason && <span className="text-xs font-bold text-orange">{disputeReasonLabel(ticket.dispute_reason)}</span>}
                         </div>
                         <p className="font-semibold text-sm">{ticket.subject}</p>
                         <p className="text-xs text-vapor">From: {ticket.username} - {ticket.category}</p>
@@ -2626,7 +2628,7 @@ export default function Admin() {
 
                     <RowGrid compact columns={[
                       ["Assigned", ticket.assigned_admin_name || "Unassigned"],
-                      ["Match", ticket.action_url ? <Link to={ticket.action_url} className="text-cyan hover:underline">Open room</Link> : "N/A"],
+                      ["Match", (ticket.match_url || ticket.action_url) ? <Link to={ticket.match_url || ticket.action_url} className="text-cyan hover:underline">Open room</Link> : "N/A"],
                       ["Match ID", ticket.match_id ? `#${String(ticket.match_id).slice(-8)}` : "N/A"],
                       ["Teams", ticket.team_a_name || ticket.team_b_name ? `${ticket.team_a_name || "Team A"} vs ${ticket.team_b_name || "Team B"}` : "N/A"],
                       ["Wager/Tournament", ticket.tournament_name || (ticket.wager_amount !== undefined ? formatMoney(ticket.wager_amount) : "N/A")],
