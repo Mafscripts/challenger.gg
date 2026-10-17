@@ -22,6 +22,8 @@ const TOKEN_KEYS = ["auth_token", "base44_access_token", "token"];
 const ENTITY_CACHE_MS = 15_000;
 const ME_CACHE_MS = 60_000;
 const readOnlyFunctions = new Set([
+  "getAdminWallets",
+  "getAdminWalletSummary",
   "getAdminAuditLogs",
   "getAdminAuditEntry",
   "getAdminAuditCounts",

@@ -51,6 +51,7 @@ const adminManagedEntities = new Set([
 ]);
 
 const roleFields = new Set(["role", "admin_role", "is_admin"]);
+const balanceUserFields = new Set(["credits", "wallet_balance", "lifetime_earnings", "total_wager_earnings", "biggest_wager_win"]);
 const economyUserFields = new Set([
   "credits",
   "wallet_balance",
@@ -112,7 +113,15 @@ const participantIdentityValues = (participant) => {
 };
 
 const router = Router();
+const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
+  if (["POST", "PATCH", "DELETE"].includes(req.method) && protectedMutationNames.has(String(req.params.entity).toLowerCase())) {
+    return res.status(403).json({ error: "Use the protected action for this record" });
+  }
+  if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method)
+    && Object.keys(req.body || {}).some((key) => balanceUserFields.has(key))) {
+    return res.status(403).json({ error: "Use the CEO balance adjustment action to manage funds" });
+  }
   if (["challengematch", "challengestanding"].includes(String(req.params.entity).toLowerCase())) return res.status(403).json({ error: "Use the protected Challenge a Team actions" });
   if (String(req.params.entity).toLowerCase() === "tryoutroom") return res.status(404).json({ error: "Entity not found" });
   if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method) && Object.hasOwn(req.body || {}, "badges")) return res.status(403).json({ error: "Use admin badge management" });

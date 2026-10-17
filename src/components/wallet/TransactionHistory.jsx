@@ -139,9 +139,9 @@ export default function TransactionHistory({ type = "all" }) {
           </div>
           <div className="text-right">
             <p className={`text-sm font-bold font-mono ${
-              tx.type === "deposit" || tx.type === "wager_payout" || tx.type === "credit_gain" ? "text-green" : "text-red-400"
+              tx.type === "deposit" || tx.type === "wager_payout" || tx.type === "credit_gain" || (tx.type === "admin_adjustment" && Number(tx.amount) >= 0) ? "text-green" : "text-red-400"
             }`}>
-              {tx.type === "deposit" || tx.type === "wager_payout" || tx.type === "credit_gain" ? "+" : "-"}${Math.abs(tx.amount).toFixed(2)}
+              {tx.type === "deposit" || tx.type === "wager_payout" || tx.type === "credit_gain" || (tx.type === "admin_adjustment" && Number(tx.amount) >= 0) ? "+" : "-"}{["credit_gain", "credit_spend"].includes(tx.type) ? `${Math.abs(tx.amount).toLocaleString()} credits` : `$${Math.abs(tx.amount).toFixed(2)}`}
             </p>
             <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold uppercase ${getStatusColor(tx.status)}`}>
               {tx.status}

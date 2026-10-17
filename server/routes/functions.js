@@ -3,6 +3,7 @@ import { prisma } from "../prisma.js";
 import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket } from "../admin-tickets.js";
 import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
+import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
@@ -90,8 +91,6 @@ const findPlayersRoomId = "find-players";
 const findPlayersChatScope = "find_players_chat";
 const findPlayersRateLimits = new Map();
 const findPlayersAdminPingLimits = new Map();
-const walletAdjustmentRoles = new Set(["ceo", "super_admin"]);
-const walletAdjustmentTypes = new Set(["credits", "money"]);
 const publicCommerceEnabled = String(process.env.PUBLIC_COMMERCE_ENABLED || "").toLowerCase() === "true";
 const blockedPublicCommerceFunctions = new Set([
   "buyWithCredits",
@@ -351,12 +350,6 @@ function canModerateUser(actorRole, targetRole) {
   if (actorRole === "admin") return !["ceo", "super_admin"].includes(targetRole);
   if (actorRole === "moderator") return targetRole === "user";
   return false;
-}
-
-function canAdjustUserWallet(actorRole, targetRole) {
-  if (!walletAdjustmentRoles.has(actorRole)) return false;
-  if (actorRole === "super_admin" && targetRole === "ceo") return false;
-  return true;
 }
 
 function requiredRosterSize(teamSize) {
@@ -8703,150 +8696,18 @@ async function buyWithCredits(req) {
 }
 
 async function addFunds(req) {
-  assertStaff(req, "admin");
-  const userId = req.body.user_id;
-  if (!userId) return { success: false, error: "Target user is required" };
-  const amount = money(req.body.amount);
-  if (amount <= 0) return { success: false, error: "Amount must be greater than zero" };
-  const wallet = await walletFor(userId);
-  const updatedWallet = await updateEntity("Wallet", wallet.id, {
-    available_balance: roundedMoney(money(wallet.available_balance) + amount),
-    withdrawable_balance: roundedMoney(money(wallet.withdrawable_balance) + amount),
-    total_deposits: roundedMoney(money(wallet.total_deposits) + amount),
+  return adjustAdminWallet(prisma, req.user, {
+    ...req.body, type: "money", operation: "add",
+    reason: req.body.reason || req.body.description || "CEO wallet deposit",
   });
-  await syncUserWalletBalance(userId, updatedWallet);
-  await createWalletTransaction(userId, updatedWallet, {
-    type: "deposit",
-    amount,
-    description: req.body.description || "Wallet deposit",
-    reference_type: req.body.reference_type,
-    reference_id: req.body.reference_id,
-  });
-  return { success: true, wallet: updatedWallet };
 }
 
 async function adminAdjustWallet(req) {
-  const actorRole = req.user?.role || "user";
-  if (!walletAdjustmentRoles.has(actorRole)) {
-    return { success: false, error: "CEO or Super Admin access required" };
-  }
-
-  const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
-  if (!target) return { success: false, error: "User not found" };
-  if (!canAdjustUserWallet(actorRole, target.role || "user")) {
-    return { success: false, error: "Super Admin cannot adjust CEO accounts" };
-  }
-
-  const adjustmentType = String(req.body.type || "").toLowerCase();
-  if (!walletAdjustmentTypes.has(adjustmentType)) {
-    return { success: false, error: "Adjustment type must be credits or money" };
-  }
-
-  const rawAmount = money(req.body.amount);
-  if (rawAmount <= 0) return { success: false, error: "Amount must be greater than zero" };
-
-  const amount = adjustmentType === "money" ? roundedMoney(rawAmount) : rawAmount;
-  if (amount <= 0) return { success: false, error: "Amount must be greater than zero" };
-  const reason = String(req.body.reason || "").trim();
-  if (!reason) return { success: false, error: "Reason is required" };
-
-  const timestamp = nowIso();
-  const targetName = nameFor(target);
-  const actorName = nameFor(req.user);
-  let updatedUser = null;
-  let updatedWallet = null;
-  let transaction = null;
-  let beforeAmount = 0;
-  let afterAmount = 0;
-
-  if (adjustmentType === "credits") {
-    beforeAmount = money(target.credits);
-    const row = await prisma.user.update({
-      where: { id: target.id },
-      data: { credits: { increment: amount } },
-    });
-    updatedUser = publicUser(row);
-    afterAmount = money(row.credits);
-  } else {
-    const wallet = await walletFor(target.id);
-    beforeAmount = roundedMoney(wallet.available_balance);
-    afterAmount = roundedMoney(beforeAmount + amount);
-    updatedWallet = await updateEntity("Wallet", wallet.id, {
-      available_balance: afterAmount,
-      withdrawable_balance: roundedMoney(money(wallet.withdrawable_balance) + amount),
-      total_deposits: roundedMoney(money(wallet.total_deposits) + amount),
-    });
-    const row = await prisma.user.update({
-      where: { id: target.id },
-      data: { wallet_balance: roundedMoney(updatedWallet.available_balance) },
-    });
-    updatedUser = publicUser(row);
-    transaction = await createWalletTransaction(target.id, updatedWallet, {
-      type: "admin_adjustment",
-      amount,
-      balance_before: beforeAmount,
-      balance_after: roundedMoney(updatedWallet.available_balance),
-      description: `Admin money addition: ${reason}`,
-      reference_type: "AdminAction",
-      adjusted_by: req.user.id,
-      adjusted_by_name: actorName,
-      reason,
-    });
-  }
-
-  const action = await createEntity("AdminAction", {
-    admin_id: req.user.id,
-    admin_name: actorName,
-    admin_role: actorRole,
-    action_type: "wallet_adjust",
-    target_user_id: target.id,
-    target_username: targetName,
-    description: `Added ${amount} ${adjustmentType} to ${targetName}: ${reason}`,
-    details: {
-      target_user_id: target.id,
-      target_user_name: targetName,
-      amount,
-      type: adjustmentType,
-      reason,
-      performed_by: req.user.id,
-      performed_by_name: actorName,
-      performed_by_role: actorRole,
-      timestamp,
-      balance_before: beforeAmount,
-      balance_after: afterAmount,
-      wallet_id: updatedWallet?.id,
-      wallet_transaction_id: transaction?.id,
-    },
-    created_date: timestamp,
-  });
-
-  await createEntity("Notification", {
-    user_id: target.id,
-    type: "system",
-    title: adjustmentType === "credits" ? "Credits added" : "Money added",
-    message: adjustmentType === "credits"
-      ? `${amount.toLocaleString()} credits were added to your account.`
-      : `$${amount.toFixed(2)} was added to your wallet.`,
-    is_read: false,
-    action_url: adjustmentType === "money" ? "/wallet" : "/marketplace#credits-store",
-    related_entity_id: action.id,
-    related_entity_type: "AdminAction",
-    created_date: timestamp,
-  });
-
-  return {
-    success: true,
-    type: adjustmentType,
-    amount,
-    user: updatedUser,
-    wallet: updatedWallet,
-    action,
-    transaction,
-  };
+  return adjustAdminWallet(prisma, req.user, req.body);
 }
 
 async function adminMassResetBalances(req) {
-  if (!hasRole(req.user, "super_admin")) return { success: false, error: "Super Admin or CEO access required" };
+  if (!hasRole(req.user, "ceo")) return { success: false, error: "Only the CEO can reset balances" };
   if (String(req.body.confirmation || "").trim() !== "RESET ALL") {
     return { success: false, error: "Type RESET ALL to confirm this mass reset" };
   }
@@ -10943,6 +10804,8 @@ async function postDiscordCelebration(req) {
 
 const handlers = {
   ...challengeHandlers,
+  getAdminWallets: (req) => getAdminWallets(prisma, req.user, req.body),
+  getAdminWalletSummary: (req) => getAdminWalletSummary(prisma, req.user),
   getAdminAuditLogs: (req) => getAdminAuditLogs(prisma, req.user, req.body),
   getAdminAuditEntry: (req) => getAdminAuditEntry(prisma, req.user, req.body),
   getAdminAuditCounts: (req) => getAdminAuditCounts(prisma, req.user),

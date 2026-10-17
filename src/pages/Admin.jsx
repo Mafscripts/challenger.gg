@@ -62,6 +62,7 @@ const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerifica
 const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
 const RoleManagement = lazy(() => import("@/components/admin/RoleManagement"));
 const AuditLog = lazy(() => import("@/components/admin/AuditLog"));
+const AdminWallets = lazy(() => import("@/components/admin/AdminWallets"));
 const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGamesAdmin"));
 const ChallengeTeamAdmin = lazy(() => import("@/components/admin/ChallengeTeamAdmin"));
 
@@ -283,6 +284,7 @@ const initialData = {
   tournamentMatches: [],
   tournamentParticipants: [],
   wallets: [],
+  walletSummary: null,
   withdrawals: [],
   marketplace: [],
   inventory: [],
@@ -327,8 +329,8 @@ const adminAlertActionUrl = (alert, ticket) => {
   return "/admin";
 };
 const effectiveRoleFor = (user) => effectiveRoleForUser(user);
-const canAddWalletAdjustment = (role) => ["ceo", "super_admin"].includes(role || "user");
-const canAdjustUserWallet = (actorRole, targetRole) => canAddWalletAdjustment(actorRole) && (actorRole === "ceo" || targetRole !== "ceo");
+const canAddWalletAdjustment = (role) => role === "ceo";
+const canAdjustUserWallet = (actorRole) => canAddWalletAdjustment(actorRole);
 const canGrantUserPremium = (actorRole, targetRole) => (
   actorRole === "ceo"
   || (actorRole === "super_admin" && targetRole !== "ceo")
@@ -737,7 +739,7 @@ export default function Admin() {
     activeTournaments: data.tournaments.filter((tournament) => ["live", "in_progress", "registration", "open"].includes(tournament.status)).length,
     openAdminAlerts: data.adminAlerts.filter(isOpenAdminAlert).length,
     pendingWithdrawals: data.withdrawals.filter((withdrawal) => withdrawal.status === "pending").length,
-    walletTotal: data.wallets.reduce((sum, wallet) => sum + Number(wallet.available_balance || 0), 0),
+    walletTotal: Number(data.walletSummary?.available || 0),
   }), [data]);
 
   const invokeTicketAction = async (ticket, action, payload = {}, label = "Ticket updated") => {
@@ -946,11 +948,11 @@ export default function Admin() {
 
   const openWalletAdjustment = (targetUser, type) => {
     if (!canAddWalletAdjustment(currentRole)) {
-      toast({ title: "Not allowed", description: "CEO or Super Admin is required.", variant: "destructive" });
+      toast({ title: "Not allowed", description: "Only the CEO can adjust balances.", variant: "destructive" });
       return;
     }
     if (!canAdjustUserWallet(currentRole, targetUser?.role || "user")) {
-      toast({ title: "Not allowed", description: "Super Admin cannot adjust CEO accounts.", variant: "destructive" });
+      toast({ title: "Not allowed", description: "Only the CEO can adjust balances.", variant: "destructive" });
       return;
     }
     setWalletAdjustmentForm({
@@ -958,6 +960,7 @@ export default function Admin() {
       type,
       amount: "",
       reason: "",
+      request_id: crypto.randomUUID(),
     });
     setWalletAdjustmentOpen(true);
     window.setTimeout(() => document.getElementById("wallet-adjustment-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
@@ -972,7 +975,7 @@ export default function Admin() {
     event.preventDefault();
 
     if (!canAddWalletAdjustment(currentRole)) {
-      toast({ title: "Not allowed", description: "CEO or Super Admin is required.", variant: "destructive" });
+      toast({ title: "Not allowed", description: "Only the CEO can adjust balances.", variant: "destructive" });
       return;
     }
 
@@ -982,7 +985,7 @@ export default function Admin() {
       return;
     }
     if (!canAdjustUserWallet(currentRole, targetUser.role || "user")) {
-      toast({ title: "Not allowed", description: "Super Admin cannot adjust CEO accounts.", variant: "destructive" });
+      toast({ title: "Not allowed", description: "Only the CEO can adjust balances.", variant: "destructive" });
       return;
     }
 
@@ -1003,12 +1006,14 @@ export default function Admin() {
         type: walletAdjustmentForm.type,
         amount,
         reason: walletAdjustmentForm.reason.trim(),
+        request_id: walletAdjustmentForm.request_id,
       });
 
       if (response.data?.success) {
         const updatedUser = response.data.user;
         const updatedWallet = response.data.wallet;
         const action = response.data.action;
+        if (updatedUser) adminQueries.updateUser(updatedUser);
         setData((prev) => ({
           ...prev,
           users: updatedUser ? prev.users.map((user) => (user.id === updatedUser.id ? { ...user, ...updatedUser } : user)) : prev.users,
@@ -1024,6 +1029,7 @@ export default function Admin() {
           description: `${walletAdjustmentForm.type === "money" ? formatMoney(amount) : `${amount.toLocaleString()} credits`} added to ${userName(targetUser)}.`,
         });
         resetWalletAdjustment();
+        void loadAdminData();
       } else {
         toast({ title: "Adjustment failed", description: response.data?.error || "Could not add funds.", variant: "destructive" });
       }
@@ -1037,7 +1043,7 @@ export default function Admin() {
   const handleMassBalanceReset = async (event) => {
     event.preventDefault();
     if (!canAddWalletAdjustment(currentRole)) {
-      toast({ title: "Not allowed", description: "CEO or Super Admin is required.", variant: "destructive" });
+      toast({ title: "Not allowed", description: "Only the CEO can adjust balances.", variant: "destructive" });
       return;
     }
     if (massResetConfirmation.trim() !== "RESET ALL") {
@@ -1956,7 +1962,7 @@ export default function Admin() {
           <StatCard icon={Swords} label="Ranked" value={adminQueries.status.rankedMatches.ready ? stats.activeRanked : "…"} color="text-cyan" />
           <StatCard icon={Trophy} label="Tournaments" value={adminQueries.status.tournaments.ready ? stats.activeTournaments : "…"} color="text-purple-400" />
           <StatCard icon={Landmark} label="Withdrawals" value={adminQueries.status.withdrawals.ready ? stats.pendingWithdrawals : "…"} color="text-red-400" />
-          <StatCard icon={CreditCard} label="Wallet Total" value={adminQueries.status.wallets.ready ? formatMoney(stats.walletTotal) : "…"} color="text-green" />
+          <StatCard icon={CreditCard} label="Wallet Total" value={adminQueries.status.walletSummary.ready ? formatMoney(stats.walletTotal) : "…"} color="text-green" />
         </div>
 
         <div className="admin-workspace glass overflow-hidden rounded-xl border">
@@ -3245,17 +3251,7 @@ export default function Admin() {
           )}
 
           {activeTab === "wallets" && (
-            <ListSection title="Wallets" rows={data.wallets} empty="No wallets." render={(wallet) => {
-              const owner = userById[wallet.user_id];
-              return <RowGrid columns={[
-                ["User", <div><p className="font-bold">{owner ? userName(owner) : "Unknown user"}</p><p className="mt-0.5 text-xs text-vapor">{owner?.email || wallet.user_id}</p></div>],
-                ["Available", formatMoney(wallet.available_balance)],
-                ["Pending", formatMoney(wallet.pending_balance)],
-                ["Escrow", formatMoney(wallet.escrow_balance)],
-                ["Withdrawable", formatMoney(wallet.withdrawable_balance)],
-                ["Earned", formatMoney(wallet.total_earnings)],
-              ]} />;
-            }} />
+            <AdminWallets key={`${currentUser.id}:${currentRole}`} user={currentUser} onRefresh={loadAdminData} />
           )}
 
           {activeTab === "withdrawals" && (
