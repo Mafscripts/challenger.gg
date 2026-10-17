@@ -206,6 +206,9 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
         { metadata: { path: ["match_type"], equals: "8s" } },
         { created_date: { gt: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } },
       ] },
+    ] } : entity === "XPMatch" ? { OR: [
+      { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
+      { AND: [{ metadata: { path: ["match_type"], equals: "xp" } }, { metadata: { path: ["challenger_id"], not: "" } }] },
     ] } : { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
   ] };
   const rows = entity === "Notification"

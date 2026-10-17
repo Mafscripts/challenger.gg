@@ -98,6 +98,12 @@ export async function sweepExpiredMatchfinderPosts(db, { withLock = (_key, opera
   for (const [entity, delegate] of Object.entries(matchEntities)) {
     const candidates = await db[delegate].findMany({ where: { AND: [
       field("status", "open"),
+      ...(entity === "XPMatch" ? [{ OR: [
+        { metadata: { path: ["match_type"], not: "xp" } },
+        { metadata: { path: ["match_type"], equals: Prisma.AnyNull } },
+        field("challenger_id", ""),
+        { metadata: { path: ["challenger_id"], equals: Prisma.AnyNull } },
+      ] }] : []),
       entity === "Wager" ? { OR: [
         { AND: [field("match_type", "8s"), { created_date: { lte: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } }] },
         { AND: [

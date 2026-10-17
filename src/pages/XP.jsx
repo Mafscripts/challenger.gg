@@ -19,7 +19,7 @@ const modeLabels = {
   hp: "Hardpoint",
 };
 
-const activeRankedStatuses = new Set(["open", "ready_check", "ready", "in_progress", "pending_confirmation", "awaiting_confirmation", "score_conflict", "disputed"]);
+const activeRankedStatuses = new Set(["open", "accepted", "ready_check", "ready", "in_progress", "pending_confirmation", "awaiting_confirmation", "awaiting_host_report", "awaiting_challenger_report", "score_conflict", "disputed"]);
 
 const selectActiveRankedMatch = (matches, userId) => {
   const unique = [...new Map((matches || []).map((match) => [match.id, match])).values()];
@@ -91,6 +91,7 @@ export default function XP() {
   const [loadingMatches, setLoadingMatches] = useState(true);
   const [rankedTeams, setRankedTeams] = useState([]);
   const [selectedPartyByMatch, setSelectedPartyByMatch] = useState({});
+  const [joiningMatchId, setJoiningMatchId] = useState("");
 
   useEffect(() => {
     loadRankedData();
@@ -182,6 +183,7 @@ export default function XP() {
   const rankTone = rankCardTones.diamond;
 
   const handleAcceptMatch = async (match) => {
+    if (joiningMatchId) return;
     if (!user) {
       toast({ title: "Login required", description: "Please log in to accept XP matches.", variant: "destructive" });
       return;
@@ -191,6 +193,7 @@ export default function XP() {
       return;
     }
 
+    setJoiningMatchId(match.id);
     try {
       const response = await base44.functions.invoke("acceptXPMatch", {
         xp_match_id: match.id,
@@ -207,6 +210,8 @@ export default function XP() {
     } catch (error) {
       console.error("Failed to accept ranked match:", error);
       toast({ title: "Failed to accept", description: error.message || "Try again.", variant: "destructive" });
+    } finally {
+      setJoiningMatchId("");
     }
   };
 
@@ -214,7 +219,7 @@ export default function XP() {
     setIsCreateModalOpen(false);
     loadRankedData();
     if (result?.xp_match_id) {
-      toast({ title: "Posted on Matchfinder", description: "Your XP challenge is live and can be cancelled until an opponent accepts." });
+      toast({ title: "XP lobby created", description: "Your match is available. Players can now join either team." });
       navigate("/xp#matchfinder");
     }
   };
@@ -227,7 +232,7 @@ export default function XP() {
           currentUser={user}
           openCount={rankedMatches.length}
           matchfinder={(
-            <CompetitionMatchfinder loading={loadingMatches} emptyMessage="No XP matches are open right now.">
+            <CompetitionMatchfinder variant="xp" loading={loadingMatches} emptyMessage="No XP matches are open right now.">
               {rankedMatches.map((match) => {
                 const slots = Math.max(1, Number.parseInt(String(match.team_size || "1v1").split("v")[0], 10) || 1) * 2;
                 const joined = new Set([...(match.team_alpha_player_ids || [match.host_id]), ...(match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : []))].filter(Boolean)).size;
@@ -236,33 +241,38 @@ export default function XP() {
                 return (
                   <CompetitionMatchfinderRow
                     key={match.id}
+                    variant="xp"
+                    teamSize={match.team_size}
+                    bestOf={match.best_of}
+                    teamCounts={{ alpha: (match.team_alpha_player_ids || [match.host_id]).filter(Boolean).length, bravo: (match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : [])).filter(Boolean).length }}
                     game={match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}
                     gameDetail={`${match.team_size} · ${joined}/${slots} players`}
                     competition="XP Match"
-                    competitionDetail={`${slots - joined} open ${slots - joined === 1 ? "slot" : "slots"}`}
+                    competitionDetail={`Hosted by ${match.host_name || "Player"}`}
                     playRule={match.play_rule}
                     postedAt={match.created_date}
                     tone="cyan"
                     action={belongsToUser ? (
                       match.status === "open" && match.host_id === user?.id ? (
-                        <div className="min-w-52 space-y-2 text-right">
-                          <div className="rounded-lg border border-purple-400/25 bg-purple-400/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-purple-300">Posted on Matchfinder</div>
+                        <div className="w-48 space-y-2 text-right">
+                          <Link to={`/xp-match/${match.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15">Open lobby <ArrowRight className="h-3.5 w-3.5" /></Link>
                           <button onClick={async () => {
                             try {
-                              const response = await base44.functions.invoke("cancelXPMatch", { xp_match_id: match.id });
+                              const response = await base44.functions.invoke(match.challenger_id ? "requestXPCancellation" : "cancelXPMatch", { xp_match_id: match.id });
                               if (!response.data?.success) throw new Error(response.data?.error || "Could not cancel XP match.");
-                              toast({ title: "XP match cancelled", description: "Your post has been removed from Matchfinder." });
+                              toast({ title: match.challenger_id ? "Cancellation requested" : "XP match cancelled", description: match.challenger_id ? "The opposing captain must agree. Until then, the match must be played." : "Your open post has been removed." });
                               loadRankedData();
+                              if (match.challenger_id) navigate(`/xp-match/${match.id}`);
                             } catch (error) {
                               toast({ title: "Cancel failed", description: error.message || "Could not cancel XP match.", variant: "destructive" });
                             }
-                          }} className="w-full rounded-lg border border-red-400/25 bg-red-400/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300">Cancel Post</button>
+                          }} disabled={["pending", "declined"].includes(match.xp_cancel_request?.status)} className="px-2 py-1 text-[10px] font-bold text-red-300/80 transition-colors hover:text-red-300 disabled:opacity-40">{match.xp_cancel_request?.status === "declined" ? "Cancellation declined" : match.xp_cancel_request?.status === "pending" ? "Request pending" : match.challenger_id ? "Request cancellation" : "Cancel post"}</button>
                         </div>
                       ) : (
                         <Link to={`/xp-match/${match.id}`} className="inline-flex min-w-44 items-center justify-center rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room</Link>
                       )
                     ) : user ? (
-                      <div className="w-52 space-y-2">
+                      <div className="w-48 space-y-2">
                         {partyMatch && (
                           <select value={selectedPartyByMatch[match.id] || ""} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
                             <option value="">Solo player</option>
@@ -273,7 +283,7 @@ export default function XP() {
                             }).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player party)</option>)}
                           </select>
                         )}
-                        <button onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background">Accept This Match</button>
+                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots} onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Join match"}</button>
                       </div>
                     ) : null}
                   />
@@ -331,6 +341,7 @@ export default function XP() {
               <span className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 font-mono text-sm font-black text-cyan">{xp.toLocaleString()} XP</span>
             </div>
             <div className="p-5">
+              <p className="mb-5 rounded-lg border border-cyan/15 bg-cyan/[0.04] px-4 py-3 text-xs leading-5 text-vapor"><span className="font-bold text-white">Every opponent matters.</span> Equal teams play for +100 / −100 XP. Beat stronger teams for more XP; losing to weaker teams costs more. Team strength uses average XP when the lobby fills. Changes range from 10 to 190 XP per player, with a minimum total of 0.</p>
               <div className="flex items-end justify-between gap-4">
                 <div><p className="text-xs text-vapor">Current level progress</p><p className="mt-1 text-2xl font-black">{Number(currentStats?.current_xp ?? (xp % xpToNext)).toLocaleString()} <span className="text-sm text-vapor">/ {xpToNext.toLocaleString()} XP</span></p></div>
                 <p className="font-mono text-sm font-black text-cyan">{progress}%</p>

@@ -83,6 +83,17 @@ const sections = [
     ],
   },
   {
+    title: "XP Match Rules",
+    icon: Trophy,
+    rules: [
+      "XP Matches support 1v1, 2v2, 3v3 and 4v4. All players on both completed rosters receive their own XP result.",
+      "Average team XP is recorded when the lobby fills. Equal teams play for +100 XP on a win and -100 XP on a loss. Wins over stronger teams earn more, and losses to weaker teams cost more.",
+      "The calculated XP change ranges from 10 to 190 per player. Total XP cannot go below zero. Both captains must confirm the same final score.",
+      "Once an opponent joins, cancellation requires a request accepted by the opposing captain. A declined or unanswered request leaves the match active and it must be played. Agreed cancellations do not change XP.",
+      "Unmatched open posts may be removed by their host. Contact staff for disputes or exceptional circumstances.",
+    ],
+  },
+  {
     title: "Ranked Rules",
     icon: Trophy,
     rules: [

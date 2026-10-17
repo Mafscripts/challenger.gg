@@ -14,6 +14,8 @@ const protectedMutationEntities = new Set([
   "WagerParticipant",
   "EightsStats",
   "RankedMatch",
+  "XPMatch",
+  "XPStats",
   "RankedParticipant",
   "TournamentMatch",
   "TournamentParticipant",

@@ -32,6 +32,7 @@ import PageLoader from "@/components/ui/PageLoader";
 import { getRankForElo, getRankProgress } from "@/lib/ranks";
 import { isStaffUser } from "@/lib/roles";
 import { trophyCountsFor, trophyFields } from "@/lib/trophyCounts";
+import { xpMatchOutcome } from "@/lib/xpMatchRating";
 
 const playerName = (user, fallback = "Unnamed player") => (
   user?.display_name || user?.full_name || user?.username || user?.email || fallback
@@ -237,8 +238,8 @@ function RankedAdminTools({ match, busy, onResetDispute, onCancel, onRefresh }) 
 function RankedResultOverlay({ match, result, onContinue }) {
   const reduceMotion = useReducedMotion();
   const [showContinue, setShowContinue] = useState(Boolean(reduceMotion));
-  const previousElo = Number(result.previous_elo || 0);
-  const newElo = Number(result.new_elo || 0);
+  const previousElo = Number(result.previous_xp ?? result.previous_elo ?? 0);
+  const newElo = Number(result.new_xp ?? result.new_elo ?? 0);
   const delta = Number(result.delta || 0);
   const animatedElo = useMotionValue(previousElo);
   const animatedDelta = useTransform(animatedElo, (value) => {
@@ -287,7 +288,7 @@ function RankedResultOverlay({ match, result, onContinue }) {
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
           <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your XP change</p>
           <motion.p className={`mt-2 font-mono text-4xl font-black tabular-nums ${accent}`}>{animatedDelta}</motion.p>
-          <p className={`mt-1 text-[10px] font-black uppercase tracking-[0.18em] ${accent}`}>{delta >= 0 ? "ELO gained" : "ELO lost"}</p>
+          <p className={`mt-1 text-[10px] font-black uppercase tracking-[0.18em] ${accent}`}>{delta >= 0 ? "XP gained" : "XP lost"}</p>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5"><motion.div className={`h-full origin-left rounded-full will-change-transform ${result.won ? "bg-green" : "bg-red-500"}`} style={{ scaleX: progressScale }} /></div>
           <div className="mt-3 flex items-center justify-center gap-2 text-xs text-vapor"><span>{previousElo.toLocaleString()} XP</span><span>→</span><span className="font-bold text-white">{newElo.toLocaleString()} XP total</span></div>
         </motion.div>
@@ -378,16 +379,6 @@ function XPMatchRoomView() {
     return () => clearInterval(interval);
   }, [match?.match_start_deadline, match?.created_date]);
 
-  useEffect(() => {
-    if (match?.status === "cancelled") {
-      return;
-    }
-    if (match?.status === "open" && user?.id === match?.host_id) {
-      toast({ title: "Waiting for opponent", description: "Your XP match is posted on Matchfinder. The room opens after another player accepts it." });
-      navigate("/xp#matchfinder", { replace: true });
-    }
-  }, [match?.status, match?.host_id, user?.id, navigate]);
-
   const isParticipant = useMemo(() => (
     user?.id && (roomRosterIds(match, "alpha").includes(user.id) || roomRosterIds(match, "bravo").includes(user.id))
   ), [user?.id, match]);
@@ -400,16 +391,15 @@ function XPMatchRoomView() {
   const canSubmitScore = (isHost || isOpposingCaptain || isStaff) && scoreReportOpen && roomRosterFull(match) && !ownScoreSubmitted;
   const scoreIsValid = validSeriesScore(match, scoreA, scoreB);
   const winsNeeded = winsNeededFor(match);
-  const joinedOpponentCount = Math.max(0, roomRosterIds(match, "alpha").length + roomRosterIds(match, "bravo").length - 1);
-  const emptyLobbyCancelLocked = joinedOpponentCount === 0 && timeRemaining !== "EXPIRED";
-  const cancelVoteLocked = joinedOpponentCount > 0 && timeRemaining !== "EXPIRED";
-  const cancelVoteUserIds = Array.isArray(match?.cancel_vote_user_ids)
-    ? match.cancel_vote_user_ids
-    : match?.cancel_vote_requested_by ? [match.cancel_vote_requested_by] : [];
-  const cancelVoteRequired = Number(match?.cancel_vote_required || Math.min(5, slotsPerRankedTeam(match) * 2));
-  const cancelVoteCount = cancelVoteUserIds.length || Number(match?.cancel_vote_count || 0);
-  const currentUserVotedCancel = Boolean(user?.id && cancelVoteUserIds.includes(user.id));
+  const cancelRequest = match?.xp_cancel_request;
+  const isCaptain = isHost || isOpposingCaptain;
+  const canAnswerCancel = isCaptain && cancelRequest?.status === "pending" && cancelRequest.recipient_id === user?.id;
   const personalResult = match?.xp_changes?.[user?.id] || null;
+  const ownSide = roomRosterIds(match, "alpha").includes(user?.id) ? "alpha" : "bravo";
+  const xpStake = match?.xp_strength_snapshot && isParticipant ? {
+    win: xpMatchOutcome(match.xp_strength_snapshot, ownSide).change,
+    loss: xpMatchOutcome(match.xp_strength_snapshot, ownSide === "alpha" ? "bravo" : "alpha").change,
+  } : null;
   const readyPlayerIds = Array.isArray(match?.ready_player_ids) ? match.ready_player_ids : [];
   const currentUserReady = Boolean(user?.id && readyPlayerIds.includes(user.id));
   const rankedParticipantIds = [...roomRosterIds(match, "alpha"), ...roomRosterIds(match, "bravo")];
@@ -456,7 +446,7 @@ function XPMatchRoomView() {
 
     const [userRows, statsRows, profileRows] = await Promise.all([
       base44.entities.User.getFresh(userId).then((row) => row).catch(() => null),
-      base44.entities.RankedStats.filterFresh({ user_id: userId }).catch(() => []),
+      base44.entities.XPStats.filterFresh({ user_id: userId }, "-created_date", 1).catch(() => []),
       base44.entities.PlayerProfile.filterFresh({ user_id: userId }, "-created_date", 1).catch(() => []),
     ]);
     const stats = statsRows?.[0] || {};
@@ -469,6 +459,7 @@ function XPMatchRoomView() {
       display_name_color: userRows?.display_name_color || profile?.display_name_color || "",
       activision_id: userRows?.activision_id || "",
       elo: stats.elo || 0,
+      total_xp: Number(stats.total_xp || 0),
       wins: stats.wins || 0,
       losses: stats.losses || 0,
       lifetime_earnings: Math.max(Number(userRows?.lifetime_earnings || 0), Number(userRows?.total_wager_earnings || 0)),
@@ -590,7 +581,7 @@ function XPMatchRoomView() {
       setScoreModalOpen(false);
 
       if (response.data.status === "score_conflict") {
-        toast({ title: "Score conflict", description: "A support ticket was opened for staff review.", variant: "destructive" });
+        toast({ title: "Score conflict", description: "The captains submitted different scores. Request staff review from this room.", variant: "destructive" });
         await loadRoom();
         return;
       }
@@ -708,10 +699,10 @@ function XPMatchRoomView() {
     }
   };
 
-  const handleCancel = async () => {
+  const handleCancel = async (staffOverride = false) => {
     try {
       const response = await base44.functions.invoke("cancelXPMatch", {
-        xp_match_id: match.id,
+        xp_match_id: match.id, staff_override: staffOverride === true,
       });
 
       if (response.data?.success) {
@@ -731,7 +722,7 @@ function XPMatchRoomView() {
     setResettingDispute(true);
     try {
       const response = await base44.functions.invoke("adminResetMatchDispute", {
-        match_type: "ranked",
+        match_type: "xp",
         match_id: match.id,
       });
       if (!response.data?.success) {
@@ -749,29 +740,19 @@ function XPMatchRoomView() {
     }
   };
 
-  const handleCancelVote = async (action) => {
+  const handleCancellation = async (decision) => {
     setCancelVoting(true);
     try {
-      const response = await base44.functions.invoke("voteRankedCancellation", {
-        ranked_match_id: match.id,
-        action,
+      const response = await base44.functions.invoke(decision ? "respondXPCancellation" : "requestXPCancellation", {
+        xp_match_id: match.id, request_id: cancelRequest?.id, decision,
       });
-      if (!response.data?.success) {
-        toast({ title: "Cancel vote failed", description: response.data?.error || "Could not update the vote.", variant: "destructive" });
-        return;
-      }
-      setMatch(response.data.match || match);
-      const voteCount = Number(response.data.vote_count ?? response.data.match?.cancel_vote_count ?? 0);
-      const requiredVotes = Number(response.data.required_votes ?? response.data.match?.cancel_vote_required ?? cancelVoteRequired);
-      toast({
-        title: response.data.cancelled ? "Ranked match cancelled" : ["reject", "withdraw"].includes(action) ? "Vote withdrawn" : "Cancellation vote counted",
-        description: response.data.cancelled ? `${requiredVotes} players agreed to cancel.` : `${voteCount} of ${requiredVotes} players agreed.`,
-      });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not update cancellation request.");
+      setMatch(response.data.match);
+      toast({ title: response.data.cancelled ? "Match cancelled by agreement" : decision === "decline" ? "Cancellation declined" : "Cancellation requested",
+        description: response.data.cancelled ? "No XP was changed." : decision === "decline" ? "The match must be played." : "The opposing captain must accept. Until then, the match must be played." });
     } catch (error) {
-      toast({ title: "Cancel vote failed", description: error.message || "Could not update the vote.", variant: "destructive" });
-    } finally {
-      setCancelVoting(false);
-    }
+      toast({ title: "Cancellation failed", description: error.message, variant: "destructive" });
+    } finally { setCancelVoting(false); }
   };
 
   if (match?.status === "cancelled") return <CancelledMatchRedirect match={match} matchType="xp" />;
@@ -791,7 +772,7 @@ function XPMatchRoomView() {
               <div className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
                 <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your XP change</p>
                 <p className={`mt-2 font-mono text-4xl font-black ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.delta > 0 ? "+" : ""}{personalResult.delta} XP</p>
-                <p className="mt-2 text-xs text-vapor">{personalResult.previous_elo} → {personalResult.new_elo} XP</p>
+                <p className="mt-2 text-xs text-vapor">{personalResult.previous_xp ?? personalResult.previous_elo ?? 0} → {personalResult.new_xp ?? personalResult.new_elo ?? 0} XP</p>
               </div>
               <button onClick={() => navigate("/xp", { replace: true })} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to XP</button>
             </div>
@@ -913,29 +894,24 @@ function XPMatchRoomView() {
                 ))}
               </div>
             </section>
+            {xpStake && !["completed", "cancelled"].includes(match.status) && <section className="rounded-xl border border-cyan/15 bg-card p-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan">XP at stake</p><div className="mt-3 grid grid-cols-2 gap-3"><div><p className="text-[9px] text-vapor">Win</p><p className="mt-1 font-mono text-lg font-black text-green">+{xpStake.win} XP</p></div><div><p className="text-[9px] text-vapor">Loss, up to</p><p className="mt-1 font-mono text-lg font-black text-red-300">−{xpStake.loss} XP</p></div></div><p className="mt-3 text-[11px] leading-5 text-vapor">Based on average team XP when this lobby filled. Your total cannot drop below zero.</p></section>}
             {isParticipant && !["completed", "cancelled"].includes(match.status) && (
-              <section className="rounded-xl border border-red-500/15 bg-card p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-red-300"><Users className="h-4 w-4" /> Vote to cancel</p>
-                    <p className="mt-1 text-xs leading-5 text-vapor">The match is cancelled only when enough players agree.</p>
+              <section className="rounded-xl border border-white/10 bg-card p-4">
+                <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white"><Users className="h-4 w-4 text-orange" /> Match cancellation</p>
+                <p className="mt-2 text-xs leading-5 text-vapor">Both captains must agree. Declining or leaving a request unanswered means the match must be played. A cancellation changes no XP.</p>
+                {cancelRequest?.status === "declined" ? <p role="status" className="mt-3 rounded-lg border border-orange/20 bg-orange/[0.06] p-3 text-xs font-bold text-orange">Cancellation declined. This match must be played.</p> : cancelRequest?.status === "pending" ? (
+                  <div className="mt-3 rounded-lg border border-orange/20 bg-orange/[0.04] p-3">
+                    <p role="status" className="text-xs font-bold text-white">{canAnswerCancel ? "The opposing captain requested cancellation." : "Waiting for the opposing captain to accept or decline."}</p>
+                    <p className="mt-1 text-[11px] leading-5 text-vapor">The match remains active until both captains agree.</p>
+                    {canAnswerCancel && <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" disabled={cancelVoting} onClick={() => handleCancellation("accept")} className="rounded-lg border border-cyan/25 bg-cyan/10 px-3 py-2.5 text-[10px] font-black text-cyan disabled:opacity-40">Accept cancellation</button><button type="button" disabled={cancelVoting} onClick={() => handleCancellation("decline")} className="rounded-lg border border-orange/25 bg-orange/10 px-3 py-2.5 text-[10px] font-black text-orange disabled:opacity-40">Decline &amp; play</button></div>}
                   </div>
-                  <span className="shrink-0 rounded-lg border border-red-500/15 bg-red-500/[0.07] px-3 py-2 font-mono text-xs font-black text-red-300">{cancelVoteCount}/{cancelVoteRequired}</span>
-                </div>
-                <div className="my-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-red-400 transition-all" style={{ width: `${Math.min(100, (cancelVoteCount / Math.max(cancelVoteRequired, 1)) * 100)}%` }} /></div>
-                {joinedOpponentCount === 0 && isHost ? (
-                  <button type="button" onClick={handleCancel} disabled={emptyLobbyCancelLocked} className="w-full rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40">
-                    {emptyLobbyCancelLocked ? `Available in ${timeRemaining || "15:00"}` : "Cancel empty lobby"}
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => handleCancelVote(currentUserVotedCancel ? "withdraw" : match.cancel_vote_status === "pending" ? "approve" : "request")} disabled={cancelVoting || cancelVoteLocked} className="w-full rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-red-300 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40">
-                    {cancelVoteLocked ? `Voting opens in ${timeRemaining || "15:00"}` : cancelVoting ? "Updating..." : currentUserVotedCancel ? "Withdraw my vote" : "Vote to cancel"}
-                  </button>
-                )}
+                ) : isCaptain ? (
+                  <button type="button" onClick={() => match.challenger_id ? handleCancellation() : handleCancel()} disabled={cancelVoting || ["score_conflict", "disputed"].includes(match.status)} className="mt-3 w-full rounded-lg border border-red-400/20 bg-red-400/[0.06] px-4 py-2.5 text-[10px] font-black text-red-300 transition-colors hover:bg-red-400/10 disabled:opacity-40">{cancelVoting ? "Sending..." : match.challenger_id ? "Request cancellation" : "Remove open post"}</button>
+                ) : <p className="mt-3 text-[11px] text-vapor">Your captain can send or answer a cancellation request.</p>}
               </section>
             )}
 
-            {isStaff && <RankedAdminTools match={match} busy={resettingDispute} onResetDispute={handleAdminResetDispute} onCancel={handleCancel} onRefresh={loadRoom} />}
+            {isStaff && <RankedAdminTools match={match} busy={resettingDispute} onResetDispute={handleAdminResetDispute} onCancel={() => handleCancel(true)} onRefresh={loadRoom} />}
           </div>
         </div>
 
@@ -978,7 +954,7 @@ function XPMatchRoomView() {
             <div className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
               <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your XP change</p>
               <p className={`mt-2 font-mono text-4xl font-black ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.delta > 0 ? "+" : ""}{personalResult.delta} XP</p>
-              <p className="mt-2 text-xs text-vapor">{personalResult.previous_elo} → {personalResult.new_elo} XP</p>
+              <p className="mt-2 text-xs text-vapor">{personalResult.previous_xp ?? personalResult.previous_elo ?? 0} → {personalResult.new_xp ?? personalResult.new_elo ?? 0} XP</p>
             </div>
             <button onClick={() => navigate("/xp", { replace: true })} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to XP</button>
           </div>

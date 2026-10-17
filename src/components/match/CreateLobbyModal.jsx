@@ -612,6 +612,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             {/* Step 3: Best Of Selection */}
             {step === 3 && (isWager || mode === "xp") && (
               <div>
+                {mode === "xp" && <p className="mb-5 rounded-lg border border-cyan/15 bg-cyan/[0.04] p-3 text-xs leading-5 text-vapor">XP depends on average team strength. Equal teams play for +100 / −100 XP; stronger opponents offer bigger rewards. Once an opponent joins, both captains must agree to cancel.</p>}
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">3</span>
                   Select Series Format

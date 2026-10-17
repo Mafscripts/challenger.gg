@@ -11,6 +11,7 @@ import { loadFreeEightsOverview } from "@/lib/freeEightsData";
 import { FreeEightsRankDialog, FreeEightsRankNotice } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
+import { freeEightsTeamSize } from "@/lib/freeEightsFormat";
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", dot: "bg-cyan" },
@@ -400,7 +401,7 @@ export default function Matchfinder() {
             <button type="button" onClick={loadMatches} className="self-start rounded-lg border border-white/[0.08] bg-white/[0.025] px-4 py-2 text-[9px] font-black uppercase tracking-wider text-vapor hover:border-yellow-300/25 hover:text-yellow-300">Refresh matches</button>
           </header>
 
-          <CompetitionMatchfinder loading={loading} emptyMessage={`No ${currentCategory.label.toLowerCase()} available right now.`}>
+          <CompetitionMatchfinder variant={activeCategory === "xp" ? "xp" : undefined} loading={loading} emptyMessage={`No ${currentCategory.label.toLowerCase()} available right now.`}>
             {activeRows.map((item) => {
               const slots = teamSlots(item.team_size);
               const joined = new Set([...(item.team_alpha_player_ids || [item.host_id]), ...(item.team_bravo_player_ids || (item.challenger_id ? [item.challenger_id] : []))].filter(Boolean)).size;
@@ -409,8 +410,12 @@ export default function Matchfinder() {
               return (
                 <CompetitionMatchfinderRow
                   key={item.id}
+                  variant={activeCategory === "xp" ? "xp" : undefined}
+                  teamSize={item.team_size}
+                  bestOf={item.best_of}
+                  teamCounts={{ alpha: (item.team_alpha_player_ids || [item.host_id]).filter(Boolean).length, bravo: (item.team_bravo_player_ids || (item.challenger_id ? [item.challenger_id] : [])).filter(Boolean).length }}
                   game={isTournament ? item.name : displayMode(item)}
-                  gameDetail={isTournament ? `${item.team_size || "Team format"} · ${item.game || "Call of Duty"}` : ["eights", "money8s"].includes(activeCategory) ? `4v4 · ${eightsCounts[item.id] ?? "—"}/8 joined` : `${item.team_size || "1v1"} · ${joined}/${slots} players`}
+                  gameDetail={isTournament ? `${item.team_size || "Team format"} · ${item.game || "Call of Duty"}` : ["eights", "money8s"].includes(activeCategory) ? `${item.team_size || "4v4"} · ${eightsCounts[item.id] ?? "—"}/${freeEightsTeamSize(item) * 2} joined` : `${item.team_size || "1v1"} · ${joined}/${slots} players`}
                   competition={activeCategory === "xp" ? "XP Match" : activeCategory === "elo" ? "ELO Ranked" : activeCategory === "eights" ? `Free 8s ${eightsMatchGameName(item)}` : activeCategory === "money8s" ? "Money 8s" : activeCategory === "wagers" ? `$${amount} Wager` : "Official Tournament"}
                   competitionDetail={isTournament ? `${item.current_teams || item.registered_teams || 0}/${item.max_teams || item.team_limit || "—"} teams registered` : `${activeCategory === "money8s" ? `$${amount.toFixed(2)} entry · ` : ""}Hosted by ${item.host_name || "Player"} · BO${item.best_of || 1}`}
                   playRule={item.play_rule}

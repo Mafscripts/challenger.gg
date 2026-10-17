@@ -42,7 +42,7 @@ const modeCopy = {
   xp: {
     eyebrow: "XP competition ladder",
     title: "XP Matches",
-    description: "Create a match, find an opponent and climb the XP standings.",
+    description: "Play 1v1 to 4v4. Beat stronger teams for more XP; losing to weaker teams costs more.",
     accent: "text-cyan",
     line: "bg-cyan",
   },
