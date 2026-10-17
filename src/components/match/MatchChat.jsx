@@ -53,7 +53,7 @@ const displayMessageContent = (message, staff) => (
 const staffChatTones = {
   ceo: { badge: "border-green/25 bg-green/[0.08] text-green", name: "text-green", bubble: "border-green/20 bg-green/[0.035]" },
   super_admin: { badge: "border-pink-400/25 bg-pink-400/[0.08] text-pink-300", name: "text-pink-300", bubble: "border-pink-400/20 bg-pink-400/[0.035]" },
-  admin: { badge: "border-red-400/25 bg-red-400/[0.08] text-red-300", name: "text-red-300", bubble: "border-red-400/20 bg-red-400/[0.035]" },
+  admin: { badge: "border-[#ff3030]/60 bg-[#ff3030]/[0.12] text-[#ff3030]", name: "text-[#ff3030]", bubble: "border-[#ff3030]/45 bg-[#ff3030]/[0.06]" },
   moderator: { badge: "border-yellow-400/25 bg-yellow-400/[0.08] text-yellow-300", name: "text-yellow-300", bubble: "border-yellow-400/20 bg-yellow-400/[0.035]" },
   user: { badge: "border-white/15 bg-white/5 text-vapor", name: "text-white", bubble: "border-white/10 bg-white/[0.025]" },
 };
