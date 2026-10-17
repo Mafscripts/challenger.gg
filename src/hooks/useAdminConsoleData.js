@@ -14,7 +14,7 @@ const entities = {
 };
 const overviewKeys = ["userCount", "adminAlerts", "ticketCounts", "wagers", "rankedMatches", "tournaments", "withdrawals", "wallets"];
 const sectionKeys = {
-  dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "adminActions", "systemLogs"],
+  dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "auditCounts"],
   users: ["wallets"], roles: [], alerts: ["adminAlerts", "tickets"],
   tickets: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
@@ -23,9 +23,9 @@ const sectionKeys = {
   tournamentMatches: ["tournamentMatches"], wallets: ["wallets", "users"],
   referrals: ["referralProgram"], freeTrials: ["animatedNameFreeTrial", "users"],
   withdrawals: ["withdrawals", "users"], marketplace: ["marketplace"],
-  inventory: ["inventory", "users"], audit: ["adminActions", "systemLogs"],
+  inventory: ["inventory", "users"], audit: [],
 };
-const queryKeys = [...Object.keys(entities), "userCount", "ticketCounts", "referralProgram", "animatedNameFreeTrial"];
+const queryKeys = [...Object.keys(entities), "userCount", "ticketCounts", "auditCounts", "referralProgram", "animatedNameFreeTrial"];
 const combineQueries = (results) => ({
   data: Object.fromEntries(results.flatMap((result, index) => result.data === undefined ? [] : [[queryKeys[index], result.data]])),
   status: Object.fromEntries(results.map((result, index) => [queryKeys[index], {
@@ -35,6 +35,11 @@ const combineQueries = (results) => ({
 });
 
 async function loadRows(key) {
+  if (key === "auditCounts") {
+    const response = await base44.functions.invoke("getAdminAuditCounts", {});
+    if (!response.data?.success) throw new Error(response.data?.error || "Could not load audit counts");
+    return response.data;
+  }
   if (key === "userCount") {
     const response = await base44.functions.invoke("getAdminUserCount", {});
     if (!response.data?.success) throw new Error(response.data?.error || "Could not load user count");

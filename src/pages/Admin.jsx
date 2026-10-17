@@ -61,6 +61,7 @@ import { getRankForElo } from "@/lib/ranks";
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
 const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
 const RoleManagement = lazy(() => import("@/components/admin/RoleManagement"));
+const AuditLog = lazy(() => import("@/components/admin/AuditLog"));
 const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGamesAdmin"));
 const ChallengeTeamAdmin = lazy(() => import("@/components/admin/ChallengeTeamAdmin"));
 
@@ -286,6 +287,7 @@ const initialData = {
   marketplace: [],
   inventory: [],
   adminActions: [],
+  auditCounts: null,
   bans: [],
   systemLogs: [],
   messages: [],
@@ -725,27 +727,6 @@ export default function Admin() {
       return haystack.includes(searchQuery.toLowerCase());
     })
   ), [activeTab, currentRole, data.users, searchQuery, adminQueries.userDirectory.rows]);
-
-  const auditRows = useMemo(() => ([
-    ...data.adminActions.map((row) => ({
-      id: `admin:${row.id}`,
-      type: "AdminAction",
-      action: row.action_type,
-      actor: row.admin_name,
-      target: row.target_username || row.target_user_id,
-      date: row.created_date,
-      details: row.description,
-    })),
-    ...data.systemLogs.map((row) => ({
-      id: `system:${row.id}`,
-      type: "SystemLog",
-      action: row.action,
-      actor: row.user_name,
-      target: row.entity_type,
-      date: row.created_date,
-      details: row.details ? JSON.stringify(row.details) : "",
-    })),
-  ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))), [data.adminActions, data.systemLogs]);
 
   const stats = useMemo(() => ({
     totalUsers: data.userCount?.total ?? 0,
@@ -2007,8 +1988,8 @@ export default function Admin() {
                 ]} />
                 <SummaryPanel title="Inventory" rows={[
                   ["Owned items", data.inventory.length],
-                  ["Audit actions", data.adminActions.length],
-                  ["System logs", data.systemLogs.length],
+                  ["Audit actions", data.auditCounts?.admin ?? "…"],
+                  ["System logs", data.auditCounts?.system ?? "…"],
                 ]} />
               </div>
               {canAddWalletAdjustment(currentRole) && (
@@ -3510,16 +3491,7 @@ export default function Admin() {
           )}
 
           {activeTab === "audit" && (
-            <ListSection title="Audit Logs" rows={auditRows} empty="No audit logs." scrollable render={(row) => (
-              <RowGrid columns={[
-                ["Type", row.type],
-                ["Action", row.action],
-                ["Actor", row.actor],
-                ["Target", row.target],
-                ["Date", formatDate(row.date)],
-                ["Details", row.details],
-              ]} />
-            )} />
+            <AuditLog key={`${currentUser.id}:${currentRole}`} user={currentUser} />
           )}
           </Suspense>}
         </div>
