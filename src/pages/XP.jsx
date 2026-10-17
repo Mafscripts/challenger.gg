@@ -242,6 +242,7 @@ export default function XP() {
                   <CompetitionMatchfinderRow
                     key={match.id}
                     variant="xp"
+                    game={match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}
                     teamSize={match.team_size}
                     bestOf={match.best_of}
                     playRule={match.play_rule}

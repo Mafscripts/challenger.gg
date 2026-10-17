@@ -8,14 +8,14 @@ const tones = {
   green: "border-green/20 bg-green/10 text-green",
   orange: "border-orange/20 bg-orange/10 text-orange",
 };
-const xpColumns = "grid-cols-[minmax(110px,.8fr)_minmax(150px,1fr)_minmax(160px,1fr)_minmax(120px,.8fr)_90px_minmax(190px,1.1fr)]";
+const xpColumns = "grid-cols-[90px_minmax(180px,1.2fr)_minmax(120px,.8fr)_minmax(150px,1fr)_minmax(110px,.8fr)_75px_minmax(190px,1.1fr)]";
 
 export function CompetitionMatchfinder({ children, loading, emptyMessage = "No open matches right now.", variant }) {
   return (
     <div className="overflow-x-auto">
-      <div className={variant === "xp" ? "min-w-[960px]" : "min-w-[1220px]"}>
+      <div className={variant === "xp" ? "min-w-[1080px]" : "min-w-[1220px]"}>
         <div className={`grid ${variant === "xp" ? xpColumns : "grid-cols-[minmax(150px,.85fr)_minmax(210px,1.2fr)_minmax(150px,.85fr)_minmax(120px,.65fr)_minmax(90px,.5fr)_minmax(120px,.7fr)_minmax(210px,1fr)]"} gap-5 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor`}>
-          {variant === "xp" ? <><span>Match</span><span>Series</span></> : <><span>Game</span><span>Competition</span></>}
+          {variant === "xp" ? <><span>Match</span><span>Mode</span><span>Series</span></> : <><span>Game</span><span>Competition</span></>}
           <span>Allowed input</span>
           <span>PC players</span>
           <span>Posted</span>
@@ -55,6 +55,7 @@ export function CompetitionMatchfinderRow({
     const series = [1, 3, 5].includes(Number(bestOf)) ? Number(bestOf) : 1;
     return <article className={`grid ${xpColumns} min-h-[88px] items-center gap-5 border-b border-white/[0.055] px-5 py-4 transition-colors last:border-b-0 hover:bg-white/[0.02]`}>
       <p className="font-mono text-2xl font-black tracking-tight text-cyan">{size}v{size}</p>
+      <p className="min-w-0 text-sm font-bold text-white">{game}</p>
       <p className="text-sm font-bold text-white">Best of {series}</p>
       <div className="flex items-center gap-2"><InputIcon className="h-4 w-4 shrink-0 text-cyan" /><span className="text-xs font-bold text-white">{rule.inputLabel}</span></div>
       <div className="flex items-center gap-2"><PcIcon className={`h-4 w-4 shrink-0 ${rule.pcAllowed ? "text-green" : "text-orange"}`} /><span className={`text-xs font-bold ${rule.pcAllowed ? "text-green" : "text-orange"}`}>{rule.pcAllowed ? "Allowed" : "Not allowed"}</span></div>
