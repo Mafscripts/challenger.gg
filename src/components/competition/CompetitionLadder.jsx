@@ -224,7 +224,9 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const selectTab = (tab) => navigate(`${location.pathname}${location.search}#${tab}`);
   const standingColumns = mode === "eights"
     ? "grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_190px_100px]"
-    : "grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px]";
+    : mode === "xp"
+      ? "grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px]"
+      : "grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px]";
 
   useEffect(() => {
     let active = true;
@@ -426,9 +428,9 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
         </div>
         {activeTab === "standings" && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} compact />}
         {activeTab === "matchfinder" ? matchfinder : <div className="overflow-x-auto">
-          <div className={mode === "eights" ? "min-w-[980px]" : "min-w-[1080px]"}>
+          <div className={mode === "eights" || mode === "xp" ? "min-w-[980px]" : "min-w-[1080px]"}>
             <div className={`grid ${standingColumns} gap-3 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor`}>
-              <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span>{mode !== "eights" && <span className="text-center">XP</span>}<span>Trophies</span><span className="text-right">{mode === "wagers" || mode === "money8s" ? "Winnings" : mode === "eights" ? "8s ELO" : "ELO"}</span>
+              <span>Rank</span><span>Player</span><span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span>{mode !== "eights" && <span className="text-center">XP</span>}<span>Trophies</span>{mode !== "xp" && <span className="text-right">{mode === "wagers" || mode === "money8s" ? "Winnings" : mode === "eights" ? "8s ELO" : "ELO"}</span>}
             </div>
             {loading ? (
               <div className="space-y-px" aria-label={`Loading ${copy.title} standings`}>
@@ -436,7 +438,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
                   <div key={item} className={`grid min-h-[52px] ${standingColumns} items-center gap-3 border-b border-white/[0.035] px-5`}>
                     <span className="h-2 w-5 rounded-full bg-white/[0.055]" />
                     <span className="h-2.5 w-32 rounded-full bg-white/[0.055]" />
-                    {Array.from({ length: mode === "eights" ? 6 : 7 }, (_, cell) => <span key={cell} className="mx-auto h-2 w-7 rounded-full bg-white/[0.045]" />)}
+                    {Array.from({ length: mode === "eights" || mode === "xp" ? 6 : 7 }, (_, cell) => <span key={cell} className="mx-auto h-2 w-7 rounded-full bg-white/[0.045]" />)}
                   </div>
                 ))}
               </div>
@@ -458,7 +460,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
                   }}
                   className="flex-nowrap"
                 />
-                <span className={`text-right font-mono font-black ${mode === "wagers" || mode === "money8s" ? "text-green" : "text-cyan"}`}>{mode === "wagers" || mode === "money8s" ? `$${row.score.toFixed(2)}` : row.score.toLocaleString()}</span>
+                {mode !== "xp" && <span className={`text-right font-mono font-black ${mode === "wagers" || mode === "money8s" ? "text-green" : "text-cyan"}`}>{mode === "wagers" || mode === "money8s" ? `$${row.score.toFixed(2)}` : row.score.toLocaleString()}</span>}
               </div>
             ))}
           </div>
