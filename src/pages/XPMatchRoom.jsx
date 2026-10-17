@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   AlertCircle,
   Check,
@@ -207,7 +208,7 @@ function PlayerPanel({ label, teamName, color, players = [], slots = 1, score, i
   );
 }
 
-function RankedResultOverlay({ match, result, onContinue }) {
+function RankedResultOverlay({ match, result, onContinue, onDismiss }) {
   const reduceMotion = useReducedMotion();
   const [showContinue, setShowContinue] = useState(Boolean(reduceMotion));
   const previousElo = Number(result.previous_xp ?? result.previous_elo ?? 0);
@@ -244,31 +245,45 @@ function RankedResultOverlay({ match, result, onContinue }) {
   const accent = result.won ? "text-green" : "text-red-400";
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
-      <motion.div
-        initial={{ opacity: 0, y: 34, scale: 0.94 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-        className={`relative w-full max-w-md overflow-hidden rounded-3xl border bg-card p-7 text-center shadow-xl will-change-transform ${result.won ? "border-green/30" : "border-red-500/30"}`}
-      >
-        <motion.div className={`absolute inset-x-0 top-0 h-1 ${result.won ? "bg-green" : "bg-red-500"}`} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.75, delay: 0.15 }} />
-        <motion.div initial={{ scale: 0.75, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.28, delay: 0.12, ease: "easeOut" }} className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl will-change-transform ${result.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
-          <Trophy className="h-8 w-8" />
-        </motion.div>
-        <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, duration: 0.25 }} className={`mt-5 text-xs font-black uppercase tracking-[0.22em] ${accent}`}>{result.won ? "Victory" : "Defeat"}</motion.p>
-        <motion.h2 initial={{ opacity: 0, scale: 1.35 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6, duration: 0.35 }} className="mt-2 text-3xl font-black">{match.confirmed_score_alpha ?? match.winner_score} - {match.confirmed_score_bravo ?? match.loser_score}</motion.h2>
-        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
-          <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your XP change</p>
-          <motion.p className={`mt-2 font-mono text-4xl font-black tabular-nums ${accent}`}>{animatedDelta}</motion.p>
-          <p className={`mt-1 text-[10px] font-black uppercase tracking-[0.18em] ${accent}`}>{delta >= 0 ? "XP gained" : "XP lost"}</p>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5"><motion.div className={`h-full origin-left rounded-full will-change-transform ${result.won ? "bg-green" : "bg-red-500"}`} style={{ scaleX: progressScale }} /></div>
-          <div className="mt-3 flex items-center justify-center gap-2 text-xs text-vapor"><span>{previousElo.toLocaleString()} XP</span><span>→</span><span className="font-bold text-white">{newElo.toLocaleString()} XP total</span></div>
-        </motion.div>
-        <AnimatePresence>
-          {showContinue && <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} onClick={onContinue} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to XP</motion.button>}
-        </AnimatePresence>
-      </motion.div>
-    </motion.div>
+    <DialogPrimitive.Root open onOpenChange={(open) => { if (!open) onDismiss(); }}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay asChild>
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
+            <DialogPrimitive.Content asChild aria-describedby={undefined}>
+              <motion.div
+                initial={{ opacity: 0, y: 34, scale: 0.94 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                className={`relative w-full max-w-md overflow-hidden rounded-3xl border bg-card p-7 text-center shadow-xl will-change-transform ${result.won ? "border-green/30" : "border-red-500/30"}`}
+              >
+                <DialogPrimitive.Title className="sr-only">XP match result</DialogPrimitive.Title>
+                <DialogPrimitive.Close asChild>
+                  <button type="button" aria-label="Close result and stay in match room" className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-background/40 text-vapor transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan">
+                    <X className="h-4 w-4" />
+                  </button>
+                </DialogPrimitive.Close>
+                <motion.div className={`absolute inset-x-0 top-0 h-1 ${result.won ? "bg-green" : "bg-red-500"}`} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.75, delay: 0.15 }} />
+                <motion.div initial={{ scale: 0.75, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.28, delay: 0.12, ease: "easeOut" }} className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl will-change-transform ${result.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
+                  <Trophy className="h-8 w-8" />
+                </motion.div>
+                <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, duration: 0.25 }} className={`mt-5 text-xs font-black uppercase tracking-[0.22em] ${accent}`}>{result.won ? "Victory" : "Defeat"}</motion.p>
+                <motion.h2 initial={{ opacity: 0, scale: 1.35 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6, duration: 0.35 }} className="mt-2 text-3xl font-black">{match.confirmed_score_alpha ?? match.winner_score} - {match.confirmed_score_bravo ?? match.loser_score}</motion.h2>
+                <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your XP change</p>
+                  <motion.p className={`mt-2 font-mono text-4xl font-black tabular-nums ${accent}`}>{animatedDelta}</motion.p>
+                  <p className={`mt-1 text-[10px] font-black uppercase tracking-[0.18em] ${accent}`}>{delta >= 0 ? "XP gained" : "XP lost"}</p>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5"><motion.div className={`h-full origin-left rounded-full will-change-transform ${result.won ? "bg-green" : "bg-red-500"}`} style={{ scaleX: progressScale }} /></div>
+                  <div className="mt-3 flex items-center justify-center gap-2 text-xs text-vapor"><span>{previousElo.toLocaleString()} XP</span><span>→</span><span className="font-bold text-white">{newElo.toLocaleString()} XP total</span></div>
+                </motion.div>
+                <AnimatePresence>
+                  {showContinue && <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} onClick={onContinue} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to XP</motion.button>}
+                </AnimatePresence>
+              </motion.div>
+            </DialogPrimitive.Content>
+          </motion.div>
+        </DialogPrimitive.Overlay>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
@@ -296,6 +311,7 @@ function XPMatchRoomView() {
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [readying, setReadying] = useState(false);
   const [startingMatch, setStartingMatch] = useState(false);
+  const [resultDismissed, setResultDismissed] = useState(false);
 
   useEffect(() => {
     loadRoom();
@@ -665,31 +681,7 @@ function XPMatchRoomView() {
   };
 
   if (match?.status === "cancelled") return <CancelledMatchRedirect match={match} matchType="xp" />;
-  if (loading && !match) {
-    return (
-      <>
-        <PageLoader label="Loading ranked match" />
-
-        {match?.status === "completed" && personalResult && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-            <div className={`w-full max-w-md rounded-3xl border p-7 text-center shadow-2xl ${personalResult.won ? "border-green/30 bg-card" : "border-red-500/30 bg-card"}`}>
-              <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${personalResult.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
-                <Trophy className="h-8 w-8" />
-              </div>
-              <p className={`mt-5 text-xs font-black uppercase tracking-[0.22em] ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.won ? "Victory" : "Defeat"}</p>
-              <h2 className="mt-2 text-3xl font-black">{match.confirmed_score_alpha ?? match.winner_score} - {match.confirmed_score_bravo ?? match.loser_score}</h2>
-              <div className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
-                <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your XP change</p>
-                <p className={`mt-2 font-mono text-4xl font-black ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.delta > 0 ? "+" : ""}{personalResult.delta} XP</p>
-                <p className="mt-2 text-xs text-vapor">{personalResult.previous_xp ?? personalResult.previous_elo ?? 0} → {personalResult.new_xp ?? personalResult.new_elo ?? 0} XP</p>
-              </div>
-              <button onClick={() => navigate("/xp", { replace: true })} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to XP</button>
-            </div>
-          </div>
-        )}
-      </>
-    );
-  }
+  if (loading && !match) return <PageLoader label="Loading ranked match" />;
 
   if (!match) {
     return (
@@ -757,12 +749,13 @@ function XPMatchRoomView() {
         </section>
 
         {match.status === "completed" && (
-          <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex items-center gap-3">
+          <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex flex-wrap items-center gap-3">
             <Trophy className="w-5 h-5 text-green" />
             <div>
               <p className="font-bold text-green">Winner: {match.winner_name}</p>
               <p className="text-xs text-vapor">Final score {match.winner_score}-{match.loser_score}</p>
             </div>
+            {personalResult && <button type="button" onClick={() => setResultDismissed(false)} className="ml-auto rounded-lg border border-cyan/20 bg-cyan/10 px-4 py-2 text-xs font-bold text-cyan transition-colors hover:bg-cyan/20">View XP result</button>}
           </div>
         )}
 
@@ -837,26 +830,8 @@ function XPMatchRoomView() {
         </div>
       )}
 
-      {match.status === "completed" && personalResult && (
-        <RankedResultOverlay match={match} result={personalResult} onContinue={() => navigate("/xp", { replace: true })} />
-      )}
-
-      {false && match.status === "completed" && personalResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className={`w-full max-w-md rounded-3xl border p-7 text-center shadow-2xl ${personalResult.won ? "border-green/30 bg-card" : "border-red-500/30 bg-card"}`}>
-            <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${personalResult.won ? "bg-green/15 text-green" : "bg-red-500/15 text-red-400"}`}>
-              <Trophy className="h-8 w-8" />
-            </div>
-            <p className={`mt-5 text-xs font-black uppercase tracking-[0.22em] ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.won ? "Victory" : "Defeat"}</p>
-            <h2 className="mt-2 text-3xl font-black">{match.confirmed_score_alpha ?? match.winner_score} - {match.confirmed_score_bravo ?? match.loser_score}</h2>
-            <div className="mt-6 rounded-2xl border border-white/5 bg-background/40 p-5">
-              <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Your XP change</p>
-              <p className={`mt-2 font-mono text-4xl font-black ${personalResult.won ? "text-green" : "text-red-400"}`}>{personalResult.delta > 0 ? "+" : ""}{personalResult.delta} XP</p>
-              <p className="mt-2 text-xs text-vapor">{personalResult.previous_xp ?? personalResult.previous_elo ?? 0} → {personalResult.new_xp ?? personalResult.new_elo ?? 0} XP</p>
-            </div>
-            <button onClick={() => navigate("/xp", { replace: true })} className="mt-6 w-full rounded-xl bg-cyan px-5 py-3.5 text-sm font-black uppercase tracking-wider text-background">Continue to XP</button>
-          </div>
-        </div>
+      {match.status === "completed" && personalResult && !resultDismissed && (
+        <RankedResultOverlay match={match} result={personalResult} onDismiss={() => setResultDismissed(true)} onContinue={() => navigate("/xp", { replace: true })} />
       )}
     </div>
   );
