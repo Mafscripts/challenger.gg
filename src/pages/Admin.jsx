@@ -20,14 +20,12 @@ import {
   Landmark,
   LayoutDashboard,
   Loader2,
-  MessageSquare,
   Plus,
   RefreshCw,
   Radio,
   RotateCcw,
   ScrollText,
   Search,
-  Send,
   Shield,
   ShoppingBag,
   Save,
@@ -54,7 +52,6 @@ import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm } from "@/lib/tournamentGames";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
-import { disputeReasonLabel } from "@/lib/matchDisputes";
 
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
 const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
@@ -422,25 +419,6 @@ const userBadgePreset = (user) => {
   if (types.includes("streamer")) return "streamer";
   return "none";
 };
-const compactListText = (rows, formatter, empty = "None") => (
-  (rows || []).slice(0, 3).map(formatter).filter(Boolean).join(" | ") || empty
-);
-const ticketProofUrls = (ticket) => [
-  ...(ticket.submitted_proof || []),
-  ...(ticket.proof_urls || []),
-  ...(ticket.evidence_urls || []),
-  ...(ticket.additional_proof || []),
-].filter(Boolean);
-const reportText = (report) => (
-  report && Object.keys(report).length
-    ? Object.entries(report)
-      .filter(([, value]) => value !== undefined && value !== null && value !== "")
-      .slice(0, 6)
-      .map(([key, value]) => `${key.replace(/_/g, " ")}: ${value}`)
-      .join(" | ")
-    : "No result report"
-);
-
 function StatCard({ icon: Icon, label, value, color = "text-cyan" }) {
   return (
     <div className="glass rounded-xl border border-white/5 p-4">
@@ -554,9 +532,6 @@ export default function Admin() {
   const [tournamentInviteSearch, setTournamentInviteSearch] = useState("");
   const [editingTournamentId, setEditingTournamentId] = useState(null);
   const [expandedTournamentRosterId, setExpandedTournamentRosterId] = useState(null);
-  const [ticketReplyDrafts, setTicketReplyDrafts] = useState({});
-  const [ticketNoteDrafts, setTicketNoteDrafts] = useState({});
-  const [ticketResolutionDrafts, setTicketResolutionDrafts] = useState({});
   const [walletAdjustmentOpen, setWalletAdjustmentOpen] = useState(false);
   const [openManageUserId, setOpenManageUserId] = useState(null);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
@@ -777,22 +752,6 @@ export default function Admin() {
     walletTotal: data.wallets.reduce((sum, wallet) => sum + Number(wallet.available_balance || 0), 0),
   }), [data]);
 
-  const messagesForTicket = (ticket) => {
-    const rows = [
-      ...(ticket.messages || []),
-      ...data.messages.filter((message) => message.ticket_id === ticket.id || message.conversation_id === ticket.id),
-    ];
-    const seen = new Set();
-    return rows
-      .filter((message) => {
-        const key = message.id || `${message.created_date}:${message.sender_id}:${message.content}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
-  };
-
   const invokeTicketAction = async (ticket, action, payload = {}, label = "Ticket updated") => {
     setBusyId(`ticket:${ticket.id}:${action}`);
     try {
@@ -837,27 +796,6 @@ export default function Admin() {
       setBusyId(null);
     }
   };
-
-  const handleReplyTicket = async (ticket, internal = false) => {
-    const source = internal ? ticketNoteDrafts : ticketReplyDrafts;
-    const message = (source[ticket.id] || "").trim();
-    if (!message) {
-      toast({ title: internal ? "Note required" : "Reply required", description: "Add text before sending.", variant: "destructive" });
-      return;
-    }
-    const sent = await invokeTicketAction(ticket, "replyTicket", { message, internal }, internal ? "Internal note saved" : "Reply sent");
-    if (sent) {
-      if (internal) setTicketNoteDrafts((prev) => ({ ...prev, [ticket.id]: "" }));
-      else setTicketReplyDrafts((prev) => ({ ...prev, [ticket.id]: "" }));
-    }
-  };
-
-  const handleResolveTicket = (ticket, action) => invokeTicketAction(ticket, "resolveTicket", {
-    action,
-    resolution: ticketResolutionDrafts[ticket.id] || "Resolved by staff",
-  }, action ? "Ticket resolved and match updated" : "Ticket resolved");
-
-  const handleReopenTicket = (ticket) => invokeTicketAction(ticket, "reopenTicket", {}, "Ticket reopened");
 
   const handleSetRole = async (targetUser, role) => {
     if (!canManageRoles(currentRole)) {
@@ -2582,189 +2520,7 @@ export default function Admin() {
           )}
 
           {activeTab === "tickets" && (
-            <AdminTickets
-              user={currentUser}
-              onRefresh={loadAdminData}
-              renderTicket={(ticket, linkedDisputes) => {
-                const messages = messagesForTicket(ticket);
-                const notes = ticket.internal_notes || [];
-                const proofUrls = ticketProofUrls(ticket);
-                const isResolved = ["resolved", "closed", "rejected"].includes(ticket.status);
-                const hasOpenMatchCase = linkedDisputes.some((dispute) => !["resolved", "closed", "rejected"].includes(dispute.status));
-                return (
-                  <div className="px-5 py-4 space-y-4">
-                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <StatusPill status={ticket.status} />
-                          <StatusPill status={ticket.priority} />
-                          {ticket.requested_admin && <StatusPill status="admin request" />}
-                          {ticket.dispute_reason && <span className="text-xs font-bold text-orange">{disputeReasonLabel(ticket.dispute_reason)}</span>}
-                        </div>
-                        <p className="font-semibold text-sm">{ticket.subject}</p>
-                        <p className="text-xs text-vapor">From: {ticket.username} - {ticket.category}</p>
-                        <p className="text-sm text-foreground/80 mt-2 whitespace-pre-line">{ticket.description}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2 lg:justify-end">
-                        {!isResolved && (
-                          <button
-                            onClick={() => handleJoinTicket(ticket)}
-                            disabled={busyId === `ticket:${ticket.id}:joinTicket`}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan/10 text-cyan text-xs font-bold rounded hover:bg-cyan/20 disabled:opacity-50"
-                          >
-                            <UserCheck className="w-3.5 h-3.5" /> {busyId === `ticket:${ticket.id}:joinTicket` ? "Joining..." : "Join Ticket"}
-                          </button>
-                        )}
-                        {isResolved && (
-                          <button
-                            onClick={() => handleReopenTicket(ticket)}
-                            disabled={busyId === `ticket:${ticket.id}:reopenTicket`}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded hover:bg-white/10 disabled:opacity-50"
-                          >
-                            <RefreshCw className="w-3.5 h-3.5" /> {busyId === `ticket:${ticket.id}:reopenTicket` ? "Reopening..." : "Reopen"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <RowGrid compact columns={[
-                      ["Assigned", ticket.assigned_admin_name || "Unassigned"],
-                      ["Match", (ticket.match_url || ticket.action_url) ? <Link to={ticket.match_url || ticket.action_url} className="text-cyan hover:underline">Open room</Link> : "N/A"],
-                      ["Match ID", ticket.match_id ? `#${String(ticket.match_id).slice(-8)}` : "N/A"],
-                      ["Teams", ticket.team_a_name || ticket.team_b_name ? `${ticket.team_a_name || "Team A"} vs ${ticket.team_b_name || "Team B"}` : "N/A"],
-                      ["Wager/Tournament", ticket.tournament_name || (ticket.wager_amount !== undefined ? formatMoney(ticket.wager_amount) : "N/A")],
-                    ]} />
-
-                    {(ticket.match_id || proofUrls.length > 0 || ticket.chat_logs?.length > 0 || ticket.result_report) && (
-                      <div className="grid lg:grid-cols-4 gap-3 text-xs text-vapor">
-                        <div className="rounded-lg bg-secondary/40 border border-white/5 p-3 lg:col-span-2">
-                          <p className="uppercase text-[10px] mb-1">Proof</p>
-                          {proofUrls.length > 0 ? (
-                            <div className="space-y-1">
-                              {proofUrls.slice(0, 4).map((url) => (
-                                <a key={url} href={url} target="_blank" rel="noreferrer" className="block text-cyan truncate hover:underline">{url}</a>
-                              ))}
-                            </div>
-                          ) : (
-                            <p>No proof attached</p>
-                          )}
-                        </div>
-                        <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
-                          <p className="uppercase text-[10px] mb-1">Result Report</p>
-                          <p>{reportText(ticket.result_report)}</p>
-                        </div>
-                        <div className="rounded-lg bg-secondary/40 border border-white/5 p-3">
-                          <p className="uppercase text-[10px] mb-1">Chat Logs</p>
-                          <p>{compactListText(ticket.chat_logs, (row) => `${row.sender_name || "Unknown"}: ${row.content || row.message || ""}`)}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid lg:grid-cols-2 gap-3">
-                      <div className="rounded-lg bg-background/30 border border-white/5 p-3">
-                        <p className="text-xs font-bold mb-3 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-cyan" /> Conversation</p>
-                        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                          {messages.filter((message) => !message.internal).length === 0 ? (
-                            <p className="text-xs text-vapor">No messages yet.</p>
-                          ) : (
-                            messages.filter((message) => !message.internal).map((message) => (
-                              <div key={message.id || `${message.created_date}:${message.content}`} className="rounded-lg bg-secondary/50 border border-white/5 p-2">
-                                <p className="text-[10px] text-vapor">{message.sender_name || "Unknown"} - {formatDate(message.created_date)}</p>
-                                <p className="text-sm whitespace-pre-line">{message.content}</p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        {!isResolved && (
-                          <div className="mt-3 flex flex-col gap-2">
-                            <textarea
-                              value={ticketReplyDrafts[ticket.id] || ""}
-                              onChange={(event) => setTicketReplyDrafts((prev) => ({ ...prev, [ticket.id]: event.target.value }))}
-                              placeholder="Reply to user/team"
-                              className="w-full min-h-[72px] px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                            />
-                            <button
-                              onClick={() => handleReplyTicket(ticket)}
-                              disabled={busyId === `ticket:${ticket.id}:replyTicket`}
-                              className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-cyan text-background text-xs font-bold rounded hover:shadow-lg hover:shadow-cyan/20 disabled:opacity-50"
-                            >
-                              <Send className="w-3.5 h-3.5" /> {busyId === `ticket:${ticket.id}:replyTicket` ? "Sending..." : "Send Reply"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="rounded-lg bg-background/30 border border-white/5 p-3">
-                        <p className="text-xs font-bold mb-3">Internal Staff Notes</p>
-                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                          {notes.length === 0 ? (
-                            <p className="text-xs text-vapor">No staff notes.</p>
-                          ) : (
-                            notes.map((note) => (
-                              <div key={note.id || `${note.created_date}:${note.content}`} className="rounded-lg bg-secondary/50 border border-white/5 p-2">
-                                <p className="text-[10px] text-vapor">{note.sender_name || "Staff"} - {formatDate(note.created_date)}</p>
-                                <p className="text-sm whitespace-pre-line">{note.content}</p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        {!isResolved && (
-                          <div className="mt-3 flex flex-col gap-2">
-                            <textarea
-                              value={ticketNoteDrafts[ticket.id] || ""}
-                              onChange={(event) => setTicketNoteDrafts((prev) => ({ ...prev, [ticket.id]: event.target.value }))}
-                              placeholder="Internal note"
-                              className="w-full min-h-[72px] px-3 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                            />
-                            <button
-                              onClick={() => handleReplyTicket(ticket, true)}
-                              disabled={busyId === `ticket:${ticket.id}:replyTicket`}
-                              className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-secondary text-vapor text-xs font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-50"
-                            >
-                              <Save className="w-3.5 h-3.5" /> Save Internal Note
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {!isResolved && !hasOpenMatchCase && (
-                      <div className="rounded-lg bg-secondary/30 border border-white/5 p-3">
-                        <textarea
-                          value={ticketResolutionDrafts[ticket.id] || ""}
-                          onChange={(event) => setTicketResolutionDrafts((prev) => ({ ...prev, [ticket.id]: event.target.value }))}
-                          placeholder="Resolution message"
-                          className="w-full min-h-[64px] px-3 py-2 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none mb-3"
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          {ticket.match_id && linkedDisputes.length === 0 && [
-                            ["approve_team_a", `Choose ${ticket.team_a_name || "Team A"}`],
-                            ["approve_team_b", `Choose ${ticket.team_b_name || "Team B"}`],
-                            ["force_replay", "Force Replay"],
-                          ].map(([action, label]) => (
-                            <button
-                              key={action}
-                              onClick={() => handleResolveTicket(ticket, action)}
-                              disabled={busyId === `ticket:${ticket.id}:resolveTicket`}
-                              className="px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-50"
-                            >
-                              {label}
-                            </button>
-                          ))}
-                          <button
-                            onClick={() => handleResolveTicket(ticket)}
-                            disabled={busyId === `ticket:${ticket.id}:resolveTicket`}
-                            className="px-3 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20 disabled:opacity-50"
-                          >
-                            {busyId === `ticket:${ticket.id}:resolveTicket` ? "Resolving..." : "Resolve"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              }}
-            />
+            <AdminTickets key={`${currentUser.id}:${currentRole}`} user={currentUser} onRefresh={loadAdminData} />
           )}
 
           {activeTab === "wagers" && (
