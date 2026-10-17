@@ -27,7 +27,7 @@ import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement
 import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
 import { matchPostedNotification } from "../match-posted-notification.js";
 import { challengeHandlers } from "../challenges.js";
-import { activeXPMatchFor, createXPMatchLobby, joinXPMatchLobby, cancelXPMatchLobby, submitXPMatchResult, requestXPMatchCancellation, respondXPMatchCancellation } from "../xp-matches.js";
+import { getXPStandings, getXPMatchPlayerRanks, activeXPMatchFor, createXPMatchLobby, joinXPMatchLobby, cancelXPMatchLobby, submitXPMatchResult, requestXPMatchCancellation, respondXPMatchCancellation } from "../xp-matches.js";
 import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
 import { matchfinderPostLifetimeMs } from "../../src/lib/matchfinderPosts.js";
@@ -10943,6 +10943,8 @@ const handlers = {
   refundWager,
   createRankedMatch,
   acceptRankedMatch,
+  getXPStandings: async () => ({ success: true, rows: (await getXPStandings(prisma)).slice(0, 500) }),
+  getXPMatchPlayerRanks: (req) => getXPMatchPlayerRanks(prisma, req.body.xp_match_id),
   createXPMatch,
   acceptXPMatch,
   cancelXPMatch,

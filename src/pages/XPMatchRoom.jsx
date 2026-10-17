@@ -312,6 +312,7 @@ function XPMatchRoomView() {
   const [user, setUser] = useState(null);
   const [alphaPlayers, setAlphaPlayers] = useState([]);
   const [bravoPlayers, setBravoPlayers] = useState([]);
+  const [xpRanks, setXpRanks] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [supporting, setSupporting] = useState(false);
@@ -371,7 +372,31 @@ function XPMatchRoomView() {
     return () => {
       active = false;
     };
-  }, [roomRosterSignature(match)]);
+  }, [roomRosterSignature(match), match?.match_completed_date]);
+
+  useEffect(() => {
+    if (!match?.id) return;
+    let active = true;
+    let refreshing = false;
+    const refreshRanks = async () => {
+      if (refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
+      try {
+        const response = await base44.functions.invoke("getXPMatchPlayerRanks", { xp_match_id: id });
+        if (active && response.data?.success) setXpRanks(response.data.ranks || {});
+      } catch (error) {
+        console.error("Could not load XP leaderboard positions:", error);
+      } finally { refreshing = false; }
+    };
+    void refreshRanks();
+    window.addEventListener("focus", refreshRanks);
+    document.addEventListener("visibilitychange", refreshRanks);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshRanks);
+      document.removeEventListener("visibilitychange", refreshRanks);
+    };
+  }, [id, match?.id, roomRosterSignature(match), match?.match_completed_date]);
 
   useEffect(() => {
     const interval = setInterval(calculateTimeRemaining, 1000);
@@ -438,8 +463,8 @@ function XPMatchRoomView() {
       }
     ));
   };
-  const visibleAlphaPlayers = visibleRosterPlayers("alpha", alphaPlayers);
-  const visibleBravoPlayers = visibleRosterPlayers("bravo", bravoPlayers);
+  const visibleAlphaPlayers = visibleRosterPlayers("alpha", alphaPlayers).map((player) => ({ ...player, xp_rank: xpRanks[player.id] }));
+  const visibleBravoPlayers = visibleRosterPlayers("bravo", bravoPlayers).map((player) => ({ ...player, xp_rank: xpRanks[player.id] }));
 
   const loadPlayer = async (userId, fallbackName) => {
     if (!userId) return null;
@@ -818,13 +843,13 @@ function XPMatchRoomView() {
           </div>
           <div className="grid gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_410px]">
             <div className="min-w-0 space-y-4">
-              <MatchTeamTable label="Team Alpha" name={match.host_name || "Team Alpha"} color="orange" players={visibleAlphaPlayers} captainId={match.host_id} finalScore={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} />
+              <MatchTeamTable xpMatch label="Team Alpha" name={match.host_name || "Team Alpha"} color="orange" players={visibleAlphaPlayers} captainId={match.host_id} finalScore={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} />
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-3 py-2">
                 <span className="truncate text-right text-[9px] font-black uppercase tracking-wider text-orange">{match.host_name || "Team Alpha"}</span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-card text-[8px] font-black uppercase text-vapor">VS</span>
                 <span className="truncate text-[9px] font-black uppercase tracking-wider text-cyan">{match.challenger_name || "Team Bravo"}</span>
               </div>
-              <MatchTeamTable label="Team Bravo" name={match.challenger_name || "Opponent pending"} color="cyan" players={visibleBravoPlayers} captainId={match.challenger_id} finalScore={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} />
+              <MatchTeamTable xpMatch label="Team Bravo" name={match.challenger_name || "Opponent pending"} color="cyan" players={visibleBravoPlayers} captainId={match.challenger_id} finalScore={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} />
             </div>
             <div className="flex min-w-0 flex-col gap-2">
               <MatchRoomChat

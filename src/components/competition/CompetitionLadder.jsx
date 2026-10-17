@@ -232,7 +232,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
       setLoading(true);
       const [userData, xpData, rankedData, eightsData, moneyData, tournamentData] = await Promise.all([
         base44.entities.User.filter({}, mode === "wagers" ? "-total_wager_earnings" : "-created_date", 500).catch(() => []),
-        mode === "eights" ? Promise.resolve([]) : base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []),
+        mode === "eights" ? Promise.resolve([]) : mode === "xp" ? base44.functions.invoke("getXPStandings", {}).then((response) => response.data.rows || []).catch(() => []) : base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []),
         mode === "ranked" ? base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []) : Promise.resolve([]),
         mode === "eights" ? base44.functions.invoke("getFreeEightsStandings", { game_id: gameId }).then((response) => response.data.rows || []).catch(() => []) : Promise.resolve([]),
         mode === "money8s" ? base44.functions.invoke("getMoneyEightsStandings", {}).catch(() => ({ data: { rows: [] } })) : Promise.resolve({ data: { rows: [] } }),

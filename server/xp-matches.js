@@ -8,6 +8,31 @@ const error = (message) => ({ success: false, error: message });
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || "Player";
 const stamp = () => new Date().toISOString();
 
+export async function getXPStandings(db) {
+  const rows = await db.xPStats.findMany({ orderBy: { created_date: "desc" }, select: { id: true, metadata: true } });
+  const latest = new Map();
+  for (const row of rows) {
+    const stats = row.metadata || {};
+    if (!stats.user_id || latest.has(stats.user_id)) continue;
+    latest.set(stats.user_id, { id: row.id, user_id: stats.user_id, username: stats.username || "Player",
+      total_xp: normalizeMatchXP(stats.total_xp), wins: normalizeMatchXP(stats.wins), losses: normalizeMatchXP(stats.losses),
+      win_streak: normalizeMatchXP(stats.win_streak) });
+  }
+  return [...latest.values()].filter((row) => row.total_xp + row.wins + row.losses > 0)
+    .sort((a, b) => b.total_xp - a.total_xp || b.wins - a.wins || String(a.user_id).localeCompare(String(b.user_id)));
+}
+
+export async function getXPMatchPlayerRanks(db, matchId) {
+  if (typeof matchId !== "string" || !matchId || matchId.length > 200) return error("XP match is required");
+  const row = await db.xPMatch.findUnique({ where: { id: matchId }, select: { metadata: true } });
+  if (!row) return error("XP match not found");
+  const roster = new Set([...xpMatchRoster(row.metadata, "alpha"), ...xpMatchRoster(row.metadata, "bravo")]);
+  const standings = await getXPStandings(db);
+  const ranks = Object.fromEntries([...roster].map((id) => [id, null]));
+  standings.forEach((player, index) => { if (roster.has(player.user_id)) ranks[player.user_id] = index + 1; });
+  return { success: true, ranks };
+}
+
 export async function activeXPMatchFor(db, userId, excludeId = "") {
   const rows = await db.xPMatch.findMany({ where: { AND: [
     ...(excludeId ? [{ id: { not: excludeId } }] : []),
