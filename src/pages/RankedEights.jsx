@@ -21,6 +21,7 @@ import { useFreeEightsGames } from "@/hooks/useFreeEightsGames";
 import FreeEightsGameName from "@/components/competition/FreeEightsGameName";
 import { DEFAULT_EIGHTS_GAME, DEFAULT_EIGHTS_GAMES, eightsGameName, withMw4Preview } from "@/lib/freeEightsGames";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import FreeEightsTutorial from "@/components/competition/FreeEightsTutorial";
 
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
 const EIGHTS_PRIZE_START_MONTH = "2026-10";
@@ -234,7 +235,7 @@ export default function RankedEights() {
             </CompetitionMatchfinder>
             </>
           )}
-          action={<div className="competition-actions">{comingSoon ? (
+          action={<div className="competition-actions">{!isMoney && <FreeEightsTutorial />}{comingSoon ? (
             <Link to="/ranked/8s?game=bo7" className="competition-action-pill">Play Black Ops <span className="text-orange">7</span><ArrowRight className="h-4 w-4" /></Link>
           ) : !isMoney && !freeOverview.data ? (
             <button type="button" disabled={!freeOverview.error || freeOverview.isFetching} onClick={() => refreshFreeOverview()} className="competition-action-pill">

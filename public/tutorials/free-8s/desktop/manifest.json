@@ -1,0 +1,337 @@
+{
+  "width": 2560,
+  "height": 1440,
+  "desktop": true,
+  "exampleData": true,
+  "chapters": [
+    {
+      "title": "Open Account Settings",
+      "caption": "Open your profile menu, then click Account Settings. This is the actual desktop website.",
+      "duration": 12000,
+      "href": "/settings",
+      "frames": [
+        {
+          "at": 0,
+          "src": "desktop/01-topbar.jpg",
+          "focus": {
+            "x": 1897.625,
+            "y": 13,
+            "width": 154.375,
+            "height": 38
+          },
+          "click": true
+        },
+        {
+          "at": 4000,
+          "src": "desktop/01-account-menu.jpg",
+          "focus": {
+            "x": 1874,
+            "y": 257,
+            "width": 167,
+            "height": 40
+          },
+          "click": true
+        },
+        {
+          "at": 8000,
+          "src": "desktop/01-settings.jpg",
+          "focus": {
+            "x": 673,
+            "y": 564.1875,
+            "width": 244,
+            "height": 88
+          },
+          "click": false
+        }
+      ]
+    },
+    {
+      "title": "Connect Discord",
+      "caption": "Account Settings > Connections > Discord: connect, authorize on Discord and join the Topfragg server. Sync role if needed.",
+      "duration": 16000,
+      "href": "/settings#settings-discord",
+      "frames": [
+        {
+          "at": 0,
+          "src": "desktop/02-connections.jpg",
+          "focus": {
+            "x": 673,
+            "y": 564.1875,
+            "width": 244,
+            "height": 88
+          },
+          "click": true
+        },
+        {
+          "at": 3000,
+          "src": "desktop/02-discord-shortcut.jpg",
+          "focus": {
+            "x": 679,
+            "y": 889.6875,
+            "width": 232,
+            "height": 40
+          },
+          "click": true
+        },
+        {
+          "at": 6000,
+          "src": "desktop/02-connect-discord.jpg",
+          "focus": {
+            "x": 1678.234375,
+            "y": 239.53125,
+            "width": 171.765625,
+            "height": 40
+          },
+          "click": true
+        },
+        {
+          "at": 11000,
+          "src": "desktop/02-discord-connected.jpg",
+          "focus": {
+            "x": 1619.296875,
+            "y": 708.328125,
+            "width": 105.453125,
+            "height": 38.796875
+          },
+          "click": true
+        },
+        {
+          "at": 14000,
+          "src": "desktop/02-discord-synced.jpg",
+          "focus": {
+            "x": 1619.296875,
+            "y": 708.328125,
+            "width": 105.453125,
+            "height": 38.796875
+          },
+          "click": false
+        }
+      ]
+    },
+    {
+      "title": "Save your Activision ID",
+      "caption": "Connections > Gaming IDs > Edit: enter your full Activision ID, including #numbers where applicable, then Save Changes.",
+      "duration": 14000,
+      "href": "/settings#settings-gaming",
+      "frames": [
+        {
+          "at": 0,
+          "src": "desktop/03-gaming-ids.jpg",
+          "focus": {
+            "x": 1804.15625,
+            "y": 119.078125,
+            "width": 62.84375,
+            "height": 36.796875
+          },
+          "click": true
+        },
+        {
+          "at": 3000,
+          "src": "desktop/03-edit-id.jpg",
+          "focus": {
+            "x": 987,
+            "y": 230.0625,
+            "width": 880,
+            "height": 44
+          },
+          "click": true
+        },
+        {
+          "at": 7000,
+          "src": "desktop/03-activision-entered.jpg",
+          "focus": {
+            "x": 987,
+            "y": 510.84375,
+            "width": 766.890625,
+            "height": 42.796875
+          },
+          "click": true
+        },
+        {
+          "at": 11000,
+          "src": "desktop/03-activision-saved.jpg",
+          "focus": {
+            "x": 987,
+            "y": 230.0625,
+            "width": 880,
+            "height": 44
+          },
+          "click": false
+        }
+      ]
+    },
+    {
+      "title": "Choose your game rank",
+      "caption": "Account > Game rank: Titan = Diamond, Master = Crimson, Apex = Iridescent. Legend = Top 250 and requires admin approval.",
+      "duration": 14000,
+      "href": "/settings#settings-rank",
+      "frames": [
+        {
+          "at": 0,
+          "src": "desktop/04-game-rank.jpg",
+          "focus": {
+            "x": 987,
+            "y": 415.796875,
+            "width": 739.921875,
+            "height": 47
+          },
+          "click": true
+        },
+        {
+          "at": 5000,
+          "src": "desktop/04-rank-selected.jpg",
+          "focus": {
+            "x": 1738.921875,
+            "y": 416,
+            "width": 128.078125,
+            "height": 46.796875
+          },
+          "click": true
+        },
+        {
+          "at": 10000,
+          "src": "desktop/04-rank-saved.jpg",
+          "focus": {
+            "x": 962,
+            "y": 100.234375,
+            "width": 930,
+            "height": 817.546875
+          },
+          "click": false
+        }
+      ]
+    },
+    {
+      "title": "Find a Free 8s lobby",
+      "caption": "Open Free 8s, choose your game and switch to Matchfinder. Check 2v2 / 3v3 / 4v4 and the game mode, then Accept This Match.",
+      "duration": 12000,
+      "href": "/ranked/8s#matchfinder",
+      "frames": [
+        {
+          "at": 0,
+          "src": "desktop/05-free-8s.jpg",
+          "focus": {
+            "x": 1846.375,
+            "y": 717.625,
+            "width": 104.640625,
+            "height": 29.75
+          },
+          "click": true
+        },
+        {
+          "at": 5000,
+          "src": "desktop/05-matchfinder.jpg",
+          "focus": {
+            "x": 1839,
+            "y": 322,
+            "width": 192,
+            "height": 37
+          },
+          "click": true
+        },
+        {
+          "at": 9000,
+          "src": "desktop/05-matchroom.jpg",
+          "focus": {
+            "x": 517,
+            "y": 304.5,
+            "width": 1518,
+            "height": 217
+          },
+          "click": false
+        }
+      ]
+    },
+    {
+      "title": "Join this match's Waiting Room",
+      "caption": "In the matchroom, click Join 8s Waiting Room. Connect in Discord with your linked account and stay in this match's room.",
+      "duration": 12000,
+      "href": "/ranked/8s",
+      "frames": [
+        {
+          "at": 0,
+          "src": "desktop/06-join-discord-voice.jpg",
+          "focus": {
+            "x": 1811.078125,
+            "y": 353.25,
+            "width": 202.921875,
+            "height": 42.5
+          },
+          "click": true
+        },
+        {
+          "at": 7000,
+          "src": "desktop/06-waiting-room-ready.jpg",
+          "focus": {
+            "x": 517,
+            "y": 304.5,
+            "width": 1518,
+            "height": 217
+          },
+          "click": false
+        }
+      ]
+    },
+    {
+      "title": "Teams and voice are automatic",
+      "caption": "Once the lobby is full and everyone is in its Waiting Room, teams are assigned and the bot moves players to team voice. Follow the matchroom's maps and instructions.",
+      "duration": 10000,
+      "href": "/ranked/8s",
+      "frames": [
+        {
+          "at": 0,
+          "src": "desktop/07-teams-ready.jpg",
+          "focus": {
+            "x": 517,
+            "y": 304.5,
+            "width": 1518,
+            "height": 140
+          },
+          "click": false
+        },
+        {
+          "at": 5000,
+          "src": "desktop/07-team-voice.jpg",
+          "focus": {
+            "x": 1338.09375,
+            "y": 745,
+            "width": 52.859375,
+            "height": 15
+          },
+          "click": false
+        }
+      ]
+    },
+    {
+      "title": "Using the sidebar? Same setup.",
+      "caption": "The sidebar has the same Free 8s and Account Settings links. Your Discord, Activision ID and game rank setup carries across both layouts.",
+      "duration": 10000,
+      "href": "/ranked/8s",
+      "frames": [
+        {
+          "at": 0,
+          "src": "desktop/08-desktop-sidebar.jpg",
+          "focus": {
+            "x": 12,
+            "y": 170,
+            "width": 211,
+            "height": 46
+          },
+          "click": true
+        },
+        {
+          "at": 5000,
+          "src": "desktop/08-sidebar-account-menu.jpg",
+          "focus": {
+            "x": 430,
+            "y": 212,
+            "width": 167,
+            "height": 40
+          },
+          "click": false
+        }
+      ]
+    }
+  ],
+  "total": 100000
+}

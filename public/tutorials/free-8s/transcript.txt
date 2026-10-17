@@ -1,0 +1,27 @@
+TOPFRAGG - HOW TO JOIN FREE 8s ON DESKTOP
+Actual website interface at 2560 x 1440, with example account and match data.
+Discord authorization happens in Discord; no Discord login is impersonated in this guide.
+
+1. Open Account Settings
+Open your profile menu, then click Account Settings. This is the actual desktop website.
+
+2. Connect Discord
+Account Settings > Connections > Discord: connect, authorize on Discord and join the Topfragg server. Sync role if needed.
+
+3. Save your Activision ID
+Connections > Gaming IDs > Edit: enter your full Activision ID, including #numbers where applicable, then Save Changes.
+
+4. Choose your game rank
+Account > Game rank: Titan = Diamond, Master = Crimson, Apex = Iridescent. Legend = Top 250 and requires admin approval.
+
+5. Find a Free 8s lobby
+Open Free 8s, choose your game and switch to Matchfinder. Check 2v2 / 3v3 / 4v4 and the game mode, then Accept This Match.
+
+6. Join this match's Waiting Room
+In the matchroom, click Join 8s Waiting Room. Connect in Discord with your linked account and stay in this match's room.
+
+7. Teams and voice are automatic
+Once the lobby is full and everyone is in its Waiting Room, teams are assigned and the bot moves players to team voice. Follow the matchroom's maps and instructions.
+
+8. Using the sidebar? Same setup.
+The sidebar has the same Free 8s and Account Settings links. Your Discord, Activision ID and game rank setup carries across both layouts.
