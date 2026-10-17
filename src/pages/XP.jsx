@@ -244,11 +244,6 @@ export default function XP() {
                     variant="xp"
                     teamSize={match.team_size}
                     bestOf={match.best_of}
-                    teamCounts={{ alpha: (match.team_alpha_player_ids || [match.host_id]).filter(Boolean).length, bravo: (match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : [])).filter(Boolean).length }}
-                    game={match.game_mode_display || modeLabels[match.game_mode] || match.game_mode}
-                    gameDetail={`${match.team_size} · ${joined}/${slots} players`}
-                    competition="XP Match"
-                    competitionDetail={`Hosted by ${match.host_name || "Player"}`}
                     playRule={match.play_rule}
                     postedAt={match.created_date}
                     tone="cyan"
