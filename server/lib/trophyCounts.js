@@ -46,3 +46,24 @@ export function trophyFields(counts) {
     premium_count: number(counts?.premium),
   };
 }
+
+// Dated awards come first; old counter-only awards have no invented win date.
+export function recentTrophiesFor(user, profile, inventory = []) {
+  const tiers = ["gold", "silver", "bronze", "premium"];
+  const awards = inventory.flatMap((item, index) => {
+    const counts = countInventoryTrophies([item]);
+    const tier = tiers.find((key) => counts[key] > 0);
+    if (!tier) return [];
+    const date = item.acquired_date || item.created_date;
+    return [{ id: item.id || `award-${index}`, tier, name: item.item_name || `${tier} trophy`,
+      event: item.source_tournament_name || "", earned_at: Number.isFinite(Date.parse(date)) ? new Date(date).toISOString() : null }];
+  }).sort((a, b) => (Date.parse(b.earned_at) || 0) - (Date.parse(a.earned_at) || 0) || String(a.id).localeCompare(String(b.id)));
+  const stored = trophyCountsFor(user, profile);
+  for (const tier of tiers) {
+    const count = Math.min(10, Math.max(0, Math.floor(stored[tier])));
+    for (let index = 0; index < count && awards.length < 10; index++) {
+      awards.push({ id: `legacy-${tier}-${index}`, tier, name: `${tier.charAt(0).toUpperCase() + tier.slice(1)} trophy`, event: "", earned_at: null });
+    }
+  }
+  return awards.slice(0, 10);
+}

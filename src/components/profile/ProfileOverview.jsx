@@ -5,6 +5,7 @@ import TPRankBadge from "@/components/competition/TPRankBadge";
 import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
 import RankBadge from "@/components/ui/RankBadge";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
+import BadgeTooltip from "@/components/ui/BadgeTooltip";
 import { matchOpponentFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
 import { teamPageUrl, teamPurposeFor } from "@/lib/teamPresentation";
 import "@/styles/profile-dashboard.css";
@@ -61,9 +62,11 @@ export function ArenaRecords({ data, loading = false, error = false, onRetry, sc
   </section>;
 }
 
-function TrophyShelf({ trophies, onViewAll }) {
+export function TrophyShelf({ trophies = [], loading = false, error = false, onViewAll }) {
   return <section className="pd-panel pd-trophies"><Heading title="Trophy showcase" icon={Trophy}><button onClick={onViewAll} className="pd-text-action">View cabinet <ChevronRight /></button></Heading>
-    <div className="pd-trophy-shelf">{trophies.map((trophy) => <button key={trophy.key} onClick={onViewAll} className={`pd-trophy${trophy.value ? " pd-trophy-earned" : ""}`} aria-label={`${trophy.label}: ${trophy.value} trophies`}><span className={`pd-trophy-icon ${trophy.tint} ${trophy.tone}`}><TrophySymbol type={trophy.key} className="pd-trophy-symbol" /><b>{number(trophy.value)}</b></span><strong>{trophy.label}</strong></button>)}</div>
+    {loading ? <p className="pd-empty" role="status">Loading trophies…</p> : error ? <p className="pd-empty">Trophies could not be loaded.</p> : trophies.length ? <div className="pd-trophy-shelf" aria-label="Latest 10 earned trophies">{trophies.slice(0, 10).map((trophy) => <BadgeTooltip key={trophy.id} label={trophy.name} description={[trophy.event, trophy.earned_at ? `Earned ${new Date(trophy.earned_at).toLocaleDateString()}` : "Earned trophy"].filter(Boolean).join(" · ")}>
+      <button onClick={onViewAll} className="pd-trophy" aria-label={`${trophy.tier} trophy${trophy.event ? ` · ${trophy.event}` : ""}`}><TrophySymbol type={trophy.tier} className="pd-trophy-symbol" /></button>
+    </BadgeTooltip>)}</div> : <div className="pd-empty-inline"><Trophy /><p>No trophies earned yet.</p></div>}
   </section>;
 }
 
@@ -88,7 +91,7 @@ function RecentArenaMatches({ matches = [], userId, loading, error, onViewAll })
   </section>;
 }
 
-export default function ProfileOverview({ arena, arenaLoading, arenaError, onRetry, user, profile, trophies, teams, teamsLoading, friends, friendsLoading, onTab }) {
+export default function ProfileOverview({ arena, arenaLoading, arenaError, onRetry, user, profile, recentTrophies, trophiesLoading, trophiesError, teams, teamsLoading, friends, friendsLoading, onTab }) {
   const rank = arena?.tp_rank, played = rank?.matchesPlayed > 0;
   return <div className="profile-dashboard">
     <aside className="pd-sidebar">
@@ -98,7 +101,7 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
       </section>
       <section className="pd-panel pd-about"><Heading title="About me" /><p>{profile?.bio || "This player hasn't added a bio yet."}</p><dl><div><dt>Member since</dt><dd>{new Date(profile?.account_created_date || user.account_created_date || user.created_date).toLocaleDateString()}</dd></div><div><dt>Region</dt><dd>{profile?.country || user.region || "Not set"}</dd></div></dl></section>
     </aside>
-    <div className="pd-main"><TrophyShelf trophies={trophies} onViewAll={() => onTab("trophies")} /><ProfileFriends {...friends} loading={friendsLoading} onViewAll={() => onTab("friends")} />
+    <div className="pd-main"><TrophyShelf trophies={recentTrophies} loading={trophiesLoading} error={trophiesError} onViewAll={() => onTab("trophies")} /><ProfileFriends {...friends} loading={friendsLoading} onViewAll={() => onTab("friends")} />
       <div className="pd-columns"><div className="pd-column"><FeaturedTeams teams={teams} userId={user.id} loading={teamsLoading} onViewAll={() => onTab("teams")} /><RecentArenaMatches matches={arena?.recent_matches} userId={user.id} loading={arenaLoading} error={arenaError} onViewAll={() => onTab("matches")} /></div><ArenaRecords data={arena} loading={arenaLoading} error={arenaError} onRetry={onRetry} screenshotRank={user.screenshot_rank} /></div>
     </div>
   </div>;

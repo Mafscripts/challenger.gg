@@ -151,6 +151,9 @@ export default function Profile() {
   const [animatedNameTrialActive, setAnimatedNameTrialActive] = useState(false);
   const [inventory, setInventory] = useState([]);
   const [publicTrophyCounts, setPublicTrophyCounts] = useState(null);
+  const [recentTrophies, setRecentTrophies] = useState([]);
+  const [trophiesLoading, setTrophiesLoading] = useState(true);
+  const [trophiesError, setTrophiesError] = useState(false);
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [avatarDraft, setAvatarDraft] = useState("");
@@ -175,11 +178,18 @@ export default function Profile() {
     setArena(null);
     setArenaError(false);
     setArenaLoading(true);
+    setRecentTrophies([]);
+    setTrophiesLoading(true);
+    setTrophiesError(false);
     setFriends({ user_id: user?.id, friends: [], total: 0, next_offset: null });
     setFriendsLoading(true);
     setFriendsError(false);
     setFriendsLoadingMore(false);
     if (!user?.id) return () => { active = false; };
+    base44.profile.trophyShowcase(user.id)
+      .then((data) => { if (active) setRecentTrophies(data.trophies || []); })
+      .catch(() => { if (active) setTrophiesError(true); })
+      .finally(() => { if (active) setTrophiesLoading(false); });
     base44.profile.arena(user.id)
       .then((data) => { if (active) setArena(data); })
       .catch(() => { if (active) setArenaError(true); })
@@ -612,7 +622,7 @@ export default function Profile() {
           ))}
         </nav>
 
-        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} trophies={trophyOverviewCards} teams={profileTeams} teamsLoading={historyLoading} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} onTab={setTab} />}
+        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} recentTrophies={recentTrophies} trophiesLoading={trophiesLoading} trophiesError={trophiesError} teams={profileTeams} teamsLoading={historyLoading} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} onTab={setTab} />}
 
         {tab === "statistics" && (
           <div className="mt-5 space-y-6">

@@ -364,6 +364,10 @@ export const base44 = {
     },
   },
   profile: {
+    trophyShowcase(userId) {
+      requireToken();
+      return apiFetch(`/profile/${encodeURIComponent(userId)}/trophy-showcase`);
+    },
     arena(userId) {
       requireToken();
       return apiFetch(`/profile/${encodeURIComponent(userId)}/arena`);

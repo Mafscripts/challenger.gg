@@ -1,10 +1,25 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
-import { trophyCountsFor } from "../lib/trophyCounts.js";
+import { trophyCountsFor, recentTrophiesFor } from "../lib/trophyCounts.js";
 import { getProfileArena } from "../profile-arena.js";
 
 const router = Router();
+
+router.get("/:userId/trophy-showcase", requireAuth, async (req, res, next) => {
+  try {
+    const userId = String(req.params.userId || "");
+    if (!userId || userId.length > 128) return res.status(400).json({ error: "Invalid player ID" });
+    const where = { metadata: { path: ["user_id"], equals: userId } };
+    const [user, profile, inventory] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { metadata: true } }),
+      prisma.playerProfile.findFirst({ where, orderBy: { created_date: "desc" }, select: { metadata: true } }),
+      prisma.userInventory.findMany({ where, select: { id: true, created_date: true, metadata: true } }),
+    ]);
+    if (!user) return res.status(404).json({ error: "Player not found" });
+    res.json({ trophies: recentTrophiesFor(user.metadata, profile?.metadata, inventory.map((row) => ({ ...row.metadata, id: row.id, created_date: row.created_date }))) });
+  } catch (error) { next(error); }
+});
 
 router.get("/:userId/arena", requireAuth, async (req, res, next) => {
   try {
