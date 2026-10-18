@@ -14,12 +14,14 @@ import {
   MessageCircle,
   MonitorPlay,
   PanelLeft,
+  Palette,
   ShieldCheck,
   UserRound,
   WalletCards,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AccountSection from "@/components/settings/AccountSection";
+import NameColorSection from "@/components/settings/NameColorSection";
 import CreditsSection from "@/components/settings/CreditsSection";
 import PaymentPermissionsSection from "@/components/settings/PaymentPermissionsSection";
 import DiscordSection from "@/components/settings/DiscordSection";
@@ -45,6 +47,7 @@ const settingGroups = [
     icon: UserRound,
     items: [
       { label: "Profile & username", icon: UserRound, target: "settings-account" },
+      { label: "Custom name color", icon: Palette, target: "settings-name-color" },
       { label: "Game rank", icon: Award, target: "settings-rank" },
       { label: "Password", icon: KeyRound, target: "settings-password" },
     ],
@@ -191,6 +194,7 @@ export default function Settings() {
               {activeGroup.id === "appearance" && <div className="settings-panel"><div id="settings-navigation" className="settings-block"><NavigationLayoutSection /></div></div>}
               {activeGroup.id === "account" && <div className="settings-panel">
                 <div id="settings-account" className="settings-block"><AccountSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-name-color" className="settings-block"><NameColorSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-rank" className="settings-block"><GameRankSection user={user} onUserUpdate={loadUser} /></div>
               </div>}
               {activeGroup.id === "wallet" && <div className="settings-panel">

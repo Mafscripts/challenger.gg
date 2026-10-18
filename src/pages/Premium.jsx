@@ -27,6 +27,7 @@ const plans = [
 ];
 
 const nameEffectShowcase = [
+  { id: "fx-pulsar-rush", label: "Pulsar Rush", detail: "Pink / White Starburst", tone: "from-fuchsia-600 via-white to-rose-500" },
   { id: "fx-prism", label: "Prism Protocol", detail: "Rainbow flow", tone: "from-rose-400 via-yellow-300 to-violet-400" },
   { id: "fx-royal-frost", label: "Royal Frost", detail: "Purple / White", tone: "from-violet-400 via-white to-violet-300" },
   { id: "fx-pink-noise", label: "Pink Noise", detail: "Pink / White", tone: "from-pink-400 via-white to-rose-400" },

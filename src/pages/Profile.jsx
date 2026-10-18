@@ -37,6 +37,7 @@ import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
 import { teamPurposeFor } from "@/lib/teamPresentation";
 import { ScreenshotRankPill, GameRankSettingsLink } from "@/components/profile/ScreenshotRank";
 import { base44 } from "@/api/base44Client";
+import { verifiedNameColors, premiumNameEffects, allNameColors } from "@/lib/nameColors";
 import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { activisionIdFor } from "@/lib/activision";
@@ -53,44 +54,6 @@ const statNumber = (value) => {
 };
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
 const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
-const verifiedNameColors = [
-  { label: "Default", value: "" },
-  { label: "Crimson Viper", value: "#f87171" },
-  { label: "Ghost Silver", value: "#9ca3af" },
-  { label: "Solar Gold", value: "#facc15" },
-  { label: "Emerald Pulse", value: "#22c55e" },
-  { label: "Violet Reign", value: "#a78bfa" },
-  { label: "Cobalt Strike", value: "#3b82f6" },
-  { label: "Limewire", value: "#84cc16" },
-  { label: "Graphite", value: "#6b7280" },
-  { label: "Stone", value: "#a8a29e" },
-  { label: "Lunar White", value: "#f8fafc" },
-];
-const premiumNameEffects = [
-  { label: "Prism Protocol — Rainbow", value: "fx-prism" },
-  { label: "Royal Frost — Purple / White", value: "fx-royal-frost" },
-  { label: "Pink Noise — Pink / White", value: "fx-pink-noise" },
-  { label: "Solar Circuit — Cyan / Orange", value: "fx-solar-circuit" },
-  { label: "Blue Mercury — Blue / Silver", value: "fx-blue-mercury" },
-  { label: "Aurora Core — Green / Cyan / Violet", value: "fx-aurora-core" },
-  { label: "Emberwave — Orange / Rose", value: "fx-emberwave" },
-  { label: "Neon Eclipse — Lime / Cyan / Purple", value: "fx-neon-eclipse" },
-  { label: "Galaxy Drift — Deep Space / Starlight", value: "fx-galaxy" },
-  { label: "Diamond Shine — Crystal / Prism", value: "fx-diamond-shine" },
-  { label: "Cosmic Nebula — Purple Spiral", value: "fx-cosmic-nebula" },
-  { label: "Stellar Rush — Blue / White", value: "fx-stellar-rush" },
-  { label: "Prism Mirage — Chromatic", value: "fx-prism-mirage" },
-  { label: "Golden Dimension — Amber 3D", value: "fx-golden-dimension" },
-  { label: "Tesla Arc — Electric White / Blue", value: "fx-tesla-arc" },
-  { label: "Tempest Core — Ocean Storm", value: "fx-tempest-core" },
-  { label: "Astral Forge — Nebula Fire", value: "fx-astral-forge" },
-  { label: "Celestial Halo — Golden Starfield", value: "fx-celestial-halo" },
-  { label: "Violet Cosmos — Purple Starlight", value: "fx-violet-cosmos" },
-  { label: "Gold Lightning — Yellow / White", value: "fx-lightning-gold" },
-  { label: "Goldflare Lightning — Yellow / Red", value: "fx-lightning-gold-red" },
-  { label: "Frostbolt Lightning — Blue / White", value: "fx-lightning-blue-white" },
-];
-const allNameColors = [...verifiedNameColors, ...premiumNameEffects];
 const inventoryCategoryLabels = {
   weapon_skin: "Weapon Skins",
   knife: "Knife Skins",

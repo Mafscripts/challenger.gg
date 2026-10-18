@@ -1614,6 +1614,7 @@
   }
 
   .app-content .player-name-color[data-name-effect="fx-galaxy"],
+  .app-content .player-name-color[data-name-effect="fx-pulsar-rush"],
   .app-content .player-name-color[data-name-effect="fx-diamond-shine"],
   .app-content .player-name-color[data-name-effect="fx-cosmic-nebula"],
   .app-content .player-name-color[data-name-effect="fx-stellar-rush"],
@@ -1644,6 +1645,12 @@
     background-color: #160c34;
     background-image: url("/assets/name-effects/cosmic-nebula.gif");
     filter: saturate(1.1) brightness(1.04);
+  }
+
+  .app-content .player-name-color[data-name-effect="fx-pulsar-rush"] {
+    background-color: #f472b6;
+    background-image: url("/assets/ranks/legend-pulsating-energy.gif");
+    filter: saturate(1.1) brightness(1.12);
   }
 
   .app-content .player-name-color[data-name-effect="fx-stellar-rush"] {
@@ -1724,6 +1731,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .app-content .player-name-color[data-name-effect^="fx-"] { animation: none; }
+    .app-content .player-name-color[data-name-effect="fx-pulsar-rush"] { background-image: none; }
   }
 
   .app-content .dark-media [class*="border-white"],
