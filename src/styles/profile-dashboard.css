@@ -32,10 +32,10 @@
 .pd-trophy-shelf { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
 .pd-trophy { text-align: center; min-width: 0; border-radius: 8px; padding: 5px; transition: background 150ms; }
 .pd-trophy:hover { background: hsl(var(--cyan) / .035); }
-.pd-trophy > span { display: block; position: relative; max-width: 100px; margin: auto; }
-.pd-trophy img { height: 82px; width: 100%; object-fit: contain; opacity: .35; filter: saturate(.5); }
-.pd-trophy-earned img { opacity: 1; filter: drop-shadow(0 7px 12px rgb(0 0 0 / .3)); }
-.pd-trophy b { position: absolute; right: 0; bottom: 2px; padding: 2px 6px; min-width: 22px; background: var(--arena-inset); border: 1px solid hsl(var(--border)); border-radius: 5px; font: 800 11px/1.5 ui-monospace, monospace; color: hsl(var(--cyan)); }
+.pd-trophy > .pd-trophy-icon { display: flex; position: relative; align-items: center; justify-content: center; width: 64px; height: 58px; margin: auto; border: 1px solid currentColor; border-radius: 10px; border-color: color-mix(in srgb, currentColor 20%, transparent); }
+.pd-trophy-symbol { width: 28px; height: 28px; opacity: .5; }
+.pd-trophy-earned .pd-trophy-symbol { opacity: 1; }.pd-trophy-earned .pd-trophy-icon { box-shadow: inset 0 1px 0 rgb(255 255 255 / .08), 0 5px 18px -10px currentColor; }
+.pd-trophy b { position: absolute; right: -6px; bottom: -5px; padding: 2px 6px; min-width: 22px; background: var(--arena-inset); border: 1px solid hsl(var(--border)); border-radius: 5px; font: 800 11px/1.5 ui-monospace, monospace; color: hsl(var(--cyan)); }
 .pd-trophy strong { display: block; margin-top: 9px; font-size: 9px; color: hsl(var(--muted-foreground)); }
 .pd-friend-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px; }.pd-friend-grid-expanded { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
 .pd-friend { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; font-size: 10px; font-weight: 700; }.pd-friend > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }.pd-friend:hover { color: hsl(var(--cyan)); }

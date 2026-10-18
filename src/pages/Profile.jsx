@@ -30,6 +30,7 @@ import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
+import TrophyCounts, { TrophySymbol } from "@/components/ui/TrophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
 import RecentMatchesPanel from "@/components/match/RecentMatchesPanel";
 import { matchDateMs } from "@/lib/matchPresentation";
@@ -132,12 +133,12 @@ function trophyOverviewFor(user, profile, inventory = [], matches = [], publicCo
   const counts = publicCounts ? { ...publicCounts, hosted: publicCounts.hosted || localCounts.hosted } : localCounts;
 
   return [
-    { key: "gold", label: "Gold", value: counts.gold, image: "/assets/trophies/profile/gold.png", tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
-    { key: "silver", label: "Silver", value: counts.silver, image: "/assets/trophies/profile/silver.png", tone: "text-gray-200", tint: "bg-gray-200/10", border: "group-hover:border-gray-200/20" },
-    { key: "bronze", label: "Bronze", value: counts.bronze, image: "/assets/trophies/profile/bronze.png", tone: "text-orange", tint: "bg-orange/10", border: "group-hover:border-orange/25" },
-    { key: "premium", label: "Premium", value: counts.premium, image: "/assets/trophies/profile/premium.png", tone: "text-purple-300", tint: "bg-purple-400/10", border: "group-hover:border-purple-300/25" },
-    { key: "topfragg", label: "TopFragg", value: counts.topfragg, image: "/assets/trophies/compact/topfragg.png", tone: "text-cyan", tint: "bg-cyan/10", border: "group-hover:border-cyan/25" },
-    { key: "hosted", label: "Hosted", value: counts.hosted, image: "/assets/trophies/compact/hosted.png", tone: "text-green", tint: "bg-green/10", border: "group-hover:border-green/25" },
+    { key: "gold", label: "Gold", value: counts.gold, tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
+    { key: "silver", label: "Silver", value: counts.silver, tone: "text-gray-200", tint: "bg-gray-200/10", border: "group-hover:border-gray-200/20" },
+    { key: "bronze", label: "Bronze", value: counts.bronze, tone: "text-orange", tint: "bg-orange/10", border: "group-hover:border-orange/25" },
+    { key: "premium", label: "Premium", value: counts.premium, tone: "text-purple-300", tint: "bg-purple-400/10", border: "group-hover:border-purple-300/25" },
+    { key: "topfragg", label: "TopFragg", value: counts.topfragg, tone: "text-cyan", tint: "bg-cyan/10", border: "group-hover:border-cyan/25" },
+    { key: "hosted", label: "Hosted", value: counts.hosted, tone: "text-green", tint: "bg-green/10", border: "group-hover:border-green/25" },
   ];
 }
 
@@ -661,7 +662,7 @@ function ProfileStatCard({ icon: Icon, label, value, tone = "text-cyan" }) {
 }
 
 function ProfileTrophyCount({ trophies = [], total = 0 }) {
-  const visibleTrophies = trophies.filter((trophy) => ["gold", "silver", "bronze", "premium"].includes(trophy.key));
+  const counts = Object.fromEntries(trophies.map((trophy) => [trophy.key, trophy.value]));
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/[0.08] bg-black/15 px-2 py-2 lg:flex-nowrap">
@@ -669,12 +670,7 @@ function ProfileTrophyCount({ trophies = [], total = 0 }) {
         <p className="font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Trophy count</p>
         <p className="mt-0.5 font-mono text-sm font-black leading-none text-white">{total}</p>
       </div>
-      {visibleTrophies.map((trophy) => (
-        <div key={trophy.key} className={`flex h-9 shrink-0 items-center gap-1 rounded-lg border border-white/[0.08] px-1.5 ${trophy.tint}`} title={`${trophy.label}: ${trophy.value}`}>
-          <img src={trophy.image} alt={`${trophy.label} trophy`} className="h-7 w-7 object-contain drop-shadow-[0_3px_5px_rgba(0,0,0,.45)]" loading="lazy" decoding="async" />
-          <span className={`font-mono text-[10px] font-black ${trophy.tone}`}>{trophy.value}</span>
-        </div>
-      ))}
+      <TrophyCounts trophies={counts} className="flex-nowrap" />
     </div>
   );
 }
@@ -778,18 +774,14 @@ function TrophyOverview({ trophies, items = [] }) {
             <motion.div
               key={trophy.key}
               whileHover={{ y: -5, transition: { duration: 0.1, ease: "easeOut" } }}
-              className={`premium-card group relative min-h-[250px] overflow-hidden rounded-2xl border border-white/[0.06] p-4 transition-colors ${trophy.border}`}
+              className={`premium-card group relative min-h-[190px] overflow-hidden rounded-2xl border border-white/[0.06] p-4 transition-colors ${trophy.border}`}
             >
               <div className={`pointer-events-none absolute left-1/2 top-14 h-32 w-32 -translate-x-1/2 rounded-full opacity-50 blur-3xl ${trophy.tint}`} />
               <div className="relative flex h-full flex-col items-center text-center">
-                <div className="flex h-40 w-full items-center justify-center">
-                  <img
-                    src={trophy.image}
-                    alt={`${trophy.label} trophy`}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-36 w-36 object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.5)] transition-transform duration-200 group-hover:scale-[1.06]"
-                  />
+                <div className="flex h-24 w-full items-center justify-center">
+                  <span className={`grid h-16 w-16 place-items-center rounded-xl border border-current/20 ${trophy.tint} ${trophy.tone} ${trophy.value ? "shadow-[inset_0_1px_0_rgba(255,255,255,.08)]" : "opacity-45"}`}>
+                    <TrophySymbol type={trophy.key} className="h-8 w-8" />
+                  </span>
                 </div>
                 <div className="mt-auto w-full rounded-xl border border-white/[0.055] bg-black/15 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]">
                   <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${trophy.tone}`}>{trophy.label}</p>
@@ -814,7 +806,7 @@ function TrophyOverview({ trophies, items = [] }) {
             {items.map((item) => (
               <div key={item.id} className="premium-card flex min-w-0 items-center gap-3 rounded-2xl p-3.5">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-yellow-400/15 bg-yellow-400/[0.06] text-yellow-400">
-                  {item.item_image ? <img src={item.item_image} alt="" className="h-full w-full object-cover" /> : <Trophy className="h-5 w-5" />}
+                  <TrophySymbol type={Number(item.tournament_placement) === 2 ? "silver" : Number(item.tournament_placement) === 3 ? "bronze" : "gold"} className="h-5 w-5" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-black text-white">{item.item_name || "Tournament Trophy"}</span>

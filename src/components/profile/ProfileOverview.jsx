@@ -4,6 +4,7 @@ import { ArrowRight, ChevronRight, Gamepad2, Shield, Swords, Trophy, Users } fro
 import TPRankBadge from "@/components/competition/TPRankBadge";
 import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
 import RankBadge from "@/components/ui/RankBadge";
+import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import { matchOpponentFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
 import { teamPageUrl, teamPurposeFor } from "@/lib/teamPresentation";
 import "@/styles/profile-dashboard.css";
@@ -62,7 +63,7 @@ export function ArenaRecords({ data, loading = false, error = false, onRetry, sc
 
 function TrophyShelf({ trophies, onViewAll }) {
   return <section className="pd-panel pd-trophies"><Heading title="Trophy showcase" icon={Trophy}><button onClick={onViewAll} className="pd-text-action">View cabinet <ChevronRight /></button></Heading>
-    <div className="pd-trophy-shelf">{trophies.map((trophy) => <button key={trophy.key} onClick={onViewAll} className={`pd-trophy${trophy.value ? " pd-trophy-earned" : ""}`} aria-label={`${trophy.label}: ${trophy.value} trophies`}><span><img src={trophy.image} alt="" loading="lazy" /><b>{number(trophy.value)}</b></span><strong>{trophy.label}</strong></button>)}</div>
+    <div className="pd-trophy-shelf">{trophies.map((trophy) => <button key={trophy.key} onClick={onViewAll} className={`pd-trophy${trophy.value ? " pd-trophy-earned" : ""}`} aria-label={`${trophy.label}: ${trophy.value} trophies`}><span className={`pd-trophy-icon ${trophy.tint} ${trophy.tone}`}><TrophySymbol type={trophy.key} className="pd-trophy-symbol" /><b>{number(trophy.value)}</b></span><strong>{trophy.label}</strong></button>)}</div>
   </section>;
 }
 
