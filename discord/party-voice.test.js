@@ -85,7 +85,7 @@ test("multi-team rooms provision private Discord voices, move linked users and c
   });
 });
 
-test("the last spin must finish before the bot creates teams or moves people", async () => {
+test("the shared spin must finish before the bot creates teams or moves people", async () => {
   const f = fixture(3, 4);
   f.row.status = "ready";
   f.row.metadata.spin = { started_at: new Date().toISOString(), duration_ms: 6000 };

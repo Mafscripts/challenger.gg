@@ -13,7 +13,7 @@ export const partySide = (room) => {
 export function partyDrawMembers(room, entry) {
   return entry.duo_id ? room.players.filter((player) => player.duo_id === entry.duo_id) : [room.players.find((player) => player.id === entry.id)];
 }
-function drawGroups(room) {
+export function partyDrawEntries(room) {
   const seen = new Set();
   return room.players.filter((player) => !player.side).flatMap((player) => {
     if (!player.duo_id) return [player];
@@ -79,7 +79,7 @@ export function partyValidation(room) {
 }
 export function partyCandidates(room) {
   const side = partySide(room);
-  let pool = drawGroups(room);
+  let pool = partyDrawEntries(room);
   if (room.mode === "coed") {
     const quotas = partyGenderQuota(room, side);
     pool = pool.filter((player) => ["male", "female"].every((gender) => room.players.filter((entry) => entry.side === side && entry.gender === gender).length

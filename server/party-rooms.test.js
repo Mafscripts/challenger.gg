@@ -68,21 +68,22 @@ test("only host/admin may edit or spin and stale revisions cannot overwrite a li
   assert.equal(f.room().teams.length, 3);
 });
 
-test("each spin chooses a real remaining player, rotates teams, persists the result and locks the draw until it ends", async () => {
+test("one spin fills every team, persists the whole draw and locks actions until the shared reveal ends", async () => {
   const f = fixture();
   await f.act("add", { names: ["A", "B", "C", "D"] });
   const first = await f.act("spin");
   assert.equal(first.spin.entries.length, 4);
-  assert.equal(first.players.find((p) => p.id === first.spin.selected_id).side, "a");
+  assert.equal(first.spin.scope, "all_teams");
+  assert.equal(first.spin.selected_ids.length, 4);
+  assert.equal(new Set(first.spin.selected_ids).size, 4);
+  assert.equal(first.status, "ready");
+  assert.ok(first.players.every((p) => p.side));
   await assert.rejects(f.act("spin"), { status: 409 });
   await assert.rejects(f.act("remove", { player_id: first.players[0].id }), { status: 409 });
+  await assert.rejects(f.act("start_bracket"), { status: 409 });
+  await assert.rejects(f.act("reset"), { status: 409 });
   f.finish();
-  const next = await f.act("spin");
-  assert.equal(next.spin.side, "b");
-  assert.equal(next.spin.entries.length, 3);
-  assert.notEqual(next.spin.selected_id, first.spin.selected_id);
-  for (let i = 0; i < 2; i++) { f.finish(); await f.act("spin"); }
-  f.finish();
+  await assert.rejects(f.act("spin"), { status: 409 });
   assert.equal(f.room().status, "ready");
   assert.deepEqual(f.room().teams.map((team) => f.room().players.filter((p) => p.side === team.id).length), [2, 2]);
   await f.act("reset");
@@ -150,10 +151,10 @@ test("fixed duos are validated, spin together, stay paired next round and can be
   await f.act("add_duo", { players: [{ name: "C" }, { name: "D" }] });
   const duoId = f.room().players[0].duo_id;
   const first = await f.act("spin");
-  assert.equal(first.spin.selected_ids.length, 2);
+  assert.equal(first.spin.selected_ids.length, 4);
   assert.equal(first.spin.entries[0].name, "A + B");
   assert.deepEqual(first.players.filter((p) => p.duo_id === duoId).map((p) => p.side), ["a", "a"]);
-  f.finish(); await f.act("spin"); f.finish();
+  f.finish();
   assert.equal(f.room().status, "ready");
   await f.act("reset");
   assert.equal(f.room().players[0].duo_id, duoId);
@@ -161,6 +162,38 @@ test("fixed duos are validated, spin together, stay paired next round and can be
   assert.ok(f.room().players.slice(0, 2).every((p) => !p.duo_id));
   await f.act("remove", { player_id: f.room().players[2].id });
   assert.equal(f.room().players.at(-1).duo_id, null);
+});
+
+test("one request fills every supported format with duos and preserves a partially drawn legacy room", async () => {
+  for (const mode of ["coed", "switcheroo"]) for (const size of [2, 3, 4]) for (const count of [2, 3, 4, 16]) {
+    const f = fixture(), metadata = f.row().metadata;
+    metadata.mode = mode; metadata.team_size = size;
+    metadata.teams = Array.from({ length: count }, (_, i) => ({ id: `t${i}`, name: `Team ${i}` }));
+    metadata.players = metadata.teams.flatMap((team) => {
+      const quota = partyGenderQuota(metadata, team.id);
+      return Array.from({ length: size }, (_, i) => ({ id: `${team.id}-${i}`, name: `${team.id}-${i}`, side: null,
+        duo_id: i < 2 ? `duo-${team.id}` : null, gender: mode === "coed" ? i < quota.male ? "male" : "female" : null }));
+    });
+    const result = await f.act("spin");
+    assert.equal(result.status, "ready");
+    assert.equal(result.spin.selected_ids.length, count * size);
+    assert.equal(result.spin.team_count, count);
+    for (const team of result.teams) {
+      const members = result.players.filter((player) => player.side === team.id);
+      assert.equal(members.length, size);
+      if (mode === "coed") for (const gender of ["male", "female"]) assert.equal(members.filter((player) => player.gender === gender).length, partyGenderQuota(result, team.id)[gender]);
+    }
+    for (const player of result.players.filter((player) => player.duo_id)) assert.equal(result.players.find((mate) => mate.duo_id === player.duo_id && mate.id !== player.id).side, player.side);
+  }
+  const f = fixture();
+  await f.act("add", { names: ["A", "B", "C", "D"] });
+  const assigned = f.row().metadata.players[0]; assigned.side = "b";
+  f.row().status = "drafting";
+  const result = await f.act("spin");
+  assert.equal(result.players.find((player) => player.id === assigned.id).side, "b");
+  assert.equal(result.spin.selected_ids.length, 3);
+  assert.ok(!result.spin.selected_ids.includes(assigned.id));
+  assert.ok(result.players.every((player) => player.side));
 });
 
 test("duos never strand a draw across all 2–16-team sizes, Co-ed quotas or Switcheroo preferences", () => {
@@ -195,7 +228,7 @@ test("duos never strand a draw across all 2–16-team sizes, Co-ed quotas or Swi
 
 async function readyRoom(f) {
   await f.act("add", { names: ["A", "B", "C", "D"] });
-  for (let i = 0; i < 4; i++) { await f.act("spin"); f.finish(); }
+  await f.act("spin"); f.finish();
 }
 
 test("only host/admin starts or resolves a bracket; active rounds and old match links are protected", async () => {
@@ -212,7 +245,7 @@ test("only host/admin starts or resolves a bracket; active rounds and old match 
   assert.equal(f.room().bracket.status, "completed");
   await f.act("reset");
   assert.equal(f.room().history[0].bracket.champion_id, f.room().history[0].bracket.matches[0].teams[0]);
-  for (let i = 0; i < 4; i++) { await f.act("spin"); f.finish(); }
+  await f.act("spin"); f.finish();
   await f.act("start_bracket");
   assert.notEqual(f.room().bracket.matches[0].id, firstId);
   await assert.rejects(f.act("match_score", { match_id: firstId, scores: [2, 0] }), { status: 404 });

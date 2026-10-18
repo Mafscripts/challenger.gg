@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { hasRole } from "./roles.js";
-import { partyCandidates, partyCapacity, partyDrawMembers, partySide, partySpinning, partyValidation, PARTY_SPIN_MS } from "../src/lib/partyWheel.js";
+import { partyCandidates, partyCapacity, partyDrawEntries, partyDrawMembers, partySide, partySpinning, partyValidation, PARTY_SPIN_MS } from "../src/lib/partyWheel.js";
 import { createPartyBracket, recordPartyScore } from "../src/lib/partyBracket.js";
 import { partyVoiceKey, partyVoiceStatus } from "./party-voice.js";
 import { hasDiscordLink, freeEightsDiscordMembershipJoinError } from "./free-eights-discord.js";
@@ -137,15 +137,19 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
       if (room.bracket) fail("Start a new round before drawing new teams", 409);
       const invalid = partyValidation(room);
       if (invalid) fail(invalid);
-      const entries = partyCandidates(room);
+      const entries = partyDrawEntries(room);
       if (!entries.length) fail("All teams are full. Start a new round.", 409);
-      const selected = entries[choose(entries.length)];
-      const side = partySide(room);
-      const members = partyDrawMembers(room, selected);
-      members.forEach((member) => { member.side = side; });
-      room.spin = { id: randomUUID(), selected_id: selected.id, selected_ids: members.map((member) => member.id), side, entries: entries.map(({ id, name }) => ({ id, name })),
+      const selectedIds = room.players.filter((member) => !member.side).map((member) => member.id);
+      // Commit the entire draw atomically; the shared animation reveals it once.
+      while (room.players.some((member) => !member.side)) {
+        const candidates = partyCandidates(room);
+        if (!candidates.length) fail("These players cannot fill the teams. Check the duos and gender balance.", 409);
+        const selected = candidates[choose(candidates.length)], side = partySide(room);
+        partyDrawMembers(room, selected).forEach((member) => { member.side = side; });
+      }
+      room.spin = { id: randomUUID(), scope: "all_teams", team_count: room.teams.length, selected_ids: selectedIds, landing_index: choose(entries.length), entries: entries.map(({ id, name }) => ({ id, name })),
         started_at: new Date(Date.now() + 750).toISOString(), duration_ms: PARTY_SPIN_MS, turns: 6 + choose(3) };
-      room.status = room.players.every((entry) => entry.side) ? "ready" : "drafting";
+      room.status = "ready";
     }
     if (input.action === "start_bracket") {
       if (room.bracket) fail("This round already has a bracket", 409);
