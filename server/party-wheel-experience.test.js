@@ -85,6 +85,10 @@ test("the real draw studio renders large-wheel controls, account/guest inputs an
   const props = { room, entries: room.players, manager: true, act() {} };
   const html = compiled.exports.render(props);
   assert.match(html, /party-draw-studio/); assert.match(html, /party-wheel-hub/);
+  const wheel = html.match(/<svg[^>]*class="party-wheel"[\s\S]*?<\/svg>/)?.[0];
+  assert.ok(wheel);
+  assert.match(wheel, /Topfragg visual team spinner/);
+  assert.doesNotMatch(wheel, /Website player|<text|<title/, "the wheel is decorative; player names belong in the roster and results");
   assert.match(html, /Sound/); assert.match(html, /Confetti/); assert.match(html, /Focus wheel/);
   assert.match(html, /Spin &amp; draw all teams/); assert.match(html, /Ctrl \+ Enter/);
   assert.match(html, /Search a player or enter a guest/); assert.match(html, /role="combobox"/);
