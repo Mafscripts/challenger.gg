@@ -299,7 +299,7 @@ function XPMatchRoomView() {
   const [user, setUser] = useState(null);
   const [alphaPlayers, setAlphaPlayers] = useState([]);
   const [bravoPlayers, setBravoPlayers] = useState([]);
-  const [xpRanks, setXpRanks] = useState({});
+  const [tpRanks, setTpRanks] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
@@ -362,6 +362,7 @@ function XPMatchRoomView() {
 
   useEffect(() => {
     if (!match?.id) return;
+    setTpRanks({});
     let active = true;
     let refreshing = false;
     const refreshRanks = async () => {
@@ -369,7 +370,7 @@ function XPMatchRoomView() {
       refreshing = true;
       try {
         const response = await base44.functions.invoke("getXPMatchPlayerRanks", { xp_match_id: id });
-        if (active && response.data?.success) setXpRanks(response.data.ranks || {});
+        if (active && response.data?.success) setTpRanks(response.data.tp_ranks || {});
       } catch (error) {
         console.error("Could not load XP leaderboard positions:", error);
       } finally { refreshing = false; }
@@ -428,8 +429,8 @@ function XPMatchRoomView() {
       }
     ));
   };
-  const visibleAlphaPlayers = visibleRosterPlayers("alpha", alphaPlayers).map((player) => ({ ...player, xp_rank: xpRanks[player.id] }));
-  const visibleBravoPlayers = visibleRosterPlayers("bravo", bravoPlayers).map((player) => ({ ...player, xp_rank: xpRanks[player.id] }));
+  const visibleAlphaPlayers = visibleRosterPlayers("alpha", alphaPlayers).map((player) => ({ ...player, tp_rank: tpRanks[player.id] }));
+  const visibleBravoPlayers = visibleRosterPlayers("bravo", bravoPlayers).map((player) => ({ ...player, tp_rank: tpRanks[player.id] }));
 
   const loadPlayer = async (userId, fallbackName) => {
     if (!userId) return null;

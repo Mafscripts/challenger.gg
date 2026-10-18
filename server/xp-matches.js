@@ -1,5 +1,6 @@
 import { serializeRow } from "./entity.js";
 import { randomUUID } from "node:crypto";
+import { tpRank } from "../src/lib/tpRanks.js";
 import { isExpiredOpenMatch } from "./matchfinder-expiry.js";
 import { completeXPMatchRoster, normalizeMatchXP, xpMatchOutcome, xpMatchRoster, xpMatchStrength, xpMatchTeamSize } from "../src/lib/xpMatchRating.js";
 
@@ -9,17 +10,27 @@ const nameFor = (user) => user?.display_name || user?.full_name || user?.usernam
 const stamp = () => new Date().toISOString();
 
 export async function getXPStandings(db) {
-  const rows = await db.xPStats.findMany({ orderBy: { created_date: "desc" }, select: { id: true, metadata: true } });
+  const [rows, completed] = await Promise.all([
+    db.xPStats.findMany({ orderBy: { created_date: "desc" }, select: { id: true, metadata: true } }),
+    db.xPMatch.findMany({ where: field("status", "completed"), select: { metadata: true } }),
+  ]);
+  const games = new Map();
+  for (const { metadata: match } of completed) {
+    for (const id of new Set([...xpMatchRoster(match, "alpha"), ...xpMatchRoster(match, "bravo")])) {
+      if (typeof id === "string" && id) games.set(id, (games.get(id) || 0) + 1);
+    }
+  }
   const latest = new Map();
   for (const row of rows) {
     const stats = row.metadata || {};
     if (!stats.user_id || latest.has(stats.user_id)) continue;
     latest.set(stats.user_id, { id: row.id, user_id: stats.user_id, username: stats.username || "Player",
       total_xp: normalizeMatchXP(stats.total_xp), wins: normalizeMatchXP(stats.wins), losses: normalizeMatchXP(stats.losses),
-      win_streak: normalizeMatchXP(stats.win_streak) });
+      win_streak: normalizeMatchXP(stats.win_streak), matches_played: games.get(stats.user_id) || 0 });
   }
-  return [...latest.values()].filter((row) => row.total_xp + row.wins + row.losses > 0)
-    .sort((a, b) => b.total_xp - a.total_xp || b.wins - a.wins || String(a.user_id).localeCompare(String(b.user_id)));
+  return [...latest.values()].filter((row) => row.matches_played > 0)
+    .sort((a, b) => b.total_xp - a.total_xp || b.wins - a.wins || String(a.user_id).localeCompare(String(b.user_id)))
+    .map((row, index) => ({ ...row, tp_rank: tpRank({ xp: row.total_xp, matchesPlayed: row.matches_played, position: index + 1 }) }));
 }
 
 export async function getXPMatchPlayerRanks(db, matchId) {
@@ -29,8 +40,14 @@ export async function getXPMatchPlayerRanks(db, matchId) {
   const roster = new Set([...xpMatchRoster(row.metadata, "alpha"), ...xpMatchRoster(row.metadata, "bravo")]);
   const standings = await getXPStandings(db);
   const ranks = Object.fromEntries([...roster].map((id) => [id, null]));
-  standings.forEach((player, index) => { if (roster.has(player.user_id)) ranks[player.user_id] = index + 1; });
-  return { success: true, ranks };
+  const tpRanks = Object.fromEntries([...roster].map((id) => [id, tpRank()]));
+  standings.forEach((player, index) => {
+    if (roster.has(player.user_id)) {
+      ranks[player.user_id] = index + 1;
+      tpRanks[player.user_id] = player.tp_rank;
+    }
+  });
+  return { success: true, ranks, tp_ranks: tpRanks };
 }
 
 export async function activeXPMatchFor(db, userId, excludeId = "") {

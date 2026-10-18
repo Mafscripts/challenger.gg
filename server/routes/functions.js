@@ -10932,7 +10932,7 @@ const handlers = {
   refundWager,
   createRankedMatch,
   acceptRankedMatch,
-  getXPStandings: async () => ({ success: true, rows: (await getXPStandings(prisma)).slice(0, 500) }),
+  getXPStandings: async () => ({ success: true, rows: await getXPStandings(prisma) }),
   getXPMatchPlayerRanks: (req) => getXPMatchPlayerRanks(prisma, req.body.xp_match_id),
   createXPMatch,
   acceptXPMatch,
