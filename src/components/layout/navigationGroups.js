@@ -11,6 +11,7 @@ export const navGroups = [
     items: [
       { label: "Tournaments", description: "Enter official competitions", path: "/tournaments", icon: Trophy, tone: "red" },
       { label: "Streamer Tournaments", description: "Community-hosted competition", path: "/streamer-tournaments", icon: Monitor, tone: "red" },
+      { label: "Co-ed / Switcheroo", description: "Spin the wheel, build teams and join Discord voice", path: "/coed-switcheroo", icon: Users, tone: "purple", isNew: true },
     ],
   },
   {
@@ -74,7 +75,6 @@ export const playNavGroup = {
   items: [
     ...rankedNavGroup.items,
     ...xpNavGroup.items,
-    { label: "Co-ed / Switcheroo", description: "Spin the wheel, build teams and join Discord voice", path: "/coed-switcheroo", icon: Users, tone: "purple", isNew: true },
   ],
 };
 
