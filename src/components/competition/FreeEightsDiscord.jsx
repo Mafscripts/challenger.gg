@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { AlertTriangle, CheckCircle2, ExternalLink, Headphones, Link2, Loader2, Mic, MicOff, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ExternalLink, Headphones, Link2, Loader2, Mic, MicOff, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
@@ -159,7 +159,14 @@ export function FreeEightsDiscordNotice({ user, returnTo = "/ranked/8s" }) {
 export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, playerCapacity = 8, captainDraft = false, voiceView }) {
   const { voice, hasConfirmedStatus, displayReadyCount } = voiceView;
   const summary = captainDraft ? "Stay in this lobby’s Waiting Room while captains choose their teams. Discord moves everyone into their selected team voice once both teams are complete." : waitingForMaps ? "Join this lobby’s Waiting Room. Maps and the timer start once all players in the lobby are connected." : null;
-  return <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-card shadow-[0_8px_30px_rgba(0,0,0,.12)] sm:m-4" aria-label="Free 8s Discord voice readiness">
+  return <details className="group/voice relative m-3 overflow-hidden rounded-xl border border-purple-400/20 bg-card sm:m-4" aria-label="Free 8s Discord voice readiness">
+    <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-300 sm:px-5 [&::-webkit-details-marker]:hidden">
+      <Headphones className="h-4 w-4 shrink-0 text-purple-300" aria-hidden="true" />
+      <span className="flex-1 text-sm font-black text-white">Discord team voice</span>
+      {hasConfirmedStatus && <span className={`text-[10px] font-bold ${displayReadyCount === playerCapacity ? "text-green" : "text-vapor"}`}>{displayReadyCount}/{playerCapacity} voice ready</span>}
+      <ChevronDown className="h-4 w-4 shrink-0 text-vapor transition-transform group-open/voice:rotate-180" aria-hidden="true" />
+    </summary>
+    <div className="border-t border-white/[0.07]">
     <div aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
     <div className="relative flex flex-col gap-4 bg-gradient-to-r from-[#5865F2]/[0.09] via-transparent to-transparent p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex min-w-0 items-start gap-3 sm:gap-4">
@@ -187,5 +194,6 @@ export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, p
         <p className="line-clamp-2 min-w-0" title={summary}>{summary}</p>
       </div>
     </div>}
-  </section>;
+    </div>
+  </details>;
 }

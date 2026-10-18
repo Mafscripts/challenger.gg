@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Crown, GripVertical, MousePointer2, Users } from "lucide-react";
+import { Check, ChevronDown, Crown, GripVertical, MousePointer2, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
 import { captainDraftSide, captainDraftTurn, captainDraftPlayerIds } from "@/lib/freeEightsCaptainDraft";
@@ -43,12 +43,17 @@ export default function FreeEightsCaptainDraft({ match, players, userId, isParti
     ? players.length < size * 2 ? "Approved · waiting for a full lobby" : "Approved · join the Discord Waiting Room"
     : "Want captains to choose the teams?";
 
-  return <section className="m-3 overflow-hidden rounded-xl border border-cyan/25 bg-card sm:m-4" aria-label="Captain draft">
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] px-4 py-4 sm:px-5">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cyan/20 bg-cyan/[0.07] text-cyan"><Crown className="h-5 w-5" /></span>
-        <div><p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan">Captain draft · {size}v{size}</p><h2 className="mt-1 text-sm font-black text-white" role="status" aria-live="polite">{status}</h2></div>
-      </div>
+  return <details open={active} className="group/draft m-3 overflow-hidden rounded-xl border border-cyan/25 bg-card sm:m-4" aria-label="Captain draft">
+    <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan sm:px-5 [&::-webkit-details-marker]:hidden">
+      <Crown className="h-4 w-4 shrink-0 text-cyan" aria-hidden="true" />
+      <div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan">Captain draft · {size}v{size}</p><h2 className="mt-1 text-xs font-black text-white" role="status" aria-live="polite">{status}</h2></div>
+      {!draft && <span className="shrink-0 font-mono text-xs font-black text-cyan">{votes.length}/{required} agree</span>}
+      {active && <span className="shrink-0 text-[10px] font-bold text-cyan">Pick {draft.picks.length + 1}/{size * 2 - 2}</span>}
+      {completed && <Check className="h-4 w-4 text-green" aria-hidden="true" />}
+      <ChevronDown className="h-4 w-4 shrink-0 text-vapor transition-transform group-open/draft:rotate-180" aria-hidden="true" />
+    </summary>
+    <div className="border-t border-white/[0.07]">
+    <div className="flex flex-wrap items-center justify-end gap-3 px-4 py-3 sm:px-5">
       {!draft && <div className="flex flex-wrap items-center gap-3">
         <span className="font-mono text-sm font-black text-cyan">{votes.length}/{required} agree</span>
         {isParticipant && votingOpen && <button type="button" onClick={() => onVote(!voted)} disabled={busy} aria-pressed={voted} className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-black transition-colors disabled:opacity-50 ${voted ? "border-white/15 bg-white/[0.05] text-white" : "border-cyan/30 bg-cyan/10 text-cyan hover:bg-cyan/20"}`}>
@@ -80,5 +85,6 @@ export default function FreeEightsCaptainDraft({ match, players, userId, isParti
         </div>)}
       </div>
     </div>}
-  </section>;
+    </div>
+  </details>;
 }
