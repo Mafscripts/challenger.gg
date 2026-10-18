@@ -140,6 +140,45 @@ test("Switcheroo prefers new partners when an alternative is available", () => {
   assert.deepEqual(partyCandidates(room).map((p) => p.id), ["p4"]);
 });
 
+test("new draws change actual teammates in Co-ed and Switcheroo, keeping fixed duos intact", async () => {
+  const grouping = (room) => room.teams.map((team) => room.players.filter((p) => p.side === team.id).map((p) => p.id).sort().join(",")).sort().join("|");
+  for (const mode of ["coed", "switcheroo"]) for (const paired of [false, true]) {
+    const f = fixture(), metadata = f.row().metadata;
+    metadata.mode = mode; metadata.team_size = 4;
+    metadata.players = Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, name: `Player ${i}`, gender: i % 2 ? "female" : "male", duo_id: paired ? `duo${Math.floor(i / 2)}` : null, side: null }));
+    await f.act("spin"); f.finish();
+    for (let round = 0; round < 4; round++) {
+      const before = grouping(f.room());
+      await f.act("reset"); await f.act("spin"); f.finish();
+      assert.notEqual(grouping(f.room()), before, `${mode}, duos=${paired}: swapping team labels is not a new draw`);
+      if (paired) for (const player of f.room().players) assert.equal(f.room().players.find((mate) => mate.id !== player.id && mate.duo_id === player.duo_id).side, player.side);
+      for (const team of f.room().teams) {
+        const members = f.room().players.filter((player) => player.side === team.id);
+        assert.equal(members.length, 4);
+        if (mode === "coed") assert.equal(members.filter((player) => player.gender === "male").length, 2);
+      }
+    }
+  }
+});
+
+test("new draws also mix a 128-team roster; complete 2v2 duos remain valid when no different grouping exists", async () => {
+  const large = fixture(), metadata = large.row().metadata;
+  metadata.mode = "coed"; metadata.team_size = 4;
+  metadata.teams = Array.from({ length: 128 }, (_, i) => ({ id: `t${i}`, name: `Team ${i + 1}` }));
+  metadata.players = Array.from({ length: 512 }, (_, i) => ({ id: `p${i}`, name: `Player ${i}`, gender: i % 2 ? "female" : "male", duo_id: `duo${Math.floor(i / 2)}`, side: null }));
+  await large.act("spin"); large.finish();
+  const before = new Set(large.room().teams.map((team) => large.room().players.filter((p) => p.side === team.id).map((p) => p.id).sort().join(",")));
+  await large.act("reset"); await large.act("spin"); large.finish();
+  assert.ok(large.room().teams.some((team) => !before.has(large.room().players.filter((p) => p.side === team.id).map((p) => p.id).sort().join(","))));
+  for (const mode of ["coed", "switcheroo"]) {
+    const f = fixture(); f.row().metadata.mode = mode;
+    f.row().metadata.players = Array.from({ length: 4 }, (_, i) => ({ id: `p${i}`, name: `Player ${i}`, gender: i % 2 ? "female" : "male", duo_id: `duo${Math.floor(i / 2)}`, side: null }));
+    await f.act("spin"); f.finish(); await f.act("reset"); await f.act("spin"); f.finish();
+    assert.equal(f.room().status, "ready");
+    for (const player of f.room().players) assert.equal(f.room().players.find((mate) => mate.id !== player.id && mate.duo_id === player.duo_id).side, player.side);
+  }
+});
+
 test("players link only their own account, cannot overwrite claimed slots and can unlink after the draw", async () => {
   const f = fixture(); await f.act("add", { names: ["A", "B", "C", "D"] });
   const player = f.room().players[0], user = { id: "one", discord_user_id: "200000000000000001", discord_connected_at: new Date() };

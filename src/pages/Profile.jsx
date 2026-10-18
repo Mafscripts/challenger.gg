@@ -576,7 +576,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="w-full shrink-0 lg:w-[280px]">
+            <div className="w-full shrink-0 lg:w-[280px] lg:self-start">
               <div className="flex gap-2">
                 {isOwnProfile ? (
                   <>

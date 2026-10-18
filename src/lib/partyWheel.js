@@ -89,7 +89,7 @@ export function partyCandidates(room) {
   const available = room.team_size - room.players.filter((player) => player.side === side).length;
   pool = pool.filter((player) => partyDrawMembers(room, player).length <= available);
   if (room.players.some((player) => player.duo_id)) pool = pool.filter((player) => canFinishDraw(room, player, side));
-  if (room.mode === "switcheroo" && room.previous_teams) {
+  if (room.previous_teams) {
     const teammates = room.players.filter((player) => player.side === side);
     const cost = (player) => partyDrawMembers(room, player).reduce((sum, member) => sum + teammates.filter((mate) => room.previous_teams[member.id] && room.previous_teams[member.id] === room.previous_teams[mate.id]).length, 0);
     const best = Math.min(...pool.map(cost));
@@ -118,7 +118,7 @@ export function assignPartyTeams(room, choose) {
     return { members, needs: room.mode === "coed" ? [members.filter((p) => p.gender === "male").length, members.filter((p) => p.gender === "female").length] : [members.length, 0] };
   });
   const duos = order(bundles.filter((bundle) => bundle.members.length === 2)).sort((a, b) => Math.max(...b.needs) - Math.max(...a.needs));
-  const cost = (bundle, bin) => room.mode !== "switcheroo" || !room.previous_teams ? 0 : bundle.members.reduce((sum, member) => sum + bin.members.filter((mate) => room.previous_teams[member.id] && room.previous_teams[member.id] === room.previous_teams[mate.id]).length, 0);
+  const cost = (bundle, bin) => !room.previous_teams ? 0 : bundle.members.reduce((sum, member) => sum + bin.members.filter((mate) => room.previous_teams[member.id] && room.previous_teams[member.id] === room.previous_teams[mate.id]).length, 0);
   const targets = (bundle) => order(bins.filter((bin) => bundle.needs.every((need, i) => need <= bin.left[i])))
     .sort((a, b) => cost(bundle, a) - cost(bundle, b) || a.members.length - b.members.length);
   const place = (bundle, bin, undo = false) => {
@@ -148,5 +148,37 @@ export function assignPartyTeams(room, choose) {
     if (!bin) return false;
     place(bundle, bin);
   }
-  return bins.every((bin) => bin.left.every((left) => left === 0));
+  if (!bins.every((bin) => bin.left.every((left) => left === 0))) return false;
+  if (!room.previous_teams || bins.length < 2) return true;
+  const previousCounts = new Map();
+  for (const side of Object.values(room.previous_teams)) if (side) previousCounts.set(side, (previousCounts.get(side) || 0) + 1);
+  const repeats = bins.every((bin) => {
+    const oldSide = room.previous_teams[bin.members[0]?.id];
+    return oldSide && previousCounts.get(oldSide) === bin.members.length && bin.members.every((player) => room.previous_teams[player.id] === oldSide);
+  });
+  if (!repeats) return true;
+
+  // Compare rosters, not team labels. Trade compatible subsets if a draw
+  // repeated every team; a fixed duo is always treated as one atomic unit.
+  const trades = new Map();
+  for (const bin of order(bins)) {
+    const units = order(bundles.filter((bundle) => bundle.members[0].side === bin.id));
+    const pending = [];
+    for (let mask = 1; mask < 2 ** units.length; mask++) {
+      const selected = units.filter((_, index) => mask & 2 ** index);
+      const members = selected.flatMap((unit) => unit.members);
+      if (members.length >= bin.members.length) continue;
+      const needs = selected.reduce((sum, unit) => sum.map((count, index) => count + unit.needs[index]), [0, 0]);
+      const key = needs.join(","), matches = trades.get(key);
+      if (matches?.length) {
+        const other = matches[choose(matches.length)];
+        members.forEach((player) => { player.side = other.side; });
+        other.members.forEach((player) => { player.side = bin.id; });
+        return true;
+      }
+      pending.push({ key, members, side: bin.id });
+    }
+    for (const trade of pending) trades.set(trade.key, [...(trades.get(trade.key) || []), trade]);
+  }
+  return true;
 }
