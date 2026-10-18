@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
 import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
 import { toast } from "@/components/ui/use-toast";
@@ -468,8 +469,19 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">1</span>
-                  {isEightsLobby ? "Choose Series Format" : "Select Game Mode"}
+                  {isEightsLobby ? "Choose Mode" : "Select Game Mode"}
                 </h3>
+                {isEightsLobby ? <div className="space-y-3">
+                  <Select value={selectedGameMode || ""} onValueChange={setSelectedGameMode}>
+                    <SelectTrigger aria-label="Choose mode" className="h-12 rounded-xl border-white/10 bg-secondary px-4 text-left font-semibold focus:ring-cyan/30">
+                      <SelectValue placeholder="Choose a mode and series format" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[150] rounded-xl border-white/10 bg-card text-white shadow-xl">
+                      {modeChoices.map((mode) => <SelectItem key={mode.id} value={mode.id} className="cursor-pointer rounded-lg py-3 focus:bg-cyan/10 focus:text-cyan">{mode.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="min-h-5 text-xs leading-5 text-vapor" aria-live="polite">{modeChoices.find((mode) => mode.id === selectedGameMode)?.description || "Select a format to see which maps you will play."}</p>
+                </div> : (
                 <div className={`grid gap-4 ${isEightsLobby ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                   {modeChoices.map((mode) => {
                     const Icon = mode.icon;
@@ -499,6 +511,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     );
                   })}
                 </div>
+                )}
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => {
