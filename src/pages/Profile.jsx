@@ -569,11 +569,8 @@ export default function Profile() {
                   <ScreenshotRankPill rank={user.screenshot_rank} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
                 </div>
-                <p className="mt-2 max-w-2xl text-sm text-vapor">{profile?.bio || "No bio added yet."}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-md border border-cyan/20 bg-cyan/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-cyan">{activisionIdFor(user) || "Activision ID not set"}</span>
-                  <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">{region}</span>
-                  <span className="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-vapor">Joined {joinedDate}</span>
                 </div>
                 {socialLinks.length > 0 && <div className="mt-4 flex flex-wrap gap-2" aria-label="Player socials">
                   {socialLinks.map((social) => social.url ? (
