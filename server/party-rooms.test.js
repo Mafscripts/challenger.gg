@@ -316,3 +316,29 @@ test("existing rooms backfill and persist missing maps once; linked profiles exp
   assert.deepEqual(f.row().metadata.bracket, saved);
   assert.equal(reads, 1);
 });
+
+test("hosts add real website accounts or guests to solos and duos; duplicates and unavailable accounts are rejected", async () => {
+  const f = fixture();
+  const accounts = [{ id: "host", username: "Liv", is_banned: false }, { id: "other", username: "Ouji", is_banned: false }, { id: "banned", username: "Blocked", is_banned: true }];
+  let lookups = 0;
+  f.db.user = { findMany: async ({ where }) => { lookups++; return accounts.filter((user) => where.id.in.includes(user.id) && !user.is_banned); } };
+  await assert.rejects(f.act("add", { players: [{ name: "Spoofed", user_id: "host" }] }, { id: "viewer" }), { status: 403 });
+  assert.equal(lookups, 0);
+  await f.act("add", { players: [{ name: "Spoofed", user_id: "host" }, { name: "Guest" }] });
+  assert.equal(f.room().players[0].name, "Liv");
+  assert.equal(f.room().players[0].user_id, "host");
+  assert.equal(f.room().players[1].user_id, null);
+  await assert.rejects(f.act("add", { players: [{ name: "Alias", user_id: "host" }] }), { status: 409 });
+  await assert.rejects(f.act("add", { players: [{ user_id: "banned" }] }), { status: 409 });
+  await assert.rejects(f.act("add", { players: [{ user_id: "deleted" }] }), { status: 409 });
+  assert.equal(f.room().players.length, 2);
+  await assert.rejects(f.act("add_duo", { players: [{ user_id: "other" }, { user_id: "other" }] }));
+  await f.act("add_duo", { players: [{ name: "Wrong", user_id: "other" }, { name: "Duo guest" }] });
+  const pair = f.room().players.slice(2);
+  assert.equal(pair[0].name, "Ouji");
+  assert.equal(pair[0].user_id, "other");
+  assert.equal(pair[1].user_id, null);
+  assert.equal(pair[0].duo_id, pair[1].duo_id);
+  await f.act("spin");
+  assert.ok(f.room().players.every((player) => player.side));
+});

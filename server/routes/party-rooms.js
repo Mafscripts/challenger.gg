@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { changePartyRoom, createPartyRoom, flattenPartyRoom, getPartyRoom, partyRoomSummary, partyRoomView } from "../party-rooms.js";
 import { PARTY_ROOM_LIFETIME_MS } from "../party-voice.js";
 import { partyRoomStorageError, requirePartyRoomStorage } from "../party-room-storage.js";
+import { searchPartyPlayers } from "../party-players.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -21,6 +22,10 @@ router.get("/", async (req, res, next) => {
 });
 router.post("/", async (req, res, next) => {
   try { res.json({ room: await createPartyRoom(prisma, req.user, req.body || {}) }); }
+  catch (error) { next(error); }
+});
+router.get("/players", async (req, res, next) => {
+  try { res.json({ players: await searchPartyPlayers(prisma, req.query.query) }); }
   catch (error) { next(error); }
 });
 router.get("/:id", async (req, res, next) => {

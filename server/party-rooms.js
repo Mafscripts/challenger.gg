@@ -6,6 +6,7 @@ import { partyVoiceKey, partyVoiceStatus } from "./party-voice.js";
 import { hasDiscordLink, freeEightsDiscordMembershipJoinError } from "./free-eights-discord.js";
 import { requirePartyRoomStorage } from "./party-room-storage.js";
 import { ensurePartyMatchMaps, partyMapsMissing } from "./party-maps.js";
+import { selectedPartyAccounts } from "./party-players.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 export const flattenPartyRoom = (row) => ({ ...row.metadata, id: row.id, owner_id: row.owner_id, status: row.status, revision: row.revision,
@@ -106,34 +107,31 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
       if (![2, 3, 4].includes(input.team_size) || room.players.length > input.team_size * room.teams.length) fail("Choose a team size that fits your players");
       room.team_size = input.team_size;
     }
-    if (input.action === "add_duo") {
-      if (!Array.isArray(input.players) || input.players.length !== 2) fail("Enter both players in your duo");
-      if (room.players.length + 2 > partyCapacity(room)) fail("A duo needs two empty player slots");
+    if (["add", "add_duo"].includes(input.action)) {
+      const duo = input.action === "add_duo";
+      const entries = duo || Array.isArray(input.players) ? input.players : Array.isArray(input.names) ? input.names.map((name) => ({ name, gender: input.gender })) : null;
+      if (duo && (!Array.isArray(entries) || entries.length !== 2)) fail("Enter both players in your duo");
+      if (!Array.isArray(entries) || !entries.length || room.players.length + entries.length > partyCapacity(room)) fail(`This room has ${partyCapacity(room) - room.players.length} empty slots`);
+      const accounts = await selectedPartyAccounts(tx, entries);
       const existing = new Set(room.players.map((entry) => entry.name.toLowerCase()));
-      const duoId = randomUUID();
-      for (const entry of input.players) {
-        const name = cleanName(entry?.name);
+      const existingUsers = new Set(room.players.filter((entry) => entry.user_id).map((entry) => entry.user_id));
+      const duoId = duo ? randomUUID() : null;
+      for (const entry of entries) {
+        const account = entry?.user_id ? accounts.get(entry.user_id) : null;
+        const name = cleanName(account ? account.name : entry?.name);
+        if (account && existingUsers.has(account.id)) fail("This website account is already in the room", 409);
         if (existing.has(name.toLowerCase())) fail("Use a different display name for each player");
-        if (room.mode === "coed" && !["male", "female"].includes(entry.gender)) fail("Choose Male or Female for both players");
+        const gender = room.mode === "coed" && ["male", "female"].includes(entry?.gender) ? entry.gender : null;
+        if (duo && room.mode === "coed" && !gender) fail("Choose Male or Female for both players");
         existing.add(name.toLowerCase());
-        room.players.push({ id: randomUUID(), name, duo_id: duoId, gender: room.mode === "coed" ? entry.gender : null, user_id: null, side: null });
+        if (account) existingUsers.add(account.id);
+        room.players.push({ id: randomUUID(), name, ...(duo ? { duo_id: duoId } : {}), gender, user_id: account?.id || null, side: null });
       }
     }
     if (input.action === "unpair") {
       if (!player?.duo_id) fail("Duo not found", 404);
       const duoId = player.duo_id;
       room.players.forEach((entry) => { if (entry.duo_id === duoId) entry.duo_id = null; });
-    }
-    if (input.action === "add") {
-      const names = input.names;
-      if (!Array.isArray(names) || !names.length || room.players.length + names.length > partyCapacity(room)) fail(`This room has ${partyCapacity(room) - room.players.length} empty slots`);
-      const existing = new Set(room.players.map((entry) => entry.name.toLowerCase()));
-      for (const name of names) {
-        const cleaned = cleanName(name);
-        if (existing.has(cleaned.toLowerCase())) fail("Use a different display name for each player");
-        existing.add(cleaned.toLowerCase());
-        room.players.push({ id: randomUUID(), name: cleaned, gender: ["male", "female"].includes(input.gender) ? input.gender : null, user_id: null, side: null });
-      }
     }
     if (input.action === "remove") {
       if (!player) fail("Player not found", 404);

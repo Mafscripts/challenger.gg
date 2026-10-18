@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import AnimatedNameWheel from "@/components/competition/AnimatedNameWheel";
 import { PartyBracket, PartyMatchRoomView } from "@/components/competition/PartyBracket";
+import { PartyAddDuo, PartyAddPlayers } from "@/components/competition/PartyPlayerEntry";
 import { partyCapacity, partyDrawEntries, partyGenderQuota, partySpinning, partyValidation } from "@/lib/partyWheel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import "@/styles/party-rooms.css";
@@ -16,14 +17,6 @@ function Gender({ value }) {
 }
 function TeamSize({ value, onChange, disabled }) {
   return <Select value={String(value)} onValueChange={(value) => onChange(Number(value))} disabled={disabled}><SelectTrigger className="party-select"><SelectValue /></SelectTrigger><SelectContent>{[2, 3, 4].map((size) => <SelectItem key={size} value={String(size)}>{size} players per team</SelectItem>)}</SelectContent></Select>;
-}
-
-function AddDuo({ room, disabled, act }) {
-  const [names, setNames] = useState(["", ""]), [genders, setGenders] = useState(["male", "female"]);
-  return <details className="party-add-duo"><summary><Users />Add a fixed duo<ChevronDown /></summary><p className="party-muted">These two players spin together and always join the same team, including in a new Switcheroo round.</p><form onSubmit={async (e) => {
-    e.preventDefault();
-    if (await act("add_duo", { players: names.map((name, index) => ({ name, gender: genders[index] })) })) setNames(["", ""]);
-  }}>{names.map((name, index) => <div className="party-duo-input" key={index}><label className="party-label">Player {index + 1}<input className="party-field" value={name} required maxLength={32} disabled={disabled} onChange={(e) => setNames((previous) => previous.map((value, i) => i === index ? e.target.value : value))} /></label>{room.mode === "coed" && <label className="party-label">Gender<Select value={genders[index]} disabled={disabled} onValueChange={(value) => setGenders((previous) => previous.map((gender, i) => i === index ? value : gender))}><SelectTrigger className="party-select"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="male">♂ Male</SelectItem><SelectItem value="female">♀ Female</SelectItem></SelectContent></Select></label>}</div>)}<button className="party-button party-primary" disabled={disabled || names.some((name) => !name.trim()) || partyCapacity(room) - room.players.length < 2}><Plus />Add duo</button></form></details>;
 }
 
 function CreateRoom() {
@@ -75,7 +68,7 @@ function TeamCard({ team, room, players, manager, disabled, act, voiceUrl }) {
 function PartyRoom() {
   const { id, matchId } = useParams(); const { user } = useAuth();
   const [data, setData] = useState(null), [loading, setLoading] = useState(true), [error, setError] = useState("");
-  const [busy, setBusy] = useState(false), [names, setNames] = useState(""), [gender, setGender] = useState("male");
+  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(""), [confirm, setConfirm] = useState(null), [clock, setClock] = useState(Date.now());
   const [offset, setOffset] = useState(0);
   const refresh = useCallback(async () => {
@@ -131,11 +124,8 @@ function PartyRoom() {
       {manager ? <div className="party-wheel-controls">{allReady ? <a className="party-button party-primary party-spin-button" href="#party-bracket">Choose bracket format<ChevronDown /></a> : <button className="party-button party-primary party-spin-button" disabled={disabled || Boolean(invalid)} onClick={() => act("spin")}><Shuffle />{spinning ? "Spinning…" : "Spin to draw all teams"}</button>}<button className="party-button" disabled={disabled || !room.players.some((player) => player.side)} onClick={() => setConfirm("reset")}><RotateCcw />{allReady ? "New round" : "Reset draw"}</button></div> : <p className="party-muted party-centered">The host controls the wheel. Your view updates automatically.</p>}
       {invalid && room.status !== "closed" && <p className="party-validation">{invalid}</p>}
     </section><section className="party-panel party-player-panel"><div className="party-section-heading"><h2>Player pool</h2><span className="party-count">{room.players.length}/{partyCapacity(room)}</span></div>
-      {manager && editable && room.status !== "closed" && <form className="party-add-players" onSubmit={async (e) => { e.preventDefault(); const values = names.split(/\r?\n/).map((name) => name.trim()).filter(Boolean); if (await act("add", { names: values, gender: room.mode === "coed" ? gender : null })) setNames(""); }}>
-        <label className="party-label">Player names<textarea rows={3} className="party-field" placeholder={"Enter a name\nOne player per line"} value={names} onChange={(e) => setNames(e.target.value)} maxLength={2400} disabled={disabled} /></label>
-        <div className="party-actions">{room.mode === "coed" && <Select value={gender} onValueChange={setGender} disabled={disabled}><SelectTrigger className="party-select"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="male">♂ Male players</SelectItem><SelectItem value="female">♀ Female players</SelectItem></SelectContent></Select>}<button className="party-button party-primary" disabled={disabled || !names.trim() || room.players.length === partyCapacity(room)}><Plus />Add names</button></div>
-      </form>}
-      {manager && editable && room.status !== "closed" && <AddDuo room={room} disabled={disabled} act={act} />}
+      {manager && editable && room.status !== "closed" && <PartyAddPlayers room={room} disabled={disabled} act={act} />}
+      {manager && editable && room.status !== "closed" && <PartyAddDuo room={room} disabled={disabled} act={act} />}
       <div className="party-player-list">{unpicked.map((player) => <div key={player.id} className="party-player-row"><Gender value={player.gender} /><strong>{player.name}</strong>{player.duo_id && <span className="party-duo-tag" title={room.players.filter((entry) => entry.duo_id === player.duo_id).map((entry) => entry.name).join(" + ")}>Duo</span>}
         {player.user_id ? <span className="party-link-state"><Check />{player.user_id === user?.id ? "You" : "Linked"}</span> : !own && <button className="party-claim" disabled={disabled} onClick={() => act("claim", { player_id: player.id })}>This is me</button>}
         {manager && editable && room.status !== "closed" && <>{player.duo_id && <button className="party-icon-button" title="Unlink this duo" disabled={disabled} onClick={() => act("unpair", { player_id: player.id })}><Link2 /></button>}{room.mode === "coed" && <button className="party-icon-button" title="Change Male / Female" disabled={disabled} onClick={() => act("gender", { player_id: player.id, gender: player.gender === "male" ? "female" : "male" })}>{player.gender === "male" ? <Venus /> : <Mars />}</button>}<button className="party-icon-button" title={`Remove ${player.name}`} disabled={disabled} onClick={() => act("remove", { player_id: player.id })}><Trash2 /></button></>}

@@ -404,6 +404,7 @@ export const base44 = {
     },
   },
   party: {
+    searchPlayers(query) { requireToken(); return apiFetch(`/party-rooms/players?query=${encodeURIComponent(query)}`); },
     list() { requireToken(); return apiFetch("/party-rooms"); },
     get(id, matchId) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}${matchId ? `?match=${encodeURIComponent(matchId)}` : ""}`); },
     create(input) { requireToken(); return apiFetch("/party-rooms", { method: "POST", body: input }); },
