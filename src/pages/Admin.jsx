@@ -43,6 +43,7 @@ import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import UserSecurityPanel from "@/components/admin/UserSecurityPanel";
 import DeleteUserAccount from "@/components/admin/DeleteUserAccount";
+import ModerateUserDialog from "@/components/admin/ModerateUserDialog";
 import "@/styles/admin-users.css";
 import { isCloudflareIp } from "@/lib/cloudflareIps";
 import { toast } from "@/components/ui/use-toast";
@@ -546,6 +547,7 @@ export default function Admin() {
   const [expandedTournamentRosterId, setExpandedTournamentRosterId] = useState(null);
   const [walletAdjustmentOpen, setWalletAdjustmentOpen] = useState(false);
   const [openManageUserId, setOpenManageUserId] = useState(null);
+  const [moderationRequest, setModerationRequest] = useState(null);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
   const [massResetOpen, setMassResetOpen] = useState(false);
   const [massResetConfirmation, setMassResetConfirmation] = useState("");
@@ -912,37 +914,28 @@ export default function Admin() {
     }
   };
 
-  const handleModerateUser = async (targetUser, action, duration) => {
+  const handleModerateUser = (targetUser, action, duration) => {
     if (!canAccessAdminPanel(currentRole)) {
       toast({ title: "Not allowed", description: "Moderator or higher is required.", variant: "destructive" });
       return;
     }
-    if (action === "ip_ban") {
-      const sharedAccounts = targetUser.shared_ip_account_count ?? sharedIpCount(targetUser);
-      const warning = sharedAccounts > 0
-        ? `This permanently blocks all known IP addresses for ${userName(targetUser)}. ${sharedAccounts} other account(s) share one of those addresses and may also be blocked. Continue?`
-        : `This permanently blocks all known IP addresses for ${userName(targetUser)}. Continue?`;
-      if (!window.confirm(warning)) return;
-    }
-    const reason = typeof window !== "undefined" ? window.prompt(`Reason for ${action.replace(/_/g, " ")}:`, "") : "";
-    if (reason === null) return;
+    setModerationRequest({ user: targetUser, action, duration,
+      sharedAccounts: action === "ip_ban" ? targetUser.shared_ip_account_count ?? sharedIpCount(targetUser) : 0 });
+  };
 
+  const submitModeration = async (reason) => {
+    const { user: targetUser, action, duration } = moderationRequest;
     setBusyId(`${targetUser.id}:${action}`);
     try {
       const response = await base44.functions.invoke("moderateUser", {
-        user_id: targetUser.id,
-        action,
-        duration,
-        reason: reason || action.replace(/_/g, " "),
+        user_id: targetUser.id, action, duration, reason,
       });
-      if (response.data?.success) {
-        toast({ title: "Moderation action saved", description: `${action.replace(/_/g, " ")} applied to ${userName(targetUser)}.` });
-        loadAdminData();
-      } else {
-        toast({ title: "Moderation failed", description: response.data?.error || "Could not apply moderation action.", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Moderation failed", description: error.message || "Could not apply moderation action.", variant: "destructive" });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not apply moderation action.");
+      adminQueries.updateUser(response.data.user);
+      setData((current) => ({ ...current, users: current.users.map((row) => row.id === targetUser.id ? { ...row, ...response.data.user } : row) }));
+      setModerationRequest(null);
+      toast({ title: "Moderation action saved", description: `${action.replace(/_/g, " ")} applied to ${userName(targetUser)}.` });
+      void loadAdminData().catch((error) => console.warn("Could not refresh moderation data:", error));
     } finally {
       setBusyId(null);
     }
@@ -2360,7 +2353,7 @@ export default function Admin() {
                                   </div>
 
                                       {canViewUserIps(currentRole) && <UserSecurityPanel user={user} busy={busyId === `${user.id}:ip_ban`}
-                                        onBanIps={(security) => handleModerateUser({ ...user, shared_ip_account_count: security.shared_accounts.length }, "ip_ban")} />}
+                                        onBanIps={(security) => handleModerateUser({ ...user, moderation_ips: security.ips, shared_ip_account_count: security.shared_accounts.length }, "ip_ban")} />}
                                       <DeleteUserAccount user={user} actor={currentUser} onDeleted={async (id) => {
                                         setOpenManageUserId(null);
                                         setData((current) => ({ ...current, users: current.users.filter((row) => row.id !== id), wallets: current.wallets.filter((row) => row.user_id !== id) }));
@@ -3497,6 +3490,11 @@ export default function Admin() {
         </div>
         </main>
       </div>
+      {moderationRequest && <ModerateUserDialog
+        key={`${moderationRequest.user.id}:${moderationRequest.action}:${moderationRequest.duration || ""}`}
+        request={moderationRequest} busy={busyId === `${moderationRequest.user.id}:${moderationRequest.action}`}
+        onClose={() => setModerationRequest(null)} onSubmit={submitModeration}
+      />}
     </div>
   );
 }

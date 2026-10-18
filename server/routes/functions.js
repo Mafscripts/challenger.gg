@@ -10540,10 +10540,16 @@ async function moderateUser(req) {
   }
 
   const action = req.body.action || "warning";
+  if (!["warning", "suspension", "temporary_ban", "ban", "email_ban", "ip_ban", "remove_ban"].includes(action)) {
+    return { success: false, error: "Invalid moderation action" };
+  }
   if (action === "ip_ban" && !hasRole(req.user, "admin")) {
     return { success: false, error: "Admin or higher is required for IP bans" };
   }
-  const reason = req.body.reason || "Moderation action";
+  const reason = typeof req.body.reason === "string" ? req.body.reason.trim() : "";
+  if (reason.length < 5 || reason.length > 2000) {
+    return { success: false, error: "Enter a clear moderation reason of 5–2,000 characters." };
+  }
   const expiresDate = action === "temporary_ban" || action === "suspension" ? banExpiration(req.body.duration || "24h") : null;
   const targetIps = action === "ip_ban" ? knownUserIpAddresses(target) : [];
   if (action === "ip_ban" && targetIps.length === 0) {
