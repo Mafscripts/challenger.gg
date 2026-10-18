@@ -20,8 +20,8 @@ const gameModes = [
 ];
 
 const eightsSeriesFormats = [
-  { id: "cdl_bo3", name: "CDL BO3", gameMode: "hp", modes: ["hp", "snd", "hp"], icon: Swords, description: "Hardpoint · Search & Destroy · Hardpoint", tone: "cyan" },
-  { id: "hp_bo3", name: "Hardpoint BO3", gameMode: "hp", modes: ["hp", "hp", "hp"], icon: Target, description: "Hardpoint · Hardpoint · Hardpoint", tone: "red" },
+  { id: "cdl_bo3", name: "CDL Best of 3", gameMode: "hp", modes: ["hp", "snd", "hp"], icon: Swords, description: "Hardpoint · Search & Destroy · Hardpoint", tone: "cyan" },
+  { id: "hp_bo3", name: "Hardpoint Best of 3", gameMode: "hp", modes: ["hp", "hp", "hp"], icon: Target, description: "3 Hardpoint maps", tone: "red" },
 ];
 
 const teamSizes = [
@@ -119,7 +119,13 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const isEights = mode === "eights";
   const isMoneyEights = mode === "money8s";
   const isEightsLobby = isEights || isMoneyEights;
-  const modeChoices = isEights && gameConfig ? gameConfig.formats.map((format) => ({ ...format, gameMode: format.modes[0], icon: Swords, tone: "cyan", description: format.modes.map((id) => gameConfig.modes.find((mode) => mode.id === id)?.name || id).join(" · ") })) : isEightsLobby ? eightsSeriesFormats : gameModes;
+  const modeChoices = isEights && gameConfig ? gameConfig.formats.map((format) => {
+    const modeNames = format.modes.map((id) => gameConfig.modes.find((mode) => mode.id === id)?.name || id);
+    const repeatedMode = format.modes.length > 1 && format.modes.every((id) => id === format.modes[0]);
+    return { ...format, name: format.name.replace(/\bBO(\d+)\b/gi, "Best of $1"), gameMode: format.modes[0], icon: Swords, tone: "cyan",
+      description: repeatedMode ? `${format.modes.length} ${modeNames[0]} maps` : modeNames.join(" · "),
+    };
+  }) : isEightsLobby ? eightsSeriesFormats : gameModes;
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
@@ -462,7 +468,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">1</span>
-                  {isEightsLobby ? "Select Series" : "Select Game Mode"}
+                  {isEightsLobby ? "Choose Series Format" : "Select Game Mode"}
                 </h3>
                 <div className={`grid gap-4 ${isEightsLobby ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                   {modeChoices.map((mode) => {
@@ -614,7 +620,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">3</span>
-                  Select Series Format
+                  Choose Series Format
                 </h3>
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   {[1, 3, 5].map(bo => (

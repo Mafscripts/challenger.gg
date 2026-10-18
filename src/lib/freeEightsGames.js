@@ -14,11 +14,11 @@ export const eightsGameId = (value) => String((typeof value === "object" ? value
 export const eightsSlug = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 const maps = (names, game) => names.map((name) => ({ name, image: game === "bo7" ? getMapImage(name) : `/assets/maps/${game}/${eightsSlug(name)}.webp` }));
 const formats = [
-  { id: "cdl_bo3", name: "CDL BO3", modes: ["hp", "snd", "hp"] },
-  { id: "hp_bo3", name: "Hardpoint BO3", modes: ["hp", "hp", "hp"] },
-  { id: "snd_bo3", name: "Search & Destroy BO3", modes: ["snd", "snd", "snd"] },
-  { id: "hp_bo1", name: "Hardpoint BO1", modes: ["hp"] },
-  { id: "snd_bo1", name: "Search & Destroy BO1", modes: ["snd"] },
+  { id: "cdl_bo3", name: "CDL Best of 3", modes: ["hp", "snd", "hp"] },
+  { id: "hp_bo3", name: "Hardpoint Best of 3", modes: ["hp", "hp", "hp"] },
+  { id: "snd_bo3", name: "Search & Destroy Best of 3", modes: ["snd", "snd", "snd"] },
+  { id: "hp_bo1", name: "Hardpoint Best of 1", modes: ["hp"] },
+  { id: "snd_bo1", name: "Search & Destroy Best of 1", modes: ["snd"] },
 ];
 const game = (id, name, number, color, hp, snd, extra = []) => ({
   id, name, number, color, enabled: true,
