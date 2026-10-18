@@ -36,6 +36,9 @@ export function profileMatchSideFor(match, userId, { wagerParticipants = [], tou
   const participantSides = [...new Set(wagerParticipants.filter((participant) => sameId(participant.wager_id, match.id)
     && participantBelongsToUser(participant, userId)).map((participant) => sideFor(participant.team || participant.side)).filter(Boolean))];
   if (participantSides.length) return participantSides.length === 1 ? participantSides[0] : null;
+  const alpha = Array.isArray(match.team_alpha_player_ids) && match.team_alpha_player_ids.some((id) => sameId(id, userId));
+  const bravo = Array.isArray(match.team_bravo_player_ids) && match.team_bravo_player_ids.some((id) => sameId(id, userId));
+  if (alpha || bravo) return alpha === bravo ? null : alpha ? "alpha" : "bravo";
   return sameId(match.host_id, userId) ? "alpha" : sameId(match.challenger_id, userId) ? "bravo" : null;
 }
 
@@ -65,9 +68,7 @@ export function profileMatchOutcome(match, userId, { wagerParticipants = [], tou
 
   const participantSides = [...new Set(wagerParticipants.filter((participant) => sameId(participant.wager_id, match.id)
     && participantBelongsToUser(participant, userId)).map((participant) => sideFor(participant.team || participant.side)).filter(Boolean))];
-  const ownSide = participantSides.length === 1 ? participantSides[0]
-    : participantSides.length > 1 ? null
-      : sameId(match.host_id, userId) ? "alpha" : sameId(match.challenger_id, userId) ? "bravo" : null;
+  const ownSide = participantSides.length > 1 ? null : profileMatchSideFor(match, userId, { wagerParticipants });
   const winnerSide = sameId(match.winner_id, match.host_id) ? "alpha"
     : sameId(match.winner_id, match.challenger_id) ? "bravo" : null;
   if (ownSide && winnerSide) return ownSide === winnerSide ? "win" : "loss";

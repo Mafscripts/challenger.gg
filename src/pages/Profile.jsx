@@ -36,6 +36,7 @@ import { matchDateMs } from "@/lib/matchPresentation";
 import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
 import { teamPurposeFor } from "@/lib/teamPresentation";
 import { ScreenshotRankPill, GameRankSettingsLink } from "@/components/profile/ScreenshotRank";
+import ProfileOverview, { ArenaRecords, ProfileFriends } from "@/components/profile/ProfileOverview";
 import { base44 } from "@/api/base44Client";
 import { verifiedNameColors, premiumNameEffects, allNameColors } from "@/lib/nameColors";
 import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
@@ -164,6 +165,47 @@ export default function Profile() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileResult, setProfileResult] = useState(null);
+  const [arena, setArena] = useState(null);
+  const [arenaLoading, setArenaLoading] = useState(true);
+  const [arenaError, setArenaError] = useState(false);
+  const [arenaRetry, setArenaRetry] = useState(0);
+  const [friends, setFriends] = useState({ friends: [], total: 0, next_offset: null });
+  const [friendsLoading, setFriendsLoading] = useState(true);
+  const [friendsError, setFriendsError] = useState(false);
+  const [friendsLoadingMore, setFriendsLoadingMore] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setArena(null);
+    setArenaError(false);
+    setArenaLoading(true);
+    setFriends({ user_id: user?.id, friends: [], total: 0, next_offset: null });
+    setFriendsLoading(true);
+    setFriendsError(false);
+    setFriendsLoadingMore(false);
+    if (!user?.id) return () => { active = false; };
+    base44.profile.arena(user.id)
+      .then((data) => { if (active) setArena(data); })
+      .catch(() => { if (active) setArenaError(true); })
+      .finally(() => { if (active) setArenaLoading(false); });
+    base44.profile.friends(user.id)
+      .then((data) => { if (active) setFriends({ ...data, user_id: user.id }); })
+      .catch(() => { if (active) setFriendsError(true); })
+      .finally(() => { if (active) setFriendsLoading(false); });
+    return () => { active = false; };
+  }, [user?.id, arenaRetry]);
+
+  const loadMoreFriends = async () => {
+    if (friendsLoadingMore || friends.next_offset === null || !user?.id) return;
+    const userId = user.id;
+    setFriendsLoadingMore(true);
+    setFriendsError(false);
+    try {
+      const data = await base44.profile.friends(userId, friends.next_offset);
+      setFriends((current) => current.user_id === userId ? { ...data, user_id: userId, friends: [...new Map([...current.friends, ...data.friends].map((friend) => [friend.id, friend])).values()] } : current);
+    } catch { setFriendsError(true); }
+    finally { setFriendsLoadingMore(false); }
+  };
 
   useEffect(() => {
     let active = true;
@@ -401,6 +443,8 @@ export default function Profile() {
     const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
     return (item.item_category === "trophy" || text.includes("trophy")) && !text.includes("invit") && !text.includes("champion");
   }).slice(0, 12);
+  const profileMatches = useMemo(() => [...new Map([...matches, ...(arena?.recent_matches || [])].map((match) => [`${match.match_type}:${match.id}`, match])).values()]
+    .sort((a, b) => matchDateMs(b) - matchDateMs(a)).slice(0, 50), [arena, matches]);
 
   const handleAvatarFile = async (event) => {
     const file = event.target.files?.[0];
@@ -466,10 +510,12 @@ export default function Profile() {
   }
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: Gamepad2 },
-    { id: "statistics", label: "Statistics", icon: Target },
+    { id: "overview", label: "Home", icon: Gamepad2 },
     { id: "matches", label: "Match History", icon: Swords },
+    { id: "trophies", label: "Trophies & Badges", icon: Trophy },
     { id: "teams", label: isOwnProfile ? "My Teams" : "Teams", icon: Users },
+    { id: "friends", label: "Friends", icon: Users },
+    { id: "statistics", label: "Arena", icon: Target },
   ];
 
   return (
@@ -564,7 +610,7 @@ export default function Profile() {
 
         {isOwnProfile && <GameRankSettingsLink />}
 
-        <nav className="arena-tabs mt-4 grid grid-cols-4" aria-label="Profile sections">
+        <nav className="arena-tabs mt-4 grid grid-cols-3 sm:grid-cols-6" aria-label="Profile sections">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id} className="arena-tab relative flex min-h-12 items-center justify-center gap-2 px-2 text-[9px] font-black transition-colors sm:text-[10px]">
               <Icon className="hidden h-3.5 w-3.5 sm:block" /> {label}
@@ -572,28 +618,17 @@ export default function Profile() {
           ))}
         </nav>
 
-        {tab === "overview" && (
-          <div className="mt-5 space-y-6">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <ProfileStatCard icon={Swords} label="Career results" value={totalMatches.toLocaleString()} tone="text-orange" />
-              <ProfileStatCard icon={Target} label="Career record" value={`${wins}W - ${losses}L`} tone="text-green" />
-              <ProfileStatCard icon={Flame} label="Career win rate" value={`${winRate}%`} tone="text-cyan" />
-              <ProfileStatCard icon={DollarSign} label="Lifetime earnings" value={formatMoney(earnedMoney)} tone="text-green" />
-            </div>
-            <SeasonRecordPanel rankedStats={rankedStats} />
-            <RecentMatchesPanel key={user.id} matches={matches} userId={user.id} loading={historyLoading} onViewAll={() => setTab("matches")} />
-          </div>
-        )}
+        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} trophies={trophyOverviewCards} teams={profileTeams} teamsLoading={historyLoading} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} onTab={setTab} />}
 
         {tab === "statistics" && (
           <div className="mt-5 space-y-6">
-            <XpProgressPanel xpStats={xpStats} user={user} />
+            <ArenaRecords data={arena} loading={arenaLoading} error={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} screenshotRank={user.screenshot_rank} />
             <RankProgressPanel rank={rank} rankLabel={topfraggRankLabel} elo={elo} rankProgress={hasXpMatches ? rankProgress : 0} rankJourneyIndex={hasXpMatches ? rankJourneyIndex : -1} />
-            <TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} />
-            <div className="grid gap-6 xl:grid-cols-2"><AchievementsPanel achievements={achievementCards} badges={badges} expanded /><AboutPanel profile={profile} user={user} region={region} joinedDate={joinedDate} socialLinks={socialLinks} /></div>
           </div>
         )}
-        {tab === "matches" && <div className="mt-5"><RecentMatchesPanel key={user.id} matches={matches} userId={user.id} loading={historyLoading} expanded /></div>}
+        {tab === "trophies" && <div className="mt-5 space-y-6"><TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} /><AchievementsPanel achievements={achievementCards} badges={badges} expanded /></div>}
+        {tab === "friends" && <div className="mt-5"><ProfileFriends {...friends} loading={friendsLoading} error={friendsError} expanded onLoadMore={loadMoreFriends} loadingMore={friendsLoadingMore} /></div>}
+        {tab === "matches" && <div className="mt-5"><RecentMatchesPanel key={user.id} matches={profileMatches} userId={user.id} loading={historyLoading || arenaLoading} expanded /></div>}
         {tab === "teams" && <div className="mt-5"><TeamsList key={user.id} teams={profileTeams} loading={historyLoading} profileUserId={user.id} isOwnProfile={isOwnProfile} /></div>}
       </div>
     </div>

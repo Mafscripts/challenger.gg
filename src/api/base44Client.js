@@ -364,6 +364,14 @@ export const base44 = {
     },
   },
   profile: {
+    arena(userId) {
+      requireToken();
+      return apiFetch(`/profile/${encodeURIComponent(userId)}/arena`);
+    },
+    friends(userId, offset = 0) {
+      requireToken();
+      return apiFetch(`/profile/${encodeURIComponent(userId)}/friends${toQuery({ offset })}`);
+    },
     async trophyCounts(userIds) {
       requireToken();
       const ids = [...new Set((userIds || []).filter(Boolean))].sort();
