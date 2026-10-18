@@ -41,5 +41,3 @@ export function PartyBracket({ room, manager, disabled, act, onNewRound }) {
     </>}
   </section>;
 }
-
-export { default as PartyMatchRoomView } from "./PartyMatchRoom";

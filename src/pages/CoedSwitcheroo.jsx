@@ -1,20 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Check, ChevronDown, Copy, ExternalLink, Headphones, Link2, Mars, Plus, RefreshCw, Shuffle, Trash2, Users, Venus, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import PartyDrawStage from "@/components/competition/PartyDrawStage";
 import PartyTeamCount from "@/components/competition/PartyTeamCount";
-import { PartyBracket, PartyMatchRoomView } from "@/components/competition/PartyBracket";
+import { PartyBracket } from "@/components/competition/PartyBracket";
 import { PartyAddDuo, PartyAddPlayers } from "@/components/competition/PartyPlayerEntry";
 import PartyManagement from "@/components/competition/PartyManagement";
 import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
-import { partyCapacity, partyDrawEntries, partySpinning, partyValidation } from "@/lib/partyWheel";
+import { partyCapacity, partyDrawEntries, partySpinEnds, partySpinning, partyValidation } from "@/lib/partyWheel";
 import { submitPartyRoomAction } from "@/lib/partyRoomActions";
+import { mergeRoomUpdate } from "@/lib/partyRoomUpdates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import "@/styles/party-rooms.css";
 
+const loadMatchRoom = () => import("@/components/competition/PartyMatchRoom");
+const PartyMatchRoomView = lazy(loadMatchRoom);
 const modeName = (mode) => mode === "coed" ? "Co-ed" : "Switcheroo";
 const canManage = (room, user) => room.owner_id === user?.id || hasRolePower(effectiveRoleForUser(user), "admin");
 function Gender({ value }) {
@@ -58,21 +61,23 @@ function CreateRoom() {
 
 function PartyRoom() {
   const { id, matchId } = useParams(); const { user } = useAuth();
+  // A direct match link downloads its UI while the room request is in flight.
+  useEffect(() => { if (matchId) void loadMatchRoom().catch(() => {}); }, [matchId]);
   const [data, setData] = useState(null), [loading, setLoading] = useState(true), [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState(""), [confirm, setConfirm] = useState(null), [clock, setClock] = useState(Date.now());
+  const [notice, setNotice] = useState(""), [confirm, setConfirm] = useState(null), [, setClock] = useState(0);
   const [offset, setOffset] = useState(0);
   const refresh = useCallback(async () => {
     const start = Date.now(); const result = await base44.party.get(id, matchId);
     setOffset(Date.parse(result.server_time) - (start + Date.now()) / 2);
-    setData((previous) => !previous || result.room.revision >= previous.room.revision ? result : previous);
+    setData((previous) => mergeRoomUpdate(previous, result));
   }, [id, matchId]);
   useEffect(() => {
     let active = true, running = false;
     const load = async () => {
       if (running || document.visibilityState === "hidden") return;
       running = true;
-      try { const start = Date.now(), result = await base44.party.get(id, matchId); if (active) { setData((previous) => !previous || result.room.revision >= previous.room.revision ? result : previous); setOffset(Date.parse(result.server_time) - (start + Date.now()) / 2); } }
+      try { const start = Date.now(), result = await base44.party.get(id, matchId); if (active) { setData((previous) => mergeRoomUpdate(previous, result)); setOffset(Date.parse(result.server_time) - (start + Date.now()) / 2); } }
       catch (error) { if (active) setError(error.message); }
       finally { running = false; if (active) setLoading(false); }
     };
@@ -80,9 +85,16 @@ function PartyRoom() {
     window.addEventListener("focus", load); document.addEventListener("visibilitychange", load);
     return () => { active = false; clearInterval(poll); window.removeEventListener("focus", load); document.removeEventListener("visibilitychange", load); };
   }, [id, matchId]);
-  useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 200); return () => clearInterval(timer); }, []);
   const room = data?.room, voice = data?.voice;
-  const manager = room && canManage(room, user), spinning = room && partySpinning(room, clock + offset);
+  // Only the wheel needs animation frames. The rest of the room updates once at reveal.
+  useEffect(() => {
+    if (!room?.spin) return;
+    const remaining = partySpinEnds(room) - Date.now() - offset;
+    if (remaining <= 0) return;
+    const timer = setTimeout(() => setClock((value) => value + 1), Math.ceil(remaining) + 1);
+    return () => clearTimeout(timer);
+  }, [room?.spin?.id, room?.spin?.started_at, room?.spin?.duration_ms, offset]);
+  const manager = room && canManage(room, user), spinning = room && partySpinning(room, Date.now() + offset);
   const act = async (action, input = {}) => {
     if (busy || !room) return false;
     setBusy(true); setError(""); setNotice("");
@@ -95,15 +107,15 @@ function PartyRoom() {
     catch { setNotice(`Share this room: ${window.location.href}`); }
   };
   const entries = useMemo(() => room ? partyDrawEntries(room) : [], [room]);
+  const invalid = useMemo(() => room ? partyValidation(room) : null, [room]);
   if (loading) return <div className="party-page party-empty" role="status">Loading room…</div>;
   if (!room) return <div className="party-page"><p className="party-error">{error || "Room not found"}</p><Link to="/coed-switcheroo" className="party-button">Back to rooms</Link></div>;
   const disabled = busy || spinning || room.status === "closed", own = room.players.find((player) => player.user_id === user?.id);
   const visiblePlayers = room.players.map((player) => spinning && (room.spin?.selected_ids || [room.spin?.selected_id]).includes(player.id) ? { ...player, side: null } : player);
   const unpicked = visiblePlayers.filter((player) => !player.side);
-  const invalid = partyValidation(room);
   const allReady = room.status === "ready" && !spinning;
   const editable = !room.players.some((player) => player.side);
-  if (matchId) return <PartyMatchRoomView key={`${room.round}:${matchId}`} room={room} matchId={matchId} user={user} manager={manager} disabled={disabled} managementDisabled={busy || room.status === "closed"} act={act} voice={voice} error={error} notice={notice} />;
+  if (matchId) return <Suspense fallback={<div className="party-page party-empty" role="status">Loading matchroom…</div>}><PartyMatchRoomView key={`${room.round}:${matchId}`} room={room} matchId={matchId} user={user} manager={manager} disabled={disabled} managementDisabled={busy || room.status === "closed"} act={act} voice={voice} error={error} notice={notice} /></Suspense>;
   return <div className="party-page party-studio-page"><Link to="/coed-switcheroo" className="party-back">← Your rooms</Link>
     <header className="arena-page-header party-room-heading"><div><p className="party-eyebrow">{modeName(room.mode)} · Round {room.round}</p><h1>{room.title}</h1><p>Hosted by {room.owner_name} · {room.teams.length} teams · {room.team_size} players per team</p></div><div className="party-actions"><button className="party-button" onClick={copy}><Copy />Invite players</button>{manager && room.status !== "closed" && <button className="party-icon-button" title="Close room" disabled={disabled} onClick={() => setConfirm("close")}><X /></button>}</div></header>
     {error && <p className="party-error" role="alert">{error}</p>}{notice && <p className="party-notice" role="status">{notice}</p>}
