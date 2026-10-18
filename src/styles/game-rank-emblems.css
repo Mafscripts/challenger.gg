@@ -1,19 +1,13 @@
-.legend-emblem-shiny {
+.legend-emblem-animated {
   filter: drop-shadow(0 0 2px rgb(251 191 36 / .28));
 }
 
-.legend-emblem-glint {
-  opacity: 0;
-  animation: legend-emblem-glint 5.2s ease-in-out infinite;
-}
-
-@keyframes legend-emblem-glint {
-  0%, 68% { opacity: 0; transform: translateX(0); }
-  72% { opacity: .8; }
-  88% { opacity: .8; }
-  92%, 100% { opacity: 0; transform: translateX(62px); }
+.legend-emblem-texture {
+  opacity: .85;
+  mix-blend-mode: screen;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .legend-emblem-glint { animation: none; opacity: 0; }
+  .legend-emblem-texture { display: none; }
 }

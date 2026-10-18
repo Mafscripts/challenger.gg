@@ -37,31 +37,25 @@ export function ApexEmblem(props) {
   </Emblem>;
 }
 
-export function LegendEmblem({ shiny = false, className, ...props }) {
+export function LegendEmblem({ animatedTexture = false, className, ...props }) {
   const id = useId().replace(/:/g, "");
-  const clipId = `legend-clip-${id}`, gradientId = `legend-shine-${id}`;
-  return <Emblem {...props} className={`${className || "h-7 w-7"}${shiny ? " legend-emblem-shiny" : ""}`}>
+  const clipId = `legend-clip-${id}`;
+  return <Emblem {...props} className={`${className || "h-7 w-7"}${animatedTexture ? " legend-emblem-animated" : ""}`}>
     <path d="m20 3 11 9-2 17-9 9-9-9-2-17Z" fill="currentColor" fillOpacity=".16" stroke="currentColor" strokeWidth="1.5" />
     <path d="m1 10 10 5 2 12-8-5Zm38 0-10 5-2 12 8-5ZM5 25l10 7v4l-8-6Zm30 0-10 7v4l8-6Z" fill="currentColor" fillOpacity=".65" />
-    <path d="m11 9 5 4 4-8 4 8 5-4-2 9H13Z" fill="currentColor" />
-    <path d="m20 19 2.5 4.5 5 .8-3.6 3.6.8 5.1-4.7-2.4-4.7 2.4.8-5.1-3.6-3.6 5-.8Z" fill="currentColor" />
-    <path d="m20 19 2.5 4.5 5 .8-7.5 2.4Zm0-14 4 8 5-4-2 9h-7Z" fill="white" fillOpacity=".5" />
-    {shiny && <>
+    {animatedTexture && <>
       <defs>
         <clipPath id={clipId}>
           <path d="m20 3 11 9-2 17-9 9-9-9-2-17Z" />
           <path d="m1 10 10 5 2 12-8-5Zm38 0-10 5-2 12 8-5ZM5 25l10 7v4l-8-6Zm30 0-10 7v4l8-6Z" />
         </clipPath>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="white" stopOpacity="0" />
-          <stop offset=".5" stopColor="#fff8d6" stopOpacity=".9" />
-          <stop offset="1" stopColor="white" stopOpacity="0" />
-        </linearGradient>
       </defs>
-      <g clipPath={`url(#${clipId})`}>
-        <path className="legend-emblem-glint" d="M-18-4H-6L14 44H2Z" fill={`url(#${gradientId})`} />
-      </g>
+      <image className="legend-emblem-texture" href="/assets/ranks/legend-gold-energy.gif" x="0" y="0" width="40" height="40" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clipId})`} />
     </>}
+    <path d="m11 9 5 4 4-8 4 8 5-4-2 9H13Z" fill="currentColor" />
+    <path d="m20 19 2.5 4.5 5 .8-3.6 3.6.8 5.1-4.7-2.4-4.7 2.4.8-5.1-3.6-3.6 5-.8Z" fill="currentColor" />
+    <path d="m20 19 2.5 4.5 5 .8-7.5 2.4Zm0-14 4 8 5-4-2 9h-7Z" fill="white" fillOpacity=".5" />
+
   </Emblem>;
 }
 
