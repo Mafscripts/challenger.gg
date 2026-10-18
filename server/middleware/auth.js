@@ -40,7 +40,7 @@ export const requireAuth = async (req, res, next) => {
     req.userRow = user;
     next();
   } catch (error) {
-    if (isNetworkAccessError(error)) return res.status(error.status).json({ error: error.message, code: error.code });
+    if (isNetworkAccessError(error)) return res.status(error.status).json({ error: error.message, code: error.code, reason: error.networkReason });
     res.status(401).json({ error: "Authentication required" });
   }
 };

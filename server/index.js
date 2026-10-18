@@ -66,7 +66,7 @@ app.use((error, _req, res, _next) => {
   }
   res.status(status).json({
     error: message,
-    ...(isNetworkAccessError(error) ? { code: error.code } : {}),
+    ...(isNetworkAccessError(error) ? { code: error.code, reason: error.networkReason } : {}),
     ...(error.retryAfter ? { retry_after: error.retryAfter } : {}),
     ...(status >= 500 && process.env.NODE_ENV !== "production" && error.stack ? { stack: error.stack } : {}),
   });
