@@ -22,10 +22,10 @@ function PlayerAvatar({ player }) {
   return <span className="pd-friend-avatar">{player.avatar_url && !failed ? <img src={player.avatar_url} alt="" loading="lazy" onError={() => setFailed(true)} /> : String(player.name || "P").charAt(0).toUpperCase()}</span>;
 }
 
-export function ProfileFriends({ friends = [], total = 0, next_offset = null, loading = false, expanded = false, onViewAll, onLoadMore, loadingMore = false, error = false }) {
+export function ProfileFriends({ friends = [], total = 0, next_offset = null, loading = false, expanded = false, onViewAll, onManageRequests, onLoadMore, loadingMore = false, error = false }) {
   const visible = expanded ? friends : friends.slice(0, 8);
   return <section className="pd-panel pd-friends">
-    <Heading title="Friends" icon={Users}><span className="pd-count">{loading ? "…" : total}</span></Heading>
+    <Heading title="Friends" icon={Users}><span className="pd-count">{loading ? "…" : total}</span>{onManageRequests && <button className="pd-text-action" onClick={onManageRequests}>Friend requests <ChevronRight /></button>}</Heading>
     {loading ? <p className="pd-empty" role="status">Loading friends…</p> : error && !visible.length ? <p className="pd-empty">Friends could not be loaded.</p> : visible.length ? <div className={`pd-friend-grid${expanded ? " pd-friend-grid-expanded" : ""}`}>
       {visible.map((friend) => <Link key={friend.id} to={`/profile/${encodeURIComponent(friend.username || friend.id)}`} className="pd-friend"><PlayerAvatar player={friend} /><span>{friend.name}</span></Link>)}
     </div> : <div className="pd-empty-inline"><Users aria-hidden="true" /><p>No friends to show yet.</p></div>}
@@ -91,7 +91,7 @@ function RecentArenaMatches({ matches = [], userId, loading, error, onViewAll })
   </section>;
 }
 
-export default function ProfileOverview({ arena, arenaLoading, arenaError, onRetry, user, profile, recentTrophies, trophiesLoading, trophiesError, teams, teamsLoading, friends, friendsLoading, onTab }) {
+export default function ProfileOverview({ arena, arenaLoading, arenaError, onRetry, user, profile, recentTrophies, trophiesLoading, trophiesError, teams, teamsLoading, friends, friendsLoading, canManageFriends, onTab }) {
   const rank = arena?.tp_rank, played = rank?.matchesPlayed > 0;
   return <div className="profile-dashboard">
     <aside className="pd-sidebar">
@@ -101,7 +101,7 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
       </section>
       <section className="pd-panel pd-about"><Heading title="About me" /><p>{profile?.bio || "This player hasn't added a bio yet."}</p><dl><div><dt>Member since</dt><dd>{new Date(profile?.account_created_date || user.account_created_date || user.created_date).toLocaleDateString()}</dd></div><div><dt>Region</dt><dd>{profile?.country || user.region || "Not set"}</dd></div></dl></section>
     </aside>
-    <div className="pd-main"><TrophyShelf trophies={recentTrophies} loading={trophiesLoading} error={trophiesError} onViewAll={() => onTab("trophies")} /><ProfileFriends {...friends} loading={friendsLoading} onViewAll={() => onTab("friends")} />
+    <div className="pd-main"><TrophyShelf trophies={recentTrophies} loading={trophiesLoading} error={trophiesError} onViewAll={() => onTab("trophies")} /><ProfileFriends {...friends} loading={friendsLoading} onManageRequests={canManageFriends ? () => onTab("friends") : undefined} onViewAll={() => onTab("friends")} />
       <div className="pd-columns"><div className="pd-column"><FeaturedTeams teams={teams} userId={user.id} loading={teamsLoading} onViewAll={() => onTab("teams")} /><RecentArenaMatches matches={arena?.recent_matches} userId={user.id} loading={arenaLoading} error={arenaError} onViewAll={() => onTab("matches")} /></div><ArenaRecords data={arena} loading={arenaLoading} error={arenaError} onRetry={onRetry} screenshotRank={user.screenshot_rank} /></div>
     </div>
   </div>;

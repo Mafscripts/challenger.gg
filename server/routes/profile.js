@@ -3,8 +3,27 @@ import { prisma } from "../prisma.js";
 import { requireAuth } from "../middleware/auth.js";
 import { trophyCountsFor, recentTrophiesFor } from "../lib/trophyCounts.js";
 import { getProfileArena } from "../profile-arena.js";
+import { friendStatus, changeFriendship, listFriendRequests } from "../friends.js";
 
 const router = Router();
+
+router.get("/friend-requests", requireAuth, async (req, res, next) => {
+  try {
+    const offset = Number(req.query.offset || 0);
+    if (!Number.isInteger(offset) || offset < 0 || offset > 100000) return res.status(400).json({ error: "Invalid offset" });
+    res.json(await listFriendRequests(prisma, req.user.id, offset));
+  } catch (error) { next(error); }
+});
+
+router.get("/:userId/friendship", requireAuth, async (req, res, next) => {
+  try { res.json(await friendStatus(prisma, req.user.id, req.params.userId)); }
+  catch (error) { next(error); }
+});
+
+router.post("/:userId/friendship", requireAuth, async (req, res, next) => {
+  try { res.json(await changeFriendship(prisma, req.user.id, req.params.userId, req.body?.action)); }
+  catch (error) { next(error); }
+});
 
 router.get("/:userId/trophy-showcase", requireAuth, async (req, res, next) => {
   try {

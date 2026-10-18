@@ -115,6 +115,9 @@ const participantIdentityValues = (participant) => {
 const router = Router();
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
+  if (["friendrequest", "friendship"].includes(String(req.params.entity).toLowerCase())) {
+    return res.status(403).json({ error: "Use the protected friend endpoints" });
+  }
   if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method)
     && (Object.hasOwn(req.body || {}, "vpn_access_allowed") || Object.hasOwn(req.body?.metadata || {}, "vpn_access_allowed"))) {
     return res.status(403).json({ error: "Use the CEO VPN access action" });

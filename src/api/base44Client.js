@@ -364,6 +364,22 @@ export const base44 = {
     },
   },
   profile: {
+    friendship(userId) {
+      requireToken();
+      return apiFetch(`/profile/${encodeURIComponent(userId)}/friendship`, { dedupe: false });
+    },
+    friendRequests(offset = 0) {
+      requireToken();
+      return apiFetch(`/profile/friend-requests${toQuery({ offset })}`, { dedupe: false });
+    },
+    async changeFriendship(userId, action) {
+      requireToken();
+      const result = await apiFetch(`/profile/${encodeURIComponent(userId)}/friendship`, { method: "POST", body: { action }, dedupe: false });
+      invalidateApiCache();
+      window.dispatchEvent(new CustomEvent("topfragg:friends-updated"));
+      window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
+      return result;
+    },
     trophyShowcase(userId) {
       requireToken();
       return apiFetch(`/profile/${encodeURIComponent(userId)}/trophy-showcase`);

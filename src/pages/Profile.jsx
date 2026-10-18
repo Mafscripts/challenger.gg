@@ -38,6 +38,7 @@ import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
 import { teamPurposeFor } from "@/lib/teamPresentation";
 import { ScreenshotRankPill } from "@/components/profile/ScreenshotRank";
 import ProfileOverview, { ArenaRecords, ProfileFriends } from "@/components/profile/ProfileOverview";
+import FriendActions, { FriendRequestsPanel } from "@/components/profile/FriendActions";
 import { base44 } from "@/api/base44Client";
 import { verifiedNameColors, premiumNameEffects, allNameColors } from "@/lib/nameColors";
 import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
@@ -181,10 +182,6 @@ export default function Profile() {
     setRecentTrophies([]);
     setTrophiesLoading(true);
     setTrophiesError(false);
-    setFriends({ user_id: user?.id, friends: [], total: 0, next_offset: null });
-    setFriendsLoading(true);
-    setFriendsError(false);
-    setFriendsLoadingMore(false);
     if (!user?.id) return () => { active = false; };
     base44.profile.trophyShowcase(user.id)
       .then((data) => { if (active) setRecentTrophies(data.trophies || []); })
@@ -194,12 +191,33 @@ export default function Profile() {
       .then((data) => { if (active) setArena(data); })
       .catch(() => { if (active) setArenaError(true); })
       .finally(() => { if (active) setArenaLoading(false); });
-    base44.profile.friends(user.id)
-      .then((data) => { if (active) setFriends({ ...data, user_id: user.id }); })
-      .catch(() => { if (active) setFriendsError(true); })
-      .finally(() => { if (active) setFriendsLoading(false); });
     return () => { active = false; };
   }, [user?.id, arenaRetry]);
+
+  useEffect(() => {
+    let active = true;
+    setFriends({ user_id: user?.id, friends: [], total: 0, next_offset: null });
+    setFriendsLoading(true); setFriendsError(false); setFriendsLoadingMore(false);
+    if (!user?.id) return () => { active = false; };
+    const refresh = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const data = await base44.profile.friends(user.id);
+        if (active) { setFriends({ ...data, user_id: user.id }); setFriendsError(false); }
+      } catch { if (active) setFriendsError(true); }
+      finally { if (active) setFriendsLoading(false); }
+    };
+    void refresh();
+    window.addEventListener("topfragg:friends-updated", refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("topfragg:friends-updated", refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [user?.id]);
 
   const loadMoreFriends = async () => {
     if (friendsLoadingMore || friends.next_offset === null || !user?.id) return;
@@ -592,6 +610,7 @@ export default function Profile() {
                   <Link to={`/messages?compose=${encodeURIComponent(user.id)}`} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-3 text-[9px] font-black uppercase tracking-wider text-cyan"><MessageSquare className="h-3.5 w-3.5" /> Message</Link>
                 ) : null}
               </div>
+              {!isOwnProfile && currentUser?.id && <FriendActions key={user.id} userId={user.id} currentUserId={currentUser.id} />}
               {isOwnProfile && <Link to="/settings#settings-overlay" className="mt-3 flex items-center justify-center gap-2 text-xs font-bold text-cyan"><MonitorPlay size={15} />Your Twitch player overlay<ChevronRight size={13} /></Link>}
             </div>
           </div>
@@ -622,7 +641,7 @@ export default function Profile() {
           ))}
         </nav>
 
-        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} recentTrophies={recentTrophies} trophiesLoading={trophiesLoading} trophiesError={trophiesError} teams={profileTeams} teamsLoading={historyLoading} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} onTab={setTab} />}
+        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} recentTrophies={recentTrophies} trophiesLoading={trophiesLoading} trophiesError={trophiesError} teams={profileTeams} teamsLoading={historyLoading} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} canManageFriends={isOwnProfile} onTab={setTab} />}
 
         {tab === "statistics" && (
           <div className="mt-5 space-y-6">
@@ -631,7 +650,7 @@ export default function Profile() {
           </div>
         )}
         {tab === "trophies" && <div className="mt-5 space-y-6"><TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} /><AchievementsPanel achievements={achievementCards} badges={badges} expanded /></div>}
-        {tab === "friends" && <div className="mt-5"><ProfileFriends {...friends} loading={friendsLoading} error={friendsError} expanded onLoadMore={loadMoreFriends} loadingMore={friendsLoadingMore} /></div>}
+        {tab === "friends" && <div className="mt-5 space-y-5">{isOwnProfile && <FriendRequestsPanel key={user.id} userId={user.id} />}<ProfileFriends {...friends} loading={friendsLoading} error={friendsError} expanded onLoadMore={loadMoreFriends} loadingMore={friendsLoadingMore} /></div>}
         {tab === "matches" && <div className="mt-5"><RecentMatchesPanel key={user.id} matches={profileMatches} userId={user.id} loading={historyLoading || arenaLoading} expanded /></div>}
         {tab === "teams" && <div className="mt-5"><TeamsList key={user.id} teams={profileTeams} loading={historyLoading} profileUserId={user.id} isOwnProfile={isOwnProfile} /></div>}
       </div>

@@ -1,0 +1,26 @@
+.friend-profile-actions { margin-top: 10px; }
+.friend-buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.friend-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 12px; min-height: 36px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--background) / .35); color: hsl(var(--muted-foreground)); font-size: 10px; font-weight: 800; }
+.friend-action svg { width: 14px; height: 14px; flex-shrink: 0; }
+.friend-action-primary { border-color: hsl(var(--cyan) / .3); color: hsl(var(--cyan)); background: hsl(var(--cyan) / .08); }
+.friend-action-connected { border-color: hsl(var(--green) / .3); color: hsl(var(--green)); background: hsl(var(--green) / .06); }
+.friend-action-danger { border-color: rgb(255 90 100 / .3); color: #ff777f; background: rgb(255 90 100 / .06); }
+.friend-action:hover:not(:disabled) { border-color: hsl(var(--cyan) / .5); color: hsl(var(--cyan)); }
+.friend-action:disabled { opacity: .5; cursor: wait; }
+.friend-action:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
+.friend-status { display: inline-flex; gap: 5px; align-items: center; font-size: 10px; color: hsl(var(--muted-foreground)); }
+.friend-status svg { width: 13px; height: 13px; }
+.friend-error { margin-top: 9px; font-size: 11px; line-height: 1.7; color: #ff969e; }
+.friend-error button { margin-left: 7px; text-decoration: underline; }
+.friend-requests-heading { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+.friend-requests-heading svg { width: 15px; height: 15px; color: hsl(var(--cyan)); }
+.friend-requests-heading h2 { font-size: 13px; font-weight: 800; }
+.friend-requests-heading > span { margin-left: auto; font-size: 10px; color: hsl(var(--muted-foreground)); }
+.friend-request-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 0; border-bottom: 1px solid hsl(var(--border) / .6); }
+.friend-request-row:last-child { border: 0; }
+.friend-request-player { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.friend-request-player strong { display: block; font-size: 12px; overflow-wrap: anywhere; }
+.friend-request-player:hover strong { color: hsl(var(--cyan)); }
+.friend-request-player small { display: block; margin-top: 4px; font-size: 10px; color: hsl(var(--muted-foreground)); }
+.friend-request-avatar { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; border: 1px solid hsl(var(--cyan) / .2); border-radius: 9px; color: hsl(var(--cyan)); background: var(--arena-inset); overflow: hidden; font-size: 14px; font-weight: 800; }
+.friend-request-avatar img { width: 100%; height: 100%; object-fit: cover; }
