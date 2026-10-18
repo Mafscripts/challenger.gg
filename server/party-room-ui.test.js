@@ -34,6 +34,7 @@ test("community matchroom renders the real match shell, map artwork, branded ros
   assert.match(html, /Map Series/); assert.match(html, /System generated/); assert.match(html, /src="\/assets\/maps\/hacienda.jpg"/);
   assert.match(html, /Hosts map 1/); assert.match(html, /Liv#123/); assert.match(html, /Guest player/);
   assert.match(html, /match-chat-panel/); assert.match(html, /Submit score/); assert.match(html, /Confirm match result/);
+  assert.match(html, /Host &amp; admin controls/); assert.match(html, /Give win/); assert.match(html, /Give loss/); assert.match(html, /Forfeit/); assert.match(html, /Reset all teams/);
   assert.match(html, /href="https:\/\/discord.com\/channels\/123\/789"/); assert.match(html, /href="\/profile\/Liv"/);
   assert.ok(html.indexOf('match-team-card') < html.indexOf("Map Series"), "teams must stay in the main column");
   assert.ok(html.indexOf('match-chat-panel') < html.indexOf("Map Series"), "maps must appear underneath match chat like Free 8s");
@@ -41,8 +42,51 @@ test("community matchroom renders the real match shell, map artwork, branded ros
   assert.doesNotMatch(html, /8s ELO|Earnings|TP RANK|party-match-layout/);
   const spectator = compiled.exports.render({ ...props, manager: false, user: { id: "viewer" } });
   assert.doesNotMatch(spectator, /Confirm match result|Submit score/);
+  assert.doesNotMatch(spectator, /Host &amp; admin controls|Give win|Give loss|Reset all teams/);
   assert.match(spectator, /Link your player slot/);
   const guests = compiled.exports.render({ ...props, room: { ...room, players: room.players.map(({ user_id, profile, ...player }) => player) } });
   assert.equal((guests.match(/class="match-player-card party-community-player"/g) || []).length, 2, "players without accounts must still appear in both team rosters");
   assert.match(guests, /Guest player/);
+});
+
+test("the actual score dialog stays fixed in the viewport and submits the correct role-specific score action", async (t) => {
+  const originalError = console.error;
+  t.mock.method(console, "error", (...args) => { if (!String(args[0]).includes("useLayoutEffect does nothing on the server")) originalError(...args); });
+  const root = fileURLToPath(new URL("../", import.meta.url)).replaceAll("\\", "/").replace(/\/$/, "");
+  const require = createRequire(import.meta.url);
+  const radixPath = require.resolve("@radix-ui/react-dialog").replaceAll("\\", "/");
+  const result = await build({ stdin: { resolveDir: root, loader: "jsx", contents: `
+    import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server';
+    import PartyScoreDialog from './src/components/competition/PartyScoreDialog.jsx';
+    export const render=props=>renderToStaticMarkup(<PartyScoreDialog {...props}/>);
+    export function submit(props) {const root=PartyScoreDialog(props); const content=root.props.children; const form=React.Children.toArray(content.props.children).find(child=>child.type==='form'); return form.props.onSubmit({preventDefault(){}});}
+  ` }, bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"],
+    external: ["react", "react-dom", "react-dom/server"], alias: { "@": `${root}/src` },
+    plugins: [{ name: "server-portal", setup(bundle) {
+      bundle.onResolve({ filter: /^@radix-ui\/react-dialog$/ }, () => ({ path: "dialog", namespace: "score-portal" }));
+      // Keep Radix's actual root/content, making only the browser portal render on the server.
+      bundle.onLoad({ filter: /.*/, namespace: "score-portal" }, () => ({ resolveDir: root, contents: `export * from ${JSON.stringify(radixPath)}; export const Portal=({children})=>children;` }));
+    } }],
+  });
+  const compiled = { exports: {} };
+  new Function("require", "module", "exports", result.outputFiles[0].text)(require, compiled, compiled.exports);
+  const calls = [], closes = [];
+  const props = { open: true, room: { bracket: { best_of: 3 }, teams: [{ id: "a", name: "Alpha" }, { id: "b", name: "Bravo" }] }, match: { id: "match", teams: ["a", "b"], status: "ready" }, manager: true, scores: ["2", "1"], setScores() {}, setOverrideConfirmed() {}, onOpenChange: (value) => closes.push(value), act: async (...args) => { calls.push(args); return true; } };
+  const html = compiled.exports.render(props);
+  const dialogTag = html.match(/<[^>]*role="dialog"[^>]*>/)?.[0];
+  assert.ok(dialogTag);
+  const classes = dialogTag.match(/class="([^"]+)"/)[1].split(/\s+/);
+  assert.ok(classes.includes("fixed"));
+  assert.ok(!classes.includes("dark-focus"), "the card's relative positioning must not override the dialog's fixed position");
+  assert.match(html, /Alpha/); assert.match(html, /Bravo/); assert.match(html, /Confirm final score/);
+  await compiled.exports.submit(props);
+  assert.deepEqual(calls.pop(), ["match_score", { match_id: "match", scores: [2, 1], override: false }]);
+  assert.equal(closes.pop(), false);
+  await compiled.exports.submit({ ...props, manager: false });
+  assert.equal(calls.pop()[0], "report_score");
+  await compiled.exports.submit({ ...props, scores: ["0", "0"] });
+  await compiled.exports.submit({ ...props, match: { ...props.match, status: "completed" }, overrideConfirmed: false });
+  assert.equal(calls.length, 0);
+  await compiled.exports.submit({ ...props, match: { ...props.match, status: "completed" }, overrideConfirmed: true });
+  assert.equal(calls.pop()[1].override, true);
 });

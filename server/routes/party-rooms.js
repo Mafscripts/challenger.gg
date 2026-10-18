@@ -5,6 +5,7 @@ import { changePartyRoom, createPartyRoom, flattenPartyRoom, getPartyRoom, party
 import { PARTY_ROOM_LIFETIME_MS } from "../party-voice.js";
 import { partyRoomStorageError, requirePartyRoomStorage } from "../party-room-storage.js";
 import { searchPartyPlayers } from "../party-players.js";
+import { hasRole } from "../roles.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -14,9 +15,9 @@ router.use((_req, _res, next) => {
 });
 router.get("/", async (req, res, next) => {
   try {
-    const rows = await prisma.partyRoom.findMany({ where: { status: { not: "closed" }, updated_date: { gte: new Date(Date.now() - PARTY_ROOM_LIFETIME_MS) }, OR: [
+    const rows = await prisma.partyRoom.findMany({ where: { status: { not: "closed" }, updated_date: { gte: new Date(Date.now() - PARTY_ROOM_LIFETIME_MS) }, ...(hasRole(req.user, "admin") ? {} : { OR: [
       { owner_id: req.user.id }, { metadata: { path: ["players"], array_contains: [{ user_id: req.user.id }] } },
-    ] }, orderBy: { updated_date: "desc" }, take: 25 });
+    ] }) }, orderBy: { updated_date: "desc" }, take: 25 });
     res.json({ rooms: rows.map((row) => partyRoomSummary(flattenPartyRoom(row))) });
   } catch (error) { next(error); }
 });

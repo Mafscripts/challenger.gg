@@ -87,3 +87,32 @@ export function recordPartyScore(bracket, matchId, scores) {
   match.status = "completed"; match.completed_at = new Date().toISOString();
   return advancePartyBracket(bracket);
 }
+
+export function resetPartyMatch(bracket, matchId) {
+  const target = bracket.matches.find((match) => match.id === matchId);
+  if (!target || !["ready", "completed"].includes(target.status)) fail("This match cannot be reset yet", 409);
+  const affected = new Set([matchId]);
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const match of bracket.matches) if (!affected.has(match.id) && match.slots.some((slot) => slot?.match_id && affected.has(slot.match_id))) {
+      affected.add(match.id); changed = true;
+    }
+  }
+  if (bracket.matches.some((match) => match.lane === "final" && match.round === 1 && affected.has(match.id))) {
+    for (const match of bracket.matches.filter((match) => match.lane === "final" && match.round === 2)) {
+      affected.add(match.id);
+      if (match.score) {
+        const { messages, ...snapshot } = match;
+        bracket.removed_match_results = [{ ...snapshot, reset_at: new Date().toISOString() }, ...(bracket.removed_match_results || [])].slice(0, 10);
+      }
+    }
+    bracket.matches = bracket.matches.filter((match) => !(match.lane === "final" && match.round === 2));
+  }
+  for (const match of bracket.matches.filter((match) => affected.has(match.id))) {
+    if (match.score || Object.keys(match.reports || {}).length) match.result_history = [{ teams: [...match.teams], score: match.score, winner_id: match.winner_id, loser_id: match.loser_id, reports: match.reports, series_maps: match.series_maps || [], result_by: match.result_by || null, decision: match.decision || null, reset_at: new Date().toISOString() }, ...(match.result_history || [])].slice(0, 10);
+    Object.assign(match, { status: "pending", teams: [null, null], score: null, winner_id: null, loser_id: null, reports: {}, completed_at: null, result_by: null, decision: null });
+  }
+  bracket.status = "in_progress"; bracket.champion_id = null; bracket.completed_at = null;
+  advancePartyBracket(bracket);
+  return [...affected];
+}

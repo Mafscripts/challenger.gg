@@ -6,12 +6,14 @@ import { useAuth } from "@/lib/AuthContext";
 import AnimatedNameWheel from "@/components/competition/AnimatedNameWheel";
 import { PartyBracket, PartyMatchRoomView } from "@/components/competition/PartyBracket";
 import { PartyAddDuo, PartyAddPlayers } from "@/components/competition/PartyPlayerEntry";
+import PartyManagement from "@/components/competition/PartyManagement";
+import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { partyCapacity, partyDrawEntries, partyGenderQuota, partySpinning, partyValidation } from "@/lib/partyWheel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import "@/styles/party-rooms.css";
 
 const modeName = (mode) => mode === "coed" ? "Co-ed" : "Switcheroo";
-const canManage = (room, user) => room.owner_id === user?.id || user?.is_admin || ["admin", "super_admin", "ceo"].includes(user?.admin_role) || ["admin", "super_admin", "ceo"].includes(user?.role);
+const canManage = (room, user) => room.owner_id === user?.id || hasRolePower(effectiveRoleForUser(user), "admin");
 function Gender({ value }) {
   return value === "male" ? <span className="party-gender is-male" title="Male"><Mars /><span className="sr-only">Male</span></span> : value === "female" ? <span className="party-gender is-female" title="Female"><Venus /><span className="sr-only">Female</span></span> : null;
 }
@@ -112,7 +114,7 @@ function PartyRoom() {
   const invalid = partyValidation(room);
   const allReady = room.status === "ready" && !spinning;
   const editable = !room.players.some((player) => player.side);
-  if (matchId) return <PartyMatchRoomView key={`${room.round}:${matchId}`} room={room} matchId={matchId} user={user} manager={manager} disabled={disabled} act={act} voice={voice} error={error} notice={notice} />;
+  if (matchId) return <PartyMatchRoomView key={`${room.round}:${matchId}`} room={room} matchId={matchId} user={user} manager={manager} disabled={disabled} managementDisabled={busy || room.status === "closed"} act={act} voice={voice} error={error} notice={notice} />;
   return <div className="party-page"><Link to="/coed-switcheroo" className="party-back">← Your rooms</Link>
     <header className="arena-page-header party-room-heading"><div><p className="party-eyebrow">{modeName(room.mode)} · Round {room.round}</p><h1>{room.title}</h1><p>Hosted by {room.owner_name} · {room.teams.length} teams · {room.team_size} players per team</p></div><div className="party-actions"><button className="party-button" onClick={copy}><Copy />Invite players</button>{manager && room.status !== "closed" && <button className="party-icon-button" title="Close room" disabled={disabled} onClick={() => setConfirm("close")}><X /></button>}</div></header>
     {error && <p className="party-error" role="alert">{error}</p>}{notice && <p className="party-notice" role="status">{notice}</p>}
@@ -135,6 +137,7 @@ function PartyRoom() {
       {own && <p className="party-own-slot"><Link2 />Linked as {own.name}<button disabled={disabled} onClick={() => act("leave")}>Unlink</button></p>}
     </section></div>}
     <PartyBracket room={room} manager={manager} disabled={disabled} act={act} onNewRound={() => setConfirm("reset")} />
+    {manager && room.status !== "closed" && <PartyManagement room={room} disabled={busy} act={act} error={error} />}
     {room.bracket && room.status !== "closed" && <section className="party-panel party-bracket-linking">{own ? <p className="party-own-slot"><Link2 />Linked as {own.name}<button disabled={disabled} onClick={() => act("leave")}>Unlink</button></p> : <details className="party-late-claim"><summary>Link your player slot to chat, report scores and use Discord<ChevronDown /></summary>{room.players.filter((player) => !player.user_id).map((player) => <button className="party-claim" key={player.id} disabled={disabled} onClick={() => act("claim", { player_id: player.id })}>I am {player.name}</button>)}</details>}</section>}
     <details className="party-panel party-discord" open={Boolean(own)}><summary><Headphones />Discord team voice<span>{voice?.fresh ? "Connected to bot" : "Checking bot status"}</span><ChevronDown /></summary><div className="party-discord-body"><p>Link only your own player slot. Join this room's Waiting Room to be moved into your assigned team voice.</p><div className="party-actions">{voice?.waiting_room_url ? <a className="party-button party-discord-button" href={voice.waiting_room_url} target="_blank" rel="noopener noreferrer"><Headphones />Waiting Room<ExternalLink /></a> : <span className="party-muted">{!voice?.enabled ? "Discord voice is not enabled for these rooms yet." : !voice?.configured ? "Discord voice needs a configured voice category." : "The bot is preparing your private voice channels…"}</span>}<Link to="/settings#settings-discord" className="party-button"><Link2 />Account Settings</Link></div>{voice?.error && <p className="party-error">{voice.error}</p>}{own && <p className="party-muted">Your voice: {voice?.players?.find((player) => player.user_id === user.id)?.status?.replaceAll("_", " ") || "checking"}</p>}</div></details>
     <div className="party-teams-heading"><h2>Teams <span>{room.teams.length}</span></h2>{manager && editable && room.status !== "closed" && <div className="party-actions"><TeamSize value={room.team_size} onChange={(size) => act("format", { team_size: size })} disabled={disabled} /><button className="party-button party-primary" disabled={disabled || room.teams.length >= 16} onClick={() => act("add_team")}><Plus />Add team</button></div>}</div>

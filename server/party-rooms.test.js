@@ -81,7 +81,7 @@ test("one spin fills every team, persists the whole draw and locks actions until
   await assert.rejects(f.act("spin"), { status: 409 });
   await assert.rejects(f.act("remove", { player_id: first.players[0].id }), { status: 409 });
   await assert.rejects(f.act("start_bracket"), { status: 409 });
-  await assert.rejects(f.act("reset"), { status: 409 });
+  await assert.rejects(f.act("reset", {}, { id: "viewer" }), { status: 403 });
   f.finish();
   await assert.rejects(f.act("spin"), { status: 409 });
   assert.equal(f.room().status, "ready");
@@ -239,7 +239,7 @@ test("only host/admin starts or resolves a bracket; active rounds and old match 
   await f.act("start_bracket", { format: "single_elimination", best_of: 1, game_mode: "hardpoint" });
   const firstId = f.room().bracket.matches[0].id;
   await assert.rejects(f.act("start_bracket"), { status: 409 });
-  await assert.rejects(f.act("reset"), { status: 409 });
+  await assert.rejects(f.act("reset", {}, { id: "viewer" }), { status: 403 });
   await assert.rejects(f.act("match_score", { match_id: firstId, scores: [1, 0] }, { id: "viewer" }), { status: 403 });
   await f.act("match_score", { match_id: firstId, scores: [1, 0] });
   assert.equal(f.room().bracket.status, "completed");
@@ -341,4 +341,47 @@ test("hosts add real website accounts or guests to solos and duos; duplicates an
   assert.equal(pair[0].duo_id, pair[1].duo_id);
   await f.act("spin");
   assert.ok(f.room().players.every((player) => player.side));
+});
+
+test("the creator and every website admin tier can award wins/losses, forfeit and correct completed results", async () => {
+  for (const user of [{ id: "host" }, { id: "admin", role: "admin" }, { id: "super", admin_role: "super_admin" }, { id: "ceo", role: "ceo" }, { id: "legacy", is_admin: true }]) {
+    const f = fixture(); await readyRoom(f); await f.act("start_bracket");
+    const match = f.room().bracket.matches[0], [a, b] = match.teams;
+    await f.act("match_award", { match_id: match.id, team_id: a, outcome: "win", reason: "Verified" }, user);
+    assert.equal(f.room().bracket.champion_id, a);
+    await assert.rejects(f.act("match_forfeit", { match_id: match.id, team_id: a }, user), { status: 409 });
+    await f.act("match_forfeit", { match_id: match.id, team_id: a, override: true, reason: "No-show" }, user);
+    assert.equal(f.room().bracket.champion_id, b);
+    assert.equal(f.room().bracket.matches[0].decision.type, "forfeit");
+    assert.equal(f.room().bracket.matches[0].decision.actor_id, user.id);
+    assert.equal(f.room().bracket.matches[0].decision.reason, "No-show");
+    await f.act("match_award", { match_id: match.id, team_id: b, outcome: "loss", override: true }, user);
+    assert.equal(f.room().bracket.champion_id, a);
+    await f.act("match_score", { match_id: match.id, scores: [1, 2], override: true }, user);
+    assert.equal(f.room().bracket.champion_id, b);
+    await f.act("reset_match", { match_id: match.id }, user);
+    assert.equal(f.room().bracket.champion_id, null);
+    assert.equal(f.room().bracket.matches[0].status, "ready");
+    assert.equal(f.room().bracket.matches[0].result_history.length, 4);
+    assert.equal(f.room().management_log[0].action, "reset_match");
+  }
+});
+
+test("players cannot use management controls; creator/admin resets keep players and archive the active bracket", async () => {
+  const f = fixture(); await readyRoom(f); await f.act("start_bracket");
+  const match = f.room().bracket.matches[0], player = { id: "member" };
+  f.row().metadata.players[0].user_id = player.id;
+  for (const action of ["match_award", "match_forfeit", "reset_match", "reset"]) await assert.rejects(f.act(action, { match_id: match.id, team_id: match.teams[0], outcome: "win" }, player), { status: 403 });
+  const names = f.room().players.map((entry) => entry.name);
+  await f.act("reset", { reason: "New teams" });
+  assert.equal(f.room().status, "open");
+  assert.equal(f.room().bracket, null);
+  assert.deepEqual(f.room().players.map((entry) => entry.name), names);
+  assert.equal(f.room().players[0].user_id, player.id);
+  assert.ok(f.room().players.every((entry) => entry.side === null));
+  assert.equal(f.room().history[0].bracket.status, "cancelled");
+  assert.equal(f.room().history[0].bracket.cancellation_reason, "New teams");
+  await f.act("spin");
+  await f.act("reset", {}, { id: "admin", role: "admin" });
+  assert.equal(f.room().spin, null, "admin can cancel a running spin");
 });

@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { hasRole } from "./roles.js";
 import { partyCandidates, partyCapacity, partyDrawEntries, partyDrawMembers, partySide, partySpinning, partyValidation, PARTY_SPIN_MS } from "../src/lib/partyWheel.js";
-import { createPartyBracket, recordPartyScore } from "../src/lib/partyBracket.js";
+import { createPartyBracket, recordPartyScore, resetPartyMatch } from "../src/lib/partyBracket.js";
 import { partyVoiceKey, partyVoiceStatus } from "./party-voice.js";
 import { hasDiscordLink, freeEightsDiscordMembershipJoinError } from "./free-eights-discord.js";
 import { requirePartyRoomStorage } from "./party-room-storage.js";
@@ -67,7 +67,7 @@ export async function getPartyRoom(db, id, { matchId = null } = {}) {
 }
 export async function changePartyRoom(db, id, user, input, { choose = randomInt, checkMembership = freeEightsDiscordMembershipJoinError } = {}) {
   requirePartyRoomStorage(db);
-  const actions = ["add", "add_duo", "unpair", "remove", "gender", "claim", "leave", "spin", "reset", "close", "add_team", "remove_team", "rename_team", "format", "start_bracket", "match_score", "report_score", "match_message"];
+  const actions = ["add", "add_duo", "unpair", "remove", "gender", "claim", "leave", "spin", "reset", "close", "add_team", "remove_team", "rename_team", "format", "start_bracket", "match_score", "match_award", "match_forfeit", "reset_match", "report_score", "match_message"];
   if (!actions.includes(input.action)) fail("Invalid room action");
   if (input.action === "claim") {
     if (!hasDiscordLink(user)) fail("Connect Discord in Account Settings before linking your player slot", 403);
@@ -84,10 +84,9 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
     if (input.revision !== room.revision) fail("The room changed. Refresh and try again.", 409);
     const isOwner = owner(room, user);
     if (!["claim", "leave", "report_score", "match_message"].includes(input.action) && !isOwner) fail("Only the host or an admin can manage the room", 403);
-    if (partySpinning(room)) fail("Wait for the current spin to finish", 409);
+    if (partySpinning(room) && !["reset", "close"].includes(input.action)) fail("Wait for the current spin to finish", 409);
     const player = room.players.find((entry) => entry.id === input.player_id);
     if (["add", "add_duo", "unpair", "remove", "gender", "add_team", "remove_team", "format"].includes(input.action) && room.players.some((entry) => entry.side)) fail("Start a new round before editing players or teams", 409);
-    if (input.action === "reset" && room.bracket?.status === "in_progress") fail("Finish the bracket before starting a new round", 409);
     if (input.action === "add_team") {
       if (room.teams.length >= 16) fail("A room supports up to 16 teams");
       room.teams.push({ id: randomUUID(), name: cleanName(input.name || `Team ${room.teams.length + 1}`) });
@@ -179,19 +178,36 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
       room.bracket = createPartyBracket(teamIds, { format: input.format, best_of: input.best_of, game_mode: input.game_mode, id: randomUUID() });
       room.bracket.started_by = user.id;
     }
-    if (["match_score", "report_score", "match_message"].includes(input.action)) {
+    if (["match_score", "match_award", "match_forfeit", "reset_match", "report_score", "match_message"].includes(input.action)) {
       const match = room.bracket?.matches.find((entry) => entry.id === input.match_id);
       if (!match) fail("Match not found", 404);
       const own = room.players.find((entry) => entry.user_id === user.id);
       const participant = own?.side && match.teams.includes(own.side);
       if (!isOwner && !participant) fail("Only these teams, the host and admins can use this matchroom", 403);
-      if (input.action === "match_score") {
-        recordPartyScore(room.bracket, match.id, input.scores);
-        match.result_by = user.id;
+      if (["match_score", "match_award", "match_forfeit", "reset_match"].includes(input.action)) {
+        let affected = [];
+        if (input.action === "reset_match") {
+          affected = resetPartyMatch(room.bracket, match.id);
+        } else {
+          if (match.status === "completed") {
+            if (input.override !== true) fail("This result is confirmed. Confirm replacing it in the management controls.", 409);
+            affected = resetPartyMatch(room.bracket, match.id);
+          }
+          let scores = input.scores;
+          if (["match_award", "match_forfeit"].includes(input.action)) {
+            const side = match.teams.indexOf(input.team_id);
+            if (side < 0 || input.action === "match_award" && !["win", "loss"].includes(input.outcome)) fail("Choose a team and a valid result");
+            const winner = input.action === "match_forfeit" || input.outcome === "loss" ? 1 - side : side;
+            scores = winner === 0 ? [Math.ceil(room.bracket.best_of / 2), 0] : [0, Math.ceil(room.bracket.best_of / 2)];
+          }
+          recordPartyScore(room.bracket, match.id, scores);
+          match.result_by = user.id;
+          match.decision = { type: input.action === "match_forfeit" ? "forfeit" : input.action === "match_award" ? `award_${input.outcome}` : "score", team_id: input.team_id || null, reason: typeof input.reason === "string" ? input.reason.trim().slice(0, 500) : "", actor_id: user.id, actor_name: user.display_name || user.username || "Host", created_at: new Date().toISOString() };
+        }
+        room.management_log = [{ action: input.action, match_id: match.id, actor_id: user.id, affected_matches: affected, reason: typeof input.reason === "string" ? input.reason.trim().slice(0, 500) : "", created_at: new Date().toISOString() }, ...(room.management_log || [])].slice(0, 100);
       }
       if (input.action === "report_score") {
         if (!participant) fail("Link your own player slot to report a team score", 403);
-        if (Object.entries(match.reports).some(([side, report]) => side !== own.side && report.user_id === user.id)) fail("One account cannot report for both teams", 403);
         if (Object.entries(match.reports).some(([side, report]) => side !== own.side && report.user_id === user.id)) fail("One account cannot report for both teams", 403);
         // Validate the report without advancing the saved bracket until both teams agree.
         recordPartyScore(structuredClone(room.bracket), match.id, input.scores);
@@ -209,6 +225,7 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
       }
     }
     if (input.action === "reset") {
+      if (room.bracket?.status === "in_progress") room.bracket = { ...room.bracket, status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_by: user.id, cancellation_reason: typeof input.reason === "string" && input.reason.trim() ? input.reason.trim().slice(0, 500) : "Teams reset by host or admin" };
       if (room.status === "ready") {
         room.previous_teams = Object.fromEntries(room.players.map((entry) => [entry.id, entry.side]));
         room.history = [{ round: room.round, teams: room.teams, players: room.players.map(({ id, name, side }) => ({ id, name, side })), ...(room.bracket ? { bracket: { ...room.bracket, matches: room.bracket.matches.map(({ messages, ...match }) => match) } } : {}), completed_at: new Date().toISOString() }, ...room.history].slice(0, 10);
@@ -216,6 +233,7 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
       }
       room.players.forEach((entry) => { entry.side = null; });
       room.spin = null; room.bracket = null; room.status = "open";
+      room.management_log = [{ action: "reset_teams", actor_id: user.id, round: room.round, created_at: new Date().toISOString() }, ...(room.management_log || [])].slice(0, 100);
     }
     if (input.action === "close") { room.status = "closed"; room.closed_at = new Date().toISOString(); }
     ensurePartyMatchMaps(room.bracket, choose);
