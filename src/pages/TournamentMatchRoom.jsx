@@ -1,3 +1,4 @@
+import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -344,9 +345,7 @@ function TrophyCounts({ trophies, align = "end", compact = false }) {
             aria-label={`${label}: ${count}`}
             className={`group/trophy relative inline-flex cursor-default select-none items-center justify-center rounded-md border font-black transition-all duration-200 hover:-translate-y-0.5 ${compact ? "h-8 min-w-10 gap-1.5 px-2 text-[11px]" : "h-8 min-w-10 gap-1.5 px-2 text-[11px]"} ${count === 0 ? "opacity-70" : "ring-1 ring-current/10 shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_5px_18px_-10px_currentColor]"} ${className}`}
           >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-current/10">
-              <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
-            </span>
+            <TrophySymbol type={key} className="h-6 w-4" />
             <span className={count === 0 ? "text-vapor/65" : "text-white"}>{count}</span>
             <span className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] left-1/2 z-[70] flex -translate-x-1/2 translate-y-1 items-center gap-2 whitespace-nowrap rounded-lg border border-white/[0.12] bg-[#111821] px-2.5 py-2 text-[10px] font-bold text-white opacity-0 shadow-[0_14px_36px_rgba(0,0,0,.65)] transition-all duration-150 group-hover/trophy:visible group-hover/trophy:translate-y-0 group-hover/trophy:opacity-100">
               <span className="text-vapor">{label}</span>

@@ -30,10 +30,10 @@
 .pd-about dl { margin-top: 18px; padding-top: 15px; border-top: 1px solid hsl(var(--border) / .6); font-size: 10px; }
 .pd-about dl > div { margin-top: 10px; }.pd-about dt { color: hsl(var(--muted-foreground)); }.pd-about dd { font-weight: 700; margin-top: 3px; }
 .pd-trophy-shelf { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 4px 0 8px; }
-.pd-trophy { display: grid; place-items: center; flex-shrink: 0; width: 62px; height: 70px; padding: 6px; border: 0; border-radius: 6px; background: transparent; transition: transform 150ms; }
+.pd-trophy { display: grid; place-items: center; flex-shrink: 0; width: 66px; height: 96px; padding: 6px; border: 0; border-radius: 6px; background: transparent; transition: transform 150ms; }
 .pd-trophy:hover { transform: translateY(-3px); }
 .pd-trophy:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
-.pd-trophy-symbol { width: 42px; height: 42px; filter: drop-shadow(0 4px 8px rgb(0 0 0 / .25)); }
+.pd-trophy-symbol { width: 60px; height: 88px; filter: drop-shadow(0 4px 8px rgb(0 0 0 / .25)); }
 .pd-friend-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px; }.pd-friend-grid-expanded { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
 .pd-friend { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; font-size: 10px; font-weight: 700; }.pd-friend > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }.pd-friend:hover { color: hsl(var(--cyan)); }
 .pd-friend-avatar { display: flex; align-items: center; justify-content: center; width: 54px; height: 54px; border: 1px solid hsl(var(--cyan) / .2); border-radius: 12px; overflow: hidden; background: var(--arena-inset); color: hsl(var(--cyan)); font-size: 17px; }.pd-friend-avatar img { width: 100%; height: 100%; object-fit: cover; }

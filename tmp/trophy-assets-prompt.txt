@@ -1,0 +1,1 @@
+Built-in image_gen edit. Reference: user supplied 6ae68ce5-4ebf-4317-a1db-8abcf32d2aa3.png. Prompt: preserve all four ornate trophy designs and plaques, remove all white background/floor/shadows including handle gaps, output true transparent alpha in Gold, Silver, Bronze, Premium order. Exported as four separate WebP assets at public/assets/trophies/topfragg-2026/.

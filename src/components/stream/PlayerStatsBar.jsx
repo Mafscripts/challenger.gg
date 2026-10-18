@@ -1,3 +1,4 @@
+import { trophyAssets } from "@/lib/trophyAssets";
 import React, { useEffect, useState } from "react";
 import { DollarSign, Medal, Swords, Target, Zap } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
@@ -34,10 +35,10 @@ const brandLetters = [..."TOPFRAGG.GG"].map((letter, index) => ({
   },
 }));
 const trophies = [
-  { key: "gold", label: "Gold", image: "/assets/trophies/profile/gold.png" },
-  { key: "silver", label: "Silver", image: "/assets/trophies/profile/silver.png" },
-  { key: "bronze", label: "Bronze", image: "/assets/trophies/profile/bronze.png" },
-  { key: "premium", label: "Premium", image: "/assets/trophies/profile/premium.png" },
+  { key: "gold", label: "Gold", image: trophyAssets.gold },
+  { key: "silver", label: "Silver", image: trophyAssets.silver },
+  { key: "bronze", label: "Bronze", image: trophyAssets.bronze },
+  { key: "premium", label: "Premium", image: trophyAssets.premium },
 ];
 
 export const playerOverlayUrl = (identifier, theme = "blue") => {

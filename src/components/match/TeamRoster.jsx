@@ -1,5 +1,5 @@
 import React from "react";
-import { Trophy, Medal, Award, Crown } from "lucide-react";
+import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 
@@ -51,19 +51,19 @@ function PlayerRow({ player, teamColor }) {
       {/* Trophies */}
       <div className="flex items-center gap-1 ml-auto shrink-0">
         <div title={`Gold trophies: ${player.gold_count || 0}`} className="group/trophy relative flex cursor-default flex-col items-center gap-0.5">
-          <Trophy className="w-3 h-3 text-yellow-400" />
+          <TrophySymbol type="gold" className="w-4 h-6" />
           <p className="text-[9px] font-bold text-yellow-400 leading-none">{player.gold_count || 0}</p>
         </div>
         <div title={`Silver trophies: ${player.silver_count || 0}`} className="group/trophy relative flex cursor-default flex-col items-center gap-0.5">
-          <Medal className="w-3 h-3 text-gray-300" />
+          <TrophySymbol type="silver" className="w-4 h-6" />
           <p className="text-[9px] font-bold text-gray-300 leading-none">{player.silver_count || 0}</p>
         </div>
         <div title={`Bronze trophies: ${player.bronze_count || 0}`} className="group/trophy relative flex cursor-default flex-col items-center gap-0.5">
-          <Award className="w-3 h-3 text-amber-600" />
+          <TrophySymbol type="bronze" className="w-4 h-6" />
           <p className="text-[9px] font-bold text-amber-600 leading-none">{player.bronze_count || 0}</p>
         </div>
         <div title={`Premium trophies: ${player.premium_count || 0}`} className="group/trophy relative flex cursor-default flex-col items-center gap-0.5">
-          <Crown className="w-3 h-3 text-purple-400" />
+          <TrophySymbol type="premium" className="w-4 h-6" />
           <p className="text-[9px] font-bold text-purple-400 leading-none">{player.premium_count || 0}</p>
         </div>
       </div>

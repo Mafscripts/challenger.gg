@@ -1,3 +1,4 @@
+import { trophyAssets } from "@/lib/trophyAssets";
 import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -89,10 +90,10 @@ const competitionBulletImpacts = [
 ];
 
 const trophyTypes = [
-  { key: "gold", label: "Gold", image: "/assets/trophies/compact/gold.png", fields: ["gold_count"] },
-  { key: "silver", label: "Silver", image: "/assets/trophies/compact/silver.png", fields: ["silver_count"] },
-  { key: "bronze", label: "Bronze", image: "/assets/trophies/compact/bronze.png", fields: ["bronze_count"] },
-  { key: "premium", label: "Premium", image: "/assets/trophies/compact/premium.png", fields: ["premium_count", "premium_trophies"] },
+  { key: "gold", label: "Gold", image: trophyAssets.gold, fields: ["gold_count"] },
+  { key: "silver", label: "Silver", image: trophyAssets.silver, fields: ["silver_count"] },
+  { key: "bronze", label: "Bronze", image: trophyAssets.bronze, fields: ["bronze_count"] },
+  { key: "premium", label: "Premium", image: trophyAssets.premium, fields: ["premium_count", "premium_trophies"] },
 ];
 
 const number = (value) => Number(value || 0);
