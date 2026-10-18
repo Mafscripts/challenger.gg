@@ -1,0 +1,10 @@
+.profile-header-bar { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 8px 28px; border-top: 1px solid hsl(var(--border) / .65); background: linear-gradient(90deg, hsl(var(--cyan) / .025), transparent 55%), hsl(var(--background) / .65); }
+.profile-header-socials { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; }
+.profile-header-social { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 32px; color: hsl(var(--muted-foreground)); border-radius: 5px; transition: color 150ms; }
+.profile-header-social svg { width: 18px; height: 18px; }
+a.profile-header-social:hover { color: hsl(var(--cyan)); }
+.profile-header-social:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; color: hsl(var(--cyan)); }
+.profile-header-trophies { margin-left: auto; }
+.profile-header-trophies > span { min-width: 48px; height: 38px; border: 0; background: transparent; box-shadow: none; padding: 0 4px; }
+.profile-header-trophies img { width: 22px; height: 32px; }
+@media (max-width: 640px) { .profile-header-bar { padding: 8px 16px; gap: 10px; }.profile-header-socials { gap: 8px; } }

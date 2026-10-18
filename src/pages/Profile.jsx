@@ -30,7 +30,7 @@ import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
-import TrophyCounts, { TrophySymbol } from "@/components/ui/TrophyCounts";
+import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
 import RecentMatchesPanel from "@/components/match/RecentMatchesPanel";
 import { matchDateMs } from "@/lib/matchPresentation";
@@ -39,9 +39,10 @@ import { teamPurposeFor } from "@/lib/teamPresentation";
 import { ScreenshotRankPill } from "@/components/profile/ScreenshotRank";
 import ProfileOverview, { ArenaRecords, ProfileFriends } from "@/components/profile/ProfileOverview";
 import FriendActions, { FriendRequestsPanel } from "@/components/profile/FriendActions";
+import ProfileHeaderBar from "@/components/profile/ProfileHeaderBar";
 import { base44 } from "@/api/base44Client";
 import { verifiedNameColors, premiumNameEffects, allNameColors } from "@/lib/nameColors";
-import { getNextRankForElo, getRankForElo, getRankProgress } from "@/lib/ranks";
+import { getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { activisionIdFor } from "@/lib/activision";
 import { normalizeImageSource, prepareImageFile } from "@/lib/images";
@@ -442,7 +443,6 @@ export default function Profile() {
   const trophyCount = profileTrophyCount(user, profile, inventory, publicTrophyCounts);
   const profileTeams = [...new Map(teams.filter((membership) => membership.team && membership.team.is_active !== false && membership.team.is_demo !== true).map((membership) => [String(membership.team.id), membership])).values()];
   const elo = Number(rankedStats?.elo || profile?.elo || 0);
-  const nextRank = getNextRankForElo(elo);
   const rankProgress = getRankProgress(elo);
   const topfraggRankLabel = hasXpMatches ? (rank.name || `${rank.tier} ${rank.division || ""}`).trim() : "Unranked";
   const currentStreak = Number(rankedStats?.win_streak || user?.current_win_streak || 0);
@@ -572,28 +572,12 @@ export default function Profile() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-md border border-cyan/20 bg-cyan/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-cyan">{activisionIdFor(user) || "Activision ID not set"}</span>
                 </div>
-                {socialLinks.length > 0 && <div className="mt-4 flex flex-wrap gap-2" aria-label="Player socials">
-                  {socialLinks.map((social) => social.url ? (
-                    <a key={social.key} href={social.url} target="_blank" rel="noreferrer" className="profile-social-pill"><Globe2 className="h-3.5 w-3.5" />{social.label}<ChevronRight className="h-3 w-3" /></a>
-                  ) : <span key={social.key} className="profile-social-pill"><MessageSquare className="h-3.5 w-3.5" />{social.label}: {social.value}</span>)}
-                </div>}
+
               </div>
             </div>
 
-            <div className="w-full shrink-0 lg:w-[360px]">
-              <div className="rounded-xl border border-cyan/15 bg-cyan/[0.045] px-3 py-2.5">
-                <div className="flex items-center justify-between gap-3">
-                  <div><p className="font-mono text-[8px] font-black uppercase tracking-[0.18em] text-vapor">TopFragg rank</p><p className="mt-1 text-sm font-black text-white">{topfraggRankLabel}</p></div>
-                  {hasXpMatches ? <RankBadge rank={rank.tier} size="sm" showLabel={false} animated={false} /> : <span className="grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-white/[0.04] font-mono text-lg font-black text-vapor">?</span>}
-                </div>
-                <div className="mt-3 border-t border-white/10 pt-3">
-                  <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold"><span className="text-cyan">{elo.toLocaleString()} ELO</span><span className="text-vapor">{!hasXpMatches ? "Play Ranked to get placed" : nextRank ? `Next: ${nextRank.name}` : "Highest rank reached"}</span></div>
-                  <div role="progressbar" aria-label="TopFragg rank progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={hasXpMatches ? rankProgress : 0} className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-cyan" style={{ width: `${hasXpMatches ? rankProgress : 0}%` }} /></div>
-                  {hasXpMatches && nextRank && <p className="mt-2 text-[11px] text-vapor">{Math.max(0, nextRank.min - elo).toLocaleString()} ELO to {nextRank.name}</p>}
-                </div>
-                <ProfileTrophyCount trophies={trophyOverviewCards} total={trophyCount} />
-              </div>
-              <div className="mt-3 flex gap-2">
+            <div className="w-full shrink-0 lg:w-[280px]">
+              <div className="flex gap-2">
                 {isOwnProfile ? (
                   <>
                     <button type="button" onClick={() => { setProfileResult(null); setEditingProfile((current) => !current); }} className={`inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-[9px] font-black uppercase tracking-wider ${editingProfile ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-white/10 bg-black/20 text-white hover:border-cyan/30 hover:text-cyan"}`}>
@@ -611,6 +595,8 @@ export default function Profile() {
               {isOwnProfile && <Link to="/settings#settings-overlay" className="mt-3 flex items-center justify-center gap-2 text-xs font-bold text-cyan"><MonitorPlay size={15} />Your Twitch player overlay<ChevronRight size={13} /></Link>}
             </div>
           </div>
+
+          <ProfileHeaderBar socials={socialLinks} trophies={trophyOverviewCards} />
 
           {isOwnProfile && editingProfile && (
             <div className="relative border-t border-white/10 bg-black/10 p-4 sm:p-5">
@@ -676,20 +662,6 @@ function ProfileStatCard({ icon: Icon, label, value, tone = "text-cyan" }) {
         </div>
       </div>
       <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-gradient-to-r from-cyan via-orange to-transparent transition-transform duration-300 group-hover:scale-x-100" />
-    </div>
-  );
-}
-
-function ProfileTrophyCount({ trophies = [], total = 0 }) {
-  const counts = Object.fromEntries(trophies.map((trophy) => [trophy.key, trophy.value]));
-
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/[0.08] bg-black/15 px-2 py-2 lg:flex-nowrap">
-      <div className="mr-1 shrink-0">
-        <p className="font-mono text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Trophy count</p>
-        <p className="mt-0.5 font-mono text-sm font-black leading-none text-white">{total}</p>
-      </div>
-      <TrophyCounts trophies={counts} className="flex-nowrap" />
     </div>
   );
 }
