@@ -1919,7 +1919,7 @@ export default function Admin() {
             <div className="mt-4"><RoleBadge role={currentRole} /></div>
           </div>
           <div className="space-y-1 p-2.5">
-            {tabs.filter((tab) => !tab.ceoOnly || effectiveRoleForUser(user) === "ceo").map((tab) => (
+            {tabs.filter((tab) => !tab.ceoOnly || currentRole === "ceo").map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -1938,7 +1938,7 @@ export default function Admin() {
           <label className="mb-4 block rounded-xl border border-border bg-card p-3 text-white lg:hidden">
             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-primary">Admin section</span>
             <select value={activeTab} onChange={(event) => setActiveTab(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[var(--arena-inset)] px-3 py-2.5 text-sm font-bold text-white">
-              {tabs.filter((tab) => !tab.ceoOnly || effectiveRoleForUser(user) === "ceo").map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+              {tabs.filter((tab) => !tab.ceoOnly || currentRole === "ceo").map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
             </select>
           </label>
 
