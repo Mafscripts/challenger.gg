@@ -1,3 +1,5 @@
+import { PARTY_MAX_TEAMS } from "./partyWheel.js";
+
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 export const partyMatchLabel = (match) => match.lane === "final" ? (match.round === 2 ? "Grand Final reset" : "Grand Final")
   : `${match.lane === "lower" ? "Losers" : "Winners"} R${match.round} · Match ${match.number}`;
@@ -12,7 +14,7 @@ function seedPositions(size) {
 export function createPartyBracket(teamIds, { format = "single_elimination", best_of = 3, game_mode = "snd", id = "" } = {}) {
   if (!["single_elimination", "double_elimination"].includes(format)) fail("Choose single or double elimination");
   if (![1, 3, 5].includes(best_of) || !["snd", "hardpoint", "cdl"].includes(game_mode)) fail("Choose a valid game mode and series format");
-  if (teamIds.length < 2 || teamIds.length > 16 || new Set(teamIds).size !== teamIds.length) fail("A bracket needs 2–16 unique teams");
+  if (teamIds.length < 2 || teamIds.length > PARTY_MAX_TEAMS || new Set(teamIds).size !== teamIds.length) fail(`A bracket needs 2–${PARTY_MAX_TEAMS} unique teams`);
   const size = 2 ** Math.ceil(Math.log2(teamIds.length)), rounds = Math.log2(size);
   const seeds = seedPositions(size).map((seed) => teamIds[seed - 1] || null);
   const bracket = { id, format, best_of, game_mode, status: "in_progress", started_at: new Date().toISOString(), champion_id: null, matches: [] };

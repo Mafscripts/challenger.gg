@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createPartyBracket, recordPartyScore, resetPartyMatch } from "../src/lib/partyBracket.js";
 
-test("single and double elimination resolve every 2–16-team field, including byes and final resets", () => {
-  for (const format of ["single_elimination", "double_elimination"]) for (let count = 2; count <= 16; count++) for (const reset of [false, true]) {
+test("single and double elimination resolve 2–128-team fields, including byes and final resets", () => {
+  for (const format of ["single_elimination", "double_elimination"]) for (const count of [...Array.from({ length: 15 }, (_, i) => i + 2), 17, 31, 64, 127, 128]) for (const reset of [false, true]) {
     const teams = Array.from({ length: count }, (_, i) => `t${i}`);
     const bracket = createPartyBracket(teams, { format, id: `test-${count}` });
     const losses = Object.fromEntries(teams.map((id) => [id, 0]));
@@ -19,7 +19,7 @@ test("single and double elimination resolve every 2–16-team field, including b
       losses[match.teams[loser]]++;
       assert.ok(losses[match.teams[winner]] < (format === "single_elimination" ? 1 : 2));
       recordPartyScore(bracket, match.id, winner === 0 ? [2, 0] : [0, 2]);
-      assert.ok(++played < 35);
+      assert.ok(++played < 260);
     }
     assert.ok(teams.includes(bracket.champion_id));
     assert.equal(played, format === "single_elimination" ? count - 1 : count * 2 - (reset ? 1 : 2));
@@ -42,6 +42,8 @@ test("series results require a legal completed score and cannot be overwritten",
     assert.throws(() => recordPartyScore(bracket, id, [0, target]), { status: 409 });
   }
   assert.throws(() => createPartyBracket(["a", "a"]));
+  assert.throws(() => createPartyBracket(["a"]));
+  assert.throws(() => createPartyBracket(Array.from({ length: 129 }, (_, i) => `t${i}`)));
   assert.throws(() => createPartyBracket(["a", "b"], { format: "round_robin" }));
   assert.throws(() => createPartyBracket(["a", "b"], { best_of: 2 }));
 });

@@ -136,8 +136,9 @@ test("players link only their own account, cannot overwrite claimed slots and ca
 test("team limits, occupied formats, closed rooms and partial roster spins are rejected", async () => {
   const f = fixture();
   await assert.rejects(f.act("spin"));
-  await assert.rejects(f.act("remove_team", { team_id: "a" }));
-  for (let i = 2; i < 16; i++) await f.act("add_team");
+  await f.act("remove_team", { team_id: "a" });
+  await assert.rejects(f.act("remove_team", { team_id: "b" }));
+  await f.act("set_team_count", { team_count: 128 });
   await assert.rejects(f.act("add_team"));
   await f.act("close");
   await assert.rejects(f.act("reset"), { status: 409 });
@@ -165,8 +166,8 @@ test("fixed duos are validated, spin together, stay paired next round and can be
   assert.equal(f.room().players.at(-1).duo_id, null);
 });
 
-test("one request fills every supported format with duos and preserves a partially drawn legacy room", async () => {
-  for (const mode of ["coed", "switcheroo"]) for (const size of [2, 3, 4]) for (const count of [2, 3, 4, 16]) {
+test("one request fills every supported format with duos for 1–128 teams and preserves a partially drawn legacy room", async () => {
+  for (const mode of ["coed", "switcheroo"]) for (const size of [2, 3, 4]) for (const count of [1, 2, 3, 4, 16, 63, 128]) {
     const f = fixture(), metadata = f.row().metadata;
     metadata.mode = mode; metadata.team_size = size;
     metadata.teams = Array.from({ length: count }, (_, i) => ({ id: `t${i}`, name: `Team ${i}` }));
@@ -195,6 +196,26 @@ test("one request fills every supported format with duos and preserves a partial
   assert.equal(result.spin.selected_ids.length, 3);
   assert.ok(!result.spin.selected_ids.includes(assigned.id));
   assert.ok(result.players.every((player) => player.side));
+});
+
+test("team count changes atomically from 1 to 128, preserving names and rejecting invalid or occupied reductions", async () => {
+  const f = fixture();
+  const first = f.room().teams[0];
+  for (const team_count of [0, 129, 2.5, "4", null, -1]) await assert.rejects(f.act("set_team_count", { team_count }), { status: 400 });
+  await assert.rejects(f.act("set_team_count", { team_count: 128 }, { id: "viewer" }), { status: 403 });
+  await f.act("set_team_count", { team_count: 128 });
+  assert.equal(f.room().teams.length, 128); assert.equal(new Set(f.room().teams.map((team) => team.id)).size, 128);
+  assert.deepEqual(f.room().teams[0], first);
+  await f.act("rename_team", { team_id: first.id, name: "Phoenix" });
+  await f.act("set_team_count", { team_count: 1 });
+  assert.equal(f.room().teams[0].name, "Phoenix");
+  await f.act("add", { names: ["One", "Two"] });
+  await f.act("set_team_count", { team_count: 2 });
+  await f.act("add", { names: ["Three", "Four"] });
+  await assert.rejects(f.act("set_team_count", { team_count: 1 }), { status: 409 });
+  assert.equal(f.room().players.length, 4); assert.equal(f.room().teams.length, 2);
+  await f.act("spin"); f.finish();
+  await assert.rejects(f.act("set_team_count", { team_count: 3 }), { status: 409 });
 });
 
 test("duos never strand a draw across all 2–16-team sizes, Co-ed quotas or Switcheroo preferences", () => {

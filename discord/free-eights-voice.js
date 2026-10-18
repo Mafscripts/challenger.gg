@@ -347,7 +347,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
               await guard();
               channel = await guild.channels.create({ name: channelName,
                 type: ChannelType.GuildVoice, parent: state.category_id, permissionOverwrites: overwrites,
-                reason: provision.reason, userLimit: config.channelLimit?.(match, side) || (config.teamSize?.(match) || freeEightsTeamSize(match)) * (side === "waiting" ? 2 : 1) });
+                reason: provision.reason, userLimit: config.channelLimit?.(match, side) ?? (config.teamSize?.(match) || freeEightsTeamSize(match)) * (side === "waiting" ? 2 : 1) });
               releaseSlot();
             } catch (error) {
               // A definite rejection permits retry. Ambiguous outcomes retain

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, Check, ChevronDown, Link2, Mars, Maximize2, Minimize2, RotateCcw, Shuffle, Sparkles, Users, Venus, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, Check, ExternalLink, Headphones, Link2, Mars, Maximize2, Minimize2, RotateCcw, Shuffle, Sparkles, Users, Venus, Volume2, VolumeX } from "lucide-react";
 import AnimatedNameWheel from "@/components/competition/AnimatedNameWheel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createPartyWheelAudio } from "@/lib/partyWheelAudio";
@@ -11,7 +11,18 @@ const preference = (name, fallback) => {
   catch { return fallback; }
 };
 
-export default function PartyDrawStage({ room, entries, offset, spinning, allReady, manager, disabled, invalid, act, onReset, settings, children }) {
+function DrawnTeam({ room, team, index, manager, disabled, act, voice }) {
+  const [name, setName] = useState(team.name);
+  useEffect(() => setName(team.name), [team.name]);
+  const save = async () => { if (!disabled && name.trim() && name.trim() !== team.name) await act("rename_team", { team_id: team.id, name }); };
+  return <section style={{ "--team-accent": index % 2 === 0 ? "var(--orange)" : "var(--cyan)" }}>
+    <header><span>{String(index + 1).padStart(2, "0")}</span>{manager ? <form onSubmit={(event) => { event.preventDefault(); void save(); }}><label className="sr-only" htmlFor={`draw-team-${team.id}`}>Team {index + 1} name</label><input id={`draw-team-${team.id}`} value={name} onChange={(event) => setName(event.target.value)} onBlur={save} maxLength={32} disabled={disabled} /><button type="submit" className="sr-only">Save team name</button></form> : <h3>{team.name}</h3>}</header>
+    <ul>{room.players.filter((player) => player.side === team.id).map((player) => <li key={player.id}>{player.gender === "male" ? <Mars className="text-cyan" /> : player.gender === "female" ? <Venus className="text-fuchsia-300" /> : <Users />}<strong>{player.name}</strong>{player.duo_id && <small>Duo</small>}{player.user_id && <Link2 className="text-cyan" aria-label="Website account" />}</li>)}</ul>
+    {voice?.team_urls?.[team.id] && <a className="party-team-voice" href={voice.team_urls[team.id]} target="_blank" rel="noopener noreferrer"><Headphones />Team voice<ExternalLink /></a>}
+  </section>;
+}
+
+export default function PartyDrawStage({ room, entries, offset, spinning, allReady, manager, disabled, invalid, act, onReset, settings, children, voice, error }) {
   const [sound, setSound] = useState(() => preference("sound", true));
   const [celebrate, setCelebrate] = useState(() => preference("confetti", true));
   const [focused, setFocused] = useState(false), [reveal, setReveal] = useState(false);
@@ -77,7 +88,7 @@ export default function PartyDrawStage({ room, entries, offset, spinning, allRea
         <div className="party-studio-title"><p className="party-eyebrow">{room.mode === "coed" ? "Co-ed" : "Switcheroo"} · Round {room.round}</p><h2>{spinning ? "Let the wheel decide." : allReady ? "Your teams. Your next win." : "Who’s on your team?"}</h2><p>{spinning ? "One spin. Every player. All teams revealed together." : allReady ? "The draw is locked in. Get your squad ready." : "Add your players and duos, then spin to draw every team."}</p></div>
         <AnimatedNameWheel entries={entries} spin={room.spin} serverOffset={offset} onTick={() => audio.current?.tick()} onFinish={finish} onSpin={spin} disabled={!canSpin} spinning={spinning} />
         <div className="party-wheel-controls">
-          {allReady ? <><button type="button" className="party-button party-primary party-spin-button" onClick={() => setReveal(true)}><Users />View drawn teams</button>{manager && <a className="party-button" href="#party-bracket">Choose bracket<ArrowRight /></a>}</> : manager ? <button type="button" className="party-button party-primary party-spin-button" disabled={!canSpin} onClick={spin}><Shuffle />{spinning ? "Drawing all teams…" : "Spin & draw all teams"}</button> : <p className="party-muted party-centered">The host controls the wheel. Watch the same live draw.</p>}
+          {allReady ? <><button type="button" className="party-button party-primary party-spin-button" onClick={() => setReveal(true)}><Users />View drawn teams</button>{manager && room.teams.length >= 2 && <a className="party-button" href="#party-bracket">Choose bracket<ArrowRight /></a>}</> : manager ? <button type="button" className="party-button party-primary party-spin-button" disabled={!canSpin} onClick={spin}><Shuffle />{spinning ? "Drawing all teams…" : "Spin & draw all teams"}</button> : <p className="party-muted party-centered">The host controls the wheel. Watch the same live draw.</p>}
           {manager && <button type="button" className="party-button" disabled={disabled || !room.players.some((player) => player.side)} onClick={onReset}><RotateCcw />New draw</button>}
         </div>
         {invalid && room.status !== "closed" ? <p className="party-validation">{invalid}</p> : <p className="party-studio-hint">{spinning ? "Sit back. Your teams are on their way." : manager && !allReady ? "Click the wheel or press Ctrl + Enter to spin." : "Fixed duos stay together. Discord voice follows your team."}</p>}
@@ -91,8 +102,9 @@ export default function PartyDrawStage({ room, entries, offset, spinning, allRea
     <Dialog open={reveal && allReady} onOpenChange={setReveal}>
       <DialogContent className="party-draw-reveal border-white/10 bg-card text-foreground sm:max-w-[940px]">
         <DialogHeader><div className="party-reveal-emblem"><Sparkles /></div><p className="party-eyebrow">Round {room.round} · All teams drawn</p><DialogTitle className="text-2xl font-black sm:text-3xl">Meet your teams.</DialogTitle><DialogDescription>The wheel has spoken. {room.players.length} players, {room.teams.length} teams. Let’s play.</DialogDescription></DialogHeader>
-        <div className="party-reveal-teams">{room.teams.map((team, index) => <section key={team.id} style={{ "--team-accent": index % 2 === 0 ? "var(--orange)" : "var(--cyan)" }}><header><span>{String(index + 1).padStart(2, "0")}</span><h3>{team.name}</h3></header><ul>{room.players.filter((player) => player.side === team.id).map((player) => <li key={player.id}>{player.gender === "male" ? <Mars className="text-cyan" /> : player.gender === "female" ? <Venus className="text-fuchsia-300" /> : <Users />}<strong>{player.name}</strong>{player.duo_id && <small>Duo</small>}{player.user_id && <Link2 className="text-cyan" aria-label="Website account" />}</li>)}</ul></section>)}</div>
-        <div className="party-reveal-footer"><p>Same draw for everyone. Fixed duos stay together.</p><div className="party-actions"><button type="button" className="party-button" onClick={() => continueTo("party-teams")}>View teams<ChevronDown /></button>{manager && <button type="button" className="party-button party-primary" onClick={() => continueTo("party-bracket")}>Choose bracket<ArrowRight /></button>}</div></div>
+        <div className="party-reveal-teams">{room.teams.map((team, index) => <DrawnTeam key={team.id} room={room} team={team} index={index} manager={manager} disabled={disabled} act={act} voice={voice} />)}</div>
+        {error && <p className="party-error" role="alert">{error}</p>}
+        <div className="party-reveal-footer"><p>Same draw for everyone. Fixed duos stay together.</p><div className="party-actions"><button type="button" className="party-button" onClick={() => setReveal(false)}>Done<Check /></button>{manager && room.teams.length >= 2 && <button type="button" className="party-button party-primary" onClick={() => continueTo("party-bracket")}>Choose bracket<ArrowRight /></button>}</div></div>
       </DialogContent>
     </Dialog>
   </>;

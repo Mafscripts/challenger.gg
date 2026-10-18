@@ -1,4 +1,5 @@
 export const PARTY_SPIN_MS = 6000;
+export const PARTY_MAX_TEAMS = 128;
 export const partyCapacity = (room) => room.team_size * room.teams.length;
 export const partyGenderQuota = (room, teamId) => {
   const index = room.teams.findIndex((team) => team.id === teamId);
@@ -95,4 +96,57 @@ export function partyCandidates(room) {
     pool = pool.filter((player) => cost(player) === best);
   }
   return pool;
+}
+
+// Solve the duo placement once, then fill the remaining individual slots.
+// Re-solving for every candidate on every pick becomes costly with 128 teams.
+export function assignPartyTeams(room, choose) {
+  const order = (items) => {
+    const remaining = [...items], result = [];
+    while (remaining.length) result.push(remaining.splice(choose(remaining.length), 1)[0]);
+    return result;
+  };
+  const bins = room.teams.map((team) => {
+    const members = room.players.filter((player) => player.side === team.id);
+    const quota = partyGenderQuota(room, team.id);
+    return { id: team.id, members, left: room.mode === "coed"
+      ? [quota.male - members.filter((p) => p.gender === "male").length, quota.female - members.filter((p) => p.gender === "female").length]
+      : [room.team_size - members.length, 0] };
+  });
+  const bundles = partyDrawEntries(room).map((entry) => {
+    const members = partyDrawMembers(room, entry);
+    return { members, needs: room.mode === "coed" ? [members.filter((p) => p.gender === "male").length, members.filter((p) => p.gender === "female").length] : [members.length, 0] };
+  });
+  const duos = order(bundles.filter((bundle) => bundle.members.length === 2)).sort((a, b) => Math.max(...b.needs) - Math.max(...a.needs));
+  const cost = (bundle, bin) => room.mode !== "switcheroo" || !room.previous_teams ? 0 : bundle.members.reduce((sum, member) => sum + bin.members.filter((mate) => room.previous_teams[member.id] && room.previous_teams[member.id] === room.previous_teams[mate.id]).length, 0);
+  const targets = (bundle) => order(bins.filter((bin) => bundle.needs.every((need, i) => need <= bin.left[i])))
+    .sort((a, b) => cost(bundle, a) - cost(bundle, b) || a.members.length - b.members.length);
+  const place = (bundle, bin, undo = false) => {
+    bundle.needs.forEach((need, i) => { bin.left[i] += undo ? need : -need; });
+    if (undo) bin.members.splice(-bundle.members.length);
+    else bin.members.push(...bundle.members);
+    bundle.members.forEach((member) => { member.side = undo ? null : bin.id; });
+  };
+  const memo = new Set();
+  const fit = (index) => {
+    if (index === duos.length) return true;
+    const key = `${index}:${bins.map((bin) => bin.left.join(",")).sort().join(";")}`;
+    if (memo.has(key)) return false;
+    const tried = new Set(), bundle = duos[index];
+    for (const bin of targets(bundle)) {
+      const shape = bin.left.join(",");
+      if (tried.has(shape)) continue;
+      tried.add(shape); place(bundle, bin);
+      if (fit(index + 1)) return true;
+      place(bundle, bin, true);
+    }
+    memo.add(key); return false;
+  };
+  if (!fit(0)) return false;
+  for (const bundle of order(bundles.filter((entry) => entry.members.length === 1))) {
+    const bin = targets(bundle)[0];
+    if (!bin) return false;
+    place(bundle, bin);
+  }
+  return bins.every((bin) => bin.left.every((left) => left === 0));
 }

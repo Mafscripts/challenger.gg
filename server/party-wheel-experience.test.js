@@ -71,8 +71,9 @@ test("the real draw studio renders large-wheel controls, account/guest inputs an
   const result = await build({ stdin: { resolveDir: root, loader: "jsx", contents: `
     import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server';
     import PartyDrawStage from './src/components/competition/PartyDrawStage.jsx';
+    import PartyTeamCount from './src/components/competition/PartyTeamCount.jsx';
     import {PartyAddPlayers,PartyAddDuo} from './src/components/competition/PartyPlayerEntry.jsx';
-    export function render(props) {return renderToStaticMarkup(<PartyDrawStage {...props}>{props.manager && <><PartyAddPlayers room={props.room}/><PartyAddDuo room={props.room}/></>}</PartyDrawStage>);}
+    export function render(props) {return renderToStaticMarkup(<PartyDrawStage {...props} settings={props.manager && <PartyTeamCount room={props.room} act={props.act}/>} >{props.manager && <><PartyAddPlayers room={props.room}/><PartyAddDuo room={props.room}/></>}</PartyDrawStage>);}
   ` }, bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"], external: ["react", "react-dom", "react-dom/server"], alias: { "@": `${root}/src` },
     plugins: [{ name: "account-search-boundary", setup(bundle) {
       bundle.onResolve({ filter: /^@\/api\/base44Client$/ }, () => ({ path: "api", namespace: "wheel-test" }));
@@ -93,6 +94,8 @@ test("the real draw studio renders large-wheel controls, account/guest inputs an
   assert.match(html, /Spin &amp; draw all teams/); assert.match(html, /Ctrl \+ Enter/);
   assert.match(html, /Search a player or enter a guest/); assert.match(html, /role="combobox"/);
   assert.match(html, /Add a fixed duo/); assert.match(html, /Add multiple guests/);
+  assert.match(html, /Number of teams/); assert.match(html, /type="number"[^>]*min="1"[^>]*max="128"/);
+  assert.doesNotMatch(html, /Add team<\/button>/);
   const spectator = compiled.exports.render({ ...props, manager: false });
   assert.match(spectator, /The host controls the wheel/);
   assert.doesNotMatch(spectator, /Spin &amp; draw all teams|Add a fixed duo/);
@@ -101,4 +104,6 @@ test("the real draw studio renders large-wheel controls, account/guest inputs an
   assert.match(completed, /View drawn teams/); assert.doesNotMatch(completed, /Spin &amp; draw all teams/);
   const completedSpectator = compiled.exports.render({ ...props, manager: false, allReady: true, room: { ...room, status: "ready", spin: { ...spin, entries: room.players } } });
   assert.match(completedSpectator, /View drawn teams/); assert.doesNotMatch(completedSpectator, /Choose bracket|New draw/);
+  const singleTeam = compiled.exports.render({ ...props, allReady: true, room: { ...room, status: "ready", teams: room.teams.slice(0, 1) } });
+  assert.match(singleTeam, /View drawn teams/); assert.doesNotMatch(singleTeam, /Choose bracket/);
 });

@@ -110,3 +110,10 @@ test("adding teams updates an existing Waiting Room's capacity without recreatin
   await f.sync();
   assert.equal(waiting.userLimit, 12);
 });
+
+test("large rooms use an unlimited Waiting Room rather than an invalid Discord user limit", async () => {
+  const f = fixture(4, 128);
+  await f.sync();
+  assert.deepEqual(f.errors, []);
+  assert.equal(f.channels.get(f.state().channels.waiting).userLimit, 0);
+});

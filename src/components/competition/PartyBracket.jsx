@@ -12,7 +12,7 @@ const statusLabel = (match) => ({ ready: "Ready to play", completed: "Completed"
 export function PartyBracket({ room, manager, disabled, act, onNewRound }) {
   const [format, setFormat] = useState("single_elimination"), [bestOf, setBestOf] = useState("3"), [mode, setMode] = useState("snd");
   const bracket = room.bracket;
-  const ready = room.status === "ready" && !disabled;
+  const ready = room.status === "ready" && room.teams.length >= 2 && !disabled;
   return <section id="party-bracket" className="party-panel party-bracket-panel">
     <div className="party-section-heading"><h2><Trophy />{bracket ? "Tournament bracket" : "Start your bracket"}</h2>{bracket && <span className="party-count">{bracket.status === "completed" ? "Completed" : "Live"}</span>}</div>
     {!bracket ? <>
@@ -23,7 +23,7 @@ export function PartyBracket({ room, manager, disabled, act, onNewRound }) {
         <label className="party-label">Series format<Select value={bestOf} onValueChange={setBestOf} disabled={disabled}><SelectTrigger className="party-select"><SelectValue /></SelectTrigger><SelectContent>{[1, 3, 5].map((value) => <SelectItem key={value} value={String(value)}>Best of {value}</SelectItem>)}</SelectContent></Select></label>
         <p className="party-muted">{format === "single_elimination" ? "Lose once and you are out. Winners advance to the final." : "Lose twice and you are out. The Grand Final resets if the losers finalist wins the first series."} Byes advance automatically.</p>
         <button className="party-button party-primary" disabled={!ready}><Play />Start bracket</button>
-        {!ready && <span className="party-muted">Finish the team draw to start.</span>}
+        {!ready && <span className="party-muted">{room.teams.length < 2 ? "At least 2 teams are needed for a bracket." : "Finish the team draw to start."}</span>}
       </form> : <p className="party-muted">The host can start the bracket once all teams are drawn.</p>}
     </> : <>
       <p className="party-muted">{bracket.format === "single_elimination" ? "Single elimination · no losers bracket" : "Double elimination · with losers bracket"} · {modes[bracket.game_mode]} · Best of {bracket.best_of}</p>

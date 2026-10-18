@@ -12,7 +12,7 @@ export function partyDiscordConfig() {
     channelName: (id, side, match) => `SPIN-${id.slice(-6).toUpperCase()} · ${side === "waiting" ? "Waiting Room" : match.teams.find((team) => team.id === side)?.name || "Team"}`,
     teamSize: (match) => match.team_size,
     channelSides: (match) => ["waiting", ...(match?.teams || []).map((team) => team.id)],
-    channelLimit: (match, side) => side === "waiting" ? match.team_size * match.teams.length : match.team_size,
+    channelLimit: (match, side) => side === "waiting" ? (match.team_size * match.teams.length > 99 ? 0 : match.team_size * match.teams.length) : match.team_size,
     privateTeams: true,
     canAssign: (match, players) => Boolean(match?.teams_generated_at) && match.status === "in_progress"
       && players.length === match.team_size * match.teams.length && new Set(players.map((player) => player.user_id)).size === players.length

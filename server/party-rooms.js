@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { hasRole } from "./roles.js";
-import { partyCandidates, partyCapacity, partyDrawEntries, partyDrawMembers, partySide, partySpinning, partyValidation, PARTY_SPIN_MS } from "../src/lib/partyWheel.js";
+import { assignPartyTeams, partyCapacity, partyDrawEntries, partySpinning, partyValidation, PARTY_MAX_TEAMS, PARTY_SPIN_MS } from "../src/lib/partyWheel.js";
 import { createPartyBracket, recordPartyScore, resetPartyMatch } from "../src/lib/partyBracket.js";
 import { partyVoiceKey, partyVoiceStatus } from "./party-voice.js";
 import { hasDiscordLink, freeEightsDiscordMembershipJoinError } from "./free-eights-discord.js";
@@ -67,7 +67,7 @@ export async function getPartyRoom(db, id, { matchId = null } = {}) {
 }
 export async function changePartyRoom(db, id, user, input, { choose = randomInt, checkMembership = freeEightsDiscordMembershipJoinError } = {}) {
   requirePartyRoomStorage(db);
-  const actions = ["add", "add_duo", "unpair", "remove", "gender", "claim", "leave", "spin", "reset", "close", "add_team", "remove_team", "rename_team", "format", "start_bracket", "match_score", "match_award", "match_forfeit", "reset_match", "report_score", "match_message"];
+  const actions = ["add", "add_duo", "unpair", "remove", "gender", "claim", "leave", "spin", "reset", "close", "add_team", "remove_team", "set_team_count", "rename_team", "format", "start_bracket", "match_score", "match_award", "match_forfeit", "reset_match", "report_score", "match_message"];
   if (!actions.includes(input.action)) fail("Invalid room action");
   if (input.action === "claim") {
     if (!hasDiscordLink(user)) fail("Connect Discord in Account Settings before linking your player slot", 403);
@@ -86,13 +86,19 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
     if (!["claim", "leave", "report_score", "match_message"].includes(input.action) && !isOwner) fail("Only the host or an admin can manage the room", 403);
     if (partySpinning(room) && !["reset", "close"].includes(input.action)) fail("Wait for the current spin to finish", 409);
     const player = room.players.find((entry) => entry.id === input.player_id);
-    if (["add", "add_duo", "unpair", "remove", "gender", "add_team", "remove_team", "format"].includes(input.action) && room.players.some((entry) => entry.side)) fail("Start a new round before editing players or teams", 409);
+    if (["add", "add_duo", "unpair", "remove", "gender", "add_team", "remove_team", "set_team_count", "format"].includes(input.action) && room.players.some((entry) => entry.side)) fail("Start a new round before editing players or teams", 409);
+    if (input.action === "set_team_count") {
+      const count = input.team_count;
+      if (!Number.isInteger(count) || count < 1 || count > PARTY_MAX_TEAMS) fail(`Choose a whole number from 1 to ${PARTY_MAX_TEAMS} teams`);
+      if (room.players.length > count * room.team_size) fail("Remove extra players before reducing the number of teams", 409);
+      room.teams = Array.from({ length: count }, (_, index) => room.teams[index] || { id: randomUUID(), name: `Team ${index + 1}` });
+    }
     if (input.action === "add_team") {
-      if (room.teams.length >= 16) fail("A room supports up to 16 teams");
+      if (room.teams.length >= PARTY_MAX_TEAMS) fail(`A room supports up to ${PARTY_MAX_TEAMS} teams`);
       room.teams.push({ id: randomUUID(), name: cleanName(input.name || `Team ${room.teams.length + 1}`) });
     }
     if (input.action === "remove_team") {
-      if (room.teams.length <= 2) fail("Keep at least two teams");
+      if (room.teams.length <= 1) fail("Keep at least one team");
       if (!room.teams.some((team) => team.id === input.team_id)) fail("Team not found", 404);
       if (room.players.length > (room.teams.length - 1) * room.team_size) fail("Remove extra players before removing a team");
       room.teams = room.teams.filter((team) => team.id !== input.team_id);
@@ -160,12 +166,7 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
       if (!entries.length) fail("All teams are full. Start a new round.", 409);
       const selectedIds = room.players.filter((member) => !member.side).map((member) => member.id);
       // Commit the entire draw atomically; the shared animation reveals it once.
-      while (room.players.some((member) => !member.side)) {
-        const candidates = partyCandidates(room);
-        if (!candidates.length) fail("These players cannot fill the teams. Check the duos and gender balance.", 409);
-        const selected = candidates[choose(candidates.length)], side = partySide(room);
-        partyDrawMembers(room, selected).forEach((member) => { member.side = side; });
-      }
+      if (!assignPartyTeams(room, choose)) fail("These players cannot fill the teams. Check the duos and gender balance.", 409);
       room.spin = { id: randomUUID(), scope: "all_teams", team_count: room.teams.length, selected_ids: selectedIds, landing_index: choose(entries.length), entries: entries.map(({ id, name }) => ({ id, name })),
         started_at: new Date(Date.now() + 750).toISOString(), duration_ms: PARTY_SPIN_MS, turns: 6 + choose(3) };
       room.status = "ready";
