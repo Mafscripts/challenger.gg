@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
 import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
 import { toast } from "@/components/ui/use-toast";
@@ -127,6 +127,16 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
       description: repeatedMode ? `${format.modes.length} ${modeNames[0]} maps` : modeNames.join(" · "),
     };
   }) : isEightsLobby ? eightsSeriesFormats : gameModes;
+  const seriesCategories = isEightsLobby ? modeChoices.reduce((groups, format) => {
+    const mixed = new Set(format.modes).size > 1;
+    const category = format.id.startsWith("cdl_") ? "Call of Duty League (CDL)"
+      : mixed ? "Mixed modes" : gameConfig?.modes?.find((mode) => mode.id === format.gameMode)?.name
+        || ({ hp: "Hardpoint", snd: "Search & Destroy" }[format.gameMode] || "Other modes");
+    const group = groups.find((entry) => entry.label === category);
+    if (group) group.formats.push(format);
+    else groups.push({ label: category, formats: [format] });
+    return groups;
+  }, []) : [];
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
@@ -477,7 +487,13 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                       <SelectValue placeholder="Choose a mode and series format" />
                     </SelectTrigger>
                     <SelectContent className="z-[150] rounded-xl border-white/10 bg-card text-white shadow-xl">
-                      {modeChoices.map((mode) => <SelectItem key={mode.id} value={mode.id} className="cursor-pointer rounded-lg py-3 focus:bg-cyan/10 focus:text-cyan">{mode.name}</SelectItem>)}
+                      {seriesCategories.map((category, index) => <React.Fragment key={category.label}>
+                        {index > 0 && <SelectSeparator className="my-2 bg-white/[0.08]" />}
+                        <SelectGroup>
+                          <SelectLabel className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor">{category.label}</SelectLabel>
+                          {category.formats.map((format) => <SelectItem key={format.id} value={format.id} className="cursor-pointer rounded-lg py-3 pl-3 focus:bg-cyan/10 focus:text-cyan">{format.name}</SelectItem>)}
+                        </SelectGroup>
+                      </React.Fragment>)}
                     </SelectContent>
                   </Select>
                   <p className="min-h-5 text-xs leading-5 text-vapor" aria-live="polite">{modeChoices.find((mode) => mode.id === selectedGameMode)?.description || "Select a format to see which maps you will play."}</p>
