@@ -4,6 +4,7 @@ import { ArrowRight, Check, ExternalLink, Headphones, Link2, Mars, Maximize2, Mi
 import AnimatedNameWheel from "@/components/competition/AnimatedNameWheel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createPartyWheelAudio } from "@/lib/partyWheelAudio";
+import { createPartyFireworks } from "@/lib/partyFireworks";
 import { partyCapacity } from "@/lib/partyWheel";
 
 const preference = (name, fallback) => {
@@ -28,6 +29,7 @@ export default function PartyDrawStage({ room, entries, offset, spinning, allRea
   const [focused, setFocused] = useState(false), [reveal, setReveal] = useState(false);
   const [mounted, setMounted] = useState(false);
   const audio = useRef(null), canvas = useRef(null), confetti = useRef(null), celebrated = useRef(null), alive = useRef(false);
+  const fireworksCanvas = useRef(null), fireworks = useRef(null);
   const effects = useRef({ celebrate, spinId: room.spin?.id });
   effects.current = { celebrate, spinId: room.spin?.id };
   const canSpin = manager && !disabled && !invalid && !allReady;
@@ -35,12 +37,12 @@ export default function PartyDrawStage({ room, entries, offset, spinning, allRea
     alive.current = true;
     setMounted(true);
     const engine = createPartyWheelAudio(); audio.current = engine;
-    return () => { alive.current = false; engine.close(); confetti.current?.reset(); };
+    return () => { alive.current = false; fireworks.current?.stop(); engine.close(); confetti.current?.reset(); };
   }, []);
   useEffect(() => {
     audio.current?.mute(!sound);
     try { localStorage.setItem("topfragg-wheel-sound", String(sound)); localStorage.setItem("topfragg-wheel-confetti", String(celebrate)); } catch { /* Preferences are optional. */ }
-    if (!celebrate) confetti.current?.reset();
+    if (!celebrate) { confetti.current?.reset(); fireworks.current?.stop(); }
   }, [sound, celebrate]);
   const spin = () => {
     if (!canSpin) return;
@@ -56,12 +58,19 @@ export default function PartyDrawStage({ room, entries, offset, spinning, allRea
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   });
-  useEffect(() => { setReveal(false); confetti.current?.reset(); }, [room.spin?.id]);
+  useEffect(() => { setReveal(false); confetti.current?.reset(); fireworks.current?.stop(); }, [room.spin?.id]);
   const finish = async (id) => {
     if (celebrated.current === id || room.spin?.id !== id || room.status !== "ready") return;
     celebrated.current = id;
     audio.current?.finish(); setReveal(true);
     if (!celebrate || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+    if (fireworksCanvas.current) {
+      fireworks.current ||= createPartyFireworks(fireworksCanvas.current, {
+        onLaunch: () => audio.current?.fireworkLaunch(), onBurst: () => audio.current?.fireworkBurst(),
+        onStop: () => audio.current?.stopFireworks(),
+      });
+      fireworks.current.start();
+    }
     try {
       const { default: createConfetti } = await import("canvas-confetti");
       if (!alive.current || !canvas.current || !effects.current.celebrate || effects.current.spinId !== id) return;
@@ -74,14 +83,14 @@ export default function PartyDrawStage({ room, entries, offset, spinning, allRea
   };
   const continueTo = (target) => { setReveal(false); requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth", block: "start" })); };
   return <>
-    {mounted && createPortal(<canvas ref={canvas} className="party-draw-confetti" aria-hidden="true" />, document.body)}
+    {mounted && createPortal(<><canvas ref={canvas} className="party-draw-confetti" aria-hidden="true" /><canvas ref={fireworksCanvas} className="party-draw-confetti party-draw-fireworks" aria-hidden="true" /></>, document.body)}
     <div className={`party-draw-studio ${focused ? "is-focused" : ""}`}>
       <section className="party-panel party-wheel-panel">
         <div className="party-studio-toolbar">
           <span className="party-studio-live"><i />{spinning ? "LIVE DRAW" : allReady ? "DRAW COMPLETE" : "TEAM DRAW"}</span>
           <div className="party-actions">
             <button type="button" className="party-studio-toggle" aria-pressed={sound} title={sound ? "Mute wheel sounds" : "Enable wheel sounds"} onClick={() => { setSound(!sound); audio.current?.mute(sound); if (!sound) void audio.current?.unlock(); }}>{sound ? <Volume2 /> : <VolumeX />}<span>Sound</span></button>
-            <button type="button" className="party-studio-toggle" aria-pressed={celebrate} onClick={() => setCelebrate(!celebrate)}><Sparkles /><span>Confetti</span></button>
+            <button type="button" className="party-studio-toggle" aria-pressed={celebrate} aria-label="Confetti and animated fireworks" title="Confetti and animated fireworks" onClick={() => setCelebrate(!celebrate)}><Sparkles /><span>Confetti</span></button>
             <button type="button" className="party-studio-toggle" aria-pressed={focused} onClick={() => setFocused(!focused)}>{focused ? <Minimize2 /> : <Maximize2 />}<span>{focused ? "Show players" : "Focus wheel"}</span></button>
           </div>
         </div>

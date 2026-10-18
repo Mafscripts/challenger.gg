@@ -121,6 +121,7 @@
 .party-team-count-input { display: flex; gap: 10px; margin-top: 8px; }.party-team-count-input .party-field { flex: 1; min-width: 0; font-family: ui-monospace, monospace; }.party-team-count-form .party-muted { margin-top: 7px; font-size: 10px; }
 .party-draw-studio.is-focused { grid-template-columns: minmax(0, 1fr); }.party-draw-studio.is-focused .party-studio-inputs { display: none; }.party-draw-studio.is-focused .party-wheel-wrap { max-width: min(70vh, 800px); }
 .party-draw-confetti { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 80; pointer-events: none; }
+.party-draw-fireworks { z-index: 81; }
 .party-draw-reveal { max-height: calc(100dvh - 40px); overflow-y: auto; padding: clamp(20px, 3vw, 34px); background: radial-gradient(ellipse at 50% 0%, hsl(var(--cyan) / .07), transparent 60%), hsl(var(--card)); }
 .party-reveal-emblem { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 10px; border: 1px solid hsl(var(--cyan) / .2); border-radius: 12px; background: hsl(var(--cyan) / .06); color: hsl(var(--cyan)); }.party-reveal-emblem svg { width: 23px; height: 23px; }
 .party-reveal-teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-block: 8px; }
