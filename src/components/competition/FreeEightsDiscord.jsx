@@ -14,7 +14,7 @@ export const isFreeEightsDiscordRequired = (result) => result?.code === "FREE_EI
 
 const voiceLabels = {
   not_linked: "Discord Not Linked",
-  not_in_waiting_room: "Join 8s Waiting Room",
+  not_in_waiting_room: "Waiting Room",
   in_waiting_room: "In Waiting Room",
   in_team_voice: "Team Voice",
   move_failed: "Voice move failed · bot will retry",
@@ -39,7 +39,7 @@ export function FreeEightsVoiceBadge({ status = "unknown", waitingRoomUrl }) {
   const canJoin = status === "not_in_waiting_room" && Boolean(waitingRoomUrl);
   const Badge = canJoin ? "a" : "span";
   const toneClass = badgeStyle.split(" ").find((token) => token.startsWith("text-")) || "text-white";
-  return <BadgeTooltip label={status === "not_in_waiting_room" ? "8s Waiting Room" : label} description={description} icon={StatusIcon} toneClass={toneClass}>
+  return <BadgeTooltip label={status === "not_in_waiting_room" ? "Waiting Room" : label} description={description} icon={StatusIcon} toneClass={toneClass}>
     <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} className={`relative inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15" : "cursor-default"}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}</Badge>
   </BadgeTooltip>;
 }
@@ -185,7 +185,7 @@ export function FreeEightsVoiceStatus({ matchId, user, waitingForMaps = false, p
         </div>
       </div>
       <div className="min-h-[42px] shrink-0">
-        {!hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord returnTo={`/8s-match/${matchId}`} /> : voice?.waiting_room_url ? <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#5865F2] px-4 py-3 text-[11px] font-black text-white shadow-[0_4px_16px_rgba(88,101,242,.2)] transition hover:bg-[#4752C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-card lg:w-auto"><Headphones className="h-4 w-4" aria-hidden="true" />Join 8s Waiting Room<ExternalLink className="ml-1 h-3.5 w-3.5 opacity-75" aria-hidden="true" /></a> : <button type="button" disabled className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[11px] font-black text-vapor lg:w-auto"><Headphones className="h-4 w-4" aria-hidden="true" />Join 8s Waiting Room<ExternalLink className="ml-1 h-3.5 w-3.5 opacity-75" aria-hidden="true" /></button>}
+        {!hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord returnTo={`/8s-match/${matchId}`} /> : voice?.waiting_room_url ? <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#5865F2] px-4 py-3 text-[11px] font-black text-white shadow-[0_4px_16px_rgba(88,101,242,.2)] transition hover:bg-[#4752C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-card lg:w-auto"><Headphones className="h-4 w-4" aria-hidden="true" />Waiting Room<ExternalLink className="ml-1 h-3.5 w-3.5 opacity-75" aria-hidden="true" /></a> : <button type="button" disabled className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[11px] font-black text-vapor lg:w-auto"><Headphones className="h-4 w-4" aria-hidden="true" />Waiting Room<ExternalLink className="ml-1 h-3.5 w-3.5 opacity-75" aria-hidden="true" /></button>}
       </div>
     </div>
     {summary && <div className="border-t border-white/[0.06] bg-black/[0.12] p-4 sm:px-5">

@@ -23,7 +23,7 @@ export default function FreeEightsTutorial() {
             <li><a href="/settings#settings-gaming" className="font-bold text-foreground underline underline-offset-4">Connections &rarr; Gaming IDs</a>: click Edit, enter your full Activision ID and Save Changes.</li>
             <li><a href="/settings#settings-rank" className="font-bold text-foreground underline underline-offset-4">Account &rarr; Game rank</a>: save Titan (Diamond), Master (Crimson) or Apex (Iridescent). Legend (Top 250) requires admin approval.</li>
             <li>In Free 8s, choose your game, check the lobby format and game mode, then click <strong className="text-foreground">Accept This Match</strong>.</li>
-            <li>In the matchroom, click <strong className="text-foreground">Join 8s Waiting Room</strong>. Use your linked Discord account. When all players are ready in this match's room, the system assigns teams and the bot moves you into team voice.</li>
+            <li>In the matchroom, click <strong className="text-foreground">Waiting Room</strong>. Use your linked Discord account. When all players are ready in this match's room, the system assigns teams and the bot moves you into team voice.</li>
           </ol>
         </details>
       </DialogContent>

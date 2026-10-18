@@ -13,6 +13,6 @@ export default function FreeEightsRankBadge({ elo = 0, screenshotRank }) {
   const description = `${rank.source === "screenshot" ? `Equivalent to ${screenshotRankFor(rank.key).gameLabel}` : "Free 8s rank"} · ${rank.elo} Free 8s ELO.`;
   const toneClass = rank.style.split(" ").find((token) => token.startsWith("text-")) || "text-white";
   return <BadgeTooltip label={rank.name} description={description} icon={Icon} toneClass={toneClass}>
-    <span tabIndex={0} className={`relative inline-flex h-[26px] shrink-0 cursor-default items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.025] px-2 text-[9px] font-bold uppercase tracking-[0.06em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${toneClass}`}><Icon className={rank.source === "screenshot" ? "h-5 w-5" : "h-3.5 w-3.5"} aria-hidden="true" />{rank.name}</span>
+    <span tabIndex={0} aria-label={rank.name} className={`relative inline-flex h-8 w-8 shrink-0 cursor-default items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${toneClass}`}><Icon className={rank.source === "screenshot" ? "h-7 w-7" : "h-5 w-5"} aria-hidden="true" /></span>
   </BadgeTooltip>;
 }
