@@ -21,7 +21,7 @@ import { recordUserIp } from "../user-ip-history.js";
 import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
 import { getAnimatedNameFreeTrial } from "../freeTrial.js";
 import { registrationSecurityConfig, verifyRegistrationTurnstile } from "../turnstile.js";
-import { assertNetworkAccess } from "../network-access.js";
+import { assertNetworkAccess, isNetworkAccessError, networkProtectionEnabled } from "../network-access.js";
 
 const router = Router();
 const VERIFICATION_TTL_MS = 10 * 60 * 1000;
@@ -230,6 +230,7 @@ router.post("/register", registerHandler);
 
 router.get("/network-status", async (req, res, next) => {
   res.set("Cache-Control", "no-store");
+  const ip = requestIpAddress(req);
   try {
     let identity = null;
     const header = req.headers.authorization || "";
@@ -237,10 +238,16 @@ router.get("/network-status", async (req, res, next) => {
       try { identity = verifyToken(header.slice(7)); } catch { /* Check unauthenticated connections normally. */ }
     }
     const user = identity ? await prisma.user.findUnique({ where: { id: identity.sub }, select: { vpn_access_allowed: true } }) : null;
-    await assertNetworkAccess(requestIpAddress(req), { vpnAllowed: user?.vpn_access_allowed === true });
-    res.json({ allowed: true });
+    const result = await assertNetworkAccess(ip, { vpnAllowed: user?.vpn_access_allowed === true });
+    res.json({ ...result, client_ip_captured: Boolean(ip) });
   }
-  catch (error) { next(error); }
+  catch (error) {
+    if (isNetworkAccessError(error)) return res.status(error.status).json({
+      allowed: false, error: error.message, code: error.code, protection_enabled: networkProtectionEnabled(),
+      checked: error.code === "VPN_BLOCKED", client_ip_captured: Boolean(ip), reason: error.networkReason || "check_unavailable",
+    });
+    next(error);
+  }
 });
 
 router.get("/registration-config", (_req, res, next) => {

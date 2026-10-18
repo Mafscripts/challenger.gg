@@ -8,8 +8,12 @@ const cache = new Map();
 const pending = new Map();
 let configScope = "";
 const errorFor = (code, message, status = 503) => Object.assign(new Error(message), { code, status });
-const unavailable = () => errorFor("VPN_CHECK_UNAVAILABLE", "The connection security check is temporarily unavailable. Please try again shortly.");
+const unavailable = (reason = "provider_unavailable") => Object.assign(
+  errorFor("VPN_CHECK_UNAVAILABLE", "The connection security check is temporarily unavailable. Please try again shortly."),
+  { networkReason: reason },
+);
 export const isNetworkAccessError = (error) => ["VPN_BLOCKED", "VPN_CHECK_UNAVAILABLE"].includes(error?.code);
+export const networkProtectionEnabled = () => String(process.env.VPN_BLOCK_ENABLED || "false").trim().toLowerCase() === "true";
 const normalize = (ip) => net.isIP(ip) === 6 ? new URL(`http://[${ip}]/`).hostname.slice(1, -1).toLowerCase() : ip;
 
 async function lookupAddress(ip, key) {
@@ -32,22 +36,26 @@ async function lookupAddress(ip, key) {
 export async function assertNetworkAccess(ip, { vpnAllowed = false } = {}) {
   // Only callers holding the freshly loaded database user may grant this bypass.
   // Protected routes enforce bans first; the diagnostic route grants no account access.
-  if (vpnAllowed === true) return;
-  if (String(process.env.VPN_BLOCK_ENABLED || "false").toLowerCase() !== "true") return;
-  const key = String(process.env.PROXYCHECK_API_KEY || "").trim();
-  if (!key) throw unavailable();
+  const protectionEnabled = networkProtectionEnabled();
+  const allowedResult = (reason, checked = false) => ({ allowed: true, protection_enabled: protectionEnabled, checked, reason });
+  if (!protectionEnabled) return allowedResult("protection_disabled");
   if (!ip || !net.isIP(ip)) {
-    if (process.env.NODE_ENV !== "production") return; // Local development has no public visitor IP.
-    throw unavailable();
+    // A missing NODE_ENV must never turn a missing visitor IP into unrestricted access.
+    throw unavailable("visitor_ip_missing");
   }
+  if (vpnAllowed === true) return allowedResult("account_exception");
+  const key = String(process.env.PROXYCHECK_API_KEY || "").trim();
+  if (!key) throw unavailable("provider_key_missing");
   ip = normalize(ip);
   const allowlist = String(process.env.VPN_ALLOWED_IPS || "").split(",").map((value) => value.trim()).filter((value) => net.isIP(value)).map(normalize);
   // An exception only bypasses VPN detection; account/email/IP bans run first.
-  if (allowlist.includes(ip)) return;
+  if (allowlist.includes(ip)) return allowedResult("ip_exception");
   if (configScope !== key) { cache.clear(); configScope = key; }
   const cacheKey = `${key}:${ip}`;
   let verdict = cache.get(cacheKey);
+  let reason = "cached_check";
   if (!verdict || verdict.expires <= Date.now()) {
+    reason = "provider_check";
     if (!pending.has(cacheKey)) {
       if (pending.size >= MAX_PENDING) throw unavailable();
       const check = lookupAddress(ip, key).then((blocked) => ({ blocked, expires: Date.now() + CACHE_MS }))
@@ -63,5 +71,9 @@ export async function assertNetworkAccess(ip, { vpnAllowed = false } = {}) {
     verdict = await pending.get(cacheKey);
   }
   if (verdict.unavailable) throw unavailable();
-  if (verdict.blocked) throw errorFor("VPN_BLOCKED", "VPN, proxy and Tor connections are not allowed. Turn them off and reconnect using your regular internet connection.", 403);
+  if (verdict.blocked) throw Object.assign(
+    errorFor("VPN_BLOCKED", "VPN, proxy and Tor connections are not allowed. Turn them off and reconnect using your regular internet connection.", 403),
+    { networkReason: "vpn_proxy_or_tor_detected" },
+  );
+  return allowedResult(reason, true);
 }
