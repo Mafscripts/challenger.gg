@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown, Plus, Search, UserRound, Users, X } from "lucide-react";
+import { Check, ChevronDown, Info, Plus, Search, UserRound, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import BadgeTooltip from "@/components/ui/BadgeTooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { partyCapacity } from "@/lib/partyWheel";
 
@@ -57,10 +58,10 @@ export function PartyAddPlayers({ room, disabled, act }) {
   const [player, setPlayer] = useState(emptyPlayer), [gender, setGender] = useState("male"), [names, setNames] = useState("");
   const full = room.players.length >= partyCapacity(room);
   const excluded = room.players.map((entry) => entry.user_id).filter(Boolean);
-  return <div className="party-add-players"><form onSubmit={async (event) => { event.preventDefault(); if (await act("add", { players: [{ name: player.name, user_id: player.user_id, gender }] })) setPlayer(emptyPlayer()); }}>
+  return <div className="party-add-players"><div className="party-entry-heading"><span><UserRound />Add a solo player</span><BadgeTooltip label="Solo players" icon={UserRound} toneClass="text-cyan" description="No duo partner needed. Choose a website player or enter a guest name. The wheel places solos into teams and keeps fixed duos together. For Co-ed, choose the player's gender."><button type="button" className="party-icon-button" aria-label="How solo players and fixed duos work"><Info /></button></BadgeTooltip></div><form onSubmit={async (event) => { event.preventDefault(); if (await act("add", { players: [{ name: player.name, user_id: player.user_id, gender }] })) setPlayer(emptyPlayer()); }}>
     <PartyPlayerLookup label="Player name" value={player} onChange={setPlayer} disabled={disabled || full} excludeIds={excluded} />
-    <div className="party-actions mt-3">{room.mode === "coed" && <GenderSelect value={gender} onChange={setGender} disabled={disabled} />}<button className="party-button party-primary" disabled={disabled || full || !player.name.trim()}><Plus />{player.user_id ? "Add player" : "Add guest"}</button></div>
-    <p className="party-muted">Choose a website account to link their profile, or type any name to add a guest.</p>
+    <div className="party-actions mt-3">{room.mode === "coed" && <GenderSelect value={gender} onChange={setGender} disabled={disabled} />}<button className="party-button party-primary" disabled={disabled || full || !player.name.trim()}><Plus />Add solo player</button></div>
+    <p className="party-muted">Website player or guest · no duo partner needed.</p>
   </form><details className="party-bulk-guests"><summary>Add multiple guests<ChevronDown /></summary><form onSubmit={async (event) => { event.preventDefault(); const values = names.split(/\r?\n/).map((name) => name.trim()).filter(Boolean); if (await act("add", { names: values, gender })) setNames(""); }}><label className="party-label">Guest names<textarea className="party-field" rows={3} value={names} onChange={(event) => setNames(event.target.value)} maxLength={2400} placeholder={"One guest per line"} disabled={disabled || full} /></label><button className="party-button" disabled={disabled || full || !names.trim()}><Plus />Add guests</button></form></details></div>;
 }
 
