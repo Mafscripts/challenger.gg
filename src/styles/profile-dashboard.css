@@ -30,11 +30,11 @@
 .pd-about dl { margin-top: 18px; padding-top: 15px; border-top: 1px solid hsl(var(--border) / .6); font-size: 10px; }
 .pd-about dl > div { margin-top: 10px; }.pd-about dt { color: hsl(var(--muted-foreground)); }.pd-about dd { font-weight: 700; margin-top: 3px; }
 .pd-trophy-shelf { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 4px 0 8px; }
-.pd-trophy { display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0; width: 104px; padding: 6px; border: 0; border-radius: 6px; background: transparent; transition: transform 150ms; }
+.pd-trophy { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; width: 76px; padding: 4px; border: 0; border-radius: 6px; background: transparent; transition: transform 150ms; }
 .pd-trophy:hover { transform: translateY(-3px); }
 .pd-trophy:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
-.pd-trophy-symbol { width: 88px; height: 128px; filter: drop-shadow(0 4px 8px rgb(0 0 0 / .25)); }
-.pd-trophy-placement { font-size: 12px; line-height: 1.5; font-weight: 800; white-space: nowrap; color: #fde68a; }
+.pd-trophy-symbol { width: 60px; height: 88px; filter: drop-shadow(0 4px 8px rgb(0 0 0 / .25)); }
+.pd-trophy-placement { font-size: 10px; line-height: 1.5; font-weight: 800; white-space: nowrap; color: #fde68a; }
 .pd-trophy[data-tier="silver"] .pd-trophy-placement { color: #e2e8f0; }
 .pd-trophy[data-tier="bronze"] .pd-trophy-placement { color: #fdba74; }
 .pd-trophy[data-tier="premium"] .pd-trophy-placement { color: #d8b4fe; }
