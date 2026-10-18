@@ -144,6 +144,7 @@ const AuthenticatedApp = () => {
           <Route path="/challenge-a-team/:id" element={<ChallengeTeam />} />
           <Route path="/coed-switcheroo" element={<CoedSwitcheroo />} />
           <Route path="/coed-switcheroo/:id" element={<CoedSwitcheroo />} />
+          <Route path="/coed-switcheroo/:id/match/:matchId" element={<CoedSwitcheroo />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:username" element={<Profile />} />
           <Route path="/teams" element={<Teams />} />

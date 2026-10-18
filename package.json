@@ -8,6 +8,7 @@
     "dev:web": "vite",
     "dev:api": "node --watch server/index.js",
     "dev:full": "npm run dev",
+    "prebuild": "prisma generate",
     "build": "vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",

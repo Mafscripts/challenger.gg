@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createPartyRoom, changePartyRoom, flattenPartyRoom } from "./party-rooms.js";
-import { partyCandidates, partyCapacity, partyGenderQuota, partySide, partyValidation } from "../src/lib/partyWheel.js";
+import { createPartyRoom, changePartyRoom, flattenPartyRoom, getPartyRoom, partyRoomSummary, partyRoomView } from "./party-rooms.js";
+import { partyRoomStorageError } from "./party-room-storage.js";
+import { partyCandidates, partyCapacity, partyDrawMembers, partyGenderQuota, partySide, partyValidation } from "../src/lib/partyWheel.js";
 
 function fixture() {
   let row = { id: "party-room", owner_id: "host", revision: 0, status: "open", created_date: new Date(), updated_date: new Date(), metadata: {
@@ -19,6 +20,28 @@ function fixture() {
   const act = (action, input = {}, user = { id: "host" }) => changePartyRoom(db, row.id, user, { action, revision: row.revision, ...input }, { choose: () => 0, checkMembership: async () => null });
   return { db, act, row: () => row, room: () => flattenPartyRoom(row), finish: () => { if (row.metadata.spin) row.metadata.spin.started_at = new Date(Date.now() - 8000).toISOString(); } };
 }
+
+test("an outdated Prisma client returns a service error before starting queries", async () => {
+  const oldClient = { $transaction: () => assert.fail("Must not start a transaction") };
+  for (const run of [
+    () => createPartyRoom(oldClient, { id: "host" }, { mode: "coed", team_size: 2 }),
+    () => getPartyRoom(oldClient, "room"),
+    () => changePartyRoom(oldClient, "room", { id: "host" }, { action: "spin" }),
+    () => createPartyRoom({ partyRoom: {}, $transaction: (run) => run({}) }, { id: "host" }, { mode: "coed", team_size: 2 }),
+  ]) await assert.rejects(run(), { status: 503, code: "PARTY_ROOMS_NOT_READY" });
+});
+
+test("missing PartyRoom migrations have a friendly error without masking unrelated failures", () => {
+  for (const code of ["P2021", "P2022"]) {
+    const error = { code, meta: { modelName: "PartyRoom", table: "public.PartyRoom" } };
+    const result = partyRoomStorageError(error);
+    assert.equal(result.status, 503);
+    assert.equal(result.cause, error);
+  }
+  for (const error of [new Error("Unexpected failure"), { code: "P2021", meta: { table: "public.User" } }, { code: "P2002", meta: { modelName: "PartyRoom" } }]) {
+    assert.equal(partyRoomStorageError(error), error);
+  }
+});
 
 test("rooms start with two teams; names, extra teams and the format are validated", async () => {
   const f = fixture();
@@ -116,4 +139,125 @@ test("team limits, occupied formats, closed rooms and partial roster spins are r
   await assert.rejects(f.act("add_team"));
   await f.act("close");
   await assert.rejects(f.act("reset"), { status: 409 });
+});
+
+test("fixed duos are validated, spin together, stay paired next round and can be unlinked", async () => {
+  const f = fixture();
+  await assert.rejects(f.act("add_duo", { players: [{ name: "A" }] }));
+  await assert.rejects(f.act("add_duo", { players: [{ name: "A" }, { name: "a" }] }));
+  await assert.rejects(f.act("add_duo", { players: [{ name: "A" }, { name: "B" }] }, { id: "viewer" }), { status: 403 });
+  await f.act("add_duo", { players: [{ name: "A" }, { name: "B" }] });
+  await f.act("add_duo", { players: [{ name: "C" }, { name: "D" }] });
+  const duoId = f.room().players[0].duo_id;
+  const first = await f.act("spin");
+  assert.equal(first.spin.selected_ids.length, 2);
+  assert.equal(first.spin.entries[0].name, "A + B");
+  assert.deepEqual(first.players.filter((p) => p.duo_id === duoId).map((p) => p.side), ["a", "a"]);
+  f.finish(); await f.act("spin"); f.finish();
+  assert.equal(f.room().status, "ready");
+  await f.act("reset");
+  assert.equal(f.room().players[0].duo_id, duoId);
+  await f.act("unpair", { player_id: f.room().players[0].id });
+  assert.ok(f.room().players.slice(0, 2).every((p) => !p.duo_id));
+  await f.act("remove", { player_id: f.room().players[2].id });
+  assert.equal(f.room().players.at(-1).duo_id, null);
+});
+
+test("duos never strand a draw across all 2–16-team sizes, Co-ed quotas or Switcheroo preferences", () => {
+  for (const mode of ["coed", "switcheroo"]) for (const size of [2, 3, 4]) for (let count = 2; count <= 16; count++) {
+    const room = { mode, team_size: size, teams: Array.from({ length: count }, (_, i) => ({ id: `t${i}` })), players: [] };
+    for (const team of room.teams) {
+      const quota = partyGenderQuota(room, team.id);
+      const genders = mode === "coed" ? Array.from({ length: quota.male }, () => "male").concat(Array.from({ length: quota.female }, () => "female")) : Array(size).fill(null);
+      // Alternate genders so the known feasible roster includes mixed duos.
+      if (size === 4 && mode === "coed") [genders[1], genders[2]] = [genders[2], genders[1]];
+      for (let i = 0; i < size; i++) room.players.push({ id: `${team.id}-p${i}`, name: `${team.id}-p${i}`, gender: genders[i], duo_id: i < size - size % 2 ? `${team.id}-duo${Math.floor(i / 2)}` : null, side: null });
+    }
+    // For 3v3 Co-ed, same-gender duos plus opposite-gender singles also fit.
+    assert.equal(partyValidation(room), null, `${mode} ${size}x${count}`);
+    while (room.players.some((p) => !p.side)) {
+      const candidates = partyCandidates(room), side = partySide(room);
+      assert.ok(candidates.length > 0, `${mode} ${size}x${count} cannot stall`);
+      const chosen = candidates[Math.floor(candidates.length / 2)];
+      partyDrawMembers(room, chosen).forEach((member) => { member.side = side; });
+    }
+    for (const team of room.teams) {
+      const members = room.players.filter((p) => p.side === team.id);
+      assert.equal(members.length, size);
+      if (mode === "coed") for (const gender of ["male", "female"]) assert.equal(members.filter((p) => p.gender === gender).length, partyGenderQuota(room, team.id)[gender]);
+    }
+    for (const p of room.players.filter((p) => p.duo_id)) assert.equal(room.players.find((mate) => mate.duo_id === p.duo_id && mate.id !== p.id).side, p.side);
+  }
+  const impossible = { mode: "switcheroo", team_size: 3, teams: [{ id: "a" }, { id: "b" }], players: Array.from({ length: 6 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, duo_id: `d${Math.floor(i / 2)}` })) };
+  assert.match(partyValidation(impossible), /duos cannot fit/);
+  assert.deepEqual(partyCandidates(impossible), []);
+});
+
+async function readyRoom(f) {
+  await f.act("add", { names: ["A", "B", "C", "D"] });
+  for (let i = 0; i < 4; i++) { await f.act("spin"); f.finish(); }
+}
+
+test("only host/admin starts or resolves a bracket; active rounds and old match links are protected", async () => {
+  const f = fixture();
+  await assert.rejects(f.act("start_bracket"), { status: 409 });
+  await readyRoom(f);
+  await assert.rejects(f.act("start_bracket", {}, { id: "viewer" }), { status: 403 });
+  await f.act("start_bracket", { format: "single_elimination", best_of: 1, game_mode: "hardpoint" });
+  const firstId = f.room().bracket.matches[0].id;
+  await assert.rejects(f.act("start_bracket"), { status: 409 });
+  await assert.rejects(f.act("reset"), { status: 409 });
+  await assert.rejects(f.act("match_score", { match_id: firstId, scores: [1, 0] }, { id: "viewer" }), { status: 403 });
+  await f.act("match_score", { match_id: firstId, scores: [1, 0] });
+  assert.equal(f.room().bracket.status, "completed");
+  await f.act("reset");
+  assert.equal(f.room().history[0].bracket.champion_id, f.room().history[0].bracket.matches[0].teams[0]);
+  for (let i = 0; i < 4; i++) { await f.act("spin"); f.finish(); }
+  await f.act("start_bracket");
+  assert.notEqual(f.room().bracket.matches[0].id, firstId);
+  await assert.rejects(f.act("match_score", { match_id: firstId, scores: [2, 0] }), { status: 404 });
+});
+
+test("match chat is limited to participants/host; agreeing reports advance and conflicts await host resolution", async () => {
+  const f = fixture(); await readyRoom(f); await f.act("start_bracket");
+  const match = f.room().bracket.matches[0];
+  const a = { id: "player-a", username: "Player A" }, b = { id: "player-b" };
+  for (const [user, side] of [[a, match.teams[0]], [b, match.teams[1]]]) f.row().metadata.players.find((p) => p.side === side).user_id = user.id;
+  await assert.rejects(f.act("match_message", { match_id: match.id, message: "Hi" }, { id: "viewer" }), { status: 403 });
+  await f.act("match_message", { match_id: match.id, message: "GL HF" }, a);
+  assert.equal(f.room().bracket.matches[0].messages[0].name, "Player A");
+  await assert.rejects(f.act("match_message", { match_id: match.id, message: "Again" }, a), { status: 429 });
+  await f.act("report_score", { match_id: match.id, scores: [2, 0] }, a);
+  assert.equal(f.room().bracket.matches[0].status, "ready");
+  await f.act("report_score", { match_id: match.id, scores: [0, 2] }, b);
+  assert.equal(f.room().bracket.matches[0].status, "ready");
+  await f.act("report_score", { match_id: match.id, scores: [2, 0] }, b);
+  assert.equal(f.room().bracket.status, "completed");
+  assert.equal(f.room().bracket.matches[0].result_by, "team_agreement");
+  await assert.rejects(f.act("report_score", { match_id: match.id, scores: [0, 2] }, b), { status: 409 });
+  await f.act("reset");
+  assert.equal(f.room().history[0].bracket.matches[0].messages, undefined);
+});
+
+test("room lists omit bracket history and polling includes only the opened match's chat", async () => {
+  const f = fixture(); await readyRoom(f); await f.act("start_bracket", { format: "double_elimination" });
+  const match = f.room().bracket.matches[0];
+  await f.act("match_message", { match_id: match.id, message: "Hello" });
+  const room = f.room();
+  assert.equal(partyRoomSummary(room).bracket, undefined);
+  assert.equal(partyRoomView(room).bracket.matches[0].messages.length, 0);
+  assert.equal(partyRoomView(room, match.id).bracket.matches[0].messages[0].message, "Hello");
+  assert.equal(room.bracket.matches[0].messages.length, 1, "serialization must not alter saved messages");
+});
+
+test("changing a linked slot cannot let one account confirm both sides of a result", async () => {
+  const f = fixture(); await readyRoom(f); await f.act("start_bracket");
+  const match = f.room().bracket.matches[0], user = { id: "one" };
+  const first = f.row().metadata.players.find((p) => p.side === match.teams[0]);
+  first.user_id = user.id;
+  await f.act("report_score", { match_id: match.id, scores: [2, 0] }, user);
+  f.row().metadata.players.find((p) => p.id === first.id).user_id = null;
+  f.row().metadata.players.find((p) => p.side === match.teams[1]).user_id = user.id;
+  await assert.rejects(f.act("report_score", { match_id: match.id, scores: [2, 0] }, user), { status: 403 });
+  assert.equal(f.room().bracket.status, "in_progress");
 });

@@ -405,7 +405,7 @@ export const base44 = {
   },
   party: {
     list() { requireToken(); return apiFetch("/party-rooms"); },
-    get(id) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}`); },
+    get(id, matchId) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}${matchId ? `?match=${encodeURIComponent(matchId)}` : ""}`); },
     create(input) { requireToken(); return apiFetch("/party-rooms", { method: "POST", body: input }); },
     change(id, input) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}`, { method: "POST", body: input }); },
   },
