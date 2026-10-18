@@ -50,7 +50,7 @@ export function LegendEmblem({ animatedTexture = false, className, ...props }) {
           <path d="m1 10 10 5 2 12-8-5Zm38 0-10 5-2 12 8-5ZM5 25l10 7v4l-8-6Zm30 0-10 7v4l8-6Z" />
         </clipPath>
       </defs>
-      <image className="legend-emblem-texture" href="/assets/ranks/legend-gold-energy.gif" x="0" y="0" width="40" height="40" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clipId})`} />
+      <image className="legend-emblem-texture" href="/assets/ranks/legend-pulsating-energy.gif" x="0" y="0" width="40" height="40" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clipId})`} />
     </>}
     <path d="m11 9 5 4 4-8 4 8 5-4-2 9H13Z" fill="currentColor" />
     <path d="m20 19 2.5 4.5 5 .8-3.6 3.6.8 5.1-4.7-2.4-4.7 2.4.8-5.1-3.6-3.6 5-.8Z" fill="currentColor" />

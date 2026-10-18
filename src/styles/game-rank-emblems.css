@@ -3,8 +3,7 @@
 }
 
 .legend-emblem-texture {
-  opacity: .85;
-  mix-blend-mode: screen;
+  opacity: 1;
   pointer-events: none;
 }
 
