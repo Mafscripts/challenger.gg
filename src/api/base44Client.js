@@ -403,6 +403,12 @@ export const base44 = {
       return apiFetch(`/profile/${encodeURIComponent(userId)}/tournament-participants`);
     },
   },
+  party: {
+    list() { requireToken(); return apiFetch("/party-rooms"); },
+    get(id) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}`); },
+    create(input) { requireToken(); return apiFetch("/party-rooms", { method: "POST", body: input }); },
+    change(id, input) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}`, { method: "POST", body: input }); },
+  },
   public: {
     playerOverlay(identifier) {
       return apiFetch(`/public/player-overlay/${encodeURIComponent(identifier)}`);

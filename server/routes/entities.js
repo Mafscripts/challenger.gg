@@ -115,6 +115,7 @@ const participantIdentityValues = (participant) => {
 const router = Router();
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
+  if (String(req.params.entity).toLowerCase() === "partyroom") return res.status(403).json({ error: "Use the Co-ed / Switcheroo endpoints" });
   if (["friendrequest", "friendship"].includes(String(req.params.entity).toLowerCase())) {
     return res.status(403).json({ error: "Use the protected friend endpoints" });
   }

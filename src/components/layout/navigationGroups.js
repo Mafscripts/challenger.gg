@@ -74,6 +74,7 @@ export const playNavGroup = {
   items: [
     ...rankedNavGroup.items,
     ...xpNavGroup.items,
+    { label: "Co-ed / Switcheroo", description: "Spin the wheel, build teams and join Discord voice", path: "/coed-switcheroo", icon: Users, tone: "purple", isNew: true },
   ],
 };
 

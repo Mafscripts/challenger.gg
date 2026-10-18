@@ -33,6 +33,7 @@ const Matchfinder = lazy(() => import('@/pages/Matchfinder'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const MyMatches = lazy(() => import('@/pages/MyMatches'));
 const ChallengeTeam = lazy(() => import('@/pages/ChallengeTeam'));
+const CoedSwitcheroo = lazy(() => import('@/pages/CoedSwitcheroo'));
 const League = lazy(() => import('@/pages/League'));
 const LeagueMatchDemo = lazy(() => import('@/pages/LeagueMatchDemo'));
 const Teams = lazy(() => import('@/pages/Teams'));
@@ -141,6 +142,8 @@ const AuthenticatedApp = () => {
           <Route path="/my-matches" element={<MyMatches />} />
           <Route path="/challenge-a-team" element={<ChallengeTeam />} />
           <Route path="/challenge-a-team/:id" element={<ChallengeTeam />} />
+          <Route path="/coed-switcheroo" element={<CoedSwitcheroo />} />
+          <Route path="/coed-switcheroo/:id" element={<CoedSwitcheroo />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:username" element={<Profile />} />
           <Route path="/teams" element={<Teams />} />

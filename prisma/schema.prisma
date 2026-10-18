@@ -535,6 +535,19 @@ model FriendRequest {
   metadata     Json     @default("{}")
 }
 
+model PartyRoom {
+  id           String   @id @default(cuid())
+  owner_id     String
+  status       String   @default("open")
+  revision     Int      @default(0)
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  metadata     Json     @default("{}")
+
+  @@index([owner_id, status])
+  @@index([status, updated_date])
+}
+
 model Friendship {
   id           String   @id @default(cuid())
   created_date DateTime @default(now())

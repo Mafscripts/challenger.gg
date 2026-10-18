@@ -33,6 +33,7 @@ import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
 import { syncChallengeVoice } from "./challenge-voice.js";
+import { syncPartyVoice } from "./party-voice.js";
 import { createFreeEightsVoiceUpdater, startFreeEightsLiveUpdates } from "./free-eights-live.js";
 import { syncFreeEightsResults } from "./free-eights-results.js";
 import { createCommunityCommandHandler } from "./community-commands.js";
@@ -65,6 +66,14 @@ async function runMemberVerificationSync(guild) {
 }
 let freeEightsVoiceSyncRunning = false;
 let challengeVoiceRunning = false;
+let partyVoiceRunning = false;
+async function runPartyVoiceSync(guild) {
+  if (partyVoiceRunning) return;
+  partyVoiceRunning = true;
+  try { await syncPartyVoice(guild); }
+  catch (error) { console.error("[Co-ed / Switcheroo Discord]", error.message); }
+  finally { partyVoiceRunning = false; }
+}
 async function runChallengeVoiceSync(guild) {
   if (challengeVoiceRunning) return;
   challengeVoiceRunning = true;
@@ -559,6 +568,8 @@ client.once(Events.ClientReady, async (readyClient) => {
   const voiceUpdates = createFreeEightsVoiceUpdater((id) => syncFreeEightsVoice(guild, { matchIds: [id], refreshInventory: false }));
   void runFreeEightsVoiceSync(guild);
   void runChallengeVoiceSync(guild);
+  void runPartyVoiceSync(guild);
+  setInterval(() => runPartyVoiceSync(guild), 5000);
   setInterval(() => runChallengeVoiceSync(guild), 5000);
   setInterval(() => runFreeEightsVoiceSync(guild), 5000);
   try {
@@ -591,6 +602,7 @@ client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   if (newState.guild.id === config.guildId && oldState.channelId !== newState.channelId) {
     void runFreeEightsVoiceSync(newState.guild, { refreshInventory: false });
     void runChallengeVoiceSync(newState.guild);
+    void runPartyVoiceSync(newState.guild);
   }
 });
 

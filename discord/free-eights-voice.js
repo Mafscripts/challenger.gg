@@ -92,7 +92,8 @@ export async function cleanupFreeEightsVoice(guild, state, { db = prisma, guard 
   let complete = true;
   // Delete teams before the lobby room. Full cleanup returns known players to
   // the optional public return voice, or disconnects them if none is configured.
-  const sides = teamsOnly ? ["host", "challenger"] : ["host", "challenger", "waiting"];
+  const teamSides = [...new Set([...Object.keys(state.channels), ...Object.keys(state.provisions || {})])].filter((side) => side !== "waiting");
+  const sides = teamsOnly ? teamSides : [...teamSides, "waiting"];
   const ownedChannels = [];
   for (const side of sides) {
     const id = state.channels[side];
@@ -206,11 +207,15 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
   };
   const row = await db.wager.findUnique({ where: { id: matchId } });
   const match = row?.metadata;
+  const currentSides = config.channelSides?.(match) || channelSides;
+  const knownSides = [...new Set([...currentSides, ...Object.keys(state.channels), ...Object.keys(state.provisions)])];
+  const teamSides = currentSides.filter((side) => side !== "waiting");
+  const canAssign = (match, roster) => config.canAssign ? config.canAssign(match, roster) : canAssignFreeEightsVoice(match, roster, config.teamSize?.(match) || freeEightsTeamSize(match));
   const participants = row ? await rosterFor(db, matchId) : [];
   const signature = voiceRosterSignature(match, participants);
   const closed = !match || match.match_type !== "8s" || freeEightsVoiceClosed.has(match.status);
-  const assign = config.enabled && canAssignFreeEightsVoice(match, participants, config.teamSize?.(match) || freeEightsTeamSize(match));
-  for (const side of channelSides) {
+  const assign = config.enabled && canAssign(match, participants);
+  for (const side of knownSides) {
     if (!state.channels[side] && state.provisions[side]) {
       await guard();
       const id = await recoverProvision(guild, db, state, side, state.provisions[side], log);
@@ -225,7 +230,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
     }
   }
   // Validate every ID before any moves, edits or cleanup for the match.
-  for (const side of channelSides) {
+  for (const side of knownSides) {
     if (state.channels[side]) await channelOwner(db, guild, state, side, state.channels[side]);
   }
   const changedConfig = state.guild_id && (state.guild_id !== config.guildId
@@ -263,7 +268,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
   }
   const readyChannels = {};
   if (config.enabled && configured) {
-    const prepareSides = assign ? channelSides : ["waiting"];
+    const prepareSides = assign ? currentSides : ["waiting"];
     let reservations = guildCategoryReservations.get(guild);
     if (!reservations) { reservations = new Map(); guildCategoryReservations.set(guild, reservations); }
     let reservedSlots = 0;
@@ -304,8 +309,8 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       }
       for (const side of prepareSides) {
         if (!capacity && !exists(side)) continue;
-        const channelName = (config.channelName || freeEightsVoiceChannelName)(matchId, side);
-        const visibleToEveryone = side !== "waiting" && assign && visibleTeamStatuses.has(match.status);
+        const channelName = (config.channelName || freeEightsVoiceChannelName)(matchId, side, match);
+        const visibleToEveryone = !config.privateTeams && side !== "waiting" && assign && visibleTeamStatuses.has(match.status);
         const members = participants.filter((player) => side === "waiting" || player.team === side).map((player) => identities.get(player.user_id)).filter(hasDiscordLink);
         // Manage Roles is inherited from the bot's guild role. Discord only lets
         // administrators set that bit in channel overwrites (otherwise 50013).
@@ -342,7 +347,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
               await guard();
               channel = await guild.channels.create({ name: channelName,
                 type: ChannelType.GuildVoice, parent: state.category_id, permissionOverwrites: overwrites,
-                reason: provision.reason, userLimit: (config.teamSize?.(match) || freeEightsTeamSize(match)) * (side === "waiting" ? 2 : 1) });
+                reason: provision.reason, userLimit: config.channelLimit?.(match, side) || (config.teamSize?.(match) || freeEightsTeamSize(match)) * (side === "waiting" ? 2 : 1) });
               releaseSlot();
             } catch (error) {
               // A definite rejection permits retry. Ambiguous outcomes retain
@@ -362,6 +367,13 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
           } else {
             const owner = await channelOwner(db, guild, state, side, channel.id);
             if (channel.parentId !== owner.category_id || channel.type !== ChannelType.GuildVoice || owner.deleted_at) throw new Error("Managed channel location or lifecycle changed");
+            if (config.channelLimit) {
+              const limit = config.channelLimit(match, side);
+              if (channel.userLimit !== limit) {
+                await guard();
+                await channel.setUserLimit(limit, `${config.modeLabel || "Topfragg"} ${matchId} capacity updated`);
+              }
+            }
             if (state.channel_roster_signatures[side] !== permissionSignature) {
               await guard();
               await channel.permissionOverwrites.set(overwrites, `Free 8s ${matchId} teams updated`);
@@ -389,7 +401,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
           if (side === "waiting") break;
         }
       }
-      if (readyChannels.host && readyChannels.challenger) state.discord_channels_created_at ||= new Date().toISOString();
+      if (teamSides.length && teamSides.every((side) => readyChannels[side])) state.discord_channels_created_at ||= new Date().toISOString();
     } finally { while (reservedSlots) releaseSlot(); }
   }
   // A leave revokes private access and removes only that former participant
@@ -398,7 +410,7 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
   for (const id of state.member_discord_ids) {
     if (currentMembers.has(id)) continue;
     const voice = guild.voiceStates.cache.get(id);
-    const side = channelSides.find((key) => state.channels[key] && state.channels[key] === voice?.channelId);
+    const side = knownSides.find((key) => state.channels[key] && state.channels[key] === voice?.channelId);
     if (!side) continue;
     await guard();
     await channelOwner(db, guild, state, side, voice.channelId);
@@ -426,15 +438,15 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       status = config.enabled && configured && readyChannels.waiting ? "not_in_waiting_room" : "unavailable";
       const voice = guild.voiceStates.cache.get(identity.discord_user_id);
       const source = voice?.channelId;
-      const target = assign && readyChannels.host && readyChannels.challenger ? readyChannels[player.team] : null;
+      const target = assign && teamSides.every((side) => readyChannels[side]) ? readyChannels[player.team] : null;
       if (target && source === target) status = "in_team_voice";
       else if (source && source === readyChannels.waiting) status = "in_waiting_room";
-      const managedSide = channelSides.find((side) => state.channels[side] === source && source);
+      const managedSide = knownSides.find((side) => state.channels[side] === source && source);
       if (target && source && source !== target && managedSide) {
         await guard();
         const latest = await db.wager.findUnique({ where: { id: matchId } });
         const roster = await rosterFor(db, matchId);
-        if (!canAssignFreeEightsVoice(latest?.metadata, roster, config.teamSize?.(latest?.metadata) || freeEightsTeamSize(latest?.metadata)) || voiceRosterSignature(latest.metadata, roster) !== signature) {
+        if (!canAssign(latest?.metadata, roster) || voiceRosterSignature(latest.metadata, roster) !== signature) {
           log("roster-changed-during-assignment", { match_id: matchId });
           state.roster_signature = "";
           await save();
