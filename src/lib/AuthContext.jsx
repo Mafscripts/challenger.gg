@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { base44, invalidateApiCache } from "@/api/base44Client";
 import { bootstrapCurrentUser, clearBootstrapSession } from "@/lib/userBootstrap";
 import { RESTRICTION_EVENT, readRestriction, clearRestriction, isRestriction } from "@/lib/accountRestriction";
+import { NETWORK_RESTRICTION_EVENT, readNetworkRestriction, clearNetworkRestriction } from "@/lib/networkAccess";
 
 const AuthContext = createContext();
 
@@ -13,6 +14,13 @@ export const AuthProvider = ({ children }) => {
   const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings] = useState(null);
   const [restriction, setRestriction] = useState(readRestriction);
+  const [networkRestriction, setNetworkRestriction] = useState(readNetworkRestriction);
+
+  useEffect(() => {
+    const blocked = (event) => { setNetworkRestriction(event.detail); setIsLoadingAuth(false); setAuthChecked(true); };
+    window.addEventListener(NETWORK_RESTRICTION_EVENT, blocked);
+    return () => window.removeEventListener(NETWORK_RESTRICTION_EVENT, blocked);
+  }, []);
 
   useEffect(() => {
     const blocked = (event) => {
@@ -27,6 +35,12 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const completeAuth = useCallback((currentUser) => {
+    if (readNetworkRestriction()) {
+      setNetworkRestriction(readNetworkRestriction());
+      setIsLoadingAuth(false);
+      setAuthChecked(true);
+      return;
+    }
     if (readRestriction()) {
       setRestriction(readRestriction());
       setUser(null);
@@ -67,6 +81,12 @@ export const AuthProvider = ({ children }) => {
       }
 
       const currentUser = await bootstrapCurrentUser({ force });
+      if (readNetworkRestriction()) {
+        setNetworkRestriction(readNetworkRestriction());
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        return null;
+      }
       if (!currentUser?.id) {
         if (readRestriction()) { setRestriction(readRestriction()); markUnauthenticated(); return null; }
         base44.auth.logout();
@@ -78,6 +98,12 @@ export const AuthProvider = ({ children }) => {
       completeAuth(currentUser);
       return currentUser;
     } catch (error) {
+      if (readNetworkRestriction()) {
+        setNetworkRestriction(readNetworkRestriction());
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        return null;
+      }
       if (isRestriction(error.data) || readRestriction()) {
         setRestriction(error.data?.restriction || readRestriction());
         markUnauthenticated();
@@ -96,12 +122,18 @@ export const AuthProvider = ({ children }) => {
   }, [completeAuth, markUnauthenticated]);
 
   const checkAppState = useCallback(() => checkUserAuth(), [checkUserAuth]);
+  const resumeNetworkAccess = useCallback(async () => {
+    clearNetworkRestriction();
+    setNetworkRestriction(null);
+    return checkUserAuth({ force: true });
+  }, [checkUserAuth]);
 
   useEffect(() => {
     checkUserAuth();
   }, [checkUserAuth]);
 
   const logout = useCallback((shouldRedirect = true) => {
+    setNetworkRestriction(null);
     setRestriction(null);
     clearBootstrapSession(user?.id);
     base44.auth.logout();
@@ -118,6 +150,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const value = useMemo(() => ({
+    networkRestriction,
+    resumeNetworkAccess,
     restriction,
     user,
     isAuthenticated,
@@ -132,6 +166,8 @@ export const AuthProvider = ({ children }) => {
     checkUserAuth,
     checkAppState,
   }), [
+    networkRestriction,
+    resumeNetworkAccess,
     restriction,
     user,
     isAuthenticated,

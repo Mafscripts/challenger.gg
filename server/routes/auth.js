@@ -20,6 +20,7 @@ import { recordUserIp } from "../user-ip-history.js";
 import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
 import { getAnimatedNameFreeTrial } from "../freeTrial.js";
 import { registrationSecurityConfig, verifyRegistrationTurnstile } from "../turnstile.js";
+import { assertNetworkAccess } from "../network-access.js";
 
 const router = Router();
 const VERIFICATION_TTL_MS = 10 * 60 * 1000;
@@ -201,6 +202,7 @@ export const registerHandler = async (req, res, next) => {
     }
     const payload = req.body || {};
     await verifyRegistrationTurnstile(req, access.ip);
+    await assertNetworkAccess(access.ip);
     let user = await createUserWithPassword(payload);
     const referralCode = normalizeReferralCode(payload.referral_code || payload.referralCode);
     if (referralCode) {
@@ -224,6 +226,12 @@ export const registerHandler = async (req, res, next) => {
 };
 
 router.post("/register", registerHandler);
+
+router.get("/network-status", async (req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  try { await assertNetworkAccess(requestIpAddress(req)); res.json({ allowed: true }); }
+  catch (error) { next(error); }
+});
 
 router.get("/registration-config", (_req, res, next) => {
   res.set("Cache-Control", "no-store");
@@ -275,6 +283,7 @@ router.post("/login", async (req, res, next) => {
       });
     }
 
+    await assertNetworkAccess(access.ip);
     const loginUser = await recordIp(access.user, req, "last_login_ip");
     const bootstrap = await ensureUserRecords(loginUser);
     res.json({

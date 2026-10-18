@@ -6,6 +6,7 @@ import {
 import { notifyCancelledMatch, notifyCancelledMatchResponse } from "@/lib/cancelledMatchRoom";
 import { notifyMatchPostedResponse } from "@/lib/notificationInbox";
 import { rememberRestriction, clearRestriction, appealHeaders } from "@/lib/accountRestriction";
+import { rememberNetworkRestriction, clearNetworkRestriction } from "@/lib/networkAccess";
 
 const normalizeApiBase = (value) => String(value || "").replace(/\/+$/, "");
 
@@ -135,6 +136,7 @@ async function apiFetch(path, options = {}) {
     }
     if (!response.ok) {
       rememberRestriction(data);
+      rememberNetworkRestriction(data);
       const error = new Error(data?.error || data?.message || `Request failed (${response.status})`);
       error.status = response.status;
       error.data = data;
@@ -198,6 +200,10 @@ const auth = {
     return apiFetch("/auth/registration-config");
   },
 
+  getNetworkStatus() {
+    return apiFetch("/auth/network-status");
+  },
+
   async register(payload) {
     const result = await apiFetch("/auth/register", { method: "POST", body: payload, dedupe: false });
     if (result.access_token) {
@@ -240,6 +246,7 @@ const auth = {
   },
 
   logout(redirectTo) {
+    clearNetworkRestriction();
     clearRestriction();
     setToken(null);
     invalidateApiCache();

@@ -76,6 +76,7 @@ const sections = [
     title: "Privacy and Data",
     body: [
       "We use account, gameplay, payment, wallet, marketplace, support, moderation, device, and usage data to operate and protect the platform.",
+      "To help prevent ban evasion, we may send your public IP address to proxycheck.io to identify VPN, proxy, and Tor connections. This check does not send your account name, email, messages, or password to that provider.",
       "Support tickets, match evidence, chat, transaction records, and moderation records may be reviewed by authorized staff.",
       "We may retain records needed for legal, tax, fraud prevention, payment, dispute, security, and platform integrity purposes.",
       "Do not submit sensitive personal information unless it is required for support, payment, identity, or compliance review.",

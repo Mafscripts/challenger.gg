@@ -51,6 +51,7 @@ const PlayerOverlay = lazy(() => import('@/pages/PlayerOverlay'));
 const ThankYou = lazy(() => import('@/pages/ThankYou'));
 const Admin = lazy(() => import('@/pages/Admin'));
 const AccountRestricted = lazy(() => import('@/pages/AccountRestricted'));
+const ConnectionRestricted = lazy(() => import('@/pages/ConnectionRestricted'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
 const Messages = lazy(() => import('@/pages/Messages'));
 const FindPlayersChat = lazy(() => import('@/pages/FindPlayersChat'));
@@ -84,9 +85,10 @@ function DeferredToaster() {
 }
 
 const AuthenticatedApp = () => {
-  const { isLoadingPublicSettings, authError, navigateToLogin, restriction } = useAuth();
+  const { isLoadingPublicSettings, authError, navigateToLogin, restriction, networkRestriction } = useAuth();
 
   if (restriction) return <Suspense fallback={<PageLoader fullscreen />}><AccountRestricted /></Suspense>;
+  if (networkRestriction) return <Suspense fallback={<PageLoader fullscreen />}><ConnectionRestricted /></Suspense>;
 
   if (isLoadingPublicSettings) {
     return <PageLoader fullscreen label="Loading Topfragg" />;

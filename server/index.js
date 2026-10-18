@@ -11,6 +11,7 @@ import twitchRoutes from "./routes/twitch.js";
 import profileRoutes from "./routes/profile.js";
 import rankVerificationRoutes from "./routes/rank-verification.js";
 import banAppealRoutes from "./routes/ban-appeals.js";
+import { isNetworkAccessError } from "./network-access.js";
 import { disconnectPrisma, prisma } from "./prisma.js";
 import { purgeExpiredNotifications, startNotificationRetentionWorker } from "./notification-retention.js";
 import { attachRankedVoiceServer } from "./ranked-voice.js";
@@ -65,6 +66,7 @@ app.use((error, _req, res, _next) => {
   }
   res.status(status).json({
     error: message,
+    ...(isNetworkAccessError(error) ? { code: error.code } : {}),
     ...(error.retryAfter ? { retry_after: error.retryAfter } : {}),
     ...(status >= 500 && process.env.NODE_ENV !== "production" && error.stack ? { stack: error.stack } : {}),
   });

@@ -3,6 +3,7 @@ import { publicUser, verifyToken } from "../auth.js";
 import { hasRole } from "../roles.js";
 import { evaluateAccess, restrictionDetails } from "../ban-enforcement.js";
 import { recordUserIp } from "../user-ip-history.js";
+import { assertNetworkAccess, isNetworkAccessError } from "../network-access.js";
 
 export const requireAuth = async (req, res, next) => {
   try {
@@ -32,12 +33,14 @@ export const requireAuth = async (req, res, next) => {
     if (access.blocked) {
       return res.status(access.status).json({ error: access.message, code: access.code, restriction: restrictionDetails(access) });
     }
+    await assertNetworkAccess(access.ip);
     user = await recordUserIp(prisma, access.user, req);
 
     req.user = publicUser(user);
     req.userRow = user;
     next();
-  } catch {
+  } catch (error) {
+    if (isNetworkAccessError(error)) return res.status(error.status).json({ error: error.message, code: error.code });
     res.status(401).json({ error: "Authentication required" });
   }
 };
