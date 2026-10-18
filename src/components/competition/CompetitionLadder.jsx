@@ -93,8 +93,6 @@ const trophyTypes = [
   { key: "silver", label: "Silver", image: "/assets/trophies/compact/silver.png", fields: ["silver_count"] },
   { key: "bronze", label: "Bronze", image: "/assets/trophies/compact/bronze.png", fields: ["bronze_count"] },
   { key: "premium", label: "Premium", image: "/assets/trophies/compact/premium.png", fields: ["premium_count", "premium_trophies"] },
-  { key: "topfragg", label: "TopFragg", image: "/assets/trophies/compact/topfragg.png", fields: ["topfragg_count", "topfrag_count", "topfragg_trophies"] },
-  { key: "hosted", label: "Hosted", image: "/assets/trophies/compact/hosted.png", fields: ["hosted_count", "hosted_trophies"] },
 ];
 
 const number = (value) => Number(value || 0);

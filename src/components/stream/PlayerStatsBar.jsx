@@ -38,8 +38,6 @@ const trophies = [
   { key: "silver", label: "Silver", image: "/assets/trophies/profile/silver.png" },
   { key: "bronze", label: "Bronze", image: "/assets/trophies/profile/bronze.png" },
   { key: "premium", label: "Premium", image: "/assets/trophies/profile/premium.png" },
-  { key: "topfragg", label: "Topfragg", image: "/assets/trophies/compact/topfragg.png" },
-  { key: "hosted", label: "Hosted", image: "/assets/trophies/compact/hosted.png" },
 ];
 
 export const playerOverlayUrl = (identifier, theme = "blue") => {

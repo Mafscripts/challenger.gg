@@ -36,7 +36,7 @@ import RecentMatchesPanel from "@/components/match/RecentMatchesPanel";
 import { matchDateMs } from "@/lib/matchPresentation";
 import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
 import { teamPurposeFor } from "@/lib/teamPresentation";
-import { ScreenshotRankPill, GameRankSettingsLink } from "@/components/profile/ScreenshotRank";
+import { ScreenshotRankPill } from "@/components/profile/ScreenshotRank";
 import ProfileOverview, { ArenaRecords, ProfileFriends } from "@/components/profile/ProfileOverview";
 import { base44 } from "@/api/base44Client";
 import { verifiedNameColors, premiumNameEffects, allNameColors } from "@/lib/nameColors";
@@ -120,25 +120,20 @@ const inventoryBorderClass = (item) => {
   return "border-white/5 hover:border-white/10";
 };
 
-const profileTrophyCount = (user, inventory = []) => (
-  Number(user?.trophies || 0)
-  + (inventory || []).filter((item) => {
-    const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
-    return text.includes("trophy") && !text.includes("invit") && !text.includes("champion");
-  }).length
-);
+const profileTrophyCount = (user, profile, inventory = [], publicCounts) => {
+  const counts = publicCounts || trophyCountsFor(user, profile, inventory);
+  return ["gold", "silver", "bronze", "premium"].reduce((sum, key) => sum + statNumber(counts[key]), 0);
+};
 
 function trophyOverviewFor(user, profile, inventory = [], matches = [], publicCounts) {
   const localCounts = trophyCountsFor(user, profile, inventory, matches);
-  const counts = publicCounts ? { ...publicCounts, hosted: publicCounts.hosted || localCounts.hosted } : localCounts;
+  const counts = publicCounts || localCounts;
 
   return [
     { key: "gold", label: "Gold", value: counts.gold, tone: "text-yellow-400", tint: "bg-yellow-400/10", border: "group-hover:border-yellow-400/25" },
     { key: "silver", label: "Silver", value: counts.silver, tone: "text-gray-200", tint: "bg-gray-200/10", border: "group-hover:border-gray-200/20" },
     { key: "bronze", label: "Bronze", value: counts.bronze, tone: "text-orange", tint: "bg-orange/10", border: "group-hover:border-orange/25" },
     { key: "premium", label: "Premium", value: counts.premium, tone: "text-purple-300", tint: "bg-purple-400/10", border: "group-hover:border-purple-300/25" },
-    { key: "topfragg", label: "TopFragg", value: counts.topfragg, tone: "text-cyan", tint: "bg-cyan/10", border: "group-hover:border-cyan/25" },
-    { key: "hosted", label: "Hosted", value: counts.hosted, tone: "text-green", tint: "bg-green/10", border: "group-hover:border-green/25" },
   ];
 }
 
@@ -416,7 +411,7 @@ export default function Profile() {
   const selectedNameColor = allNameColors.some((color) => color.value === activeNameColor)
     ? activeNameColor
     : "";
-  const trophyCount = profileTrophyCount(user, inventory);
+  const trophyCount = profileTrophyCount(user, profile, inventory, publicTrophyCounts);
   const profileTeams = [...new Map(teams.filter((membership) => membership.team && membership.team.is_active !== false && membership.team.is_demo !== true).map((membership) => [String(membership.team.id), membership])).values()];
   const elo = Number(rankedStats?.elo || profile?.elo || 0);
   const nextRank = getNextRankForElo(elo);
@@ -442,7 +437,7 @@ export default function Profile() {
   const trophyOverviewCards = trophyOverviewFor(user, profile, inventory, matches, publicTrophyCounts);
   const earnedTrophyItems = inventory.filter((item) => {
     const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
-    return (item.item_category === "trophy" || text.includes("trophy")) && !text.includes("invit") && !text.includes("champion");
+    return (item.item_category === "trophy" || text.includes("trophy")) && !text.includes("invit") && !text.includes("champion") && !text.includes("hosted") && !text.includes("host trophy") && !text.includes("topfrag");
   }).slice(0, 12);
   const profileMatches = useMemo(() => [...new Map([...matches, ...(arena?.recent_matches || [])].map((match) => [`${match.match_type}:${match.id}`, match])).values()]
     .sort((a, b) => matchDateMs(b) - matchDateMs(a)).slice(0, 50), [arena, matches]);
@@ -608,8 +603,6 @@ export default function Profile() {
             </div>
           )}
         </section>
-
-        {isOwnProfile && <GameRankSettingsLink />}
 
         <nav className="arena-tabs mt-4 grid grid-cols-3 sm:grid-cols-6" aria-label="Profile sections">
           {tabs.map(({ id, label, icon: Icon }) => (

@@ -1,4 +1,4 @@
-import { Award, Crown, Medal, Shield, Star, Trophy } from "lucide-react";
+import { Award, Crown, Medal, Trophy } from "lucide-react";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 
 const number = (value) => {
@@ -13,13 +13,9 @@ const trophySlots = [
   { key: "premium", label: "Premium trophies", icon: Crown, className: "border-purple-300/20 bg-purple-300/[0.07] text-purple-300" },
 ];
 
-const additionalTrophies = [
-  { key: "topfragg", icon: Shield, className: "border-cyan/20 bg-cyan/[0.08] text-cyan" },
-  { key: "hosted", icon: Star, className: "border-green/20 bg-green/[0.08] text-green" },
-];
-
 export function TrophySymbol({ type = "gold", className = "h-5 w-5" }) {
-  const slot = [...trophySlots, ...additionalTrophies].find((slot) => slot.key === type) || trophySlots[0];
+  const slot = trophySlots.find((slot) => slot.key === type);
+  if (!slot) return null;
   const Icon = slot.icon;
   const tone = slot.className.split(" ").find((token) => token.startsWith("text-"));
   return <Icon aria-hidden="true" className={`${tone} ${className}`} strokeWidth={2.25} />;
