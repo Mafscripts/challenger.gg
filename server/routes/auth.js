@@ -7,6 +7,7 @@ import {
   publicUser,
   safeUserMetadata,
   signUser,
+  signBanAppealUser,
   updateUserIdentity,
   verifyPassword,
   hashPassword,
@@ -14,7 +15,7 @@ import {
 import { requireAuth } from "../middleware/auth.js";
 import { dataForEntity } from "../entity.js";
 import { isEmailConfigured, sendPasswordResetEmail, sendVerificationEmail } from "../email.js";
-import { evaluateAccess, requestIpAddress } from "../ban-enforcement.js";
+import { evaluateAccess, requestIpAddress, restrictionDetails } from "../ban-enforcement.js";
 import { recordUserIp } from "../user-ip-history.js";
 import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
 import { getAnimatedNameFreeTrial } from "../freeTrial.js";
@@ -259,17 +260,19 @@ router.post("/login", async (req, res, next) => {
 
     clearLoginFailures(ip, identifier);
 
+    const access = await evaluateAccess({ req, user });
+    if (access.blocked) {
+      res.set("Cache-Control", "no-store");
+      return res.status(access.status).json({ error: access.message, code: access.code,
+        restriction: restrictionDetails(access), appeal_access_token: signBanAppealUser(user) });
+    }
+
     if (user.email_verified !== true) {
       return res.status(403).json({
         error: "Verify your email before logging in",
         code: "EMAIL_VERIFICATION_REQUIRED",
         email: user.email,
       });
-    }
-
-    const access = await evaluateAccess({ req, user });
-    if (access.blocked) {
-      return res.status(access.status).json({ error: access.message, code: access.code });
     }
 
     const loginUser = await recordIp(access.user, req, "last_login_ip");

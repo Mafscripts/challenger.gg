@@ -10564,7 +10564,7 @@ async function moderateUser(req) {
       },
     ],
     suspended_until: action === "suspension" ? expiresDate : (action === "remove_ban" ? null : (target.metadata || {}).suspended_until),
-    ban_expires: ["temporary_ban", "email_ban"].includes(action) ? expiresDate : (action === "remove_ban" ? null : (target.metadata || {}).ban_expires),
+    ban_expires: ["ban", "temporary_ban", "email_ban", "ip_ban", "remove_ban"].includes(action) ? expiresDate : (target.metadata || {}).ban_expires,
   };
 
   if (["ban", "temporary_ban", "email_ban", "ip_ban"].includes(action)) {

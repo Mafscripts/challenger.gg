@@ -1,7 +1,7 @@
 import { prisma } from "../prisma.js";
 import { publicUser, verifyToken } from "../auth.js";
 import { hasRole } from "../roles.js";
-import { evaluateAccess } from "../ban-enforcement.js";
+import { evaluateAccess, restrictionDetails } from "../ban-enforcement.js";
 import { recordUserIp } from "../user-ip-history.js";
 
 export const requireAuth = async (req, res, next) => {
@@ -30,7 +30,7 @@ export const requireAuth = async (req, res, next) => {
 
     const access = await evaluateAccess({ req, user });
     if (access.blocked) {
-      return res.status(access.status).json({ error: access.message, code: access.code });
+      return res.status(access.status).json({ error: access.message, code: access.code, restriction: restrictionDetails(access) });
     }
     user = await recordUserIp(prisma, access.user, req);
 

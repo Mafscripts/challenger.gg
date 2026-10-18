@@ -5,6 +5,7 @@ import {
 } from "@/lib/commerce";
 import { notifyCancelledMatch, notifyCancelledMatchResponse } from "@/lib/cancelledMatchRoom";
 import { notifyMatchPostedResponse } from "@/lib/notificationInbox";
+import { rememberRestriction, clearRestriction, appealHeaders } from "@/lib/accountRestriction";
 
 const normalizeApiBase = (value) => String(value || "").replace(/\/+$/, "");
 
@@ -133,6 +134,7 @@ async function apiFetch(path, options = {}) {
       }
     }
     if (!response.ok) {
+      rememberRestriction(data);
       const error = new Error(data?.error || data?.message || `Request failed (${response.status})`);
       error.status = response.status;
       error.data = data;
@@ -238,6 +240,7 @@ const auth = {
   },
 
   logout(redirectTo) {
+    clearRestriction();
     setToken(null);
     invalidateApiCache();
     if (redirectTo && typeof window !== "undefined") {
@@ -321,6 +324,14 @@ const entityClient = (entity) => ({
 });
 
 export const base44 = {
+  banAppeals: {
+    me: (before) => apiFetch(`/ban-appeals/me${toQuery({ before })}`, { headers: appealHeaders() }),
+    send: (body) => apiFetch("/ban-appeals/me/messages", { method: "POST", body, headers: appealHeaders() }),
+    list: (params = {}) => apiFetch(`/ban-appeals/admin${toQuery(params)}`),
+    detail: (id, before) => apiFetch(`/ban-appeals/admin/${encodeURIComponent(id)}${toQuery({ before })}`),
+    reply: (id, body) => apiFetch(`/ban-appeals/admin/${encodeURIComponent(id)}/messages`, { method: "POST", body }),
+    status: (id, status) => apiFetch(`/ban-appeals/admin/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+  },
   rankVerification: {
     me() { requireToken(); return apiFetch("/rank-verification/me", { dedupe: false }); },
     async select(rank) {

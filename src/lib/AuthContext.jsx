@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { base44, invalidateApiCache } from "@/api/base44Client";
 import { bootstrapCurrentUser, clearBootstrapSession } from "@/lib/userBootstrap";
+import { RESTRICTION_EVENT, readRestriction, clearRestriction, isRestriction } from "@/lib/accountRestriction";
 
 const AuthContext = createContext();
 
@@ -11,8 +12,31 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings] = useState(null);
+  const [restriction, setRestriction] = useState(readRestriction);
+
+  useEffect(() => {
+    const blocked = (event) => {
+      setRestriction(event.detail);
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoadingAuth(false);
+      setAuthChecked(true);
+    };
+    window.addEventListener(RESTRICTION_EVENT, blocked);
+    return () => window.removeEventListener(RESTRICTION_EVENT, blocked);
+  }, []);
 
   const completeAuth = useCallback((currentUser) => {
+    if (readRestriction()) {
+      setRestriction(readRestriction());
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoadingAuth(false);
+      setAuthChecked(true);
+      return;
+    }
+    clearRestriction();
+    setRestriction(null);
     setUser(currentUser || null);
     setIsAuthenticated(Boolean(currentUser?.id));
     setIsLoadingAuth(false);
@@ -31,6 +55,11 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = useCallback(async ({ force = false } = {}) => {
     try {
       setIsLoadingAuth(true);
+      if (readRestriction()) {
+        setRestriction(readRestriction());
+        markUnauthenticated();
+        return null;
+      }
       const authenticated = await base44.auth.isAuthenticated();
       if (!authenticated) {
         markUnauthenticated();
@@ -39,6 +68,7 @@ export const AuthProvider = ({ children }) => {
 
       const currentUser = await bootstrapCurrentUser({ force });
       if (!currentUser?.id) {
+        if (readRestriction()) { setRestriction(readRestriction()); markUnauthenticated(); return null; }
         base44.auth.logout();
         clearBootstrapSession();
         markUnauthenticated();
@@ -48,6 +78,11 @@ export const AuthProvider = ({ children }) => {
       completeAuth(currentUser);
       return currentUser;
     } catch (error) {
+      if (isRestriction(error.data) || readRestriction()) {
+        setRestriction(error.data?.restriction || readRestriction());
+        markUnauthenticated();
+        return null;
+      }
       if (![401, 403, 404].includes(error.status)) {
         console.error("User auth check failed:", error);
       }
@@ -67,6 +102,7 @@ export const AuthProvider = ({ children }) => {
   }, [checkUserAuth]);
 
   const logout = useCallback((shouldRedirect = true) => {
+    setRestriction(null);
     clearBootstrapSession(user?.id);
     base44.auth.logout();
     invalidateApiCache();
@@ -82,6 +118,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const value = useMemo(() => ({
+    restriction,
     user,
     isAuthenticated,
     isLoadingAuth,
@@ -95,6 +132,7 @@ export const AuthProvider = ({ children }) => {
     checkUserAuth,
     checkAppState,
   }), [
+    restriction,
     user,
     isAuthenticated,
     isLoadingAuth,

@@ -63,6 +63,7 @@ const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
 const RoleManagement = lazy(() => import("@/components/admin/RoleManagement"));
 const AuditLog = lazy(() => import("@/components/admin/AuditLog"));
 const AdminWallets = lazy(() => import("@/components/admin/AdminWallets"));
+const AdminBanAppeals = lazy(() => import("@/components/admin/AdminBanAppeals"));
 const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGamesAdmin"));
 const ChallengeTeamAdmin = lazy(() => import("@/components/admin/ChallengeTeamAdmin"));
 
@@ -246,6 +247,7 @@ const tabs = [
   { id: "roles", label: "Roles", icon: KeyRound },
   { id: "alerts", label: "Alerts", icon: BellRing },
   { id: "tickets", label: "Tickets", icon: Ticket },
+  { id: "banAppeals", label: "Ban appeals", icon: Shield, ceoOnly: true },
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
   { id: "live8s", label: "Live 8s Rooms", icon: Radio },
   { id: "challenges", label: "Challenge a Team", icon: Swords },
@@ -1917,7 +1919,7 @@ export default function Admin() {
             <div className="mt-4"><RoleBadge role={currentRole} /></div>
           </div>
           <div className="space-y-1 p-2.5">
-            {tabs.map((tab) => (
+            {tabs.filter((tab) => !tab.ceoOnly || effectiveRoleForUser(user) === "ceo").map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -1936,7 +1938,7 @@ export default function Admin() {
           <label className="mb-4 block rounded-xl border border-border bg-card p-3 text-white lg:hidden">
             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-primary">Admin section</span>
             <select value={activeTab} onChange={(event) => setActiveTab(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[var(--arena-inset)] px-3 py-2.5 text-sm font-bold text-white">
-              {tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+              {tabs.filter((tab) => !tab.ceoOnly || effectiveRoleForUser(user) === "ceo").map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
             </select>
           </label>
 
@@ -2455,6 +2457,8 @@ export default function Admin() {
               }}
             />
           )}
+
+          {activeTab === "banAppeals" && <Suspense fallback={<PageLoader />}><AdminBanAppeals /></Suspense>}
 
           {activeTab === "tickets" && (
             <AdminTickets key={`${currentUser.id}:${currentRole}`} user={currentUser} onRefresh={loadAdminData} />

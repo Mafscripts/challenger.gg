@@ -8,6 +8,7 @@ import { LogIn, UserRound, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { useAuth } from "@/lib/AuthContext";
+import { isRestriction } from "@/lib/accountRestriction";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ export default function Login() {
       }
       navigate(result?.password_change_required ? "/change-password" : "/dashboard", { replace: true });
     } catch (err) {
+      if (isRestriction(err.data)) return;
       if (err?.data?.code === "EMAIL_VERIFICATION_REQUIRED") {
         const verificationEmail = err.data.email || (identifier.includes("@") ? identifier.trim().toLowerCase() : "");
         if (!verificationEmail) {

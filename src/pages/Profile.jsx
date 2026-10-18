@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import {
   Award,
   BadgeCheck,
+  Ban,
   Camera,
   ChevronRight,
   DollarSign,
@@ -526,6 +527,11 @@ export default function Profile() {
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-cyan">TopFragg competitor</p>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h1 data-name-effect={selectedNameColor || undefined} className={`player-name-wrap min-w-0 break-words font-heading text-4xl font-black leading-tight text-white sm:text-5xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
+                  {user.is_banned && !(Date.parse(user.ban_expires ?? user.metadata?.ban_expires) <= Date.now()) && (
+                    <span title="This account is banned" className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#ff3b3b]">
+                      <Ban className="h-3.5 w-3.5" aria-hidden="true" />BANNED
+                    </span>
+                  )}
                   <RoleBadge role={user.role || "user"} />
                   <ScreenshotRankPill rank={user.screenshot_rank} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />

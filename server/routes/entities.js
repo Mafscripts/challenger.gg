@@ -115,6 +115,9 @@ const participantIdentityValues = (participant) => {
 const router = Router();
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
+  if (["banappeal", "banappealmessage"].includes(String(req.params.entity).toLowerCase())) {
+    return res.status(403).json({ error: "Use the private ban appeal endpoints" });
+  }
   if (["POST", "PATCH", "DELETE"].includes(req.method) && protectedMutationNames.has(String(req.params.entity).toLowerCase())) {
     return res.status(403).json({ error: "Use the protected action for this record" });
   }

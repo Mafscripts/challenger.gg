@@ -51,6 +51,36 @@ model User {
   created_date         DateTime  @default(now())
   updated_date         DateTime  @updatedAt
   metadata             Json      @default("{}")
+  ban_appeal           BanAppeal?
+}
+
+model BanAppeal {
+  id           String   @id @default(cuid())
+  user_id      String   @unique
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  status       String   @default("awaiting_ceo")
+  ban_reason   String
+  created_date DateTime @default(now())
+  updated_date DateTime @updatedAt
+  messages     BanAppealMessage[]
+
+  @@index([updated_date, id])
+  @@index([status, updated_date])
+}
+
+model BanAppealMessage {
+  id           String   @id @default(cuid())
+  appeal_id    String
+  appeal       BanAppeal @relation(fields: [appeal_id], references: [id], onDelete: Cascade)
+  sender_id    String
+  sender_role  String
+  sender_name  String
+  content      String
+  request_id   String
+  created_date DateTime @default(now())
+
+  @@unique([sender_id, request_id])
+  @@index([appeal_id, created_date, id])
 }
 
 model Role {

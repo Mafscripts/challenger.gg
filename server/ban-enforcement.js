@@ -126,6 +126,21 @@ export const findActiveEmailBan = async (email) => {
   return normalizedEmail ? findActiveScopedBan("email", "email", normalizedEmail) : null;
 };
 
+export const restrictionDetails = (access) => {
+  const user = access.user;
+  const history = Array.isArray(user?.metadata?.moderation_history) ? user.metadata.moderation_history : [];
+  const latest = [...history].reverse().find((row) => access.code === "ACCOUNT_SUSPENDED"
+    ? row.action === "suspension" : ["ban", "temporary_ban", "email_ban", "ip_ban"].includes(row.action));
+  return {
+    code: access.code,
+    account_id: user?.id,
+    reason: access.ban?.metadata?.reason || (access.code === "ACCOUNT_SUSPENDED" ? latest?.reason : user?.ban_reason) || latest?.reason || "Please contact the CEO team for more information.",
+    expires_at: access.ban?.metadata?.expires_date || (access.code === "ACCOUNT_SUSPENDED" ? user?.metadata?.suspended_until : user?.metadata?.ban_expires) || null,
+    issued_at: access.ban?.created_date || latest?.date || null,
+    account_name: user?.display_name || user?.username || "Your account",
+  };
+};
+
 export const evaluateAccess = async ({ req, user }) => {
   const ip = requestIpAddress(req);
   const [ipBan, emailBan] = await Promise.all([
@@ -134,10 +149,10 @@ export const evaluateAccess = async ({ req, user }) => {
   ]);
 
   if (ipBan) {
-    return { blocked: true, status: 403, code: "IP_BANNED", message: "Access denied", ip, user };
+    return { blocked: true, status: 403, code: "IP_BANNED", message: "Your access has been restricted", ip, user, ban: ipBan };
   }
   if (emailBan) {
-    return { blocked: true, status: 401, code: "ACCOUNT_BANNED", message: "Authentication required", ip, user };
+    return { blocked: true, status: 403, code: "ACCOUNT_BANNED", message: "Your account is banned", ip, user, ban: emailBan };
   }
   if (!user) return { blocked: false, ip, user };
 
@@ -160,7 +175,7 @@ export const evaluateAccess = async ({ req, user }) => {
       });
       return { blocked: false, ip, user: updatedUser };
     }
-    return { blocked: true, status: 401, code: "ACCOUNT_BANNED", message: "Authentication required", ip, user };
+    return { blocked: true, status: 403, code: "ACCOUNT_BANNED", message: "Your account is banned", ip, user };
   }
 
   return { blocked: false, ip, user };

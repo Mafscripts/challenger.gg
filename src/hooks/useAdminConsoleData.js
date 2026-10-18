@@ -16,7 +16,7 @@ const overviewKeys = ["userCount", "adminAlerts", "ticketCounts", "wagers", "ran
 const sectionKeys = {
   dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "auditCounts"],
   users: ["wallets"], roles: [], alerts: ["adminAlerts", "tickets"],
-  tickets: [], wagers: ["wagers"],
+  tickets: [], banAppeals: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
   verifyRank: ["users"],
   tournaments: ["tournaments", "tournamentMatches", "tournamentParticipants", "users", "marketplace"],

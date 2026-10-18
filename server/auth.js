@@ -90,7 +90,21 @@ export const publicUser = (user) => {
 
 export const signUser = (user) => jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-export const verifyToken = (token) => jwt.verify(token, JWT_SECRET);
+export const verifyToken = (token) => {
+  const payload = jwt.verify(token, JWT_SECRET);
+  // Restricted appeal credentials must never authenticate normal API or socket access.
+  if (payload.scope || payload.aud) throw new Error("Restricted credential");
+  return payload;
+};
+
+export const signBanAppealUser = (user) => jwt.sign({ sub: user.id, scope: "ban_appeal" }, JWT_SECRET, {
+  expiresIn: "7d", audience: "topfragg-ban-appeals",
+});
+export const verifyBanAppealToken = (token) => {
+  const payload = jwt.verify(token, JWT_SECRET, { audience: "topfragg-ban-appeals" });
+  if (payload.scope !== "ban_appeal") throw new Error("Invalid appeal credential");
+  return payload;
+};
 
 export const hashPassword = (password) => bcrypt.hash(password, 12);
 
