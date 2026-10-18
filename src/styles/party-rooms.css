@@ -1,4 +1,5 @@
-.party-page { width: 100%; max-width: 1500px; margin: auto; padding: 28px 24px 60px; }
+.party-page { width: 100%; max-width: 1600px; margin: auto; padding: 28px 16px 60px; }
+@media (min-width: 1024px) { .party-page { padding-inline: 24px; } }
 .party-page-heading, .party-room-heading { margin-bottom: 22px; }
 .party-page h1 { font-size: clamp(25px, 3vw, 36px); font-weight: 900; line-height: 1.2; letter-spacing: -.04em; }
 .party-page h2 { font-size: 17px; font-weight: 850; letter-spacing: -.025em; }
