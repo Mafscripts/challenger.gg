@@ -1,0 +1,23 @@
+**TOPFRAGG — SECURITY UPDATE**
+
+Cheaters are not welcome at Topfragg. Fair competition comes first. **Five users have already received permanent bans.**
+
+**Stronger account and access security**
+• Email verification is required before full account access, with limits on login and registration attempts.
+• Improved visitor IP recording and linked-account checks help staff investigate ban evasion. A shared IP alone is not proof of cheating or multiple-account abuse.
+• VPN, proxy and Tor checks cover registration, login and authenticated access. Connections detected as these services are blocked. Detection cannot identify every VPN or prevent every attempt at ban evasion.
+
+**How permanent bans work**
+• A permanent ban has no automatic expiry. Access stays restricted unless staff explicitly removes the ban.
+• Changing your IP or switching to a VPN does not lift the ban on your existing account.
+• Depending on the enforcement action, restrictions can cover the account, its email address and its recorded IP addresses. An IP ban can also affect other accounts using those addresses.
+• Banned profiles display a red **BANNED** pill. Restricted players see a dedicated screen explaining their ban reason and duration.
+
+**Private appeals and staff accountability**
+• Banned players can message the CEO team directly from their ban screen. Only that player and CEOs can read and reply to the conversation.
+• Sending an appeal does not automatically remove a ban. Closing an appeal conversation does not unban the account.
+• Moderation actions require a written reason and are recorded in the audit log. Wallet adjustments are restricted to CEOs.
+
+Suspect cheating or another rule violation? Submit a ticket with the relevant match details and evidence so staff can review it.
+
+**Play fair. Respect the community. Cheating has no place here.**

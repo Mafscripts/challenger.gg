@@ -15,6 +15,42 @@ export async function getAdminUserCount(db, actor) {
   return { success: true, total: await db.user.count() };
 }
 
+export async function setAdminUserVpnAccess(db, actor, body = {}) {
+  if (!hasRole(actor, "ceo")) fail("Only CEOs can manage VPN exceptions", 403);
+  const id = typeof body.user_id === "string" ? body.user_id : "";
+  if (!id || id.length > 200 || typeof body.allowed !== "boolean" || typeof body.expected_allowed !== "boolean") {
+    fail("Choose an account and a valid VPN access setting.");
+  }
+  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+  if (reason.length > 500) fail("Use a reason of at most 500 characters.");
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${id} FOR UPDATE`;
+    const target = await tx.user.findUnique({ where: { id }, select: {
+      id: true, username: true, display_name: true, full_name: true, vpn_access_allowed: true,
+    } });
+    if (!target) fail("User not found", 404);
+    if (target.vpn_access_allowed === body.allowed) return { success: true, user: { id, vpn_access_allowed: body.allowed }, unchanged: true };
+    if (target.vpn_access_allowed !== body.expected_allowed) fail("VPN access changed. Refresh the player and try again.", 409);
+    const user = await tx.user.update({ where: { id }, data: { vpn_access_allowed: body.allowed },
+      select: { id: true, vpn_access_allowed: true } });
+    await tx.adminAction.create({ data: { metadata: {
+      admin_id: actor.id, admin_name: nameFor(actor), admin_role: "ceo",
+      action_type: body.allowed ? "user_vpn_access_allowed" : "user_vpn_access_removed",
+      target_user_id: id, target_username: nameFor(target),
+      description: `VPN exception ${body.allowed ? "enabled" : "removed"} for ${nameFor(target)}.`,
+      reason: reason || (body.allowed ? "CEO approved a personal VPN exception." : "CEO restored standard connection protection."),
+      details: { previous_allowed: target.vpn_access_allowed, allowed: body.allowed },
+    } } });
+    await tx.notification.create({ data: { metadata: {
+      user_id: id, title: body.allowed ? "VPN access approved" : "VPN exception removed",
+      message: body.allowed ? "A CEO approved VPN access for your account. You can sign in again. Existing account restrictions still apply."
+        : "A CEO removed your VPN exception. Use your regular internet connection to sign in.",
+      type: "system", is_read: false, action_url: "/login",
+    } } });
+    return { success: true, user };
+  });
+}
+
 const directoryFields = ["id", "username", "handle", "display_name", "full_name", "role", "admin_role", "is_admin",
   "created_date", "updated_date", "account_created_date", "is_banned", "is_premium", "premium_expires", "region",
   "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer", "force_stream_required",
@@ -64,6 +100,7 @@ export async function getAdminUsers(db, actor, body = {}) {
     const flat = { ...user.metadata, ...user };
     const result = Object.fromEntries(directoryFields.filter((key) => flat[key] !== undefined).map((key) => [key, flat[key]]));
     if (admin || user.id === actor.id) result.email = user.email;
+    if (hasRole(actor, "ceo")) result.vpn_access_allowed = user.vpn_access_allowed === true;
     if (admin) {
       for (const key of ["credits", "wallet_balance", "ban_reason"]) result[key] = user[key];
       if (includeSecurity) {

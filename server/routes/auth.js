@@ -7,6 +7,7 @@ import {
   publicUser,
   safeUserMetadata,
   signUser,
+  verifyToken,
   signBanAppealUser,
   updateUserIdentity,
   verifyPassword,
@@ -229,7 +230,16 @@ router.post("/register", registerHandler);
 
 router.get("/network-status", async (req, res, next) => {
   res.set("Cache-Control", "no-store");
-  try { await assertNetworkAccess(requestIpAddress(req)); res.json({ allowed: true }); }
+  try {
+    let identity = null;
+    const header = req.headers.authorization || "";
+    if (header.startsWith("Bearer ")) {
+      try { identity = verifyToken(header.slice(7)); } catch { /* Check unauthenticated connections normally. */ }
+    }
+    const user = identity ? await prisma.user.findUnique({ where: { id: identity.sub }, select: { vpn_access_allowed: true } }) : null;
+    await assertNetworkAccess(requestIpAddress(req), { vpnAllowed: user?.vpn_access_allowed === true });
+    res.json({ allowed: true });
+  }
   catch (error) { next(error); }
 });
 
@@ -283,7 +293,7 @@ router.post("/login", async (req, res, next) => {
       });
     }
 
-    await assertNetworkAccess(access.ip);
+    await assertNetworkAccess(access.ip, { vpnAllowed: access.user.vpn_access_allowed === true });
     const loginUser = await recordIp(access.user, req, "last_login_ip");
     const bootstrap = await ensureUserRecords(loginUser);
     res.json({

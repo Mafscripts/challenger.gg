@@ -29,7 +29,10 @@ async function lookupAddress(ip, key) {
   return detection.vpn || detection.proxy || detection.tor;
 }
 
-export async function assertNetworkAccess(ip) {
+export async function assertNetworkAccess(ip, { vpnAllowed = false } = {}) {
+  // Only callers holding the freshly loaded database user may grant this bypass.
+  // Protected routes enforce bans first; the diagnostic route grants no account access.
+  if (vpnAllowed === true) return;
   if (String(process.env.VPN_BLOCK_ENABLED || "false").toLowerCase() !== "true") return;
   const key = String(process.env.PROXYCHECK_API_KEY || "").trim();
   if (!key) throw unavailable();

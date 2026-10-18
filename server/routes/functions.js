@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket } from "../admin-tickets.js";
-import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount } from "../admin-users.js";
+import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount, setAdminUserVpnAccess } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
 import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -10817,6 +10817,7 @@ const handlers = {
   getAdminAuditCounts: (req) => getAdminAuditCounts(prisma, req.user),
   getAdminUsers: (req) => getAdminUsers(prisma, req.user, req.body),
   getAdminUserCount: (req) => getAdminUserCount(prisma, req.user),
+  setAdminUserVpnAccess: (req) => setAdminUserVpnAccess(prisma, req.user, req.body),
   getAdminUserSecurity: (req) => getAdminUserSecurity(prisma, req),
   deleteAdminUser: (req) => deleteAdminUser(prisma, req.user, req.body),
   getAdminTickets: (req) => getAdminTickets(prisma, req.user, req.body),

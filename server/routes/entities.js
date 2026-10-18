@@ -115,6 +115,10 @@ const participantIdentityValues = (participant) => {
 const router = Router();
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
+  if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method)
+    && (Object.hasOwn(req.body || {}, "vpn_access_allowed") || Object.hasOwn(req.body?.metadata || {}, "vpn_access_allowed"))) {
+    return res.status(403).json({ error: "Use the CEO VPN access action" });
+  }
   if (["banappeal", "banappealmessage"].includes(String(req.params.entity).toLowerCase())) {
     return res.status(403).json({ error: "Use the private ban appeal endpoints" });
   }
@@ -155,6 +159,7 @@ const redactIpData = (value) => {
 
 const protectIpVisibility = (req, value) => hasRole(req.user, "admin") ? value : redactIpData(value);
 const privateOtherUserFields = new Set([
+  "vpn_access_allowed",
   "email", "email_verified", "credits", "wallet_balance", "discord_user_id",
   "twitch_user_id", "ban_reason", "email_verification_code", "email_verification_code_hash",
   "email_verification_expires_at", "password_reset_token_hash", "password_reset_expires_at",

@@ -44,6 +44,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import UserSecurityPanel from "@/components/admin/UserSecurityPanel";
 import DeleteUserAccount from "@/components/admin/DeleteUserAccount";
 import ModerateUserDialog from "@/components/admin/ModerateUserDialog";
+import UserVpnAccess from "@/components/admin/UserVpnAccess";
 import "@/styles/admin-users.css";
 import { isCloudflareIp } from "@/lib/cloudflareIps";
 import { toast } from "@/components/ui/use-toast";
@@ -2354,6 +2355,10 @@ export default function Admin() {
 
                                       {canViewUserIps(currentRole) && <UserSecurityPanel user={user} busy={busyId === `${user.id}:ip_ban`}
                                         onBanIps={(security) => handleModerateUser({ ...user, moderation_ips: security.ips, shared_ip_account_count: security.shared_accounts.length }, "ip_ban")} />}
+                                      {currentRole === "ceo" && <UserVpnAccess user={user} actor={currentUser} onUpdated={(updated) => {
+                                        adminQueries.updateUser(updated);
+                                        setData((current) => ({ ...current, users: current.users.map((row) => row.id === updated.id ? { ...row, ...updated } : row) }));
+                                      }} />}
                                       <DeleteUserAccount user={user} actor={currentUser} onDeleted={async (id) => {
                                         setOpenManageUserId(null);
                                         setData((current) => ({ ...current, users: current.users.filter((row) => row.id !== id), wallets: current.wallets.filter((row) => row.user_id !== id) }));

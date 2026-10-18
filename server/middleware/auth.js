@@ -33,7 +33,7 @@ export const requireAuth = async (req, res, next) => {
     if (access.blocked) {
       return res.status(access.status).json({ error: access.message, code: access.code, restriction: restrictionDetails(access) });
     }
-    await assertNetworkAccess(access.ip);
+    await assertNetworkAccess(access.ip, { vpnAllowed: access.user.vpn_access_allowed === true });
     user = await recordUserIp(prisma, access.user, req);
 
     req.user = publicUser(user);

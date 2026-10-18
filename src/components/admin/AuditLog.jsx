@@ -9,14 +9,15 @@ import "@/styles/admin-audit.css";
 const labels = { wallet_adjust: "Balance adjusted", account_deleted: "Account deleted", delete_ticket: "Ticket deleted", role_change: "Account role changed",
   eights_team_edit: "8s teams updated", match_result_override: "Match result overridden", free_eights_result_reverted: "Free 8s result reverted",
   screenshot_rank_review: "Game rank reviewed", challenge_result: "Challenge result recorded", challenge_revert: "Challenge result reverted",
-  challenge_cancel: "Challenge cancelled", challenge_kick: "Player removed from challenge", update_free_eights_games: "8s games & maps updated" };
+  challenge_cancel: "Challenge cancelled", challenge_kick: "Player removed from challenge", update_free_eights_games: "8s games & maps updated",
+  user_vpn_access_allowed: "VPN access approved", user_vpn_access_removed: "VPN exception removed" };
 const readable = (value) => String(value || "Event").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ")
   .replace(/\b(xp|ip|elo|ceo)\b/gi, (word) => word.toUpperCase()).replace(/^./, (letter) => letter.toUpperCase());
 const eventName = (row) => Object.hasOwn(labels, row.action_code) ? labels[row.action_code] : readable(row.action_code);
 const eventStyle = (row) => {
   if (/delet|ban|suspend|suspension|kick/.test(row.action_code)) return { Icon: /delet/.test(row.action_code) ? Trash2 : ShieldAlert, tone: "danger" };
   if (/wallet|credit|money|withdraw|premium|purchase/.test(row.action_code)) return { Icon: CreditCard, tone: "economy" };
-  if (/role|password|rank_review/.test(row.action_code)) return { Icon: KeyRound, tone: "access" };
+  if (/role|password|rank_review|vpn_access/.test(row.action_code)) return { Icon: KeyRound, tone: "access" };
   if (/match|eights|8s|challenge|tournament|ranked/.test(row.action_code)) return { Icon: Swords, tone: "match" };
   return { Icon: row.source === "system" ? Server : Activity, tone: "neutral" };
 };

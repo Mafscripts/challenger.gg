@@ -37,6 +37,7 @@ model User {
   premium_expires      DateTime?
   is_banned            Boolean   @default(false)
   ban_reason           String?
+  vpn_access_allowed   Boolean   @default(false)
   discord_user_id      String?   @unique
   discord_username     String?
   discord_display_name String?
