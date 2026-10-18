@@ -44,6 +44,10 @@ test("community matchroom renders the real match shell, map artwork, branded ros
   assert.ok(html.indexOf('match-chat-panel') < html.indexOf("Map Series"), "maps must appear underneath match chat like Free 8s");
   assert.match(html, /<section class="dark-focus dark-media[^\"]*h-auto w-full/, "compact map cards must not fill the column height and push teams below the screen");
   assert.doesNotMatch(html, /8s ELO|Earnings|TP RANK|party-match-layout/);
+  assert.doesNotMatch(html, /Team Alpha|Team Bravo/);
+  const numbered = compiled.exports.render({ ...props, room: { ...room, teams: room.teams.map((team, index) => ({ ...team, name: `Team ${index + 1}` })) } });
+  assert.equal((numbered.match(/<h3[^>]*>Team 1<\/h3>/g) || []).length, 1);
+  assert.equal((numbered.match(/<h3[^>]*>Team 2<\/h3>/g) || []).length, 1);
   const spectator = compiled.exports.render({ ...props, manager: false, user: { id: "viewer" } });
   assert.doesNotMatch(spectator, /Confirm match result|Submit score/);
   assert.doesNotMatch(spectator, /Admin tools|Give win|Give loss|Reset all teams/);

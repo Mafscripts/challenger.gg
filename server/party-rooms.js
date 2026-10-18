@@ -9,7 +9,23 @@ import { ensurePartyMatchMaps, partyMapsMissing } from "./party-maps.js";
 import { selectedPartyAccounts } from "./party-players.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
-export const flattenPartyRoom = (row) => ({ ...row.metadata, id: row.id, owner_id: row.owner_id, status: row.status, revision: row.revision,
+const teamNameKey = (name) => String(name || "").trim().toLowerCase();
+const nextTeamName = (teams, start) => {
+  const used = new Set(teams.map((team) => teamNameKey(team.name)));
+  let number = start;
+  while (used.has(teamNameKey(`Team ${number}`))) number++;
+  return `Team ${number}`;
+};
+const numberedTeams = (teams = []) => {
+  const legacy = (team, index) => !team.custom_name && team.name === ["Team Alpha", "Team Bravo"][index];
+  const used = teams.filter((team, index) => !legacy(team, index));
+  return teams.map((team, index) => {
+    if (!legacy(team, index)) return team;
+    const updated = { ...team, name: nextTeamName(used, index + 1) };
+    used.push(updated); return updated;
+  });
+};
+export const flattenPartyRoom = (row) => ({ ...row.metadata, teams: numberedTeams(row.metadata?.teams), id: row.id, owner_id: row.owner_id, status: row.status, revision: row.revision,
   created_date: new Date(row.created_date).toISOString(), updated_date: new Date(row.updated_date).toISOString() });
 // Lobby polling does not download every match's chat transcript.
 export const partyRoomView = (room, matchId = null) => ({ ...room, ...(room.bracket ? { bracket: {
@@ -32,7 +48,7 @@ export async function createPartyRoom(db, user, input) {
     const active = await tx.partyRoom.count({ where: { owner_id: user.id, status: { not: "closed" }, updated_date: { gte: new Date(Date.now() - 86400000) } } });
     if (active >= 5) fail("Close an existing room before creating another", 409);
     const row = await tx.partyRoom.create({ data: { owner_id: user.id, metadata: { title: cleanName(input.title || (input.mode === "coed" ? "Co-ed night" : "Switcheroo night")), mode: input.mode, team_size: input.team_size,
-      owner_name: user.display_name || user.username || "Host", teams: [{ id: randomUUID(), name: "Team Alpha" }, { id: randomUUID(), name: "Team Bravo" }], players: [], round: 1, history: [], spin: null, previous_teams: null } } });
+      owner_name: user.display_name || user.username || "Host", teams: [{ id: randomUUID(), name: "Team 1" }, { id: randomUUID(), name: "Team 2" }], players: [], round: 1, history: [], spin: null, previous_teams: null } } });
     return flattenPartyRoom(row);
   });
 }
@@ -91,11 +107,14 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
       const count = input.team_count;
       if (!Number.isInteger(count) || count < 1 || count > PARTY_MAX_TEAMS) fail(`Choose a whole number from 1 to ${PARTY_MAX_TEAMS} teams`);
       if (room.players.length > count * room.team_size) fail("Remove extra players before reducing the number of teams", 409);
-      room.teams = Array.from({ length: count }, (_, index) => room.teams[index] || { id: randomUUID(), name: `Team ${index + 1}` });
+      room.teams = room.teams.slice(0, count);
+      while (room.teams.length < count) room.teams.push({ id: randomUUID(), name: nextTeamName(room.teams, room.teams.length + 1) });
     }
     if (input.action === "add_team") {
       if (room.teams.length >= PARTY_MAX_TEAMS) fail(`A room supports up to ${PARTY_MAX_TEAMS} teams`);
-      room.teams.push({ id: randomUUID(), name: cleanName(input.name || `Team ${room.teams.length + 1}`) });
+      const name = cleanName(input.name || nextTeamName(room.teams, room.teams.length + 1));
+      if (room.teams.some((team) => teamNameKey(team.name) === teamNameKey(name))) fail("Each team needs a unique name", 409);
+      room.teams.push({ id: randomUUID(), name, ...(input.name ? { custom_name: true } : {}) });
     }
     if (input.action === "remove_team") {
       if (room.teams.length <= 1) fail("Keep at least one team");
@@ -106,7 +125,9 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
     if (input.action === "rename_team") {
       const team = room.teams.find((entry) => entry.id === input.team_id);
       if (!team) fail("Team not found", 404);
-      team.name = cleanName(input.name);
+      const name = cleanName(input.name);
+      if (room.teams.some((other) => other.id !== team.id && teamNameKey(other.name) === teamNameKey(name))) fail("Each team needs a unique name", 409);
+      team.name = name; team.custom_name = true;
     }
     if (input.action === "format") {
       if (![2, 3, 4].includes(input.team_size) || room.players.length > input.team_size * room.teams.length) fail("Choose a team size that fits your players");

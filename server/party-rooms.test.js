@@ -48,6 +48,7 @@ test("rooms start with two teams; names, extra teams and the format are validate
   const f = fixture();
   const room = await createPartyRoom(f.db, { id: "host", username: "host" }, { mode: "coed", team_size: 2 });
   assert.equal(room.teams.length, 2);
+  assert.deepEqual(room.teams.map((team) => team.name), ["Team 1", "Team 2"]);
   await assert.rejects(createPartyRoom(f.db, { id: "host" }, { mode: "cash", team_size: 2 }));
   await f.act("add_team", { name: "Charlie" });
   assert.equal(f.room().teams.length, 3);
@@ -58,6 +59,24 @@ test("rooms start with two teams; names, extra teams and the format are validate
   await assert.rejects(f.act("add", { names: ["LIV"] }));
   await assert.rejects(f.act("add", { names: ["x".repeat(33)] }));
   assert.equal(f.room().players.length, 2);
+});
+
+test("legacy default team names become numbered and adding/renaming teams cannot duplicate a name", async () => {
+  const f = fixture();
+  f.row().metadata.teams = [{ id: "a", name: "Team Alpha" }, { id: "b", name: "Team Bravo" }];
+  assert.deepEqual(f.room().teams.map((team) => team.name), ["Team 1", "Team 2"]);
+  await f.act("set_team_count", { team_count: 4 });
+  assert.deepEqual(f.room().teams.map((team) => team.name), ["Team 1", "Team 2", "Team 3", "Team 4"]);
+  await assert.rejects(f.act("rename_team", { team_id: "a", name: " team 2 " }), { status: 409 });
+  await assert.rejects(f.act("add_team", { name: "TEAM 1" }), { status: 409 });
+  await f.act("rename_team", { team_id: "a", name: "Phoenix" });
+  await f.act("remove_team", { team_id: "b" });
+  await f.act("add_team");
+  assert.deepEqual(f.room().teams.map((team) => team.name), ["Phoenix", "Team 3", "Team 4", "Team 5"]);
+  await f.act("set_team_count", { team_count: 6 });
+  assert.deepEqual(f.room().teams.map((team) => team.name), ["Phoenix", "Team 3", "Team 4", "Team 5", "Team 6", "Team 7"]);
+  f.row().metadata.teams = [{ id: "a", name: "Team Alpha" }, { id: "b", name: "Team 1", custom_name: true }];
+  assert.deepEqual(f.room().teams.map((team) => team.name), ["Team 2", "Team 1"], "legacy conversion must also avoid colliding with a custom name");
 });
 
 test("only host/admin may edit or spin and stale revisions cannot overwrite a live room", async () => {

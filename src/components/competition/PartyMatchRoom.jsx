@@ -56,7 +56,7 @@ export default function PartyMatchRoom({ room, matchId, user, manager, disabled,
       teams={<>
 
 
-{match.teams.map((id, side) => <MatchTeamTable key={side} community color={side === 0 ? "orange" : "cyan"} label={side === 0 ? "Team Alpha" : "Team Bravo"} name={teamName(room, id)} players={room.players.filter((player) => id && player.side === id)} isComplete={complete} isWinner={Boolean(id && match.winner_id === id)} finalScore={match.score?.[side]} isFirstHost={id && maps[0]?.host_side === side} voiceStates={voice?.players || []} waitingRoomUrl={voice?.waiting_room_url} teamDetails={voice?.team_urls?.[id] && <a className="inline-flex items-center gap-1.5 text-[10px] font-bold text-purple-300" href={voice.team_urls[id]} target="_blank" rel="noopener noreferrer"><Headphones className="h-3 w-3" />Team voice<ExternalLink className="h-3 w-3" /></a>} />)}
+{match.teams.map((id, side) => <MatchTeamTable key={side} community color={side === 0 ? "orange" : "cyan"} label="Roster" name={teamName(room, id)} players={room.players.filter((player) => id && player.side === id)} isComplete={complete} isWinner={Boolean(id && match.winner_id === id)} finalScore={match.score?.[side]} isFirstHost={id && maps[0]?.host_side === side} voiceStates={voice?.players || []} waitingRoomUrl={voice?.waiting_room_url} teamDetails={voice?.team_urls?.[id] && <a className="inline-flex items-center gap-1.5 text-[10px] font-bold text-purple-300" href={voice.team_urls[id]} target="_blank" rel="noopener noreferrer"><Headphones className="h-3 w-3" />Team voice<ExternalLink className="h-3 w-3" /></a>} />)}
 
 
       </>}
