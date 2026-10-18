@@ -5,6 +5,7 @@ import { createPartyBracket, recordPartyScore } from "../src/lib/partyBracket.js
 import { partyVoiceKey, partyVoiceStatus } from "./party-voice.js";
 import { hasDiscordLink, freeEightsDiscordMembershipJoinError } from "./free-eights-discord.js";
 import { requirePartyRoomStorage } from "./party-room-storage.js";
+import { ensurePartyMatchMaps, partyMapsMissing } from "./party-maps.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 export const flattenPartyRoom = (row) => ({ ...row.metadata, id: row.id, owner_id: row.owner_id, status: row.status, revision: row.revision,
@@ -36,9 +37,30 @@ export async function createPartyRoom(db, user, input) {
 }
 export async function getPartyRoom(db, id, { matchId = null } = {}) {
   requirePartyRoomStorage(db);
-  const row = await db.partyRoom.findUnique({ where: { id } });
+  let row = await db.partyRoom.findUnique({ where: { id } });
   if (!row) fail("Room not found", 404);
+  if (partyMapsMissing(row.metadata?.bracket)) {
+    row = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM "PartyRoom" WHERE id = ${id} FOR UPDATE`;
+      const current = await tx.partyRoom.findUnique({ where: { id } });
+      if (!current) fail("Room not found", 404);
+      const room = flattenPartyRoom(current);
+      return ensurePartyMatchMaps(room.bracket) ? save(tx, room) : current;
+    });
+  }
   const room = flattenPartyRoom(row);
+  const match = room.bracket?.matches.find((entry) => entry.id === matchId);
+  const linkedIds = match ? room.players.filter((player) => match.teams.includes(player.side) && player.user_id).map((player) => player.user_id) : [];
+  if (linkedIds.length) {
+    const users = await db.user.findMany({ where: { id: { in: linkedIds } }, select: {
+      id: true, username: true, display_name: true, role: true, admin_role: true, is_admin: true, is_premium: true, metadata: true,
+    } });
+    const profiles = new Map(users.map((user) => [user.id, { id: user.id, username: user.username, display_name: user.display_name,
+      role: user.role, admin_role: user.admin_role, is_admin: user.is_admin, is_premium: user.is_premium,
+      avatar_url: user.metadata?.avatar_url || null, display_name_color: user.metadata?.display_name_color || null,
+      activision_id: user.metadata?.activision_id || user.metadata?.activision_name || null }]));
+    room.players = room.players.map((player) => profiles.has(player.user_id) ? { ...player, profile: profiles.get(player.user_id) } : player);
+  }
   const voice = await db.discordEventDispatch.findUnique({ where: { event_key: partyVoiceKey(id) } });
   return { room: partyRoomView(room, matchId), voice: partyVoiceStatus(room, voice?.metadata), server_time: new Date().toISOString() };
 }
@@ -198,6 +220,7 @@ export async function changePartyRoom(db, id, user, input, { choose = randomInt,
       room.spin = null; room.bracket = null; room.status = "open";
     }
     if (input.action === "close") { room.status = "closed"; room.closed_at = new Date().toISOString(); }
+    ensurePartyMatchMaps(room.bracket, choose);
     return flattenPartyRoom(await save(tx, room));
   }, { timeout: 15000, maxWait: 10000 });
 }

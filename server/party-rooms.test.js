@@ -294,3 +294,25 @@ test("changing a linked slot cannot let one account confirm both sides of a resu
   await assert.rejects(f.act("report_score", { match_id: match.id, scores: [2, 0] }, user), { status: 403 });
   assert.equal(f.room().bracket.status, "in_progress");
 });
+
+test("existing rooms backfill and persist missing maps once; linked profiles expose only public details", async () => {
+  const f = fixture(); await readyRoom(f); await f.act("start_bracket");
+  const matchId = f.room().bracket.matches[0].id;
+  f.row().metadata.bracket.matches.forEach((match) => { delete match.series_maps; });
+  f.row().metadata.players[0].user_id = "linked";
+  f.db.discordEventDispatch = { findUnique: async () => null };
+  f.db.user = { findMany: async () => [{ id: "linked", username: "Liv", display_name: "Liv", role: "user", metadata: { avatar_url: "/avatar.png", activision_id: "Liv#123", private_note: "secret", api_key: "secret" } }] };
+  let reads = 0;
+  const transaction = f.db.$transaction;
+  f.db.$transaction = (...args) => { reads++; return transaction(...args); };
+  const first = await getPartyRoom(f.db, "party-room", { matchId });
+  assert.equal(first.room.bracket.matches[0].series_maps.length, 3);
+  assert.equal(first.room.players[0].profile.activision_id, "Liv#123");
+  assert.equal(first.room.players[0].profile.private_note, undefined);
+  assert.equal(first.room.players[0].profile.api_key, undefined);
+  assert.equal(f.row().metadata.players[0].profile, undefined);
+  const saved = structuredClone(f.row().metadata.bracket);
+  await getPartyRoom(f.db, "party-room", { matchId });
+  assert.deepEqual(f.row().metadata.bracket, saved);
+  assert.equal(reads, 1);
+});

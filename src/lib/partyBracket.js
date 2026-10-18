@@ -66,7 +66,7 @@ export function advancePartyBracket(bracket) {
   if (last.status === "completed" || last.status === "bye") {
     // The winners finalist must lose twice. A lower-bracket victory triggers one reset.
     if (bracket.format === "double_elimination" && last.lane === "final" && last.round === 1 && last.winner_id === last.teams[1]) {
-      bracket.matches.push({ ...last, id: `${bracket.id ? `${bracket.id}-` : ""}final-2-1`, round: 2, slots: last.teams.map((team_id) => ({ team_id })), teams: [...last.teams], status: "ready", score: null, winner_id: null, loser_id: null, messages: [], reports: {}, completed_at: null });
+      bracket.matches.push({ ...last, id: `${bracket.id ? `${bracket.id}-` : ""}final-2-1`, round: 2, slots: last.teams.map((team_id) => ({ team_id })), teams: [...last.teams], status: "ready", score: null, winner_id: null, loser_id: null, messages: [], reports: {}, completed_at: null, series_maps: [], maps_generated_at: null });
     } else {
       bracket.status = "completed"; bracket.champion_id = last.winner_id; bracket.completed_at = new Date().toISOString();
     }

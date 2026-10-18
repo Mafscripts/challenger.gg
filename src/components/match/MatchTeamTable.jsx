@@ -11,6 +11,7 @@ import TPRankBadge from "@/components/competition/TPRankBadge";
 import { FreeEightsVoiceBadge } from "@/components/competition/FreeEightsDiscord";
 import { normalizeFreeEightsElo } from "@/lib/freeEightsRanks";
 import ChallengeRankBadge from "@/components/challenge/ChallengeRankBadge";
+import CommunityMatchRoster from "@/components/match/CommunityMatchRoster";
 
 const number = (value) => {
   const parsed = Number(value || 0);
@@ -99,7 +100,7 @@ function XPPlayerRank({ player, labelClass }) {
   return <div><p className={labelClass}>TP RANK</p><TPRankBadge xp={rank?.xp} matchesPlayed={rank?.matchesPlayed} position={rank?.position} loading={!rank} /><p className="mt-1 text-[9px] font-medium text-vapor">{number(rank?.level ? rank.xp : player.total_xp).toLocaleString()} XP</p></div>;
 }
 
-export default function MatchTeamTable({ label, name, color = "cyan", teamIcon = null, seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, challenge = false, xpMatch = false, compact = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing, teamDetails, playerActions, emptySlots = 0, emptySlotLabel = "Waiting for a challenger" }) {
+export default function MatchTeamTable({ label, name, color = "cyan", teamIcon = null, seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, challenge = false, xpMatch = false, community = false, compact = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing, teamDetails, playerActions, emptySlots = 0, emptySlotLabel = "Waiting for a challenger" }) {
   const ladder = freeEights || challenge;
   const isOrange = color === "orange";
   const toneClass = isOrange ? "text-orange" : "text-cyan";
@@ -133,7 +134,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", teamIcon =
         {isComplete && name ? <div className="match-team-score min-w-28 shrink-0 rounded-xl border border-white/[0.08] bg-black/20 px-5 py-2.5 text-center"><p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Final score</p><p className={`mt-1 font-mono text-2xl font-black tabular-nums ${toneClass}`}>{finalScore ?? 0}</p></div> : null}
       </header>
 
-      <div className={`hidden ${columns} gap-3 border-y border-white/[0.07] bg-[var(--arena-inset)] px-5 py-3 ${compact ? "text-[10px] font-bold tracking-[0.1em]" : "text-[8px] font-black tracking-[0.18em]"} uppercase text-vapor ${headerDisplay}`}><span>{compact ? "Player" : "User"}</span><span>{ladder ? "Activision Name" : "Gamertag"}</span>{ladder && <span>Rank</span>}<span>Record</span><span>{challenge ? "Challenge XP" : freeEights ? "8s ELO" : xpMatch ? "TP RANK" : "Earnings"}</span><span>{ladder ? "Discord Voice" : "Trophies"}</span><span>Socials</span></div>
+      {community ? players.length ? <CommunityMatchRoster players={players} color={color} voiceStates={voiceStates} waitingRoomUrl={waitingRoomUrl} /> : <div className="p-5 text-xs text-vapor">Waiting for the previous match to finish.</div> : <><div className={`hidden ${columns} gap-3 border-y border-white/[0.07] bg-[var(--arena-inset)] px-5 py-3 ${compact ? "text-[10px] font-bold tracking-[0.1em]" : "text-[8px] font-black tracking-[0.18em]"} uppercase text-vapor ${headerDisplay}`}><span>{compact ? "Player" : "User"}</span><span>{ladder ? "Activision Name" : "Gamertag"}</span>{ladder && <span>Rank</span>}<span>Record</span><span>{challenge ? "Challenge XP" : freeEights ? "8s ELO" : xpMatch ? "TP RANK" : "Earnings"}</span><span>{ladder ? "Discord Voice" : "Trophies"}</span><span>Socials</span></div>
       {players.length === 0 && !emptySlots ? <div className="flex min-h-28 items-center justify-center border-t border-white/[0.06] text-xs text-vapor">Roster unavailable</div> : (
         <div className="divide-y divide-white/[0.055]">
           {players.map((player, index) => {
@@ -171,7 +172,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", teamIcon =
           })}
           {Array.from({ length: emptySlots }, (_, index) => <div key={`empty-${index}`} className="flex min-h-[77px] items-center gap-3 bg-[var(--arena-inset)] px-5 py-4 text-xs text-vapor"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed ${tintClass}`}>+</span>{emptySlotLabel}</div>)}
         </div>
-      )}
+      )}</>}
     </section>
   );
 }

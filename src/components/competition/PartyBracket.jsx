@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronRight, Headphones, Mars, MessageSquare, Play, Send, Trophy, Users, Venus } from "lucide-react";
+import { ArrowRight, ChevronRight, Play, Trophy } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { partyMatchLabel } from "@/lib/partyBracket";
 
@@ -42,33 +42,4 @@ export function PartyBracket({ room, manager, disabled, act, onNewRound }) {
   </section>;
 }
 
-export function PartyMatchRoomView({ room, matchId, user, manager, disabled, act, voice, error, notice }) {
-  const match = room.bracket?.matches.find((entry) => entry.id === matchId);
-  const [scores, setScores] = useState(["", ""]), [message, setMessage] = useState("");
-  const end = useRef(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [match?.messages?.length]);
-  if (!match) return <div className="party-page"><Link className="party-back" to={`/coed-switcheroo/${room.id}`}>← Back to bracket</Link><p className="party-error">This matchroom is no longer available. The host may have started a new round.</p></div>;
-  const own = room.players.find((player) => player.user_id === user?.id);
-  const participant = own?.side && match.teams.includes(own.side);
-  const canTalk = manager || participant, canScore = canTalk && match.status === "ready";
-  const reports = Object.entries(match.reports || {});
-  const target = Math.ceil(room.bracket.best_of / 2);
-  const next = room.bracket.matches.filter((entry) => entry.slots.some((slot) => slot?.match_id === match.id) || match.lane === "final" && match.round === 1 && entry.lane === "final" && entry.round === 2);
-  return <div className="party-page"><Link className="party-back" to={`/coed-switcheroo/${room.id}`}>← Back to bracket</Link>
-    <header className="arena-page-header party-room-heading"><div><p className="party-eyebrow">{room.title} · {partyMatchLabel(match)}</p><h1>{teamName(room, match.teams[0])} <span className="party-match-vs">vs</span> {teamName(room, match.teams[1])}</h1><p>{modes[room.bracket.game_mode]} · Best of {room.bracket.best_of} · {statusLabel(match)}</p></div><span className="party-match-final-score">{match.score ? match.score.join(" – ") : "VS"}</span></header>
-    {error && <p className="party-error" role="alert">{error}</p>}{notice && <p className="party-notice" role="status">{notice}</p>}
-    {room.status === "closed" && <p className="party-notice">The host closed this room. Scores and chat are read-only.</p>}
-    {match.winner_id && <div className="party-champion"><Trophy /><div><span>{room.bracket.champion_id === match.winner_id && room.bracket.status === "completed" ? "Champions" : "Match winner"}</span><strong>{teamName(room, match.winner_id)}</strong></div><Link className="party-button" to={`/coed-switcheroo/${room.id}`}>View bracket<ArrowRight /></Link></div>}
-    {next.length > 0 && match.status === "completed" && <nav className="party-next-matches" aria-label="Following matches">{next.map((entry) => <Link className="party-button" key={entry.id} to={matchUrl(room, entry)}>{partyMatchLabel(entry)}<ArrowRight /></Link>)}</nav>}
-    <div className="party-match-layout"><div>
-      <div className="party-match-teams">{match.teams.map((id, side) => <section className="party-panel party-team-card" key={side}><header><h3>{teamName(room, id)}</h3><Users /></header><ol className="party-team-slots">{room.players.filter((player) => id && player.side === id).map((player, index) => <li className="is-filled" key={player.id}><span>{index + 1}</span>{player.gender === "male" ? <Mars className="party-male-icon" /> : player.gender === "female" ? <Venus className="party-female-icon" /> : null}<strong>{player.name}</strong>{player.duo_id && <small className="party-duo-tag">Duo</small>}</li>)}</ol>{!id && <p className="party-empty">Waiting for the previous match.</p>}{voice?.team_urls?.[id] && <a className="party-team-voice" href={voice.team_urls[id]} target="_blank" rel="noopener noreferrer"><Headphones />Team voice<ArrowRight /></a>}</section>)}</div>
-      <section className="party-panel party-score-panel"><h2>Match result</h2>
-        <p className="party-muted">{match.status === "bye" ? "This team advances automatically with a bye." : match.status === "pending" ? "Both teams must qualify before a score can be entered." : `First to ${target} map ${target === 1 ? "win" : "wins"}. ${manager ? "Confirm the final score to advance the bracket." : "Both teams report the same score to advance. The host can resolve a disagreement."}`}</p>
-        {reports.length > 0 && <div className="party-score-reports">{reports.map(([id, report]) => <p key={id}><span>{teamName(room, id)} reported</span><strong>{report.scores.join(" – ")}</strong>{manager && match.status === "ready" && <button className="party-claim" disabled={disabled} onClick={() => setScores(report.scores.map(String))}>Use score</button>}</p>)}{reports.length === 2 && reports[0][1].scores.some((score, i) => score !== reports[1][1].scores[i]) && <p className="party-validation">Scores disagree. Ask the host or an admin to confirm the correct result.</p>}</div>}
-        {canScore && <form onSubmit={async (e) => { e.preventDefault(); if (scores.some((value) => value === "")) return; await act(manager ? "match_score" : "report_score", { match_id: match.id, scores: scores.map(Number) }); }}><div className="party-score-inputs">{match.teams.map((id, side) => <label className="party-label" key={id}>{teamName(room, id)}<input className="party-field" type="number" min={0} max={target} step={1} required value={scores[side]} disabled={disabled} onChange={(e) => setScores((previous) => previous.map((value, index) => index === side ? e.target.value : value))} /></label>)}</div><button className="party-button party-primary" disabled={disabled || scores.some((value) => value === "")}><Trophy />{manager ? "Confirm final score" : "Report score"}</button></form>}
-        {!canTalk && <p className="party-muted">Viewing as a spectator. Link your own slot in the lobby to report scores and chat with your opponents.</p>}
-        {voice?.waiting_room_url && <a className="party-team-voice" href={voice.waiting_room_url} target="_blank" rel="noopener noreferrer"><Headphones />Waiting Room<ArrowRight /></a>}
-      </section>
-    </div><section className="party-panel party-match-chat"><h2><MessageSquare />Match chat</h2><div className="party-chat-messages" role="log" aria-label="Match chat">{match.messages.length ? match.messages.map((entry) => <div key={entry.id}><header><strong>{entry.name}</strong><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></header><p>{entry.message}</p></div>) : <p className="party-muted">No messages yet. Coordinate this match here.</p>}<div ref={end} /></div>{canTalk && room.status !== "closed" && <form onSubmit={async (e) => { e.preventDefault(); if (await act("match_message", { match_id: match.id, message })) setMessage(""); }}><label className="sr-only" htmlFor="party-match-message">Message</label><textarea id="party-match-message" className="party-field" rows={2} maxLength={1000} value={message} placeholder="Message your opponents…" onChange={(e) => setMessage(e.target.value)} disabled={disabled} /><button className="party-button party-primary" disabled={disabled || !message.trim()} aria-label="Send message"><Send /></button></form>}</section></div>
-  </div>;
-}
+export { default as PartyMatchRoomView } from "./PartyMatchRoom";
