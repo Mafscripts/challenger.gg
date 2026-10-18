@@ -79,7 +79,7 @@ export default function FreeEightsCaptainDraft({ match, players, userId, isParti
           className={`flex min-w-0 items-center gap-2.5 rounded-lg border border-white/[0.09] bg-black/15 p-3 ${myTurn ? "cursor-grab hover:border-cyan/40 active:cursor-grabbing" : ""}`}>
           {myTurn && <GripVertical className="h-4 w-4 shrink-0 text-vapor" aria-hidden="true" />}
           <Avatar className="h-9 w-9 shrink-0 rounded-full border border-cyan/20"><AvatarImage src={player.avatar_url || ""} alt="" /><AvatarFallback className="bg-cyan/10 text-xs font-black text-cyan">{nameFor(player).charAt(0)}</AvatarFallback></Avatar>
-          <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-white">{nameFor(player)}</p><div className="mt-1"><FreeEightsRankBadge elo={player.free_eights_elo} screenshotRank={player.screenshot_rank} /></div></div>
+          <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-white">{nameFor(player)}</p><div className="mt-1"><FreeEightsRankBadge loading={player.free_eights_rank_loading} elo={player.free_eights_elo} screenshotRank={player.screenshot_rank} /></div></div>
           {playerActions?.(player)}
           {myTurn && <button type="button" disabled={busy} onClick={() => onPick(pickInput(draft, player.user_id))} aria-label={`Pick ${nameFor(player)}`} className="shrink-0 rounded-md border border-cyan/25 bg-cyan/10 px-2.5 py-2 text-[10px] font-black text-cyan hover:bg-cyan/20 disabled:opacity-50">Pick player</button>}
         </div>)}

@@ -8,5 +8,7 @@ export async function loadFreeEightsProgression(api, matchId, players) {
   if (!players.length) return [];
   const response = await api.functions.invoke("getFreeEightsPlayerStats", { wager_id: matchId });
   if (!response.data?.success) throw new Error(response.data?.error || "Could not load Free 8s player stats");
-  return players.map((player) => ({ ...player, ...response.data.stats?.[player.user_id] }));
+  return players.map((player) => ({ ...player, ...response.data.stats?.[player.user_id],
+    free_eights_rank_loading: !response.data.stats?.[player.user_id],
+  }));
 }

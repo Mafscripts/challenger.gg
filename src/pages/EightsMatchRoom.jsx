@@ -88,6 +88,7 @@ const playersFromLobbyRows = (rows, team) => (rows || [])
     id: row.id,
     user_id: row.user_id,
     free_eights_elo: row.free_eights_elo,
+    free_eights_rank_loading: true,
     screenshot_rank: row.screenshot_rank,
     user_name: row.user_name || "Unnamed player",
     full_name: row.user_name || "Unnamed player",
