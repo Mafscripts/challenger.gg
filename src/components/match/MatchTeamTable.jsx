@@ -100,7 +100,7 @@ function XPPlayerRank({ player, labelClass }) {
   return <div><p className={labelClass}>XP Rank</p><p className={`font-mono font-black ${ranked ? `text-base ${tone}` : "text-[10px] text-vapor"}`}>{ranked ? `#${rank.toLocaleString()}` : player.xp_rank === null ? "Unranked" : "—"}</p><p className="mt-1 text-[9px] font-medium text-vapor">{number(player.total_xp).toLocaleString()} XP</p></div>;
 }
 
-export default function MatchTeamTable({ label, name, color = "cyan", teamIcon = null, seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, challenge = false, xpMatch = false, compact = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing, teamDetails, playerActions, emptySlots = 0 }) {
+export default function MatchTeamTable({ label, name, color = "cyan", teamIcon = null, seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, challenge = false, xpMatch = false, compact = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing, teamDetails, playerActions, emptySlots = 0, emptySlotLabel = "Waiting for a challenger" }) {
   const ladder = freeEights || challenge;
   const isOrange = color === "orange";
   const toneClass = isOrange ? "text-orange" : "text-cyan";
@@ -170,7 +170,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", teamIcon =
               </article>
             );
           })}
-          {Array.from({ length: emptySlots }, (_, index) => <div key={`empty-${index}`} className="flex min-h-[77px] items-center gap-3 bg-[var(--arena-inset)] px-5 py-4 text-xs text-vapor"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed ${tintClass}`}>+</span>Waiting for a challenger</div>)}
+          {Array.from({ length: emptySlots }, (_, index) => <div key={`empty-${index}`} className="flex min-h-[77px] items-center gap-3 bg-[var(--arena-inset)] px-5 py-4 text-xs text-vapor"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed ${tintClass}`}>+</span>{emptySlotLabel}</div>)}
         </div>
       )}
     </section>

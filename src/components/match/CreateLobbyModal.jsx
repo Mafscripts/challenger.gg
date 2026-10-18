@@ -519,7 +519,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">2</span>
                   Select Team Size
                 </h3>
-                {isEights && <p className="mb-4 text-xs text-vapor">Join as solo players. Teams are balanced automatically, and every format counts towards the same Free 8s leaderboard.</p>}
+                {isEights && <p className="mb-4 text-xs text-vapor">Join as solo players. Teams are balanced automatically unless the lobby votes for a captain draft: 3 votes in 2v2, 4 in 3v3 or 5 in 4v4. Every format counts towards the same Free 8s leaderboard.</p>}
                 <div className={`grid gap-4 ${isEights ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
                   {teamSizes.filter((size) => !isEights || size.id !== "1v1").map((size) => {
                     const isSelected = selectedTeamSize === size.id;

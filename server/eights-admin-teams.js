@@ -5,6 +5,7 @@ import { getFreeEightsSkill } from "../src/lib/freeEightsSkill.js";
 import { eightsReshuffleWindowMs } from "../src/lib/eightsLobbyTimer.js";
 import { eightsGameId } from "../src/lib/freeEightsGames.js";
 import { freeEightsTeamSize, freeEightsTeamPartitions, eightsMajorityVotes } from "../src/lib/freeEightsFormat.js";
+import { captainDraftPending } from "../src/lib/freeEightsCaptainDraft.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const validRoster = (players, teamSize = players.length / 2) => [2, 3, 4].includes(teamSize)
@@ -37,7 +38,7 @@ export async function editEightsTeamsAsAdmin(db, user, matchId, input, random = 
     const row = await tx.wager.findUnique({ where: { id: matchId } });
     const match = row?.metadata;
     if (!match || !["8s", "money8s"].includes(match.match_type)) fail("8s lobby not found", 404);
-    if (match.status !== "open" || match.roster_locked || !match.teams_generated_at || match.free_eights_waiting_for_voice
+    if (match.status !== "open" || match.roster_locked || captainDraftPending(match) || !match.teams_generated_at || match.free_eights_waiting_for_voice
       || !Number.isFinite(Date.parse(match.roster_lock_deadline)) || Date.parse(match.roster_lock_deadline) <= Date.now()) {
       fail("The reshuffle window has closed. Reset the lobby before editing teams.", 409);
     }
@@ -82,6 +83,7 @@ export async function editEightsTeamsAsAdmin(db, user, matchId, input, random = 
       ...match, host_id: alphaCaptain.user_id, host_name: alphaCaptain.user_name || "Team Alpha Captain",
       challenger_id: bravoCaptain.user_id, challenger_name: bravoCaptain.user_name || "Team Bravo Captain",
       teams_generated_at: stamp, eights_team_override: override,
+      free_eights_captain_vote_ids: [],
       roster_lock_deadline: new Date(Date.now() + eightsReshuffleWindowMs(match.match_type)).toISOString(),
       eights_reshuffle_vote_user_ids: [], eights_reshuffle_vote_count: 0, eights_reshuffle_vote_status: null,
       eights_reshuffle_vote_started_date: null,

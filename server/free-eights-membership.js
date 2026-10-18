@@ -35,7 +35,11 @@ export async function createFreeEightsLobby(db, userId, payload, userName) {
     const challenge = await challengeConflict(tx, userId); if (challenge) return challenge;
     const active = await findActiveFreeEightsMatch(tx, userId);
     if (active) return activeError(active);
-    const match = await tx.wager.create({ data: dataForEntity("Wager", { ...payload, match_type: "8s", host_id: userId, status: "open" }) });
+    const match = await tx.wager.create({ data: dataForEntity("Wager", {
+      ...payload, match_type: "8s", host_id: userId, status: "open",
+      // Votes and captain identities can only originate from protected actions.
+      free_eights_captain_draft: null, free_eights_captain_vote_ids: [],
+    }) });
     await tx.wagerParticipant.create({ data: dataForEntity("WagerParticipant", {
       wager_id: match.id, user_id: userId, user_name: userName, team: "host", is_captain: true,
       entry_fee_paid: 0, payment_status: "paid", paid_by: userId, escrowed: false,

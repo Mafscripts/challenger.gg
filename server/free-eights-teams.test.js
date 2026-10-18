@@ -79,7 +79,7 @@ test("equal players can reshuffle; invalid or duplicate rosters cannot be genera
   const input = Array.from({ length: 8 }, (_, i) => player(i));
   assert.notDeepEqual(balanceFreeEightsTeams(input, () => 0).alpha, balanceFreeEightsTeams(input, () => 0.99).alpha);
   for (const invalid of [input.slice(0, 7), [...input, player(8)], [...input.slice(0, 7), input[0]], [...input.slice(0, 7), { id: "missing" }]]) {
-    assert.throws(() => balanceFreeEightsTeams(invalid), /eight distinct players/);
+    assert.throws(() => balanceFreeEightsTeams(invalid), /complete, distinct 2v2, 3v3 or 4v4 roster/);
   }
 });
 

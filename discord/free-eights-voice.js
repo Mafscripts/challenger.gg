@@ -3,6 +3,7 @@ import { AuditLogEvent, ChannelType, OverwriteType, PermissionFlagsBits } from "
 import { prisma } from "../server/prisma.js";
 import { freeEightsVoiceChannelName } from "../src/lib/freeEightsRoomIdentity.js";
 import { freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
+import { captainDraftPending } from "../src/lib/freeEightsCaptainDraft.js";
 import {
   freeEightsChannelKey, freeEightsDiscordConfig, freeEightsVoiceClosed, freeEightsVoiceKey,
   freeEightsVoiceCategoryIds, freeEightsVoiceLog, hasDiscordLink, validDiscordId, voiceRosterSignature,
@@ -26,7 +27,7 @@ const rosterFor = async (db, matchId) => (await db.wagerParticipant.findMany({
 })).map((row) => row.metadata);
 
 export const canAssignFreeEightsVoice = (match, participants, teamSize = freeEightsTeamSize(match)) => match?.match_type === "8s"
-  && !freeEightsVoiceClosed.has(match.status) && Boolean(match.teams_generated_at)
+  && !freeEightsVoiceClosed.has(match.status) && !captainDraftPending(match) && Boolean(match.teams_generated_at)
   && participants.length === teamSize * 2 && new Set(participants.map((row) => row.user_id)).size === teamSize * 2
   && participants.filter((row) => row.team === "host").length === teamSize
   && participants.filter((row) => row.team === "challenger").length === teamSize;

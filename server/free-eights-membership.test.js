@@ -189,7 +189,7 @@ test("authenticated Free 8s endpoints require a stored screenshot rank, block un
   const request = async (action, auth = true, settings = {}) => {
     const response = await fetch(`http://127.0.0.1:${server.address().port}/functions/${action}`, { method: "POST",
       headers: { "Content-Type": "application/json", ...(auth ? { Authorization: `Bearer ${signUser(account)}` } : {}) },
-      body: JSON.stringify({ match_type: "8s", wager_id: "next", team_size: "4v4", user_id: "attacker", host_id: "attacker", screenshot_rank: "top250", discord_user_id: "200000000000000099", in_guild: true, metadata: { screenshot_rank: "top250" }, ...settings }) });
+      body: JSON.stringify({ match_type: "8s", wager_id: "next", team_size: "4v4", user_id: "attacker", host_id: "attacker", screenshot_rank: "top250", discord_user_id: "200000000000000099", in_guild: true, free_eights_captain_draft: { status: "active", captains: { host: "attacker" } }, free_eights_captain_vote_ids: ["attacker"], metadata: { screenshot_rank: "top250" }, ...settings }) });
     return { status: response.status, body: await response.json() };
   };
   assert.equal((await request("acceptWager", false)).status, 401);
@@ -215,16 +215,18 @@ test("authenticated Free 8s endpoints require a stored screenshot rank, block un
     const { body } = await request("createWager");
     assert.equal(body.success, true, JSON.stringify(body));
     assert.equal(body.wager.host_id, "me");
+    assert.equal(body.wager.free_eights_captain_draft, null);
+    assert.deepEqual(body.wager.free_eights_captain_vote_ids, []);
     f.matches.get(body.wager_id).metadata.status = "cancelled";
   }
-  for (const [game_id, series_format, best_of] of [["bo6", "hp_bo1", 1], ["mw3", "snd_bo3", 3]]) {
-    const { body } = await request("createWager", true, { game_id, series_format, best_of: 99, team_size: "1v1", maps: ["Fake"], series_mode_ids: ["fake"], game_config: {} });
+  for (const [game_id, series_format, best_of, team_size] of [["bo6", "hp_bo1", 1, "2v2"], ["mw3", "snd_bo3", 3, "3v3"]]) {
+    const { body } = await request("createWager", true, { game_id, series_format, best_of: 99, team_size, maps: ["Fake"], series_mode_ids: ["fake"], game_config: {} });
     assert.equal(body.success, true, JSON.stringify(body));
     assert.equal(body.wager.game_id, game_id);
     assert.equal(body.wager.game_config.id, game_id);
     assert.equal(body.wager.best_of, best_of);
-    assert.equal(body.wager.team_size, "4v4");
-    assert.equal(body.wager.required_players_per_team, 4);
+    assert.equal(body.wager.team_size, team_size);
+    assert.equal(body.wager.required_players_per_team, Number(team_size[0]));
     assert.equal(body.wager.series_mode_ids.length, best_of);
     assert(!body.wager.maps.includes("Fake"));
     f.matches.get(body.wager_id).metadata.status = "cancelled";

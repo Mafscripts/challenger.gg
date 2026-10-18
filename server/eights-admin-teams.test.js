@@ -97,7 +97,7 @@ test("live, closed, incomplete and voice-pending lobbies cannot be edited", asyn
     const f = fixture(); Object.assign(f.state().match.metadata, metadata); const before = structuredClone(f.state());
     await assert.rejects(editEightsTeamsAsAdmin(f.db, admin, "match", f.input()), { status: 409 }); assert.deepEqual(f.state(), before);
   }
-  const f = fixture(); f.state().players.pop(); await assert.rejects(editEightsTeamsAsAdmin(f.db, admin, "match", f.input()), /4v4/);
+  const f = fixture(); f.state().players.pop(); await assert.rejects(editEightsTeamsAsAdmin(f.db, admin, "match", f.input()), /complete, distinct roster/);
 });
 
 test("Money 8s admin shuffle retains payment records and a five-minute timer without Free 8s skill reads", async () => {

@@ -9,6 +9,27 @@ import { cancelExpiredMatchfinderPost } from "../server/matchfinder-expiry.js";
 const config = { enabled: true, guildId: "100000000000000001", waitingRoomId: "100000000000000002", categoryId: "100000000000000003", overflowCategoryIds: ["100000000000000005", "100000000000000006"] };
 const channelId = (n) => String(300000000000000000n + BigInt(n));
 
+test("captain selection returns existing teams to the private waiting room and moves only the final drafted teams", async () => {
+  const f = fixture(); await f.sync();
+  assert.ok(Object.values(f.state().players).every((player) => player.status === "in_team_voice"));
+  f.match.metadata.free_eights_captain_draft = { id: "draft", status: "pending" };
+  f.match.metadata.teams_generated_at = "";
+  await f.sync();
+  const waitingId = f.state().channels.waiting;
+  assert.deepEqual(Object.keys(f.state().channels), ["waiting"]);
+  assert.ok(f.users.every((user) => f.voices.get(user.discord_user_id).channelId === waitingId));
+  f.match.metadata.free_eights_captain_draft.status = "active";
+  await f.sync();
+  assert.deepEqual(Object.keys(f.state().channels), ["waiting"]);
+  assert.ok(Object.values(f.state().players).every((player) => player.status === "in_waiting_room"));
+  f.participants.forEach((player, i) => { player.team = i % 2 ? "challenger" : "host"; });
+  f.match.metadata.free_eights_captain_draft.status = "completed";
+  f.match.metadata.teams_generated_at = new Date().toISOString();
+  f.match.metadata.status = "in_progress";
+  await f.sync();
+  assert.ok(f.users.every((user) => f.voices.get(user.discord_user_id).channelId === f.state().channels[f.participants.find((player) => player.user_id === user.id).team]));
+});
+
 // Use discord.js's effective member-permission calculation, including guild
 // role grants, channel overwrites and the Administrator bypass.
 function effectivePermissions(channel, id, { admin = false } = {}) {

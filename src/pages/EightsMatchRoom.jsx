@@ -9,6 +9,8 @@ import MatchMapSeries from "@/components/match/MatchMapSeries";
 import { eightsGameId, eightsMatchGameName } from "@/lib/freeEightsGames";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import FreeEightsMatchHeader from "@/components/match/FreeEightsMatchHeader";
+import FreeEightsCaptainDraft, { CaptainDraftDropZone } from "@/components/match/FreeEightsCaptainDraft";
+import { captainDraftPending, captainDraftActive, captainDraftPlayerIds } from "@/lib/freeEightsCaptainDraft";
 import WagerMoneyResultOverlay from "@/components/match/WagerMoneyResultOverlay";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
@@ -39,6 +41,10 @@ const lobbyMatchSnapshot = (value) => JSON.stringify([
   value?.roster_locked,
   value?.free_eights_waiting_for_voice,
   value?.teams_generated_at,
+  value?.host_id,
+  value?.challenger_id,
+  value?.free_eights_captain_vote_ids,
+  value?.free_eights_captain_draft,
   value?.eights_reshuffle_vote_count,
   value?.eights_reshuffle_vote_required,
   value?.eights_reshuffle_vote_user_ids,
@@ -367,6 +373,16 @@ function EightsMatchRoomView() {
   }, [id, loadRoom]);
 
   const allPlayers = useMemo(() => [...teamAlpha, ...teamBravo], [teamAlpha, teamBravo]);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const draftMutationRef = useRef(false);
+  const drafting = match?.match_type === "8s" && captainDraftPending(match);
+  const draftActive = captainDraftActive(match);
+  const draft = match?.free_eights_captain_draft;
+  const draftTeam = (side, fallback) => draftActive || draft?.status === "completed"
+    ? captainDraftPlayerIds(draft, side).map((id) => allPlayers.find((player) => player.user_id === id)).filter(Boolean)
+      .map((player) => ({ ...player, team: side, role: player.user_id === draft.captains[side] ? "captain" : "member" }))
+    : fallback;
+  const displayedAlpha = draftTeam("host", teamAlpha), displayedBravo = draftTeam("challenger", teamBravo);
   const voiceView = useFreeEightsVoice({ matchId: match?.id, players: allPlayers, user, rosterVersion: match?.teams_generated_at, enabled: match?.match_type === "8s" });
   const isMoneyEights = match?.match_type === "money8s";
   const roomLabel = isMoneyEights ? "Money 8s" : `Free 8s ${eightsMatchGameName(match)}`;
@@ -409,7 +425,7 @@ function EightsMatchRoomView() {
   const playerCapacity = playersPerTeam * 2;
   const openSpots = Math.max(0, playerCapacity - joined);
   const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
-  const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || countdown === 0);
+  const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || (!drafting && countdown === 0));
   const isComplete = match?.status === "completed";
   const personalMoneyResult = match?.wallet_changes?.[user?.id] || null;
   const alphaWinner = isComplete && match?.winner_id === match?.host_id;
@@ -427,7 +443,7 @@ function EightsMatchRoomView() {
   const reshuffleVoteCount = reshuffleVoteIds.length || Number(match?.eights_reshuffle_vote_count || 0);
   const requiredReshuffleVotes = Number(match?.eights_reshuffle_vote_required || eightsMajorityVotes(match));
   const hasReshuffleVote = Boolean(user?.id && reshuffleVoteIds.includes(user.id));
-  const reshuffleOpen = joined === playerCapacity && !locked && countdown !== null && countdown > 0 && !closedStatuses.has(match?.status);
+  const reshuffleOpen = !drafting && joined === playerCapacity && !locked && countdown !== null && countdown > 0 && !closedStatuses.has(match?.status);
   const canEditTeams = isAdmin && reshuffleOpen && match?.status === "open" && Boolean(match?.teams_generated_at) && !match?.free_eights_waiting_for_voice;
   useEffect(() => { setSwapPlayer(null); }, [match?.teams_generated_at]);
   const seriesMaps = (Array.isArray(match?.series_maps) ? match.series_maps : []).map((map, index) => (
@@ -506,6 +522,22 @@ function EightsMatchRoomView() {
   };
 
   const reshuffleMinutes = eightsReshuffleWindowMs(match?.match_type) / 60000;
+  const mutateCaptainDraft = async (action, payload) => {
+    if (draftMutationRef.current) return;
+    draftMutationRef.current = true;
+    setDraftBusy(true);
+    try {
+      const response = await base44.functions.invoke(action, { wager_id: id, ...payload });
+      if (!response.data?.success) throw new Error(response.data?.error || "Could not update captain selection");
+      setMatch(response.data.wager);
+      await loadRoom(true);
+    } catch (error) {
+      toast({ title: "Captain selection unavailable", description: error.message, variant: "destructive" });
+      await loadRoom(true);
+    } finally { draftMutationRef.current = false; setDraftBusy(false); }
+  };
+  const voteCaptainDraft = (agree) => mutateCaptainDraft("voteEightsCaptainDraft", { agree });
+  const pickCaptainPlayer = (input) => mutateCaptainDraft("pickEightsCaptainPlayer", input);
   const voteForReshuffle = async () => {
     setReshuffleBusy(true);
     try {
@@ -714,9 +746,10 @@ function EightsMatchRoomView() {
           </div>
         ) : <FreeEightsMatchHeader match={match} actions={headerActions} />} beforeTeams={(
           <>
-        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} playerCapacity={playerCapacity} user={user} waitingForMaps={match.free_eights_waiting_for_voice} voiceView={voiceView} />}
+        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} playerCapacity={playerCapacity} user={user} waitingForMaps={match.free_eights_waiting_for_voice} captainDraft={drafting} voiceView={voiceView} />}
+        {match.match_type === "8s" && (match.status === "open" || draft?.status === "completed") && <FreeEightsCaptainDraft match={match} players={allPlayers} userId={user?.id} isParticipant={isParticipant} busy={draftBusy} votingOpen={match.status === "open" && !locked && !draft} onVote={voteCaptainDraft} onPick={pickCaptainPlayer} />}
         {canEditTeams && <section className="m-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan/25 bg-cyan/[0.06] p-4 sm:m-4"><div><p className="text-xs font-black text-cyan">Admin team controls</p><p className="mt-1 text-xs text-vapor" role="status">{swapPlayer ? "Choose a player on the other team to swap, or select the same player to cancel." : "Drag a player onto someone on the other team to swap. You can also select two players using their swap buttons."}</p><p className="mt-1 text-[10px] text-vapor">Admin changes override automatic balancing and update Discord team assignments.</p></div><button type="button" onClick={adminReshuffleTeams} disabled={adminBusy} className="inline-flex items-center gap-2 rounded-lg border border-cyan/30 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan disabled:opacity-50"><Shuffle className="h-4 w-4" />Random shuffle</button></section>}
-        {!locked && !closedStatuses.has(match.status) && (
+        {!drafting && !locked && !closedStatuses.has(match.status) && (
           <section className="m-3 rounded-xl border border-purple-300/20 bg-card p-4 sm:m-4 sm:p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-300/10 text-purple-300"><Shuffle className="h-5 w-5" /></div><div><p className="text-[9px] font-black uppercase tracking-wider text-purple-300">Automatic team generator</p><p className="mt-1 font-black">{joined < playerCapacity ? `Waiting for ${playerCapacity - joined} more ${playerCapacity - joined === 1 ? "player" : "players"}` : match.free_eights_waiting_for_voice ? `Waiting for all ${playerCapacity} players in Discord` : "Teams shuffled · veto window open"}</p></div></div>
@@ -734,9 +767,13 @@ function EightsMatchRoomView() {
           </>
         )} teams={(
           <>
-            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={teamAlpha} emptySlots={Math.max(0, playersPerTeam - teamAlpha.length)} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
+            <CaptainDraftDropZone draft={draft} side="host" userId={user?.id} busy={draftBusy} onPick={pickCaptainPlayer}>
+            <MatchTeamTable label="Team Alpha" name="Team Alpha" color="orange" players={displayedAlpha} emptySlotLabel={draftActive ? "Waiting for captain pick" : undefined} emptySlots={Math.max(0, playersPerTeam - displayedAlpha.length)} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.host_id} finalScore={isComplete ? (match.confirmed_score_alpha ?? (alphaWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={alphaWinner} />
+            </CaptainDraftDropZone>
             <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
-            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={teamBravo} emptySlots={Math.max(0, playersPerTeam - teamBravo.length)} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
+            <CaptainDraftDropZone draft={draft} side="challenger" userId={user?.id} busy={draftBusy} onPick={pickCaptainPlayer}>
+            <MatchTeamTable label="Team Bravo" name="Team Bravo" color="cyan" players={displayedBravo} emptySlotLabel={draftActive ? "Waiting for captain pick" : undefined} emptySlots={Math.max(0, playersPerTeam - displayedBravo.length)} freeEights={match.match_type === "8s"} voiceStates={voiceView.playerStates} waitingRoomUrl={voiceView.voice?.waiting_room_url} eloChanges={match.free_eights_elo_changes} teamEditing={teamEditing} captainId={match.challenger_id} finalScore={isComplete ? (match.confirmed_score_bravo ?? (bravoWinner ? match.winner_score : match.loser_score)) : 0} isComplete={isComplete} isWinner={bravoWinner} />
+            </CaptainDraftDropZone>
           </>
         )} sidebar={(
           <>
