@@ -24,6 +24,7 @@ import { eightsGameId, generateEightsSeries } from "../../src/lib/freeEightsGame
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, tournamentGameId, tournamentGameName, tournamentMapImage, tournamentMapPools } from "../../src/lib/tournamentGames.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 import { editEightsTeamsAsAdmin } from "../eights-admin-teams.js";
+import { removeFreeEightsPlayer } from "../free-eights-removal.js";
 import { voteFreeEightsCaptainDraft, startFreeEightsCaptainDraft, pickFreeEightsCaptainPlayer, clearedCaptainDraft } from "../free-eights-captain-draft.js";
 import { captainDraftPending } from "../../src/lib/freeEightsCaptainDraft.js";
 import { eightsReshuffleWindowMs } from "../../src/lib/eightsLobbyTimer.js";
@@ -7167,6 +7168,17 @@ async function adminResetEightsLobby(req) {
   });
 }
 
+async function adminRemoveFreeEightsPlayer(req) {
+  const id = req.body.wager_id;
+  return withTournamentMutationLock(`wager-accept:${id}`, async () => {
+    const result = await removeFreeEightsPlayer(prisma, req.user, id, req.body);
+    publishEightsLobbyUpdate(id, "admin-player-removed");
+    await createMatchRoomSystemMessage("8s", result.wager,
+      `${result.removed_player_name} was removed from the lobby by admin ${nameFor(req.user)}. The room stays open for a replacement; team selection will restart once the lobby is full.`, req.user).catch(() => null);
+    return result;
+  });
+}
+
 async function adminRevertFreeEightsResult(req) {
   assertStaff(req, "admin");
   const wagerId = req.body.wager_id;
@@ -10909,6 +10921,7 @@ const handlers = {
   adminReshuffleEightsTeams,
   adminSwapEightsPlayers,
   adminResetEightsLobby,
+  adminRemoveFreeEightsPlayer,
   adminRevertFreeEightsResult,
   leaveEightsLobby,
   getMoneyEightsStandings,

@@ -18,7 +18,7 @@ function fixture(data = {}) {
     if (key === "AND") return value.every((entry) => matchesWhere(row, entry));
     if (key === "OR") return value.some((entry) => matchesWhere(row, entry));
     if (key === "NOT") return value.every((entry) => !matchesWhere(row, entry));
-    if (key === "metadata") return row.metadata?.[value.path[0]] === value.equals;
+    if (key === "metadata") return value.gt !== undefined ? row.metadata?.[value.path[0]] > value.gt : row.metadata?.[value.path[0]] === value.equals;
     if (value?.gt !== undefined) return row[key] > value.gt;
     return Array.isArray(value?.in) ? value.in.includes(row[key]) : value?.not ? row[key] !== value.not : row[key] === value;
   });
@@ -92,6 +92,14 @@ test("overview keeps 45-minute Free 8s lobbies visible for each game and the com
     assert.deepEqual((await getFreeEightsOverview(f.db, "me", game_id)).lobbies.map((row) => row.id), [game_id]);
   }
   assert.equal((await getFreeEightsOverview(f.db, "me", null)).lobbies.length, 3);
+});
+
+test("an older match reopened for a replacement remains visible without changing its original creation date", async () => {
+  const reopened = match("reopened");
+  reopened.created_date = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  reopened.metadata.free_eights_reopened_at = new Date().toISOString();
+  const f = fixture({ wager: [reopened] });
+  assert.deepEqual((await getFreeEightsOverview(f.db, "me")).lobbies.map((row) => row.id), ["reopened"]);
 });
 
 test("overview and enrollment use the same unresolved status rule and captain fallback", async () => {

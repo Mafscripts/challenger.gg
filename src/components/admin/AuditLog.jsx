@@ -7,7 +7,7 @@ import { effectiveRoleForUser } from "@/lib/roles";
 import "@/styles/admin-audit.css";
 
 const labels = { wallet_adjust: "Balance adjusted", account_deleted: "Account deleted", delete_ticket: "Ticket deleted", role_change: "Account role changed",
-  eights_team_edit: "8s teams updated", match_result_override: "Match result overridden", free_eights_result_reverted: "Free 8s result reverted",
+  eights_team_edit: "8s teams updated", free_eights_player_kicked: "Player removed from Free 8s", match_result_override: "Match result overridden", free_eights_result_reverted: "Free 8s result reverted",
   screenshot_rank_review: "Game rank reviewed", challenge_result: "Challenge result recorded", challenge_revert: "Challenge result reverted",
   challenge_cancel: "Challenge cancelled", challenge_kick: "Player removed from challenge", update_free_eights_games: "8s games & maps updated",
   user_vpn_access_allowed: "VPN access approved", user_vpn_access_removed: "VPN exception removed" };

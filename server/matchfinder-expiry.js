@@ -105,7 +105,10 @@ export async function sweepExpiredMatchfinderPosts(db, { withLock = (_key, opera
         { metadata: { path: ["challenger_id"], equals: Prisma.AnyNull } },
       ] }] : []),
       entity === "Wager" ? { OR: [
-        { AND: [field("match_type", "8s"), { created_date: { lte: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } }] },
+        { AND: [field("match_type", "8s"), { created_date: { lte: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } }, { OR: [
+          { metadata: { path: ["free_eights_reopened_at"], equals: Prisma.AnyNull } },
+          { metadata: { path: ["free_eights_reopened_at"], lte: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS).toISOString() } },
+        ] }] },
         { AND: [
           { OR: [
             { metadata: { path: ["match_type"], not: "8s" } },

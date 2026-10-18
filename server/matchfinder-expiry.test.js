@@ -24,6 +24,7 @@ function fixture(initial = {}) {
     if (key === "metadata") {
       const actual = row.metadata?.[value.path[0]];
       if (value.equals === Prisma.AnyNull) return actual === undefined || actual === null;
+      if (value.lte !== undefined) return actual <= value.lte;
       if (value.not !== undefined) return actual !== undefined && actual !== null && actual !== value.not;
       return actual === value.equals;
     }
@@ -91,8 +92,14 @@ test("Free 8s expiration cancels the room, clears membership and publishes once"
 for (const [entity, delegate] of [["RankedMatch", "rankedMatch"], ["XPMatch", "xPMatch"]]) {
   test(`${entity} expiration notifies each roster member once and preserves running matches`, async () => {
     const f = fixture({ [delegate]: [match("open", { match_type: entity === "XPMatch" ? "xp" : "ranked", team_alpha_player_ids: ["host", "a"], team_bravo_player_ids: ["b"], challenger_id: "b" }), match("live", { status: "in_progress" })] });
+    if (entity === "XPMatch") {
+      // An accepted XP match requires captain consent, even while open.
+      assert.equal(await cancelExpiredMatchfinderPost(f.db, entity, "open", f.options), null);
+      f.rows()[delegate][0].metadata.challenger_id = "";
+      f.rows()[delegate][0].metadata.team_bravo_player_ids = [];
+    }
     assert.equal((await cancelExpiredMatchfinderPost(f.db, entity, "open", f.options)).status, "cancelled");
-    assert.deepEqual(f.rows().notification.map((row) => row.metadata.user_id).sort(), ["a", "b", "host"]);
+    assert.deepEqual(f.rows().notification.map((row) => row.metadata.user_id).sort(), entity === "XPMatch" ? ["a", "host"] : ["a", "b", "host"]);
     assert.equal(await cancelExpiredMatchfinderPost(f.db, entity, "live", f.options), null);
     assert.equal(f.rows()[delegate][1].metadata.status, "in_progress");
   });
@@ -167,6 +174,17 @@ test("sweep preserves 30–60 minute Free 8s lobbies without blocking expired pa
   assert.ok(f.rows().wager.slice(0, 100).every((row) => row.metadata.status === "open"));
 });
 
+test("100 old Free 8s rooms reopened for replacements cannot starve the expiry of other rooms", async () => {
+  const reopened = Array.from({ length: 100 }, (_, i) => match(`reopened-${i}`, { free_eights_reopened_at: new Date(now).toISOString() }));
+  const f = fixture({ wager: [...reopened, match("expired")] });
+  const attempted = [];
+  assert.equal(await sweepExpiredMatchfinderPosts(f.db, { now, withLock: async (key, action) => { attempted.push(key); return action(); } }), 1);
+  assert.deepEqual(attempted, ["wager-accept:expired"]);
+  assert.ok(f.rows().wager.slice(0, 100).every((row) => row.metadata.status === "open"));
+  const afterWindow = now + 60 * 60 * 1000;
+  assert.equal(await sweepExpiredMatchfinderPosts(f.db, { now: afterWindow }), 100);
+});
+
 test("the startup worker runs immediately, skips overlapping sweeps, and drains on shutdown", async () => {
   let calls = 0, finish;
   const completed = new Promise((resolve) => { finish = resolve; });
@@ -199,6 +217,10 @@ test("accept endpoints reject expired posts before taking payments or adding pla
   override(prisma.user, "findUnique", async () => user);
   override(prisma.ban, "findMany", async () => []);
   for (const name of ["wager", "rankedMatch", "xPMatch"]) override(prisma[name], "findUnique", async () => expired);
+  const xpExpired = { ...expired, metadata: { ...expired.metadata, match_type: "xp", team_size: "1v1", challenger_id: "" } };
+  override(prisma.xPMatch, "findUnique", async () => xpExpired);
+  override(prisma.xPMatch, "findMany", async () => []);
+  override(prisma, "$transaction", async (action) => action({ $executeRaw: async () => 1, xPMatch: { findUnique: async () => xpExpired } }));
   const app = express(); app.use(express.json()); app.use("/api/functions", routes);
   const server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
@@ -207,6 +229,7 @@ test("accept endpoints reject expired posts before taking payments or adding pla
     const response = await fetch(`http://127.0.0.1:${server.address().port}/api/functions/${action}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${signUser(user)}` }, body: JSON.stringify({ [key]: "expired" }) });
     const result = await response.json();
     assert.equal(result.success, false);
-    assert.equal(result.code, "MATCH_CANCELLED");
+    if (action === "acceptXPMatch") assert.match(result.error, /expired/);
+    else assert.equal(result.code, "MATCH_CANCELLED");
   }
 });

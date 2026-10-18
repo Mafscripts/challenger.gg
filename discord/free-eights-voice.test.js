@@ -970,6 +970,20 @@ test("a departed player's failed move is retried without deleting the remaining 
   assert.equal(f.voices.get(leaver.discord_user_id).channelId, config.waitingRoomId);
 });
 
+test("removing a player from a running roster keeps the private waiting room and removes only their access", async () => {
+  const f = fixture(); await f.sync();
+  const waiting = f.state().channels.waiting, removed = f.users[0];
+  f.participants.shift();
+  Object.assign(f.match.metadata, { status: "open", roster_locked: false, teams_generated_at: "", free_eights_removed_user_ids: [removed.id] });
+  await f.sync();
+  assert.equal(f.state().channels.waiting, waiting);
+  assert.equal(f.state().cleaned, false);
+  assert.equal(f.voices.get(removed.discord_user_id).channelId, config.waitingRoomId);
+  assert.ok(f.users.slice(1).every((user) => f.voices.get(user.discord_user_id).channelId === waiting));
+  assert.equal(f.channels.get(waiting).permissionOverwrites.values.some((row) => row.id === removed.discord_user_id), false);
+  assert.equal(f.match.metadata.status, "open");
+});
+
 test("an externally deleted private waiting room is recreated with a new join link and ownership", async () => {
   const f = fixture();
   f.match.metadata.teams_generated_at = "";

@@ -204,7 +204,10 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
       { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
       { AND: [
         { metadata: { path: ["match_type"], equals: "8s" } },
-        { created_date: { gt: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } },
+        { OR: [
+          { created_date: { gt: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS) } },
+          { metadata: { path: ["free_eights_reopened_at"], gt: new Date(now - FREE_EIGHTS_POST_LIFETIME_MS).toISOString() } },
+        ] },
       ] },
     ] } : entity === "XPMatch" ? { OR: [
       { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },

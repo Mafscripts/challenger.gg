@@ -9,7 +9,9 @@ export function matchfinderPostLifetimeMs(post) {
 export function matchfinderPostExpiresAt(post) {
   // Once an XP opponent joins, a timer must not bypass captain consent.
   if (post?.match_type === "xp" && post.challenger_id) return Infinity;
-  const placedAt = new Date(post?.created_date || "").getTime();
+  const createdAt = new Date(post?.created_date || "").getTime();
+  const reopenedAt = post?.match_type === "8s" ? Date.parse(post.free_eights_reopened_at) : NaN;
+  const placedAt = Number.isFinite(reopenedAt) ? Math.max(createdAt, reopenedAt) : createdAt;
   return Number.isFinite(placedAt) ? placedAt + matchfinderPostLifetimeMs(post) : NaN;
 }
 

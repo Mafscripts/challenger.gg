@@ -39,6 +39,7 @@ export async function createFreeEightsLobby(db, userId, payload, userName) {
       ...payload, match_type: "8s", host_id: userId, status: "open",
       // Votes and captain identities can only originate from protected actions.
       free_eights_captain_draft: null, free_eights_captain_vote_ids: [],
+      free_eights_removed_user_ids: [], free_eights_reopened_at: "",
     }) });
     await tx.wagerParticipant.create({ data: dataForEntity("WagerParticipant", {
       wager_id: match.id, user_id: userId, user_name: userName, team: "host", is_captain: true,
@@ -56,6 +57,9 @@ export async function joinFreeEightsLobby(db, userId, matchId, userName) {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`free8s-enrollment:${matchId}`}))`;
     const match = await tx.wager.findUnique({ where: { id: matchId } });
     if (match?.metadata?.match_type !== "8s" || match.metadata.status !== "open") return { success: false, error: "Free 8s lobby is not open" };
+    if (Array.isArray(match.metadata.free_eights_removed_user_ids) && match.metadata.free_eights_removed_user_ids.includes(userId)) return {
+      success: false, code: "FREE_EIGHTS_REMOVED", error: "Staff removed you from this lobby. You can join a different Free 8s lobby.",
+    };
     if (matchfinderPostExpiresAt(serializeRow(match)) <= Date.now()) return { success: false, code: "MATCH_CANCELLED", error: "This Free 8s lobby expired after 60 minutes. Join or create another match." };
     const rows = await tx.wagerParticipant.findMany({ where: field("wager_id", matchId), orderBy: { created_date: "asc" } });
     const existing = rows.find((row) => row.metadata?.user_id === userId);
@@ -68,10 +72,13 @@ export async function joinFreeEightsLobby(db, userId, matchId, userName) {
     const team = hosts <= challengers ? "host" : "challenger";
     const participant = await tx.wagerParticipant.create({ data: dataForEntity("WagerParticipant", {
       wager_id: matchId, user_id: userId, user_name: userName, team,
-      is_captain: team === "challenger" && challengers === 0,
+      is_captain: team === "host" ? hosts === 0 : challengers === 0,
       entry_fee_paid: 0, payment_status: "paid", paid_by: userId, escrowed: false,
       joined_date: new Date().toISOString(),
     }) });
+    if (team === "host" && !match.metadata.host_id) await tx.wager.update({ where: { id: matchId }, data: {
+      metadata: { ...match.metadata, host_id: userId, host_name: userName },
+    } });
     return { success: true, participant: serializeRow(participant), enrolled: rows.map(serializeRow) };
   }, { timeout: 15_000, maxWait: 5_000 });
 }
