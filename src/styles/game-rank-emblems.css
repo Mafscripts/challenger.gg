@@ -1,0 +1,19 @@
+.legend-emblem-shiny {
+  filter: drop-shadow(0 0 2px rgb(251 191 36 / .28));
+}
+
+.legend-emblem-glint {
+  opacity: 0;
+  animation: legend-emblem-glint 5.2s ease-in-out infinite;
+}
+
+@keyframes legend-emblem-glint {
+  0%, 68% { opacity: 0; transform: translateX(0); }
+  72% { opacity: .8; }
+  88% { opacity: .8; }
+  92%, 100% { opacity: 0; transform: translateX(62px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .legend-emblem-glint { animation: none; opacity: 0; }
+}
