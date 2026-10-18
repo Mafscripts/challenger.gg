@@ -12,6 +12,7 @@ import "@/styles/profile-dashboard.css";
 
 const modes = { ranked: { label: "Ranked", href: "/ranked", tone: "cyan" }, eights: { label: "Free 8s", href: "/ranked/8s", tone: "orange" }, xp: { label: "XP Matches", href: "/xp", tone: "purple" } };
 const number = (value) => Math.max(0, Number(value) || 0).toLocaleString();
+const trophyPlacements = { gold: "1st Place", silver: "2nd Place", bronze: "3rd Place", premium: "1st Premium" };
 
 function Heading({ title, children, icon: Icon }) {
   return <div className="pd-heading"><div>{Icon && <Icon aria-hidden="true" />}<h2>{title}</h2></div><span />{children}</div>;
@@ -65,7 +66,7 @@ export function ArenaRecords({ data, loading = false, error = false, onRetry, sc
 export function TrophyShelf({ trophies = [], loading = false, error = false, onViewAll }) {
   return <section className="pd-panel pd-trophies"><Heading title="Trophy showcase" icon={Trophy}><button onClick={onViewAll} className="pd-text-action">View cabinet <ChevronRight /></button></Heading>
     {loading ? <p className="pd-empty" role="status">Loading trophies…</p> : error ? <p className="pd-empty">Trophies could not be loaded.</p> : trophies.length ? <div className="pd-trophy-shelf" aria-label="Latest 10 earned trophies">{trophies.slice(0, 10).map((trophy) => <BadgeTooltip key={trophy.id} label={trophy.name} description={[trophy.event, trophy.earned_at ? `Earned ${new Date(trophy.earned_at).toLocaleDateString()}` : "Earned trophy"].filter(Boolean).join(" · ")}>
-      <button onClick={onViewAll} className="pd-trophy" aria-label={`${trophy.tier} trophy${trophy.event ? ` · ${trophy.event}` : ""}`}><TrophySymbol type={trophy.tier} className="pd-trophy-symbol" /></button>
+      <button onClick={onViewAll} className="pd-trophy" data-tier={trophy.tier} aria-label={`${trophyPlacements[trophy.tier] || trophy.tier} trophy${trophy.event ? ` · ${trophy.event}` : ""}`}><TrophySymbol type={trophy.tier} className="pd-trophy-symbol" /><span className="pd-trophy-placement">{trophyPlacements[trophy.tier]}</span></button>
     </BadgeTooltip>)}</div> : <div className="pd-empty-inline"><Trophy /><p>No trophies earned yet.</p></div>}
   </section>;
 }
