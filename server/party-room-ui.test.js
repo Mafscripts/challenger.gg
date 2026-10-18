@@ -36,8 +36,12 @@ test("community matchroom renders the real match shell, map artwork, branded ros
   assert.match(html, /match-chat-panel/); assert.match(html, /Submit score/); assert.match(html, /Confirm match result/);
   assert.match(html, /href="https:\/\/discord.com\/channels\/123\/789"/); assert.match(html, /href="\/profile\/Liv"/);
   assert.ok(html.indexOf("Map Series") < html.indexOf('match-team-card'), "maps must be visible before the rosters");
+  assert.match(html, /<section class="dark-focus dark-media[^\"]*h-auto w-full/, "compact map cards must not fill the column height and push teams below the screen");
   assert.doesNotMatch(html, /8s ELO|Earnings|TP RANK|party-match-layout/);
   const spectator = compiled.exports.render({ ...props, manager: false, user: { id: "viewer" } });
   assert.doesNotMatch(spectator, /Confirm match result|Submit score/);
   assert.match(spectator, /Link your player slot/);
+  const guests = compiled.exports.render({ ...props, room: { ...room, players: room.players.map(({ user_id, profile, ...player }) => player) } });
+  assert.equal((guests.match(/class="match-player-card party-community-player"/g) || []).length, 2, "players without accounts must still appear in both team rosters");
+  assert.match(guests, /Guest player/);
 });
