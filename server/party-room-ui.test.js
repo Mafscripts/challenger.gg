@@ -34,7 +34,11 @@ test("community matchroom renders the real match shell, map artwork, branded ros
   assert.match(html, /Map Series/); assert.match(html, /System generated/); assert.match(html, /src="\/assets\/maps\/hacienda.jpg"/);
   assert.match(html, /Hosts map 1/); assert.match(html, /Liv#123/); assert.match(html, /Guest player/);
   assert.match(html, /match-chat-panel/); assert.match(html, /Submit score/); assert.match(html, /Confirm match result/);
-  assert.match(html, /Host &amp; admin controls/); assert.match(html, /Give win/); assert.match(html, /Give loss/); assert.match(html, /Forfeit/); assert.match(html, /Reset all teams/);
+  assert.match(html, /Admin tools/); assert.match(html, /Give win/); assert.match(html, /Give loss/); assert.match(html, /Forfeit/); assert.match(html, /Reset all teams/);
+  assert.ok(html.indexOf('match-chat-panel') < html.indexOf('Admin tools'));
+  assert.ok(html.indexOf('Admin tools') < html.indexOf('id="party-match-message"'), "host/admin controls belong inside chat, above the message input like Free 8s");
+  assert.equal((html.match(/Admin tools/g) || []).length, 1);
+  assert.doesNotMatch(html, /Host &amp; admin controls/);
   assert.match(html, /href="https:\/\/discord.com\/channels\/123\/789"/); assert.match(html, /href="\/profile\/Liv"/);
   assert.ok(html.indexOf('match-team-card') < html.indexOf("Map Series"), "teams must stay in the main column");
   assert.ok(html.indexOf('match-chat-panel') < html.indexOf("Map Series"), "maps must appear underneath match chat like Free 8s");
@@ -42,7 +46,7 @@ test("community matchroom renders the real match shell, map artwork, branded ros
   assert.doesNotMatch(html, /8s ELO|Earnings|TP RANK|party-match-layout/);
   const spectator = compiled.exports.render({ ...props, manager: false, user: { id: "viewer" } });
   assert.doesNotMatch(spectator, /Confirm match result|Submit score/);
-  assert.doesNotMatch(spectator, /Host &amp; admin controls|Give win|Give loss|Reset all teams/);
+  assert.doesNotMatch(spectator, /Admin tools|Give win|Give loss|Reset all teams/);
   assert.match(spectator, /Link your player slot/);
   const guests = compiled.exports.render({ ...props, room: { ...room, players: room.players.map(({ user_id, profile, ...player }) => player) } });
   assert.equal((guests.match(/class="match-player-card party-community-player"/g) || []).length, 2, "players without accounts must still appear in both team rosters");

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createPartyRoom, changePartyRoom, flattenPartyRoom, getPartyRoom, partyRoomSummary, partyRoomView } from "./party-rooms.js";
 import { partyRoomStorageError } from "./party-room-storage.js";
 import { partyCandidates, partyCapacity, partyDrawMembers, partyGenderQuota, partySide, partyValidation } from "../src/lib/partyWheel.js";
+import { submitPartyRoomAction } from "../src/lib/partyRoomActions.js";
 
 function fixture() {
   let row = { id: "party-room", owner_id: "host", revision: 0, status: "open", created_date: new Date(), updated_date: new Date(), metadata: {
@@ -384,4 +385,40 @@ test("players cannot use management controls; creator/admin resets keep players 
   await f.act("spin");
   await f.act("reset", {}, { id: "admin", role: "admin" });
   assert.equal(f.room().spin, null, "admin can cancel a running spin");
+});
+
+test("a committed team reset recovers a lost gateway response without resetting twice", async () => {
+  for (const status of [502, 503, 504, null]) {
+    const f = fixture(); await readyRoom(f); await f.act("start_bracket");
+    const before = f.room(), matchId = before.bracket.matches[0].id;
+    let writes = 0, reads = 0;
+    const result = await submitPartyRoomAction({
+      change: async (id, input) => {
+        writes++;
+        assert.equal(id, before.id); assert.equal(input.view_match_id, matchId);
+        await f.act(input.action, input);
+        throw status ? Object.assign(new Error("Gateway response lost"), { status }) : new TypeError("Failed to fetch");
+      },
+      get: async (id, match, options) => {
+        reads++;
+        assert.equal(id, before.id); assert.equal(match, null); assert.equal(options.fresh, true);
+        return { room: f.room() };
+      },
+    }, before, "reset", { reason: "New teams" }, matchId);
+    assert.equal(writes, 1); assert.equal(reads, 1);
+    assert.equal(result.room.status, "open"); assert.equal(result.room.round, before.round + 1);
+    assert.equal(result.room.history.length, 1); assert.equal(result.room.bracket, null);
+  }
+});
+
+test("reset recovery never hides rejected, uncommitted or unverified actions", async () => {
+  const f = fixture(); await readyRoom(f); await f.act("start_bracket");
+  const before = f.room(), gateway = Object.assign(new Error("Gateway unavailable"), { status: 502 });
+  for (const current of [before, { ...before, revision: before.revision + 1 }, { ...before, revision: before.revision + 1, status: "open", round: before.round + 1, bracket: null, spin: null, players: [], management_log: [{ action: "reset_teams", round: before.round + 1 }] }]) {
+    await assert.rejects(submitPartyRoomAction({ change: async () => { throw gateway; }, get: async () => ({ room: current }) }, before, "reset"), (error) => error === gateway);
+  }
+  await assert.rejects(submitPartyRoomAction({ change: async () => { throw gateway; }, get: async () => { throw new Error("Still offline"); } }, before, "reset"), (error) => error === gateway);
+  for (const [action, error] of [["reset", Object.assign(new Error("Forbidden"), { status: 403 })], ["reset", Object.assign(new Error("Stale revision"), { status: 409 })], ["match_forfeit", gateway]]) {
+    await assert.rejects(submitPartyRoomAction({ change: async () => { throw error; }, get: () => assert.fail("Do not reconcile a rejected or different action") }, before, action), (actual) => actual === error);
+  }
 });

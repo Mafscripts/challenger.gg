@@ -9,6 +9,7 @@ import { PartyAddDuo, PartyAddPlayers } from "@/components/competition/PartyPlay
 import PartyManagement from "@/components/competition/PartyManagement";
 import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { partyCapacity, partyDrawEntries, partyGenderQuota, partySpinning, partyValidation } from "@/lib/partyWheel";
+import { submitPartyRoomAction } from "@/lib/partyRoomActions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import "@/styles/party-rooms.css";
 
@@ -97,7 +98,7 @@ function PartyRoom() {
   const act = async (action, input = {}) => {
     if (busy || !room) return false;
     setBusy(true); setError(""); setNotice("");
-    try { const result = await base44.party.change(id, { action, revision: room.revision, view_match_id: matchId, ...input }); setData((previous) => previous && result.room.revision < previous.room.revision ? previous : ({ ...previous, room: result.room })); setConfirm(null); return true; }
+    try { const result = await submitPartyRoomAction(base44.party, room, action, input, matchId); setData((previous) => previous && result.room.revision < previous.room.revision ? previous : ({ ...previous, room: result.room })); setConfirm(null); return true; }
     catch (error) { setError(error.message); if (error.status === 409) await refresh().catch(() => {}); return false; }
     finally { setBusy(false); }
   };

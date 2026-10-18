@@ -12,13 +12,13 @@ const modes = { snd: "Search & Destroy", hardpoint: "Hardpoint", cdl: "CDL" };
 const statusLabel = (match) => ({ ready: "Ready to play", completed: "Completed", bye: "Bye", pending: "Waiting for teams" })[match.status];
 const teamName = (room, id) => room.teams.find((team) => team.id === id)?.name || "Awaiting opponent";
 
-function RoomChat({ room, match, user, canTalk, disabled, act }) {
+function RoomChat({ room, match, user, canTalk, disabled, act, inputActions }) {
   const [message, setMessage] = useState("");
   const body = useRef(null), follow = useRef(true);
   useEffect(() => { if (body.current && follow.current) body.current.scrollTop = body.current.scrollHeight; }, [match.messages.length]);
-  return <section className="match-chat-panel flex h-[360px] flex-col overflow-hidden rounded-xl border border-white/[0.09] bg-card xl:h-[400px]">
+  return <section className="match-chat-panel flex flex-col overflow-hidden rounded-xl border border-white/[0.09] bg-card">
     <header className="flex shrink-0 items-center justify-between border-b border-white/[0.07] bg-[var(--arena-raised)] px-3 py-3"><h2 className="flex items-center gap-2 text-sm font-bold"><MessageSquare className="h-4 w-4 text-cyan" />Match chat</h2><span className="text-[10px] text-vapor">{match.messages.length} messages</span></header>
-    <div ref={body} role="log" aria-label="Match chat" className="min-h-0 flex-1 overflow-y-auto bg-[var(--arena-inset)] p-3" onScroll={(e) => { const node = e.currentTarget; follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 64; }}>
+    <div ref={body} role="log" aria-label="Match chat" className="h-[260px] overflow-y-auto bg-[var(--arena-inset)] p-3 xl:h-[300px]" onScroll={(e) => { const node = e.currentTarget; follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 64; }}>
       {!match.messages.length && <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center"><MessageSquare className="h-7 w-7 text-vapor/25" /><p className="text-xs text-vapor">Your match conversation starts here.</p><p className="text-[10px] text-vapor/60">Coordinate hosts, readiness and scores.</p></div>}
       {match.messages.map((entry) => {
         const player = room.players.find((player) => player.user_id === entry.user_id);
@@ -26,6 +26,7 @@ function RoomChat({ room, match, user, canTalk, disabled, act }) {
         return <article key={entry.id} className={`mt-3 flex gap-2 first:mt-0 ${bravo ? "flex-row-reverse" : ""}`}><span className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border text-[10px] font-black ${bravo ? "border-cyan/20 text-cyan" : "border-orange/20 text-orange"}`}>{player?.profile?.avatar_url ? <img src={player.profile.avatar_url} alt="" className="h-full w-full object-cover" /> : entry.name.charAt(0).toUpperCase()}</span><div className="min-w-0 max-w-[85%]"><header className={`mb-1 flex flex-wrap items-center gap-2 ${bravo ? "justify-end" : ""}`}><strong className={`text-[11px] ${bravo ? "text-cyan" : "text-orange"}`}>{entry.name}</strong><time dateTime={entry.created_at} className="text-[9px] text-vapor/65">{new Date(entry.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></header><p className={`whitespace-pre-wrap break-words rounded-lg border px-3 py-2 text-xs leading-relaxed ${bravo ? "border-cyan/20 bg-cyan/[0.04]" : "border-orange/20 bg-orange/[0.04]"} ${own ? "ring-1 ring-white/5" : ""}`}>{entry.message}</p></div></article>;
       })}
     </div>
+    {inputActions && <div className="shrink-0 border-t border-white/[0.07] bg-[var(--arena-raised)] px-2.5 pt-2.5">{inputActions}</div>}
     {canTalk && room.status !== "closed" ? <form className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] bg-[var(--arena-raised)] p-2.5" onSubmit={async (e) => { e.preventDefault(); if (await act("match_message", { match_id: match.id, message })) { setMessage(""); follow.current = true; } }}><label htmlFor="party-match-message" className="sr-only">Write a chat message</label><input id="party-match-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={1000} placeholder="Type a message…" disabled={disabled} className="min-w-0 flex-1 rounded-lg border border-cyan/20 bg-background/80 px-3 py-2.5 text-sm placeholder:text-vapor/65 focus:border-cyan/60 focus:outline-none" /><button disabled={disabled || !message.trim()} aria-label="Send message" className="rounded-lg border border-cyan/20 bg-cyan/10 p-2.5 text-cyan disabled:opacity-40"><Send className="h-4 w-4" /></button></form> : <p className="border-t border-white/[0.07] px-3 py-3 text-[11px] text-vapor">{room.status === "closed" ? "This room is closed." : "Link your player slot in the lobby to join the chat."}</p>}
   </section>;
 }
@@ -59,11 +60,11 @@ export default function PartyMatchRoom({ room, matchId, user, manager, disabled,
 
 
       </>}
-      sidebar={<><RoomChat room={room} match={match} user={user} canTalk={canTalk} disabled={disabled} act={act} />
+      sidebar={<><RoomChat room={room} match={match} user={user} canTalk={canTalk} disabled={disabled} act={act} inputActions={manager && room.status !== "closed" && <PartyManagement embedded room={room} match={match} disabled={managementDisabled} act={act} error={error} onReset={() => navigate(`/coed-switcheroo/${room.id}`)} onEditScore={() => { setScores((match.score || [0, 0]).map(String)); setOverrideConfirmed(false); setScoreOpen(true); }} />} />
 <MatchMapSeries maps={maps} title="Map Series" mode={modes[room.bracket.game_mode]} host="System generated" hostLabel="Maps" bestOf={room.bracket.best_of} compact stacked emptyText={match.status === "bye" ? "No maps needed for a bye." : "The server is preparing this match's maps…"} />
 {match.maps_generated_at && <p className="flex items-center gap-1.5 px-1 text-[10px] text-vapor/65"><MapPin className="h-3 w-3 text-cyan" />{complete ? "Maps played in this series." : "Same maps and order for every match in this bracket round."} Hosts alternate each map.</p>}
 {resultPanel}</>} />
-    {manager && room.status !== "closed" && <PartyManagement room={room} match={match} disabled={managementDisabled} act={act} error={error} onReset={() => navigate(`/coed-switcheroo/${room.id}`)} onEditScore={() => { setScores((match.score || [0, 0]).map(String)); setOverrideConfirmed(false); setScoreOpen(true); }} />}
+
     {next.length > 0 && complete && <nav className="flex flex-wrap gap-2" aria-label="Following matches">{next.map((entry) => <Link className="party-button" key={entry.id} to={`/coed-switcheroo/${room.id}/match/${entry.id}`}>{partyMatchLabel(entry)}<ArrowRight /></Link>)}</nav>}
     <PartyScoreDialog open={scoreOpen} onOpenChange={setScoreOpen} room={room} match={match} manager={manager} disabled={disabled} scores={scores} setScores={setScores} overrideConfirmed={overrideConfirmed} setOverrideConfirmed={setOverrideConfirmed} error={error} act={act} />
   </div></div>;

@@ -406,7 +406,10 @@ export const base44 = {
   party: {
     searchPlayers(query) { requireToken(); return apiFetch(`/party-rooms/players?query=${encodeURIComponent(query)}`); },
     list() { requireToken(); return apiFetch("/party-rooms"); },
-    get(id, matchId) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}${matchId ? `?match=${encodeURIComponent(matchId)}` : ""}`); },
+    get(id, matchId, { fresh = false } = {}) {
+      requireToken();
+      return apiFetch(`/party-rooms/${encodeURIComponent(id)}${toQuery({ match: matchId, ...(fresh ? { _refresh: Date.now() } : {}) })}`);
+    },
     create(input) { requireToken(); return apiFetch("/party-rooms", { method: "POST", body: input }); },
     change(id, input) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}`, { method: "POST", body: input }); },
   },
