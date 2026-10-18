@@ -35,7 +35,8 @@ test("community matchroom renders the real match shell, map artwork, branded ros
   assert.match(html, /Hosts map 1/); assert.match(html, /Liv#123/); assert.match(html, /Guest player/);
   assert.match(html, /match-chat-panel/); assert.match(html, /Submit score/); assert.match(html, /Confirm match result/);
   assert.match(html, /href="https:\/\/discord.com\/channels\/123\/789"/); assert.match(html, /href="\/profile\/Liv"/);
-  assert.ok(html.indexOf("Map Series") < html.indexOf('match-team-card'), "maps must be visible before the rosters");
+  assert.ok(html.indexOf('match-team-card') < html.indexOf("Map Series"), "teams must stay in the main column");
+  assert.ok(html.indexOf('match-chat-panel') < html.indexOf("Map Series"), "maps must appear underneath match chat like Free 8s");
   assert.match(html, /<section class="dark-focus dark-media[^\"]*h-auto w-full/, "compact map cards must not fill the column height and push teams below the screen");
   assert.doesNotMatch(html, /8s ELO|Earnings|TP RANK|party-match-layout/);
   const spectator = compiled.exports.render({ ...props, manager: false, user: { id: "viewer" } });
