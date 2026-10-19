@@ -22,6 +22,7 @@ import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
 import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
+import { visibleTournamentMatches } from "@/lib/tournamentBracketView";
 
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const adminRoles = new Set(["ceo", "super_admin", "admin"]);
@@ -1038,7 +1039,7 @@ function CompactStat({ label, value, tone = "default" }) {
 }
 
 function TournamentMatchesPanel({ matches = [] }) {
-  const orderedMatches = [...matches].sort((a, b) => (
+  const orderedMatches = visibleTournamentMatches(matches).sort((a, b) => (
     Number(a.round || 1) - Number(b.round || 1)
     || Number(a.match_number || 1) - Number(b.match_number || 1)
   ));
@@ -1060,13 +1061,13 @@ function TournamentMatchesPanel({ matches = [] }) {
                   <p className="mt-1 text-xs font-bold text-primary">Match {match.match_number || 1}</p>
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{match.team_a_name || "Open slot"} <span className="px-1 text-vapor">vs</span> {match.team_b_name || "Open slot"}</p>
+                  <p className="truncate text-sm font-bold">{match.team_a_name || (match.team_a_bye ? "Bye" : "TBD")} <span className="px-1 text-vapor">vs</span> {match.team_b_name || (match.team_b_bye ? "Bye" : "TBD")}</p>
                   <p className="mt-1 text-[10px] text-vapor">{modeLabels[match.game_mode] || match.game_mode || "Mode TBD"} · {formatDate(match.scheduled_date || match.start_date)}</p>
                 </div>
                 <div className="flex items-center gap-3 sm:justify-end">
-                  <span className="font-mono text-sm font-black">{match.team_a_score || 0} — {match.team_b_score || 0}</span>
+                  <span className="font-mono text-sm font-black">{match.bye ? "—" : `${match.team_a_score || 0} — ${match.team_b_score || 0}`}</span>
                   <span className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase ${complete ? "border-green/20 bg-green/10 text-green" : "border-primary/20 bg-primary/10 text-primary"}`}>
-                    {complete ? "Final" : statusLabels[match.status] || String(match.status || "pending").replace(/_/g, " ")}
+                    {match.bye ? "Bye · auto advance" : complete ? "Final" : statusLabels[match.status] || String(match.status || "pending").replace(/_/g, " ")}
                   </span>
                   <ArrowRight className="h-4 w-4 text-vapor group-hover:text-primary" />
                 </div>
@@ -1139,13 +1140,8 @@ function TournamentRulesPanel({ tournament }) {
 
 function CompactBracketPreview({ matches = [], tournament = null }) {
   const groups = useMemo(() => {
-    const unique = new Map();
-    matches.forEach((match) => {
-      const key = String(match.id || `${match.bracket || "winner"}-${match.round || 1}-${match.match_number || 1}`);
-      unique.set(key, match);
-    });
     const bracketOrder = { winner: 1, loser: 2, grand_final: 3 };
-    const rows = [...unique.values()].sort((a, b) => (
+    const rows = visibleTournamentMatches(matches).sort((a, b) => (
       (bracketOrder[a.bracket || "winner"] || 9) - (bracketOrder[b.bracket || "winner"] || 9)
       || Number(a.round || 1) - Number(b.round || 1)
       || Number(a.match_number || 1) - Number(b.match_number || 1)
@@ -1248,9 +1244,9 @@ function CompactBracketPreview({ matches = [], tournament = null }) {
                       >
                         {hasIncomingLine && <span aria-hidden="true" className="pointer-events-none absolute right-full top-1/2 h-px w-3 bg-white/20" />}
                         {hasOutgoingLine && <span aria-hidden="true" className="pointer-events-none absolute left-full top-1/2 h-px w-3 bg-white/20" />}
-                        <p className="mb-1.5 text-[8px] font-black uppercase tracking-wider text-vapor">Match {match.match_number || "-"}</p>
-                        <BracketTeamRow name={match.team_a_name} seed={match.team_a_seed} score={match.team_a_score} winner={teamAWin} complete={complete} />
-                        <BracketTeamRow name={match.team_b_name} seed={match.team_b_seed} score={match.team_b_score} winner={teamBWin} complete={complete} />
+                        <p className="mb-1.5 text-[8px] font-black uppercase tracking-wider text-vapor">Match {match.match_number || "-"}{match.bye ? " · Bye · auto advance" : ""}</p>
+                        <BracketTeamRow name={match.team_a_name || (match.team_a_bye ? "Bye" : null)} seed={match.team_a_seed} score={match.team_a_score} winner={teamAWin} complete={complete && !match.bye} />
+                        <BracketTeamRow name={match.team_b_name || (match.team_b_bye ? "Bye" : null)} seed={match.team_b_seed} score={match.team_b_score} winner={teamBWin} complete={complete && !match.bye} />
                       </Link>
                     );
                   })}

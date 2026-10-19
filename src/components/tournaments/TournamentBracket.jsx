@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Clock3, Crown, GitBranch, Trophy, Zap } from "lucide-react";
+import { visibleTournamentMatches } from "@/lib/tournamentBracketView";
 
 const bracketOrder = { winner: 1, loser: 2, grand_final: 3 };
 const normalizedBracket = (match) => match?.bracket || "winner";
@@ -8,6 +9,7 @@ const isCompleteMatch = (match) => Boolean(match?.winner_id && (match?.completed
 const cleanStatus = (value) => String(value || "pending").replace(/_/g, " ");
 
 function displayedStatus(match) {
+  if (match.bye) return "Bye · auto advance";
   if (isCompleteMatch(match)) {
     if (match?.empty_bracket_slot) return "Skipped";
     if (!match?.team_a_id || !match?.team_b_id) return "Bye · auto advance";
@@ -19,38 +21,6 @@ function displayedStatus(match) {
     return match?.team_a_id && match?.team_b_id ? "Ready" : "Skipped";
   }
   return cleanStatus(match?.status);
-}
-
-function matchFreshness(match) {
-  const updated = new Date(match?.updated_date || match?.created_date || 0).getTime();
-  const populated = Number(Boolean(match?.team_a_id)) + Number(Boolean(match?.team_b_id));
-  const resolved = Number(Boolean(match?.winner_id));
-  return (Number.isFinite(updated) ? updated : 0) + (populated * 10) + (resolved * 100);
-}
-
-function uniqueBracketMatches(matches) {
-  const unique = new Map();
-  matches.forEach((match) => {
-    const assignedTeams = Number(Boolean(match?.team_a_id)) + Number(Boolean(match?.team_b_id));
-    const isAutomaticBye = Boolean(
-      match?.winner_id
-      && assignedTeams < 2
-      && (match?.completed || match?.status === "completed")
-    );
-    const isEmptyRoute = Boolean(
-      assignedTeams === 0
-      && (match?.empty_bracket_slot || ((match?.completed || match?.status === "completed") && !match?.winner_id))
-    );
-    // A bye is a meaningful part of the route and remains visible. Only a fully
-    // empty legacy node is omitted.
-    if (isEmptyRoute && !isAutomaticBye) return;
-    // The bracket position is the identity users see. This also protects the UI
-    // from legacy duplicate rows left behind by an older reset/generation flow.
-    const position = `${normalizedBracket(match)}:${Number(match?.round || 1)}:${Number(match?.match_number || 1)}`;
-    const current = unique.get(position);
-    if (!current || matchFreshness(match) >= matchFreshness(current)) unique.set(position, match);
-  });
-  return [...unique.values()];
 }
 
 function statusStyle(match, isCurrent) {
@@ -165,15 +135,15 @@ function TeamSlot({ match, slot, source, displayNumbers }) {
   const sourceResolved = source && isCompleteMatch(source);
   const sourceOutcome = match?.[`team_${slot}_source_outcome`] === "loser" ? "Loser" : "Winner";
   const sourceNumber = source ? (displayNumbers.get(String(source.id)) || source.match_number) : null;
-  const sourceText = source
+  const sourceText = match[`team_${slot}_bye`] ? "Bye" : source
     ? `${sourceResolved ? sourceOutcome : `${sourceOutcome} of`} ${compactStageName(source)} · M${sourceNumber}`
-    : "Bye";
+    : "Waiting for bracket result";
 
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${
       won
         ? "border-green/25 bg-green/10"
-        : completed
+        : completed && !match.bye
           ? "border-red-400/10 bg-red-500/[0.035]"
           : teamId
             ? "border-white/[0.07] bg-white/[0.025]"
@@ -184,16 +154,16 @@ function TeamSlot({ match, slot, source, displayNumbers }) {
           <p className={`truncate text-xs font-black ${won ? "text-green" : teamId ? "text-white" : "text-cyan/85"}`}>
             {teamId ? `#${seed || "-"} ${teamName}` : sourceText}
           </p>
-          {source && (
+          {source && !match[`team_${slot}_bye`] && (
             <p className="mt-1 truncate text-[9px] font-bold uppercase tracking-wide text-vapor">
               {teamId ? sourceText : sourceMatchup(source)}
             </p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {completed && <span className={`text-[8px] font-black uppercase tracking-wider ${won ? "text-green" : "text-red-300"}`}>{won ? "Win" : "Loss"}</span>}
+          {completed && !match.bye && <span className={`text-[8px] font-black uppercase tracking-wider ${won ? "text-green" : "text-red-300"}`}>{won ? "Win" : "Loss"}</span>}
           <span className={`min-w-7 rounded-md px-2 py-1 text-center font-mono text-xs font-black ${won ? "bg-green/15 text-green" : "bg-black/25 text-vapor"}`}>
-            {completed ? score : "—"}
+            {completed && !match.bye ? score : "—"}
           </span>
         </div>
       </div>
@@ -267,7 +237,7 @@ function MatchCard({ match, matches, currentId, now, groupNames, displayNumbers 
 }
 
 export default function TournamentBracket({ matches = [], currentId = null, tournament = null, now = Date.now(), showHeader = true }) {
-  const visibleMatches = useMemo(() => uniqueBracketMatches(matches), [matches]);
+  const visibleMatches = useMemo(() => visibleTournamentMatches(matches), [matches]);
   const groups = useMemo(() => {
     const grouped = visibleMatches
       .slice()

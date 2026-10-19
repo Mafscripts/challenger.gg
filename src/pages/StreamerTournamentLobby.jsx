@@ -31,6 +31,7 @@ import MatchChat from "@/components/match/MatchChat";
 import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
 import { getMapImage } from "@/lib/cdlMaps";
+import { visibleTournamentMatches } from "@/lib/tournamentBracketView";
 
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const defaultStreamerMapPools = {
@@ -207,7 +208,7 @@ export default function StreamerTournamentLobby() {
 
   const matchesByRound = useMemo(() => {
     const grouped = new Map();
-    [...matches]
+    visibleTournamentMatches(matches)
       .sort((a, b) => Number(a.round || 0) - Number(b.round || 0) || Number(a.match_number || 0) - Number(b.match_number || 0))
       .forEach((match) => {
         const round = Number(match.round || 1);
@@ -1579,7 +1580,7 @@ function BracketMatch({ match, participantByKey, canAdvance, canOverturn, advanc
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-wider text-vapor">Match {match.match_number || "-"}</p>
-          <p className="text-sm font-black">{match.team_a_name || "TBD"} vs {match.team_b_name || "TBD"}</p>
+          <p className="text-sm font-black">{match.team_a_name || (match.team_a_bye ? "Bye" : "TBD")} vs {match.team_b_name || (match.team_b_bye ? "Bye" : "TBD")}</p>
         </div>
         <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase tracking-wider ${
           isCompleted(match)
@@ -1588,27 +1589,27 @@ function BracketMatch({ match, participantByKey, canAdvance, canOverturn, advanc
               ? "border-cyan/25 bg-cyan/10 text-cyan"
               : "border-white/10 bg-secondary text-vapor"
         }`}>
-          {isCompleted(match) ? "Done" : hasBothTeams(match) ? "Ready" : "Pending"}
+          {match.bye ? "Bye · auto advance" : isCompleted(match) ? "Done" : hasBothTeams(match) ? "Ready" : "Pending"}
         </span>
       </div>
 
       <div className="space-y-2">
         <BracketTeam
           label="Team A"
-          name={match.team_a_name || "TBD"}
+          name={match.team_a_name || (match.team_a_bye ? "Bye" : "TBD")}
           players={teamAPlayers}
           active={winnerId && winnerId === String(match.team_a_id)}
-          score={match.team_a_score}
+          score={match.bye ? null : match.team_a_score}
           canAdvance={canAdvance}
           advancing={advancing}
           onAdvance={() => onAdvance(match, "team_a")}
         />
         <BracketTeam
           label="Team B"
-          name={match.team_b_name || "TBD"}
+          name={match.team_b_name || (match.team_b_bye ? "Bye" : "TBD")}
           players={teamBPlayers}
           active={winnerId && winnerId === String(match.team_b_id)}
-          score={match.team_b_score}
+          score={match.bye ? null : match.team_b_score}
           canAdvance={canAdvance}
           advancing={advancing}
           onAdvance={() => onAdvance(match, "team_b")}

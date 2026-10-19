@@ -4035,6 +4035,7 @@ async function generateStreamerSwitchBracket(req) {
         winner_name: winner ? participantName(winner) : null,
         completed: Boolean(winner),
         completed_date: winner ? nowIso() : null,
+        bye: hasBye,
         next_match_round: round < totalRounds ? round + 1 : null,
         next_match_number: round < totalRounds ? Math.ceil(matchNumber / 2) : null,
         slot_in_next: round < totalRounds ? (matchNumber % 2 === 1 ? "team_a" : "team_b") : null,
@@ -9182,6 +9183,7 @@ async function generateTournamentBracket(req) {
         next_match_round: round < totalRounds ? round + 1 : null,
         next_match_number: round < totalRounds ? Math.ceil(matchNumber / 2) : null,
         slot_in_next: round < totalRounds ? (matchNumber % 2 === 1 ? "team_a" : "team_b") : null,
+        bye: hasBye,
         is_final: !doubleElimination && round === totalRounds,
         bracket_final: round === totalRounds,
         created_date: nowIso(),
@@ -9287,6 +9289,7 @@ async function generateTournamentBracket(req) {
 
   await updateEntity("Tournament", tournamentId, {
     status: req.body.start_immediately === true ? "in_progress" : "closed",
+    registered_teams: participantsWithSeeds.length,
     registration_locked: true,
     bracket_generated: true,
     bracket_generated_date: nowIso(),

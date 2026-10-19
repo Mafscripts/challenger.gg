@@ -27,6 +27,7 @@ import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
 import PageLoader from "@/components/ui/PageLoader";
 import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
+import { visibleTournamentMatches } from "@/lib/tournamentBracketView";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -207,7 +208,7 @@ function TournamentRosterPlayerCard({ player, captain }) {
 function BracketPreview({ matches }) {
   const rounds = useMemo(() => {
     const groups = new Map();
-    matches.forEach((match) => {
+    visibleTournamentMatches(matches).forEach((match) => {
       const key = `${match.bracket || "winner"}-${match.round || 1}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(match);
@@ -233,8 +234,9 @@ function BracketPreview({ matches }) {
             <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">{key.replace("-", " · Round ")}</p>
             {roundMatches.map((match) => (
               <Link key={match.id} to={`/tournament-match/${match.id}`} className="block rounded-lg border border-white/[0.07] bg-background/60 p-3 transition-colors hover:border-cyan/25">
-                <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-2 text-xs font-bold"><span className="truncate">{match.team_a_name || "TBD"}</span><span>{match.team_a_score ?? "—"}</span></div>
-                <div className="flex items-center justify-between gap-3 pt-2 text-xs font-bold"><span className="truncate">{match.team_b_name || "TBD"}</span><span>{match.team_b_score ?? "—"}</span></div>
+                {match.bye && <p className="mb-2 text-[9px] font-bold uppercase tracking-wide text-cyan">Bye · auto advance</p>}
+                <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-2 text-xs font-bold"><span className="truncate">{match.team_a_name || (match.team_a_bye ? "Bye" : "TBD")}</span><span>{match.bye ? "—" : match.team_a_score ?? "—"}</span></div>
+                <div className="flex items-center justify-between gap-3 pt-2 text-xs font-bold"><span className="truncate">{match.team_b_name || (match.team_b_bye ? "Bye" : "TBD")}</span><span>{match.bye ? "—" : match.team_b_score ?? "—"}</span></div>
               </Link>
             ))}
           </div>
