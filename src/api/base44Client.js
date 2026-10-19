@@ -26,6 +26,7 @@ const ME_CACHE_MS = 60_000;
 const readOnlyFunctions = new Set([
   "getAdminWallets",
   "getAdminWalletSummary",
+  "getProgressionResetOverview",
   "getAdminAuditLogs",
   "getAdminAuditEntry",
   "getAdminAuditCounts",

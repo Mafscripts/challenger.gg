@@ -115,3 +115,15 @@ test("failed writes roll back every player's XP and match completion", async () 
   await assert.rejects(submitXPMatchResult(f.db, { id: "c" }, input), /write failed/);
   assert.deepEqual(f.state(), before);
 });
+
+test("a player's first XP match joins the current XP season rather than Season 1", async () => {
+  const f = fixture();
+  f.state().stats = [];
+  f.tx.season = { findMany: async () => [{ id: "s", metadata: { ladder: "xp", season_number: 7, is_active: true, applied_at: "2026-10-19T12:00:00Z" } }] };
+  const input = { xp_match_id: "match", team_alpha_score: 2, team_bravo_score: 0 };
+  await submitXPMatchResult(f.db, { id: "a" }, input);
+  const result = await submitXPMatchResult(f.db, { id: "c" }, input);
+  assert.equal(result.success, true);
+  assert.equal(f.state().stats.length, 4);
+  assert.ok(f.state().stats.every((row) => row.metadata.season === 7 && row.metadata.progression_reset_at === "2026-10-19T12:00:00Z"));
+});

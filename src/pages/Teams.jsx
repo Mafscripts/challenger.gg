@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { matchAfterProgressionReset } from "@/lib/progressionResets";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -326,6 +327,7 @@ export default function Teams() {
         status: wager.status || "pending",
         round: 0,
         date: wager.match_started_date || wager.accepted_date || wager.created_date,
+        completed_date: wager.match_completed_date || wager.completed_date,
         href: `/wagers-match/${wager.id}`,
       });
     });
@@ -432,6 +434,7 @@ export default function Teams() {
         ownScore,
         opponentScore,
         date: wager.match_started_date || wager.accepted_date || wager.created_date,
+        completed_date: wager.match_completed_date || wager.completed_date,
         href: `/wagers-match/${wager.id}`,
       }];
     });
@@ -457,6 +460,7 @@ export default function Teams() {
         ownScore: isTeamA ? match.team_a_score : match.team_b_score,
         opponentScore: isTeamA ? match.team_b_score : match.team_a_score,
         date: match.scheduled_start_date || match.assigned_date || match.created_date,
+        completed_date: match.completed_date || match.match_completed_date,
         href: `/tournament-match/${match.id}`,
       }];
     });
@@ -465,12 +469,13 @@ export default function Teams() {
   }, [selectedTeam, tournamentById, tournamentMatches, wagers]);
 
   const completedMatches = selectedMatches.filter((match) => match.completed);
+  const recordMatches = completedMatches.filter((match) => matchAfterProgressionReset(match, { created_date: match.date }, selectedTeam?.records_reset_at));
   const upcomingMatches = selectedMatches.filter((match) => !match.completed && !["cancelled"].includes(match.status));
-  const wins = Math.max(Number(selectedTeam?.total_wins || 0), completedMatches.filter((match) => match.outcome === "win").length);
-  const losses = Math.max(Number(selectedTeam?.total_losses || 0), completedMatches.filter((match) => match.outcome === "loss").length);
+  const wins = Math.max(Number(selectedTeam?.total_wins || 0), recordMatches.filter((match) => match.outcome === "win").length);
+  const losses = Math.max(Number(selectedTeam?.total_losses || 0), recordMatches.filter((match) => match.outcome === "loss").length);
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
-  const firstNonWinIndex = completedMatches.findIndex((match) => match.outcome !== "win");
-  const currentStreak = firstNonWinIndex === -1 ? completedMatches.length : firstNonWinIndex;
+  const firstNonWinIndex = recordMatches.findIndex((match) => match.outcome !== "win");
+  const currentStreak = firstNonWinIndex === -1 ? recordMatches.length : firstNonWinIndex;
   const nextMatch = [...upcomingMatches].sort((a, b) => new Date(a.date || 8640000000000000) - new Date(b.date || 8640000000000000))[0] || null;
 
   useEffect(() => {

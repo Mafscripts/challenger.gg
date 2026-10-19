@@ -3,6 +3,7 @@ import { serializeRow } from "./entity.js";
 import { findEightsStatsRow } from "./free-eights-games.js";
 import { eightsGameId } from "../src/lib/freeEightsGames.js";
 import { freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
+import { activeProgressionSeason } from "./progression-resets.js";
 
 // Match completion and ELO are committed together. A database lock serializes
 // this small ladder update across API workers and overlapping match rosters.
@@ -22,11 +23,16 @@ export async function completeFreeEightsWithElo(db, matchId, completion) {
     const winners = [];
     const losers = [];
     const statsByUser = new Map();
+    let seasonPromise;
     for (const row of roster) {
       const { user_id: userId, user_name: username, team } = row.metadata;
       if (!userId || !["host", "challenger"].includes(team)) throw new Error("Invalid Free 8s roster");
       let stats = await findEightsStatsRow(tx, userId, gameId);
-      if (!stats) stats = await tx.eightsStats.create({ data: { metadata: { user_id: userId, game_id: gameId, username: username || "Player" } } });
+      if (!stats) {
+        const season = await (seasonPromise ||= activeProgressionSeason(tx, "free8s"));
+        stats = await tx.eightsStats.create({ data: { metadata: { user_id: userId, game_id: gameId, username: username || "Player", season: season?.season_number || 1,
+          ...(season?.applied_at ? { progression_reset_at: season.applied_at } : {}) } } });
+      }
       statsByUser.set(userId, stats);
       (team === winningSide ? winners : losers).push({ user_id: userId, elo: stats.free_eights_elo });
     }

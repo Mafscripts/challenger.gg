@@ -1,3 +1,4 @@
+import ProgressionResets from "@/components/admin/ProgressionResets";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
@@ -230,19 +231,6 @@ const defaultRankedStatsForm = {
   matches_played: "0",
   reason: "",
 };
-const createDefaultSeasonResetForm = (seasonNumber = 2) => {
-  const start = new Date();
-  const end = new Date(start);
-  end.setMonth(end.getMonth() + 3);
-  return {
-    season_number: String(seasonNumber),
-    season_name: `Season ${seasonNumber}`,
-    start_date: toLocalDateTimeInputValue(start),
-    end_date: toLocalDateTimeInputValue(end),
-    reason: `Start of Season ${seasonNumber}`,
-  };
-};
-
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "users", label: "Users", icon: Users },
@@ -255,6 +243,7 @@ const tabs = [
   { id: "challenges", label: "Challenge a Team", icon: Swords },
   { id: "eightsGames", label: "8s Games & Maps", icon: Swords },
   { id: "ranked", label: "Ranked Management", icon: Swords },
+  { id: "progression", label: "Resets & Seasons", icon: RotateCcw, seniorOnly: true },
   { id: "verifyRank", label: "Verify Rank", icon: UserCheck },
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "tournamentMatches", label: "Tournament Matches", icon: ClipboardList },
@@ -550,13 +539,9 @@ export default function Admin() {
   const [openManageUserId, setOpenManageUserId] = useState(null);
   const [moderationRequest, setModerationRequest] = useState(null);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
-  const [massResetOpen, setMassResetOpen] = useState(false);
-  const [massResetConfirmation, setMassResetConfirmation] = useState("");
   const [rankedPlayerSearch, setRankedPlayerSearch] = useState("");
   const [rankedAdjustment, setRankedAdjustment] = useState({ user_id: "", operation: "set", amount: "", reason: "" });
   const [rankedStatsForm, setRankedStatsForm] = useState(defaultRankedStatsForm);
-  const [seasonResetOpen, setSeasonResetOpen] = useState(false);
-  const [seasonResetForm, setSeasonResetForm] = useState(() => createDefaultSeasonResetForm());
   const [referralProgram, setReferralProgram] = useState(null);
   const [animatedNameFreeTrial, setAnimatedNameFreeTrial] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
@@ -1031,36 +1016,6 @@ export default function Admin() {
       }
     } catch (error) {
       toast({ title: "Adjustment failed", description: error.message || "Could not add funds.", variant: "destructive" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleMassBalanceReset = async (event) => {
-    event.preventDefault();
-    if (!canAddWalletAdjustment(currentRole)) {
-      toast({ title: "Not allowed", description: "Only the CEO can adjust balances.", variant: "destructive" });
-      return;
-    }
-    if (massResetConfirmation.trim() !== "RESET ALL") {
-      toast({ title: "Confirmation required", description: "Type RESET ALL exactly to continue.", variant: "destructive" });
-      return;
-    }
-    if (!window.confirm("This permanently clears credits, wallet balances, and trophies for every user. Continue?")) return;
-
-    setBusyId("mass-balance-reset");
-    try {
-      const response = await base44.functions.invoke("adminMassResetBalances", { confirmation: massResetConfirmation.trim() });
-      if (!response.data?.success) throw new Error(response.data?.error || "Could not reset user balances");
-      toast({
-        title: "All balances reset",
-        description: `${response.data.users_reset} users reset; ${response.data.trophy_inventory_items_removed} trophy items removed.`,
-      });
-      setMassResetConfirmation("");
-      setMassResetOpen(false);
-      await loadAdminData();
-    } catch (error) {
-      toast({ title: "Mass reset failed", description: error.message || "Could not reset user balances.", variant: "destructive" });
     } finally {
       setBusyId(null);
     }
@@ -1787,43 +1742,6 @@ export default function Admin() {
     }
   };
 
-  const handleRankedSeasonReset = async (event) => {
-    event.preventDefault();
-    if (!canManageRoles(currentRole)) {
-      toast({ title: "Not allowed", description: "Super Admin or CEO is required for a season reset.", variant: "destructive" });
-      return;
-    }
-    const seasonNumber = Number(seasonResetForm.season_number);
-    if (!Number.isInteger(seasonNumber) || seasonNumber < 1 || seasonResetForm.season_name.trim().length < 2 || seasonResetForm.reason.trim().length < 3) {
-      toast({ title: "Complete the season details", description: "Enter a valid number, name and reset reason.", variant: "destructive" });
-      return;
-    }
-    if (!seasonResetForm.start_date || !seasonResetForm.end_date || new Date(seasonResetForm.end_date) <= new Date(seasonResetForm.start_date)) {
-      toast({ title: "Invalid season dates", description: "The end must be after the start.", variant: "destructive" });
-      return;
-    }
-    if (!window.confirm(`Start ${seasonResetForm.season_name.trim()} and reset the complete Ranked ladder? Players below Platinum go to 0 ELO; Platinum and above go to 1800 ELO.`)) return;
-    setBusyId("ranked:season-reset");
-    try {
-      const response = await base44.functions.invoke("adminResetRankedSeason", {
-        season_number: seasonNumber,
-        season_name: seasonResetForm.season_name.trim(),
-        start_date: new Date(seasonResetForm.start_date).toISOString(),
-        end_date: new Date(seasonResetForm.end_date).toISOString(),
-        reason: seasonResetForm.reason.trim(),
-      });
-      if (!response.data?.success) throw new Error(response.data?.error || "Season reset failed");
-      toast({ title: `${response.data.season?.name || "Ranked season"} started`, description: `${response.data.players_reset} players reset (${response.data.bronze_resets} Bronze, ${response.data.platinum_resets} Platinum).` });
-      setSeasonResetOpen(false);
-      setSeasonResetForm(createDefaultSeasonResetForm(seasonNumber + 1));
-      await loadAdminData();
-    } catch (error) {
-      toast({ title: "Season reset failed", description: error.message, variant: "destructive" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
   const handleReferralProgramSave = async (event) => {
     event.preventDefault();
     if (!referralProgram) return;
@@ -1913,7 +1831,7 @@ export default function Admin() {
             <div className="mt-4"><RoleBadge role={currentRole} /></div>
           </div>
           <div className="space-y-1 p-2.5">
-            {tabs.filter((tab) => !tab.ceoOnly || currentRole === "ceo").map((tab) => (
+            {tabs.filter((tab) => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || canManageRoles(currentRole))).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -1932,7 +1850,7 @@ export default function Admin() {
           <label className="mb-4 block rounded-xl border border-border bg-card p-3 text-white lg:hidden">
             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-primary">Admin section</span>
             <select value={activeTab} onChange={(event) => setActiveTab(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[var(--arena-inset)] px-3 py-2.5 text-sm font-bold text-white">
-              {tabs.filter((tab) => !tab.ceoOnly || currentRole === "ceo").map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+              {tabs.filter((tab) => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || canManageRoles(currentRole))).map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
             </select>
           </label>
 
@@ -1969,6 +1887,7 @@ export default function Admin() {
           ) : <Suspense fallback={<div role="status" className="flex items-center gap-3 p-6 text-sm text-vapor"><Loader2 className="h-5 w-5 animate-spin" /> Opening section...</div>}>
 
           {activeTab === "verifyRank" && <RankVerificationAdmin users={data.users} />}
+          {activeTab === "progression" && <ProgressionResets user={currentUser} onChanged={loadAdminData} />}
           {activeTab === "dashboard" && (
             <div className="p-6">
               <h2 className="text-lg font-bold mb-4">Operational Overview</h2>
@@ -1994,18 +1913,10 @@ export default function Admin() {
                   ["System logs", data.auditCounts?.system ?? "…"],
                 ]} />
               </div>
-              {canAddWalletAdjustment(currentRole) && (
-                <section className="mt-6 rounded-xl border border-red-500/25 bg-red-500/[0.045] p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div><p className="text-sm font-black text-red-200">Mass reset user balances</p><p className="mt-1 text-xs text-vapor">Sets every user&apos;s credits, wallet money and trophies to zero. Trophy items are removed; match history stays intact.</p></div>
-                    <button type="button" onClick={() => setMassResetOpen((open) => !open)} disabled={busyId === "mass-balance-reset"} className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-black text-red-200 hover:bg-red-500/20 disabled:opacity-50"><RotateCcw className="h-4 w-4" /> {massResetOpen ? "Close reset" : "Mass reset"}</button>
-                  </div>
-                  {massResetOpen && (
-                    <form onSubmit={handleMassBalanceReset} className="mt-5 border-t border-red-500/15 pt-5">
-                      <label className="block max-w-md"><span className="text-[10px] font-black uppercase tracking-wider text-red-200">Type RESET ALL to confirm</span><input value={massResetConfirmation} onChange={(event) => setMassResetConfirmation(event.target.value)} placeholder="RESET ALL" autoComplete="off" className="mt-2 w-full rounded-lg border border-red-500/25 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/60 focus:outline-none" /></label>
-                      <button type="submit" disabled={busyId === "mass-balance-reset" || massResetConfirmation.trim() !== "RESET ALL"} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-xs font-black text-white hover:bg-red-400 disabled:opacity-50">{busyId === "mass-balance-reset" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Reset all users now</button>
-                    </form>
-                  )}
+              {canManageRoles(currentRole) && (
+                <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-cyan/20 bg-cyan/[0.035] p-5">
+                  <div><p className="text-sm font-black">Resets & Seasons</p><p className="mt-1 text-xs text-vapor">Manage money, credits, earnings, XP, ELO, records and trophies separately. Start new XP, Ranked and Free 8s seasons.</p></div>
+                  <button type="button" onClick={() => setActiveTab("progression")} className="inline-flex items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan"><RotateCcw className="h-4 w-4" />Manage progression</button>
                 </section>
               )}
             </div>
@@ -2488,34 +2399,16 @@ export default function Admin() {
                   {canManageRoles(currentRole) && (
                     <button
                       type="button"
-                      onClick={() => setSeasonResetOpen((open) => !open)}
-                      disabled={busyId === "ranked:season-reset"}
+                      onClick={() => setActiveTab("progression")}
                       className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs font-black hover:bg-red-500/20 disabled:opacity-50"
                     >
-                      {busyId === "ranked:season-reset" ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                      {seasonResetOpen ? "Close Season Setup" : "Reset for New Season"}
+                      <RotateCcw className="w-4 h-4" />
+                      Resets & Seasons
                     </button>
                   )}
                 </div>
 
-                {seasonResetOpen && canManageRoles(currentRole) && (
-                  <form onSubmit={handleRankedSeasonReset} className="m-5 mb-0 rounded-xl border border-red-500/20 bg-red-500/[0.045] p-5">
-                    <div className="mb-4">
-                      <p className="text-sm font-black text-red-200">Start a New Ranked Season</p>
-                      <p className="mt-1 text-xs text-vapor">Set the exact season identity and dates before resetting every Ranked record.</p>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                      <label className="space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Season number</span><input type="number" min="1" step="1" value={seasonResetForm.season_number} onChange={(event) => setSeasonResetForm((current) => ({ ...current, season_number: event.target.value }))} className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" /></label>
-                      <label className="space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Season name</span><input value={seasonResetForm.season_name} onChange={(event) => setSeasonResetForm((current) => ({ ...current, season_name: event.target.value }))} placeholder="Season 2" className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" /></label>
-                      <label className="space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Starts</span><input type="datetime-local" value={seasonResetForm.start_date} onChange={(event) => setSeasonResetForm((current) => ({ ...current, start_date: event.target.value }))} className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" /></label>
-                      <label className="space-y-1.5"><span className="text-[10px] font-bold uppercase tracking-wider text-vapor">Ends</span><input type="datetime-local" value={seasonResetForm.end_date} onChange={(event) => setSeasonResetForm((current) => ({ ...current, end_date: event.target.value }))} className="w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" /></label>
-                    </div>
-                    <div className="mt-3 flex flex-col gap-3 lg:flex-row">
-                      <input value={seasonResetForm.reason} onChange={(event) => setSeasonResetForm((current) => ({ ...current, reason: event.target.value }))} placeholder="Required reason for the audit log" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-red-400/50 focus:outline-none" />
-                      <button type="submit" disabled={busyId === "ranked:season-reset"} className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-500 px-5 py-2.5 text-xs font-black text-white hover:bg-red-400 disabled:opacity-50">{busyId === "ranked:season-reset" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Start Season & Reset Ladder</button>
-                    </div>
-                  </form>
-                )}
+
 
                 <div className="grid xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)] gap-5 p-5">
                   <div className="space-y-3">

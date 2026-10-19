@@ -153,3 +153,13 @@ test("authenticated endpoint reverts for admins and rejects ordinary players", a
   const response = await request(admin); assert.equal(response.status, 200);
   const result = await response.json(); assert.equal(result.success, true); assert.equal(result.wager.status, "in_progress");
 });
+
+test("an archived result cannot alter current Free 8s or XP progression after a reset", async () => {
+  for (const table of ["eightsStats", "xPStats"]) {
+    const f = fixture();
+    f.state()[table][0].metadata.progression_reset_at = "2026-10-19T12:00:00.000Z";
+    const before = structuredClone(f.state());
+    await assert.rejects(revertFreeEightsResult(f.db, admin, "m1", date), /archived/);
+    assert.deepEqual(f.state(), before, "the reopened match and all earlier player writes must roll back");
+  }
+});

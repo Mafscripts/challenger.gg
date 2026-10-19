@@ -338,7 +338,7 @@ export default function Ranked() {
               <div className={`absolute inset-x-0 top-0 h-1 ${rankTone.accent}`} />
               <div className="flex items-center justify-between border-b border-white/5 bg-background/20 px-5 py-4">
                 <div>
-                  <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${rankTone.text}`}>Season 1 competitive</p>
+                  <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${rankTone.text}`}>Season {currentStats?.season || 1} competitive</p>
                   <h3 className="mt-1 text-base font-black uppercase tracking-wide">Your Rank</h3>
                 </div>
                 <div className="text-right"><p className="text-[8px] font-black uppercase tracking-wider text-vapor">Global place</p><span className={`mt-1 inline-flex rounded-full border px-3 py-1 font-mono text-sm font-black ${rankTone.soft} ${rankTone.text}`}>{leaderboardPosition ? `#${leaderboardPosition}` : "Unranked"}</span></div>

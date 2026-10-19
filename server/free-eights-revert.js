@@ -3,6 +3,7 @@ import { hasRole } from "./roles.js";
 import { findEightsStatsRow } from "./free-eights-games.js";
 import { eightsGameId } from "../src/lib/freeEightsGames.js";
 import { freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
+import { matchAfterProgressionReset } from "../src/lib/progressionResets.js";
 
 const fail = (message, status = 409) => { throw Object.assign(new Error(message), { status }); };
 const subtract = (value, amount) => Math.max(0, Number(value || 0) - amount);
@@ -72,6 +73,7 @@ export async function revertFreeEightsResult(db, admin, matchId, expectedComplet
       const stats = await findEightsStatsRow(tx, id, eightsGameId(match.game_id));
       if (!stats) fail("Player's Free 8s stats could not be found");
       const data = stats.metadata;
+      if (!matchAfterProgressionReset(match, row, data.progression_reset_at)) fail("This result belongs to archived progression and cannot change the current Free 8s season.");
       const wins = subtract(data.wins, won ? 1 : 0);
       const matches = subtract(data.matches_played, 1);
       const latest = before ? Number(data.matches_played) === before.eights_matches + 1
@@ -92,6 +94,7 @@ export async function revertFreeEightsResult(db, admin, matchId, expectedComplet
       const xp = await userRow(tx.xPStats, id);
       let xpLevel;
       if (xp) {
+        if (!matchAfterProgressionReset(match, row, xp.metadata?.progression_reset_at)) fail("This result belongs to archived XP progression and cannot change the current season.");
         const progress = reverseXp(xp.metadata, amount);
         xpLevel = progress.level;
         const lastReward = xp.metadata.total_xp === rewards[id].new_total_xp;

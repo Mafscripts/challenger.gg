@@ -18,7 +18,7 @@ const sectionKeys = {
   users: ["wallets"], roles: [], alerts: ["adminAlerts", "tickets"],
   tickets: [], banAppeals: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
-  verifyRank: ["users"],
+  verifyRank: ["users"], progression: [],
   tournaments: ["tournaments", "tournamentMatches", "tournamentParticipants", "users", "marketplace"],
   tournamentMatches: ["tournamentMatches"], wallets: [],
   referrals: ["referralProgram"], freeTrials: ["animatedNameFreeTrial", "users"],

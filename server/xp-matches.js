@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { tpRank } from "../src/lib/tpRanks.js";
 import { isExpiredOpenMatch } from "./matchfinder-expiry.js";
 import { completeXPMatchRoster, normalizeMatchXP, xpMatchOutcome, xpMatchRoster, xpMatchStrength, xpMatchTeamSize } from "../src/lib/xpMatchRating.js";
+import { matchAfterProgressionReset } from "../src/lib/progressionResets.js";
+import { activeProgressionSeason } from "./progression-resets.js";
 
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 const error = (message) => ({ success: false, error: message });
@@ -12,12 +14,15 @@ const stamp = () => new Date().toISOString();
 export async function getXPStandings(db) {
   const [rows, completed] = await Promise.all([
     db.xPStats.findMany({ orderBy: { created_date: "desc" }, select: { id: true, metadata: true } }),
-    db.xPMatch.findMany({ where: field("status", "completed"), select: { metadata: true } }),
+    db.xPMatch.findMany({ where: field("status", "completed"), select: { metadata: true, created_date: true } }),
   ]);
+  const cutoffs = new Map();
+  for (const row of rows) if (!cutoffs.has(row.metadata?.user_id)) cutoffs.set(row.metadata?.user_id, row.metadata?.progression_reset_at);
   const games = new Map();
-  for (const { metadata: match } of completed) {
+  for (const row of completed) {
+    const match = row.metadata;
     for (const id of new Set([...xpMatchRoster(match, "alpha"), ...xpMatchRoster(match, "bravo")])) {
-      if (typeof id === "string" && id) games.set(id, (games.get(id) || 0) + 1);
+      if (typeof id === "string" && id && matchAfterProgressionReset(match, row, cutoffs.get(id))) games.set(id, (games.get(id) || 0) + 1);
     }
   }
   const latest = new Map();
@@ -245,6 +250,7 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
     const outcome = xpMatchOutcome(strength, winningSide);
     const winners = new Set(xpMatchRoster(match, winningSide));
     const changes = {};
+    const activeSeason = ids.some((id) => !stats.has(id)) ? await activeProgressionSeason(tx, "xp") : null;
     for (const userId of ids) {
       const previous = stats.get(userId);
       const current = previous?.metadata || {};
@@ -258,7 +264,8 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
         weekly_xp: Math.max(0, Number(current.weekly_xp || 0) + delta),
         wins: Number(current.wins || 0) + (won ? 1 : 0), losses: Number(current.losses || 0) + (won ? 0 : 1),
         matches_played: Number(current.matches_played || 0) + 1, win_streak: won ? Number(current.win_streak || 0) + 1 : 0,
-        last_played_date: stamp(), region: current.region || usersById.get(userId).region || "na", season: current.season || 1 };
+        last_played_date: stamp(), region: current.region || usersById.get(userId).region || "na", season: current.season || activeSeason?.season_number || 1,
+        ...(!previous && activeSeason?.applied_at ? { progression_reset_at: activeSeason.applied_at } : {}) };
       if (previous) await tx.xPStats.update({ where: { id: previous.id }, data: { metadata } });
       else await tx.xPStats.create({ data: { metadata } });
       await tx.user.update({ where: { id: userId }, data: { xp_level: level } });

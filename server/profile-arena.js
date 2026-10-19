@@ -3,6 +3,7 @@ import { DEFAULT_EIGHTS_GAMES, eightsGameName } from "../src/lib/freeEightsGames
 import { normalizeMatchXP } from "../src/lib/xpMatchRating.js";
 import { tpRank } from "../src/lib/tpRanks.js";
 import { getXPStandings } from "./xp-matches.js";
+import { matchAfterProgressionReset } from "../src/lib/progressionResets.js";
 
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 const normalizeGame = (match) => String(match.game_id || "bo7").toLowerCase();
@@ -25,6 +26,8 @@ const publicMatchFields = ["game_mode", "game_mode_display", "team_size", "best_
 export function buildProfileArena({ userId, ranked = [], xp = [], eights = [], participants = [], rankedStats = [], eightsStats = [], xpStats, tpStanding }) {
   const arenas = new Map();
   const latestRatings = new Map();
+  const cutoffs = new Map();
+  const globalCutoffs = new Map();
   const ensure = (mode, data) => {
     const gameId = normalizeGame(data), key = `${mode}:${gameId}`;
     if (!arenas.has(key)) arenas.set(key, { id: key, mode, game_id: gameId, game_name: gameTitle(data), wins: 0, losses: 0,
@@ -37,6 +40,8 @@ export function buildProfileArena({ userId, ranked = [], xp = [], eights = [], p
       const key = `${mode}:${normalizeGame(row.metadata || {})}`;
       if (seenStats.has(key)) continue;
       seenStats.add(key);
+      cutoffs.set(key, row.metadata?.progression_reset_at);
+      if (!row.metadata?.game_id && row.metadata?.progression_reset_at && !globalCutoffs.has(mode)) globalCutoffs.set(mode, row.metadata.progression_reset_at);
       // Dedicated Free 8s ELO, never legacy/Money 8s metadata.rating.
       const rating = normalizeMatchXP(mode === "eights" ? row.free_eights_elo : row.metadata?.elo);
       latestRatings.set(key, rating);
@@ -58,7 +63,7 @@ export function buildProfileArena({ userId, ranked = [], xp = [], eights = [], p
       // Unresolved/ambiguous results must not become fabricated losses.
       if (!["win", "loss"].includes(result)) continue;
       const arena = ensure(mode, match);
-      arena[result === "win" ? "wins" : "losses"]++;
+      if (matchAfterProgressionReset(match, row, mode === "xp" ? xpStats?.progression_reset_at : cutoffs.get(`${mode}:${normalizeGame(match)}`) || globalCutoffs.get(mode))) arena[result === "win" ? "wins" : "losses"]++;
       const safe = Object.fromEntries(publicMatchFields.filter((key) => match[key] !== undefined).map((key) => [key, match[key]]));
       recent.push({ ...safe, id: row.id, status: "completed", match_type: mode === "eights" ? "8s" : mode,
         game_id: arena.game_id, game_name: arena.game_name, profile_side: side, profile_result: result,

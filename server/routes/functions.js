@@ -1,3 +1,5 @@
+import { activeProgressionSeason, progressionResetOverview, resetProgression } from "../progression-resets.js";
+import { matchAfterProgressionReset } from "../../src/lib/progressionResets.js";
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket } from "../admin-tickets.js";
@@ -1283,6 +1285,7 @@ async function ensureRankedStats(userId) {
   const existing = await firstEntity("RankedStats", { user_id: userId });
   if (existing) return existing;
   const identity = identityFor(user);
+  const season = await activeProgressionSeason(prisma, "ranked");
   return createEntity("RankedStats", {
     user_id: userId,
     username: identity.username,
@@ -1293,7 +1296,8 @@ async function ensureRankedStats(userId) {
     peak_elo: 0,
     matches_played: 0,
     region: user.region || "na",
-    season: 1,
+    season: season?.season_number || 1,
+    ...(season?.applied_at ? { progression_reset_at: season.applied_at } : {}),
     last_played_date: nowIso(),
   });
 }
@@ -1304,6 +1308,7 @@ async function ensureXPStats(userId) {
   const existing = await firstEntity("XPStats", { user_id: userId });
   if (existing) return existing;
   const identity = identityFor(user);
+  const season = await activeProgressionSeason(prisma, "xp");
   return createEntity("XPStats", {
     user_id: userId,
     username: identity.username,
@@ -1316,7 +1321,8 @@ async function ensureXPStats(userId) {
     daily_missions_completed: 0,
     win_streak: 0,
     region: user.region || "na",
-    season: 1,
+    season: season?.season_number || 1,
+    ...(season?.applied_at ? { progression_reset_at: season.applied_at } : {}),
     last_played_date: nowIso(),
   });
 }
@@ -1527,7 +1533,7 @@ async function updateEightsOutcome(userId, didWin, gameId = "bo7") {
     monthly_wins: 0,
     monthly_matches: 0,
     monthly_xp: 0,
-    season: 1,
+    season: (await activeProgressionSeason(prisma, "free8s"))?.season_number || 1,
   });
   const sameMonth = stats.monthly_key === currentEightsMonthKey();
   const wins = Number(stats.wins || 0) + (didWin ? 1 : 0);
@@ -7285,6 +7291,9 @@ async function getMoneyEightsStandings() {
     listEntities("Wager", { match_type: "money8s", status: "completed" }, "-match_completed_date", 500).catch(() => []),
     listEntities("WagerParticipant", {}, "-joined_date", 500).catch(() => []),
   ]);
+  const userIds = [...new Set([...participants.map((entry) => entry.user_id), ...wagers.flatMap((entry) => [entry.host_id, entry.challenger_id])].filter(Boolean))];
+  const resetUsers = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, metadata: true } }) : [];
+  const cutoffs = new Map(resetUsers.map((row) => [row.id, row.metadata || {}]));
   const participantsByWager = new Map();
   participants.forEach((participant) => {
     const wagerId = String(participant.wager_id || "");
@@ -7313,17 +7322,24 @@ async function getMoneyEightsStandings() {
     ].filter(Boolean).map(String))];
 
     userIds.forEach((userId) => {
+      const currentRecord = matchAfterProgressionReset(wager, wager, cutoffs.get(userId)?.records_reset_at);
+      const currentEarnings = matchAfterProgressionReset(wager, wager, cutoffs.get(userId)?.earnings_reset_at);
+      if (!currentRecord && !currentEarnings) return;
       const userRows = rows.filter((row) => String(row.user_id) === userId);
       const change = changes[userId] || {};
       const stat = ensure(userId);
       const won = userRows.length > 0
         ? userRows.some((row) => winnerSide && row.team === winnerSide)
         : userId === winnerId;
-      stat.matches += 1;
-      if (won) stat.wins += 1;
-      else stat.losses += 1;
-      stat.winnings = roundedMoney(stat.winnings + Math.max(0, money(change.match_delta)));
-      stat.net_earnings = roundedMoney(stat.net_earnings + money(change.match_delta));
+      if (currentRecord) {
+        stat.matches += 1;
+        if (won) stat.wins += 1;
+        else stat.losses += 1;
+      }
+      if (currentEarnings) {
+        stat.winnings = roundedMoney(stat.winnings + Math.max(0, money(change.match_delta)));
+        stat.net_earnings = roundedMoney(stat.net_earnings + money(change.match_delta));
+      }
     });
   });
 
@@ -8753,125 +8769,10 @@ async function adminAdjustWallet(req) {
 }
 
 async function adminMassResetBalances(req) {
-  if (!hasRole(req.user, "ceo")) return { success: false, error: "Only the CEO can reset balances" };
-  if (String(req.body.confirmation || "").trim() !== "RESET ALL") {
-    return { success: false, error: "Type RESET ALL to confirm this mass reset" };
-  }
-
-  const trophyKeys = [
-    "gold_count",
-    "silver_count",
-    "bronze_count",
-    "invitational_count",
-    "invitation_count",
-    "champion_count",
-    "premium_count",
-    "premium_trophies",
-    "topfragg_count",
-    "topfrag_count",
-    "topfragg_trophies",
-    "hosted_count",
-    "hosted_trophies",
-  ];
-  const clearedTrophyMetadata = (metadata = {}) => ({
-    ...(metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {}),
-    ...Object.fromEntries(trophyKeys.map((key) => [key, 0])),
-  });
-  const isTrophyInventory = (metadata = {}) => {
-    const item = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {};
-    const text = [item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return item.item_category === "trophy" || text.includes("trophy");
-  };
-  const updateInBatches = async (rows, update) => {
-    for (let start = 0; start < rows.length; start += 100) {
-      await Promise.all(rows.slice(start, start + 100).map(update));
-    }
-  };
-
-  const [users, wallets, profiles, inventory] = await Promise.all([
-    prisma.user.findMany({ select: { id: true, metadata: true } }),
-    prisma.wallet.findMany({ select: { id: true, metadata: true } }),
-    prisma.playerProfile.findMany({ select: { id: true, metadata: true } }),
-    prisma.userInventory.findMany({ select: { id: true, metadata: true } }),
-  ]);
-  const trophyInventoryIds = inventory.filter((item) => isTrophyInventory(item.metadata)).map((item) => item.id);
-
-  await prisma.user.updateMany({ data: { credits: 0, wallet_balance: 0, trophies: 0, lifetime_earnings: 0, total_wager_earnings: 0, biggest_wager_win: 0 } });
-  await updateInBatches(users, (user) => prisma.user.update({
-    where: { id: user.id },
-    data: { metadata: {
-      ...clearedTrophyMetadata(user.metadata),
-      lifetime_earnings: 0,
-      total_earnings: 0,
-      earnings: 0,
-      winnings: 0,
-      total_winnings: 0,
-      biggest_wager_win: 0,
-    } },
-  }));
-  await updateInBatches(wallets, (wallet) => prisma.wallet.update({
-    where: { id: wallet.id },
-    data: {
-      metadata: {
-        ...(wallet.metadata && typeof wallet.metadata === "object" && !Array.isArray(wallet.metadata) ? wallet.metadata : {}),
-        available_balance: 0,
-        pending_balance: 0,
-        escrow_balance: 0,
-        withdrawable_balance: 0,
-        total_earnings: 0,
-        earnings: 0,
-        winnings: 0,
-        total_winnings: 0,
-        total_deposits: 0,
-        total_withdrawals: 0,
-        total_wagered: 0,
-      },
-    },
-  }));
-  await updateInBatches(profiles, (profile) => prisma.playerProfile.update({
-    where: { id: profile.id },
-    data: { metadata: {
-      ...clearedTrophyMetadata(profile.metadata),
-      lifetime_earnings: 0,
-      total_earnings: 0,
-      earnings: 0,
-      winnings: 0,
-      total_winnings: 0,
-      total_wager_earnings: 0,
-      biggest_wager_win: 0,
-    } },
-  }));
-  await updateInBatches(trophyInventoryIds, (id) => prisma.userInventory.delete({ where: { id } }));
-
-  const action = await createEntity("AdminAction", {
-    admin_id: req.user.id,
-    admin_name: nameFor(req.user),
-    admin_role: req.user.role,
-    action_type: "mass_balance_trophy_reset",
-    description: "Mass reset: cleared all user credits, wallet balances, earnings, and trophies.",
-    details: {
-      users_reset: users.length,
-      wallets_reset: wallets.length,
-      profiles_reset: profiles.length,
-      trophy_inventory_items_removed: trophyInventoryIds.length,
-      confirmation: "RESET ALL",
-      reset_date: nowIso(),
-    },
-    created_date: nowIso(),
-  });
-
-  return {
-    success: true,
-    users_reset: users.length,
-    wallets_reset: wallets.length,
-    trophy_inventory_items_removed: trophyInventoryIds.length,
-    action,
-  };
+  if (String(req.body.confirmation || "").trim() !== "RESET ALL") return { success: false, error: "Type RESET ALL to confirm this mass reset" };
+  return resetProgression(prisma, req.user, { mode: "reset", categories: ["money", "credits", "earnings", "trophies"],
+    confirmation: "RESET SELECTED", reason: req.body.reason || "Legacy mass balance and trophy reset" });
 }
-
 async function adminAdjustRankedElo(req) {
   if (!hasRole(req.user, "admin")) return { success: false, error: "Admin access required" };
   const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
@@ -8985,79 +8886,10 @@ async function adminUpdateRankedStats(req) {
 }
 
 async function adminResetRankedSeason(req) {
-  if (!hasRole(req.user, "super_admin")) return { success: false, error: "Super Admin or CEO access required" };
-  const reason = String(req.body.reason || "New Ranked season").trim();
-  if (reason.length < 3) return { success: false, error: "A reset reason is required" };
-  const seasonNumber = Number(req.body.season_number);
-  const seasonName = String(req.body.season_name || "").trim();
-  const startDate = new Date(req.body.start_date);
-  const endDate = new Date(req.body.end_date);
-  if (!Number.isInteger(seasonNumber) || seasonNumber < 1 || seasonNumber > 10_000) return { success: false, error: "Enter a valid new season number" };
-  if (seasonName.length < 2) return { success: false, error: "Enter a name for the new season" };
-  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || endDate <= startDate) {
-    return { success: false, error: "The season end date must be after its start date" };
-  }
-  // A season reset must cover the complete ladder, not only the first entity page.
-  const statsRows = (await prisma.rankedStats.findMany()).map(serializeRow);
-  const timestamp = nowIso();
-  let bronzeResets = 0;
-  let platinumResets = 0;
-
-  await Promise.all(statsRows.map(async (stats) => {
-    const oldElo = Math.max(0, Number(stats.elo || 0));
-    const resetElo = oldElo >= 1800 ? 1800 : 0;
-    if (resetElo === 1800) platinumResets += 1;
-    else bronzeResets += 1;
-    const history = Array.isArray(stats.season_history) ? stats.season_history : [];
-    await updateEntity("RankedStats", stats.id, {
-      elo: resetElo,
-      peak_elo: resetElo,
-      wins: 0,
-      losses: 0,
-      win_streak: 0,
-      matches_played: 0,
-      season: seasonNumber,
-      season_history: [...history.slice(-4), {
-        season: Number(stats.season || 1),
-        final_elo: oldElo,
-        peak_elo: Number(stats.peak_elo || oldElo),
-        wins: Number(stats.wins || 0),
-        losses: Number(stats.losses || 0),
-        matches_played: Number(stats.matches_played || 0),
-        reset_date: timestamp,
-      }],
-      season_reset_date: timestamp,
-    });
-    const profile = await ensurePlayerProfile(stats.user_id);
-    if (profile) await updateEntity("PlayerProfile", profile.id, { elo: resetElo, peak_elo: resetElo });
-  }));
-
-  const existingSeasons = await listEntities("Season", {}, "-season_number", 1000);
-  await Promise.all(existingSeasons.filter((season) => season.is_active).map((season) => (
-    updateEntity("Season", season.id, { is_active: false, end_date: timestamp })
-  )));
-  const season = await createEntity("Season", {
-    name: seasonName,
-    season_number: seasonNumber,
-    start_date: startDate.toISOString(),
-    end_date: endDate.toISOString(),
-    is_active: true,
-    rank_resets: true,
-    created_date: timestamp,
-  });
-
-  const action = await createEntity("AdminAction", {
-    admin_id: req.user.id,
-    admin_name: nameFor(req.user),
-    admin_role: req.user.role,
-    action_type: "ranked_season_reset",
-    description: `Started ${seasonName} (Season ${seasonNumber}) and reset Ranked for ${statsRows.length} players: ${reason}`,
-    details: { players_reset: statsRows.length, bronze_resets: bronzeResets, platinum_resets: platinumResets, season_id: season.id, season_name: seasonName, season_number: seasonNumber, start_date: startDate.toISOString(), end_date: endDate.toISOString(), reason, reset_date: timestamp },
-    created_date: timestamp,
-  });
-  return { success: true, players_reset: statsRows.length, bronze_resets: bronzeResets, platinum_resets: platinumResets, season, action };
+  const result = await resetProgression(prisma, req.user, { ...req.body, mode: "season", categories: ["ranked"],
+    confirmation: "START SEASON", ranked_policy: "soft" });
+  return { ...result, season: result.seasons[0] };
 }
-
 async function forgeMoneyToCredits(req) {
   // This is an internal/testing helper. Never allow a normal user to mint
   // credits directly, even when public commerce is enabled.
@@ -10956,6 +10788,9 @@ const handlers = {
   depositToWallet: addFunds,
   adminAdjustWallet,
   adminMassResetBalances,
+  getProgressionResetOverview: (req) => progressionResetOverview(prisma, req.user),
+  adminResetProgression: (req) => resetProgression(prisma, req.user, { ...req.body, mode: "reset" }),
+  adminStartProgressionSeason: (req) => resetProgression(prisma, req.user, { ...req.body, mode: "season" }),
   adminAdjustRankedElo,
   adminUpdateRankedStats,
   adminResetRankedSeason,
