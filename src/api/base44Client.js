@@ -382,6 +382,18 @@ export const base44 = {
     },
   },
   profile: {
+    teamPage(teamId) {
+      requireToken();
+      return apiFetch(`/profile/team-page${toQuery({ team: teamId })}`, { timeoutMs: 15_000 });
+    },
+    teamPageActivity(teamIds) {
+      requireToken();
+      return apiFetch(`/profile/team-page/activity${toQuery({ team_ids: teamIds })}`, { timeoutMs: 15_000 });
+    },
+    teamPagePlayers(teamId) {
+      requireToken();
+      return apiFetch(`/profile/team-page/players${toQuery({ team: teamId })}`, { timeoutMs: 15_000 });
+    },
     teamXPMatches(teamIds) {
       requireToken();
       return apiFetch(`/profile/team-xp-matches${toQuery({ team_ids: teamIds })}`, { dedupe: false, timeoutMs: 15_000 });

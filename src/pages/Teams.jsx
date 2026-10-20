@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { matchAfterProgressionReset } from "@/lib/progressionResets";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -30,6 +30,7 @@ import {
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
@@ -37,7 +38,6 @@ import { teamPageUrl, teamPlayerFormat, teamPurposeFor } from "@/lib/teamPresent
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
 import TrophyCounts from "@/components/ui/TrophyCounts";
-import { isInventoryTrophy } from "@/lib/trophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
 import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import { normalizeTeamRosterSize, teamRosterFormat } from "@/lib/teamFormats";
@@ -63,46 +63,9 @@ const teamInitials = (team) => {
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString()}`;
 const formatDate = (value) => value ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "TBD";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "TBD";
-const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s"]);
 const teamTypeLabel = (team) => teamPurposeFor(team).label;
 const titleCase = (value) => String(value || "pending").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const teamBannerMaxBytes = 1.5 * 1024 * 1024;
-const statNumber = (value) => {
-  const number = Number(value || 0);
-  return Number.isFinite(number) ? number : 0;
-};
-const emptyTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0 });
-const countInventoryTrophies = (items = []) => {
-  const counts = emptyTrophyCounts();
-  (items || []).forEach((item) => {
-    const text = [item.item_name, item.unlock_key, item.item_rarity, item.purchase_method]
-      .filter(Boolean)
-      .join(" ")
-      .trim()
-      .toLowerCase();
-    if (!isInventoryTrophy(item)) return;
-
-    if (text.includes("invit") || text.includes("champion")) return;
-    if (text.includes("premium")) counts.premium += 1;
-    else if (text.includes("gold")) counts.gold += 1;
-    else if (text.includes("silver")) counts.silver += 1;
-    else if (text.includes("bronze")) counts.bronze += 1;
-    else if (item.item_rarity === "exclusive" || item.item_rarity === "mythic") return;
-    else if (item.item_rarity === "legendary" || item.item_rarity === "epic") counts.gold += 1;
-    else if (item.item_rarity === "rare") counts.silver += 1;
-    else counts.bronze += 1;
-  });
-  return counts;
-};
-const trophyCountsFor = (user, inventoryRows = []) => {
-  const inventory = countInventoryTrophies(inventoryRows);
-  return {
-    gold: statNumber(user?.gold_count) + inventory.gold,
-    silver: statNumber(user?.silver_count) + inventory.silver,
-    bronze: statNumber(user?.bronze_count) + inventory.bronze,
-    premium: statNumber(user?.premium_count) + inventory.premium,
-  };
-};
 const fileToDataUrl = (file) => new Promise((resolve, reject) => {
   if (!file) return resolve("");
   if (!file.type.startsWith("image/")) return reject(new Error("Choose an image file."));
@@ -138,7 +101,7 @@ export default function Teams() {
   const requestedRosterSize = normalizeTeamRosterSize(searchParams.get("roster"), requestedCreateType === "ranked" ? 2 : 4);
   const [view, setView] = useState("my_teams");
   const [detailTab, setDetailTab] = useState("overview");
-  const [currentUser, setCurrentUser] = useState(null);
+  const { user: currentUser } = useAuth();
   const [teams, setTeams] = useState([]);
   const [membersByTeam, setMembersByTeam] = useState({});
   const [memberUsersById, setMemberUsersById] = useState({});
@@ -154,6 +117,9 @@ export default function Teams() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [teamSort, setTeamSort] = useState("recent");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [dataRevision, setDataRevision] = useState(0);
+  const loadSequence = useRef(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [busyAction, setBusyAction] = useState("");
@@ -162,8 +128,9 @@ export default function Teams() {
   const [teamNameDraft, setTeamNameDraft] = useState("");
 
   useEffect(() => {
-    loadTeams();
-  }, []);
+    void loadTeams();
+    return () => { loadSequence.current += 1; };
+  }, [linkedTeamId]);
 
   useEffect(() => {
     if (["xp", "challenge", "ranked", "wager", "tournament", "general"].includes(requestedCreateType)) setCreateOpen(true);
@@ -179,96 +146,59 @@ export default function Teams() {
   }, [linkedTeamId, requestedDetailTab, teams]);
 
   const loadTeams = async () => {
+    const sequence = ++loadSequence.current;
+    setLoadError("");
     try {
-      setLoading(true);
-      const userData = await base44.auth.me().catch(() => null);
-      setCurrentUser(userData);
-      if (!userData?.id) {
-        setPendingInvites([]);
-        setTeams([]);
-        setMembersByTeam({});
-        setMemberUsersById({});
-        return;
-      }
-
-      const [teamRows, invites, memberships, wagerRows, tournamentRows, participantRows, matchRows] = await Promise.all([
-        base44.entities.Team.filter({}, "ranking", 100).catch(() => []),
-        base44.entities.TeamInvite.filter({ invited_user_id: userData.id, status: "pending" }, "-created_date", 50).catch(() => []),
-        base44.entities.TeamMember.filter({ user_id: userData.id }, "-joined_date", 100).catch(() => []),
-        base44.entities.Wager.filter({}, "-created_date", 250).catch(() => []),
-        base44.entities.Tournament.filter({}, "-start_date", 150).catch(() => []),
-        base44.entities.TournamentParticipant.filter({}, "-registered_date", 300).catch(() => []),
-        base44.entities.TournamentMatch.filter({}, "-assigned_date", 300).catch(() => []),
-      ]);
-
-      // The generic team list can lag behind or omit a private/team-scoped
-      // record. Always fetch teams the user belongs to and a linked team
-      // directly, otherwise "View team" can land on the empty create screen.
-      const activeMembershipTeamIds = new Set((memberships || [])
-        .filter((membership) => membership.is_active !== false)
-        .map((membership) => String(membership.team_id)));
-      const directTeamIds = [...new Set([
-        ...activeMembershipTeamIds,
-        // An invited player is not a member yet, so the invite's team must be
-        // fetched directly as well. Otherwise a valid pending invite can be
-        // hidden when it is absent from the generic team list.
-        ...(invites || []).map((invite) => String(invite.team_id || "")).filter(Boolean),
-        linkedTeamId ? String(linkedTeamId) : null,
-      ].filter(Boolean))];
-      const directTeams = await Promise.all(directTeamIds.map((teamId) => (
-        base44.entities.Team.get(teamId).catch(() => null)
-      )));
-      const allTeamRows = [...new Map([
-        ...(teamRows || []),
-        ...directTeams.filter(Boolean),
-      ].map((team) => [String(team.id), team])).values()];
-      const allowedTeams = allTeamRows.filter((team) => (
-        !hiddenCompetitionTypes.has(String(team.team_type || "").toLowerCase())
-      ));
-      const allowedTeamIds = new Set(allowedTeams.map((team) => String(team.id)));
-      setPendingInvites((invites || []).filter((invite) => allowedTeamIds.has(String(invite.team_id || ""))));
-      setWagers((wagerRows || []).filter((wager) => (
-        !hiddenCompetitionTypes.has(String(wager.match_type || "").toLowerCase())
-      )));
-      setTournaments(tournamentRows || []);
-      setTournamentParticipants(participantRows || []);
-      setTournamentMatches(matchRows || []);
-
-      const myTeams = allowedTeams.filter((team) => (
-        team.is_active !== false
-        && (String(team.captain_id || "") === String(userData.id) || activeMembershipTeamIds.has(String(team.id)))
-      ));
-      const linkedTeam = allowedTeams.find((team) => team.is_active !== false && String(team.id) === String(linkedTeamId || ""));
-      const visibleTeams = linkedTeam && !myTeams.some((team) => String(team.id) === String(linkedTeam.id))
-        ? [...myTeams, linkedTeam]
-        : myTeams;
-      setTeams(visibleTeams);
-      const xpTeamIds = visibleTeams.filter((team) => ["xp", "ranked"].includes(team.team_type)).map((team) => team.id);
-      setXpMatches([]);
-      if (xpTeamIds.length) void base44.profile.teamXPMatches(xpTeamIds).then(setXpMatches).catch(() => {});
-      setSelectedTeamId((current) => linkedTeam?.id || (visibleTeams.some((team) => team.id === current) ? current : visibleTeams?.[0]?.id || null));
-      if (linkedTeam) {
-        setView("details");
-      }
-
-      const memberPairs = await Promise.all(visibleTeams.map(async (team) => {
-        const members = await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 20).catch(() => []);
-        return [team.id, (members || []).filter((member) => member.is_active !== false)];
-      }));
-      const nextMembersByTeam = Object.fromEntries(memberPairs);
-      setMembersByTeam(nextMembersByTeam);
-
-      const userIds = [...new Set(memberPairs.flatMap(([, members]) => members.map((member) => member.user_id).filter(Boolean)))];
-      const userPairs = await Promise.all(userIds.map(async (userId) => {
-        const user = await base44.entities.User.get(userId).catch(() => null);
-        return [userId, user ? { ...user, team_trophies: trophyCountsFor(user) } : null];
-      }));
-      setMemberUsersById(Object.fromEntries(userPairs));
+      const page = await base44.profile.teamPage(linkedTeamId);
+      if (sequence !== loadSequence.current) return;
+      setTeams(page.teams);
+      setMembersByTeam(page.membersByTeam);
+      setPendingInvites(page.invites);
+      const linkedTeam = page.teams.find((team) => String(team.id) === String(linkedTeamId || ""));
+      setSelectedTeamId((current) => linkedTeam?.id || (page.teams.some((team) => team.id === current) ? current : page.teams[0]?.id || null));
+      if (linkedTeam) setView("details");
+      setDataRevision((revision) => revision + 1);
+    } catch (error) {
+      if (sequence === loadSequence.current) setLoadError(error.message || "Could not load your teams.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   };
 
+  const teamIdsKey = teams.map((team) => team.id).sort().join("|");
+  const xpTeamIdsKey = teams.filter((team) => ["xp", "ranked"].includes(team.team_type)).map((team) => team.id).sort().join("|");
+
+  // Team cards and roster counts render before history, trophies or photos.
+  // Ignore responses belonging to an older page or pre-mutation refresh.
+  useEffect(() => {
+    let cancelled = false;
+    const ids = teamIdsKey ? teamIdsKey.split("|") : [];
+    if (!ids.length) {
+      setWagers([]); setTournaments([]); setTournamentParticipants([]); setTournamentMatches([]);
+      return undefined;
+    }
+    base44.profile.teamPageActivity(ids).then((activity) => {
+      if (cancelled) return;
+      setWagers(activity.wagers);
+      setTournaments(activity.tournaments);
+      setTournamentParticipants(activity.participants);
+      setTournamentMatches(activity.matches);
+    }).catch(() => {
+      if (!cancelled) setLoadError("Your teams are loaded, but match activity could not be refreshed.");
+    });
+    return () => { cancelled = true; };
+  }, [teamIdsKey, dataRevision]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!xpTeamIdsKey) { setXpMatches([]); return undefined; }
+    base44.profile.teamXPMatches(xpTeamIdsKey.split("|")).then((rows) => {
+      if (!cancelled) setXpMatches(rows);
+    }).catch(() => {
+      if (!cancelled) setLoadError("Your teams are loaded, but XP match activity could not be refreshed.");
+    });
+    return () => { cancelled = true; };
+  }, [xpTeamIdsKey, dataRevision]);
   const filteredTeams = useMemo(() => (
     teams.filter((team) => `${team.name} ${team.tag} ${team.region || ""} ${teamTypeLabel(team)}`.toLowerCase().includes(search.toLowerCase()))
   ), [teams, search]);
@@ -280,28 +210,16 @@ export default function Teams() {
   const selectedMemberIdsKey = selectedMembers.map((member) => member.user_id).filter(Boolean).sort().join("|");
 
   useEffect(() => {
-    if (view !== "details" || !selectedMemberIdsKey) return undefined;
+    if (view !== "details" || !selectedTeam?.id || !selectedMemberIdsKey
+      || !["overview", "roster", "settings"].includes(detailTab)) return undefined;
     let cancelled = false;
-    const userIds = selectedMemberIdsKey.split("|");
-
-    Promise.all(userIds.map(async (userId) => [
-      userId,
-      await base44.entities.UserInventory.filterFresh({ user_id: userId }, "-acquired_date", 100).catch(() => []),
-    ])).then((inventoryPairs) => {
-      if (cancelled) return;
-      setMemberUsersById((current) => {
-        const next = { ...current };
-        inventoryPairs.forEach(([userId, inventory]) => {
-          const user = current[userId];
-          if (user) next[userId] = { ...user, team_trophies: trophyCountsFor(user, inventory) };
-        });
-        return next;
-      });
+    base44.profile.teamPagePlayers(selectedTeam.id).then((players) => {
+      if (!cancelled) setMemberUsersById((current) => ({ ...current, ...players }));
+    }).catch(() => {
+      if (!cancelled) setLoadError("Your roster is loaded, but player details could not be refreshed.");
     });
-
     return () => { cancelled = true; };
-  }, [selectedMemberIdsKey, view]);
-
+  }, [selectedTeam?.id, selectedMemberIdsKey, view, detailTab, dataRevision]);
   const tournamentById = useMemo(() => Object.fromEntries(tournaments.map((tournament) => [String(tournament.id), tournament])), [tournaments]);
   const teamSummaries = useMemo(() => teams.map((team) => {
     const teamId = String(team.id);
@@ -654,6 +572,7 @@ export default function Teams() {
   return (
     <div className="teams-page teams-refresh min-h-screen py-6" data-team-type={view === "details" && selectedTeam ? teamPurposeFor(selectedTeam).icon : "all"}>
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+        {loadError && <div role="alert" className="mb-4 rounded-xl border border-red-400/25 bg-red-400/5 p-4 text-sm">{loadError}<button type="button" onClick={() => loadTeams()} className="ml-4 font-bold text-cyan">Retry</button></div>}
         {view === "my_teams" && <TeamsCommandHero overview={teamOverview} onCreate={() => setCreateOpen(true)} />}
 
         {pendingInvites.length > 0 && (

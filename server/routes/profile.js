@@ -7,8 +7,27 @@ import { friendStatus, changeFriendship, listFriendRequests } from "../friends.j
 import { playerAvatarFor } from "../lib/playerAvatars.js";
 import { xpTeamMatchWhere } from "../lib/xpTeamMatches.js";
 import { isExpiredOpenMatch } from "../matchfinder-expiry.js";
+import { getTeamPage, getTeamPageActivity, getTeamPagePlayers, teamPageIds } from "../team-page.js";
 
 const router = Router();
+
+router.get("/team-page", requireAuth, async (req, res, next) => {
+  try { res.json(await getTeamPage(prisma, req.user.id, req.query.team || "")); }
+  catch (error) { next(error); }
+});
+
+router.get("/team-page/activity", requireAuth, async (req, res, next) => {
+  try { res.json(await getTeamPageActivity(prisma, req, teamPageIds(req.query.team_ids))); }
+  catch (error) {
+    if (error instanceof SyntaxError) return res.status(400).json({ error: "Invalid team IDs" });
+    next(error);
+  }
+});
+
+router.get("/team-page/players", requireAuth, async (req, res, next) => {
+  try { res.json(await getTeamPagePlayers(prisma, req, req.query.team)); }
+  catch (error) { next(error); }
+});
 
 router.get("/team-xp-matches", requireAuth, async (req, res, next) => {
   try {
