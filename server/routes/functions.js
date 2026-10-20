@@ -7309,10 +7309,12 @@ async function leaveEightsLobby(req) {
 }
 
 async function getMoneyEightsStandings() {
-  const [wagers, participants] = await Promise.all([
-    listEntities("Wager", { match_type: "money8s", status: "completed" }, "-match_completed_date", 500).catch(() => []),
-    listEntities("WagerParticipant", {}, "-joined_date", 500).catch(() => []),
-  ]);
+  const wagers = await listEntities("Wager", { match_type: "money8s", status: "completed" }, "-match_completed_date", 500).catch(() => []);
+  // Fetch only rosters that can contribute to this ladder, not other lobbies.
+  const participants = wagers.length ? (await prisma.wagerParticipant.findMany({
+    where: { OR: wagers.map(wager => ({ metadata: { path: ["wager_id"], equals: wager.id } })) },
+    select: { metadata: true },
+  })).map(serializeRow) : [];
   const userIds = [...new Set([...participants.map((entry) => entry.user_id), ...wagers.flatMap((entry) => [entry.host_id, entry.challenger_id])].filter(Boolean))];
   const resetUsers = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, metadata: true } }) : [];
   const cutoffs = new Map(resetUsers.map((row) => [row.id, row.metadata || {}]));
@@ -10576,7 +10578,10 @@ async function getCompetitionTrophyCounts(req) {
   const counts = Object.fromEntries(userIds.map((userId) => [userId, emptyCompetitionTrophyCounts()]));
   if (!userIds.length) return { success: true, counts };
 
-  const inventoryRows = await prisma.userInventory.findMany({ select: { metadata: true } });
+  const inventoryRows = await prisma.userInventory.findMany({
+    where: { OR: userIds.map(userId => ({ metadata: { path: ["user_id"], equals: userId } })) },
+    select: { metadata: true },
+  });
   inventoryRows.forEach((row) => {
     const item = row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? row.metadata : {};
     const userId = String(item.user_id || "");

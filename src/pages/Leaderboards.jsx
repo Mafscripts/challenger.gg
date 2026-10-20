@@ -1,7 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DollarSign, Flame, Globe2, Search, Trophy, TrendingUp, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/AuthContext";
+import { leaderboardQueryOptions } from "@/hooks/useCompetitionLeaderboard";
 import CompetitionHero from "@/components/competition/CompetitionHero";
 import { getRankForElo } from "@/lib/ranks";
 import UserBadges from "@/components/ui/UserBadges";
@@ -38,27 +41,22 @@ export default function Leaderboards() {
   const [region, setRegion] = useState("Global");
   const [searchQuery, setSearchQuery] = useState("");
   const standingsRef = useRef(null);
-  const [rankedStats, setRankedStats] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const [rankedRows, userRows] = await Promise.all([
-        base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []),
-        base44.entities.User.filter({}, "-total_wager_earnings", 500).catch(() => []),
-      ]);
-      setRankedStats(rankedRows || []);
-      setUsers(userRows || []);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const { user } = useAuth();
+  const usersQuery = useQuery({
+    ...leaderboardQueryOptions,
+    queryKey: ["leaderboard-users", user?.id, "-total_wager_earnings"],
+    queryFn: () => base44.entities.User.filter({}, "-total_wager_earnings", 500),
+    enabled: Boolean(user?.id),
+  });
+  const rankedQuery = useQuery({
+    ...leaderboardQueryOptions,
+    queryKey: ["competition-standings", user?.id, "ranked", "all"],
+    queryFn: () => base44.entities.RankedStats.filterFresh({}, "-elo", 500),
+    enabled: Boolean(user?.id) && activeTab === "elo",
+  });
+  const users = usersQuery.data || [];
+  const rankedStats = rankedQuery.data || [];
+  const loading = usersQuery.isPending || (activeTab === "elo" && rankedQuery.isPending);
   const rows = useMemo(() => {
     const selectedRegion = region.toLowerCase();
     const regionFilter = (row) => region === "Global" || String(row.region || "").toLowerCase() === selectedRegion;

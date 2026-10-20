@@ -1,5 +1,5 @@
 import { trophyAssets } from "@/lib/trophyAssets";
-import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useLayoutEffect, useMemo, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -16,6 +16,9 @@ import {
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import useCompetitionLeaderboard, { leaderboardQueryOptions } from "@/hooks/useCompetitionLeaderboard";
+import { useAuth } from "@/lib/AuthContext";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import TPRankBadge, { TPRankGuide } from "./TPRankBadge";
 import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
@@ -165,14 +168,8 @@ export function CompetitionHeaderView({ mode = "xp", playerCount, action, classN
 export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription, gameId = "bo7", competitionTitle, headerIntro }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [users, setUsers] = useState([]);
-  const [xpRows, setXpRows] = useState([]);
-  const [rankedRows, setRankedRows] = useState([]);
-  const [eightsRows, setEightsRows] = useState([]);
-  const [moneyRows, setMoneyRows] = useState([]);
-  const [tournaments, setTournaments] = useState([]);
-  const [leaderboardTrophies, setLeaderboardTrophies] = useState({});
-  const [loading, setLoading] = useState(true);
+  const { user: authenticatedUser } = useAuth();
+  const { users, xpRows, rankedRows, eightsRows, moneyRows, tournaments, extraXPPending, loading, error, retry } = useCompetitionLeaderboard(mode, gameId);
   const standingsRef = useRef(null);
   const copy = mode === "eights" && gameId === "mw4" ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || modeCopy.xp;
   const activeTab = location.hash === "#matchfinder" ? "matchfinder" : "standings";
@@ -182,31 +179,6 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     : mode === "xp"
       ? "grid-cols-[70px_minmax(220px,1fr)_85px_55px_55px_85px_85px_90px_190px]"
       : "grid-cols-[70px_minmax(220px,1fr)_55px_55px_85px_85px_90px_190px_100px]";
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      const [userData, xpData, rankedData, eightsData, moneyData, tournamentData] = await Promise.all([
-        base44.entities.User.filter({}, mode === "wagers" ? "-total_wager_earnings" : "-created_date", 500).catch(() => []),
-        mode === "eights" ? Promise.resolve([]) : mode === "xp" ? base44.functions.invoke("getXPStandings", {}).then((response) => response.data.rows || []).catch(() => []) : base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []),
-        mode === "ranked" ? base44.entities.RankedStats.filter({}, "-elo", 500).catch(() => []) : Promise.resolve([]),
-        mode === "eights" ? base44.functions.invoke("getFreeEightsStandings", { game_id: gameId }).then((response) => response.data.rows || []).catch(() => []) : Promise.resolve([]),
-        mode === "money8s" ? base44.functions.invoke("getMoneyEightsStandings", {}).catch(() => ({ data: { rows: [] } })) : Promise.resolve({ data: { rows: [] } }),
-        mode === "eights" ? Promise.resolve([]) : base44.entities.Tournament.filter({}, "start_date", 100).catch(() => []),
-      ]);
-      if (!active) return;
-      setUsers(userData || []);
-      setXpRows(xpData || []);
-      setRankedRows(rankedData || []);
-      setEightsRows(eightsData || []);
-      setMoneyRows(moneyData?.data?.rows || []);
-      setTournaments((tournamentData || []).filter((row) => ["open", "registration"].includes(row.status)));
-      setLoading(false);
-    };
-    load();
-    return () => { active = false; };
-  }, [mode, gameId]);
 
   const usersById = useMemo(() => new Map(users.map((user) => [String(user.id), user])), [users]);
   const xpByUser = useMemo(() => new Map(xpRows.map((row) => [String(row.user_id), row])), [xpRows]);
@@ -224,7 +196,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
           wins: number(user.wager_wins),
           losses: number(user.wager_losses),
           streak: number(user.current_win_streak),
-          xp: number(xpByUser.get(String(user.id))?.total_xp),
+          xp: extraXPPending ? null : number(xpByUser.get(String(user.id))?.total_xp),
           score: number(user.total_wager_earnings),
           trophies: trophyCount(user),
         }))
@@ -248,7 +220,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             wins: number(row.wins),
             losses: number(row.losses),
             streak: 0,
-            xp: number(xpByUser.get(String(row.user_id))?.total_xp),
+            xp: extraXPPending ? null : number(xpByUser.get(String(row.user_id))?.total_xp),
             score: number(row.winnings),
             trophies: trophyCount(user),
           };
@@ -299,7 +271,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
       })
       .filter((row) => row.wins + row.losses + row.xp + row.score > 0)
       .sort((a, b) => b.xp - a.xp || b.wins - a.wins || b.score - a.score);
-  }, [eightsRows, mode, moneyRows, rankedRows, users, usersById, xpByUser, xpRows]);
+  }, [eightsRows, mode, moneyRows, rankedRows, users, usersById, xpByUser, xpRows, extraXPPending]);
 
   const pagination = useLeaderboardPagination(standings, `${mode}:${gameId}`);
   const changePage = (page) => {
@@ -309,25 +281,13 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const paginationProps = { page: pagination.page, pageCount: pagination.pageCount, total: pagination.total, onPageChange: changePage };
   const standingsUserIds = useMemo(() => pagination.visibleRows.map((row) => String(row.userId || "")).filter(Boolean).join("|"), [pagination.visibleRows]);
 
-  useEffect(() => {
-    let active = true;
-    const userIds = standingsUserIds ? standingsUserIds.split("|") : [];
-    if (!userIds.length) {
-      setLeaderboardTrophies({});
-      return () => { active = false; };
-    }
-
-    base44.functions.invoke("getCompetitionTrophyCounts", { user_ids: userIds })
-      .then((response) => {
-        if (active) setLeaderboardTrophies(response.data?.counts || {});
-      })
-      .catch(() => {
-        if (active) setLeaderboardTrophies({});
-      });
-
-    return () => { active = false; };
-  }, [standingsUserIds]);
-
+  const trophyQuery = useQuery({
+    ...leaderboardQueryOptions,
+    queryKey: ["leaderboard-trophies", authenticatedUser?.id, standingsUserIds],
+    queryFn: async () => (await base44.functions.invoke("getCompetitionTrophyCounts", { user_ids: standingsUserIds.split("|") })).data?.counts || {},
+    enabled: Boolean(authenticatedUser?.id && standingsUserIds),
+  });
+  const leaderboardTrophies = trophyQuery.data || {};
   const me = { ...(usersById.get(String(currentUser?.id)) || {}), ...(currentUser || {}) };
   const nextTournament = tournaments
     .slice()
@@ -381,6 +341,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             <Link to="/rules" className="rounded-md px-3 py-2 text-vapor hover:text-white"><ShieldCheck className="mr-1.5 inline h-3 w-3" /> Rules</Link>
           </div>
         </div>
+        {error && <div role="alert" className="flex items-center justify-between gap-3 border-b border-red-400/20 bg-red-500/5 px-5 py-3 text-xs text-red-200"><span>The latest standings could not be loaded.</span><button type="button" onClick={retry} className="font-bold text-cyan">Try again</button></div>}
         {mode === "xp" && activeTab === "standings" && <TPRankGuide />}
         {activeTab === "standings" && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} compact />}
         {activeTab === "matchfinder" ? matchfinder : <div className="overflow-x-auto">
@@ -407,7 +368,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
                 <span className="text-center font-mono font-black text-red-400">{row.losses}</span>
                 <span className="text-center font-mono font-black text-white">{pct(row.wins, row.losses)}</span>
                 <span className="text-center font-mono font-black"><Flame className="mr-1 inline h-3.5 w-3.5 text-orange" />{row.streak}</span>
-                {mode !== "eights" && <span className="text-center font-mono font-black text-purple-300">{row.xp.toLocaleString()}</span>}
+                {mode !== "eights" && <span className="text-center font-mono font-black text-purple-300">{row.xp === null ? "—" : row.xp.toLocaleString()}</span>}
                 <TrophyCounts
                   trophies={{
                     gold: number(row.user?.gold_count) + number(leaderboardTrophies[row.userId]?.gold),

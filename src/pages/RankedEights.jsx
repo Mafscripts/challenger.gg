@@ -70,7 +70,7 @@ export default function RankedEights() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
-  const user = isMoney ? moneyUser : freeOverview.data?.current_user || authenticatedUser;
+  const user = isMoney ? moneyUser || authenticatedUser : freeOverview.data?.current_user || authenticatedUser;
   const lobbies = useMatchfinderPosts(isMoney ? moneyLobbies : freeOverview.data?.lobbies || []);
   const counts = isMoney ? moneyCounts : freeOverview.data?.counts || {};
   const activeLobby = isMoney ? moneyActiveLobby : freeOverview.data?.active_lobby || null;

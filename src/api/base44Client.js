@@ -30,6 +30,10 @@ const readOnlyFunctions = new Set([
   "getChallengeActivity",
   "getFreeEightsOverview",
   "getFreeEightsPlayerStats",
+  "getFreeEightsStandings",
+  "getMoneyEightsStandings",
+  "getXPStandings",
+  "getCompetitionTrophyCounts",
   "getDirectMessages",
   "searchMessageRecipients",
   "getAnimatedNameFreeTrialStatus",
@@ -500,7 +504,7 @@ export const base44 = {
         throw error;
       }
       requireToken();
-      const data = await apiFetch(`/functions/${name}`, { method: "POST", body: payload, dedupe: false });
+      const data = await apiFetch(`/functions/${name}`, { method: "POST", body: payload, dedupe: readOnlyFunctions.has(name) });
       if (!readOnlyFunctions.has(name)) {
         entityCache.clear();
         invalidateMeCache();
