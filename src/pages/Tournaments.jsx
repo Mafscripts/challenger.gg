@@ -657,13 +657,13 @@ export default function Tournaments() {
   }
 
   return (
-    <div className="tournaments-page competition-surface min-h-screen py-6" data-competition="tournaments">
-      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+    <div className="tournaments-page competition-surface page-shell min-h-screen" data-competition="tournaments">
+      <div className="page-container">
         <CompetitionHeader
           mode="tournaments"
           titleOverride="Tournaments"
           playerCount={officialTournaments.length}
-          className="mb-5"
+          className="mb-6"
           action={<div className="competition-actions">
             <Link to="/teams" className="competition-action-pill">
               <Users className="h-3.5 w-3.5" /> My Teams

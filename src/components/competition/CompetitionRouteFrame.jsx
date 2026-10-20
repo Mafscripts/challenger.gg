@@ -28,11 +28,11 @@ export default function CompetitionRouteFrame({ children }) {
 
   return <CompetitionHeaderContext.Provider value={mode ? registerHeader : null}>
     <div className={mode ? "competition-route-frame competition-surface" : undefined} data-competition={mode ? upcoming ? "tournaments" : mode : undefined}>
-      {mode && <div className="mx-auto max-w-[1600px] px-4 pt-8 lg:px-6">
+      {mode && <div className="page-container pt-8">
         {!upcoming && header.headerIntro}
         <CompetitionHeaderView {...shownHeader} mode={upcoming ? "tournaments" : mode} />
       </div>}
-      {upcoming && <div className="mx-auto max-w-[1600px] px-4 py-5 lg:px-6"><UpcomingTournaments query={events} /></div>}
+      {upcoming && <div className="page-container py-5"><UpcomingTournaments query={events} /></div>}
       <div hidden={upcoming}>{children}</div>
     </div>
   </CompetitionHeaderContext.Provider>;

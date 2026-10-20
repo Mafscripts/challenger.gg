@@ -1,4 +1,6 @@
 export const competitionPresentation = {
+  rules: { title: "Rules & Regulations", eyebrow: "The TopFragg rulebook", icon: "BookOpen", motto: "Play fair. Win with pride.", facts: [["Gamepad2", "PC & console"], ["Radio", "Twitch · YouTube · Kick"], ["ShieldCheck", "Fair play first"]] },
+  settings: { title: "Settings", eyebrow: "Your TopFragg account", icon: "Settings2", motto: "Your identity. Your arena.", facts: [["UserRound", "Player profile"], ["Radio", "Streaming accounts"], ["KeyRound", "Account security"]] },
   ranked: { title: "Ranked", eyebrow: "Ranked competition", icon: "Swords", motto: "Climb the ladder.", facts: [["Medal", "ELO standings"], ["Users", "1v1 to 4v4"], ["ShieldCheck", "Competitive rules"]] },
   eights: { title: "Free 8s", eyebrow: "Free entry. Real competition.", icon: "Users", motto: "Find your squad.", facts: [["Gamepad2", "2v2 · 3v3 · 4v4"], ["Users", "Balanced teams"], ["Radio", "Discord voice"]] },
   money8s: { title: "Money 8s", eyebrow: "Money 8s competition", icon: "DollarSign", motto: "Play for the pot.", facts: [["Users", "8-player pot"], ["DollarSign", "Wallet-backed entry"], ["Radio", "Streaming required"]] },

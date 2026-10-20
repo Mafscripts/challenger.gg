@@ -76,7 +76,7 @@ export default function ChallengeTeam() {
   const openJoin = (entry) => { setTeamId(""); setJoining(entry); };
   const ladderRows = data?.standings?.[ladder] || [];
   const active = (data?.matches || []).filter((entry) => !["completed", "cancelled"].includes(entry.status));
-  return <div className={id ? "match-room-theme min-h-screen bg-[#0b1016] py-6" : "competition-page competition-surface min-h-screen py-8"} data-competition={id ? undefined : "challenge"}><div className="mx-auto w-full max-w-[1600px] px-4 lg:px-6">
+  return <div className={id ? "match-room-theme min-h-screen bg-[#0b1016] py-6" : "competition-page competition-surface page-shell min-h-screen"} data-competition={id ? undefined : "challenge"}><div className="page-container">
     {!id && <CompetitionHeader mode="challenge" titleOverride="Challenge a Team" eyebrowOverride="Your squad. Your challenge." descriptionOverride="Your squad against a complete team or a side of solo challengers. Play 1v1, 2v2, 3v3 or 4v4 and climb your own XP ladder." action={<div className="competition-actions"><button className={primaryButton} onClick={() => { setTeamId(""); setPosting(true); }}><Plus className="h-4 w-4" />Post a challenge</button><button className={secondaryButton} onClick={() => setCreateTeam(true)}><Users className="h-4 w-4" />Create a roster</button></div>} />}
     {!id && <div className="my-5 grid gap-3 sm:grid-cols-3">{[
       { label: "Active challenges", value: overview.isPending ? "—" : active.length, detail: "In this competition", icon: Swords, tone: "purple" },

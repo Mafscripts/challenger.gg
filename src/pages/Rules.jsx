@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ArrowLeftRight, Ban, BookOpen, Camera, Check, ChevronRight, ClipboardCheck, Clock, Copy, DollarSign, Flag, Gamepad2, Handshake, List, Medal, MessageCircle, MessageSquare, Radio, Scale, Search, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy, Unplug, Users, Video, Wifi, X } from "lucide-react";
-import TopfraggLogo from "@/components/brand/TopfraggLogo";
+import CompetitionHero from "@/components/competition/CompetitionHero";
 import { ruleGroups, ruleQuickLinks, ruleSections, searchRulebook } from "@/lib/rulebook";
 import "@/styles/rules.css";
 
@@ -57,23 +57,11 @@ export default function Rules() {
     } catch { selectSection(id, false); }
   };
 
-  return <main className="rules-page">
-    <div className="rules-container">
-      <header className="rules-hero">
-        <div className="rules-hero-copy">
-          <p className="rules-hero-kicker"><span /> THE TOPFRAGG RULEBOOK <span className="rules-hero-season">OFFICIAL RULES</span></p>
-          <h1>Rules &<br /><span>Regulations.</span></h1>
-          <p className="rules-hero-description">Bring your best. Play it fair.<br />Everything you need before, during and after your match.</p>
-          <div className="rules-hero-actions"><button type="button" onClick={() => selectSection(active.id)} className="rules-explore"><BookOpen size={17} />Explore the rules<ArrowRight size={16} /></button><Link to="/support" className="rules-support-link"><MessageCircle size={16} /> Contact support</Link></div>
-          <div className="rules-hero-tags"><span><Gamepad2 size={14} />PC & console</span><span><Radio size={14} />Twitch · YouTube · Kick</span><span><ShieldCheck size={14} />Fair play first</span></div>
-        </div>
-        <div className="rules-hero-art" aria-hidden="true">
-          <div className="rules-emblem-orbit rules-emblem-orbit-outer" /><div className="rules-emblem-orbit rules-emblem-orbit-inner" />
-          <div className="rules-emblem"><TopfraggLogo showWordmark={false} className="rules-brand-symbol" markClassName="rules-brand-mark" /></div>
-          <span className="rules-orbit-symbol rules-orbit-swords"><Swords size={26} /></span><span className="rules-orbit-symbol rules-orbit-shield"><ShieldCheck size={26} /></span><span className="rules-orbit-symbol rules-orbit-trophy"><Trophy size={26} /></span>
-          <span className="rules-art-caption">PLAY WITH INTEGRITY.<strong>WIN WITH PRIDE.</strong></span>
-        </div>
-      </header>
+  return <main className="rules-page page-shell">
+    <div className="page-container">
+      <CompetitionHero mode="rules" description="Bring your best. Play it fair. Everything you need before, during and after your match."
+        metadata={<><ShieldCheck size={13} aria-hidden="true" />Official competition standards</>}
+        action={<div className="competition-actions"><button type="button" onClick={() => selectSection(active.id)} className="competition-action-pill"><BookOpen size={17} />Explore the rules<ArrowRight size={16} /></button><Link to="/support" className="competition-action-pill"><MessageCircle size={16} />Contact support</Link></div>} />
       <div className="rules-edition"><span><ShieldCheck size={13} /> Official competition standards</span><span>PC · PlayStation · Xbox</span><time dateTime="2026-10-19">Updated October 19, 2026</time></div>
 
       <nav className="rules-essentials" aria-label="Important match requirements">

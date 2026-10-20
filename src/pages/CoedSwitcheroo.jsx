@@ -46,7 +46,7 @@ function CreateRoom() {
     catch (error) { setError(error.message); }
     finally { setBusy(false); }
   };
-  return <div className="party-page competition-surface" data-competition="party"><CompetitionHero mode="party" description="Your players. Your teams. Create your room, bring your community and let the wheel decide." className="mb-6" />
+  return <div className="party-page competition-surface page-shell page-container" data-competition="party"><CompetitionHero mode="party" description="Your players. Your teams. Create your room, bring your community and let the wheel decide." className="mb-6" />
     <div className="party-home-grid"><form onSubmit={create} className="party-panel"><h2>Create your room</h2><p className="party-muted">Start with two teams, then add more teams and fill in your players.</p>
       <div className="party-mode-options"><button type="button" aria-pressed={mode === "coed"} onClick={() => setMode("coed")}><span><Mars /><Venus /></span><strong>Co-ed</strong><small>Mixed teams with balanced male / female slots</small></button><button type="button" aria-pressed={mode === "switcheroo"} onClick={() => setMode("switcheroo")}><Shuffle /><strong>Switcheroo</strong><small>Spin fresh teams and change partners each round</small></button></div>
       <label className="party-label">Room name<input className="party-field" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={32} placeholder={mode === "coed" ? "Friday Co-ed" : "Switcheroo night"} /></label>

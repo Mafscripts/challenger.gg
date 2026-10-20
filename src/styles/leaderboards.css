@@ -1,5 +1,4 @@
 .leaderboard-page { --ladder-accent: hsl(var(--cyan)); padding: 28px 0 40px; }
-.leaderboard-container { max-width: 1440px; margin: auto; padding: 0 24px; }
 .leaderboard-hero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; overflow: hidden; padding: 32px; border: 1px solid rgb(255 255 255 / .09); border-radius: 20px; background: radial-gradient(ellipse at 90% 0%, hsl(var(--cyan) / .12), transparent 55%), var(--arena-panel); }
 .leaderboard-hero::after { position: absolute; right: -30px; top: -55px; width: 210px; height: 210px; border: 1px solid hsl(var(--cyan) / .12); border-radius: 50%; content: ""; pointer-events: none; }
 .leaderboard-eyebrow { display: flex; align-items: center; gap: 8px; color: var(--ladder-accent); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .2em; }
@@ -71,7 +70,6 @@
   .leaderboard-columns { grid-template-columns: 48px minmax(0, 1fr) 100px 65px 65px 110px; gap: 10px; }
 }
 @media (max-width: 700px) {
-  .leaderboard-container { padding: 0 16px; }
   .leaderboard-hero { padding: 24px; border-radius: 16px; }
   .leaderboard-hero-mark { display: none; }
   .leaderboard-filters { align-items: stretch; }

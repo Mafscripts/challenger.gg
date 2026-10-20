@@ -370,11 +370,11 @@ export default function Matchfinder() {
   };
 
   return (
-    <main className="competition-surface min-h-screen py-8" data-competition="matchfinder">
+    <main className="competition-surface page-shell min-h-screen" data-competition="matchfinder">
       <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} returnTo="/matchfinder?category=eights" />
       <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} returnFocusTo={discordPromptTrigger} />
       <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} returnFocusTo={discordPromptTrigger} />
-      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+      <div className="page-container">
         <CompetitionHero mode="matchfinder" description="Choose your competition, check the match settings and find the right opponent. All your open matches in one place." count={totalOpen} countLabel="open matches" />
 
         <nav className="matchfinder-mode-nav mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-6" aria-label="Matchfinder categories">

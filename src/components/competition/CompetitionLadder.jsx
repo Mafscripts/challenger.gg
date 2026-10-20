@@ -136,7 +136,7 @@ export function CompetitionHeaderView({ mode = "xp", playerCount, action, classN
   const headerImage = isMw4 ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png";
 
   return (
-    <div className={`space-y-5 ${className}`}>
+    <div className={`space-y-6 ${className}`}>
       <CompetitionHero mode={mode} gameId={gameId} title={titleOverride || copy.title} eyebrow={eyebrowOverride || copy.eyebrow} description={descriptionOverride || copy.description} artwork={headerImage} action={action} count={playerCount} countLabel={mode === "tournaments" ? "events" : "players"} />
 
       <nav className="competition-mode-nav" aria-label="Competition modes">

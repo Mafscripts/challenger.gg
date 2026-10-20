@@ -8,7 +8,6 @@ import {
   ArrowUpRight,
   ArrowRight,
   ChevronRight,
-  Settings2,
   Gamepad2,
   Gift,
   KeyRound,
@@ -25,7 +24,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import TopfraggLogo from "@/components/brand/TopfraggLogo";
+import CompetitionHero from "@/components/competition/CompetitionHero";
 import { settingGroups, settingTarget, searchSettings } from "@/lib/settingsNavigation";
 import { base44 } from "@/api/base44Client";
 import AccountSection from "@/components/settings/AccountSection";
@@ -103,26 +102,19 @@ export default function Settings() {
   const avatar = user?.avatar_url;
 
   return (
-    <div className="settings-page">
-      <div className="settings-container">
-        <header className="settings-heading">
-          <Settings2 className="settings-hero-symbol" size={210} aria-hidden="true" />
-          <div className="settings-heading-copy">
-            <span className="settings-eyebrow"><TopfraggLogo showWordmark={false} markClassName="!h-7 !w-7" />YOUR TOPFRAGG ACCOUNT</span>
-            <h1>Settings<span>.</span></h1>
-            <p>Your identity. Your style. Your arena.</p>
-            {user && <nav className="settings-quick-links" aria-label="Frequently used settings">
-              <button type="button" onClick={() => openSetting("settings-streaming")}><Radio size={14} />Connect a stream<ArrowRight size={13} /></button>
-              <button type="button" onClick={() => openSetting("settings-gaming")}><Gamepad2 size={14} />Gaming IDs</button>
-              <button type="button" onClick={() => openSetting("settings-password")}><KeyRound size={14} />Password</button>
-            </nav>}
-          </div>
-          {user && <Link to={`/profile/${user.username || user.id}`} className="settings-profile-link" aria-label={`View ${displayName}'s profile`}>
+    <div className="settings-page page-shell">
+      <div className="page-container">
+        <CompetitionHero mode="settings" className="mb-6" description="Your identity. Your style. Your arena. Manage your profile, connections and account in one place."
+          action={user && <nav className="competition-actions" aria-label="Frequently used settings">
+            <button className="competition-action-pill" type="button" onClick={() => openSetting("settings-streaming")}><Radio size={14} />Connect a stream<ArrowRight size={13} /></button>
+            <button className="competition-action-pill" type="button" onClick={() => openSetting("settings-gaming")}><Gamepad2 size={14} />Gaming IDs</button>
+            <button className="competition-action-pill" type="button" onClick={() => openSetting("settings-password")}><KeyRound size={14} />Password</button>
+          </nav>}
+          metadata={user && <Link to={`/profile/${user.username || user.id}`} className="settings-profile-link" aria-label={`View ${displayName}'s profile`}>
             <span className="settings-profile-avatar">{avatar && failedAvatar !== avatar ? <img src={avatar} alt="" onError={() => setFailedAvatar(avatar)} /> : displayName.slice(0, 2).toUpperCase()}</span>
             <span className="settings-profile-copy"><small>YOUR PLAYER PROFILE</small><strong>{displayName}</strong><span>View profile<ArrowUpRight size={12} /></span></span>
             <ArrowUpRight size={17} aria-hidden="true" />
-          </Link>}
-        </header>
+          </Link>} />
 
         {error ? <p role="alert" className="settings-load-error">{error}</p> : !user ? <div className="settings-sign-in"><h2>Sign in to manage your account</h2><Link to="/login">Log in<ChevronRight size={16} /></Link></div> : (
           <div className="settings-dashboard">

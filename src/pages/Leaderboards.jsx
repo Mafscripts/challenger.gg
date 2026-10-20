@@ -144,8 +144,8 @@ export default function Leaderboards() {
   if (loading) return <PageLoader label="Loading leaderboards" />;
 
   return (
-    <div className="leaderboard-page competition-surface" data-competition={activeTab === "elo" ? "ranked" : activeTab}>
-      <div className="leaderboard-container">
+    <div className="leaderboard-page competition-surface page-shell" data-competition={activeTab === "elo" ? "ranked" : activeTab}>
+      <div className="page-container">
         <CompetitionHero mode={activeTab === "elo" ? "ranked" : activeTab} title="Leaderboards" eyebrow={selectedTab.label + " / Competitive rankings"} description="Compare ranked ELO, tournament wins and cash match earnings. Find your place among the TopFragg competitors." className="mb-6" />
 
         <div className="leaderboard-filters">

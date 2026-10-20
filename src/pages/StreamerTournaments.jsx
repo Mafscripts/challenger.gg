@@ -117,15 +117,15 @@ export default function StreamerTournaments() {
   }
 
   return (
-    <div className="competition-surface min-h-screen py-8" data-competition="streamer">
-      <div className="mx-auto max-w-[1500px] px-4 lg:px-6">
+    <div className="competition-surface page-shell min-h-screen" data-competition="streamer">
+      <div className="page-container">
         <CompetitionHero
           mode="streamer"
           className="mb-6"
           eyebrow="Streamer competition"
           title="Streamer Switcheroos"
           description="Public streamer-hosted lobbies with random teams, live brackets and dedicated chat moderation."
-          action={<Link to="/tournaments" className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-secondary px-4 py-2.5 text-xs font-black uppercase tracking-wider text-vapor transition-colors hover:border-blue-400/25 hover:text-blue-300">Official Tournaments <ArrowRight className="h-3.5 w-3.5" /></Link>}
+          action={<Link to="/tournaments" className="competition-action-pill">Official Tournaments <ArrowRight className="h-3.5 w-3.5" /></Link>}
         />
 
         <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
