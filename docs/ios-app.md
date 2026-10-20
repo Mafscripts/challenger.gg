@@ -1,6 +1,8 @@
 # TopFragg iPhone app
 
-This repository now contains an iPhone project using Capacitor 8, with bundled React screens, TopFragg artwork, safe-area spacing, bottom navigation and browser-based account connections. The provisional bundle ID is `gg.topfragg.app`. It has not been compiled with Xcode, installed on an iPhone, uploaded to Apple or deployed to the production API.
+This repository contains an iPhone project using Capacitor 8, with bundled React screens, TopFragg artwork, safe-area spacing, bottom navigation and browser-based account connections. The provisional bundle ID is `gg.topfragg.app`.
+
+On October 19, 2026, the user supplied a Codemagic success screenshot for commit `af27476` on `codex/gray-ui-rework`: **TopFragg iPhone simulator check** completed successfully on a Mac mini M2 in 2 minutes 4 seconds and produced `TopFragg-simulator.zip`. This confirms the Xcode simulator build and packaging passed. Runtime behavior has not yet been verified on a simulator or real iPhone; a signed device build, TestFlight upload and deployment of the updated production API remain unconfirmed.
 
 ## What you do next on Windows
 
