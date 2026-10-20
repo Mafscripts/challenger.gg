@@ -9,6 +9,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import TransactionHistory from "@/components/wallet/TransactionHistory";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
+import { publicCommerceEnabled } from "@/lib/commerce";
 import PageHeader from "@/components/ui/PageHeader";
 import PageLoader from "@/components/ui/PageLoader";
 
@@ -81,7 +82,7 @@ export default function Wallet() {
             <div className="bg-cyan/5 border-b border-cyan/20 px-6 py-4">
               <div className="flex items-center gap-2 mb-2">
                 <WalletIcon className="w-5 h-5 text-cyan" />
-                <span className="text-xs font-mono font-semibold text-cyan uppercase tracking-wider">Available Balance</span>
+                <span className="text-xs font-mono font-semibold text-cyan uppercase tracking-wider">{publicCommerceEnabled ? "Available Balance" : "Test Balance"}</span>
               </div>
               <p className="text-3xl font-black text-cyan font-mono">${walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
             </div>
@@ -113,12 +114,12 @@ export default function Wallet() {
             <div className="bg-orange/5 border-b border-orange/20 px-6 py-4">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-5 h-5 text-orange" />
-                <span className="text-xs font-mono font-semibold text-orange uppercase tracking-wider">Pending Wagers</span>
+                <span className="text-xs font-mono font-semibold text-orange uppercase tracking-wider">{publicCommerceEnabled ? "Pending Wagers" : "Pending Test Entries"}</span>
               </div>
               <p className="text-3xl font-black text-orange font-mono">${pendingWagers.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
             </div>
             <div className="p-6">
-              <p className="text-xs text-vapor mb-2">Funds locked in active matches</p>
+              <p className="text-xs text-vapor mb-2">{publicCommerceEnabled ? "Funds locked in active matches" : "Test credits used in active matches"}</p>
               <Link to="/wagers" className="text-cyan text-sm hover:underline">View Active Wagers →</Link>
             </div>
           </motion.div>
@@ -133,15 +134,15 @@ export default function Wallet() {
             <div className="bg-green/5 border-b border-green/20 px-6 py-4">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-green" />
-                <span className="text-xs font-mono font-semibold text-green uppercase tracking-wider">Withdrawable</span>
+                <span className="text-xs font-mono font-semibold text-green uppercase tracking-wider">{publicCommerceEnabled ? "Withdrawable" : "Test Winnings"}</span>
               </div>
               <p className="text-3xl font-black text-green font-mono">${withdrawable.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
             </div>
             <div className="p-6">
-              <p className="text-xs text-vapor mb-2">Available for withdrawal</p>
+              <p className="text-xs text-vapor mb-2">{publicCommerceEnabled ? "Available for withdrawal" : "Virtual credits · No cash value"}</p>
               <div className="flex items-center gap-2 text-xs text-vapor">
                 <Shield className="w-3 h-3" />
-                <span>Secure withdrawals</span>
+                <span>{publicCommerceEnabled ? "Secure withdrawals" : "Cannot be redeemed or paid out"}</span>
               </div>
             </div>
           </motion.div>
@@ -156,12 +157,12 @@ export default function Wallet() {
             <div className="bg-purple/5 border-b border-purple/20 px-6 py-4">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-5 h-5 text-purple-400" />
-                <span className="text-xs font-mono font-semibold text-purple-400 uppercase tracking-wider">Total Earnings</span>
+                <span className="text-xs font-mono font-semibold text-purple-400 uppercase tracking-wider">{publicCommerceEnabled ? "Total Earnings" : "Total Test Earnings"}</span>
               </div>
               <p className="text-3xl font-black text-purple-400 font-mono">${totalEarnings.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
             </div>
             <div className="p-6">
-              <p className="text-xs text-vapor mb-2">Lifetime wager winnings</p>
+              <p className="text-xs text-vapor mb-2">{publicCommerceEnabled ? "Lifetime wager winnings" : "Lifetime test-credit winnings"}</p>
               <Link to="/dashboard" className="text-cyan text-sm hover:underline">View Stats →</Link>
             </div>
           </motion.div>
@@ -238,8 +239,8 @@ export default function Wallet() {
                       About Deposits
                     </h3>
                     <p className="text-xs text-vapor leading-relaxed">
-                      Public deposits are disabled during testing. Topfragg staff can grant test funds
-                      through the admin console.
+                      Public deposits are disabled during testing. Topfragg staff can grant virtual test credits
+                      with no monetary value.
                     </p>
                   </div>
                   <div className="bg-green/5 border border-green/20 rounded-lg p-4">
@@ -248,8 +249,8 @@ export default function Wallet() {
                       About Withdrawals
                     </h3>
                     <p className="text-xs text-vapor leading-relaxed">
-                      Withdrawals are disabled while the platform is in public testing. Your displayed
-                      balance remains available for testing supported competition features.
+                      Test credits have no monetary value and cannot be paid out or redeemed. Your displayed
+                      balance is only for testing supported competition features.
                     </p>
                   </div>
                 </div>

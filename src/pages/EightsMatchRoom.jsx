@@ -1,3 +1,4 @@
+import { monthlyEightsPrizeLabel } from "@/lib/commerce";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -142,7 +143,7 @@ function LobbyOverviewCard({ match, isMoneyEights, joined, openSpots, entryFee, 
       <div className="flex justify-end">
         <div className="w-full rounded-lg border border-yellow-300/20 bg-yellow-300/[0.06] p-3 text-center sm:w-auto sm:min-w-48">
           <div className="flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-yellow-300"><Trophy className="h-3.5 w-3.5" />Monthly ladder prize</div>
-          <p className="mt-0.5 font-mono text-2xl font-black text-yellow-300">$100</p>
+          <p className="mt-0.5 font-mono text-2xl font-black text-yellow-300">{monthlyEightsPrizeLabel}</p>
           <p className="mt-0.5 text-[8px] text-vapor">Earned through the monthly 8s standings</p>
           {isComplete && <p className="mt-2 text-xs font-black text-yellow-300">{match.winner_name || "Winner"}</p>}
         </div>
@@ -165,7 +166,7 @@ function LobbyOverviewCard({ match, isMoneyEights, joined, openSpots, entryFee, 
         </div>
         <div className={`rounded-lg border p-3 text-center lg:min-w-48 ${isMoneyEights ? "border-green/35 bg-green/[0.09] shadow-[0_12px_34px_-18px_rgba(0,255,150,.9)]" : "border-yellow-300/20 bg-yellow-300/[0.06]"}`}>
           <div className={`flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-[0.18em] ${isMoneyEights ? "text-green" : "text-yellow-300"}`}><Trophy className="h-3.5 w-3.5" />{isMoneyEights ? "Live prize pool" : "Monthly ladder prize"}</div>
-          <p className={`mt-0.5 font-mono text-2xl font-black ${isMoneyEights ? "text-green" : "text-yellow-300"}`}>{isMoneyEights ? formatMoney(livePrizePool) : "$100"}</p>
+          <p className={`mt-0.5 font-mono text-2xl font-black ${isMoneyEights ? "text-green" : "text-yellow-300"}`}>{isMoneyEights ? formatMoney(livePrizePool) : monthlyEightsPrizeLabel}</p>
           <p className="mt-0.5 text-[8px] text-vapor">{isMoneyEights ? `${joined} player${joined === 1 ? "" : "s"} × ${formatMoney(entryFee)} · full lobby ${formatMoney(fullPrizePool)}` : "Earned through the monthly 8s standings"}</p>
           {isComplete && <p className="mt-2 text-xs font-black text-yellow-300">{match.winner_name || "Winner"}</p>}
         </div>

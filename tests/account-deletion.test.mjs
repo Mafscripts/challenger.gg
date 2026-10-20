@@ -22,7 +22,17 @@ test("wrong password, missing confirmation, ownership and outstanding funds stop
     [{}, { password: "correct-password", confirmation: "someone-else" }, 400],
     [{ role: "ceo" }, { password: "correct-password", confirmation: "player1" }, 409],
     [{ wallet_balance: 10 }, { password: "correct-password", confirmation: "player1" }, 409],
-  ]) { const f = fixture(overrides); await assert.rejects(deleteOwnAccount(f.db, user, body, verify), { status }); assert.deepEqual(f.deleted, []); }
+  ]) { const f = fixture(overrides); await assert.rejects(deleteOwnAccount(f.db, user, body, verify, { testCurrencyOnly: false }), { status }); assert.deepEqual(f.deleted, []); }
+});
+
+test("only the server's explicit test-currency policy permits discarding a virtual balance", async () => {
+  const body = { password: "correct-password", confirmation: "player1", testCurrencyOnly: true };
+  const protectedFunds = fixture({ wallet_balance: 100 });
+  await assert.rejects(deleteOwnAccount(protectedFunds.db, user, body, verify, { testCurrencyOnly: false }), { status: 409 });
+  assert.deepEqual(protectedFunds.deleted, []);
+  const virtual = fixture({ wallet_balance: 100 });
+  await deleteOwnAccount(virtual.db, user, body, verify, { testCurrencyOnly: true });
+  assert.deepEqual(virtual.deleted, ["player1"]);
 });
 test("self-service deletion stops for active competition records and preserves admin authorization", async () => {
   const f = fixture(); f.tx.$queryRaw = async () => [{ id: "active-match" }];

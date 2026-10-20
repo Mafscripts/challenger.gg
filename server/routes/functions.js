@@ -109,7 +109,7 @@ const blockedPublicCommerceFunctions = new Set([
   "subscribePremium",
   "withdrawFromWallet",
 ]);
-const commerceUnavailableMessage = "Purchases are temporarily unavailable during public testing. Credits and funds can only be granted by Topfragg staff.";
+const commerceUnavailableMessage = "Purchases and payouts are unavailable. Balances and rewards are virtual test credits with no monetary value.";
 const tournamentStatusesOpenForRegistration = ["open", "registration"];
 const tournamentStatusesStarted = ["live", "in_progress"];
 const openTicketStatuses = ["open", "in_progress", "waiting_for_admin", "admin_joined", "waiting_for_user", "escalated"];
@@ -7431,7 +7431,7 @@ async function settleEightsMonthlyPrize() {
   });
   await notifyUser(winner.id, {
     title: "You won the Ranked 8s monthly race",
-    message: `$100 has been added to your wallet for finishing #1 in ${month}.`,
+    message: publicCommerceEnabled ? `$100 has been added to your wallet for finishing #1 in ${month}.` : `100 virtual test credits, with no cash value, have been added to your wallet for finishing #1 in ${month}.`,
     type: "reward",
     action_url: "/wallet",
     related_entity_id: referenceId,

@@ -8,6 +8,8 @@ import "@/styles/navigation-layout.css";
 import CompetitionRouteFrame from "@/components/competition/CompetitionRouteFrame";
 import NativeTabBar from "./NativeTabBar";
 import { isNativeApp } from "@/lib/nativeApp";
+import { publicCommerceEnabled } from "@/lib/commerce";
+import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 
 const Footer = lazy(() => import("./Footer"));
 
@@ -43,6 +45,7 @@ function PageLayoutShell() {
   const { layout } = useNavigationLayout();
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isCurrencyRoom = /^\/(wagers-match|8s-match|tournament-match)(\/|$)/.test(location.pathname);
 
   return (
     <div className={`app-style-arena app-season-mw4 relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"} ${isAdminRoute ? "app-shell-admin" : ""} ${!isNativeApp && isAuthenticated && layout === "sidebar" ? "app-layout-sidebar" : "app-layout-topbar"}`}>
@@ -51,6 +54,7 @@ function PageLayoutShell() {
       <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">
         <Suspense fallback={<RouteFallback />}>
           <div className="route-stage">
+            {!publicCommerceEnabled && isCurrencyRoom && <CommercePausedNotice compact className="mx-4 mb-3 mt-5" />}
             <CompetitionRouteFrame><Outlet /></CompetitionRouteFrame>
           </div>
         </Suspense>

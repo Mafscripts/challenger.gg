@@ -1,3 +1,5 @@
+import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
+import { publicCommerceEnabled } from "@/lib/commerce";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ArrowLeftRight, Ban, BookOpen, Camera, Check, ChevronRight, ClipboardCheck, Clock, Copy, DollarSign, Flag, Gamepad2, Handshake, List, Medal, MessageCircle, MessageSquare, Radio, Scale, Search, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy, Unplug, Users, Video, Wifi, X } from "lucide-react";
@@ -64,6 +66,7 @@ export default function Rules() {
         action={<div className="competition-actions"><button type="button" onClick={() => selectSection(active.id)} className="competition-action-pill"><BookOpen size={17} />Explore the rules<ArrowRight size={16} /></button><Link to="/support" className="competition-action-pill"><MessageCircle size={16} />Contact support</Link></div>} />
       <div className="rules-edition"><span><ShieldCheck size={13} /> Official competition standards</span><span>PC · PlayStation · Xbox</span><time dateTime="2026-10-19">Updated October 19, 2026</time></div>
 
+      {!publicCommerceEnabled && <CommercePausedNotice compact className="mb-6" />}
       <nav className="rules-essentials" aria-label="Important match requirements">
         {ruleQuickLinks.map(({ id, value, label, detail, icon }, index) => {
           const Icon = icons[icon];

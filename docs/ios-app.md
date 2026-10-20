@@ -47,10 +47,36 @@ Capacitor uses Swift Package Manager. Xcode 26 or later and Node 22 or later are
 
 Test login/logout, reconnect/cancel for all four providers, email verification, poor network recovery, reconnecting live matches, microphone permissions, keyboard and notch/home-indicator spacing on a real iPhone. Registration currently opens the secure website so the existing Turnstile check stays enforced. Return to the app and sign in after verifying the account.
 
-The owner requests worldwide availability and has clarified that wallet, Cash Matches, Money 8s and tournament features must remain in the iPhone app. Purchases remain disabled through the existing public-commerce controls. No iOS-only route restriction or monetary-record filtering is applied. The backend also blocks deposits, purchases, subscriptions, conversions and withdrawals while `PUBLIC_COMMERCE_ENABLED` is false. Keep the frontend flag `VITE_PUBLIC_COMMERCE_ENABLED` false as well. Review notes must describe these features accurately, including whether staff-granted balances and prizes have real monetary value; disabling purchases does not establish that they are virtual or exempt from review.
+The owner requests worldwide availability and has clarified that wallet, Cash Matches, Money 8s and tournament features must remain in the iPhone app. On October 20, 2026, the owner confirmed that all balances and prizes are test credits, without monetary value or payout. These features remain available; no iOS-only route restriction or monetary-record filtering is applied. The public iPhone build explicitly disables purchases through its build configuration. The backend blocks deposits, purchases, subscriptions, conversions and withdrawals while `PUBLIC_COMMERCE_ENABLED` is false. Keep that server flag false, and keep `VITE_PUBLIC_COMMERCE_ENABLED` false for the website. Visible notices explain that dollar symbols represent simulated units and that credits cannot be redeemed or paid out. Monthly rewards are labeled as 100 test credits.
 
-Account deletion is now available under **Settings → Account & security → Delete account**. It requires the current password and exact account name. Active competitions, unresolved financial obligations and platform ownership prevent immediate deletion and direct the user to Support. The existing deletion transaction removes personal account records and anonymizes shared competition records. No real account was deleted during development. Deploy `POST /api/auth/delete-account` before testing this screen on a phone.
+Account deletion is now available under **Settings → Account & security → Delete account**. It requires the current password and exact account name. Active competitions, unresolved financial obligations and platform ownership prevent immediate deletion and direct the user to Support. For this confirmed test-only service, set `TEST_CURRENCY_ONLY=true` on the server so virtual balances can be discarded with the account. If this server setting is absent or false, nonzero balances remain protected from deletion; a client cannot override it. Do not apply the setting to a service holding real monetary balances. The existing deletion transaction removes personal account records and anonymizes shared competition records. No real account was deleted during development. Deploy `POST /api/auth/delete-account` before testing this screen on a phone.
 
 Direct-message conversations now include **Report or block player**. Blocking is enforced on the server in either messaging direction. Reports create private, high-priority tickets in the existing staff support queue; staff must monitor and respond to that queue. Deploy `/api/community/*` with the updated message action before phone testing. Existing database models are reused; no schema migration is introduced.
 
-Push notifications, verified universal links and native background voice are not included. Review the actual data use and SDK privacy manifests, App Store privacy answers, user-generated-content moderation and all wallet/competition/payment features against [Apple's review guidelines](https://developer.apple.com/app-store/review/guidelines/) before submission. The owner must confirm the money/prize model, artwork rights, age-rating and privacy declarations, reviewer contact and a working review account. Metadata and screenshots still need to be completed in App Store Connect; public submission has not been performed. Existing commerce controls are retained; the iOS scaffold itself does not make those features eligible for the App Store. Apple approval is not guaranteed by a successful build.
+Push notifications, verified universal links and native background voice are not included. Review the actual data use and SDK privacy manifests, App Store privacy answers, user-generated-content moderation and all wallet/competition/payment features against [Apple's review guidelines](https://developer.apple.com/app-store/review/guidelines/) before submission. The owner must confirm artwork rights, age-rating and privacy declarations, reviewer contact and a working review account. Metadata and screenshots still need to be completed in App Store Connect; public submission has not been performed. Existing commerce controls are retained; the iOS scaffold itself does not make those features eligible for the App Store. Apple approval is not guaranteed by a successful build.
+
+## App Store text draft
+
+These values are prepared for the existing English (U.S.) record, not submitted to Apple. Verify against the final signed build and live API before using them.
+
+- Name: **Topfragg.gg**
+- Subtitle: **Competitive gaming companion**
+- Support URL: `https://www.topfragg.gg/support`
+- Privacy policy URL: `https://www.topfragg.gg/privacy`
+- Requested availability: worldwide. Actual storefront selection is still pending.
+
+Description draft:
+
+> Find your next match and connect with the TopFragg community. Organize competitive gaming matches, build your team, follow standings and results, and stay in touch through direct messages.
+>
+> Explore Ranked, XP Matches, Free 8s, Money 8s and tournaments. Manage your player profile, gaming IDs and supported community connections from one account.
+>
+> Wallet balances, entry amounts and prizes in this release are virtual test credits with no monetary value. They cannot be purchased, redeemed or paid out. Dollar symbols represent simulated units. TopFragg is a companion for organizing matches played in supported games; those games are not included in this app.
+
+App Review notes draft:
+
+> Wallet, Cash Matches, Money 8s and tournament features remain visible to every user. They use virtual test credits only, without monetary value, redemption or cash payout. Dollar symbols denote simulated units. Purchases, deposits, withdrawals, premium subscriptions and purchases with credits are disabled in this release. Staff can grant test credits, and the monthly 8s reward is 100 virtual test credits.
+>
+> Account deletion is under Settings → Account & security → Delete account. It requires the current password and exact account name. Use an ordinary test account without active matches; platform-owner accounts require transfer of ownership before deletion. In direct-message conversations, the shield button offers reporting and blocking. Reports enter the staff support queue. Website-based account connections use the secure browser and return to the app after the user closes it.
+>
+> Supply a working ordinary review account and reviewer contact information directly in App Store Connect's App Review fields. Do not put credentials in this repository. If a region/network restriction prevents reviewer access, resolve that restriction before submission rather than providing an unusable account.

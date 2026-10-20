@@ -63,9 +63,16 @@ try {
       results.push({ name, width: viewport.width, ...measurement });
       if (selectors.length || measurement.overflow.length) await page.screenshot({ path: path.join(output, `${viewport.width}-${name.replaceAll(/[^a-z0-9-]/gi, "-")}.png`), fullPage: false });
     };
-    for (const route of quick ? ["/messages"] : ["/", "/dashboard", "/ranked", "/ranked/8s", "/xp", "/wagers", "/tournaments", "/settings", "/messages", "/my-matches", "/teams", "/admin"]) {
+    for (const route of quick ? ["/wallet", "/ranked/8s", "/ranked/8s?mode=money", "/messages"] : ["/", "/dashboard", "/ranked", "/ranked/8s", "/ranked/8s?mode=money", "/xp", "/wagers", "/tournaments", "/wallet", "/rules", "/terms", "/settings", "/messages", "/my-matches", "/teams", "/admin"]) {
       await page.goto(state.origin + route, { waitUntil: "networkidle", timeout: 30_000 });
-      await inspect(route, route === "/messages" ? [".messages-workspace", ".native-tab-bar"] : []);
+      const currencyPage = route === "/wallet" || route.startsWith("/ranked/8s");
+      if (currencyPage) {
+        const notice = page.getByRole("note", { name: "Test credits only", exact: true });
+        await notice.waitFor({ state: "visible" });
+        await notice.scrollIntoViewIfNeeded();
+      }
+      if (route === "/wallet" && await page.getByText("Available for withdrawal", { exact: true }).count()) throw new Error("Test wallet must not promise a cash withdrawal.");
+      await inspect(route, route === "/messages" ? [".messages-workspace", ".native-tab-bar"] : currencyPage ? ['[aria-label="Test credits only"]'] : []);
     }
     await page.goto(state.origin + "/messages?conversation=" + state.users[1].id, { waitUntil: "networkidle" });
     await inspect("message-thread", [".messages-workspace", ".messages-composer", ".native-tab-bar"]);

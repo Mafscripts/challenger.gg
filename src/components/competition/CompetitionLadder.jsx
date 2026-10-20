@@ -24,6 +24,8 @@ import { buildFreeEightsStandings } from "@/lib/freeEightsStandings";
 import { CompetitionHeaderContext } from "./CompetitionHeaderContext";
 import CompetitionHero from "./CompetitionHero";
 import { competitionTheme } from "@/lib/competitionPresentation";
+import { monthlyEightsPrizeLabel, publicCommerceEnabled } from "@/lib/commerce";
+import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 
 const navigation = [
   { key: "ranked", label: "Ranked", to: "/ranked", icon: Medal },
@@ -340,7 +342,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     { label: "Ladder winnings", value: `$${totalScore.toLocaleString()}`, detail: `${standings.length} ranked players`, icon: Trophy, tone: "text-green" },
     { label: "Next tournament", value: formatDate(nextTournament?.start_date), detail: nextTournament?.name || "No event announced", icon: CalendarDays, tone: "text-orange" },
   ] : mode === "eights" ? [
-    gameId === "bo7" ? { label: "Monthly prize", value: "$100", detail: "Winner takes the prize", icon: Trophy, tone: "text-green" } : { label: "Formats", value: "2v2 / 3v3 / 4v4", detail: "Free entry", icon: Trophy, tone: "text-green" },
+    gameId === "bo7" ? { label: "Monthly prize", value: monthlyEightsPrizeLabel, detail: publicCommerceEnabled ? "Winner takes the prize" : "Virtual reward · No cash value", icon: Trophy, tone: "text-green" } : { label: "Formats", value: "2v2 / 3v3 / 4v4", detail: "Free entry", icon: Trophy, tone: "text-green" },
     { label: "Open lobbies", value: openCount, detail: "2v2 / 3v3 / 4v4", icon: Gamepad2, tone: "text-cyan" },
     { label: "Players", value: standings.length, detail: "On the 8s ELO ladder", icon: Users, tone: "text-purple-300" },
     { label: gameId === "bo7" ? "Prize month" : "Season", value: monthLabel(), detail: gameId === "bo7" ? "Monthly prize period" : "Separate game standings", icon: Clock3, tone: "text-orange" },
@@ -359,6 +361,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   return (
     <div className="competition-ladder mb-7 space-y-5" data-competition={mode} data-game={gameId}>
       <CompetitionHeader mode={mode} gameId={gameId} playerCount={loading ? null : standings.length} action={action} titleOverride={headerTitle} eyebrowOverride={headerEyebrow} descriptionOverride={headerDescription} headerIntro={headerIntro} />
+      {!publicCommerceEnabled && ["wagers", "money8s", "tournaments", "eights"].includes(mode) && <CommercePausedNotice compact />}
 
       <div className={`grid gap-3 sm:grid-cols-2 ${mode === "wagers" ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {summary.map(({ label, value, detail, icon: Icon, tone }) => (

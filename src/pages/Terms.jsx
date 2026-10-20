@@ -1,3 +1,5 @@
+import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
+import { publicCommerceEnabled } from "@/lib/commerce";
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -104,6 +106,7 @@ export default function Terms() {
           </p>
         </div>
 
+        {!publicCommerceEnabled && <CommercePausedNotice className="mb-6" />}
         <div className="space-y-4">
           {sections.map((section, index) => {
             const Icon = section.icon;

@@ -1,3 +1,4 @@
+import { monthlyEightsPrizeLabel } from "@/lib/commerce";
 import React from "react";
 import { Shield, Trophy } from "lucide-react";
 import { freeEightsMatchCode, freeEightsMatchFormat } from "@/lib/freeEightsRoomIdentity";
@@ -32,7 +33,7 @@ export default function FreeEightsMatchHeader({ match, actions }) {
           <div className="free-eights-room-header-actions max-w-full">{actions}</div>
           {eightsGameId(match) === "bo7" && <div className="inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-yellow-300/15 bg-yellow-300/[0.04] px-3 py-1.5">
             <p className="flex items-center gap-1.5 text-[10px] font-medium text-vapor"><Trophy className="h-3.5 w-3.5 text-yellow-300" aria-hidden="true" />Monthly ladder prize</p>
-            <p className="font-mono text-sm font-black text-yellow-300">$100</p>
+            <p className="font-mono text-sm font-black text-yellow-300">{monthlyEightsPrizeLabel}</p>
           </div>}
         </div>
       </div>

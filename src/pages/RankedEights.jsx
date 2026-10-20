@@ -24,6 +24,7 @@ import FreeEightsGameName from "@/components/competition/FreeEightsGameName";
 import { DEFAULT_EIGHTS_GAME, DEFAULT_EIGHTS_GAMES, eightsGameName, withMw4Preview } from "@/lib/freeEightsGames";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import FreeEightsTutorial from "@/components/competition/FreeEightsTutorial";
+import { monthlyEightsPrizeLabel, publicCommerceEnabled } from "@/lib/commerce";
 
 const activeStatuses = new Set(["open", "in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion", "score_conflict", "disputed"]);
 const EIGHTS_PRIZE_START_MONTH = "2026-10";
@@ -282,8 +283,8 @@ export default function RankedEights() {
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${isMoney ? "border-green/25 bg-green/10 text-green" : "border-yellow-400/25 bg-yellow-400/10 text-yellow-300"}`}><Crown className="h-6 w-6" /></div>
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isMoney ? "text-green" : "text-yellow-300"}`}>{isMoney ? "Wallet-backed matches" : prizeActive ? "Monthly 8s race" : "8s prize announcement"}</p>
-                <h2 className="mt-1 text-2xl font-black">{isMoney ? "Play for the full prize pool" : prizeActive ? "Most monthly wins: $100" : "$100 monthly prize starts October 1"}</h2>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-vapor">{isMoney ? "Every player pays the selected entry fee from their wallet. The winning team shares the complete Money 8s pot." : prizeActive ? "Play at least one completed 8s match this month. Most wins takes the prize; monthly XP and rating break ties." : "Matches played before October 1 do not count toward the $100 prize. Starting in October, the player with the most monthly 8s wins takes the prize."}</p>
+                <h2 className="mt-1 text-2xl font-black">{isMoney ? "Play for the full prize pool" : prizeActive ? `Most monthly wins: ${monthlyEightsPrizeLabel}` : `${monthlyEightsPrizeLabel} monthly prize starts October 1`}</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-vapor">{isMoney ? publicCommerceEnabled ? "Every player pays the selected entry fee from their wallet. The winning team shares the complete Money 8s pot." : "Players enter using virtual wallet credits. The winning team shares the test-credit pot. These credits have no monetary value or payout." : prizeActive ? "Play at least one completed 8s match this month. Most wins takes the prize; monthly XP and rating break ties." : `Matches played before October 1 do not count toward the ${monthlyEightsPrizeLabel} prize. Starting in October, the player with the most monthly 8s wins takes the prize.`}</p>
               </div>
             </div>
             <div className="rounded-xl border border-white/[0.08] bg-black/20 px-5 py-4 text-center">

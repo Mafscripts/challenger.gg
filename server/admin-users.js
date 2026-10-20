@@ -196,11 +196,11 @@ export async function deleteAdminUser(db, actor, body = {}) {
   return deleteAccountRecords(db, actor, body);
 }
 
-export async function deleteOwnAccount(db, actor, body, verifyPassword) {
-  return deleteAccountRecords(db, actor, { ...body, user_id: actor.id, reason: "Account deletion requested and confirmed by the account owner." }, verifyPassword);
+export async function deleteOwnAccount(db, actor, body, verifyPassword, { testCurrencyOnly = process.env.TEST_CURRENCY_ONLY === "true" } = {}) {
+  return deleteAccountRecords(db, actor, { ...body, user_id: actor.id, reason: "Account deletion requested and confirmed by the account owner." }, verifyPassword, testCurrencyOnly);
 }
 
-async function deleteAccountRecords(db, actor, body = {}, verifyOwnPassword = null) {
+async function deleteAccountRecords(db, actor, body = {}, verifyOwnPassword = null, testCurrencyOnly = false) {
   if (!verifyOwnPassword) requireAdmin(actor);
   const id = String(body.user_id || "");
   if (!verifyOwnPassword && id === actor.id) fail("You cannot delete your own account from the admin console.");
@@ -214,7 +214,7 @@ async function deleteAccountRecords(db, actor, body = {}, verifyOwnPassword = nu
       if (targetRole === "ceo") fail("Transfer platform ownership before deleting an owner account.", 409);
       if (typeof body.password !== "string" || !body.password || body.password.length > 256 || !target.password_hash || !await verifyOwnPassword(body.password, target.password_hash)) fail("Enter your current password to delete this account.", 401);
       const wallets = await tx.wallet.findMany({ where: { metadata: { path: ["user_id"], equals: id } } });
-      if (Number(target.wallet_balance || 0) !== 0 || wallets.some(wallet => ["available_balance", "withdrawable_balance", "locked_balance", "pending_balance"].some(key => Number(wallet.metadata?.[key] || 0) !== 0))) fail("Your account has funds or pending funds. Contact support to settle them before permanent deletion.", 409);
+      if (!testCurrencyOnly && (Number(target.wallet_balance || 0) !== 0 || wallets.some(wallet => ["available_balance", "withdrawable_balance", "locked_balance", "pending_balance"].some(key => Number(wallet.metadata?.[key] || 0) !== 0)))) fail("Your account has funds or pending funds. Contact support to settle them before permanent deletion.", 409);
     } else if (hasRolePower(targetRole, actorRole)) fail("You can only delete accounts with a lower role than your own.", 403);
     if (body.confirmation !== (target.username || target.email) || String(body.reason || "").trim().length < 5) fail("Enter the exact account name and a reason for deleting this account.");
     for (const table of ["Wager", "XPMatch", "RankedMatch", "TournamentMatch", "ChallengeMatch"]) {

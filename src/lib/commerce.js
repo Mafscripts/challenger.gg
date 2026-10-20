@@ -3,8 +3,10 @@ export const publicCommerceEnabled = (
 );
 
 export const commerceUnavailableMessage = (
-  "Purchases are temporarily unavailable during public testing. Credits and funds can only be granted by Topfragg staff."
+  "Balances, entry amounts and prizes are virtual test credits with no monetary value. They cannot be purchased, redeemed or paid out. Any $ symbol represents simulated units, not money."
 );
+
+export const monthlyEightsPrizeLabel = publicCommerceEnabled ? "$100" : "100 test credits";
 
 export const blockedPublicCommerceFunctions = new Set([
   "buyWithCredits",

@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
   return {
     ...(native ? { define: {
       'import.meta.env.VITE_NATIVE_APP': JSON.stringify('true'),
+      'import.meta.env.VITE_PUBLIC_COMMERCE_ENABLED': JSON.stringify('false'),
       'import.meta.env.VITE_API_URL': JSON.stringify(nativeApi),
     }, build: { outDir: 'dist-ios' } } : {}),
     plugins: [

@@ -44,3 +44,13 @@ test("native build mode embeds the app flag and HTTPS API without changing web m
   assert.equal(module.isNativeBuild, true);
   assert.equal(module.apiBase, resolveApiBase(process.env.VITE_NATIVE_API_URL, true));
 });
+
+test("the public iPhone build keeps purchases and cash payouts unavailable", async () => {
+  const config = viteConfig({ mode: "ios" });
+  const source = await fs.readFile(new URL("../src/lib/commerce.js", import.meta.url), "utf8");
+  const { code } = await transform(source, { format: "esm", define: config.define });
+  const module = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
+  assert.equal(module.publicCommerceEnabled, false);
+  for (const name of ["create-checkout", "depositToWallet", "withdrawFromWallet", "buyWithCredits", "subscribePremium", "forgeMoneyToCredits"]) assert(module.blockedPublicCommerceFunctions.has(name));
+  assert.equal(module.monthlyEightsPrizeLabel, "100 test credits");
+});
