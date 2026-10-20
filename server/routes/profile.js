@@ -5,8 +5,29 @@ import { trophyCountsFor, recentTrophiesFor } from "../lib/trophyCounts.js";
 import { getProfileArena } from "../profile-arena.js";
 import { friendStatus, changeFriendship, listFriendRequests } from "../friends.js";
 import { playerAvatarFor } from "../lib/playerAvatars.js";
+import { xpTeamMatchWhere } from "../lib/xpTeamMatches.js";
+import { isExpiredOpenMatch } from "../matchfinder-expiry.js";
 
 const router = Router();
+
+router.get("/team-xp-matches", requireAuth, async (req, res, next) => {
+  try {
+    const ids = JSON.parse(req.query.team_ids || "[]");
+    if (!Array.isArray(ids) || ids.length > 100 || ids.some((id) => typeof id !== "string" || !id || id.length > 128)) {
+      return res.status(400).json({ error: "Provide up to 100 team IDs" });
+    }
+    const teamIds = [...new Set(ids)];
+    if (!teamIds.length) return res.json([]);
+    const rows = await prisma.xPMatch.findMany({ where: xpTeamMatchWhere(teamIds), orderBy: { created_date: "desc" }, take: 300 });
+    res.json(rows.map((row) => {
+      const match = { ...row.metadata, id: row.id, created_date: row.created_date };
+      return isExpiredOpenMatch(match) ? { ...match, status: "expired" } : match;
+    }));
+  } catch (error) {
+    if (error instanceof SyntaxError) return res.status(400).json({ error: "Invalid team IDs" });
+    next(error);
+  }
+});
 
 router.get("/:userId/teams", requireAuth, async (req, res, next) => {
   try {
@@ -29,7 +50,7 @@ router.get("/:userId/teams", requireAuth, async (req, res, next) => {
     }
     if (!memberships.size) return res.json([]);
     const teams = await prisma.team.findMany({ where: { id: { in: [...memberships.keys()] } }, select: { id: true, metadata: true } });
-    const hiddenTypes = new Set(["8s", "eights", "money8s", "xp"]);
+    const hiddenTypes = new Set(["8s", "eights", "money8s"]);
     const summaryFields = ["name", "tag", "team_type", "roster_size", "captain_id", "region", "logo_url", "banner_url", "total_wins", "total_losses"];
     const byId = new Map(teams
       .filter(({ metadata: team }) => team?.is_active !== false && team?.is_demo !== true && !hiddenTypes.has(String(team?.team_type || "").toLowerCase()))

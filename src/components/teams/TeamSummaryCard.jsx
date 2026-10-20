@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, Crown, Gamepad2, Globe2, Shield, Swords, Trophy, UserPlus, Users } from "lucide-react";
+import { ArrowRight, CheckCircle, Crown, Gamepad2, Globe2, Shield, Swords, Trophy, UserPlus, Users, Zap } from "lucide-react";
 import { normalizeTeamRosterSize } from "@/lib/teamFormats";
 import { teamPageUrl, teamPlayerFormat, teamPurposeFor } from "@/lib/teamPresentation";
 import "@/styles/teams-page.css";
 
-const purposeIcons = { challenge: Shield, tournament: Trophy, wager: Swords, ranked: Shield, general: Users };
+const purposeIcons = { xp: Zap, challenge: Shield, tournament: Trophy, wager: Swords, ranked: Shield, general: Users };
 const nonNegative = (value) => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
 
-export default function TeamSummaryCard({ team, membership, profileUserId, isOwnProfile = true, members, usersById = {}, activeMatch, currentTournament, onOpen }) {
+export default function TeamSummaryCard({ team, membership, profileUserId, isOwnProfile = true, members, usersById = {}, activeMatch, currentTournament, record, onOpen }) {
   const [logoFailed, setLogoFailed] = useState(false);
   useEffect(() => setLogoFailed(false), [team.logo_url]);
   const purpose = teamPurposeFor(team);
@@ -18,8 +18,8 @@ export default function TeamSummaryCard({ team, membership, profileUserId, isOwn
   const size = normalizeTeamRosterSize(team.roster_size);
   const membersKnown = Array.isArray(members);
   const ready = membersKnown && members.length >= size;
-  const wins = nonNegative(team.total_wins);
-  const losses = nonNegative(team.total_losses);
+  const wins = nonNegative(record?.wins ?? team.total_wins);
+  const losses = nonNegative(record?.losses ?? team.total_losses);
   const winRate = wins + losses ? `${Math.round(wins / (wins + losses) * 100)}%` : "—";
   const missing = membersKnown ? Math.max(0, size - members.length) : 0;
   const openLabel = isOwnProfile && captain ? "Manage roster" : "View roster";

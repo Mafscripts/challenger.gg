@@ -171,7 +171,7 @@ export default function CreateTeamModal({
             <label className="block">
               <span className="mb-2 block text-xs uppercase tracking-wider text-vapor">Team Type</span>
               <select value={teamForm.team_type} disabled={lockTeamType} onChange={(event) => setTeamForm((current) => ({ ...current, team_type: event.target.value, roster_size: event.target.value === "ranked" ? Math.max(2, current.roster_size) : current.roster_size }))} className="w-full rounded-lg border border-white/5 bg-secondary px-4 py-3 text-sm focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70">
-                <option value="challenge">Challenge a Team</option><option value="ranked">Ranked</option><option value="wager">Wager</option><option value="tournament">Tournament</option><option value="general">General</option>
+                <option value="xp">XP Matches</option><option value="challenge">Challenge a Team</option><option value="ranked">Ranked</option><option value="wager">Cash Matches</option><option value="tournament">Tournament</option><option value="general">General</option>
               </select>
             </label>
             <label className="block">

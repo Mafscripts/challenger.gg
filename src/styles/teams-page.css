@@ -1,6 +1,7 @@
 /* Team identity uses the same competition accents as the play pages. */
 .teams-refresh, .team-card-refresh, .teams-competition-filter { --team-accent: 20 216 255; --site-hover-color: rgb(var(--team-accent)); }
 :is(.teams-refresh, .team-card-refresh, .teams-competition-filter)[data-team-type="challenge"] { --team-accent: 180 149 255; }
+:is(.teams-refresh, .team-card-refresh, .teams-competition-filter)[data-team-type="xp"] { --team-accent: 163 139 255; }
 :is(.teams-refresh, .team-card-refresh, .teams-competition-filter)[data-team-type="tournament"] { --team-accent: 255 200 82; }
 :is(.teams-refresh, .team-card-refresh, .teams-competition-filter)[data-team-type="wager"] { --team-accent: 52 239 159; }
 :is(.teams-refresh, .team-card-refresh, .teams-competition-filter)[data-team-type="general"] { --team-accent: 112 175 255; }

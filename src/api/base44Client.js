@@ -380,6 +380,10 @@ export const base44 = {
     },
   },
   profile: {
+    teamXPMatches(teamIds) {
+      requireToken();
+      return apiFetch(`/profile/team-xp-matches${toQuery({ team_ids: teamIds })}`, { dedupe: false, timeoutMs: 15_000 });
+    },
     teams(userId) {
       requireToken();
       return apiFetch(`/profile/${encodeURIComponent(userId)}/teams`);

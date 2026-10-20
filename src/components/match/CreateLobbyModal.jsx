@@ -143,17 +143,18 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
   const requiresTeam = isWager;
-  const supportsRankedParty = isRanked && requiredPlayers > 1;
-  const expectedTeamType = isWager ? "wager" : "ranked";
+  const supportsRankedParty = isRanked && (mode === "xp" || requiredPlayers > 1);
+  const expectedTeamType = isWager ? "wager" : mode === "xp" ? "xp" : "ranked";
   const compatibleTeams = useMemo(() => (
     userTeams.filter((team) => {
       const teamType = team.team_type || "general";
       const rosterLimit = Number(team.roster_size || team.members.length || 1);
-      if (teamType !== expectedTeamType || team.captain_id !== user?.id) return false;
-      if (isRanked) return rosterLimit >= 2 && rosterLimit <= requiredPlayers && team.members.length === rosterLimit;
+      const compatibleType = teamType === expectedTeamType || (mode === "xp" && teamType === "ranked");
+      if (!compatibleType || team.captain_id !== user?.id) return false;
+      if (isRanked) return rosterLimit >= (mode === "xp" ? 1 : 2) && rosterLimit <= requiredPlayers && team.members.length === rosterLimit;
       return team.members.length === requiredPlayers;
     })
-  ), [expectedTeamType, isRanked, requiredPlayers, user?.id, userTeams]);
+  ), [expectedTeamType, isRanked, mode, requiredPlayers, user?.id, userTeams]);
   const selectedTeam = compatibleTeams.find((team) => team.id === selectedTeamId);
   const selectedTeamIsEligible = requiresTeam
     ? Boolean(selectedTeam && selectedTeam.members.length === requiredPlayers)
@@ -599,7 +600,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 {(requiresTeam || supportsRankedParty) && (
                   <div className="mt-5 rounded-xl border border-white/5 bg-secondary/40 p-4">
                     <label className="text-xs text-vapor mb-2 block uppercase tracking-wider">
-                      {isRanked ? "XP match party (optional)" : "Select wager team"}
+                      {isRanked ? `${mode === "xp" ? "XP" : "Ranked"} match team (optional)` : "Select wager team"}
                     </label>
                     <select
                       value={selectedTeamId}
@@ -615,15 +616,15 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     </select>
                     {compatibleTeams.length === 0 && (
                       isRanked ? (
-                        <p className="mt-2 text-xs text-vapor">No complete XP Match Team fits this mode yet.</p>
+                        <p className="mt-2 text-xs text-vapor">No complete {mode === "xp" ? "XP" : "Ranked"} team fits this mode yet.</p>
                       ) : (
                         <p className="text-xs text-red-400 mt-2">Create a dedicated wager team first. Tournament teams cannot be used here.</p>
                       )
                     )}
                     {isRanked && (
                       <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/5 pt-3">
-                        <p className="text-[10px] leading-4 text-vapor">Parties stay together. Duo pairs with duo; trio leaves one solo slot.</p>
-                        <Link to="/teams?create=ranked" className="shrink-0 text-[10px] font-black uppercase tracking-wider text-orange hover:underline">Create team</Link>
+                        <p className="text-[10px] leading-4 text-vapor">{mode === "xp" ? "Your roster stays together. Smaller parties can fill the remaining slots." : "Parties stay together. Duo pairs with duo; trio leaves one solo slot."}</p>
+                        <Link to={`/teams?create=${mode === "xp" ? "xp" : "ranked"}&roster=${requiredPlayers}`} className="site-hover shrink-0 rounded px-2 py-1 text-[10px] font-black uppercase tracking-wider text-orange">Create team</Link>
                       </div>
                     )}
                     {!isRanked && selectedTeam && selectedTeam.members.length < requiredPlayers && (

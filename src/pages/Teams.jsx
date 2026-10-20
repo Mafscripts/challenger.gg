@@ -41,10 +41,12 @@ import { isInventoryTrophy } from "@/lib/trophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
 import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import { normalizeTeamRosterSize, teamRosterFormat } from "@/lib/teamFormats";
+import { xpTeamMatchesFor } from "@/lib/xpTeamMatches";
 import "@/styles/teams-page.css";
 
 const competitionFilters = [
   { id: "all", label: "All competitions", icon: Users },
+  { id: "xp", label: "XP Matches", icon: Zap },
   { id: "challenge", label: "Challenge a Team", icon: Shield },
   { id: "tournament", label: "Tournaments", icon: Trophy },
   { id: "wager", label: "Cash Matches", icon: Swords },
@@ -61,8 +63,8 @@ const teamInitials = (team) => {
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString()}`;
 const formatDate = (value) => value ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "TBD";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "TBD";
-const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
-const teamTypeLabel = (team) => ({ challenge: "Challenge a Team", ranked: "Ranked", wager: "Cash Matches", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
+const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s"]);
+const teamTypeLabel = (team) => teamPurposeFor(team).label;
 const titleCase = (value) => String(value || "pending").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const teamBannerMaxBytes = 1.5 * 1024 * 1024;
 const statNumber = (value) => {
@@ -142,6 +144,7 @@ export default function Teams() {
   const [memberUsersById, setMemberUsersById] = useState({});
   const [pendingInvites, setPendingInvites] = useState([]);
   const [wagers, setWagers] = useState([]);
+  const [xpMatches, setXpMatches] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [tournamentParticipants, setTournamentParticipants] = useState([]);
   const [tournamentMatches, setTournamentMatches] = useState([]);
@@ -163,7 +166,7 @@ export default function Teams() {
   }, []);
 
   useEffect(() => {
-    if (["ranked", "wager", "tournament", "general"].includes(requestedCreateType)) setCreateOpen(true);
+    if (["xp", "challenge", "ranked", "wager", "tournament", "general"].includes(requestedCreateType)) setCreateOpen(true);
   }, [requestedCreateType]);
 
   useEffect(() => {
@@ -240,6 +243,9 @@ export default function Teams() {
         ? [...myTeams, linkedTeam]
         : myTeams;
       setTeams(visibleTeams);
+      const xpTeamIds = visibleTeams.filter((team) => ["xp", "ranked"].includes(team.team_type)).map((team) => team.id);
+      setXpMatches([]);
+      if (xpTeamIds.length) void base44.profile.teamXPMatches(xpTeamIds).then(setXpMatches).catch(() => {});
       setSelectedTeamId((current) => linkedTeam?.id || (visibleTeams.some((team) => team.id === current) ? current : visibleTeams?.[0]?.id || null));
       if (linkedTeam) {
         setView("details");
@@ -301,9 +307,12 @@ export default function Teams() {
     const teamId = String(team.id);
     const members = membersByTeam[team.id] || [];
     const requiredPlayers = normalizeTeamRosterSize(team.roster_size);
-    const wins = Number(team.total_wins || 0);
-    const losses = Number(team.total_losses || 0);
+    const teamXPMatches = xpTeamMatchesFor(xpMatches, team.id);
+    const xpRecord = teamXPMatches.filter((match) => match.completed && matchAfterProgressionReset(match, { created_date: match.date }, team.records_reset_at));
+    const wins = Math.max(Number(team.total_wins || 0), team.team_type === "xp" ? xpRecord.filter((match) => match.outcome === "win").length : 0);
+    const losses = Math.max(Number(team.total_losses || 0), team.team_type === "xp" ? xpRecord.filter((match) => match.outcome === "loss").length : 0);
     const matchCandidates = [];
+    matchCandidates.push(...teamXPMatches.filter((match) => !match.completed && !["cancelled", "expired", "closed"].includes(match.status)));
 
     tournamentMatches.forEach((match) => {
       const isTeamA = String(match.team_a_id || "") === teamId;
@@ -367,7 +376,7 @@ export default function Teams() {
       activeMatch,
       currentTournament,
     };
-  }), [membersByTeam, teams, tournamentById, tournamentMatches, tournamentParticipants, wagers]);
+  }), [membersByTeam, teams, tournamentById, tournamentMatches, tournamentParticipants, wagers, xpMatches]);
   const teamOverview = useMemo(() => ({
     teamCount: teamSummaries.length,
     playerCount: teamSummaries.reduce((total, summary) => total + summary.members.length, 0),
@@ -463,12 +472,12 @@ export default function Teams() {
       }];
     });
 
-    return [...wagerRows, ...tournamentRows].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  }, [selectedTeam, tournamentById, tournamentMatches, wagers]);
+    return [...wagerRows, ...tournamentRows, ...xpTeamMatchesFor(xpMatches, teamId)].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [selectedTeam, tournamentById, tournamentMatches, wagers, xpMatches]);
 
   const completedMatches = selectedMatches.filter((match) => match.completed);
   const recordMatches = completedMatches.filter((match) => matchAfterProgressionReset(match, { created_date: match.date }, selectedTeam?.records_reset_at));
-  const upcomingMatches = selectedMatches.filter((match) => !match.completed && !["cancelled"].includes(match.status));
+  const upcomingMatches = selectedMatches.filter((match) => !match.completed && !["cancelled", "expired", "closed"].includes(match.status));
   const wins = Math.max(Number(selectedTeam?.total_wins || 0), recordMatches.filter((match) => match.outcome === "win").length);
   const losses = Math.max(Number(selectedTeam?.total_losses || 0), recordMatches.filter((match) => match.outcome === "loss").length);
   const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
@@ -713,7 +722,7 @@ export default function Teams() {
             ) : (
               <div className="teams-card-grid">
                 {visibleTeamSummaries.map((summary) => (
-                  <TeamSummaryCard key={summary.team.id} team={summary.team} members={summary.members} usersById={memberUsersById} activeMatch={summary.activeMatch} currentTournament={summary.currentTournament} profileUserId={currentUser?.id} membership={summary.members.find((member) => String(member.user_id) === String(currentUser?.id))} isOwnProfile={Boolean(summary.team.captain_id === currentUser?.id || summary.members.some((member) => String(member.user_id) === String(currentUser?.id)))} onOpen={(tab) => openTeam(summary.team, tab)} />
+                  <TeamSummaryCard key={summary.team.id} team={summary.team} record={summary} members={summary.members} usersById={memberUsersById} activeMatch={summary.activeMatch} currentTournament={summary.currentTournament} profileUserId={currentUser?.id} membership={summary.members.find((member) => String(member.user_id) === String(currentUser?.id))} isOwnProfile={Boolean(summary.team.captain_id === currentUser?.id || summary.members.some((member) => String(member.user_id) === String(currentUser?.id)))} onOpen={(tab) => openTeam(summary.team, tab)} />
                 ))}
               </div>
             )}
@@ -753,7 +762,7 @@ export default function Teams() {
         ) : null}
       </div>
 
-      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["challenge", "ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedRosterSize} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "challenge" ? "Create Challenge a Team Roster" : requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "challenge" ? "Create a solo, duo, trio or squad with its own team XP." : requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={handleTeamCreated} />
+      <CreateTeamModal isOpen={createOpen} onClose={() => setCreateOpen(false)} user={currentUser} defaultTeamType={["xp", "challenge", "ranked", "wager", "tournament"].includes(requestedCreateType) ? requestedCreateType : "general"} defaultRosterSize={requestedRosterSize} lockTeamType={Boolean(requestedCreateType)} title={requestedCreateType === "xp" ? "Create XP Matches Team" : requestedCreateType === "challenge" ? "Create Challenge a Team Roster" : requestedCreateType === "ranked" ? "Create Ranked Team" : requestedCreateType === "wager" ? "Create Wager Team" : "Create Team"} description={requestedCreateType === "xp" ? "Build a dedicated solo, duo, trio or squad for XP matches." : requestedCreateType === "challenge" ? "Create a solo, duo, trio or squad with its own team XP." : requestedCreateType === "ranked" ? "Create a duo, trio or squad for the ranked queue." : requestedCreateType === "wager" ? "Build a dedicated roster for team wagers." : "Start a roster with yourself as captain."} onCreated={handleTeamCreated} />
       <InvitePlayerModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} team={selectedTeam} value={inviteIdentifier} onChange={setInviteIdentifier} onSubmit={handleInvite} busy={Boolean(busyAction)} />
     </div>
   );
@@ -849,6 +858,7 @@ function TeamHero({ team, teams, members, wins, losses, winRate, streak, isCapta
         </div>
         <div className="teams-detail-actions">
           <p>{isCaptain ? "Captain controls" : "Your team hub"}</p>
+          {team.team_type === "xp" && <Link to="/xp" className="teams-button teams-button-primary site-hover site-hover-filled"><Zap className="h-4 w-4" />Play XP Matches</Link>}
           {isCaptain && members.length < normalizeTeamRosterSize(team.roster_size) && <button type="button" onClick={onInvite} className="teams-button teams-button-primary site-hover site-hover-filled"><UserPlus className="h-4 w-4" />Invite player</button>}
           <button type="button" onClick={onRoster} className="teams-button site-hover"><Users className="h-4 w-4" />{isCaptain ? "Manage roster" : "View roster"}<ArrowRight className="h-3.5 w-3.5" /></button>
           <button type="button" onClick={onSettings} className="teams-button teams-button-muted site-hover"><Shield className="h-4 w-4" />{isCaptain ? "Team settings" : "Team details"}</button>
@@ -858,7 +868,7 @@ function TeamHero({ team, teams, members, wins, losses, winRate, streak, isCapta
           <HeroMetric icon={Swords} label="Record" value={`${wins}-${losses}`} tone="text-cyan" />
           <HeroMetric icon={TrendingUp} label="Win rate" value={wins + losses ? `${winRate}%` : "—"} tone="text-green" />
           <HeroMetric icon={Zap} label="Win streak" value={`${streak}W`} tone="text-orange" />
-          <HeroMetric icon={Trophy} label="Ranking" value={team.ranking > 0 ? `#${team.ranking}` : "Unranked"} tone="text-yellow-300" />
+          <HeroMetric icon={team.team_type === "xp" ? Users : Trophy} label={team.team_type === "xp" ? "Roster" : "Ranking"} value={team.team_type === "xp" ? `${members.length}/${normalizeTeamRosterSize(team.roster_size)}` : team.ranking > 0 ? `#${team.ranking}` : "Unranked"} tone={team.team_type === "xp" ? "text-purple-300" : "text-yellow-300"} />
       </div>
     </section>
   );
@@ -877,7 +887,7 @@ function OverviewTab({ team, members, usersById, matches, nextMatch, tournaments
         <Panel title="Next match" eyebrow="Match center">
           {nextMatch ? <FeaturedMatch match={nextMatch} /> : <CompactEmpty icon={Clock} title="No upcoming match" text="Your next scheduled match will appear here." />}
         </Panel>
-        <Panel title="Tournament journey" eyebrow={`${tournaments.length} entered`} action={<button type="button" onClick={onTournaments} className="teams-text-action site-hover">View all <ArrowRight className="h-3.5 w-3.5" /></button>}><TournamentList entries={tournaments} limit={4} embedded /></Panel>
+        {team.team_type === "xp" ? <Panel title="Play as a team" eyebrow="XP Matches"><p className="mb-4 text-xs leading-6 text-vapor">Queue with your complete roster. Your team builds its own win/loss record, while every player earns their own match XP.</p><Link to="/xp" className="teams-button site-hover"><Zap className="h-4 w-4" />Find an XP match<ArrowRight className="h-3.5 w-3.5" /></Link></Panel> : <Panel title="Tournament journey" eyebrow={`${tournaments.length} entered`} action={<button type="button" onClick={onTournaments} className="teams-text-action site-hover">View all <ArrowRight className="h-3.5 w-3.5" /></button>}><TournamentList entries={tournaments} limit={4} embedded /></Panel>}
       </div>
     </div>
   );

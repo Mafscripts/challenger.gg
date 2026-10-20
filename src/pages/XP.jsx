@@ -33,11 +33,11 @@ const selectActiveRankedMatch = (matches, userId) => {
     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
 };
 
-const loadCaptainRankedTeams = async (userId) => {
+const loadCaptainXPTeams = async (userId) => {
   if (!userId) return [];
   const teams = await base44.entities.Team.filterFresh({ captain_id: userId }, "-created_date", 30).catch(() => []);
-  const rankedTeams = (teams || []).filter((team) => team.is_active !== false && team.team_type === "ranked");
-  return Promise.all(rankedTeams.map(async (team) => {
+  const xpTeams = (teams || []).filter((team) => team.is_active !== false && ["xp", "ranked"].includes(team.team_type));
+  return Promise.all(xpTeams.map(async (team) => {
     const members = await base44.entities.TeamMember.filterFresh({ team_id: team.id }, "-joined_date", 10).catch(() => []);
     return { ...team, members: (members || []).filter((member) => member.is_active !== false) };
   }));
@@ -89,7 +89,7 @@ export default function XP() {
   const [activeRankedMatch, setActiveRankedMatch] = useState(null);
   const [leaderboardPosition, setLeaderboardPosition] = useState(null);
   const [loadingMatches, setLoadingMatches] = useState(true);
-  const [rankedTeams, setRankedTeams] = useState([]);
+  const [xpTeams, setXPTeams] = useState([]);
   const [selectedPartyByMatch, setSelectedPartyByMatch] = useState({});
   const [joiningMatchId, setJoiningMatchId] = useState("");
 
@@ -160,12 +160,12 @@ export default function XP() {
       const [matches, statsRows, captainTeams] = await Promise.all([
         base44.entities.XPMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 20),
         base44.functions.invoke("getXPStandings", {}).then(response => response.data?.rows || []),
-        loadCaptainRankedTeams(currentUser?.id),
+        loadCaptainXPTeams(currentUser?.id),
       ]);
 
       setRankedMatches(matches || []);
       setCurrentStats((statsRows || []).find((stats) => stats.user_id === currentUser?.id) || null);
-      setRankedTeams(captainTeams || []);
+      setXPTeams(captainTeams || []);
       const position = (statsRows || []).findIndex((stats) => stats.user_id === currentUser?.id);
       setLeaderboardPosition(position >= 0 ? position + 1 : null);
     } catch (error) {
@@ -269,13 +269,13 @@ export default function XP() {
                       )
                     ) : user ? (
                       <div className="w-48 space-y-2">
-                        {partyMatch && (
+                        {(partyMatch || xpTeams.some((team) => Number(team.roster_size) === 1)) && (
                           <select value={selectedPartyByMatch[match.id] || ""} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
                             <option value="">Solo player</option>
-                            {rankedTeams.filter((team) => {
+                            {xpTeams.filter((team) => {
                               const partySize = Number(team.roster_size || team.members.length || 0);
                               const matchSize = Number.parseInt(String(match.team_size || "1v1"), 10) || 1;
-                              return partySize >= 2 && partySize <= matchSize && team.members.length === partySize;
+                              return partySize >= 1 && partySize <= matchSize && team.members.length === partySize;
                             }).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player party)</option>)}
                           </select>
                         )}

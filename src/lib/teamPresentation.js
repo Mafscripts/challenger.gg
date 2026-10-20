@@ -1,6 +1,8 @@
 import { normalizeTeamRosterSize } from "@/lib/teamFormats";
 
 const teamTypes = {
+  xp: { label: "XP Matches", description: "Your dedicated roster for XP matches.", icon: "xp" },
+  xp: { label: "XP Matches", description: "Your dedicated roster for XP matches.", icon: "xp" },
   challenge: { label: "Challenge a Team", description: "A dedicated roster for team challenges.", icon: "challenge" },
   tournament: { label: "Tournaments", description: "Compete together in team tournaments.", icon: "tournament" },
   wager: { label: "Cash Matches", description: "Your roster for team cash matches.", icon: "wager" },

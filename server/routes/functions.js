@@ -11,6 +11,7 @@ import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../ad
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { playerAvatarFor } from "../lib/playerAvatars.js";
+import { xpTeamMatchWhere } from "../lib/xpTeamMatches.js";
 import { ensureUserRecords, hashPassword, publicUser, updateUserIdentity } from "../auth.js";
 import { publicStaffPresentation } from "../../src/lib/roles.js";
 import { hasRole, rolePower } from "../roles.js";
@@ -2835,7 +2836,7 @@ async function hydrateTeamMemberIdentities(members = []) {
 function normalizeTeamType(value) {
   const type = String(value || "8s").toLowerCase();
   if (type === "eights") return "8s";
-  if (["8s", "wager", "tournament", "ranked", "general", "challenge"].includes(type)) return type;
+  if (["8s", "wager", "tournament", "ranked", "xp", "general", "challenge"].includes(type)) return type;
   return "8s";
 }
 
@@ -2984,7 +2985,7 @@ async function manageTeam(req) {
     const tag = String(req.body.tag || "").trim().toUpperCase().slice(0, 6);
     const teamType = normalizeTeamType(req.body.team_type);
     const rosterSize = Math.min(4, Math.max(1, Number(req.body.roster_size || (teamType === "8s" ? 4 : 2))));
-    if (teamType === "challenge" && ![1, 2, 3, 4].includes(rosterSize)) return { success: false, error: "Choose a solo, duo, trio or squad roster" };
+    if (["challenge", "xp"].includes(teamType) && ![1, 2, 3, 4].includes(rosterSize)) return { success: false, error: "Choose a solo, duo, trio or squad roster" };
     if (!name || !tag) return { success: false, error: "Team name and tag are required" };
     if (teamType === "tournament") {
       const activeTournamentTeams = await activeTournamentTeamMemberships(req.user.id);
@@ -3030,6 +3031,13 @@ async function manageTeam(req) {
     if (active) return { success: false, error: "Finish or cancel your active challenge before changing this roster" };
   }
 
+  if (team.team_type === "xp" && ["kick", "leave", "disband"].includes(action)) {
+    const activeMatches = await prisma.xPMatch.findMany({ where: { AND: [xpTeamMatchWhere([team.id]), {
+      NOT: { OR: ["completed", "cancelled", "expired", "closed"].map((status) => ({ metadata: { path: ["status"], equals: status } })) },
+    }] }, select: { id: true, metadata: true, created_date: true } });
+    if (activeMatches.some((row) => !isExpiredOpenMatch(serializeRow(row)))) return { success: false, error: "Finish or cancel your active XP match before changing this roster" };
+  }
+
   if (action === "update_assets") {
     if (team.captain_id !== req.user.id) return { success: false, error: "Only the team captain can update team visuals" };
     const updated = await updateEntity("Team", team.id, {
@@ -3073,7 +3081,7 @@ async function manageTeam(req) {
       if (activeTournamentTeams.length >= MAX_ACTIVE_TOURNAMENT_TEAMS) {
         return { success: false, error: `Player is already active on the maximum of ${MAX_ACTIVE_TOURNAMENT_TEAMS} tournament teams` };
       }
-    } else {
+    } else if (inviteTeamType !== "xp") {
       const targetTeams = await userActiveTeamMemberships(target.id, inviteTeamType);
       if (targetTeams.length > 0) return { success: false, error: "Player needs to leave current team" };
     }
@@ -7902,7 +7910,7 @@ const rankedPartyCompositionCanFit = (existingSizes, partySize, slots) => {
   });
 };
 
-async function rankedPartyFor(req, teamId, slotsPerTeam, { findActiveMatch = activeRankedMatchFor, label = "ranked" } = {}) {
+async function rankedPartyFor(req, teamId, slotsPerTeam, { findActiveMatch = activeRankedMatchFor, label = "ranked", allowedTeamTypes = ["ranked"], minimumSize = 2 } = {}) {
   if (!teamId) {
     const activisionError = activisionIdErrorForUsers([req.userRow || req.user]);
     if (activisionError) {
@@ -7927,24 +7935,24 @@ async function rankedPartyFor(req, teamId, slotsPerTeam, { findActiveMatch = act
 
   const team = await getEntity("Team", teamId).catch(() => null);
   if (!team || team.is_active === false) {
-    const error = new Error("Select an active ranked team");
+    const error = new Error(`Select an active ${label} team`);
     error.status = 400;
     throw error;
   }
-  if (normalizeTeamType(team.team_type) !== "ranked") {
-    const error = new Error("Only dedicated ranked teams can join as a party");
+  if (!allowedTeamTypes.includes(normalizeTeamType(team.team_type))) {
+    const error = new Error(`Select a dedicated ${label} team`);
     error.status = 400;
     throw error;
   }
   if (String(team.captain_id || "") !== String(req.user.id)) {
-    const error = new Error("Only the team captain can queue this ranked party");
+    const error = new Error(`Only the team captain can queue this ${label} party`);
     error.status = 403;
     throw error;
   }
 
   const size = Math.trunc(rosterLimitForTeam(team, 2));
-  if (size < 2 || size > 4 || size > slotsPerTeam) {
-    const error = new Error(`This ranked team does not fit a ${slotsPerTeam}v${slotsPerTeam} match`);
+  if (size < minimumSize || size > 4 || size > slotsPerTeam) {
+    const error = new Error(`This ${label} team does not fit a ${slotsPerTeam}v${slotsPerTeam} match`);
     error.status = 400;
     throw error;
   }
@@ -8147,6 +8155,7 @@ async function acceptRankedMatch(req) {
 async function xpPartyFor(req, slotsPerTeam) {
   const party = await rankedPartyFor(req, req.body.team_id, slotsPerTeam, {
     findActiveMatch: (userId) => activeXPMatchFor(prisma, userId), label: "XP",
+    allowedTeamTypes: ["xp", "ranked"], minimumSize: 1,
   });
   if (!party.ids.includes(req.user.id)) throw new Error("The XP party captain must be part of the active roster");
   return party;

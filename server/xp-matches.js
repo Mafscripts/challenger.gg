@@ -90,6 +90,33 @@ async function captureStrength(tx, match) {
   return { ...xpMatchStrength(match, Object.fromEntries(ids.map((id) => [id, stats.get(id)?.metadata?.total_xp]))), rating_source: "xp_matches" };
 }
 
+const partyTeamSnapshot = (party) => party.team ? [{ team_id: party.team.id, name: party.team.name, player_ids: [...party.ids] }] : [];
+
+async function updateXPTeamRecords(tx, match, winningSide) {
+  const teams = new Map();
+  for (const side of ["alpha", "bravo"]) {
+    const ids = [
+      ...(match[`team_${side}_party_teams`] || []).map((party) => party.team_id),
+      match[side === "alpha" ? "host_party_team_id" : "challenger_party_team_id"],
+    ].filter(Boolean);
+    for (const id of ids) teams.set(id, side);
+  }
+  for (const id of [...teams.keys()].sort()) {
+    await tx.$executeRaw`SELECT id FROM "Team" WHERE id = ${id} FOR UPDATE`;
+    const team = await tx.team.findUnique({ where: { id } });
+    if (team?.metadata?.team_type !== "xp") continue;
+    const current = team.metadata;
+    const won = teams.get(id) === winningSide;
+    await tx.team.update({ where: { id }, data: { metadata: {
+      ...current,
+      total_wins: Math.max(0, Number(current.total_wins) || 0) + (won ? 1 : 0),
+      total_losses: Math.max(0, Number(current.total_losses) || 0) + (won ? 0 : 1),
+      win_streak: won ? Math.max(0, Number(current.win_streak) || 0) + 1 : 0,
+      last_played_date: stamp(),
+    } } });
+  }
+}
+
 export async function createXPMatchLobby(db, payload, party) {
   if (party.size !== party.ids.length || party.size > xpMatchTeamSize(payload) || !party.ids.includes(payload.host_id)) return error("Select a complete XP party that fits this match");
   return db.$transaction(async (tx) => {
@@ -98,6 +125,7 @@ export async function createXPMatchLobby(db, payload, party) {
     if (conflict) return conflict;
     const match = serializeRow(await tx.xPMatch.create({ data: { metadata: {
       ...payload, match_type: "xp", host_party_team_id: party.team?.id || "",
+      team_alpha_party_teams: partyTeamSnapshot(party), team_bravo_party_teams: [],
       team_alpha_player_ids: party.ids, team_alpha_player_names: party.names,
       team_alpha_party_sizes: [party.size], joined_players: party.size,
     } } }));
@@ -128,6 +156,7 @@ export async function joinXPMatchLobby(db, matchId, party, pickMap) {
       [`team_${side}_player_ids`]: [...xpMatchRoster(match, side), ...party.ids],
       [`team_${side}_player_names`]: [...currentNames, ...party.names],
       [`team_${side}_party_sizes`]: [...(match[`team_${side}_party_sizes`] || xpMatchRoster(match, side).map(() => 1)), party.size],
+      [`team_${side}_party_teams`]: [...(match[`team_${side}_party_teams`] || []), ...partyTeamSnapshot(party)],
       ...(side === "bravo" && !match.challenger_id ? { challenger_id: party.ids[0], challenger_name: party.names[0], challenger_party_team_id: party.team?.id || "" } : {}),
       joined_players: existing.length + party.size, total_players: size * 2,
     };
@@ -276,6 +305,7 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
         own_team_average_xp: strength[`${won ? winningSide : winningSide === "alpha" ? "bravo" : "alpha"}_average_xp`],
         opponent_team_average_xp: won ? outcome.loser_average_xp : outcome.winner_average_xp };
     }
+    await updateXPTeamRecords(tx, match, winningSide);
     const saved = await update({ status: "completed", match_type: "xp", posted_to_matchfinder: false,
       winner_id: winnerId, winner_name: nameFor(usersById.get(winnerId)), winner_score: Math.max(alphaScore, bravoScore), loser_score: Math.min(alphaScore, bravoScore),
       confirmed_score_alpha: alphaScore, confirmed_score_bravo: bravoScore, reported_score_alpha: alphaScore, reported_score_bravo: bravoScore,
