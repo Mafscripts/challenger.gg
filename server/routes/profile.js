@@ -7,6 +7,36 @@ import { friendStatus, changeFriendship, listFriendRequests } from "../friends.j
 
 const router = Router();
 
+router.get("/:userId/teams", requireAuth, async (req, res, next) => {
+  try {
+    const userId = String(req.params.userId || "");
+    if (!userId || userId.length > 128) return res.status(400).json({ error: "Invalid player ID" });
+    const rows = await prisma.teamMember.findMany({
+      where: { metadata: { path: ["user_id"], equals: userId } },
+      select: { id: true, metadata: true, created_date: true },
+    });
+    const memberships = new Map();
+    const joinedAt = (row) => Date.parse(row.metadata?.joined_date || row.created_date) || 0;
+    for (const row of rows.sort((a, b) => joinedAt(b) - joinedAt(a))) {
+      const member = row.metadata || {};
+      if (member.is_active === false || typeof member.team_id !== "string" || !member.team_id || memberships.has(member.team_id)) continue;
+      memberships.set(member.team_id, {
+        id: row.id, user_id: userId, team_id: member.team_id,
+        role: member.role || "member", joined_date: member.joined_date || row.created_date,
+      });
+      if (memberships.size === 100) break;
+    }
+    if (!memberships.size) return res.json([]);
+    const teams = await prisma.team.findMany({ where: { id: { in: [...memberships.keys()] } }, select: { id: true, metadata: true } });
+    const hiddenTypes = new Set(["8s", "eights", "money8s", "xp"]);
+    const summaryFields = ["name", "tag", "team_type", "roster_size", "captain_id", "region", "logo_url", "banner_url", "total_wins", "total_losses"];
+    const byId = new Map(teams
+      .filter(({ metadata: team }) => team?.is_active !== false && team?.is_demo !== true && !hiddenTypes.has(String(team?.team_type || "").toLowerCase()))
+      .map(({ id, metadata }) => [id, { ...Object.fromEntries(summaryFields.filter((field) => Object.hasOwn(metadata || {}, field)).map((field) => [field, metadata[field]])), id }]));
+    res.json([...memberships.values()].filter((member) => byId.has(member.team_id)).map((member) => ({ ...member, team: byId.get(member.team_id) })));
+  } catch (error) { next(error); }
+});
+
 router.get("/friend-requests", requireAuth, async (req, res, next) => {
   try {
     const offset = Number(req.query.offset || 0);

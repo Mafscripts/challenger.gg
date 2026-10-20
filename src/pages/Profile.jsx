@@ -1,6 +1,7 @@
 import { streamChannelUrl } from "@/lib/competitionStreaming";
 import useRouteSection from "@/hooks/useRouteSection";
 import React, { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -61,7 +62,6 @@ const statNumber = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
-const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
 const inventoryCategoryLabels = {
   weapon_skin: "Weapon Skins",
   knife: "Knife Skins",
@@ -164,7 +164,6 @@ export default function Profile() {
   const [recentTrophies, setRecentTrophies] = useState([]);
   const [trophiesLoading, setTrophiesLoading] = useState(true);
   const [trophiesError, setTrophiesError] = useState(false);
-  const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [avatarDraft, setAvatarDraft] = useState("");
   const [bannerDraft, setBannerDraft] = useState("");
@@ -182,6 +181,20 @@ export default function Profile() {
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [friendsError, setFriendsError] = useState(false);
   const [friendsLoadingMore, setFriendsLoadingMore] = useState(false);
+
+  const teamsQuery = useQuery({
+    queryKey: ["profile-teams", currentUser?.id, user?.id],
+    queryFn: () => base44.profile.teams(user.id),
+    enabled: Boolean(currentUser?.id && user?.id),
+    staleTime: 15_000,
+    gcTime: 5 * 60_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+  const teams = teamsQuery.data || [];
+  const teamsLoading = teamsQuery.isPending;
+  const teamsError = teamsQuery.isError && !teamsQuery.data;
 
   useEffect(() => {
     let active = true;
@@ -255,7 +268,6 @@ export default function Profile() {
     setRankedStats(null);
     setInventory([]);
     setPublicTrophyCounts(null);
-    setTeams([]);
     setMatches([]);
     setWallet(null);
     setXpStats(null);
@@ -307,7 +319,7 @@ export default function Profile() {
       setRankedStats(rankedRows[0] || null);
       setXpStats(xpRows[0] || null);
 
-      // The header and stats can render while match history and teams finish.
+      // Teams load independently as soon as the profile player is known.
       setLoading(false);
       if (isOwn) {
         const bootstrap = !userRow.username || !loadedProfile
@@ -333,7 +345,6 @@ export default function Profile() {
           .catch(() => {});
       }
       const [
-        teamMemberRows,
         hostedWagers,
         challengedWagers,
         wagerParticipants,
@@ -343,7 +354,6 @@ export default function Profile() {
         challengedXp,
         tournamentParticipants,
       ] = await Promise.all([
-        base44.entities.TeamMember.filter({ user_id: userRow.id }, "-joined_date", 100).catch(() => []),
         base44.entities.Wager.filter({ host_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.Wager.filter({ challenger_id: userRow.id }, "-created_date", 20).catch(() => []),
         base44.entities.WagerParticipant.filter({ user_id: userRow.id }, "-joined_date", 20).catch(() => []),
@@ -354,15 +364,6 @@ export default function Profile() {
         base44.profile.tournamentParticipants(userRow.id).catch(() => []),
       ]);
       if (!isActive()) return;
-
-      const loadedTeams = await Promise.all((teamMemberRows || []).filter((membership) => membership.is_active !== false).map(async (membership) => {
-        const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
-        return { ...membership, team };
-      }));
-      if (!isActive()) return;
-      setTeams(loadedTeams.filter((row) => (
-        row.team && !hiddenCompetitionTypes.has(String(row.team.team_type || "").toLowerCase())
-      )));
 
       const knownWagerIds = new Set([...hostedWagers, ...challengedWagers].map((wager) => String(wager.id)));
       const participantWagerIds = [...new Set((wagerParticipants || []).map((participant) => participant?.wager_id).filter(Boolean))]
@@ -641,7 +642,7 @@ export default function Profile() {
           ))}
         </nav>
 
-        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} matches={profileMatches} matchesLoading={historyLoading || arenaLoading} trophyCount={trophyCount} recentTrophies={recentTrophies} trophiesLoading={trophiesLoading} trophiesError={trophiesError} teams={profileTeams} teamsLoading={historyLoading} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} canManageFriends={isOwnProfile} onTab={changeSection} onEditProfile={openProfileEditor} />}
+        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} matches={profileMatches} matchesLoading={historyLoading || arenaLoading} trophyCount={trophyCount} recentTrophies={recentTrophies} trophiesLoading={trophiesLoading} trophiesError={trophiesError} teams={profileTeams} teamsLoading={teamsLoading} teamsError={teamsError} onRetryTeams={() => teamsQuery.refetch()} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} canManageFriends={isOwnProfile} onTab={changeSection} onEditProfile={openProfileEditor} />}
 
         {tab === "statistics" && (
           <div className="mt-5 space-y-6">
@@ -652,7 +653,7 @@ export default function Profile() {
         {tab === "trophies" && <div className="mt-5 space-y-6"><TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} /><AchievementsPanel achievements={achievementCards} badges={badges} expanded /></div>}
         {tab === "friends" && <div className="mt-5 space-y-5">{isOwnProfile && <FriendRequestsPanel key={user.id} userId={user.id} />}<ProfileFriends {...friends} loading={friendsLoading} error={friendsError} expanded onLoadMore={loadMoreFriends} loadingMore={friendsLoadingMore} /></div>}
         {tab === "matches" && <div className="pd-panel profile-match-history mt-5"><RecentMatchesPanel key={user.id} matches={profileMatches} userId={user.id} loading={historyLoading || arenaLoading} expanded /></div>}
-        {tab === "teams" && <div className="mt-5"><TeamsList key={user.id} teams={profileTeams} loading={historyLoading} profileUserId={user.id} isOwnProfile={isOwnProfile} /></div>}
+        {tab === "teams" && <div className="mt-5"><TeamsList key={user.id} teams={profileTeams} loading={teamsLoading} error={teamsError} onRetry={() => teamsQuery.refetch()} profileUserId={user.id} isOwnProfile={isOwnProfile} /></div>}
       </div>
     </div>
   );
@@ -1045,7 +1046,7 @@ function InventoryShowcase({ items }) {
   );
 }
 
-function TeamsList({ teams, loading = false, profileUserId, isOwnProfile }) {
+function TeamsList({ teams, loading = false, error = false, onRetry, profileUserId, isOwnProfile }) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -1074,7 +1075,8 @@ function TeamsList({ teams, loading = false, profileUserId, isOwnProfile }) {
           <label><span className="sr-only">Filter by team role</span><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="arena-field h-full w-full rounded-xl border border-white/10 bg-background px-4 py-3 text-sm sm:w-48"><option value="all">All roles</option><option value="captain">Captain</option><option value="member">Member</option></select></label>
         </div>
       </div>
-      {loading ? <div role="status" className="rounded-xl border border-white/10 bg-card p-6 text-sm text-vapor">Loading teams...</div>
+      {error ? <div role="alert" className="rounded-xl border border-white/10 bg-card p-6 text-sm text-vapor">Teams could not be loaded.<button type="button" onClick={onRetry} className="ml-3 font-bold text-cyan hover:underline">Try again</button></div>
+        : loading ? <div role="status" className="rounded-xl border border-white/10 bg-card p-6 text-sm text-vapor">Loading teams...</div>
         : filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-card p-6"><EmptyPanel icon={Users} text={teams.length === 0 ? "No teams joined yet." : "No teams match these filters."} />{teams.length > 0 && <button type="button" onClick={() => { setSearch(""); setTypeFilter("all"); setRoleFilter("all"); }} className="mt-3 text-sm font-bold text-cyan hover:underline">Clear filters</button>}</div>
         : <><p className="mb-3 text-xs text-vapor">Showing {filtered.length} of {teams.length} teams</p><div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">{filtered.map((membership) => <TeamSummaryCard key={membership.team.id} team={membership.team} membership={membership} profileUserId={profileUserId} isOwnProfile={isOwnProfile} />)}</div></>}
     </section>

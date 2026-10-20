@@ -71,9 +71,9 @@ export function TrophyShelf({ trophies = [], loading = false, error = false, onV
   </section>;
 }
 
-function FeaturedTeams({ teams, userId, loading, onViewAll }) {
+function FeaturedTeams({ teams, userId, loading, error, onRetry, onViewAll }) {
   return <section className="pd-panel pd-teams"><Heading title="Featured teams" icon={Shield}><span className="pd-count">{loading ? "…" : teams.length}</span></Heading>
-    {loading ? <p role="status" className="pd-empty">Loading teams…</p> : teams.length ? <div className="pd-team-list">{teams.slice(0, 3).map(({ team, role }) => <Link key={team.id} to={teamPageUrl(team)} className="pd-team-row">
+    {error ? <div role="alert" className="pd-empty"><p>Teams could not be loaded.</p><button type="button" onClick={onRetry} className="pd-text-action">Try again</button></div> : loading ? <p role="status" className="pd-empty">Loading teams…</p> : teams.length ? <div className="pd-team-list">{teams.slice(0, 3).map(({ team, role }) => <Link key={team.id} to={teamPageUrl(team)} className="pd-team-row">
       <span className="pd-team-logo">{team.logo_url ? <img src={team.logo_url} alt="" loading="lazy" /> : String(team.tag || team.name).slice(0, 2).toUpperCase()}</span>
       <span className="pd-team-copy"><strong>{team.name}</strong><small>{teamPurposeFor(team).label}{team.region ? ` · ${team.region}` : ""}</small><span>{team.captain_id === userId ? "Captain" : role || "Member"}</span></span>
       <span className="pd-team-record"><b>{number(team.total_wins)} <span>–</span> {number(team.total_losses)}</b><small>Team record</small></span><ChevronRight />
@@ -99,7 +99,7 @@ function RecentActivity({ matches, userId, loading, onViewAll, isOwnProfile }) {
   </section>;
 }
 
-export default function ProfileOverview({ arena, arenaLoading, arenaError, onRetry, user, profile, matches = [], matchesLoading, trophyCount = 0, recentTrophies, trophiesLoading, trophiesError, teams, teamsLoading, friends, friendsLoading, canManageFriends, onTab, onEditProfile }) {
+export default function ProfileOverview({ arena, arenaLoading, arenaError, onRetry, user, profile, matches = [], matchesLoading, trophyCount = 0, recentTrophies, trophiesLoading, trophiesError, teams, teamsLoading, teamsError, onRetryTeams, friends, friendsLoading, canManageFriends, onTab, onEditProfile }) {
   const rank = arena?.tp_rank, played = rank?.matchesPlayed > 0;
   const wins = (arena?.arenas || []).reduce((sum, row) => sum + (Number(row.wins) || 0), 0);
   const losses = (arena?.arenas || []).reduce((sum, row) => sum + (Number(row.losses) || 0), 0);
@@ -108,7 +108,7 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
     { label: "Arena matches", value: number(total), detail: "Ranked · Free 8s · XP", icon: Swords, tab: "statistics", loading: arenaLoading || arenaError },
     { label: "Arena win rate", value: total ? `${Math.round(wins / total * 100)}%` : "—", detail: `${number(wins)} wins · ${number(losses)} losses`, icon: Medal, tab: "statistics", loading: arenaLoading || arenaError },
     { label: "Trophies", value: number(trophyCount), detail: "Open trophy cabinet", icon: Trophy, tab: "trophies", loading: trophiesLoading },
-    { label: "Teams", value: number(teams.length), detail: "Competition rosters", icon: Users, tab: "teams", loading: teamsLoading },
+    { label: "Teams", value: number(teams.length), detail: "Competition rosters", icon: Users, tab: "teams", loading: teamsLoading || teamsError },
   ];
   return <div className="profile-overview">
     <div className="pd-summary-grid" aria-label="Player summary">{summaries.map(({ label, value, detail, icon: Icon, tab, loading }) => <button key={label} type="button" className="competition-stat-card pd-summary-card" onClick={() => onTab(tab)}><div className="competition-stat-icon"><Icon size={21} /></div><div><p className="competition-stat-label">{label}</p><strong className="competition-stat-value">{loading ? "—" : value}</strong><p className="competition-stat-detail">{detail}</p></div><ChevronRight size={14} aria-hidden="true" /></button>)}</div>
@@ -119,7 +119,7 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
     <div className="profile-dashboard">
       <div className="pd-main">
         {(arenaLoading || arenaError || (arena?.arenas || []).length > 0) && <ArenaRecords data={arena} loading={arenaLoading} error={arenaError} onRetry={onRetry} screenshotRank={user.screenshot_rank} />}
-        {(teamsLoading || teams.length > 0) && <FeaturedTeams teams={teams} userId={user.id} loading={teamsLoading} onViewAll={() => onTab("teams")} />}
+        {(teamsLoading || teamsError || teams.length > 0) && <FeaturedTeams teams={teams} userId={user.id} loading={teamsLoading} error={teamsError} onRetry={onRetryTeams} onViewAll={() => onTab("teams")} />}
       </div>
       <aside className="pd-sidebar">
         <section className="pd-panel pd-rank-panel" data-ranked={played} data-xp-elite={played && rank.elite ? rank.position === 1 ? "champion" : "top1000" : undefined}>
@@ -133,7 +133,7 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
         </section>
         <section className="pd-panel pd-about"><Heading title="About the player" /><p>{profile?.bio || (canManageFriends ? "Add a bio to introduce yourself to other players." : "This player hasn't added a bio yet.")}</p>{canManageFriends && <button type="button" className="pd-view-all" onClick={onEditProfile}>Edit bio & appearance<ChevronRight /></button>}</section>
         <RecentActivity key={user.id} matches={matches} userId={user.id} loading={matchesLoading} onViewAll={() => onTab("matches")} isOwnProfile={canManageFriends} />
-        {canManageFriends && !teamsLoading && teams.length === 0 && <section className="pd-panel pd-team-start"><Heading title="Play as a team" icon={Shield} /><p>Find a roster or create your own team for your next competition.</p><Link to="/teams" className="pd-view-all">Browse teams<ArrowRight /></Link></section>}
+        {canManageFriends && !teamsLoading && !teamsError && teams.length === 0 && <section className="pd-panel pd-team-start"><Heading title="Play as a team" icon={Shield} /><p>Find a roster or create your own team for your next competition.</p><Link to="/teams" className="pd-view-all">Browse teams<ArrowRight /></Link></section>}
       </aside>
     </div>
   </div>;

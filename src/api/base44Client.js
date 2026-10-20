@@ -369,6 +369,10 @@ export const base44 = {
     },
   },
   profile: {
+    teams(userId) {
+      requireToken();
+      return apiFetch(`/profile/${encodeURIComponent(userId)}/teams`);
+    },
     friendship(userId) {
       requireToken();
       return apiFetch(`/profile/${encodeURIComponent(userId)}/friendship`, { dedupe: false });
