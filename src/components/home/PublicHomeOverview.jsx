@@ -103,11 +103,9 @@ export default function PublicHomeOverview() {
 
   return (
     <div className="home-hub landing-arena relative overflow-hidden">
-      <div className="landing-arena-glow landing-arena-glow-cyan" aria-hidden="true" />
-      <div className="landing-arena-glow landing-arena-glow-orange" aria-hidden="true" />
       <div className="home-hub-container relative">
         <section className="home-hero mw4-feature landing-season-card relative isolate overflow-hidden rounded-2xl border border-white/10 bg-card">
-          <img src="/assets/mw4/hero.webp" alt="" fetchPriority="high" className="home-hero-image absolute inset-0 h-full w-full object-cover object-center" />
+          <img src="/assets/mw4/hero.webp" alt="" fetchPriority="high" decoding="async" className="home-hero-image absolute inset-0 h-full w-full object-cover object-center" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,17,.98)_0%,rgba(5,10,17,.9)_38%,rgba(5,10,17,.25)_78%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,10,17,.84),transparent_60%)]" />
           <div className="landing-bullet-field absolute inset-0 z-[2]" aria-hidden="true">

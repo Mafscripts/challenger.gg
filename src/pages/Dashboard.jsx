@@ -166,19 +166,41 @@ function SectionHeading({ eyebrow, title, action, actionLabel = "View all" }) {
 
 function FeaturedNews() {
   const [active, setActive] = useState(0);
+  const [isRotating, setIsRotating] = useState(true);
+  const heroRef = useRef(null);
   const slide = slides[active];
 
   useEffect(() => {
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let inView = true;
+    const updateRotation = () => setIsRotating(inView && document.visibilityState === "visible" && !motionPreference.matches);
+    const observer = new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+      updateRotation();
+    });
+    if (heroRef.current) observer.observe(heroRef.current);
+    document.addEventListener("visibilitychange", updateRotation);
+    motionPreference.addEventListener("change", updateRotation);
+    updateRotation();
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", updateRotation);
+      motionPreference.removeEventListener("change", updateRotation);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isRotating) return undefined;
     const timer = window.setTimeout(() => setActive((current) => (current + 1) % slides.length), SLIDE_DURATION);
     return () => window.clearTimeout(timer);
-  }, [active]);
+  }, [active, isRotating]);
 
   const move = (direction) => setActive((current) => (current + direction + slides.length) % slides.length);
 
   return (
-    <section className={`home-hero home-featured relative isolate overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] ${slide.season === "mw4" ? "mw4-feature" : ""}`}>
+    <section ref={heroRef} data-rotating={isRotating} aria-label="Featured news" className={`home-hero home-featured relative isolate overflow-hidden rounded-2xl border border-white/10 bg-[#090e16] ${slide.season === "mw4" ? "mw4-feature" : ""}`}>
       <div key={`base-${active}`} className="home-featured-image absolute inset-0">
-        <img src={slide.image} alt="" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
+        <img src={slide.image} alt="" decoding="async" className="h-full w-full object-cover" style={{ objectPosition: slide.objectPosition }} loading={active === 0 ? "eager" : "lazy"} />
       </div>
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,9,16,.98)_0%,rgba(5,9,16,.88)_34%,rgba(5,9,16,.42)_65%,rgba(5,9,16,.15)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,9,16,.86)_0%,transparent_45%)]" />

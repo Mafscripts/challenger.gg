@@ -563,18 +563,18 @@ export default function Profile() {
     <div className="profile-page profile-refresh competition-surface page-shell" data-competition="profile">
       <div className="page-container">
         <section className="profile-hero relative overflow-hidden rounded-2xl border border-white/10 bg-card">
-          {bannerDraft && <img src={bannerDraft} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-35" />}
+          {bannerDraft && <img src={bannerDraft} alt="" className="profile-hero-banner pointer-events-none absolute inset-0 h-full w-full object-cover" />}
           <div className="profile-hero-shade pointer-events-none absolute inset-0" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
           <div className="profile-identity relative flex flex-col justify-start gap-7 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between lg:p-8">
             <div className="flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
-              <div className="relative shrink-0">
+              <div className="profile-avatar-frame relative shrink-0">
                 <div className="profile-avatar flex items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-4xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)]">
                   {avatarDraft || profile?.avatar_url ? <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" /> : name.charAt(0)}
                 </div>
               </div>
               <div className="min-w-0">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-cyan">TopFragg competitor</p>
+                <p className="profile-player-eyebrow"><Shield size={13} aria-hidden="true" />TopFragg competitor</p>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h1 data-name-effect={selectedNameColor || undefined} className={`player-name-wrap min-w-0 break-words font-heading text-4xl font-black leading-tight text-white sm:text-5xl ${selectedNameColor ? "player-name-color" : ""}`} style={selectedNameColor ? { "--player-name-color": selectedNameColor } : undefined}>{name}</h1>
                   {user.is_banned && !(Date.parse(user.ban_expires ?? user.metadata?.ban_expires) <= Date.now()) && (
@@ -582,11 +582,13 @@ export default function Profile() {
                       <Ban className="h-3.5 w-3.5" aria-hidden="true" />BANNED
                     </span>
                   )}
+                </div>
+                <p className="profile-handle">@{user.username || user.handle || "player"}</p>
+                <div className="profile-player-badges" aria-label="Player badges">
                   <RoleBadge role={user.role || "user"} />
                   <ScreenshotRankPill rank={user.screenshot_rank} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
                 </div>
-                <p className="profile-handle">@{user.username || user.handle || "player"}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="profile-gaming-id"><Gamepad2 size={14} /><span>Activision ID</span><strong>{activisionIdFor(user) || "Not set"}</strong></span>
                 </div>
@@ -594,7 +596,8 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="profile-identity-actions w-full shrink-0 lg:w-[300px]">
+            {(isOwnProfile || currentUser?.id) && <div className="profile-identity-actions w-full shrink-0 lg:w-[340px]">
+              <div className="profile-action-heading"><Sparkles size={15} aria-hidden="true" /><span>{isOwnProfile ? "Your player card" : "Connect & compete"}</span></div>
               <div className="flex gap-2">
                 {isOwnProfile ? (
                   <>
@@ -610,7 +613,7 @@ export default function Profile() {
                 ) : null}
               </div>
               {!isOwnProfile && currentUser?.id && <FriendActions key={user.id} userId={user.id} currentUserId={currentUser.id} />}
-            </div>
+            </div>}
           </div>
 
           <ProfileHeaderBar socials={socialLinks} region={region} joinedDate={joinedDate} />
