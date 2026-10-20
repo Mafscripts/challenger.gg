@@ -11,7 +11,6 @@
 .tournament-overview .competition-hero-actions { overflow: visible; }
 .tournament-overview .competition-action-pill { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; font-weight: 800; }
 .tournament-overview .overview-join { border: 1px solid rgb(var(--comp-accent) / .65); color: #2b2106; background: linear-gradient(110deg, rgb(var(--comp-accent)), rgb(var(--comp-accent) / .8)); box-shadow: 0 3px 20px rgb(var(--comp-accent) / .1); }
-.tournament-overview .overview-join:hover { filter: brightness(1.1); }
 .tournament-overview .competition-hero-actions button.competition-action-pill.overview-leave { color: #fda4af; border-color: #fb718538; background: #fb71850a; box-shadow: none; }
 .tournament-overview .overview-joined, .tournament-overview .overview-registration-closed { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid #34ef9f40; border-radius: 9px; background: #34ef9f0d; color: #34ef9f; font-size: 11px; font-weight: 750; }
 .tournament-overview .overview-registration-closed { border-color: #9fb7c833; background: #9fb7c808; color: #9fb7c8; }
@@ -40,7 +39,7 @@
 .tournament-overview .overview-detail-row > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .tournament-overview .overview-participant-count { border-color: #14d8ff33; background: linear-gradient(125deg, #14d8ff09, transparent 65%), #101c28; }
 .tournament-overview .overview-participant { width: 100%; }
-.tournament-overview .overview-participant:hover, .tournament-overview .overview-participant[aria-expanded="true"] { border-color: rgb(var(--comp-accent) / .5); background: linear-gradient(110deg, rgb(var(--comp-accent) / .09), #101c28); }
+.tournament-overview .overview-participant:hover, .tournament-overview .overview-participant[aria-expanded="true"] { border-color: rgb(var(--comp-accent) / .5); }
 .tournament-overview .overview-empty { border-style: dashed; }
 .tournament-overview .overview-empty > svg { box-sizing: content-box; width: 28px; height: 28px; padding: 14px; border: 1px solid rgb(var(--comp-accent) / .25); border-radius: 16px; background: rgb(var(--comp-accent) / .06); color: rgb(var(--comp-accent)); }
 .tournament-overview .overview-bracket > div > div > p { color: rgb(var(--comp-accent)); }

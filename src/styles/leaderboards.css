@@ -58,7 +58,7 @@
 .leaderboard-page-controls { display: flex; align-items: center; gap: 12px; }
 .leaderboard-page-controls button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 12px; border: 1px solid rgb(255 255 255 / .1); border-radius: 9px; background: rgb(255 255 255 / .035); color: white; font-size: 11px; font-weight: 800; }
 .leaderboard-page-controls button:last-child { border-color: color-mix(in srgb, var(--ladder-accent, hsl(var(--cyan))) 24%, transparent); background: color-mix(in srgb, var(--ladder-accent, hsl(var(--cyan))) 8%, transparent); color: var(--ladder-accent, hsl(var(--cyan))); }
-.leaderboard-page-controls button:hover:not(:disabled) { border-color: var(--ladder-accent, hsl(var(--cyan))); background: color-mix(in srgb, var(--ladder-accent, hsl(var(--cyan))) 12%, transparent); }
+.leaderboard-page-controls button:hover:not(:disabled) { border-color: var(--ladder-accent, hsl(var(--cyan))); }
 .leaderboard-page-controls button:disabled { cursor: not-allowed; opacity: .3; }
 .leaderboard-page-number { color: white; font-family: var(--font-mono); font-size: 10px; white-space: nowrap; }
 .leaderboard-page-number span { color: hsl(var(--vapor)); }

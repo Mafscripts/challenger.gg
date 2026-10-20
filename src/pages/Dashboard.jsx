@@ -215,10 +215,10 @@ function FeaturedNews() {
         <p className="mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">{slide.description}</p>
         {slide.season === "mw4" && <Mw4SeasonSignal className="mt-5" />}
         <div className={`${slide.season === "mw4" ? "mt-5" : "mt-7"} flex flex-wrap gap-3`}>
-          <Link to={slide.primaryHref} className="inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-black transition-transform hover:-translate-y-0.5">
+          <Link to={slide.primaryHref} className="site-hover site-hover-filled inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-black transition-transform">
             {slide.primaryLabel}<ArrowRight className="h-4 w-4" />
           </Link>
-          <Link to={slide.secondaryHref} className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-white transition-colors hover:border-cyan/40 hover:text-cyan">
+          <Link to={slide.secondaryHref} className="site-hover inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-white transition-colors hover:border-cyan/40 hover:text-cyan">
             <BarChart3 className="h-4 w-4" />{slide.secondaryLabel}
           </Link>
         </div>
@@ -240,8 +240,8 @@ function FeaturedNews() {
         </div>
         <div className="flex items-center gap-2">
           <span className="mr-1 font-mono text-[10px] font-bold text-vapor">0{active + 1} / 0{slides.length}</span>
-          <button type="button" onClick={() => move(-1)} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-black/30 text-white transition-colors hover:border-orange/40 hover:text-orange" aria-label="Previous featured story"><ChevronLeft className="h-4 w-4" /></button>
-          <button type="button" onClick={() => move(1)} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-black/30 text-white transition-colors hover:border-orange/40 hover:text-orange" aria-label="Next featured story"><ChevronRight className="h-4 w-4" /></button>
+          <button type="button" onClick={() => move(-1)} className="site-hover grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-black/30 text-white transition-colors hover:border-orange/40 hover:text-orange" aria-label="Previous featured story"><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" onClick={() => move(1)} className="site-hover grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-black/30 text-white transition-colors hover:border-orange/40 hover:text-orange" aria-label="Next featured story"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </div>
     </section>
@@ -284,7 +284,7 @@ function TournamentRows({ tournaments, now, loading }) {
           const teams = number(tournament.registered_teams ?? tournament.participant_count);
           const maxTeams = number(tournament.max_teams || tournament.team_limit || 0);
           return (
-            <Link key={tournament.id} to={`/tournaments/${tournament.id}`} className="group grid min-h-[86px] grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-3 transition-colors last:border-0 hover:bg-white/[0.035] sm:grid-cols-[62px_minmax(0,1fr)_90px_100px_112px] sm:gap-5 sm:px-5 lg:grid-cols-[62px_minmax(0,1fr)_90px_100px_85px_112px]">
+            <Link key={tournament.id} to={`/tournaments/${tournament.id}`} className="group grid min-h-[86px] grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-3 transition-colors last:border-0 sm:grid-cols-[62px_minmax(0,1fr)_90px_100px_112px] sm:gap-5 sm:px-5 lg:grid-cols-[62px_minmax(0,1fr)_90px_100px_85px_112px]">
               <img src={tournamentImage(tournament)} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-white/10 bg-background object-contain object-center sm:h-[62px] sm:w-[62px]" loading="lazy" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -334,7 +334,7 @@ function TournamentLadder({ players, loading }) {
         {loading && players.length === 0 && [0, 1, 2, 3].map((item) => <div key={item} className="h-[58px] animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
         {!loading && players.length === 0 && <div className="px-5 py-12 text-center text-sm text-vapor">The tournament ladder is waiting for its first champion.</div>}
         {players.map((player, index) => (
-          <Link key={player.id || `${playerName(player)}-${index}`} to={player.id ? `/profile/${player.id}` : "/leaderboards"} className="group grid min-h-[58px] grid-cols-[46px_1fr_74px_92px] items-center border-b border-white/[0.06] px-4 py-2.5 last:border-0 hover:bg-white/[0.035] sm:grid-cols-[56px_1fr_110px_120px] sm:px-5">
+          <Link key={player.id || `${playerName(player)}-${index}`} to={player.id ? `/profile/${player.id}` : "/leaderboards"} className="group grid min-h-[58px] grid-cols-[46px_1fr_74px_92px] items-center border-b border-white/[0.06] px-4 py-2.5 last:border-0 sm:grid-cols-[56px_1fr_110px_120px] sm:px-5">
             <span className={`font-mono text-sm font-black ${index < 3 ? "text-orange" : "text-vapor"}`}>#{index + 1}</span>
             <div className="flex min-w-0 items-center gap-3">
               <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
@@ -364,7 +364,7 @@ function Matchfinder({ matches, loading }) {
           const fee = number(match.entry_fee ?? match.amount);
           const players = number(match.player_count ?? match.joined_players ?? match.participant_count);
           return (
-            <Link key={`${match.homeKind}-${match.id}`} to={href} className="group grid min-h-[76px] grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-4 py-3 last:border-0 hover:bg-white/[0.035] sm:grid-cols-[42px_1fr_100px_110px_105px] sm:gap-5 sm:px-5">
+            <Link key={`${match.homeKind}-${match.id}`} to={href} className="group grid min-h-[76px] grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-4 py-3 last:border-0 sm:grid-cols-[42px_1fr_100px_110px_105px] sm:gap-5 sm:px-5">
               <span className={`grid h-10 w-10 place-items-center rounded-lg border ${ranked ? "border-cyan/25 bg-cyan/10 text-cyan" : "border-orange/25 bg-orange/10 text-orange"}`}>{ranked ? <Crosshair className="h-4 w-4" /> : <Coins className="h-4 w-4" />}</span>
               <div className="min-w-0"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{match.game_mode_display || match.game_mode || (ranked ? "Ranked match" : "Wager match")}</p><p className="mt-1 truncate text-[10px] text-vapor">{match.team_size || "1v1"} · {ranked ? "Ranked" : "Wager"} · Posted by {match.host_name || match.created_by_name || "competitor"}</p></div>
               <div className="hidden sm:block"><p className="font-mono text-[8px] font-black uppercase tracking-wider text-vapor">Entry</p><p className={`mt-1 font-mono text-xs font-black ${fee > 0 ? "text-green" : "text-cyan"}`}>{fee > 0 ? formatMoney(fee) : "Free"}</p></div>

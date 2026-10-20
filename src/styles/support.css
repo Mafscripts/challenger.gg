@@ -5,7 +5,7 @@
 .support-page h1 { margin-top: 8px; font-size: 32px; font-weight: 900; line-height: 1.2; letter-spacing: -.04em; }
 .support-page .support-heading p { margin-top: 10px; color: hsl(var(--vapor)); font-size: 14px; line-height: 1.6; }
 .support-page .support-primary { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 8px; min-height: 42px; padding: 10px 16px; border: 1px solid hsl(var(--cyan) / .3); border-radius: 9px; background: hsl(var(--cyan) / .1); color: hsl(var(--cyan)); font-size: 14px; font-weight: 800; }
-.support-page .support-primary:hover:not(:disabled) { border-color: hsl(var(--cyan) / .55); background: hsl(var(--cyan) / .16); }
+.support-page .support-primary:hover:not(:disabled) { border-color: hsl(var(--cyan) / .55); }
 .support-page button:disabled { cursor: default; opacity: .5; }
 .support-page .support-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 24px; border: 1px solid rgb(255 255 255 / .075); border-radius: 12px; overflow: hidden; background: #101e28; }
 .support-page .support-summary button { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 18px 22px; border-right: 1px solid rgb(255 255 255 / .065); text-align: left; }
@@ -15,7 +15,7 @@
 .support-page .support-summary button[data-kind="closed"] > svg { color: #34d399; }
 .support-page .support-summary button > span { color: hsl(var(--vapor)); font-size: 13px; font-weight: 700; }
 .support-page .support-summary button > strong { margin-left: auto; font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
-.support-page .support-summary button:hover, .support-page .support-summary button[aria-current] { background: hsl(var(--cyan) / .045); }
+.support-page .support-summary button[aria-current] { background: hsl(var(--cyan) / .045); }
 .support-page .support-workspace { display: grid; grid-template-columns: 350px minmax(0, 1fr); align-items: start; gap: 22px; }
 .support-page .support-inbox { min-width: 0; overflow: hidden; border: 1px solid rgb(255 255 255 / .08); border-radius: 13px; background: linear-gradient(155deg, #12232f, #0e1b25 70%); scroll-margin-top: 90px; }
 .support-page .support-inbox-heading { display: flex; align-items: center; justify-content: space-between; padding: 18px 18px 14px; }
@@ -34,7 +34,6 @@
 .support-page .support-ticket-list { max-height: 680px; overflow-y: auto; overscroll-behavior: contain; padding: 8px; }
 .support-page .support-ticket-row { display: block; width: 100%; min-width: 0; padding: 15px 12px; border: 1px solid transparent; border-radius: 9px; text-align: left; }
 .support-page .support-ticket-row + .support-ticket-row { margin-top: 5px; }
-.support-page .support-ticket-row:hover { background: rgb(255 255 255 / .025); }
 .support-page .support-ticket-row[data-selected="true"] { border-color: hsl(var(--cyan) / .2); background: linear-gradient(95deg, hsl(var(--cyan) / .09), hsl(var(--cyan) / .02)); }
 .support-page .support-ticket-row-meta { display: flex; justify-content: space-between; gap: 12px; color: hsl(var(--vapor) / .7); font-size: 11px; }
 .support-page .support-ticket-row-meta > span { font-family: var(--font-mono); }

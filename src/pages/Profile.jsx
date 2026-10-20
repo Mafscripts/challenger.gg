@@ -627,7 +627,7 @@ export default function Profile() {
                   {canUseNameColor && <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">{canUseAnimatedEffects ? (isPremium ? "Premium name effect" : "Free trial animated effect") : "Verified name color"}</span><select value={nameColorDraft} onChange={(event) => setNameColorDraft(event.target.value)} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40">{verifiedNameColors.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}{canUseAnimatedEffects && <optgroup label="Animated name effects">{premiumNameEffects.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}</optgroup>}</select></label>}
                   <label className="space-y-1 md:col-span-2 xl:col-span-3"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Bio</span><textarea value={bioDraft} onChange={(event) => setBioDraft(event.target.value)} maxLength={500} rows={3} className="w-full resize-y rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /><span className="block text-right text-[9px] text-vapor">{bioDraft.length}/500</span></label>
                 </div>
-                <button onClick={handleSaveProfileVisuals} disabled={profileSaving || bannerLoading} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-[10px] font-black uppercase tracking-wider text-background disabled:opacity-50">{profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />} Save</button>
+                <button onClick={handleSaveProfileVisuals} disabled={profileSaving || bannerLoading} className="site-hover-filled inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-5 text-[10px] font-black uppercase tracking-wider text-background disabled:opacity-50">{profileSaving ? <Camera className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />} Save</button>
               </div>
               {profileResult && <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${profileResult.success ? "border-green/20 bg-green/10 text-green" : "border-red-500/20 bg-red-500/10 text-red-400"}`}>{profileResult.message}</div>}
             </div>
@@ -773,7 +773,7 @@ function TrophyOverview({ trophies, items = [] }) {
           <h3 className="text-2xl font-black tracking-tight text-white">Trophy cabinet</h3>
           <p className="mt-1 text-sm text-vapor">Every finish, event, and milestone earned on TopFragg.</p>
         </div>
-        <Link to="/inventory" className="group inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.045] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.04)] hover:bg-cyan/10 hover:text-cyan">
+        <Link to="/inventory" className="site-hover group inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.045] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.04)] hover:text-cyan">
           View Collection <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>

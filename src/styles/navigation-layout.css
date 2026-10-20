@@ -54,10 +54,10 @@
   .sidebar-balance-add:hover { background: rgb(255 255 255 / .05); opacity: 1; }
   .sidebar-balance-main:hover > strong { text-decoration: underline; text-underline-offset: 3px; }
   .sidebar-utility-button { position: relative; display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 32px; padding: 7px 8px; border: 1px solid rgb(255 255 255 / .065); border-radius: 4px; background: rgb(255 255 255 / .02); color: hsl(var(--vapor)); font-size: 10px; font-weight: 650; }
-  .sidebar-utility-button:hover, .sidebar-utility-button[aria-expanded="true"] { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .22); background: hsl(var(--cyan) / .045); }
+  .sidebar-utility-button:hover, .sidebar-utility-button[aria-expanded="true"] { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .22); }
   .layout-sidebar .sidebar-profile-anchor { grid-column: 1 / -1; }
   .layout-sidebar .sidebar-profile-button { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; min-height: 46px; padding: 7px 9px; border: 1px solid hsl(var(--cyan) / .12); border-radius: 4px; background: linear-gradient(100deg, hsl(var(--cyan) / .045), transparent); text-align: left; }
-  .layout-sidebar .sidebar-profile-button:hover, .layout-sidebar .sidebar-profile-button.is-open { border-color: hsl(var(--cyan) / .25); background: hsl(var(--cyan) / .04); }
+  .layout-sidebar .sidebar-profile-button:hover, .layout-sidebar .sidebar-profile-button.is-open { border-color: hsl(var(--cyan) / .25); }
   .layout-sidebar .sidebar-profile-button .topbar-account-avatar { position: relative; display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; overflow: hidden; border: 1px solid hsl(var(--cyan) / .18); border-radius: 8px; background: #0a1922; color: hsl(var(--cyan)); box-shadow: none; }
   .layout-sidebar .sidebar-profile-button .topbar-account-copy { display: flex; flex: 1; min-width: 0; max-width: none; flex-direction: column; gap: 3px; }
   .layout-sidebar .sidebar-profile-button .topbar-account-name { max-width: 100%; font-size: 11px; font-weight: 750; line-height: 1.3; }

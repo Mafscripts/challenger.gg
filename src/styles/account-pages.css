@@ -26,7 +26,7 @@
 .account-page .profile-mode-pill { border-color: rgb(var(--comp-accent) / .2); background: rgb(var(--comp-accent) / .03); border-radius: 9px; color: #9fb8c9; font-size: 11px; }
 .account-page .profile-mode-pill[aria-pressed="true"] { color: rgb(var(--comp-accent)); border-color: rgb(var(--comp-accent) / .55); background: rgb(var(--comp-accent) / .1); }
 .account-page .profile-match-row { border-color: rgb(var(--comp-accent) / .16); background: linear-gradient(110deg, rgb(var(--comp-accent) / .035), #0c1721); transition: border-color .2s, background .2s; }
-.account-page .profile-match-row:hover { border-color: rgb(var(--comp-accent) / .5); background-color: rgb(var(--comp-accent) / .04); }
+.account-page .profile-match-row:hover { border-color: rgb(var(--comp-accent) / .5); }
 .account-page .profile-matches-empty { border-style: dashed; border-color: rgb(var(--comp-accent) / .2); background: #0b1823; }
 .account-page .profile-matches-empty > div { min-height: 160px; flex-direction: column; justify-content: center; text-align: center; gap: 16px; }
 .account-page .profile-matches-empty svg { width: 52px; height: 52px; padding: 12px; border: 1px solid rgb(var(--comp-accent) / .25); border-radius: 15px; color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .06); }
@@ -44,7 +44,7 @@
 .support-page.account-page .support-filter-tabs button { flex: 1; min-width: 0; }
 .support-page.account-page .support-list-empty > svg { box-sizing: content-box; padding: 14px; border: 1px solid #14d8ff38; border-radius: 16px; background: #14d8ff0a; }
 .support-page.account-page .support-primary { border-color: #14d8ff99; background: linear-gradient(110deg, #14d8ff, #14d8ffcc); color: #06202b; box-shadow: 0 3px 20px #14d8ff12; }
-.support-page.account-page .support-primary:hover:not(:disabled) { border-color: #8fefff; background: #61e5ff; }
+.support-page.account-page .support-primary:hover:not(:disabled) { border-color: #8fefff; }
 .account-page.wallet-page .wallet-balance-card { --balance-accent: 20 216 255; position: relative; overflow: hidden; border-color: rgb(var(--balance-accent) / .25); background: linear-gradient(120deg, rgb(var(--balance-accent) / .05), #111d29 85%); }
 .account-page.wallet-page .wallet-balance-card[data-tone="gold"] { --balance-accent: 255 200 82; }
 .account-page.wallet-page .wallet-balance-card[data-tone="green"] { --balance-accent: 52 239 159; }
@@ -74,7 +74,6 @@
 .messages-page.account-page .messages-conversation-link[data-selected="true"] { border-color: #14d8ff55; background: linear-gradient(100deg, #14d8ff12, #14d8ff04); box-shadow: inset 2px 0 #14d8ff99; }
 .messages-page.account-page .messages-chat-region { background: radial-gradient(ellipse at top right, #14d8ff05, transparent 65%); }
 .messages-page.account-page .messages-new-button { background: linear-gradient(110deg, #14d8ff, #14d8ffcc); color: #06202b; border-color: #14d8ff99; }
-.messages-page.account-page .messages-new-button:hover { background: #61e5ff; }
 .messages-page.account-page .messages-composer { background: #0b1823; border-color: #14d8ff22; }
 .messages-page.account-page .messages-composer-field { border-color: #14d8ff33; border-radius: 12px; background: #112330; }
 .messages-page.account-page .messages-composer-field:focus-within { border-color: #14d8ff80; }

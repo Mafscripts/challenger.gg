@@ -141,8 +141,8 @@ export default function Premium() {
               <h2 className="mt-5 max-w-2xl font-heading text-3xl font-black leading-[1.02] text-white sm:text-4xl lg:text-6xl">Your name.<br /><span className="text-orange">Your signal.</span></h2>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-vapor">Premium puts the useful things first: an animated name effect, a free name change, instant support and a crown that follows you into every player card.</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <button type="button" onClick={handleSubscribe} disabled={checkoutBusy} className="inline-flex items-center gap-2 rounded-xl bg-orange px-5 py-3 text-xs font-black uppercase tracking-wider text-background shadow-lg shadow-orange/20 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{checkoutBusy ? "Activating..." : premiumActive ? "Premium active" : `Get ${selectedPlanDetails.label} Premium`} <ArrowRight className="h-4 w-4" /></button>
-                <a href="#compare" className="inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-white/[0.06]">Compare benefits</a>
+                <button type="button" onClick={handleSubscribe} disabled={checkoutBusy} className="site-hover-filled inline-flex items-center gap-2 rounded-xl bg-orange px-5 py-3 text-xs font-black uppercase tracking-wider text-background shadow-lg shadow-orange/20 transition disabled:cursor-wait disabled:opacity-60">{checkoutBusy ? "Activating..." : premiumActive ? "Premium active" : `Get ${selectedPlanDetails.label} Premium`} <ArrowRight className="h-4 w-4" /></button>
+                <a href="#compare" className="site-hover inline-flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-5 py-3 text-xs font-black uppercase tracking-wider text-white">Compare benefits</a>
               </div>
               {premiumActive && <p className="mt-3 text-xs font-bold text-green">Premium active until {expiryText}.</p>}
             </div>

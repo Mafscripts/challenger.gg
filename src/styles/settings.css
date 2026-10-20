@@ -4,7 +4,7 @@
 .settings-page [data-tone="gold"] { --setting-accent: 255 200 82; }
 .settings-page [data-tone="purple"] { --setting-accent: 180 149 255; }
 .settings-page .settings-profile-link { position: relative; display: flex; align-items: center; gap: 15px; flex-shrink: 0; width: 100%; max-width: 100%; padding: 20px; border: 1px solid #14d8ff25; border-radius: 14px; background: linear-gradient(125deg, #14d8ff0b, #07121c90); box-shadow: 0 6px 28px #0002; transition: border-color .2s, transform .2s; }
-.settings-page .settings-profile-link:hover { transform: translateY(-2px); border-color: #14d8ff70; }
+.settings-page .settings-profile-link:hover { border-color: #14d8ff70; }
 .settings-page .settings-profile-avatar { display: grid; place-items: center; flex-shrink: 0; width: 56px; height: 56px; overflow: hidden; border: 1px solid #14d8ff50; border-radius: 14px; background: #14d8ff12; color: #63e5ff; font-size: 20px; font-weight: 900; box-shadow: 0 0 20px #14d8ff0d; }
 .settings-page .settings-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .settings-page .settings-profile-copy { min-width: 0; max-width: 180px; }
@@ -29,7 +29,7 @@
 .settings-page .settings-search-results > p { padding: 9px 12px 12px; color: #89a9bc; font-size: 11px; line-height: 1.6; }
 .settings-page .settings-search-results nav { display: grid; gap: 4px; }
 .settings-page .settings-search-results button { display: flex; align-items: center; gap: 13px; width: 100%; padding: 11px; border: 1px solid transparent; border-radius: 8px; text-align: left; }
-.settings-page .settings-search-results button:hover { border-color: rgb(var(--setting-accent) / .2); background: rgb(var(--setting-accent) / .05); }
+.settings-page .settings-search-results button:hover { border-color: rgb(var(--setting-accent) / .2); }
 .settings-page .settings-result-icon { display: grid; place-items: center; flex-shrink: 0; width: 37px; height: 37px; border-radius: 9px; background: rgb(var(--setting-accent) / .1); color: rgb(var(--setting-accent)); }
 .settings-page .settings-search-results button > span:nth-child(2) { flex: 1; min-width: 0; }
 .settings-page .settings-search-results strong { display: block; color: #e2f1f9; font-size: 13px; }
@@ -37,7 +37,7 @@
 .settings-page .settings-search-results button > svg { flex-shrink: 0; color: rgb(var(--setting-accent)); }
 .settings-page .settings-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
 .settings-page .settings-category { position: relative; isolation: isolate; overflow: hidden; min-width: 0; padding: 18px 20px; border: 1px solid rgb(var(--setting-accent) / .22); border-radius: 13px; background: radial-gradient(ellipse at top right, rgb(var(--setting-accent) / .12), transparent 85%), #101d29; text-align: left; transition: border-color .2s, transform .2s, box-shadow .2s; }
-.settings-page .settings-category:hover { transform: translateY(-3px); border-color: rgb(var(--setting-accent) / .6); box-shadow: 0 6px 24px rgb(var(--setting-accent) / .07); }
+.settings-page .settings-category:hover { border-color: rgb(var(--setting-accent) / .6); box-shadow: 0 6px 24px rgb(var(--setting-accent) / .07); }
 .settings-page .settings-category[aria-pressed="true"] { border-color: rgb(var(--setting-accent) / .65); background: radial-gradient(ellipse at top right, rgb(var(--setting-accent) / .2), transparent 85%), #12212c; box-shadow: inset 0 0 24px rgb(var(--setting-accent) / .03); }
 .settings-page .settings-category[aria-pressed="true"]::before { position: absolute; inset: 0 15px auto; height: 2px; background: linear-gradient(90deg, transparent, rgb(var(--setting-accent)), transparent); content: ""; }
 .settings-page .settings-category-watermark { position: absolute; z-index: -1; top: 0; right: -10px; color: rgb(var(--setting-accent) / .055); transform: rotate(-15deg); pointer-events: none; }
@@ -62,7 +62,7 @@
 .settings-page .settings-shortcuts button > span { flex: 1; min-width: 0; }
 .settings-page .settings-shortcuts strong { display: block; font-size: 12px; font-weight: 750; }
 .settings-page .settings-shortcuts small { display: block; margin-top: 4px; color: #7695aa; font-size: 10px; line-height: 1.6; }
-.settings-page .settings-shortcuts button:hover { background: rgb(var(--setting-accent) / .04); color: #e3f4fc; }
+.settings-page .settings-shortcuts button:hover { color: #e3f4fc; }
 .settings-page .settings-shortcuts button[aria-current] { border-color: rgb(var(--setting-accent) / .22); color: rgb(var(--setting-accent)); background: rgb(var(--setting-accent) / .075); box-shadow: inset 2px 0 rgb(var(--setting-accent)); }
 .settings-page .settings-sidebar-help { display: flex; align-items: start; gap: 10px; margin: 16px 8px 0; padding-top: 18px; border-top: 1px solid #ffffff0e; color: #7998ac; font-size: 11px; line-height: 1.7; }
 .settings-page .settings-sidebar-help > svg { flex-shrink: 0; margin-top: 3px; color: rgb(var(--setting-accent)); }

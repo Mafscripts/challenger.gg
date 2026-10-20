@@ -6,6 +6,8 @@ import '@/styles/mw4.css'
 import '@/styles/arena.css'
 import '@/styles/player-overlay.css'
 import '@/styles/native-app.css'
+import '@/styles/navigation-hover.css'
+import '@/styles/site-hover.css'
 import { initializeNativeApp } from '@/lib/nativeApp'
 
 void initializeNativeApp().catch(error => console.error('App initialization failed:', error.message))

@@ -12,7 +12,7 @@
 .pd-text-action svg { width: 12px; height: 12px; }
 .pd-view-all { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; padding: 10px; border: 1px solid hsl(var(--border) / .65); border-radius: 7px; background: hsl(var(--background) / .3); color: hsl(var(--muted-foreground)); font-size: 10px; font-weight: 700; width: 100%; }
 .pd-view-all svg { width: 13px; height: 13px; }
-.pd-view-all:hover, .pd-view-all:focus-visible { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .4); background: hsl(var(--cyan) / .04); }
+.pd-view-all:hover, .pd-view-all:focus-visible { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .4); }
 .pd-view-all:disabled { opacity: .5; }
 .pd-eyebrow { color: hsl(var(--cyan)); font-size: 8px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
 .pd-rank-panel { text-align: center; background: radial-gradient(ellipse at 50% 35%, hsl(var(--cyan) / .045), transparent 65%), var(--arena-panel); }

@@ -99,7 +99,6 @@ body {
 }
 .create-cta:hover {
   border-color: hsl(var(--cyan) / .55);
-  background: linear-gradient(135deg, hsl(var(--cyan) / .2), hsl(var(--cyan) / .08));
   box-shadow: 0 6px 22px hsl(var(--cyan) / .075);
 }
 
@@ -202,9 +201,9 @@ body {
   scrollbar-width: thin;
 }
 .arena-tab { color: hsl(var(--vapor)); border-bottom: 0; border-radius: 8px; font-size: 12px; font-weight: 750; }
-.arena-tab:hover { color: white; background: hsl(var(--cyan) / .045); }
+.arena-tab:hover { color: white; }
 .arena-tab:is([data-state="active"], [aria-pressed="true"], [aria-selected="true"], [aria-current="page"]) { color: hsl(var(--cyan)); background: hsl(var(--cyan) / .09); box-shadow: inset 0 0 0 1px hsl(var(--cyan) / .14); }
-.arena-tab:is([data-state="inactive"], [aria-pressed="false"], [aria-selected="false"]):hover { color: white; background: hsl(var(--cyan) / .045); }
+.arena-tab:is([data-state="inactive"], [aria-pressed="false"], [aria-selected="false"]):hover { color: white; }
 
 .arena-dialog,
 .arena-select-menu,
@@ -245,10 +244,9 @@ body {
 .home-hub .home-section-heading { align-items: center; padding-inline: 2px; }
 .home-hub .home-section-heading h2 { font-size: 22px; letter-spacing: -.03em; }
 .home-hub .home-section-link { border: 1px solid rgb(255 255 255 / .1); border-radius: 9px; padding: 9px 12px; font-size: 9px; }
-.home-hub .home-section-link:hover { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .3); background: hsl(var(--cyan) / .05); }
+.home-hub .home-section-link:hover { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .3); }
 .home-hub .home-panel { border-radius: 16px; background: var(--arena-panel); }
 .home-hub .home-panel > a { transition: background-color 180ms var(--arena-ease); }
-.home-hub .home-panel > a:hover { background-color: hsl(var(--cyan) / .045); }
 .home-hub .home-panel > a:nth-child(even) { background-color: rgb(255 255 255 / .012); }
 .home-hub .home-stat-card { border-radius: 14px; background: var(--arena-card); transition: border-color 180ms var(--arena-ease), box-shadow 180ms var(--arena-ease); }
 .home-hub .home-stat-card:hover { border-color: hsl(var(--cyan) / .24) !important; box-shadow: 0 8px 24px rgb(0 0 0 / .12); }
@@ -256,16 +254,15 @@ body {
 .home-hub .landing-stat-card::after { opacity: .35; }
 .home-hub .home-final-cta { padding-block: 36px; background: radial-gradient(ellipse at 50% 100%, hsl(var(--cyan) / .07), transparent 70%), var(--arena-panel); }
 .home-primary-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid hsl(var(--cyan) / .4); border-radius: 10px; background: hsl(var(--cyan)); padding: 12px 20px; color: #06131c; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; }
-.home-primary-cta:hover { background: #57e4ff; box-shadow: 0 6px 24px hsl(var(--cyan) / .12); }
+.home-primary-cta:hover { box-shadow: 0 6px 24px hsl(var(--cyan) / .12); }
 .home-secondary-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid rgb(255 255 255 / .15); border-radius: 10px; background: rgb(8 17 27 / .65); padding: 12px 20px; color: white; font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; }
-.home-secondary-cta:hover { border-color: hsl(var(--cyan) / .4); background: hsl(var(--cyan) / .06); }
+.home-secondary-cta:hover { border-color: hsl(var(--cyan) / .4); }
 .home-mode-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid rgb(255 255 255 / .09); border-radius: 14px; background: rgb(255 255 255 / .06); }
 .home-mode-link { display: flex; align-items: center; gap: 12px; padding: 18px 20px; background: #111d2a; transition: background-color 180ms var(--arena-ease); }
 .home-mode-link > svg:first-child { flex-shrink: 0; color: hsl(var(--cyan)); }
 .home-mode-link strong { display: block; color: white; font-size: 12px; font-weight: 850; }
 .home-mode-link small { display: block; margin-top: 4px; color: hsl(var(--vapor)); font-size: 10px; }
 .home-mode-link > svg:last-child { margin-left: auto; flex-shrink: 0; color: #7e91a5; transition: color 180ms; }
-.home-mode-link:hover { background: #172838; }
 .home-mode-link:hover > svg:last-child { color: hsl(var(--cyan)); }
 
 .arena-auth { position: relative; padding-block: 48px; background: radial-gradient(ellipse at 50% 25%, hsl(var(--cyan) / .055), transparent 34rem); }
@@ -296,7 +293,7 @@ a.profile-social-pill:hover { color: white; border-color: hsl(var(--cyan) / .35)
 .profile-mode-filters .profile-mode-pill[aria-pressed="true"] { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .4); background: hsl(var(--cyan) / .09); }
 .profile-mode-count { min-width: 20px; border-radius: 9999px; background: rgb(255 255 255 / .06); padding: 2px 5px; font-size: 10px; font-variant-numeric: tabular-nums; }
 .profile-match-row { transition: border-color 180ms var(--arena-ease), background-color 180ms var(--arena-ease); }
-.profile-match-row:hover { border-color: hsl(var(--cyan) / .3); background: hsl(var(--cyan) / .035); }
+.profile-match-row:hover { border-color: hsl(var(--cyan) / .3); }
 .profile-match-row:focus-visible, .profile-social-pill:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
 
 .team-collection-toolbar { border: 1px solid rgb(255 255 255 / .08); border-radius: 16px; background: var(--arena-inset); padding: 16px; }
@@ -313,7 +310,7 @@ a.profile-social-pill:hover { color: white; border-color: hsl(var(--cyan) / .35)
 .team-summary-primary { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .25); background: hsl(var(--cyan) / .08); }
 .team-summary-action { min-width: 0; text-align: center; }
 .team-summary-action svg { flex-shrink: 0; }
-.team-summary-action:hover { border-color: hsl(var(--cyan) / .45); background: hsl(var(--cyan) / .12); }
+.team-summary-action:hover { border-color: hsl(var(--cyan) / .45); }
 .team-summary-action:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
 
 @keyframes arena-page-enter { from { opacity: .65; } to { opacity: 1; } }

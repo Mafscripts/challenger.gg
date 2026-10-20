@@ -1,0 +1,292 @@
+/* Shared sweep for action controls and linked cards. Existing navigation and
+   competition sweeps keep their own layers. Inputs and static panels are excluded. */
+:where(
+  .site-hover,
+  .arena-button,
+  .arena-tab,
+  .competition-action-pill,
+  .competition-filter-pill,
+  .home-mode-link,
+  .home-section-link,
+  .home-primary-cta,
+  .home-secondary-cta,
+  .mw4-primary-cta,
+  .home-panel > a,
+  .profile-identity-actions :is(button, a),
+  a.profile-header-social,
+  a.profile-social-pill,
+  .profile-editor button:not([role]),
+  .pd-view-all,
+  .pd-text-action,
+  .pd-friend,
+  .pd-trophy,
+  .pd-arena-game,
+  .pd-recent-row,
+  .pd-team-row,
+  .pd-compact-match,
+  .pd-primary-action,
+  .pd-filters button,
+  .profile-match-row,
+  .friend-action,
+  a.friend-request-player,
+  .team-summary-action,
+  a.team-summary-card,
+  .settings-profile-link,
+  .settings-category,
+  .settings-shortcuts button,
+  .settings-search-results button,
+  .settings-sidebar-help,
+  .support-primary,
+  .support-icon-button,
+  .support-summary button,
+  .support-filter-tabs button,
+  .support-ticket-row,
+  .messages-new-button,
+  .messages-conversation-link,
+  .messages-profile-link,
+  .messages-composer-field button,
+  .leaderboard-tabs button,
+  .leaderboard-page-controls button,
+  .premium-refresh button:not([role]),
+  .tournament-overview .overview-join,
+  .tournament-overview .overview-participant,
+  .tournament-overview .overview-bracket a,
+  .topbar-profile.topbar-account-button,
+  .profile-menu-header,
+  .topbar-icon-button,
+  .sidebar-utility-button,
+  .sidebar-profile-button
+):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  --site-hover-scale: 0;
+}
+
+:is(
+  .site-hover,
+  .arena-button,
+  .arena-tab,
+  .competition-action-pill,
+  .competition-filter-pill,
+  .home-mode-link,
+  .home-section-link,
+  .home-primary-cta,
+  .home-secondary-cta,
+  .mw4-primary-cta,
+  .home-panel > a,
+  .profile-identity-actions :is(button, a),
+  a.profile-header-social,
+  a.profile-social-pill,
+  .profile-editor button:not([role]),
+  .pd-view-all,
+  .pd-text-action,
+  .pd-friend,
+  .pd-trophy,
+  .pd-arena-game,
+  .pd-recent-row,
+  .pd-team-row,
+  .pd-compact-match,
+  .pd-primary-action,
+  .pd-filters button,
+  .profile-match-row,
+  .friend-action,
+  a.friend-request-player,
+  .team-summary-action,
+  a.team-summary-card,
+  .settings-profile-link,
+  .settings-category,
+  .settings-shortcuts button,
+  .settings-search-results button,
+  .settings-sidebar-help,
+  .support-primary,
+  .support-icon-button,
+  .support-summary button,
+  .support-filter-tabs button,
+  .support-ticket-row,
+  .messages-new-button,
+  .messages-conversation-link,
+  .messages-profile-link,
+  .messages-composer-field button,
+  .leaderboard-tabs button,
+  .leaderboard-page-controls button,
+  .premium-refresh button:not([role]),
+  .tournament-overview .overview-join,
+  .tournament-overview .overview-participant,
+  .tournament-overview .overview-bracket a,
+  .topbar-profile.topbar-account-button,
+  .profile-menu-header,
+  .topbar-icon-button,
+  .sidebar-utility-button,
+  .sidebar-profile-button
+):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)) {
+  transition-property: color, border-color, background-color, box-shadow, opacity;
+  transition-duration: var(--navigation-motion-duration);
+  transition-timing-function: var(--navigation-motion-easing);
+}
+
+:is(
+  .site-hover,
+  .arena-button,
+  .arena-tab,
+  .competition-action-pill,
+  .competition-filter-pill,
+  .home-mode-link,
+  .home-section-link,
+  .home-primary-cta,
+  .home-secondary-cta,
+  .mw4-primary-cta,
+  .home-panel > a,
+  .profile-identity-actions :is(button, a),
+  a.profile-header-social,
+  a.profile-social-pill,
+  .profile-editor button:not([role]),
+  .pd-view-all,
+  .pd-text-action,
+  .pd-friend,
+  .pd-trophy,
+  .pd-arena-game,
+  .pd-recent-row,
+  .pd-team-row,
+  .pd-compact-match,
+  .pd-primary-action,
+  .pd-filters button,
+  .profile-match-row,
+  .friend-action,
+  a.friend-request-player,
+  .team-summary-action,
+  a.team-summary-card,
+  .settings-profile-link,
+  .settings-category,
+  .settings-shortcuts button,
+  .settings-search-results button,
+  .settings-sidebar-help,
+  .support-primary,
+  .support-icon-button,
+  .support-summary button,
+  .support-filter-tabs button,
+  .support-ticket-row,
+  .messages-new-button,
+  .messages-conversation-link,
+  .messages-profile-link,
+  .messages-composer-field button,
+  .leaderboard-tabs button,
+  .leaderboard-page-controls button,
+  .premium-refresh button:not([role]),
+  .tournament-overview .overview-join,
+  .tournament-overview .overview-participant,
+  .tournament-overview .overview-bracket a,
+  .topbar-profile.topbar-account-button,
+  .profile-menu-header,
+  .topbar-icon-button,
+  .sidebar-utility-button,
+  .sidebar-profile-button
+):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill))::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    linear-gradient(var(--site-hover-color, hsl(var(--cyan))), var(--site-hover-color, hsl(var(--cyan)))) left bottom / 100% 2px no-repeat,
+    var(--site-hover-wash, linear-gradient(90deg,
+      color-mix(in srgb, var(--site-hover-color, hsl(var(--cyan))) 10%, transparent),
+      color-mix(in srgb, var(--site-hover-color, hsl(var(--cyan))) 23%, transparent)));
+  transform: scaleX(var(--site-hover-scale));
+  transform-origin: left;
+  transition: transform var(--site-hover-duration, var(--navigation-motion-duration)) var(--navigation-motion-easing);
+  pointer-events: none;
+}
+
+/* Focus gets the same feedback. Touch taps do not leave a sticky hover behind. */
+:where(a, button):not(:disabled):not([aria-disabled="true"]):focus-visible { --site-hover-scale: 1; }
+@media (hover: hover) and (pointer: fine) {
+  :where(a, button):not(:disabled):not([aria-disabled="true"]):hover { --site-hover-scale: 1; }
+}
+
+/* Match the surrounding competition or account accent. */
+:where(.competition-action-pill, .competition-filter-pill, .account-page, .profile-refresh, .premium-refresh, .tournament-overview) {
+  --site-hover-color: rgb(var(--comp-accent, 20 216 255));
+}
+:where(.settings-category, .settings-shortcuts button, .settings-search-results button) {
+  --site-hover-color: rgb(var(--setting-accent, 20 216 255));
+}
+:where(.mw4-primary-cta, .home-featured .site-hover) { --site-hover-color: hsl(var(--orange)); }
+:where(.friend-action-danger, .account-danger-action) { --site-hover-color: #fb7185; }
+
+/* Light wash keeps dark lettering readable on filled action buttons. */
+:where(.site-hover-filled, .home-primary-cta, .mw4-primary-cta, .support-primary,
+  .messages-composer-field button, .account-primary-action, .profile-edit-action, .pd-primary-action, .overview-join) {
+  --site-hover-wash: linear-gradient(90deg, rgb(255 255 255 / .08), rgb(255 255 255 / .24));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --site-hover-duration: 0s; }
+  :is(
+  .site-hover,
+  .arena-button,
+  .arena-tab,
+  .competition-action-pill,
+  .competition-filter-pill,
+  .home-mode-link,
+  .home-section-link,
+  .home-primary-cta,
+  .home-secondary-cta,
+  .mw4-primary-cta,
+  .home-panel > a,
+  .profile-identity-actions :is(button, a),
+  a.profile-header-social,
+  a.profile-social-pill,
+  .profile-editor button:not([role]),
+  .pd-view-all,
+  .pd-text-action,
+  .pd-friend,
+  .pd-trophy,
+  .pd-arena-game,
+  .pd-recent-row,
+  .pd-team-row,
+  .pd-compact-match,
+  .pd-primary-action,
+  .pd-filters button,
+  .profile-match-row,
+  .friend-action,
+  a.friend-request-player,
+  .team-summary-action,
+  a.team-summary-card,
+  .settings-profile-link,
+  .settings-category,
+  .settings-shortcuts button,
+  .settings-search-results button,
+  .settings-sidebar-help,
+  .support-primary,
+  .support-icon-button,
+  .support-summary button,
+  .support-filter-tabs button,
+  .support-ticket-row,
+  .messages-new-button,
+  .messages-conversation-link,
+  .messages-profile-link,
+  .messages-composer-field button,
+  .leaderboard-tabs button,
+  .leaderboard-page-controls button,
+  .premium-refresh button:not([role]),
+  .tournament-overview .overview-join,
+  .tournament-overview .overview-participant,
+  .tournament-overview .overview-bracket a,
+  .topbar-profile.topbar-account-button,
+  .profile-menu-header,
+  .topbar-icon-button,
+  .sidebar-utility-button,
+  .sidebar-profile-button
+):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)) { transition: none; }
+}
+
+
+/* Preserve the stat cards' existing side marker and child layout. */
+.pd-summary-card.navigation-hover { --navigation-hover-color: rgb(var(--stat-accent)); }
+.pd-summary-card.navigation-hover { transition: border-color var(--navigation-motion-duration) var(--navigation-motion-easing); }
+.pd-trophy:hover { transform: none; }
+:where(.leaderboard-tabs, .leaderboard-page-controls) { --site-hover-color: var(--ladder-accent, hsl(var(--cyan))); }
+@media (prefers-reduced-motion: reduce) { .pd-summary-card.navigation-hover { transition: none; } }
+/* Unread badges may extend beyond the icon button. */
+.topbar-icon-button:not(.navigation-hover) { overflow: visible; }

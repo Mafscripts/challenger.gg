@@ -43,10 +43,9 @@
 .app-topbar.topbar-clean .topbar-wallet-divider { width: 1px; height: 20px; background: rgb(255 255 255 / .08); }
 .app-topbar.topbar-clean .topbar-icon-button { width: 36px; height: 36px; border: 0; border-radius: 7px; background: transparent; box-shadow: none; color: #95a5b5; transform: none; }
 .app-topbar.topbar-clean .topbar-icon-button:hover { color: #fff; box-shadow: none; }
-.app-topbar.topbar-clean .topbar-icon-button:not(.navigation-hover):hover { background: rgb(255 255 255 / .045) !important; }
 .app-topbar.topbar-clean .topbar-icon-button svg { transform: none; }
 .app-topbar.topbar-clean .topbar-profile.topbar-account-button { height: 38px; gap: 9px; margin-left: 5px; padding: 3px 6px; border: 1px solid transparent; border-radius: 8px; background: transparent; box-shadow: none; }
-.app-topbar.topbar-clean .topbar-profile.topbar-account-button:hover, .app-topbar.topbar-clean .topbar-profile.topbar-account-button.is-open { border-color: rgb(255 255 255 / .08); background: rgb(255 255 255 / .035); }
+.app-topbar.topbar-clean .topbar-profile.topbar-account-button:hover, .app-topbar.topbar-clean .topbar-profile.topbar-account-button.is-open { border-color: rgb(255 255 255 / .08); }
 .app-topbar.topbar-clean .topbar-account-button .topbar-account-avatar { width: 30px; height: 30px; border: 1px solid rgb(255 255 255 / .12); border-radius: 8px; background: #111d29; box-shadow: none; }
 .app-topbar.topbar-clean .topbar-account-copy { min-width: 35px; max-width: 90px; gap: 3px; }
 .app-topbar.topbar-clean .topbar-account-name { font-size: 12px; font-weight: 750; }

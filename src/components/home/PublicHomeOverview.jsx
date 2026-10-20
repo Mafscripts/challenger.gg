@@ -159,7 +159,7 @@ export default function PublicHomeOverview() {
             {loading && [0, 1, 2].map((item) => <div key={item} className="h-[78px] animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
             {!loading && data.tournaments.length === 0 && <div className="p-8 text-center text-sm text-vapor">No upcoming tournaments are scheduled yet.</div>}
             {data.tournaments.map((tournament) => (
-              <Link key={tournament.id} to={protectedHref(`/tournaments/${tournament.id}`)} className="group grid min-h-[78px] grid-cols-[52px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-3 last:border-0 hover:bg-white/[0.035] sm:grid-cols-[56px_minmax(0,1fr)_100px_90px_140px] sm:px-5">
+              <Link key={tournament.id} to={protectedHref(`/tournaments/${tournament.id}`)} className="group grid min-h-[78px] grid-cols-[52px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-3 last:border-0 sm:grid-cols-[56px_minmax(0,1fr)_100px_90px_140px] sm:px-5">
                 <img src={tournamentImage(tournament)} alt="" className="h-[52px] w-[52px] shrink-0 rounded-lg border border-white/10 bg-background object-contain object-center" loading="lazy" />
                 <div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h3 className="truncate text-sm font-black text-white transition-colors group-hover:text-orange">{tournament.name}</h3></div><p className="mt-1 truncate text-[10px] text-vapor">{tournament.team_size || "Team"} · {tournament.game_mode_display || tournament.game_mode || "Competitive"}</p></div>
                 <PreviewMetric label="Prize" value={formatMoney(tournament.prize_pool)} tone="text-green" />
@@ -178,7 +178,7 @@ export default function PublicHomeOverview() {
             {loading && [0, 1, 2, 3].map((item) => <div key={item} className="h-14 animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
             {!loading && visibleLadder.length === 0 && <div className="p-8 text-center text-sm text-vapor">The October ladder is waiting for its first champion.</div>}
             {visibleLadder.map((player, index) => (
-              <Link key={player.id} to={protectedHref(`/profile/${player.username || player.id}`)} className="group grid min-h-14 grid-cols-[48px_1fr_80px_100px] items-center border-b border-white/[0.06] px-4 last:border-0 hover:bg-white/[0.035] sm:px-5">
+              <Link key={player.id} to={protectedHref(`/profile/${player.username || player.id}`)} className="group grid min-h-14 grid-cols-[48px_1fr_80px_100px] items-center border-b border-white/[0.06] px-4 last:border-0 sm:px-5">
                 <span className={`font-mono text-xs font-black ${index < 3 ? "text-orange" : "text-vapor"}`}>#{index + 1}</span>
                 <div className="flex min-w-0 items-center gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : <Medal className="h-4 w-4 text-cyan" />}</span><span data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white group-hover:text-orange ${player.display_name_color ? "player-name-color" : ""}`}>{player.display_name}</span></div>
                 <span className="text-center font-mono text-xs font-black text-cyan">{player.tournament_wins}</span>
@@ -196,7 +196,7 @@ export default function PublicHomeOverview() {
             {data.matches.map((match) => {
               const target = match.kind === "ranked" ? `/ranked-match/${match.id}` : `/wagers-match/${match.id}`;
               return (
-                <Link key={`${match.kind}-${match.id}`} to={protectedHref(target)} className="group grid min-h-[68px] grid-cols-[38px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-4 py-3 last:border-0 hover:bg-white/[0.035] sm:grid-cols-[38px_1fr_110px_110px_90px] sm:px-5">
+                <Link key={`${match.kind}-${match.id}`} to={protectedHref(target)} className="group grid min-h-[68px] grid-cols-[38px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-4 py-3 last:border-0 sm:grid-cols-[38px_1fr_110px_110px_90px] sm:px-5">
                   <span className={`grid h-9 w-9 place-items-center rounded-lg border ${match.kind === "ranked" ? "border-cyan/25 bg-cyan/10 text-cyan" : "border-orange/25 bg-orange/10 text-orange"}`}>{match.kind === "ranked" ? <Crosshair className="h-4 w-4" /> : <Coins className="h-4 w-4" />}</span>
                   <div className="min-w-0"><p className="truncate text-sm font-black text-white group-hover:text-orange">{match.game_mode_display || match.game_mode || "Competitive match"}</p><p className="mt-1 truncate text-[9px] text-vapor">{match.team_size || "1v1"} · Posted by {match.host_name}</p></div>
                   <PreviewMetric label="Entry" value={match.entry_fee > 0 ? formatMoney(match.entry_fee) : "Free"} tone={match.entry_fee > 0 ? "text-green" : "text-cyan"} extra="hidden sm:block" />

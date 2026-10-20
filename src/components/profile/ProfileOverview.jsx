@@ -6,6 +6,7 @@ import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
 import RankBadge from "@/components/ui/RankBadge";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
+import NavigationHoverFill from "@/components/layout/NavigationHoverFill";
 import { competitionLabelFor, matchOpponentFor, matchResultFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
 import { teamPageUrl, teamPurposeFor } from "@/lib/teamPresentation";
 import "@/styles/profile-dashboard.css";
@@ -111,7 +112,7 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
     { label: "Teams", value: number(teams.length), detail: "Competition rosters", icon: Users, tab: "teams", loading: teamsLoading || teamsError },
   ];
   return <div className="profile-overview">
-    <div className="pd-summary-grid" aria-label="Player summary">{summaries.map(({ label, value, detail, icon: Icon, tab, loading }) => <button key={label} type="button" className="competition-stat-card pd-summary-card" onClick={() => onTab(tab)}><div className="competition-stat-icon"><Icon size={21} /></div><div><p className="competition-stat-label">{label}</p><strong className="competition-stat-value">{loading ? "—" : value}</strong><p className="competition-stat-detail">{detail}</p></div><ChevronRight size={14} aria-hidden="true" /></button>)}</div>
+    <div className="pd-summary-grid" aria-label="Player summary">{summaries.map(({ label, value, detail, icon: Icon, tab, loading }) => <button key={label} type="button" className="competition-stat-card pd-summary-card navigation-hover" onClick={() => onTab(tab)}><div className="competition-stat-icon"><Icon size={21} /></div><div><p className="competition-stat-label">{label}</p><strong className="competition-stat-value">{loading ? "—" : value}</strong><p className="competition-stat-detail">{detail}</p></div><ChevronRight size={14} aria-hidden="true" /><NavigationHoverFill /></button>)}</div>
     <div className="pd-top-showcases">
       <ProfileFriends {...friends} loading={friendsLoading} onManageRequests={canManageFriends ? () => onTab("friends") : undefined} onViewAll={() => onTab("friends")} />
       <TrophyShelf trophies={recentTrophies} loading={trophiesLoading} error={trophiesError} onViewAll={() => onTab("trophies")} />
