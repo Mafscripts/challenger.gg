@@ -8153,6 +8153,7 @@ async function acceptRankedMatch(req) {
 
 
 async function xpPartyFor(req, slotsPerTeam) {
+  if (!req.body.team_id) throw new Error("Select your team before creating or joining an XP match");
   const party = await rankedPartyFor(req, req.body.team_id, slotsPerTeam, {
     findActiveMatch: (userId) => activeXPMatchFor(prisma, userId), label: "XP",
     allowedTeamTypes: ["xp", "ranked"], minimumSize: 1,

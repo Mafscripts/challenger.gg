@@ -192,6 +192,10 @@ export default function XP() {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
     }
+    if (!xpTeams.some((team) => team.id === selectedPartyByMatch[match.id])) {
+      toast({ title: "XP team required", description: "Select your team before joining an XP match.", variant: "destructive" });
+      return;
+    }
 
     setJoiningMatchId(match.id);
     try {
@@ -237,7 +241,11 @@ export default function XP() {
                 const slots = Math.max(1, Number.parseInt(String(match.team_size || "1v1").split("v")[0], 10) || 1) * 2;
                 const joined = new Set([...(match.team_alpha_player_ids || [match.host_id]), ...(match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : []))].filter(Boolean)).size;
                 const belongsToUser = match.host_id === user?.id || match.team_alpha_player_ids?.includes(user?.id) || match.team_bravo_player_ids?.includes(user?.id);
-                const partyMatch = Number.parseInt(String(match.team_size || "1v1"), 10) > 1;
+                const matchSize = slots / 2;
+                const compatibleTeams = xpTeams.filter((team) => {
+                  const size = Number(team.roster_size || team.members.length || 0);
+                  return size >= 1 && size <= matchSize && team.members.length === size;
+                });
                 return (
                   <CompetitionMatchfinderRow
                     key={match.id}
@@ -269,17 +277,12 @@ export default function XP() {
                       )
                     ) : user ? (
                       <div className="w-48 space-y-2">
-                        {(partyMatch || xpTeams.some((team) => Number(team.roster_size) === 1)) && (
-                          <select value={selectedPartyByMatch[match.id] || ""} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
-                            <option value="">Solo player</option>
-                            {xpTeams.filter((team) => {
-                              const partySize = Number(team.roster_size || team.members.length || 0);
-                              const matchSize = Number.parseInt(String(match.team_size || "1v1"), 10) || 1;
-                              return partySize >= 1 && partySize <= matchSize && team.members.length === partySize;
-                            }).map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player party)</option>)}
-                          </select>
-                        )}
-                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots} onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Join match"}</button>
+                        <select required aria-label="Select XP team" value={selectedPartyByMatch[match.id] || ""} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
+                          <option value="" disabled>Select XP team</option>
+                          {compatibleTeams.map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player team)</option>)}
+                        </select>
+                        {!compatibleTeams.length && <Link to={`/teams?create=xp&roster=${matchSize}`} className="site-hover block rounded px-2 py-1 text-[10px] font-bold text-cyan">Create XP team</Link>}
+                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots || !compatibleTeams.some((team) => team.id === selectedPartyByMatch[match.id])} onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Join match"}</button>
                       </div>
                     ) : null}
                   />

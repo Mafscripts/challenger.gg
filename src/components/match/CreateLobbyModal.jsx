@@ -142,7 +142,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const walletBalance = Number(user?.wallet?.available_balance ?? user?.wallet_balance ?? 0);
   const enteredAmount = Number(customAmount || selectedAmount || 0);
   const requiredPlayers = rosterSize(selectedTeamSize);
-  const requiresTeam = isWager;
+  const requiresTeam = isWager || mode === "xp";
   const supportsRankedParty = isRanked && (mode === "xp" || requiredPlayers > 1);
   const expectedTeamType = isWager ? "wager" : mode === "xp" ? "xp" : "ranked";
   const compatibleTeams = useMemo(() => (
@@ -156,7 +156,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     })
   ), [expectedTeamType, isRanked, mode, requiredPlayers, user?.id, userTeams]);
   const selectedTeam = compatibleTeams.find((team) => team.id === selectedTeamId);
-  const selectedTeamIsEligible = requiresTeam
+  const selectedTeamIsEligible = mode === "xp" ? Boolean(selectedTeam) : requiresTeam
     ? Boolean(selectedTeam && selectedTeam.members.length === requiredPlayers)
     : !selectedTeamId || Boolean(selectedTeam);
   const paymentTotal = isWager && requiresTeam && paymentMode === "full_team"
@@ -195,6 +195,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   }, [isOpen]);
 
   const handleCreate = async () => {
+    if (mode === "xp" && !selectedTeam) {
+      toast({ title: "XP team required", description: "Select your team before creating an XP match.", variant: "destructive" });
+      setStep(2);
+      return;
+    }
     if ((isWager || isMoneyEights) && !hasCompetitionStream(user)) {
       toast({ title: "Stream channel required", description: competitionStreamRequiredMessage, variant: "destructive" });
       return;
@@ -600,17 +605,18 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 {(requiresTeam || supportsRankedParty) && (
                   <div className="mt-5 rounded-xl border border-white/5 bg-secondary/40 p-4">
                     <label className="text-xs text-vapor mb-2 block uppercase tracking-wider">
-                      {isRanked ? `${mode === "xp" ? "XP" : "Ranked"} match team (optional)` : "Select wager team"}
+                      {mode === "xp" ? "XP match team" : isRanked ? "Ranked match team (optional)" : "Select wager team"}
                     </label>
                     <select
                       value={selectedTeamId}
+                      required={requiresTeam}
                       onChange={(event) => setSelectedTeamId(event.target.value)}
                       className="w-full px-4 py-3 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                     >
-                      <option value="">{isRanked ? "Join as a solo player" : "Select team"}</option>
+                      <option value="" disabled={requiresTeam}>{mode === "xp" ? "Select XP team" : isRanked ? "Join as a solo player" : "Select team"}</option>
                       {compatibleTeams.map((team) => (
                         <option key={team.id} value={team.id}>
-                          {team.name} ({team.members.length}-player party)
+                          {team.name} ({team.members.length}-player {mode === "xp" ? "team" : "party"})
                         </option>
                       ))}
                     </select>
