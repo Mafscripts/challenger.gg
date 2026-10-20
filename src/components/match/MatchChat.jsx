@@ -6,7 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { createMatchChatFeed } from "@/lib/matchChatFeed";
 import { effectiveRoleForUser, getPublicRoleConfig, publicRole } from "@/lib/roles";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 
 const chatAccent = {
   icon: "text-blue-400",
@@ -64,10 +64,9 @@ function StaffChatMessage({ message, senderName, senderAvatar, compact, first })
   return (
     <article aria-label={`${label} message from ${senderName}`} className={`min-w-0 ${first ? "mt-0" : "mt-3"}`}>
       <header className="flex min-w-0 items-center gap-2.5">
-        <Avatar className={`h-8 w-8 rounded-lg border ${tone.badge}`} aria-hidden="true">
-          <AvatarImage src={senderAvatar || undefined} alt="" className="object-cover" />
-          <AvatarFallback className="rounded-lg bg-transparent"><ShieldCheck className="h-4 w-4" /></AvatarFallback>
-        </Avatar>
+        <span className={`h-8 w-8 shrink-0 overflow-hidden rounded-lg border ${tone.badge}`} aria-hidden="true">
+          <PlayerAvatarImage src={senderAvatar} />
+        </span>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
           <span className={`min-w-0 break-words text-xs font-bold leading-5 [overflow-wrap:anywhere] ${tone.name}`}>{senderName}</span>
           <span className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[8px] font-black uppercase leading-3 tracking-wider ${tone.badge}`}><ShieldCheck className="h-2.5 w-2.5" aria-hidden="true" />{label}</span>
@@ -335,14 +334,14 @@ function MatchChatView({
 
   return (
     <div className={`match-chat-panel glass overflow-hidden rounded-xl border border-white/[0.09] bg-card flex flex-col ${heightClass} ${sticky ? "sticky top-6" : ""}`}>
-      <div className={`${compact ? "px-3 py-2.5" : "px-4 py-3"} shrink-0 bg-[var(--arena-raised)] border-b border-white/[0.07] flex items-center justify-between`}>
+      <div className={`room-chat-heading ${compact ? "px-3 py-2.5" : "px-4 py-3"} shrink-0 bg-[var(--arena-raised)] border-b border-white/[0.07] flex items-center justify-between`}>
         <h3 className="font-bold text-sm flex items-center gap-2">
           <MessageSquare className={`w-4 h-4 ${tone.icon}`} /> {title}
         </h3>
         <span className="text-xs text-vapor">{messages.length > 0 ? `${messages.length} ${messages.length === 1 ? "message" : "messages"}` : "No messages"}</span>
       </div>
       {loadError && <div role="status" className="flex shrink-0 items-center justify-between gap-2 border-b border-orange/20 px-3 py-2 text-[11px] text-orange"><span>{live ? "Chat connection interrupted. Retrying..." : "Could not load chat."}</span><button type="button" onClick={() => refreshRef.current?.()} className="shrink-0 font-bold underline">Retry</button></div>}
-      <div ref={chatBodyRef} onScroll={(event) => { const body = event.currentTarget; followingChatRef.current = body.scrollHeight - body.scrollTop - body.clientHeight < 96; }} className={`min-h-0 flex-1 overflow-y-auto bg-[var(--arena-inset)] ${compact ? "p-3" : "p-4"}`}>
+      <div ref={chatBodyRef} onScroll={(event) => { const body = event.currentTarget; followingChatRef.current = body.scrollHeight - body.scrollTop - body.clientHeight < 96; }} className={`room-chat-messages min-h-0 flex-1 overflow-y-auto bg-[var(--arena-inset)] ${compact ? "p-3" : "p-4"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center text-xs text-vapor">Loading chat...</div>
         ) : messages.length === 0 ? (
@@ -387,7 +386,7 @@ function MatchChatView({
           ) : (
             <span className="flex w-9 shrink-0 justify-center">
               <span className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-black/30 text-[10px] font-black ${teamTone?.border || "border-white/10 text-white"}`}>
-                {senderAvatar ? <img src={senderAvatar} alt="" className="h-full w-full object-cover" /> : senderName.charAt(0).toUpperCase()}
+                <PlayerAvatarImage src={senderAvatar} />
               </span>
             </span>
           );

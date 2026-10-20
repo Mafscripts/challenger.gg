@@ -8,6 +8,8 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
+import MatchRoomShell from "@/components/match/MatchRoomShell";
+import MatchRoomHeader, { MatchRoomTitle } from "@/components/match/MatchRoomHeader";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
 import { useRoomRecord } from "@/components/match/useRoomRecord";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
@@ -641,20 +643,22 @@ function WagersMatchRoomView() {
 
   if (isWaitingForOpponent) {
     return (
-      <div className="min-h-screen bg-obsidian py-8">
-        <div className="mx-auto max-w-4xl px-4 lg:px-6">
-          <section className="glass overflow-hidden rounded-2xl border border-cyan/20">
-            <div className="border-b border-white/5 bg-gradient-to-r from-cyan/10 via-secondary/60 to-green/5 p-6 md:p-8">
-              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Open Wager</p>
-                  <h1 className="mt-2 text-3xl font-black">Waiting for an opponent</h1>
-                  <p className="mt-2 text-sm text-vapor">The match room stays locked until another player accepts this wager from the Wagers page.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-5 p-6 md:grid-cols-[1fr_auto_1fr] md:p-8">
+      <div className="match-room-theme matchroom-refresh min-h-screen py-6" data-room-mode="wager">
+        <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+          <section className="match-room-shell overflow-hidden rounded-2xl border">
+            <header className="match-room-header">
+              <MatchRoomHeader label="Cash match room" icon={DollarSign} title="Waiting for an opponent" status="Open"
+                subtitle="The match room unlocks when another team accepts your challenge."
+                metadata={[
+                  { label: "Mode", value: wager.game_mode_display || wager.game_mode },
+                  { label: "Series", value: `Best of ${bestOf}` },
+                  { label: "Entry", value: formatMoney(wager.entry_fee || wager.amount || 0) },
+                  { label: "Match ID", value: `#${String(wager.id).slice(-8).toUpperCase()}` },
+                ]}
+                actions={<Link to="/wagers">Back to cash matches</Link>}
+              />
+            </header>
+            <div className="room-waiting-teams grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:p-5">
               <MatchTeamTable label="Team Alpha" name={wager.host_team_name || wager.host_name || "Host"} color="orange" players={teamAPlayers} captainId={wager.host_id} />
               <div className="flex items-center justify-center text-2xl font-black text-vapor">VS</div>
               <MatchTeamTable label="Team Bravo" name="Opponent pending" color="cyan" players={[]} />
@@ -685,7 +689,7 @@ function WagersMatchRoomView() {
   };
 
   return (
-    <div className="match-room-theme min-h-screen bg-obsidian py-6 sm:py-8">
+    <div className="match-room-theme matchroom-refresh min-h-screen py-6" data-room-mode="wager">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         {isComplete && personalMoneyResult && !resultDismissed && <WagerMoneyResultOverlay result={{ ...personalMoneyResult, score: `${wager.confirmed_score_alpha ?? (wager.winner_id === wager.host_id ? wager.winner_score : wager.loser_score) ?? 0} - ${wager.confirmed_score_bravo ?? (wager.winner_id === wager.challenger_id ? wager.winner_score : wager.loser_score) ?? 0}` }} onContinue={dismissResult} />}
         {!isComplete && canUseMatchRoom && <WagerStartWindow
@@ -694,38 +698,34 @@ function WagersMatchRoomView() {
           startSecondsRemaining={startSecondsRemaining}
         />}
 
-        <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/50 via-white/10 to-orange/50" />
-          <div className="match-room-header p-4 sm:p-5">
-          <div className="flex flex-col items-start justify-between gap-5 lg:flex-row lg:items-center">
-            <div>
-              <div className="mb-2 flex items-center gap-3">
-                <DollarSign className="h-5 w-5 text-green" />
-                <span className="text-xs font-mono font-semibold uppercase tracking-wider text-green">Wager match · {matchPhaseFor(wager)}</span>
-              </div>
-              <h1 className="text-2xl font-black">{hostDisplayName} vs {challengerDisplayName}</h1>
-              <p className="mt-1 text-sm text-vapor">{wager.game_mode_display || wager.game_mode} · {wagerMapText(wager)} · BO{bestOf} · {wagerPlayRule(wager.play_rule).shortLabel} · ID #{wager.id?.slice(-8)}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {canReportScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
+        <MatchRoomShell header={(
+          <MatchRoomHeader
+            label="Cash match room" icon={DollarSign}
+            title={<MatchRoomTitle alpha={hostDisplayName} bravo={challengerDisplayName} />}
+            subtitle={`${wager.game_mode_display || wager.game_mode} · ${wagerPlayRule(wager.play_rule).shortLabel}`}
+            status={matchPhaseFor(wager)} complete={isComplete}
+            metadata={[
+              { label: "Series", value: `Best of ${bestOf}` },
+              { label: "Map", value: wagerMapText(wager) },
+              { label: "Entry", value: formatMoney(wager.entry_fee || wager.amount || 0) },
+              { label: "Match ID", value: `#${String(wager.id).slice(-8).toUpperCase()}` },
+            ]}
+            actions={<>
+              {canReportScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
               <Link to="/wagers" className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-bold text-vapor transition-all hover:border-primary/30 hover:text-primary">Back to wagers</Link>
               <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
-            </div>
-          </div>
-          </div>
+            </>}
+          />
+        )} beforeTeams={(<>
           {!isComplete && <div className="m-3 sm:m-4"><StreamRequirementNotice user={user} /></div>}
-          <div className="grid gap-4 border-t border-white/[0.06] p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_410px]">
-            <div className="min-w-0 space-y-4">
+          </>)} teams={(<>
               <MatchTeamTable label="Team Alpha" name={hostDisplayName} color="orange" players={teamAPlayers} captainId={wager.host_id} finalScore={wager.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={hostWinner} />
               <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>
               <MatchTeamTable label="Team Bravo" name={challengerDisplayName} color="cyan" players={teamBPlayers} captainId={wager.challenger_id} finalScore={wager.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={challengerWinner} />
-            </div>
-            <aside className="min-w-0 space-y-4">
+          </>)} sidebar={(<>
               <MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} inputActions={wagerChatActions} />
               <MatchMapSeries maps={Array.isArray(wager.series_maps) && wager.series_maps.length ? wager.series_maps : (wager.final_map_name ? [wager.final_map_name] : [])} mode={wager.game_mode_display || wager.game_mode} host={wager.host_name || hostDisplayName} bestOf={bestOf} compact stacked />
-            </aside>
-          </div>
-        </section>
+          </>)} />
 
         {isComplete && (
           <div className="glass mb-6 flex items-center gap-3 rounded-xl border border-green/20 bg-green/5 p-5"><Trophy className="h-5 w-5 text-green" /><div><p className="font-bold text-green">Winner: {wager.winner_name || "Match completed"}</p><p className="text-xs text-vapor">Final score {wager.winner_score ?? scoreA}-{wager.loser_score ?? scoreB}</p></div></div>

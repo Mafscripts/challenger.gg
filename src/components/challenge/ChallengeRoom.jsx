@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Headphones, LockKeyhole, RefreshCw, ShieldCheck, Swords, X } from "lucide-react";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
+import MatchRoomHeader, { MatchRoomTitle } from "@/components/match/MatchRoomHeader";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import MatchChat from "@/components/match/MatchChat";
@@ -71,23 +72,22 @@ export default function ChallengeRoom({ match, user, busy, action, onJoin, onRef
       <Link to="/challenge-a-team" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" />Challenge a Team</Link>
       <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${complete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{challengeStatusName(match.status)}</span><button onClick={onRefresh} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh challenge"><RefreshCw className="h-4 w-4" /></button></div>
     </div>
-    <MatchRoomShell headerClassName="!p-0" header={
-      <div className="free-eights-room-header relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-orange/45 via-white/10 to-cyan/60" />
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[10px] font-bold uppercase tracking-[0.14em]"><span className="inline-flex items-center gap-1.5 text-cyan"><Swords className="h-3.5 w-3.5" />Challenge a Team</span><span className="h-3 w-px bg-white/15" /><span className="text-vapor">{match.game_name}</span><span className="rounded-full border border-cyan/20 bg-cyan/[0.06] px-2 py-0.5 text-[9px] tracking-wider text-cyan">XP</span></div>
-            <h1 className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-2xl font-black leading-tight tracking-tight text-white sm:gap-x-3 sm:text-3xl"><span>{names.alpha}</span><span className="text-sm font-medium tracking-normal text-vapor/65 sm:text-base">vs</span><span>{names.bravo}</span></h1>
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-vapor"><p>{match.size}v{match.size} · {match.format_name} · BO{match.best_of}</p><span className="h-3 w-px bg-white/10" /><span>Match ID <b className="ml-1 select-all font-mono text-[11px] text-white/80">#{match.id.slice(-8).toUpperCase()}</b></span></div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {!me && match.status === "open" && <button className={primaryButton} onClick={() => onJoin(match)}>Accept this challenge<ArrowRight className="h-4 w-4" /></button>}
-            {me?.captain && reportable && <button className={primaryButton} onClick={() => setScoreOpen(true)}><Check className="h-4 w-4" />Submit score</button>}
+    <MatchRoomShell header={
+      <MatchRoomHeader label="Challenge a Team" title={<MatchRoomTitle alpha={names.alpha} bravo={names.bravo} />}
+        subtitle={match.game_name} status={challengeStatusName(match.status)} complete={complete}
+        metadata={[
+          { label: "Format", value: `${match.size}v${match.size}` },
+          { label: "Mode", value: match.format_name },
+          { label: "Series", value: `Best of ${match.best_of}` },
+          { label: "Match ID", value: `#${match.id.slice(-8).toUpperCase()}` },
+        ]}
+        actions={<>
+            {!me && match.status === "open" && <button className={`room-primary-action ${primaryButton}`} onClick={() => onJoin(match)}>Accept this challenge<ArrowRight className="h-4 w-4" /></button>}
+            {me?.captain && reportable && <button className={`room-primary-action ${primaryButton}`} onClick={() => setScoreOpen(true)}><Check className="h-4 w-4" />Submit score</button>}
             {me && !me.team_id && ["open", "ready_check"].includes(match.status) && <button className={secondaryButton} disabled={busy} onClick={() => action("leave")}>Leave solo slot</button>}
             <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" />Match rules</Link>
-          </div>
-        </div>
-      </div>
+</>}
+      />
     } beforeTeams={<>
       {voice && !voice.closed && !closed && <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-card sm:m-4" aria-label="Challenge Discord voice readiness">
         <div className="flex flex-col gap-4 bg-gradient-to-r from-[#5865F2]/[0.09] via-transparent to-transparent p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">

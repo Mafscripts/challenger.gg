@@ -37,6 +37,7 @@ import { useRoomRecord } from "@/components/match/useRoomRecord";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
+import MatchRoomHeader from "@/components/match/MatchRoomHeader";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import PageLoader from "@/components/ui/PageLoader";
@@ -1356,29 +1357,32 @@ function TournamentMatchRoomView() {
     || cleanKey(match.winner_name) === cleanKey(match.team_b_name)
   );
   return (
-    <div className="match-room-theme tournament-match-room min-h-screen bg-[#0b1016] py-6">
+    <div className="match-room-theme matchroom-refresh tournament-match-room min-h-screen py-6" data-room-mode="tournament">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Link to="/tournaments" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> Tournaments</Link>
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{statusLabel(match.status)}</span><button onClick={loadRoom} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
         <MatchRoomShell className={`tournament-room-shell ${canChat ? "" : "tournament-room-no-chat"}`} header={(
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan"><Trophy className="h-3.5 w-3.5 shrink-0" /> Tournament match room</p>
-                <h1 className="mt-1.5 break-words text-xl font-black leading-tight sm:text-2xl">{tournament?.name || "Tournament"}</h1>
-                <p className="mt-1.5 text-xs text-vapor">{match.game_mode || match.tournament_game_mode || "Tournament match"} · BO{bestOf} · Round {match.round || "–"}</p>
-              </div>
-              <div aria-label="Tournament match actions" className="flex flex-wrap items-center gap-2">
-                {canSubmit && <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit score</button>}
+          <MatchRoomHeader
+            label="Tournament match room" icon={Trophy}
+            title={tournament?.name || "Tournament"}
+            status={statusLabel(match.status)} complete={isComplete}
+            metadata={[
+              { label: "Mode", value: match.game_mode || match.tournament_game_mode },
+              { label: "Series", value: `Best of ${bestOf}` },
+              { label: "Round", value: match.round || "–" },
+              { label: "Match ID", value: `#${String(match.id).slice(-8).toUpperCase()}` },
+            ]}
+            actions={<>
+                {canSubmit && <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit score</button>}
                 <button type="button" onClick={handleOpenBracket} className="inline-flex items-center gap-2 rounded-xl border border-orange/25 bg-orange/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-orange hover:bg-orange/20"><LayoutGrid className="h-4 w-4" /> Bracket</button>
                 <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
-              </div>
-            </div>
+            </>}
+          >
             <TournamentMatchScoreboard match={match} isComplete={isComplete} isTeamAWinner={isTeamAWinner} isTeamBWinner={isTeamBWinner} />
-            <TournamentMatchOverview match={match} tournament={tournament} isComplete={isComplete} />
-          </div>
+            <div className="mt-4"><TournamentMatchOverview match={match} tournament={tournament} isComplete={isComplete} /></div>
+          </MatchRoomHeader>
         )} beforeTeams={(
           <>
         {!isComplete && <div className="m-3 sm:m-4"><StreamRequirementNotice user={user} /></div>}

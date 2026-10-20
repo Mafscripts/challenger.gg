@@ -21,6 +21,8 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
+import MatchRoomShell from "@/components/match/MatchRoomShell";
+import MatchRoomHeader, { MatchRoomTitle, matchRoomTeamName } from "@/components/match/MatchRoomHeader";
 import MatchDisputeDialog from "@/components/match/MatchDisputeDialog";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
 import { useRoomRecord } from "@/components/match/useRoomRecord";
@@ -682,7 +684,7 @@ function XPMatchRoomView() {
   };
 
   if (match?.status === "cancelled") return <CancelledMatchRedirect match={match} matchType="xp" />;
-  if (loading && !match) return <PageLoader label="Loading ranked match" />;
+  if (loading && !match) return <PageLoader label="Loading XP match" />;
 
   if (!match) {
     return (
@@ -699,40 +701,44 @@ function XPMatchRoomView() {
   const isComplete = match.status === "completed";
   const alphaWinner = isComplete && String(match.winner_id || "") === String(match.host_id || "");
   const bravoWinner = isComplete && String(match.winner_id || "") === String(match.challenger_id || "");
+  const alphaName = matchRoomTeamName(match, "alpha");
+  const bravoName = matchRoomTeamName(match, "bravo");
 
   return (
-    <div className="match-room-theme min-h-screen bg-obsidian py-6">
+    <div className="match-room-theme matchroom-refresh min-h-screen py-6" data-room-mode="xp">
       <MatchDisputeDialog open={disputeOpen} onOpenChange={setDisputeOpen} match={{ ...match, match_type: "xp" }} players={[
         ...visibleAlphaPlayers.map((player) => ({ ...player, user_id: player.id, user_name: player.name, team: "host" })),
         ...visibleBravoPlayers.map((player) => ({ ...player, user_id: player.id, user_name: player.name, team: "challenger" })),
       ]} userId={user?.id} submitting={disputing} onSubmit={handleCreateDispute} />
-      <div className="max-w-[1740px] mx-auto px-4 lg:px-6">
-        <section className="dark-focus dark-media relative mb-6 overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111821] shadow-[0_24px_70px_-48px_rgba(0,0,0,.95)]">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-cyan/55 via-white/10 to-orange/55" />
-          <div className="match-room-header flex flex-col gap-4 border-b border-white/[0.06] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <div className="min-w-0">
-              <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-cyan"><Swords className="h-4 w-4" /> XP match · {formatStatus(match.status)}</p>
-              <h1 className="mt-1.5 text-lg font-black">{match.team_size} {match.game_mode_display || match.game_mode}</h1>
-              <p className="mt-1 text-[10px] font-mono text-vapor">Map {match.final_map_name || "pending"} · ID #{match.id?.slice(-8)}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {canSubmitScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
+      <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
+        <MatchRoomShell header={(
+          <MatchRoomHeader
+            label="XP match room"
+            title={<MatchRoomTitle alpha={alphaName} bravo={bravoName} />}
+            subtitle={match.game_mode_display || match.game_mode}
+            status={formatStatus(match.status)} complete={isComplete}
+            metadata={[
+              { label: "Format", value: match.team_size },
+              { label: "Series", value: `Best of ${match.best_of || 1}` },
+              { label: "Map", value: match.final_map_name },
+              { label: "Match ID", value: `#${String(match.id).slice(-8).toUpperCase()}` },
+            ]}
+            actions={<>
+              {canSubmitScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
               {timeRemaining ? <div className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs font-black ${timeRemaining === "EXPIRED" ? "border-orange/25 bg-orange/10 text-orange" : "border-cyan/20 bg-cyan/10 text-cyan"}`}><Clock className="h-4 w-4" /> {timeRemaining}</div> : null}
               <Link to="/xp" className="rounded-lg border border-white/[0.08] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor hover:text-white">XP</Link>
               <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
-            </div>
-          </div>
-          <div className="grid gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_410px]">
-            <div className="min-w-0 space-y-4">
-              <MatchTeamTable xpMatch label="Team Alpha" name={match.host_name || "Team Alpha"} color="orange" players={visibleAlphaPlayers} captainId={match.host_id} finalScore={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} />
+            </>}
+          />
+        )} teams={(<>
+              <MatchTeamTable xpMatch label="Team Alpha" name={alphaName} color="orange" players={visibleAlphaPlayers} captainId={match.host_id} finalScore={match.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={alphaWinner} />
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-3 py-2">
-                <span className="truncate text-right text-[9px] font-black uppercase tracking-wider text-orange">{match.host_name || "Team Alpha"}</span>
+                <span className="truncate text-right text-[9px] font-black uppercase tracking-wider text-orange">{alphaName}</span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-card text-[8px] font-black uppercase text-vapor">VS</span>
-                <span className="truncate text-[9px] font-black uppercase tracking-wider text-cyan">{match.challenger_name || "Team Bravo"}</span>
+                <span className="truncate text-[9px] font-black uppercase tracking-wider text-cyan">{bravoName}</span>
               </div>
-              <MatchTeamTable xpMatch label="Team Bravo" name={match.challenger_name || "Opponent pending"} color="cyan" players={visibleBravoPlayers} captainId={match.challenger_id} finalScore={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} />
-            </div>
-            <div className="flex min-w-0 flex-col gap-2">
+              <MatchTeamTable xpMatch label="Team Bravo" name={bravoName} color="cyan" players={visibleBravoPlayers} captainId={match.challenger_id} finalScore={match.confirmed_score_bravo ?? scoreB} isComplete={isComplete} isWinner={bravoWinner} />
+          </>)} sidebar={(<>
               <MatchRoomChat
                 conversationId={match.id}
                 matchType="xp"
@@ -745,9 +751,7 @@ function XPMatchRoomView() {
                   </div>
                 )}
               />
-            </div>
-          </div>
-        </section>
+          </>)} />
 
         {match.status === "completed" && (
           <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex flex-wrap items-center gap-3">
@@ -775,8 +779,8 @@ function XPMatchRoomView() {
                   ["Series", `Best of ${match.best_of || 1}`],
                   ["Map", match.final_map_name || "Pending"],
                   ["Team size", match.team_size || "1v1"],
-                  ["Host", match.host_name || "Host"],
-                  ["Opponent", match.challenger_name || "Pending"],
+                  ["Team Alpha", alphaName],
+                  ["Team Bravo", bravoName],
                   ["Input", String(match.play_rule || "controller_only").replace(/_/g, " ")],
                   ["Status", formatStatus(match.status)],
                 ].map(([label, value]) => (

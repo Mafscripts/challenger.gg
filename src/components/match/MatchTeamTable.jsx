@@ -5,13 +5,15 @@ import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
+import RankBadge from "@/components/ui/RankBadge";
 import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
 import TPRankBadge from "@/components/competition/TPRankBadge";
 import { FreeEightsVoiceBadge } from "@/components/competition/FreeEightsDiscord";
 import { normalizeFreeEightsElo } from "@/lib/freeEightsRanks";
 import ChallengeRankBadge from "@/components/challenge/ChallengeRankBadge";
 import CommunityMatchRoster from "@/components/match/CommunityMatchRoster";
+import "@/styles/match-roster.css";
 
 const number = (value) => {
   const parsed = Number(value || 0);
@@ -103,24 +105,18 @@ function XPPlayerRank({ player, labelClass }) {
   return <div><p className={labelClass}>TP RANK</p><TPRankBadge xp={rank?.xp} matchesPlayed={rank?.matchesPlayed} position={rank?.position} loading={!rank} /><p className="mt-1 text-[9px] font-medium text-vapor">{number(rank?.level ? rank.xp : player.total_xp).toLocaleString()} XP</p></div>;
 }
 
-export default function MatchTeamTable({ label, name, color = "cyan", teamIcon = null, seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, challenge = false, xpMatch = false, community = false, compact = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing, teamDetails, playerActions, emptySlots = 0, emptySlotLabel = "Waiting for a challenger" }) {
+export default function MatchTeamTable({ label, name, color = "cyan", teamIcon = null, seed, isFirstHost = false, players = [], captainId, isComplete = false, isWinner = false, finalScore = 0, freeEights = false, challenge = false, xpMatch = false, ranked = false, community = false, compact = false, eloChanges = {}, voiceStates = [], waitingRoomUrl, teamEditing, teamDetails, playerActions, emptySlots = 0, emptySlotLabel = "Waiting for a challenger" }) {
   const ladder = freeEights || challenge;
   const isOrange = color === "orange";
   const toneClass = isOrange ? "text-orange" : "text-cyan";
   const tintClass = isOrange ? "border-orange/30 bg-orange/10" : "border-cyan/30 bg-cyan/10";
   const hoverToneClass = isOrange ? "hover:text-orange" : "hover:text-cyan";
-  const columns = ladder
-    ? "[@container(min-width:1020px)]:grid-cols-[minmax(190px,1.3fr)_minmax(170px,.9fr)_minmax(110px,.8fr)_85px_70px_minmax(170px,1fr)_86px]"
-    : compact ? "[@container(min-width:840px)]:grid-cols-[minmax(160px,1.1fr)_minmax(150px,1fr)_75px_80px_210px_60px]"
-      : "xl:grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_105px_minmax(210px,1fr)_86px]";
+  const layout = ladder ? "ladder" : compact ? "compact" : "standard";
   const voiceStatuses = new Map(voiceStates.map((player) => [player.user_id, player.status]));
-  const headerDisplay = ladder ? "[@container(min-width:1020px)]:grid" : compact ? "[@container(min-width:840px)]:grid" : "xl:grid";
-  const rowLayout = ladder ? "[@container(min-width:1020px)]:items-center [@container(min-width:1020px)]:gap-3" : compact ? "[@container(min-width:840px)]:items-center [@container(min-width:840px)]:gap-3" : "xl:items-center xl:gap-3";
-  const fieldLabelClass = `mb-1 ${compact ? "text-[10px] font-bold" : "text-[8px] font-black"} uppercase tracking-wider text-vapor ${ladder ? "[@container(min-width:1020px)]:hidden" : compact ? "[@container(min-width:840px)]:hidden" : "xl:hidden"}`;
-  const compactWideField = compact && !ladder ? "col-span-2 [@container(min-width:840px)]:col-span-1" : "";
-
+  const fieldLabelClass = `match-player-field-label mb-1 ${compact ? "text-[10px] font-bold" : "text-[8px] font-black"} uppercase tracking-wider text-vapor`;
+  const compactWideField = compact && !ladder ? "match-player-wide-field" : "";
   return (
-    <section className={`match-team-card relative overflow-visible rounded-xl border border-white/[0.09] bg-[var(--arena-pill)] ${ladder || compact ? "[container-type:inline-size]" : ""} ${compact ? "match-team-card-compact" : ""}`}>
+    <section data-team-color={color} data-roster-layout={layout} className={`match-team-card relative overflow-visible rounded-xl border border-white/[0.09] bg-[var(--arena-pill)] ${compact ? "match-team-card-compact" : ""}`}>
       <div className={`absolute inset-x-10 top-0 h-px ${isOrange ? "bg-gradient-to-r from-transparent via-orange/70 to-transparent" : "bg-gradient-to-r from-transparent via-cyan/70 to-transparent"}`} />
       <header className={`flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:px-5 ${isOrange ? "bg-gradient-to-r from-orange/[0.09] via-card to-background" : "bg-gradient-to-r from-cyan/[0.09] via-card to-background"}`}>
         <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border font-mono text-base font-black ${tintClass} ${toneClass}`}>{teamIcon || teamMonogram(name || label)}</span>
@@ -137,7 +133,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", teamIcon =
         {isComplete && name ? <div className="match-team-score min-w-28 shrink-0 rounded-xl border border-white/[0.08] bg-black/20 px-5 py-2.5 text-center"><p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Final score</p><p className={`mt-1 font-mono text-2xl font-black tabular-nums ${toneClass}`}>{finalScore ?? 0}</p></div> : null}
       </header>
 
-      {community ? players.length ? <CommunityMatchRoster players={players} color={color} voiceStates={voiceStates} waitingRoomUrl={waitingRoomUrl} /> : <div className="p-5 text-xs text-vapor">Waiting for the previous match to finish.</div> : <><div className={`hidden ${columns} gap-3 border-y border-white/[0.07] bg-[var(--arena-inset)] px-5 py-3 ${compact ? "text-[10px] font-bold tracking-[0.1em]" : "text-[8px] font-black tracking-[0.18em]"} uppercase text-vapor ${headerDisplay}`}><span>{compact ? "Player" : "User"}</span><span>{ladder ? "Activision Name" : "Gamertag"}</span>{ladder && <span>Rank</span>}<span>Record</span><span>{challenge ? "Challenge XP" : freeEights ? "8s ELO" : xpMatch ? "TP RANK" : "Earnings"}</span><span>{ladder ? "Discord Voice" : "Trophies"}</span><span>Socials</span></div>
+      {community ? players.length ? <CommunityMatchRoster players={players} color={color} voiceStates={voiceStates} waitingRoomUrl={waitingRoomUrl} /> : <div className="p-5 text-xs text-vapor">Waiting for the previous match to finish.</div> : <><div className={`match-roster-head match-roster-columns hidden gap-3 border-y border-white/[0.07] bg-[var(--arena-inset)] px-5 py-3 ${compact ? "text-[10px] font-bold tracking-[0.1em]" : "text-[8px] font-black tracking-[0.18em]"} uppercase text-vapor`}><span>{compact ? "Player" : "User"}</span><span>{ladder ? "Activision Name" : "Gamertag"}</span>{ladder && <span>Rank</span>}<span>Record</span><span>{challenge ? "Challenge XP" : freeEights ? "8s ELO" : xpMatch ? "TP RANK" : ranked ? "Ranked ELO" : "Earnings"}</span><span>{ladder ? "Discord Voice" : "Trophies"}</span><span>Socials</span></div>
       {players.length === 0 && !emptySlots ? <div className="flex min-h-28 items-center justify-center border-t border-white/[0.06] text-xs text-vapor">Roster unavailable</div> : (
         <div className="divide-y divide-white/[0.055]">
           {players.map((player, index) => {
@@ -155,19 +151,18 @@ export default function MatchTeamTable({ label, name, color = "cyan", teamIcon =
                 onDragEnd={teamEditing?.onDragEnd}
                 onDragOver={teamEditing ? (event) => { if (!teamEditing.busy && event.dataTransfer.types.includes("application/x-topfragg-player")) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } } : undefined}
                 onDrop={teamEditing ? (event) => { event.preventDefault(); if (teamEditing.busy) return; try { const source = JSON.parse(event.dataTransfer.getData("application/x-topfragg-player")); if (source.team !== player.team) teamEditing.onDrop(player, source); } catch { /* Ignore unrelated drops. */ } } : undefined}
-                className={`match-player-card grid ${ladder || compact ? "grid-cols-2" : ""} gap-4 bg-[var(--arena-inset)] px-4 py-4 transition-colors hover:bg-[var(--arena-hover)] sm:px-5 ${columns} ${rowLayout} ${teamEditing && !teamEditing.busy ? "cursor-grab active:cursor-grabbing" : ""} ${selected ? "ring-2 ring-inset ring-cyan" : swapTarget ? "hover:ring-2 hover:ring-inset hover:ring-cyan/60" : ""}`}>
-                <div className={`flex min-w-0 items-center gap-3 ${ladder ? "col-span-2 [@container(min-width:1020px)]:col-span-1" : compactWideField}`}>
+                className={`match-player-card match-roster-columns grid gap-4 bg-[var(--arena-inset)] px-4 py-4 transition-colors hover:bg-[var(--arena-hover)] sm:px-5 ${teamEditing && !teamEditing.busy ? "cursor-grab active:cursor-grabbing" : ""} ${selected ? "ring-2 ring-inset ring-cyan" : swapTarget ? "hover:ring-2 hover:ring-inset hover:ring-cyan/60" : ""}`}>
+                <div className="match-player-identity flex min-w-0 items-center gap-3">
                   {teamEditing && <button type="button" aria-label={`${selected ? "Cancel swap for" : "Swap"} ${displayName}`} aria-pressed={selected} disabled={teamEditing.busy} onClick={() => teamEditing.onSelect(player)} className="shrink-0 rounded-lg border border-cyan/25 bg-cyan/10 p-2 text-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan disabled:opacity-40"><ArrowLeftRight className="h-4 w-4" /></button>}
-                  <Avatar className={`h-11 w-11 border font-mono text-sm font-black ${tintClass} ${toneClass}`}>
-                    <AvatarImage src={player.avatar_url || undefined} alt="" className="object-cover" />
-                    <AvatarFallback className="bg-transparent">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                  <span className={`h-11 w-11 shrink-0 overflow-hidden rounded-xl border ${tintClass}`}>
+                    <PlayerAvatarImage src={player.avatar_url} />
+                  </span>
                   <div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2">{profileSlug ? <Link to={`/profile/${encodeURIComponent(profileSlug)}`} data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white transition-colors ${hoverToneClass} ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</Link> : <span data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white ${player.display_name_color ? "player-name-color" : ""}`}>{displayName}</span>}{!ladder && <TournamentRankBadge goldTrophies={trophies.gold} />}<UserBadges user={player} size="xs" iconOnly showMonitorCam className="min-w-0" />{playerActions?.(player)}</div><p className={`mt-1 truncate text-[9px] font-black uppercase ${role === "captain" ? "text-cyan" : "text-vapor"}`}>{role === "captain" ? "Captain" : "Member"}</p></div>
                 </div>
                 <div className={`min-w-0 ${compactWideField}`}><p className={fieldLabelClass}>{ladder ? "Activision Name" : "Gamertag"}</p><div className="inline-flex max-w-full rounded-lg border border-white/[0.18] bg-secondary px-3 py-2"><ActivisionIdLabel user={player} className="max-w-full" /></div></div>
                 {ladder && <div className="min-w-0"><p className={fieldLabelClass}>Rank</p>{challenge ? <ChallengeRankBadge xp={number(player.challenge_xp)} /> : <FreeEightsRankBadge loading={player.free_eights_rank_loading} elo={player.free_eights_elo} screenshotRank={player.screenshot_rank} />}</div>}
                 <div><p className={fieldLabelClass}>Record</p><p className="font-mono text-sm font-black"><span className="text-white">{record.wins}W</span><span className="mx-1.5 text-white/20">/</span><span className="text-vapor">{record.losses}L</span></p></div>
-                {challenge ? <div><p className={fieldLabelClass}>Challenge XP</p><p className="font-mono text-sm font-black text-cyan">{number(player.challenge_xp).toLocaleString()}</p>{isComplete && player.challenge_xp_delta != null && <p className={`mt-1 text-[9px] font-bold ${player.challenge_xp_delta > 0 ? "text-green" : player.challenge_xp_delta < 0 ? "text-red-400" : "text-vapor"}`}>{player.challenge_xp_delta > 0 ? "+" : ""}{player.challenge_xp_delta} this match</p>}</div> : freeEights ? <div><p className={fieldLabelClass}>8s ELO</p><p className="font-mono text-sm font-black text-cyan">{normalizeFreeEightsElo(player.free_eights_elo).toLocaleString()}</p>{isComplete && eloChanges?.[userId] && <p className={`mt-1 text-[9px] font-bold ${eloChanges[userId].delta > 0 ? "text-green" : eloChanges[userId].delta < 0 ? "text-red-400" : "text-vapor"}`}>{eloChanges[userId].delta > 0 ? "+" : ""}{eloChanges[userId].delta} this match</p>}</div> : xpMatch ? <XPPlayerRank player={player} labelClass={fieldLabelClass} /> : <div><p className={fieldLabelClass}>Earnings</p><p className="font-mono text-sm font-black text-green">{money(earningsFor(player))}</p></div>}
+                {challenge ? <div><p className={fieldLabelClass}>Challenge XP</p><p className="font-mono text-sm font-black text-cyan">{number(player.challenge_xp).toLocaleString()}</p>{isComplete && player.challenge_xp_delta != null && <p className={`mt-1 text-[9px] font-bold ${player.challenge_xp_delta > 0 ? "text-green" : player.challenge_xp_delta < 0 ? "text-red-400" : "text-vapor"}`}>{player.challenge_xp_delta > 0 ? "+" : ""}{player.challenge_xp_delta} this match</p>}</div> : freeEights ? <div><p className={fieldLabelClass}>8s ELO</p><p className="font-mono text-sm font-black text-cyan">{normalizeFreeEightsElo(player.free_eights_elo).toLocaleString()}</p>{isComplete && eloChanges?.[userId] && <p className={`mt-1 text-[9px] font-bold ${eloChanges[userId].delta > 0 ? "text-green" : eloChanges[userId].delta < 0 ? "text-red-400" : "text-vapor"}`}>{eloChanges[userId].delta > 0 ? "+" : ""}{eloChanges[userId].delta} this match</p>}</div> : xpMatch ? <XPPlayerRank player={player} labelClass={fieldLabelClass} /> : ranked ? <div><p className={fieldLabelClass}>Ranked ELO</p><div className="flex items-center gap-2"><RankBadge elo={number(player.elo)} size="sm" showLabel={false} animated={false} /><span className="font-mono text-sm font-black text-cyan">{number(player.elo).toLocaleString()}</span></div></div> : <div><p className={fieldLabelClass}>Earnings</p><p className="font-mono text-sm font-black text-green">{money(earningsFor(player))}</p></div>}
                 {ladder ? <div className="min-w-0"><p className={fieldLabelClass}>Discord Voice</p><FreeEightsVoiceBadge status={voiceStatuses.get(userId)} waitingRoomUrl={waitingRoomUrl} /></div> : <div className={compactWideField}><p className={fieldLabelClass}>Trophies</p><TrophyCounts trophies={trophies} /></div>}
                 <div><p className={fieldLabelClass}>Socials</p><PlayerSocials player={player} /></div>
               </article>

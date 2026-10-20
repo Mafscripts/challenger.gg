@@ -55,6 +55,8 @@
   .profile-menu-header,
   .topbar-icon-button,
   .sidebar-utility-button,
+  .matchroom-refresh button:not([role]):not(.absolute),
+  .matchroom-refresh a:not(.player-name-wrap),
   .sidebar-profile-button
 ):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)) {
   position: relative;
@@ -118,6 +120,8 @@
   .profile-menu-header,
   .topbar-icon-button,
   .sidebar-utility-button,
+  .matchroom-refresh button:not([role]):not(.absolute),
+  .matchroom-refresh a:not(.player-name-wrap),
   .sidebar-profile-button
 ):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)) {
   transition-property: color, border-color, background-color, box-shadow, opacity;
@@ -180,6 +184,8 @@
   .profile-menu-header,
   .topbar-icon-button,
   .sidebar-utility-button,
+  .matchroom-refresh button:not([role]):not(.absolute),
+  .matchroom-refresh a:not(.player-name-wrap),
   .sidebar-profile-button
 ):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill))::after {
   content: "";
@@ -277,6 +283,8 @@
   .profile-menu-header,
   .topbar-icon-button,
   .sidebar-utility-button,
+  .matchroom-refresh button:not([role]):not(.absolute),
+  .matchroom-refresh a:not(.player-name-wrap),
   .sidebar-profile-button
 ):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)) { transition: none; }
 }
