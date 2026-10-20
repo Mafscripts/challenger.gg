@@ -27,8 +27,9 @@ workflows:
     name: TopFragg signed iPhone build
     instance_type: mac_mini_m2
     max_build_duration: 40
-    # Upload matching Apple distribution signing files in Codemagic first.
-    # No automatic triggers or uploads to TestFlight/App Store are configured.
+    # Run manually after uploading the matching certificate and provisioning profile.
+    integrations:
+      app_store_connect: "Codemagic TopFragg"
     environment:
       node: 22
       xcode: latest
@@ -53,3 +54,9 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload for internal TestFlight testing; reviews and public release stay manual.
+        submit_to_testflight: false
+        submit_to_app_store: false

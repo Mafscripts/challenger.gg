@@ -1,6 +1,6 @@
 # TopFragg iPhone app
 
-This repository contains an iPhone project using Capacitor 8, with bundled React screens, TopFragg artwork, safe-area spacing, bottom navigation and browser-based account connections. The provisional bundle ID is `gg.topfragg.app`.
+This repository contains an iPhone project using Capacitor 8, with bundled React screens, TopFragg artwork, safe-area spacing, bottom navigation and browser-based account connections. The user registered the bundle ID `gg.topfragg.app` and created the **Topfragg.gg** app record in App Store Connect.
 
 On October 19, 2026, the user supplied a Codemagic success screenshot for commit `af27476` on `codex/gray-ui-rework`: **TopFragg iPhone simulator check** completed successfully on a Mac mini M2 in 2 minutes 4 seconds and produced `TopFragg-simulator.zip`. This confirms the Xcode simulator build and packaging passed. Runtime behavior has not yet been verified on a simulator or real iPhone; a signed device build, TestFlight upload and deployment of the updated production API remain unconfirmed.
 
@@ -9,8 +9,8 @@ On October 19, 2026, the user supplied a Codemagic success screenshot for commit
 1. Create a personal [Codemagic account](https://codemagic.io/) and connect the repository containing this code. The source changes must reach that repository before Codemagic can see them.
 2. Select the **TopFragg iPhone simulator check** workflow from `codemagic.yaml`. It checks the app on a Mac build machine without Apple signing credentials. Its simulator ZIP cannot be installed on a real iPhone or run on Windows.
 3. To install through TestFlight, finish [Apple Developer enrollment](https://developer.apple.com/programs/enroll/). Register the App ID `gg.topfragg.app` and create its App Store Connect app. Confirm the identifier before the first release; it is only a proposed identifier until registered in your account.
-4. In Codemagic, add the matching Apple distribution certificate and App Store provisioning profile under **Code signing identities**. Keep private keys and passwords in Codemagic, outside this repository and chat.
-5. After the server update below and simulator check succeed, run **TopFragg signed iPhone build**. This produces an IPA; publishing is intentionally not enabled. We still need to configure the Apple integration and a TestFlight upload once your accounts are ready.
+4. In Codemagic Settings, add the Apple Developer Portal integration named exactly **Codemagic TopFragg**. The user has confirmed this integration and uploaded the matching Apple Distribution certificate under the reference **topfragg-distribution**. Under **Code signing identities → iOS provisioning profiles**, upload the downloaded App Store Connect `.mobileprovision` file with reference **topfragg-appstore**. Confirm its bundle ID is `gg.topfragg.app` and its Certificate column shows a green checkmark. Keep private keys and passwords in Codemagic, outside this repository and chat.
+5. After these settings and the server update below are ready, manually run **TopFragg signed iPhone build** on the latest `codex/gray-ui-rework` commit. It produces an IPA and uploads it to App Store Connect through the saved integration. Once Apple finishes processing, use the app's **TestFlight → Internal Testing** section to add your own tester and install through the TestFlight iPhone app. Export-compliance questions or agreements may still require action in App Store Connect. Automatic beta review submission, App Store review submission and public release are disabled.
 
 Codemagic and Apple account setup are separate from developing this code. No paid build or enrollment has been started by preparing the project. Refer to [Codemagic pricing](https://docs.codemagic.io/billing/pricing/) and [Apple membership](https://developer.apple.com/programs/) for current account costs.
 
@@ -33,7 +33,7 @@ No database migration is needed for this app foundation. Never copy the server `
 - `npm run ios:sync` — bundle and copy the app/plugins into the existing iOS project.
 - `npm run ios:open` — open Xcode on a Mac.
 
-Capacitor uses Swift Package Manager. Xcode 26 or later and Node 22 or later are required by [Capacitor 8](https://capacitorjs.com/docs/getting-started/environment-setup). The manual [Codemagic workflows](https://docs.codemagic.io/yaml-quick-start/building-an-ionic-app/) have no automatic build triggers, publishing or notification recipients.
+Capacitor uses Swift Package Manager. Xcode 26 or later and Node 22 or later are required by [Capacitor 8](https://capacitorjs.com/docs/getting-started/environment-setup). The manual [Codemagic workflows](https://docs.codemagic.io/yaml-quick-start/building-an-ionic-app/) have no automatic build triggers or notification recipients. Only the signed workflow uploads to App Store Connect; it does not submit reviews or release the app publicly. The simulator workflow stays unsigned and does not upload to Apple.
 
 ## Before a public release
 
