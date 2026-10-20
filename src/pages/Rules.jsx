@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BookOpen, ChevronRight, Search, Shield, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera, MessageCircle, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, ChevronRight, Search, Shield, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera, MessageCircle, Twitch, X } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import "@/styles/rules.css";
 
@@ -36,6 +36,7 @@ const sections = [
     title: "Match Rules",
     icon: Swords,
     rules: [
+      "Money 8s requires every player to connect their own Twitch account in Settings > Connected accounts > Twitch before creating or joining a lobby, including console players.",
       "No Stretch Defuse.",
       "Nade Delay must be set to Off.",
       killCamRule,
@@ -108,6 +109,7 @@ const sections = [
     title: "Wager Rules",
     icon: DollarSign,
     rules: [
+      "Every player must connect their own Twitch account in Settings > Connected accounts > Twitch before entering. This is required on all platforms, including console.",
       "All wager funds are held in escrow during the match.",
       "Both parties must confirm the result for payouts to process.",
       "Disputed wagers are reviewed by moderators within 24 hours.",
@@ -121,6 +123,7 @@ const sections = [
     title: "Tournament Rules",
     icon: Users,
     rules: [
+      "Every player must connect their own Twitch account in Settings > Connected accounts > Twitch before entering. This is required on all platforms, including console.",
       "Teams must check in 15 minutes before tournament start time.",
       "Failure to check in forfeits your spot and registration fee.",
       "Substitutes must be registered before the tournament begins.",
@@ -141,11 +144,22 @@ const sections = [
       "Streamer badges use a silver treatment and verified player badges remain green. Badges identify account status but do not replace dispute evidence.",
     ],
   },
+  {
+    title: "Twitch Requirements",
+    icon: Twitch,
+    rules: [
+      "Every player must connect their own Twitch account before entering Cash Matches, Tournaments or Money 8s.",
+      "This requirement applies to all platforms, including PC, PlayStation and Xbox. Console players must also connect Twitch.",
+      "Every member of the playing roster needs their own connection. A captain's Twitch connection does not cover teammates, even when the captain pays the full team's entry fees.",
+      "Connect your Twitch account through Settings > Connected accounts > Twitch. Adding a Twitch name or channel link to your social profile does not count as a connected account.",
+      "Creating or joining a Cash Match or Money 8s lobby, and registering a tournament roster, is blocked until the required Twitch connections are in place. The requirement is checked before entry fees are charged.",
+    ],
+  },
 ];
 
 const sectionGroups = [
   { title: "Platform", indices: [0, 1, 11] },
-  { title: "Match essentials", indices: [2, 5, 6] },
+  { title: "Match essentials", indices: [12, 2, 5, 6] },
   { title: "Game modes", indices: [3, 4] },
   { title: "Competitions", indices: [7, 8, 9, 10] },
 ];
@@ -165,6 +179,7 @@ const descriptions = [
   "Escrow, payouts, score confirmation and wager disputes.",
   "Check-in, rosters, brackets and tournament results.",
   "Fair play, evidence and competitive integrity.",
+  "Mandatory Twitch connections for Cash Matches, Tournaments and Money 8s on every platform.",
 ];
 
 export default function Rules() {

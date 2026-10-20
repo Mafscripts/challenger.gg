@@ -1,3 +1,5 @@
+import { competitionTwitchRequiredMessage, hasCompetitionTwitch } from "@/lib/competitionTwitch";
+import TwitchRequirementNotice from "@/components/competition/TwitchRequirementNotice";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -462,6 +464,10 @@ export default function Tournaments() {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
     }
+    if (!hasCompetitionTwitch(user)) {
+      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
+      return;
+    }
     if (!canJoinTournament(tournament)) return;
 
     setJoiningId(tournament.id);
@@ -672,6 +678,7 @@ export default function Tournaments() {
         />
 
         <ActivisionIdNotice user={user} className="mb-5" />
+        <TwitchRequirementNotice user={user} className="mb-5" />
 
         {featuredTournament && (
           <FeaturedTournamentHero tournament={featuredTournament} now={now} onSelect={handleSelectTournament} />

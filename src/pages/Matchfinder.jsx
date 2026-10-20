@@ -1,3 +1,4 @@
+import { competitionTwitchRequiredMessage, hasCompetitionTwitch, requiresCompetitionTwitch } from "@/lib/competitionTwitch";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
@@ -235,6 +236,10 @@ export default function Matchfinder() {
       return;
     }
 
+    if (!hasCompetitionTwitch(user)) {
+      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
+      return;
+    }
     setAcceptingId(wagerToAccept.id);
     try {
       const response = await base44.functions.invoke("acceptWager", {
@@ -283,6 +288,10 @@ export default function Matchfinder() {
     }
     if (category === "eights" && !hasFreeEightsRank(user)) {
       setRankPromptOpen(true);
+      return;
+    }
+    if (requiresCompetitionTwitch(category) && !hasCompetitionTwitch(user)) {
+      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
       return;
     }
     if (category === "wagers") {

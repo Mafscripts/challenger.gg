@@ -66,8 +66,8 @@ export default function TwitchSection({ user, onUserUpdate }) {
             <Radio className="h-6 w-6 text-[#bf94ff]" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">Twitch live alerts</h2>
-            <p className="text-xs text-vapor">Connect Twitch so Topfragg can announce your live streams in Discord.</p>
+            <h2 className="text-lg font-bold">Twitch connection</h2>
+            <p className="text-xs text-vapor">Required for Cash Matches, Tournaments and Money 8s on every platform, including console. Connect your own Twitch account below.</p>
           </div>
         </div>
 
