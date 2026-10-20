@@ -41,4 +41,19 @@
 .nav-messages-popover .nav-messages-inbox-link small { display: block; margin-top: 4px; color: hsl(var(--vapor)); font-size: 9px; font-weight: 400; }
 .nav-messages-popover .nav-messages-inbox-arrow { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 7px; background: hsl(var(--cyan) / .09); color: hsl(var(--cyan)); }
 .nav-messages-popover :is(.nav-message-row, .nav-messages-inbox-link):focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: -2px; }
+@media (max-width: 639px) {
+  /* Anchor both inbox panels to the screen, rather than their individual icons. */
+  .app-topbar-v2 .nav-popover.nav-messages-popover {
+    position: fixed;
+    top: var(--nav-popover-top, 72px);
+    left: max(8px, env(safe-area-inset-left, 0px));
+    right: max(8px, env(safe-area-inset-right, 0px));
+    width: auto;
+    max-height: calc(100dvh - var(--nav-popover-top, 72px) - var(--nav-popover-bottom-space, 16px));
+    display: flex;
+    flex-direction: column;
+  }
+  .nav-messages-popover :is(.nav-messages-header, .nav-messages-list-label, .nav-messages-footer, .nav-notifications-error) { flex-shrink: 0; }
+  .nav-messages-popover .nav-messages-list { min-height: 0; max-height: none; }
+}
 @media (prefers-reduced-motion: reduce) { .nav-messages-popover .nav-message-row { transition: none; } }

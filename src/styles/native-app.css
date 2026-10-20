@@ -1,4 +1,8 @@
-.topfragg-native { background: #08111b; color-scheme: dark; -webkit-text-size-adjust: 100%; }
+.topfragg-native {
+  --nav-popover-top: calc(4rem + env(safe-area-inset-top, 0px) + 8px);
+  --nav-popover-bottom-space: calc(90px + env(safe-area-inset-bottom, 0px));
+  background: #08111b; color-scheme: dark; -webkit-text-size-adjust: 100%;
+}
 .topfragg-native body { overscroll-behavior-y: none; }
 .topfragg-native .app-content { padding-top: calc(4rem + env(safe-area-inset-top, 0px)); }
 .topfragg-native .app-shell-auth { padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }

@@ -9,6 +9,3 @@
 .nav-notifications-error button { flex-shrink: 0; color: hsl(var(--cyan)); font-weight: 750; }
 .nav-notifications-error button:disabled { opacity: .5; }
 .nav-notifications-popover button:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 2px; }
-@media (max-width: 639px) {
-  .app-topbar-v2 .nav-popover.nav-notifications-popover { position: fixed; top: 64px; left: 8px; right: 8px; width: auto; }
-}
