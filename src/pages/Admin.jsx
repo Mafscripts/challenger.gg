@@ -1,4 +1,5 @@
 import ProgressionResets from "@/components/admin/ProgressionResets";
+import useRouteSection from "@/hooks/useRouteSection";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
@@ -525,7 +526,8 @@ function TournamentRewardPicker({ title, description, selectedIds = [], items = 
 
 export default function Admin() {
   const { user: authUser, isLoadingAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState(initialAdminTab);
+  const [defaultTab] = useState(initialAdminTab);
+  const [activeTab, setActiveTab] = useRouteSection("tab", defaultTab, tabs.map(tab => tab.id));
   const loading = isLoadingAuth;
   const currentUser = authUser;
   const [data, setData] = useState(initialData);
@@ -604,9 +606,6 @@ export default function Admin() {
   useEffect(() => {
     setOpenManageUserId(null);
     window.sessionStorage.setItem("adminActiveTab", activeTab);
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", activeTab);
-    window.history.replaceState({}, "", url);
 
     if (["tournaments", "marketplace"].includes(activeTab) && currentUser?.id && canAccessAdminPanel(currentRole)) {
       const refreshMarketplaceItems = () => {

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { isRestriction } from "@/lib/accountRestriction";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { checkUserAuth, completeAuth } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +32,16 @@ export default function Login() {
       } else {
         await checkUserAuth();
       }
-      navigate(result?.password_change_required ? "/change-password" : "/dashboard", { replace: true });
+      let returnTo = "/dashboard";
+      const requested = location.state?.returnTo || new URLSearchParams(location.search).get("returnTo");
+      if (typeof requested === "string" && requested) {
+        try {
+          const destination = new URL(requested, window.location.origin);
+          const authPage = /^\/(login|logout|register|verify-email|forgot-password|reset-password|change-password)\/?$/.test(destination.pathname);
+          if (destination.origin === window.location.origin && !destination.pathname.startsWith("//") && !authPage) returnTo = `${destination.pathname}${destination.search}${destination.hash}`;
+        } catch { /* Invalid return URLs use the dashboard. */ }
+      }
+      navigate(result?.password_change_required ? "/change-password" : returnTo, { replace: true });
     } catch (err) {
       if (isRestriction(err.data)) return;
       if (err?.data?.code === "EMAIL_VERIFICATION_REQUIRED") {

@@ -2,6 +2,7 @@ import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/co
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import useRouteSection from "@/hooks/useRouteSection";
 import {
   ArrowLeft,
   CalendarDays,
@@ -263,7 +264,7 @@ export default function TournamentOverview() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useRouteSection("tab", "overview", ["overview", "bracket", "participants", "rules"]);
   const [joinOpen, setJoinOpen] = useState(false);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState("");
@@ -667,7 +668,7 @@ export default function TournamentOverview() {
 
       <TournamentJoinModal
         isOpen={joinOpen}
-        onClose={() => { setJoinOpen(false); if (searchParams.has("join")) setSearchParams({}, { replace: true }); }}
+        onClose={() => { setJoinOpen(false); if (searchParams.has("join")) setSearchParams((previous) => { const next = new URLSearchParams(previous); next.delete("join"); return next; }, { replace: true }); }}
         tournament={tournament}
         teams={teams}
         selectedTeamId={selectedTeamId}

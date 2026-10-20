@@ -96,6 +96,7 @@ export default function Messages() {
   const [desktopView, setDesktopView] = useState(() => window.matchMedia("(min-width: 768px)").matches);
   const [atLatest, setAtLatest] = useState(true);
   const requestedPlayerId = searchParams.get("compose") || searchParams.get("conversation") || "";
+  const requestedInvitationId = searchParams.get("invitation") || "";
   const chatEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const displayedChatRef = useRef(null);
@@ -171,6 +172,13 @@ export default function Messages() {
     initialize();
     return () => { active = false; inboxRef.current?.dispose(); inboxRef.current = null; };
   }, []);
+
+  useEffect(() => {
+    if (requestedPlayerId) return;
+    const invitation = invitations.find(item => item.id === requestedInvitationId) || null;
+    setActiveInvitation(invitation);
+    setMobileChatOpen(Boolean(invitation));
+  }, [requestedPlayerId, requestedInvitationId, invitations]);
 
   useEffect(() => {
     if (!currentUser?.id || !requestedPlayerId) return undefined;
@@ -317,6 +325,12 @@ export default function Messages() {
     if (followingChatRef.current && chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [draft, activeInvitation?.id, activePlayerId, activePlayer?.id, desktopView, mobileChatOpen]);
 
+  const closeThread = () => {
+    setMobileChatOpen(false);
+    setActiveInvitation(null);
+    if (requestedPlayerId || requestedInvitationId) setSearchParams({});
+  };
+
   const selectPlayer = (player) => {
     setPlayers(current => ({ ...current, [player.id]: player }));
     activePlayerIdRef.current = player.id;
@@ -325,7 +339,7 @@ export default function Messages() {
     setMobileChatOpen(true);
     setComposerOpen(false);
     setPlayerQuery("");
-    setSearchParams({ conversation: player.id }, { replace: true });
+    if (searchParams.get("conversation") !== player.id || searchParams.has("compose")) setSearchParams({ conversation: player.id });
   };
 
   const selectInvitation = async (invitation) => {
@@ -333,7 +347,7 @@ export default function Messages() {
     activePlayerIdRef.current = "";
     setActivePlayerId("");
     setMobileChatOpen(true);
-    setSearchParams({}, { replace: true });
+    if (searchParams.get("invitation") !== invitation.id) setSearchParams({ invitation: invitation.id });
     if (!invitation.is_read) {
       try {
         await base44.entities.Message.update(invitation.id, { is_read: true });
@@ -424,11 +438,11 @@ export default function Messages() {
 
           <section className="messages-thread">
             {activeInvitation ? <>
-              <header className="messages-thread-heading"><button type="button" onClick={() => setMobileChatOpen(false)} className="messages-back" aria-label="Back to conversations"><ArrowLeft size={18} /></button><span className="messages-invitation-avatar"><Trophy size={21} /></span><div className="messages-thread-identity"><strong>Topfragg Tournaments</strong><p>Tournament invitation</p></div><time className="messages-thread-date" dateTime={activeInvitation.created_date}>{messageDate(activeInvitation.created_date)}</time></header>
+              <header className="messages-thread-heading"><button type="button" onClick={closeThread} className="messages-back" aria-label="Back to conversations"><ArrowLeft size={18} /></button><span className="messages-invitation-avatar"><Trophy size={21} /></span><div className="messages-thread-identity"><strong>Topfragg Tournaments</strong><p>Tournament invitation</p></div><time className="messages-thread-date" dateTime={activeInvitation.created_date}>{messageDate(activeInvitation.created_date)}</time></header>
               <div className="messages-invitation-body"><article><p className="messages-invitation-eyebrow">You're invited to compete</p><h2>{activeInvitation.subject || "Tournament invitation"}</h2><p className="messages-invitation-content">{activeInvitation.content || "You have received an invitation to join this tournament."}</p><div><Link to={activeInvitation.action_url || "/tournaments"} className="messages-new-button">View tournament<ArrowRight size={14} /></Link><small>Received {new Date(activeInvitation.created_date).toLocaleString()}</small></div></article></div>
             </> : activePlayer ? <>
               <header className="messages-thread-heading">
-                <button type="button" onClick={() => setMobileChatOpen(false)} className="messages-back" aria-label="Back to conversations"><ArrowLeft size={18} /></button>
+                <button type="button" onClick={closeThread} className="messages-back" aria-label="Back to conversations"><ArrowLeft size={18} /></button>
                 <PlayerAvatar player={activePlayer} />
                 <div className="messages-thread-identity"><div><PlayerName player={activePlayer} /><UserBadges user={activePlayer} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></div><p>@{activePlayer.handle || activePlayer.username || "player"}</p></div>
                 <ConversationSafety playerId={activePlayer.id} userId={currentUser.id} messages={activeMessages} />

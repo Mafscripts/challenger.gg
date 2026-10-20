@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageLoader from '@/components/ui/PageLoader';
@@ -94,6 +94,7 @@ function SupportEntry() {
 }
 
 const AuthenticatedApp = () => {
+  const location = useLocation();
   const { isLoadingPublicSettings, authError, navigateToLogin, restriction, networkRestriction } = useAuth();
 
   if (restriction) return <Suspense fallback={<PageLoader fullscreen />}><AccountRestricted /></Suspense>;
@@ -130,7 +131,7 @@ const AuthenticatedApp = () => {
         <Route path="/league" element={<League />} />
         <Route path="/league/division/:divisionId" element={<League />} />
         <Route path="/league/division/:divisionId/demo-match/:matchId" element={<LeagueMatchDemo />} />
-        <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace state={{ returnTo: `${location.pathname}${location.search}${location.hash}` }} />} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/ranked" element={<Ranked />} />

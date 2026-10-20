@@ -64,7 +64,7 @@ export default function StreamConnectionsSection({ user, onUserUpdate }) {
     if (callbackMessages[twitchOutcome]) {
       setResult({ success: twitchOutcome === "connected", message: twitchOutcome === "connected" ? "Twitch connected. Your channel is now linked to TopFragg." : `Twitch: ${callbackMessages[twitchOutcome]}` });
       params.delete("twitch");
-      window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`);
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`);
       void onUserUpdate();
       return;
     }
@@ -72,7 +72,7 @@ export default function StreamConnectionsSection({ user, onUserUpdate }) {
     if (!providers.some(item => item.id === provider) || !callbackMessages[outcome]) return;
     setResult({ success: outcome === "connected", message: `${providers.find(item => item.id === provider).name}: ${callbackMessages[outcome]}` });
     params.delete("stream_provider"); params.delete("stream_status");
-    window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`);
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`);
     if (outcome === "connected") void onUserUpdate();
   }, [onUserUpdate]);
 

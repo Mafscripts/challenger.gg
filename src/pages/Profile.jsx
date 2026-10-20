@@ -1,4 +1,5 @@
 import { streamChannelUrl } from "@/lib/competitionStreaming";
+import useRouteSection from "@/hooks/useRouteSection";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -148,7 +149,7 @@ function trophyOverviewFor(user, profile, inventory = [], matches = [], publicCo
 
 export default function Profile() {
   const { username } = useParams();
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useRouteSection("tab", "overview", ["overview", "matches", "statistics", "teams", "trophies", "friends"]);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);

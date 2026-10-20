@@ -7,11 +7,12 @@ import { base44 } from "@/api/base44Client";
 import UserBadges from "@/components/ui/UserBadges";
 import PageHeader from "@/components/ui/PageHeader";
 import PageLoader from "@/components/ui/PageLoader";
+import useRouteSection from "@/hooks/useRouteSection";
 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 
 export default function Trading() {
-  const [tab, setTab] = useState("incoming");
+  const [tab, setTab] = useRouteSection("tab", "incoming", ["incoming", "outgoing", "history"]);
   const [user, setUser] = useState(null);
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);

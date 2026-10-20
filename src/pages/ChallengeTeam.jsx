@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import useRouteSection from "@/hooks/useRouteSection";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Headphones, Plus, RefreshCw, Swords, Trophy, User, Users } from "lucide-react";
@@ -33,7 +34,7 @@ export default function ChallengeTeam() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const cache = useQueryClient();
-  const [tab, setTab] = useState("challenges");
+  const [tab, setTab] = useRouteSection("tab", "challenges", ["challenges", "standings", "rosters"]);
   const [ladder, setLadder] = useState("teams");
   const [createTeam, setCreateTeam] = useState(false);
   const [posting, setPosting] = useState(false);

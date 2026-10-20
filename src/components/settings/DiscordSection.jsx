@@ -58,7 +58,7 @@ export default function DiscordSection({ user, onUserUpdate }) {
     setConnectionResult(callbackMessages[status]);
     params.delete("discord");
     const query = params.toString();
-    window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
     onUserUpdate();
   }, [onUserUpdate]);
 
@@ -67,7 +67,7 @@ export default function DiscordSection({ user, onUserUpdate }) {
     if (params.get("connect") !== "discord" || connected) return;
     params.delete("connect");
     const query = params.toString();
-    window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
     setConnectionAction("connect");
     connectAccount("discord", () => base44.discord.connect())
       .catch((error) => {

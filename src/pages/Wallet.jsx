@@ -12,12 +12,13 @@ import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 import { publicCommerceEnabled } from "@/lib/commerce";
 import AccountPageHero from "@/components/ui/AccountPageHero";
 import PageLoader from "@/components/ui/PageLoader";
+import useRouteSection from "@/hooks/useRouteSection";
 
 
 export default function Wallet() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useRouteSection("tab", "overview", ["overview", "transactions", "wagers"]);
 
   useEffect(() => {
     loadUserData();
