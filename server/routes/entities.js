@@ -420,6 +420,9 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
 
 router.post("/:entity", requireAuth, async (req, res, next) => {
   try {
+    if (req.params.entity === "User" && (Object.hasOwn(req.body || {}, "stream_connections") || Object.hasOwn(req.body?.metadata || {}, "stream_connections"))) {
+      return res.status(403).json({ error: "Use streaming account connections to verify a channel identity" });
+    }
     if (["Message", "Notification", "TradeOffer"].includes(req.params.entity)) {
       return res.status(403).json({ error: "Use a protected action for this record" });
     }
@@ -476,6 +479,9 @@ router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
     }
     if (req.params.entity === "User") {
       const payload = req.body || {};
+      if (Object.hasOwn(payload, "stream_connections") || Object.hasOwn(payload.metadata || {}, "stream_connections")) {
+        return res.status(403).json({ error: "Use streaming account connections to verify a channel identity" });
+      }
       if (["registration_ip", "last_login_ip", "last_seen_ip", "ip_history"].some((key) => Object.hasOwn(payload, key) || Object.hasOwn(payload.metadata || {}, key))) {
         return res.status(403).json({ error: "IP history is recorded by the server" });
       }

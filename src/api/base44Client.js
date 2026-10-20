@@ -450,6 +450,21 @@ export const base44 = {
       return result;
     },
   },
+  streamAccounts: {
+    status() { requireToken(); return apiFetch("/stream-accounts/status", { dedupe: false }); },
+    connect(provider) {
+      requireToken();
+      if (!["youtube", "kick"].includes(provider)) throw new Error("Unknown streaming provider");
+      return apiFetch(`/stream-accounts/${provider}/connect`, { method: "POST", credentials: "include", dedupe: false });
+    },
+    async disconnect(provider) {
+      requireToken();
+      if (!["youtube", "kick"].includes(provider)) throw new Error("Unknown streaming provider");
+      const result = await apiFetch(`/stream-accounts/${provider}/connection`, { method: "DELETE", dedupe: false });
+      invalidateMeCache();
+      return result;
+    },
+  },
   twitch: {
     connect() {
       requireToken();

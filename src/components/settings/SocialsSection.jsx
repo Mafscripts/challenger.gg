@@ -59,8 +59,8 @@ export default function SocialsSection({ user, onUserUpdate }) {
           <Link2 className="h-5 w-5 text-cyan" />
         </div>
         <div>
-          <h2 className="text-lg font-bold">Streaming channels & socials</h2>
-          <p className="text-xs text-vapor">Add your Twitch, YouTube or Kick channel. Streaming every map is mandatory in Cash Matches, Tournaments and Money 8s on all platforms, including console.</p>
+          <h2 className="text-lg font-bold">Channel links & socials</h2>
+          <p className="text-xs text-vapor">Add public channel links for your player card. To verify your YouTube or Kick account, use the Connect buttons in Streaming accounts above.</p>
         </div>
       </div>
 

@@ -67,7 +67,7 @@ export default function TwitchSection({ user, onUserUpdate }) {
           </div>
           <div>
             <h2 className="text-lg font-bold">Twitch live alerts</h2>
-            <p className="text-xs text-vapor">Connect Twitch to enable Discord live alerts. For required match streams, you can use Twitch, YouTube or Kick in Streaming channels above.</p>
+            <p className="text-xs text-vapor">Connect Twitch to enable Discord live alerts. For required match streams, you can use Twitch, YouTube or Kick in Streaming accounts or Channel links above.</p>
           </div>
         </div>
 

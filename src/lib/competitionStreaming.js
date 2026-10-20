@@ -38,8 +38,10 @@ export function competitionStreamChannels(user) {
   const values = { ...(user.metadata || {}), ...user };
   return ["twitch", "youtube", "kick"].flatMap(provider => {
     const saved = streamChannelUrl(provider, values[provider]);
+    const identity = values.stream_connections?.[provider];
+    const verified = identity?.id ? streamChannelUrl(provider, identity.url) : "";
     const connected = provider === "twitch" && user.twitch_user_id ? streamChannelUrl("twitch", user.twitch_login) : "";
-    return saved || connected ? [{ provider, url: connected || saved }] : [];
+    return verified || saved || connected ? [{ provider, url: verified || connected || saved }] : [];
   });
 }
 

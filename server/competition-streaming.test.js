@@ -236,11 +236,13 @@ test("settings, requirement notices and match rules expose the three providers a
     import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import {MemoryRouter} from 'react-router-dom';
     import Notice from './src/components/competition/StreamRequirementNotice.jsx';
     import Settings from './src/components/settings/SocialsSection.jsx';
+    import Connections from './src/components/settings/StreamConnectionsSection.jsx';
     import Rules from './src/components/match/MatchRulesPanel.jsx';
     import {loadWagerParticipants} from './src/lib/wagerParticipants.js';
     export {loadWagerParticipants};
     export const renderNotice = user => renderToStaticMarkup(<MemoryRouter><Notice user={user}/></MemoryRouter>);
     export const renderSettings = () => renderToStaticMarkup(<Settings user={{id:'player'}} onUserUpdate={()=>{}}/>);
+    export const renderConnections = user => renderToStaticMarkup(<Connections user={user} onUserUpdate={()=>{}}/>);
     export const renderRules = matchType => renderToStaticMarkup(<MemoryRouter><Rules matchType={matchType}/></MemoryRouter>);
   ` }, bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"], external: ["react", "react-dom", "react-dom/server", "react-router-dom"], alias: { "@": `${root}/src` }, loader: { ".css": "empty" }, plugins: [{
     name: "stream-settings-read-only-render",
@@ -259,6 +261,14 @@ test("settings, requirement notices and match rules expose the three providers a
     assert.match(html, /Twitch, YouTube or Kick/);
   }
   assert.match(api.renderNotice({ id: "player" }), /href="\/settings#streaming"/);
+  const connections = api.renderConnections({ id: "player", youtube: "@player", kick: "player" });
+  assert.match(connections, /Connect YouTube/);
+  assert.match(connections, /Connect Kick/);
+  assert.match(connections, /Not connected/);
+  assert.doesNotMatch(connections, /Disconnect YouTube/);
+  const connected = api.renderConnections({ id: "player", stream_connections: { youtube: { id: "UCabcdefghijklmnopqrstuv", url: "https://youtube.com/channel/UCabcdefghijklmnopqrstuv", display_name: "My verified channel" } } });
+  assert.match(connected, /Disconnect YouTube/);
+  assert.match(connected, /My verified channel/);
   const settings = api.renderSettings();
   for (const label of ["Twitch", "YouTube", "Kick"]) assert.ok(settings.includes(label));
   for (const type of ["wager", "tournament", "money8s"]) assert.match(api.renderRules(type), /must stream every map from start to finish/);

@@ -1,3 +1,4 @@
+import streamAccountRoutes from "./routes/stream-accounts.js";
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -50,6 +51,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/ban-appeals", banAppealRoutes);
 app.use("/api/discord", discordRoutes);
 app.use("/api/twitch", twitchRoutes);
+app.use("/api/stream-accounts", streamAccountRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/party-rooms", partyRoomRoutes);
 app.use("/api/rank-verification", rankVerificationRoutes);

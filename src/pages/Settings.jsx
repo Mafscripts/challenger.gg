@@ -1,3 +1,4 @@
+import StreamConnectionsSection from "@/components/settings/StreamConnectionsSection";
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -70,7 +71,8 @@ const settingGroups = [
     icon: Link2,
     items: [
       { label: "Gaming IDs", icon: Gamepad2, target: "settings-gaming" },
-      { label: "Streaming channels", icon: AtSign, target: "settings-socials" },
+      { label: "Streaming accounts", icon: Link2, target: "settings-streaming" },
+      { label: "Channel links & socials", icon: AtSign, target: "settings-socials" },
       { label: "Twitch", icon: MessageCircle, target: "settings-twitch" },
       { label: "Stream overlay", icon: MonitorPlay, target: "settings-overlay" },
       { label: "Discord", icon: MessageCircle, target: "settings-discord" },
@@ -78,7 +80,7 @@ const settingGroups = [
   },
 ];
 
-const legacyTargets = { streaming: "settings-socials", "gaming-ids": "settings-gaming", credits: "settings-credits", discord: "settings-discord", twitch: "settings-twitch" };
+const legacyTargets = { streaming: "settings-streaming", "gaming-ids": "settings-gaming", credits: "settings-credits", discord: "settings-discord", twitch: "settings-twitch" };
 const groupDetails = {
   appearance: { title: "Your navigation, your choice", description: "Choose the layout that feels right for you." },
   account: { title: "Account & security", description: "Manage how players see you and keep your login up to date." },
@@ -93,6 +95,7 @@ function settingTarget(hash, search) {
   const params = new URLSearchParams(search);
   if (params.has("discord") || params.get("connect") === "discord") return "settings-discord";
   if (params.has("twitch")) return "settings-twitch";
+  if (params.has("stream_provider")) return "settings-streaming";
   return "settings-account";
 }
 
@@ -204,6 +207,7 @@ export default function Settings() {
               </div>}
               {activeGroup.id === "connections" && <div className="settings-panel">
                 <div id="settings-gaming" className="settings-block"><GamingIdsSection user={user} onUserUpdate={loadUser} /></div>
+                <div id="settings-streaming" className="settings-block"><StreamConnectionsSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-socials" className="settings-block"><SocialsSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-twitch" className="settings-block"><TwitchSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-overlay" className="settings-block"><StreamOverlaySection user={user} /></div>
