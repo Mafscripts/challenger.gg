@@ -576,7 +576,7 @@ export default function Teams() {
   };
 
   const handleTeamCreated = (team) => {
-    const canReturnToAcceptFlow = requestedCreateType === "wager"
+    const canReturnToAcceptFlow = ["wager", "xp"].includes(requestedCreateType)
       && (
         requestedReturnTo === "/wagers"
         || String(requestedReturnTo || "").startsWith("/wagers?")

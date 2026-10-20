@@ -14,6 +14,7 @@ import { FreeEightsRankDialog, FreeEightsRankNotice } from "@/components/competi
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { freeEightsTeamSize } from "@/lib/freeEightsFormat";
+import XPMatchAcceptDialog from "@/components/match/XPMatchAcceptDialog";
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", dot: "bg-cyan" },
@@ -41,7 +42,9 @@ export default function Matchfinder() {
   const [searchParams] = useSearchParams();
   const requestedWagerId = searchParams.get("accept");
   const requestedTeamId = searchParams.get("team");
+  const requestedXPMatchId = searchParams.get("acceptXP");
   const autoOpenedWagerId = useRef("");
+  const autoOpenedXPMatchId = useRef("");
   const [activeCategory, setActiveCategory] = useState(() => searchParams.get("category") === "eights" ? "eights" : "xp");
   const [user, setUser] = useState(null);
   const [xpMatches, setXpMatches] = useState([]);
@@ -61,6 +64,7 @@ export default function Matchfinder() {
   const [discordServerPrompt, setDiscordServerPrompt] = useState(null);
   const discordPromptTrigger = useRef(null);
   const [wagerToAccept, setWagerToAccept] = useState(null);
+  const [xpToAccept, setXpToAccept] = useState(null);
   const [wagerTeams, setWagerTeams] = useState([]);
   const [selectedWagerTeamId, setSelectedWagerTeamId] = useState("");
   const [wagerPaymentMode, setWagerPaymentMode] = useState("own");
@@ -150,6 +154,15 @@ export default function Matchfinder() {
     autoOpenedWagerId.current = requestedWagerId;
     openWagerAccept(match);
   }, [requestedWagerId, user?.id, wagerMatches]);
+
+  useEffect(() => {
+    if (!requestedXPMatchId || !user?.id || autoOpenedXPMatchId.current === requestedXPMatchId) return;
+    const match = xpMatches.find((item) => item.id === requestedXPMatchId);
+    if (!match) return;
+    autoOpenedXPMatchId.current = requestedXPMatchId;
+    setActiveCategory("xp");
+    setXpToAccept(match);
+  }, [requestedXPMatchId, user?.id, xpMatches]);
 
   const matches = useMemo(() => ({
     xp: visibleXpMatches,
@@ -281,6 +294,14 @@ export default function Matchfinder() {
   };
 
   const acceptMatch = async (category, match) => {
+    if (category === "xp") {
+      if (!user?.id) {
+        toast({ title: "Login required", description: "Log in before accepting an XP match.", variant: "destructive" });
+        return;
+      }
+      setXpToAccept(match);
+      return;
+    }
     if (category === "eights" && activeFreeMatch) { navigate(`/8s-match/${activeFreeMatch.id}`); return; }
     if (category === "eights") discordPromptTrigger.current = document.activeElement;
     if (category === "eights" && !hasFreeEightsDiscordLink(user)) {
@@ -305,11 +326,9 @@ export default function Matchfinder() {
     }
     setAcceptingId(match.id);
     try {
-      const response = category === "xp"
-        ? await base44.functions.invoke("acceptXPMatch", { xp_match_id: match.id })
-        : category === "elo"
-          ? await base44.functions.invoke("acceptRankedMatch", { ranked_match_id: match.id })
-          : await base44.functions.invoke("acceptWager", { wager_id: match.id });
+      const response = category === "elo"
+        ? await base44.functions.invoke("acceptRankedMatch", { ranked_match_id: match.id })
+        : await base44.functions.invoke("acceptWager", { wager_id: match.id });
       if (category === "eights" && response.data?.code === "FREE_EIGHTS_ACTIVE_MATCH") {
         setFreeMembership({ userId: user.id, match: { id: response.data.active_match_id } });
         toast({ title: "Finish your current Free 8s", description: response.data.error });
@@ -431,6 +450,13 @@ export default function Matchfinder() {
 
         <div className="mt-4 flex items-center gap-2 text-[10px] text-vapor"><CalendarDays className="h-3.5 w-3.5 text-yellow-300" /> Scheduled tournaments show their announced start time; open matches can be accepted immediately.</div>
       </div>
+      {xpToAccept && user && <XPMatchAcceptDialog key={xpToAccept.id} match={xpToAccept} user={user} requestedTeamId={requestedTeamId}
+        onClose={() => setXpToAccept(null)} onJoined={(matchId) => {
+          setXpToAccept(null);
+          toast({ title: "XP match accepted", description: "Opening match room." });
+          navigate(`/xp-match/${matchId}`);
+        }}
+      />}
       {wagerToAccept && <WagerAcceptModal
         wager={wagerToAccept}
         teams={wagerTeams}

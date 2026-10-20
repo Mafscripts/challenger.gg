@@ -6,6 +6,7 @@ import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
+import { loadCaptainXPTeams, xpTeamsForMatch } from "@/lib/xpTeams";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
@@ -31,16 +32,6 @@ const selectActiveRankedMatch = (matches, userId) => {
       || match.team_bravo_player_ids?.includes(userId)
     ))
     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
-};
-
-const loadCaptainXPTeams = async (userId) => {
-  if (!userId) return [];
-  const teams = await base44.entities.Team.filterFresh({ captain_id: userId }, "-created_date", 30).catch(() => []);
-  const xpTeams = (teams || []).filter((team) => team.is_active !== false && ["xp", "ranked"].includes(team.team_type));
-  return Promise.all(xpTeams.map(async (team) => {
-    const members = await base44.entities.TeamMember.filterFresh({ team_id: team.id }, "-joined_date", 10).catch(() => []);
-    return { ...team, members: (members || []).filter((member) => member.is_active !== false) };
-  }));
 };
 
 const groupedRanks = RANK_THRESHOLDS.reduce((tiers, rank) => {
@@ -192,7 +183,9 @@ export default function XP() {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
     }
-    if (!xpTeams.some((team) => team.id === selectedPartyByMatch[match.id])) {
+    const choices = xpTeamsForMatch(xpTeams, match);
+    const teamId = selectedPartyByMatch[match.id] || (choices.length === 1 ? choices[0].id : "");
+    if (!choices.some((team) => team.id === teamId)) {
       toast({ title: "XP team required", description: "Select your team before joining an XP match.", variant: "destructive" });
       return;
     }
@@ -201,7 +194,7 @@ export default function XP() {
     try {
       const response = await base44.functions.invoke("acceptXPMatch", {
         xp_match_id: match.id,
-        team_id: selectedPartyByMatch[match.id] || undefined,
+        team_id: teamId,
       });
 
       if (response.data?.success) {
@@ -212,7 +205,7 @@ export default function XP() {
 
       toast({ title: "Failed to accept", description: response.data?.error || "Try again.", variant: "destructive" });
     } catch (error) {
-      console.error("Failed to accept ranked match:", error);
+      console.error("Failed to accept XP match:", error);
       toast({ title: "Failed to accept", description: error.message || "Try again.", variant: "destructive" });
     } finally {
       setJoiningMatchId("");
@@ -242,10 +235,8 @@ export default function XP() {
                 const joined = new Set([...(match.team_alpha_player_ids || [match.host_id]), ...(match.team_bravo_player_ids || (match.challenger_id ? [match.challenger_id] : []))].filter(Boolean)).size;
                 const belongsToUser = match.host_id === user?.id || match.team_alpha_player_ids?.includes(user?.id) || match.team_bravo_player_ids?.includes(user?.id);
                 const matchSize = slots / 2;
-                const compatibleTeams = xpTeams.filter((team) => {
-                  const size = Number(team.roster_size || team.members.length || 0);
-                  return size >= 1 && size <= matchSize && team.members.length === size;
-                });
+                const compatibleTeams = xpTeamsForMatch(xpTeams, match);
+                const selectedTeamId = selectedPartyByMatch[match.id] || (compatibleTeams.length === 1 ? compatibleTeams[0].id : "");
                 return (
                   <CompetitionMatchfinderRow
                     key={match.id}
@@ -277,12 +268,12 @@ export default function XP() {
                       )
                     ) : user ? (
                       <div className="w-48 space-y-2">
-                        <select required aria-label="Select XP team" value={selectedPartyByMatch[match.id] || ""} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
+                        <select required aria-label="Select XP team" value={selectedTeamId} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
                           <option value="" disabled>Select XP team</option>
                           {compatibleTeams.map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player team)</option>)}
                         </select>
                         {!compatibleTeams.length && <Link to={`/teams?create=xp&roster=${matchSize}`} className="site-hover block rounded px-2 py-1 text-[10px] font-bold text-cyan">Create XP team</Link>}
-                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots || !compatibleTeams.some((team) => team.id === selectedPartyByMatch[match.id])} onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Join match"}</button>
+                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots || !compatibleTeams.some((team) => team.id === selectedTeamId)} onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Join match"}</button>
                       </div>
                     ) : null}
                   />
