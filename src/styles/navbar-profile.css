@@ -29,7 +29,7 @@
 .profile-menu-compact .profile-menu-scroll { min-height: 0; padding: 14px 10px 8px; overflow-y: auto; overscroll-behavior: contain; }
 .profile-menu-compact .profile-menu-section > p { margin: 0 8px 8px; color: hsl(var(--vapor) / .65); font-size: 8px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
 .profile-menu-compact .profile-menu-account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-.profile-menu-compact .profile-menu-link { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 40px; padding: 7px 8px; border-radius: 7px; color: hsl(var(--foreground)); text-decoration: none; transition: background-color 150ms, color 150ms; }
+.profile-menu-compact .profile-menu-link { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 40px; padding: 7px 8px; border-radius: 7px; color: hsl(var(--foreground)); text-decoration: none; transition: color var(--navigation-motion-duration) var(--navigation-motion-easing), border-color var(--navigation-motion-duration) var(--navigation-motion-easing), background-color var(--navigation-motion-duration) var(--navigation-motion-easing); }
 .profile-menu-compact .profile-menu-link:hover { color: hsl(var(--cyan)); }
 .profile-menu-compact .profile-menu-item-icon { display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; color: hsl(var(--cyan) / .85); }
 .profile-menu-compact .profile-menu-link-label { min-width: 0; flex: 1; font-size: 11px; font-weight: 650; line-height: 1.4; }

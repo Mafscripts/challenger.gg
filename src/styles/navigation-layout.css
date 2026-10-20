@@ -10,7 +10,7 @@
   border-radius: 9px;
   color: hsl(var(--vapor));
   background: rgb(255 255 255 / .025);
-  transition: color 150ms, border-color 150ms, background-color 150ms;
+  transition: color var(--navigation-motion-duration) var(--navigation-motion-easing), border-color var(--navigation-motion-duration) var(--navigation-motion-easing), background-color var(--navigation-motion-duration) var(--navigation-motion-easing);
 }
 .navigation-layout-toggle:hover { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .3); }
 .navigation-layout-toggle:focus-visible, .layout-sidebar a:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
@@ -69,7 +69,7 @@
   .layout-sidebar-section:first-child { padding-top: 13px; }
   .layout-sidebar-section > p { display: flex; align-items: center; gap: 10px; margin: 0 7px 6px; color: hsl(var(--vapor) / .7); font-size: 8px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
   .layout-sidebar-section > p::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgb(255 255 255 / .1), transparent); }
-  .layout-sidebar-link { --sidebar-accent: var(--cyan); position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; margin-top: 2px; padding: 4px 8px; border: 1px solid transparent; border-radius: 3px; color: hsl(var(--vapor)); font-size: 11px; font-weight: 650; transition: color 150ms, background-color 150ms; }
+  .layout-sidebar-link { --sidebar-accent: var(--cyan); position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; margin-top: 2px; padding: 4px 8px; border: 1px solid transparent; border-radius: 3px; color: hsl(var(--vapor)); font-size: 11px; font-weight: 650; transition: color var(--navigation-motion-duration) var(--navigation-motion-easing), border-color var(--navigation-motion-duration) var(--navigation-motion-easing), background-color var(--navigation-motion-duration) var(--navigation-motion-easing); }
   .layout-sidebar-link[data-tone="green"] { --sidebar-accent: 153 100% 50%; }
   .layout-sidebar-link[data-tone="gold"] { --sidebar-accent: 45 95% 62%; }
   .layout-sidebar-link[data-tone="orange"] { --sidebar-accent: 25 100% 63%; }
