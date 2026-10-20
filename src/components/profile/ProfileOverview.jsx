@@ -7,7 +7,7 @@ import RankBadge from "@/components/ui/RankBadge";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 import NavigationHoverFill from "@/components/layout/NavigationHoverFill";
-import { competitionLabelFor, matchOpponentFor, matchResultFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
+import { competitionLabelFor, matchTeamsFor, matchResultFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
 import { teamPageUrl, teamPurposeFor } from "@/lib/teamPresentation";
 import "@/styles/profile-dashboard.css";
 
@@ -90,8 +90,9 @@ function RecentActivity({ matches, userId, loading, onViewAll, isOwnProfile }) {
       {matches.slice(0, 3).map((match) => {
         const [result, color] = matchResultFor(match, userId);
         const score = matchScoreFor(match, userId);
-        return <Link key={`${match.match_type}:${match.id}`} to={matchRouteFor(match)} className="pd-compact-match" aria-label={`${competitionLabelFor(match)}: ${matchOpponentFor(match, userId)}, ${result}, ${score.text}`}>
-          <span className="pd-compact-match-copy"><strong>{matchOpponentFor(match, userId)}</strong><small>{competitionLabelFor(match)} · {match.game_mode_display || match.game_mode || "Match"}</small></span>
+        const teams = matchTeamsFor(match, userId);
+        return <Link key={`${match.match_type}:${match.id}`} to={matchRouteFor(match)} className="pd-compact-match" aria-label={`${competitionLabelFor(match)}: ${teams.first} vs ${teams.second}, ${result}, ${score.text}, ${score.label}`}>
+          <span className="pd-compact-match-copy"><strong>{teams.first}</strong><span className="pd-compact-match-opponent">vs {teams.second}</span><small>{competitionLabelFor(match)} · {match.game_mode_display || match.game_mode || "Match"}</small></span>
           <span className="pd-compact-match-result"><b>{score.text}</b><small className={color}>{result}</small></span><ChevronRight aria-hidden="true" />
         </Link>;
       })}

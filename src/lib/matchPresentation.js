@@ -32,12 +32,12 @@ export const matchScoreFor = (match, userId) => {
   }
   return { text: "—", label: "Score unavailable" };
 };
-export const matchOpponentFor = (match, userId) => {
+export const matchTeamsFor = (match, userId) => {
   const ownSide = match.profile_side || profileMatchSideFor(match, userId);
-  const alpha = match.team_a_name || match.team_alpha_name || match.host_team_name || match.host_name;
-  const bravo = match.team_b_name || match.team_bravo_name || match.challenger_team_name || match.challenger_name;
-  if (ownSide) return `vs ${ownSide === "alpha" ? bravo || "Team Bravo" : alpha || "Team Alpha"}`;
-  return alpha && bravo ? `${alpha} vs ${bravo}` : "Team match";
+  const alpha = match.team_a_name || match.team_alpha_name || match.host_team_name || match.host_name || "Team Alpha";
+  const bravo = match.team_b_name || match.team_bravo_name || match.challenger_team_name || match.challenger_name || "Team Bravo";
+  // Keep the names in the same order as matchScoreFor: profile player's team first.
+  return ownSide === "bravo" ? { first: bravo, second: alpha } : { first: alpha, second: bravo };
 };
 export const matchRewardsFor = (match, userId) => {
   if (cleanKey(match.status) !== "completed") return "";

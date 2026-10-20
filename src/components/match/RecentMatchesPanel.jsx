@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Gamepad2, Swords } from "lucide-react";
-import { competitionLabelFor, competitionToneFor, matchDateMs, matchOpponentFor, matchResultFor, matchRewardsFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
+import { competitionLabelFor, competitionToneFor, matchDateMs, matchTeamsFor, matchResultFor, matchRewardsFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
 
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
 function ProfileSectionTitle({ title, count }) {
@@ -42,18 +42,19 @@ export default function RecentMatchesPanel({ matches, userId, className = "", ex
             const competitionLabel = competitionLabelFor(match);
             const score = matchScoreFor(match, userId);
             const rewards = matchRewardsFor(match, userId);
-            const opponent = matchOpponentFor(match, userId);
+            const teams = matchTeamsFor(match, userId);
+            const matchup = `${teams.first} vs ${teams.second}`;
             return (
               <Link
                 key={`${competitionLabel}:${match.id}`}
                 to={matchRouteFor(match)}
-                aria-label={`${competitionLabel}: ${match.game_mode_display || match.game_mode || "Match"}, ${opponent}, ${result}, ${score.text}`}
+                aria-label={`${competitionLabel}: ${match.game_mode_display || match.game_mode || "Match"}, ${matchup}, ${result}, ${score.text}`}
                 className={`profile-match-row group grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/10 bg-card px-4 py-4 sm:grid-cols-[40px_minmax(0,1fr)_110px_95px_24px] ${result === "Win" ? "border-l-green" : result === "Loss" ? "border-l-red-400" : "border-l-cyan"} border-l-2`}
               >
                 <span className={`grid h-9 w-9 place-items-center rounded-xl border ${resultClass}`}><Swords className={`h-4 w-4 ${resultColor}`} /></span>
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="truncate text-sm font-black text-white transition-colors group-hover:text-cyan">{match.game_mode_display || match.game_mode || "Match"}</p><span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-bold ${competitionToneFor(competitionLabel)}`}>{competitionLabel}</span></div>
-                  <p className="mt-1 truncate text-xs font-semibold text-white/80">{opponent}</p>
+                  <p className="mt-1 break-words text-xs font-semibold text-white/80">{matchup}</p>
                   <p className="mt-1 text-[11px] leading-relaxed text-vapor"><time dateTime={new Date(matchDateMs(match)).toISOString()}>{formatDate(match.match_completed_date || match.completed_date || match.created_date)}</time><span className="mx-1.5">·</span>{match.final_map_name || match.map_name || "Map unavailable"}</p>
                   {rewards && <p className="mt-1 text-[11px] font-bold text-cyan">{rewards}</p>}
                 </div>
