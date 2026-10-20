@@ -112,11 +112,14 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
   ];
   return <div className="profile-overview">
     <div className="pd-summary-grid" aria-label="Player summary">{summaries.map(({ label, value, detail, icon: Icon, tab, loading }) => <button key={label} type="button" className="competition-stat-card pd-summary-card" onClick={() => onTab(tab)}><div className="competition-stat-icon"><Icon size={21} /></div><div><p className="competition-stat-label">{label}</p><strong className="competition-stat-value">{loading ? "—" : value}</strong><p className="competition-stat-detail">{detail}</p></div><ChevronRight size={14} aria-hidden="true" /></button>)}</div>
+    <div className="pd-top-showcases">
+      <ProfileFriends {...friends} loading={friendsLoading} onManageRequests={canManageFriends ? () => onTab("friends") : undefined} onViewAll={() => onTab("friends")} />
+      <TrophyShelf trophies={recentTrophies} loading={trophiesLoading} error={trophiesError} onViewAll={() => onTab("trophies")} />
+    </div>
     <div className="profile-dashboard">
       <div className="pd-main">
         {(arenaLoading || arenaError || (arena?.arenas || []).length > 0) && <ArenaRecords data={arena} loading={arenaLoading} error={arenaError} onRetry={onRetry} screenshotRank={user.screenshot_rank} />}
         {(teamsLoading || teams.length > 0) && <FeaturedTeams teams={teams} userId={user.id} loading={teamsLoading} onViewAll={() => onTab("teams")} />}
-        {(trophiesLoading || trophiesError || recentTrophies?.length > 0) && <TrophyShelf trophies={recentTrophies} loading={trophiesLoading} error={trophiesError} onViewAll={() => onTab("trophies")} />}
       </div>
       <aside className="pd-sidebar">
         <section className="pd-panel pd-rank-panel" data-ranked={played}>
@@ -129,7 +132,6 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
           {arenaError ? <button type="button" onClick={onRetry} className="pd-view-all">Try again<ArrowRight /></button> : <Link to="/xp#standings" className="pd-view-all">XP leaderboard<ArrowRight /></Link>}
         </section>
         <section className="pd-panel pd-about"><Heading title="About the player" /><p>{profile?.bio || (canManageFriends ? "Add a bio to introduce yourself to other players." : "This player hasn't added a bio yet.")}</p>{canManageFriends && <button type="button" className="pd-view-all" onClick={onEditProfile}>Edit bio & appearance<ChevronRight /></button>}</section>
-        {!friendsLoading && friends?.total > 0 && <ProfileFriends {...friends} onManageRequests={canManageFriends ? () => onTab("friends") : undefined} onViewAll={() => onTab("friends")} />}
         <RecentActivity key={user.id} matches={matches} userId={user.id} loading={matchesLoading} onViewAll={() => onTab("matches")} isOwnProfile={canManageFriends} />
         {canManageFriends && !teamsLoading && teams.length === 0 && <section className="pd-panel pd-team-start"><Heading title="Play as a team" icon={Shield} /><p>Find a roster or create your own team for your next competition.</p><Link to="/teams" className="pd-view-all">Browse teams<ArrowRight /></Link></section>}
       </aside>

@@ -28,6 +28,19 @@
 .profile-refresh .pd-summary-card:nth-child(2) { --stat-accent: 52 239 159; }
 .profile-refresh .pd-summary-card:nth-child(3) { --stat-accent: 255 200 82; }
 .profile-refresh .pd-summary-card:nth-child(4) { --stat-accent: 180 149 255; }
+.profile-refresh .pd-top-showcases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 22px; }
+.profile-refresh .pd-top-showcases .pd-panel { padding: 16px 20px; }
+.profile-refresh .pd-top-showcases .pd-heading { margin-bottom: 12px; }
+.profile-refresh .pd-top-showcases .pd-friends { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; gap: 0 16px; }
+.profile-refresh .pd-top-showcases .pd-friends .pd-heading { grid-column: 1 / -1; }
+.profile-refresh .pd-top-showcases .pd-friend-grid { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 4px; }
+.profile-refresh .pd-top-showcases .pd-friend { flex-shrink: 0; width: 48px; gap: 5px; }
+.profile-refresh .pd-top-showcases .pd-friend-avatar { width: 42px; height: 42px; border-radius: 10px; }
+.profile-refresh .pd-top-showcases .pd-view-all { align-self: center; width: auto; margin-top: 0; }
+.profile-refresh .pd-top-showcases .pd-trophy-shelf { flex-wrap: nowrap; overflow-x: auto; gap: 12px; padding-bottom: 4px; }
+.profile-refresh .pd-top-showcases .pd-trophy-symbol { width: 33px; height: 48px; }
+.profile-refresh .pd-top-showcases .pd-trophy { width: 54px; }
+.profile-refresh .pd-top-showcases .pd-empty { padding: 15px 0; }
 .profile-refresh .profile-dashboard { grid-template-columns: minmax(0, 1fr) 310px; gap: 22px; margin-top: 22px; }
 .profile-refresh .pd-panel, .profile-refresh .glass { border-color: #14d8ff30; border-radius: 16px; background: linear-gradient(125deg, #14d8ff07, transparent 65%), #101c28; box-shadow: 0 12px 35px #0002, inset 0 1px #ffffff06; }
 .profile-refresh .pd-heading { flex-wrap: wrap; gap: 9px; }
@@ -93,6 +106,10 @@
   .profile-refresh .pd-sidebar { order: -1; display: flex; flex-direction: column; gap: 18px; }
 }
 @media (max-width: 640px) {
+  .profile-refresh .pd-top-showcases { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .profile-refresh .pd-top-showcases .pd-panel { padding: 16px; }
+  .profile-refresh .pd-top-showcases .pd-friends { column-gap: 10px; }
+  .profile-refresh .pd-top-showcases .pd-view-all { max-width: 100px; padding: 8px; font-size: 9px; }
   .profile-refresh .profile-identity { min-height: 0; gap: 20px; }
   .profile-refresh .profile-identity > div:first-child { flex-direction: row; gap: 14px; align-items: flex-start; }
   .profile-refresh .profile-avatar { width: 72px; height: 72px; font-size: 28px; border-radius: 14px; }
