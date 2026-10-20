@@ -21,7 +21,7 @@
 .clean-primary-nav { align-items: center; gap: 4px; min-width: 0; margin-right: auto; }
 .clean-nav-anchor { position: relative; flex-shrink: 0; }
 .app-topbar.topbar-clean .clean-nav-link { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; box-shadow: none; color: #94a4b6; font-size: 12px; font-weight: 650; line-height: 1; white-space: nowrap; transition: color 150ms, background-color 150ms; }
-.app-topbar.topbar-clean .clean-nav-link:hover, .app-topbar.topbar-clean .clean-nav-link[aria-expanded="true"] { background: rgb(255 255 255 / .045); color: #fff; }
+.app-topbar.topbar-clean .clean-nav-link:hover, .app-topbar.topbar-clean .clean-nav-link[aria-expanded="true"] { color: #fff; }
 .app-topbar.topbar-clean .clean-nav-link[aria-current="page"], .app-topbar.topbar-clean .clean-nav-link[data-current="true"] { color: hsl(var(--cyan)); background: hsl(var(--cyan) / .065); }
 .clean-nav-chevron { color: #6d8093; transition: transform 150ms; }
 .clean-nav-link[aria-expanded="true"] .clean-nav-chevron { transform: rotate(180deg); }
@@ -62,7 +62,6 @@
 .app-topbar.topbar-clean .nav-destination-header h3 { font-size: 18px; font-weight: 750; letter-spacing: -.025em; }
 .app-topbar.topbar-clean .nav-destination-header-icon { width: 34px; height: 34px; border: 0; border-radius: 8px; background: hsl(var(--cyan) / .05); color: hsl(var(--cyan)); transform: none; }
 .app-topbar.topbar-clean .nav-destination-link { gap: 11px; padding: 11px 10px; border-radius: 7px; }
-.app-topbar.topbar-clean .nav-destination-link:hover { background: rgb(255 255 255 / .035); }
 .app-topbar.topbar-clean .nav-destination-link + .nav-destination-link::before { display: none; }
 .app-topbar.topbar-clean .nav-destination-icon { width: 34px; height: 34px; border: 1px solid rgb(255 255 255 / .07); border-radius: 8px; background: rgb(255 255 255 / .02); }
 .app-topbar.topbar-clean .nav-destination-copy strong { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }

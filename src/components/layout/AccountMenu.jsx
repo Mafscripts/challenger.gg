@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Crown, History, LogOut, Settings, ShieldCheck, Ticket, User, Users, Wallet } from "lucide-react";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
+import NavigationHoverFill from "./NavigationHoverFill";
 
 export default function AccountMenu({ name, role, avatar, profilePath, staff, sidebar, onClose }) {
   const links = [
@@ -19,15 +20,15 @@ export default function AccountMenu({ name, role, avatar, profilePath, staff, si
       <span className="profile-menu-role" data-staff={staff}>{role}</span><ChevronRight className="profile-menu-header-arrow" size={14} aria-hidden="true" />
     </Link>
     <div className="profile-menu-scroll">
-      <nav className="profile-menu-section" aria-label="Your account"><p>Account</p><div className="profile-menu-account-grid">{links.map(({ label, path, icon: Icon }) => <Link key={path} to={path} onClick={onClose} className="profile-menu-link"><span className="profile-menu-item-icon"><Icon size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">{label}</span></Link>)}</div></nav>
+      <nav className="profile-menu-section" aria-label="Your account"><p>Account</p><div className="profile-menu-account-grid">{links.map(({ label, path, icon: Icon }) => <Link key={path} to={path} onClick={onClose} className="profile-menu-link navigation-hover"><NavigationHoverFill /><span className="profile-menu-item-icon"><Icon size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">{label}</span></Link>)}</div></nav>
       <div className="profile-menu-secondary">
-        <Link to="/premium" onClick={onClose} className="profile-menu-link profile-menu-premium"><span className="profile-menu-item-icon"><Crown size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">Topfragg Premium</span><ChevronRight size={13} className="profile-menu-link-arrow" aria-hidden="true" /></Link>
-        {staff && <Link to="/admin" onClick={onClose} className="profile-menu-link profile-menu-admin-shortcut"><span className="profile-menu-item-icon"><ShieldCheck size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">Admin Panel</span><ChevronRight size={13} className="profile-menu-link-arrow" aria-hidden="true" /></Link>}
+        <Link to="/premium" onClick={onClose} className="profile-menu-link profile-menu-premium navigation-hover"><NavigationHoverFill /><span className="profile-menu-item-icon"><Crown size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">Topfragg Premium</span><ChevronRight size={13} className="profile-menu-link-arrow" aria-hidden="true" /></Link>
+        {staff && <Link to="/admin" onClick={onClose} className="profile-menu-link profile-menu-admin-shortcut navigation-hover"><NavigationHoverFill /><span className="profile-menu-item-icon"><ShieldCheck size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">Admin Panel</span><ChevronRight size={13} className="profile-menu-link-arrow" aria-hidden="true" /></Link>}
       </div>
     </div>
     <footer className="profile-menu-footer" data-layout-switch={!sidebar}>
       {!sidebar && <NavigationLayoutToggle showLabel />}
-      <Link to="/logout" onClick={onClose} className="profile-menu-logout"><LogOut size={14} aria-hidden="true" /><span>Log out</span></Link>
+      <Link to="/logout" onClick={onClose} className="profile-menu-logout navigation-hover"><NavigationHoverFill /><LogOut size={14} aria-hidden="true" /><span>Log out</span></Link>
     </footer>
   </div>;
 }

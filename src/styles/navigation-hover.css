@@ -1,0 +1,21 @@
+.navigation-hover { position: relative; isolation: isolate; overflow: hidden; }
+.navigation-hover > .navigation-hover-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--navigation-hover-color, hsl(var(--cyan))) 10%, transparent), color-mix(in srgb, var(--navigation-hover-color, hsl(var(--cyan))) 23%, transparent));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .38s cubic-bezier(.22, .61, .36, 1);
+  pointer-events: none;
+}
+.navigation-hover-fill::after { position: absolute; inset: auto 0 0; height: 2px; background: var(--navigation-hover-color, hsl(var(--cyan))); content: ""; }
+.navigation-hover:not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible, [aria-expanded="true"]) > .navigation-hover-fill { transform: scaleX(1); }
+.layout-sidebar-link.navigation-hover { --navigation-hover-color: hsl(var(--sidebar-accent)); }
+.nav-destination-link.navigation-hover { --navigation-hover-color: var(--menu-item-accent); }
+.nav-destination-footer .navigation-hover { --navigation-hover-color: var(--menu-accent); }
+.profile-menu-premium.navigation-hover { --navigation-hover-color: #facc15; }
+.profile-menu-admin-shortcut.navigation-hover, .profile-menu-logout.navigation-hover, .layout-sidebar-signout.navigation-hover { --navigation-hover-color: #f87171; }
+.layout-sidebar-signout.navigation-hover { border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { .navigation-hover > .navigation-hover-fill { transition: none; } }

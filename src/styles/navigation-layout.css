@@ -12,7 +12,7 @@
   background: rgb(255 255 255 / .025);
   transition: color 150ms, border-color 150ms, background-color 150ms;
 }
-.navigation-layout-toggle:hover { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .3); background: hsl(var(--cyan) / .06); }
+.navigation-layout-toggle:hover { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .3); }
 .navigation-layout-toggle:focus-visible, .layout-sidebar a:focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: 3px; }
 .navigation-layout-toggle:disabled { opacity: .5; cursor: wait; }
 .navigation-layout-toggle-labeled { width: 100%; height: 36px; font-size: 10px; font-weight: 700; color: hsl(var(--cyan)); }
@@ -77,7 +77,7 @@
   .layout-sidebar-link[data-tone="purple"] { --sidebar-accent: 263 90% 78%; }
   .layout-sidebar-item-icon { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border: 1px solid hsl(var(--sidebar-accent) / .12); border-radius: 3px; color: hsl(var(--sidebar-accent) / .85); background: hsl(var(--sidebar-accent) / .045); }
   .layout-sidebar-item-label { flex: 1; min-width: 0; line-height: 1.4; }
-  .layout-sidebar-link:hover { color: hsl(var(--foreground)); background: hsl(var(--sidebar-accent) / .05); }
+  .layout-sidebar-link:hover { color: hsl(var(--foreground)); }
   .layout-sidebar-link[aria-current="page"] { color: hsl(var(--foreground)); border-color: hsl(var(--sidebar-accent) / .17); background: linear-gradient(90deg, hsl(var(--sidebar-accent) / .13), hsl(var(--sidebar-accent) / .025)); }
   .layout-sidebar-link[aria-current="page"]::before { content: ""; position: absolute; left: -1px; top: 8px; bottom: 8px; width: 2px; background: hsl(var(--sidebar-accent)); box-shadow: 0 0 10px hsl(var(--sidebar-accent) / .4); }
   .layout-sidebar-link[aria-current="page"] .layout-sidebar-item-icon { color: hsl(var(--sidebar-accent)); background: hsl(var(--sidebar-accent) / .12); }
@@ -85,7 +85,6 @@
   .layout-sidebar-game-wrap { flex-shrink: 0; margin-top: auto; padding-top: 16px; }
   .layout-sidebar-game { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; overflow: hidden; min-height: 112px; padding: 15px 12px; border: 1px solid hsl(var(--cyan) / .2); border-radius: 4px 4px 16px 4px; background: #101e29; }
   .layout-sidebar-game::before { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, #09131dee 15%, #09131d55), url('/assets/mw4/hero.webp') center 40% / cover; transition: opacity 150ms; opacity: .8; }
-  .layout-sidebar-game:hover::before { opacity: 1; }
   .layout-sidebar-game-eyebrow { color: hsl(var(--cyan)); font-size: 7px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
   .layout-sidebar-game-title { color: #fff; font-size: 17px; font-weight: 850; letter-spacing: -.025em; line-height: 1.2; }
   .layout-sidebar-game-action { display: flex; align-items: center; gap: 12px; margin-top: 4px; color: #fff; font-size: 9px; font-weight: 750; }

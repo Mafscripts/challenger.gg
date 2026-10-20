@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { isStaffUser } from "@/lib/roles";
 import { mobileNavSections } from "./navigationGroups";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
+import NavigationHoverFill from "./NavigationHoverFill";
 
 function activeDestination(location, path) {
   const [pathname, query] = path.split("?");
@@ -28,7 +29,8 @@ export default function Sidebar({ accountActions }) {
   const navLink = (item) => {
     const Icon = item.icon;
     const active = activeDestination(location, item.path) || (item.path === "/challenge-a-team" && location.pathname.startsWith("/challenge-a-team/")) || (item.path === profilePath && location.pathname === "/profile");
-    return <Link key={item.path} to={item.path} className="layout-sidebar-link" data-tone={item.tone || "cyan"} aria-current={active ? "page" : undefined}>
+    return <Link key={item.path} to={item.path} className="layout-sidebar-link navigation-hover" data-tone={item.tone || "cyan"} aria-current={active ? "page" : undefined}>
+      <NavigationHoverFill />
       <span className="layout-sidebar-item-icon"><Icon size={15} strokeWidth={1.8} aria-hidden="true" /></span><span className="layout-sidebar-item-label">{item.label}</span>{item.isNew && <span className="challenge-new-tag">New</span>}{active && !item.isNew && <ChevronRight className="layout-sidebar-current" size={13} aria-hidden="true" />}
     </Link>;
   };
@@ -38,7 +40,8 @@ export default function Sidebar({ accountActions }) {
     <nav className="layout-sidebar-nav" aria-label="Primary navigation">
       {sections.map((section) => <div key={section.label} className="layout-sidebar-section"><p>{section.label}</p>{section.items.map(navLink)}</div>)}
       <div className="layout-sidebar-game-wrap">
-        <Link to="/ranked/8s?game=mw4" className="layout-sidebar-game">
+        <Link to="/ranked/8s?game=mw4" className="layout-sidebar-game navigation-hover">
+          <NavigationHoverFill />
           <span className="layout-sidebar-game-eyebrow">Next deployment</span>
           <span className="layout-sidebar-game-title">Modern Warfare 4</span>
           <span className="layout-sidebar-game-action">View Free 8s <ChevronRight size={13} aria-hidden="true" /></span>
@@ -49,7 +52,7 @@ export default function Sidebar({ accountActions }) {
       {isStaffUser(user) && navLink({ label: "Admin Panel", path: "/admin", icon: ShieldCheck, tone: "red" })}
       <div className="layout-sidebar-utilities">{navLink({ label: "Rules", path: "/rules", icon: BookOpen })}{navLink({ label: "Settings", path: "/settings", icon: Settings })}</div>
       <NavigationLayoutToggle showLabel />
-      <Link to="/logout" className="layout-sidebar-signout"><LogOut size={14} aria-hidden="true" /><span>Log out</span><ChevronRight size={13} aria-hidden="true" /></Link>
+      <Link to="/logout" className="layout-sidebar-signout navigation-hover"><NavigationHoverFill /><LogOut size={14} aria-hidden="true" /><span>Log out</span><ChevronRight size={13} aria-hidden="true" /></Link>
     </div>
   </aside>;
 }

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Activity, ArrowRight, ChevronRight, History, Swords, Trophy } from "lucide-react";
 import "@/styles/navbar-menus.css";
 import NavbarPlayerSearch from "./NavbarPlayerSearch";
+import NavigationHoverFill from "./NavigationHoverFill";
 
 const menuColors = {
   cyan: "hsl(var(--cyan))", green: "hsl(var(--green))", orange: "hsl(var(--orange))",
@@ -17,7 +18,8 @@ function MenuPanel({ title, eyebrow, icon: Icon, tone, children }) {
 }
 
 function MenuLink({ path, label, description, icon: Icon, tone, active = false, onSelect, children, isNew = false }) {
-  return <Link to={path} onClick={onSelect} className="nav-destination-link" data-active={active} aria-current={active ? "page" : undefined} style={{ "--menu-item-accent": menuColors[tone] || menuColors.cyan }}>
+  return <Link to={path} onClick={onSelect} className="nav-destination-link navigation-hover" data-active={active} aria-current={active ? "page" : undefined} style={{ "--menu-item-accent": menuColors[tone] || menuColors.cyan }}>
+    <NavigationHoverFill />
     <span className="nav-destination-icon" aria-hidden="true"><Icon size={18} /></span>
     <span className="nav-destination-copy"><strong>{label}{isNew && <span className="challenge-new-tag nav-mode-new">New</span>}</strong>{description && <small>{description}</small>}{children}</span>
     {active ? <span className="nav-destination-current">Current</span> : <ChevronRight className="nav-destination-arrow" size={14} aria-hidden="true" />}
@@ -66,6 +68,6 @@ export function NavbarMatches({ matches, userId, historyPath, isActive, onSelect
           </MenuLink>;
         })}
     </div>
-    <footer className="nav-destination-footer"><Link to="/my-matches" onClick={onSelect}><span>Open match center</span><ArrowRight size={16} /></Link></footer>
+    <footer className="nav-destination-footer"><Link to="/my-matches" onClick={onSelect} className="navigation-hover"><NavigationHoverFill /><span>Open match center</span><ArrowRight size={16} /></Link></footer>
   </MenuPanel>;
 }
