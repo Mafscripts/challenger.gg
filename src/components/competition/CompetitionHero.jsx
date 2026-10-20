@@ -1,12 +1,12 @@
 import React from "react";
-import { Bell, BookOpen, CalendarDays, Clock, Crosshair, DollarSign, Gamepad2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, Clock, Crosshair, DollarSign, Gamepad2, Globe2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { competitionTheme } from "@/lib/competitionPresentation";
 import "@/styles/competition-presentation.css";
 
-const icons = { Bell, BookOpen, Clock, Crosshair, DollarSign, Gamepad2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap };
+const icons = { Bell, BookOpen, Clock, Crosshair, DollarSign, Gamepad2, Globe2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap };
 
-export default function CompetitionHero({ mode = "ranked", title, eyebrow, description, action, count, countLabel = "players", artwork, gameId, metadata, className = "" }) {
+export default function CompetitionHero({ mode = "ranked", title, eyebrow, description, action, count, countLabel = "players", artwork, gameId, metadata, facts, className = "" }) {
   const theme = competitionTheme(mode), Icon = icons[theme.icon];
   const CountIcon = countLabel.includes("event") ? Trophy : countLabel.includes("match") ? Swords : countLabel.includes("ticket") ? Inbox : countLabel.includes("notification") ? Bell : countLabel.includes("conversation") ? MessageSquare : Users;
   return <header className={`competition-hero ${className}`} data-competition={mode} data-game={gameId}>
@@ -16,7 +16,7 @@ export default function CompetitionHero({ mode = "ranked", title, eyebrow, descr
         <p className="competition-hero-eyebrow"><TopfraggLogo showWordmark={false} markClassName="!h-7 !w-7" />{eyebrow || theme.eyebrow}</p>
         <h1>{title || theme.title}<span className="competition-title-dot">.</span></h1>
         {description && <p className="competition-hero-description">{description}</p>}
-        <div className="competition-hero-facts">{theme.facts.map(([icon, label]) => { const FactIcon = icons[icon]; return <span key={label}><FactIcon size={14} aria-hidden="true" />{label}</span>; })}</div>
+        <div className="competition-hero-facts">{(facts || theme.facts).map(([icon, label]) => { const FactIcon = icons[icon]; return <span key={label}><FactIcon size={14} aria-hidden="true" />{label}</span>; })}</div>
       </div>
       <div className="competition-hero-emblem" aria-hidden="true"><span className="competition-orbit competition-orbit-outer" /><span className="competition-orbit competition-orbit-inner" /><span className="competition-mode-emblem"><Icon size={76} strokeWidth={1.35} /></span><span className="competition-emblem-spark"><Sparkles size={21} /></span><span className="competition-emblem-medal"><ShieldCheck size={22} /></span><p>{theme.motto}</p></div>
     </div>

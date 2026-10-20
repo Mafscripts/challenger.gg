@@ -42,6 +42,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
+import CompetitionHero from "@/components/competition/CompetitionHero";
+import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
+import { publicCommerceEnabled } from "@/lib/commerce";
+import "@/styles/tournament-overview.css";
 
 const BLACK_OPS_7_ART = "/assets/tournaments/black-ops-7.webp";
 
@@ -162,7 +166,7 @@ function Countdown({ value, now, status, expiredLabel = "Closed" }) {
 
 function PrizeCard({ place, amount, color, icon: Icon = Trophy }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-background/30 px-4 py-5 text-center">
+    <div className="overview-panel overview-prize px-4 py-5 text-center" data-place={place}>
       <Icon className={`mx-auto h-5 w-5 ${color}`} />
       <p className="mt-3 text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{place}</p>
       <p className="mt-1 font-mono text-lg font-black text-white">{formatMoney(amount)}</p>
@@ -172,7 +176,7 @@ function PrizeCard({ place, amount, color, icon: Icon = Trophy }) {
 
 function DetailRow({ icon: Icon, label, value }) {
   return (
-    <div className="flex items-center gap-3 border-b border-white/[0.06] py-3 last:border-b-0">
+    <div className="overview-detail-row flex items-center gap-3 border-b border-white/[0.06] py-3 last:border-b-0">
       <Icon className="h-4 w-4 shrink-0 text-vapor/60" />
       <span className="min-w-24 text-xs text-vapor">{label}</span>
       <span className="ml-auto text-right text-xs font-black text-white">{value}</span>
@@ -187,7 +191,7 @@ function TournamentRosterPlayerCard({ player, captain }) {
   const losses = Number(player?.total_losses ?? player?.losses ?? 0);
   const avatar = player?.avatar_url || "";
   return (
-    <article className="overflow-hidden rounded-xl border border-white/[0.08] bg-background/40 p-4">
+    <article className="overview-panel overflow-hidden p-4">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cyan/20 bg-cyan/10 font-mono text-sm font-black text-cyan">
           {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : rosterMemberName(player).slice(0, 1).toUpperCase()}
@@ -220,7 +224,7 @@ function BracketPreview({ matches }) {
 
   if (!rounds.length) {
     return (
-      <div className="rounded-xl border border-dashed border-white/10 bg-card/35 px-5 py-16 text-center">
+      <div className="overview-panel overview-empty px-5 py-16 text-center">
         <Layers3 className="mx-auto h-9 w-9 text-vapor/25" />
         <p className="mt-3 text-sm font-black">Bracket not generated yet</p>
         <p className="mt-1 text-xs text-vapor">The bracket appears here as soon as registration is locked.</p>
@@ -229,7 +233,7 @@ function BracketPreview({ matches }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-white/[0.07] bg-card/35 p-4">
+    <div className="overview-panel overview-bracket overflow-x-auto p-4">
       <div className="grid min-w-max gap-5" style={{ gridTemplateColumns: `repeat(${rounds.length}, minmax(210px, 1fr))` }}>
         {rounds.map(([key, roundMatches]) => (
           <div key={key} className="space-y-3">
@@ -523,57 +527,38 @@ export default function TournamentOverview() {
   const modeName = modeLabels[tournament.game_mode] || tournament.game_mode || "Search & Destroy";
 
   return (
-    <div className="min-h-screen pb-16">
-      <section className="relative overflow-hidden border-b border-white/[0.07] bg-card/40">
-        <img src={imageForTournament(tournament)} alt="" className="absolute inset-0 h-full w-full scale-105 object-cover opacity-20 blur-[1px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background))_0%,rgba(8,12,18,.91)_48%,rgba(8,12,18,.68)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_20%,rgba(255,130,0,.12),transparent_33%),linear-gradient(180deg,transparent,rgba(8,12,18,.88))]" />
-        <div className="relative mx-auto max-w-[1500px] px-4 py-7 lg:px-8 lg:py-12">
-          <Link to="/tournaments" className="mb-8 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:text-white"><ArrowLeft className="h-3.5 w-3.5" /> All tournaments</Link>
-          <div className="grid gap-7 lg:grid-cols-[150px_minmax(0,1fr)_240px] lg:items-end">
-            <div className="h-44 w-36 overflow-hidden rounded-xl border border-white/10 bg-background shadow-2xl sm:h-48 sm:w-40">
-              <img src={tournament.image_url || imageForTournament(tournament)} alt={`${gameName} artwork`} className="block h-full w-full object-contain object-center" />
-            </div>
-            <div className="min-w-0 pb-1">
-              <div className="flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em]">
-                <span className="rounded-md bg-orange px-2.5 py-1 text-white">{statusLabels[tournament.status] || tournament.status}</span>
-                <span className="text-vapor">{gameName}</span>
-                <span className="text-vapor/35">·</span>
-                <span className="text-vapor">{formatShortDate(tournament.start_date)}</span>
-              </div>
-              <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight tracking-[-0.035em] text-white sm:text-4xl lg:text-5xl">{tournament.name}</h1>
-              <p className="mt-3 text-xs font-bold text-vapor sm:text-sm">{tournament.team_size || "1v1"} <span className="px-2 text-white/20">|</span> {tournament.region?.toUpperCase() || "NA + EU"} <span className="px-2 text-white/20">|</span> {entryLabel(tournament)}</p>
-              <div className="mt-5 flex items-center gap-3">
-                <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Starts in</span>
-                <Countdown value={tournament.start_date} now={now} status={tournament.status} expiredLabel="Starting" />
-              </div>
-            </div>
-            <div className="space-y-3">
+    <div className="tournament-overview competition-surface page-shell" data-competition="tournaments">
+      <div className="page-container">
+        <Link to="/tournaments" className="overview-back"><ArrowLeft size={15} />All tournaments</Link>
+        <CompetitionHero mode="tournaments" title={tournament.name} eyebrow="Tournament overview" description={`${gameName} · ${modeName} · ${tournament.platform || "Cross platform"}`} artwork={imageForTournament(tournament)} className="overview-hero"
+          facts={[["Gamepad2", tournament.team_size || "1v1"], ["Globe2", tournament.region?.toUpperCase() || "NA + EU"], ["Trophy", entryLabel(tournament)]]}
+          count={`${tournament.registered_teams || participants.length}/${tournament.max_teams || "∞"}`} countLabel="teams registered"
+          metadata={<><span className="overview-status" data-status={tournament.status}>{statusLabels[tournament.status] || tournament.status}</span><CalendarDays size={13} />{formatShortDate(tournament.start_date)}</>}
+          action={<div className="competition-actions overview-actions">
               {joined ? (
-                <div className="grid gap-2">
-                  <div className="flex items-center justify-center gap-2 rounded-xl border border-green/20 bg-green/10 px-5 py-4 text-[10px] font-black uppercase tracking-wider text-green"><Check className="h-4 w-4" /> Tournament joined</div>
+                <>
+                  <span className="overview-joined"><Check size={16} />Tournament joined</span>
                   {leaveAvailable && (
-                    <button type="button" onClick={() => { setRefundResult(null); setLeaveDialogOpen(true); }} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-3 text-[10px] font-black uppercase tracking-[0.15em] text-red-300 transition-all hover:border-red-500/40 hover:bg-red-500/20">
+                    <button type="button" onClick={() => { setRefundResult(null); setLeaveDialogOpen(true); }} className="competition-action-pill overview-leave">
                       <LogOut className="h-4 w-4" /> Leave tournament
                     </button>
                   )}
-                </div>
+                </>
               ) : joinAvailable ? (
-                <button type="button" onClick={openJoin} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange px-5 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-white shadow-[0_14px_35px_rgba(255,130,0,.24)] transition-all hover:-translate-y-0.5 hover:bg-orange/90"><Users className="h-4 w-4" /> Join tournament</button>
+                <button type="button" onClick={openJoin} className="competition-action-pill overview-join"><Users size={16} />Join tournament</button>
               ) : (
-                <div className="rounded-xl border border-white/[0.08] bg-background/55 px-5 py-4 text-center text-[10px] font-black uppercase tracking-wider text-vapor">Registration unavailable</div>
+                <span className="overview-registration-closed">Registration unavailable</span>
               )}
-              <div className="flex items-center justify-center gap-2 text-[10px] text-vapor"><Users className="h-3.5 w-3.5 text-cyan" /> {tournament.registered_teams || participants.length}/{tournament.max_teams || "∞"} teams registered</div>
-            </div>
-          </div>
-        </div>
-      </section>
+              <div className="overview-countdown"><span>Starts in</span><Countdown value={tournament.start_date} now={now} status={tournament.status} expiredLabel="Starting" /></div>
+          </div>} />
+      </div>
 
-      <div className="mx-auto max-w-[1500px] px-4 lg:px-8">
+      <div className="page-container">
+        {!publicCommerceEnabled && <CommercePausedNotice compact className="mt-5" />}
         <ActivisionIdNotice user={user} className="mt-5" />
         <StreamRequirementNotice user={user} className="mt-5" />
-        <div className="arena-tabs mt-4">
-          <div className="flex min-w-max" role="tablist">
+        <div className="overview-tabs arena-tabs mt-5">
+          <div className="flex" role="tablist" aria-label="Tournament sections">
             {[["overview", "Overview"], ["bracket", "Bracket"], ["participants", `Participants ${participants.length}`], ["rules", "Rules"]].map(([value, label]) => (
               <button key={value} type="button" onClick={() => setActiveTab(value)} role="tab" aria-selected={activeTab === value} className="arena-tab relative px-5 py-4 text-xs font-black transition-colors">{label}</button>
             ))}
@@ -581,11 +566,11 @@ export default function TournamentOverview() {
         </div>
 
         {activeTab === "overview" && (
-          <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="overview-content mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
             <div className="space-y-7">
               <section>
                 <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-black">Prizes</h2><span className="font-mono text-lg font-black text-green">{formatMoney(tournament.prize_pool)}</span></div>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="overview-prizes grid gap-3 sm:grid-cols-3">
                   <PrizeCard place="1st place" amount={firstPrize} color="text-yellow-300" />
                   <PrizeCard place="2nd place" amount={secondPrize} color="text-zinc-300" icon={Medal} />
                   <PrizeCard place="3rd place" amount={thirdPrize} color="text-orange" icon={Medal} />
@@ -595,21 +580,21 @@ export default function TournamentOverview() {
               <section>
                 <h2 className="mb-3 text-base font-black">Schedule</h2>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-xl border border-white/[0.07] bg-card/45 p-5">
+                  <div className="overview-panel overview-schedule p-5">
                     <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-vapor"><span className="h-1.5 w-1.5 rounded-full bg-cyan" /> Registration closes</p>
-                    <div className="mt-4 flex items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(registrationDate)}</p><p className="mt-1 text-[10px] text-vapor">Secure your place before the deadline.</p></div><Countdown value={registrationDate} now={now} expiredLabel="Closed" /></div>
+                    <div className="overview-schedule-timing mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(registrationDate)}</p><p className="mt-1 text-[10px] text-vapor">Secure your place before the deadline.</p></div><Countdown value={registrationDate} now={now} expiredLabel="Closed" /></div>
                   </div>
-                  <div className="rounded-xl border border-orange/15 bg-[linear-gradient(145deg,rgba(255,130,0,.07),rgba(255,255,255,.015))] p-5">
+                  <div className="overview-panel overview-schedule p-5" data-highlight="true">
                     <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-vapor"><span className="h-1.5 w-1.5 rounded-full bg-orange" /> Tournament starts</p>
-                    <div className="mt-4 flex items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(tournament.start_date)}</p><p className="mt-1 text-[10px] text-vapor">All teams must be match ready.</p></div><Countdown value={tournament.start_date} now={now} status={tournament.status} expiredLabel="Starting" /></div>
-                    {joinAvailable && <button type="button" onClick={openJoin} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition-colors hover:bg-orange/90"><Users className="h-3.5 w-3.5" /> Join tournament</button>}
+                    <div className="overview-schedule-timing mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(tournament.start_date)}</p><p className="mt-1 text-[10px] text-vapor">All teams must be match ready.</p></div><Countdown value={tournament.start_date} now={now} status={tournament.status} expiredLabel="Starting" /></div>
+                    {joinAvailable && <button type="button" onClick={openJoin} className="overview-join mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-xs font-black"><Users className="h-3.5 w-3.5" /> Join tournament</button>}
                   </div>
                 </div>
               </section>
 
               <section>
                 <h2 className="mb-3 text-base font-black">Details</h2>
-                <div className="grid gap-x-8 rounded-xl border border-white/[0.07] bg-card/35 px-5 md:grid-cols-2">
+                <div className="overview-panel grid gap-x-8 px-5 md:grid-cols-2">
                   <div><DetailRow icon={Gamepad2} label="Format" value={tournament.team_size || "1v1"} /><DetailRow icon={Globe2} label="Region" value={tournament.region?.toUpperCase() || "NA + EU"} /><DetailRow icon={CalendarDays} label="Starts" value={formatShortDate(tournament.start_date)} /><DetailRow icon={Users} label="Size" value={`${tournament.max_teams || "Open"} teams`} /></div>
                   <div><DetailRow icon={Monitor} label="Game" value={gameName} /><DetailRow icon={Layers3} label="Mode" value={modeName} /><DetailRow icon={ShieldCheck} label="Platform" value={tournament.platform || "Cross platform"} /><DetailRow icon={Trophy} label="Bracket" value={String(tournament.bracket_type || "Single elimination").replace(/_/g, " ")} /></div>
                 </div>
@@ -619,13 +604,13 @@ export default function TournamentOverview() {
             <aside className="space-y-5">
               <section>
                 <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-black">Participants</h2><button type="button" onClick={() => setActiveTab("participants")} className="text-[9px] font-black uppercase tracking-wider text-orange hover:text-orange/80">View all</button></div>
-                <div className="rounded-xl border border-white/[0.07] bg-card/45 p-4">
+                <div className="overview-panel overview-participant-count p-4">
                   <div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/10 text-cyan"><Users className="h-4 w-4" /></span><div><p className="font-mono text-lg font-black text-white">{tournament.registered_teams || participants.length}<span className="text-vapor">/{tournament.max_teams || "∞"}</span></p><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Registered teams</p></div></div>
                 </div>
               </section>
               <section>
                 <h2 className="mb-3 text-sm font-black">Requirements</h2>
-                <div className="overflow-hidden rounded-xl border border-white/[0.07] bg-card/45 px-4">
+                <div className="overview-panel overflow-hidden px-4">
                   <DetailRow icon={Globe2} label="Region" value={tournament.region?.toUpperCase() || "NA + EU"} />
                   <DetailRow icon={Users} label="Team size" value={`${rosterSize(tournament.team_size)} players`} />
                   <DetailRow icon={Trophy} label="Entry" value={entryLabel(tournament)} />
@@ -648,18 +633,18 @@ export default function TournamentOverview() {
                     type="button"
                     onClick={() => setSelectedParticipantId(selected ? null : participant.id)}
                     aria-expanded={selected}
-                    className={`group flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${selected ? "border-cyan/40 bg-cyan/[0.08]" : "border-white/[0.07] bg-card/40 hover:border-cyan/25 hover:bg-cyan/[0.04]"}`}
+                    className="overview-panel overview-participant group flex items-center gap-3 p-4 text-left transition-all"
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan/10 font-mono text-xs font-black text-cyan">#{participant.seed || index + 1}</span>
                     <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black">{participant.team_name || participant.player_name || `Team ${index + 1}`}</span><span className="mt-1 block text-[10px] text-vapor">{participant.members?.length || participant.player_names?.length || rosterSize(tournament.team_size)} player roster · View players</span></span>
                     <ChevronRight className={`h-4 w-4 shrink-0 text-vapor transition-transform group-hover:text-cyan ${selected ? "rotate-90 text-cyan" : ""}`} />
                   </button>
                 );
-              }) : <div className="col-span-full rounded-xl border border-dashed border-white/10 px-5 py-14 text-center text-sm text-vapor">No teams registered yet.</div>}
+              }) : <div className="overview-panel overview-empty col-span-full px-5 py-14 text-center text-sm text-vapor">No teams registered yet.</div>}
             </div>
 
             {selectedParticipant && (
-              <section className="mt-5 overflow-hidden rounded-xl border border-cyan/20 bg-card/50">
+              <section className="overview-panel mt-5 overflow-hidden">
                 <header className="flex items-center justify-between gap-4 border-b border-cyan/15 bg-cyan/[0.05] px-5 py-4">
                   <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Team roster</p><h2 className="mt-1 text-lg font-black text-white">{selectedParticipant.team_name || selectedParticipant.player_name || "Tournament team"}</h2></div>
                   <button type="button" onClick={() => setSelectedParticipantId(null)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan" aria-label="Close roster"><X className="h-4 w-4" /></button>
@@ -676,7 +661,7 @@ export default function TournamentOverview() {
           </div>
         )}
         {activeTab === "rules" && (
-          <div className="mt-7 rounded-xl border border-white/[0.07] bg-card/40 p-6"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Tournament rules</p><h2 className="mt-2 text-xl font-black">Format and fair play</h2><div className="mt-5 whitespace-pre-wrap text-sm leading-7 text-vapor">{tournament.rules || tournament.rules_text || tournament.description || "This event follows the Topfragg competitive rules, match reporting process, and dispute policy."}</div><Link to="/rules" className="mt-6 inline-flex rounded-lg border border-white/10 bg-secondary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:border-orange/25 hover:text-orange">View platform rules</Link></div>
+          <div className="overview-panel overview-rules mt-7 p-6"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Tournament rules</p><h2 className="mt-2 text-xl font-black">Format and fair play</h2><div className="mt-5 whitespace-pre-wrap text-sm leading-7 text-vapor">{tournament.rules || tournament.rules_text || tournament.description || "This event follows the Topfragg competitive rules, match reporting process, and dispute policy."}</div><Link to="/rules" className="mt-6 inline-flex rounded-lg border border-white/10 bg-secondary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:border-orange/25 hover:text-orange">View platform rules</Link></div>
         )}
       </div>
 
