@@ -4,11 +4,10 @@ import { DollarSign, Flame, Globe2, Search, Trophy, TrendingUp, Users } from "lu
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
-import { leaderboardQueryOptions } from "@/hooks/useCompetitionLeaderboard";
+import { leaderboardQueryOptions, loadLeaderboardPlayers, useLeaderboardAvatars } from "@/hooks/useCompetitionLeaderboard";
 import CompetitionHero from "@/components/competition/CompetitionHero";
 import { getRankForElo } from "@/lib/ranks";
 import UserBadges from "@/components/ui/UserBadges";
-import PageLoader from "@/components/ui/PageLoader";
 import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
 import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
@@ -31,8 +30,8 @@ function PlayerName({ row }) {
   </div>;
 }
 
-function PlayerAvatar({ row }) {
-  return <span className="leaderboard-avatar"><PlayerAvatarImage user={row.user} src={row.user?.avatar_url} /></span>;
+function PlayerAvatar({ row, src }) {
+  return <span className="leaderboard-avatar"><PlayerAvatarImage user={row.user} src={src || row.user?.avatar_url} /></span>;
 }
 
 export default function Leaderboards() {
@@ -43,10 +42,11 @@ export default function Leaderboards() {
   const [searchQuery, setSearchQuery] = useState("");
   const standingsRef = useRef(null);
   const { user } = useAuth();
+  const userOrder = activeTab === "tournaments" ? "-tournament_wins" : activeTab === "wagers" ? "-total_wager_earnings" : "-created_date";
   const usersQuery = useQuery({
     ...leaderboardQueryOptions,
-    queryKey: ["leaderboard-users", user?.id, "-total_wager_earnings"],
-    queryFn: () => base44.entities.User.filter({}, "-total_wager_earnings", 500),
+    queryKey: ["leaderboard-users", user?.id, userOrder],
+    queryFn: () => loadLeaderboardPlayers(userOrder),
     enabled: Boolean(user?.id),
   });
   const rankedQuery = useQuery({
@@ -58,6 +58,7 @@ export default function Leaderboards() {
   const users = usersQuery.data || [];
   const rankedStats = rankedQuery.data || [];
   const loading = usersQuery.isPending || (activeTab === "elo" && rankedQuery.isPending);
+  const error = usersQuery.error || (activeTab === "elo" && rankedQuery.error);
   const rows = useMemo(() => {
     const selectedRegion = region.toLowerCase();
     const regionFilter = (row) => region === "Global" || String(row.region || "").toLowerCase() === selectedRegion;
@@ -81,6 +82,7 @@ export default function Leaderboards() {
         .filter(regionFilter)
         .map((row) => ({
           id: row.id,
+          userId: row.user_id,
           name: playerName(row),
           slug: playerSlug(row),
           tier: getRankForElo(row.elo).name,
@@ -97,6 +99,7 @@ export default function Leaderboards() {
     if (activeTab === "tournaments") {
       return userRows.map((row) => ({
         id: row.id,
+        userId: row.id,
         name: playerName(row),
         slug: playerSlug(row),
         tier: row.rank || "unranked",
@@ -110,6 +113,7 @@ export default function Leaderboards() {
 
     return userRows.map((row) => ({
       id: row.id,
+      userId: row.id,
       name: playerName(row),
       slug: playerSlug(row),
       tier: row.rank || "unranked",
@@ -127,6 +131,7 @@ export default function Leaderboards() {
     return query ? rankedRows.filter((row) => `${row.name} ${row.slug}`.toLowerCase().includes(query)) : rankedRows;
   }, [rankedRows, searchQuery]);
   const pagination = useLeaderboardPagination(filteredRows, `${activeTab}:${region}:${searchQuery}`);
+  const playerAvatars = useLeaderboardAvatars(pagination.visibleRows.map((row) => row.userId));
   const selectedTab = tabs.find((tab) => tab.key === activeTab);
   const podium = rankedRows.slice(0, 3);
   const changePage = (page) => {
@@ -140,8 +145,6 @@ export default function Leaderboards() {
     return next;
   });
 
-  if (loading) return <PageLoader label="Loading leaderboards" />;
-
   return (
     <div className="leaderboard-page competition-surface page-shell" data-competition={activeTab === "elo" ? "ranked" : activeTab}>
       <div className="page-container">
@@ -154,11 +157,11 @@ export default function Leaderboards() {
           <label className="leaderboard-region"><Globe2 size={14} /><span>Region</span><select value={region} onChange={(event) => setRegion(event.target.value)}>{regions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         </div>
 
-        {pagination.page === 1 && !searchQuery.trim() && podium.length > 0 && (
+        {!loading && !error && pagination.page === 1 && !searchQuery.trim() && podium.length > 0 && (
           <section className="leaderboard-podium" aria-label={`${region} top three players`}>
             {podium.map((row) => <article key={row.id} className="leaderboard-champion" data-place={row.rank}>
               <div className="leaderboard-champion-place"><Trophy size={15} /> #{row.rank}</div>
-              <div className="leaderboard-champion-player"><PlayerAvatar row={row} /><div className="min-w-0"><PlayerName row={row} /><p className="leaderboard-player-detail">{row.tier} · {row.region}</p></div></div>
+              <div className="leaderboard-champion-player"><PlayerAvatar row={row} src={playerAvatars[row.userId]} /><div className="min-w-0"><PlayerName row={row} /><p className="leaderboard-player-detail">{row.tier} · {row.region}</p></div></div>
               <div className="leaderboard-champion-score"><strong>{row.display}</strong><span>{selectedTab.metric}</span></div>
             </article>)}
           </section>
@@ -180,7 +183,7 @@ export default function Leaderboards() {
               {pagination.visibleRows.map((row) => (
                 <div role="row" key={row.id} className="leaderboard-columns leaderboard-row">
                   <span role="cell" className="leaderboard-rank" data-place={row.rank}>#{row.rank}</span>
-                  <div role="cell" className="leaderboard-player-cell"><PlayerAvatar row={row} /><div className="min-w-0"><PlayerName row={row} /><p className="leaderboard-mobile-detail">{row.region} · {row.tier} · {row.streak} streak</p></div></div>
+                  <div role="cell" className="leaderboard-player-cell"><PlayerAvatar row={row} src={playerAvatars[row.userId]} /><div className="min-w-0"><PlayerName row={row} /><p className="leaderboard-mobile-detail">{row.region} · {row.tier} · {row.streak} streak</p></div></div>
                   <span role="cell" className="leaderboard-tier leaderboard-desktop">{row.tier}</span>
                   <span role="cell" className="leaderboard-location leaderboard-desktop">{row.region}</span>
                   <span role="cell" className="leaderboard-streak leaderboard-desktop"><Flame size={13} className={row.streak >= 5 ? "text-orange" : "text-vapor"} />{row.streak}</span>
@@ -189,7 +192,7 @@ export default function Leaderboards() {
               ))}
             </div>
           </div>
-          {filteredRows.length === 0 && <div className="leaderboard-empty"><Users size={26} strokeWidth={1.5} /><strong>{rankedRows.length ? "No players found" : "The ladder starts here"}</strong><p>{rankedRows.length ? "Try another player name or change the region." : "Rankings appear when players start competing in this region."}</p></div>}
+          {loading ? <p role="status" className="px-5 py-12 text-center text-sm text-vapor">Loading standings…</p> : error ? <div role="alert" className="leaderboard-empty"><strong>Standings could not be loaded.</strong><button type="button" onClick={() => { void usersQuery.refetch(); if (activeTab === "elo") void rankedQuery.refetch(); }} className="site-hover rounded-lg border border-cyan/25 px-4 py-2 text-xs font-bold text-cyan">Try again</button></div> : filteredRows.length === 0 && <div className="leaderboard-empty"><Users size={26} strokeWidth={1.5} /><strong>{rankedRows.length ? "No players found" : "The ladder starts here"}</strong><p>{rankedRows.length ? "Try another player name or change the region." : "Rankings appear when players start competing in this region."}</p></div>}
           {filteredRows.length > 0 && <LeaderboardPagination {...paginationProps} />}
         </section>
       </div>

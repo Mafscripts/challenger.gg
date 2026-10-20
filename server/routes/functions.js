@@ -11,6 +11,8 @@ import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../ad
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { playerAvatarFor } from "../lib/playerAvatars.js";
+import { getLeaderboardPlayers, getLeaderboardAvatars, getFreeEightsLeaderboard } from "../leaderboard-players.js";
+import { readLeaderboardSnapshot, invalidateLeaderboardSnapshots } from "../leaderboard-cache.js";
 import { xpTeamMatchWhere } from "../lib/xpTeamMatches.js";
 import { ensureUserRecords, hashPassword, publicUser, updateUserIdentity } from "../auth.js";
 import { publicStaffPresentation } from "../../src/lib/roles.js";
@@ -10625,9 +10627,10 @@ const handlers = {
   getFreeEightsOverview: async (req) => ({ ...await getFreeEightsOverview(prisma, req.user.id, req.body.all_games === true ? null : eightsGameId(req.body.game_id)), current_user: req.user }),
   getFreeEightsStandings: async (req) => {
     const gameId = eightsGameId(req.body.game_id);
-    const rows = await prisma.eightsStats.findMany({ orderBy: { free_eights_elo: "desc" }, take: 10000 });
-    return { success: true, rows: rows.filter((row) => eightsGameId(row.metadata?.game_id) === gameId).slice(0, 500).map(serializeRow) };
+    return { success: true, rows: await getFreeEightsLeaderboard(prisma, gameId) };
   },
+  getLeaderboardPlayers: async (req) => ({ success: true, rows: await getLeaderboardPlayers(prisma, req.body.order) }),
+  getLeaderboardAvatars: async (req) => ({ success: true, avatars: await getLeaderboardAvatars(prisma, req.body.user_ids) }),
   getFreeEightsGames: async () => {
     const row = await prisma.mapPool.findUnique({ where: { id: EIGHTS_CONFIG_ID } });
     return { success: true, games: await loadEightsGames(prisma), version: row?.updated_date.toISOString() || "default" };
@@ -10791,7 +10794,12 @@ router.post("/:name", requireAuth, async (req, res, next) => {
         code: "PUBLIC_COMMERCE_DISABLED",
       });
     }
-    const result = await handler(req);
+    const name = req.params.name;
+    const snapshotKey = name === "getXPStandings" || name === "getMoneyEightsStandings" ? name
+      : name === "getFreeEightsStandings" ? `${name}:${eightsGameId(req.body.game_id)}`
+        : name === "getLeaderboardPlayers" ? `${name}:${String(req.body.order || "-created_date")}` : null;
+    const result = snapshotKey ? await readLeaderboardSnapshot(snapshotKey, () => handler(req)) : await handler(req);
+    if (!snapshotKey && result?.success !== false && !/^(get|list|search|check|find|validate|preview)/i.test(name)) invalidateLeaderboardSnapshots();
     res.json(hasRole(req.user, "admin") ? result : publicStaffPresentation(result));
   } catch (error) {
     next(error);

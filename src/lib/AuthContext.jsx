@@ -30,10 +30,22 @@ export const AuthProvider = ({ children }) => {
       queryClientInstance.setQueriesData({ queryKey: ["leaderboard-users"] }, (players) => (
         Array.isArray(players) ? players.map((player) => player.id === detail.userId ? { ...player, ...patch } : player) : players
       ));
+      if (detail.avatarUrl !== undefined) queryClientInstance.setQueriesData({ queryKey: ["leaderboard-avatars"] }, (avatars) => (
+        avatars && Object.hasOwn(avatars, detail.userId) ? { ...avatars, [detail.userId]: detail.avatarUrl } : avatars
+      ));
     };
     window.addEventListener("topfragg:profile-updated", refreshProfile);
     return () => window.removeEventListener("topfragg:profile-updated", refreshProfile);
   }, [user?.id]);
+
+  useEffect(() => {
+    // Score updates happen in matchrooms too, while the ladder is unmounted.
+    const refresh = () => { void queryClientInstance.invalidateQueries({ predicate: ({ queryKey }) => (
+      ["leaderboard-users", "leaderboard-avatars", "leaderboard-trophies", "competition-standings"].includes(queryKey[0])
+    ) }); };
+    window.addEventListener("topfragg:standings-updated", refresh);
+    return () => window.removeEventListener("topfragg:standings-updated", refresh);
+  }, []);
 
   useEffect(() => {
     const blocked = (event) => { setNetworkRestriction(event.detail); setIsLoadingAuth(false); setAuthChecked(true); };

@@ -6,9 +6,30 @@ const emptyRows = [];
 export const leaderboardQueryOptions = {
   staleTime: 15_000,
   gcTime: 5 * 60_000,
-  refetchOnMount: "always",
+  refetchOnMount: true,
   refetchOnWindowFocus: false,
 };
+
+export async function loadLeaderboardPlayers(order) {
+  const response = await base44.functions.invoke("getLeaderboardPlayers", { order });
+  if (!response.data?.success) throw new Error(response.data?.error || "Players could not be loaded.");
+  return response.data.rows || [];
+}
+
+export function useLeaderboardAvatars(userIds, enabled = true) {
+  const { user } = useAuth();
+  const ids = [...new Set(userIds.filter(Boolean))].sort();
+  return useQuery({
+    ...leaderboardQueryOptions,
+    queryKey: ["leaderboard-avatars", user?.id, ids.join("|")],
+    queryFn: async () => {
+      const response = await base44.functions.invoke("getLeaderboardAvatars", { user_ids: ids });
+      if (!response.data?.success) throw new Error(response.data?.error || "Player photos could not be loaded.");
+      return response.data.avatars || {};
+    },
+    enabled: Boolean(user?.id && ids.length && enabled),
+  }).data || {};
+}
 
 export default function useCompetitionLeaderboard(mode, gameId) {
   const { user } = useAuth();
@@ -17,7 +38,7 @@ export default function useCompetitionLeaderboard(mode, gameId) {
   const users = useQuery({
     ...leaderboardQueryOptions,
     queryKey: ["leaderboard-users", user?.id, userOrder],
-    queryFn: () => base44.entities.User.filter({}, userOrder, 500),
+    queryFn: () => loadLeaderboardPlayers(userOrder),
     enabled,
   });
   const standings = useQuery({

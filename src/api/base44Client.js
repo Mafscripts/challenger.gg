@@ -31,6 +31,8 @@ const readOnlyFunctions = new Set([
   "getFreeEightsOverview",
   "getFreeEightsPlayerStats",
   "getFreeEightsStandings",
+  "getLeaderboardPlayers",
+  "getLeaderboardAvatars",
   "getMoneyEightsStandings",
   "getXPStandings",
   "getCompetitionTrophyCounts",
@@ -527,6 +529,10 @@ export const base44 = {
       if (!readOnlyFunctions.has(name)) {
         entityCache.clear();
         invalidateMeCache();
+        if (data?.success !== false && !/^(get|list|search|check|find|validate|preview)/i.test(name)
+          && /(score|result|resolve|reset|revert|grant|premium|role|wallet)/i.test(name)) {
+          window.dispatchEvent(new CustomEvent("topfragg:standings-updated"));
+        }
       }
       notifyCancelledMatchResponse(data, name);
       notifyMatchPostedResponse(data, name);
