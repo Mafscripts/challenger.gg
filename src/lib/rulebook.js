@@ -223,7 +223,7 @@ export const ruleSections = [
       "Profanity, hate speech, harassment, threats, sexual content and targeted abuse are prohibited.",
       "Do not spam repeated messages, advertisements, referral links or unrelated content.",
       "Never share passwords, payment information, private addresses or other sensitive personal information.",
-      "Moderators, admins, super admins and the CEO may remove messages and issue temporary or permanent chat bans.",
+      "Moderators and administrators may remove messages and issue temporary or permanent chat bans.",
       "Attempting to bypass the multilingual language filter may result in a chat ban.",
     ],
   },

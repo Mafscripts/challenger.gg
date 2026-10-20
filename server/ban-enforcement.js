@@ -134,7 +134,7 @@ export const restrictionDetails = (access) => {
   return {
     code: access.code,
     account_id: user?.id,
-    reason: access.ban?.metadata?.reason || (access.code === "ACCOUNT_SUSPENDED" ? latest?.reason : user?.ban_reason) || latest?.reason || "Please contact the CEO team for more information.",
+    reason: access.ban?.metadata?.reason || (access.code === "ACCOUNT_SUSPENDED" ? latest?.reason : user?.ban_reason) || latest?.reason || "Please contact the admin team for more information.",
     expires_at: access.ban?.metadata?.expires_date || (access.code === "ACCOUNT_SUSPENDED" ? user?.metadata?.suspended_until : user?.metadata?.ban_expires) || null,
     issued_at: access.ban?.created_date || latest?.date || null,
     account_name: user?.display_name || user?.username || "Your account",

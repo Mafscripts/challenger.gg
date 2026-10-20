@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { User, Lock, Save, Loader2, Crown, Coins, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-
-const usernamePattern = /^[a-z0-9_]{3,20}$/;
+import { displayNameHint, displayNamePattern, usernameHint, usernamePattern } from "@/lib/accountNames";
 
 export default function AccountSection({ user, onUserUpdate }) {
   const [username, setUsername] = useState(user?.username || "");
@@ -48,12 +47,12 @@ export default function AccountSection({ user, onUserUpdate }) {
     if (!usernamePattern.test(normalizedUsername)) {
       setIdentityResult({
         success: false,
-        message: "Username must be 3-20 characters and use only letters, numbers, or underscore.",
+        message: usernameHint,
       });
       return;
     }
-    if (!cleanDisplayName) {
-      setIdentityResult({ success: false, message: "Display name is required." });
+    if (cleanDisplayName !== originalName && !displayNamePattern.test(cleanDisplayName)) {
+      setIdentityResult({ success: false, message: displayNameHint });
       return;
     }
 
@@ -127,7 +126,7 @@ export default function AccountSection({ user, onUserUpdate }) {
               maxLength={20}
               className="w-full px-4 py-2.5 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
             />
-            <p className="text-[10px] text-vapor mt-1">3-20 characters: letters, numbers, underscore.</p>
+            <p className="text-[10px] text-vapor mt-1">Unique, 3–20 characters: letters, numbers, _ and - only.</p>
             <div className="mt-2 flex items-start gap-2 rounded-lg border border-white/5 bg-white/[0.025] px-3 py-2.5">
               {isPrivileged ? (
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan" />
@@ -146,7 +145,7 @@ export default function AccountSection({ user, onUserUpdate }) {
                 </p>
                 <p className="mt-0.5 text-[9px] leading-relaxed text-vapor">
                   {isPrivileged
-                    ? "Admin, moderator, super admin and CEO accounts are not limited."
+                    ? "Staff accounts are not limited."
                     : isPremium
                       ? "Premium members get one free username change per calendar month."
                       : "Your balance: " + Number(user?.credits || 0) + " credits."}
@@ -163,6 +162,7 @@ export default function AccountSection({ user, onUserUpdate }) {
               maxLength={60}
               className="w-full px-4 py-2.5 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
             />
+            <p className="text-[10px] text-vapor mt-1">Unique, 1–60 characters: letters, numbers, _ and - only.</p>
           </div>
         </div>
 

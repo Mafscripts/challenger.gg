@@ -21,6 +21,7 @@ import "@/styles/navbar-profile.css";
 import "@/styles/topbar.css";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { effectiveRoleForUser, getPublicRoleConfig } from "@/lib/roles";
 import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
 
 const ADMIN_DISPUTE_POPUP_MAX_AGE_MS = 12 * 60 * 60 * 1000;
@@ -350,7 +351,7 @@ export default function Navbar() {
   const accountName = user?.display_name || user?.full_name || user?.username || user?.email || "Account";
   const canSeeAdminLink = isStaffUser(user || authUser);
   const accountRole = canSeeAdminLink
-    ? (staffRoles.has(user?.admin_role) ? user.admin_role : user?.role || "Staff").replaceAll("_", " ")
+    ? getPublicRoleConfig(effectiveRoleForUser(user || authUser)).label
     : "Player";
   const matchHistoryPath = "/my-matches?view=history";
 

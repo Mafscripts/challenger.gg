@@ -30,6 +30,7 @@ import {
 import RankBadge from "@/components/ui/RankBadge";
 import RarityBadge from "@/components/ui/RarityBadge";
 import RoleBadge from "@/components/ui/RoleBadge";
+import { publicRoleBadges } from "@/lib/roles";
 import UserBadges from "@/components/ui/UserBadges";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
@@ -431,7 +432,7 @@ export default function Profile() {
   const losses = Math.max(Number(profile?.total_losses ?? 0), rankedLosses + wagerLosses, rankedLosses, wagerLosses);
   const totalMatches = wins + losses;
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
-  const badges = useMemo(() => (Array.isArray(user?.badges) ? user.badges : []).filter((badge) => badge?.type !== "challengers"), [user]);
+  const badges = useMemo(() => publicRoleBadges(user?.badges).filter((badge) => badge?.type !== "challengers"), [user]);
   const isOwnProfile = Boolean(currentUser?.id && user?.id && currentUser.id === user.id);
   const isVerifiedPlayer = Boolean(user?.verified_player || user?.is_verified_player || badges.some((badge) => badge.type === "verified_player"));
   const isPremium = Boolean(user?.is_premium && (!user?.premium_expires || new Date(user.premium_expires).getTime() > Date.now()));

@@ -43,8 +43,8 @@ export async function setAdminUserVpnAccess(db, actor, body = {}) {
     } } });
     await tx.notification.create({ data: { metadata: {
       user_id: id, title: body.allowed ? "VPN access approved" : "VPN exception removed",
-      message: body.allowed ? "A CEO approved VPN access for your account. You can sign in again. Existing account restrictions still apply."
-        : "A CEO removed your VPN exception. Use your regular internet connection to sign in.",
+      message: body.allowed ? "An admin approved VPN access for your account. You can sign in again. Existing account restrictions still apply."
+        : "An admin removed your VPN exception. Use your regular internet connection to sign in.",
       type: "system", is_read: false, action_url: "/login",
     } } });
     return { success: true, user };

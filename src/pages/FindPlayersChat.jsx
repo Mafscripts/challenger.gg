@@ -15,24 +15,23 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import { publicRole } from "@/lib/roles";
 
 const quickTags = ["LFG", "Ranked", "Wager", "Tournament", "EU", "NA", "@Admin"];
 const chatEmojis = ["😀", "😂", "😍", "😎", "🤔", "😅", "😭", "😡", "👍", "👎", "👏", "🙏", "💪", "🔥", "❤️", "💯", "🎮", "🏆", "🎯", "⚔️", "🛡️", "👑", "✅", "❌", "🚀", "GG", "GL", "HF"];
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 
 const roleLabel = (role) => ({
-  ceo: "CEO",
   super_admin: "Super Admin",
   admin: "Admin",
   moderator: "Moderator",
-}[role] || "Player");
+}[publicRole(role)] || "Player");
 
 const roleClass = (role) => ({
-  ceo: "border-red-400/30 bg-red-400/10 text-red-300",
   super_admin: "border-red-400/25 bg-red-400/[0.08] text-red-300",
   admin: "border-pink-400/25 bg-pink-400/[0.08] text-pink-300",
   moderator: "border-yellow-400/25 bg-yellow-400/[0.08] text-yellow-300",
-}[role] || "border-white/10 bg-white/[0.04] text-vapor");
+}[publicRole(role)] || "border-white/10 bg-white/[0.04] text-vapor");
 
 const formatMessageTime = (value) => {
   const date = new Date(value || 0);

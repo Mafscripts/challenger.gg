@@ -2,6 +2,7 @@ import { Router } from "express";
 import { createEntity, deleteEntity, getEntity, listEntities, updateEntity } from "../entity.js";
 import { requireAuth } from "../middleware/auth.js";
 import { hasRole } from "../roles.js";
+import { publicStaffPresentation } from "../../src/lib/roles.js";
 
 const protectedMutationEntities = new Set([
   "Team",
@@ -51,6 +52,7 @@ const adminManagedEntities = new Set([
 ]);
 
 const roleFields = new Set(["role", "admin_role", "is_admin"]);
+const accountIdentityFields = ["username", "handle", "display_name", "full_name"];
 const balanceUserFields = new Set(["credits", "wallet_balance", "lifetime_earnings", "total_wager_earnings", "biggest_wager_win"]);
 const economyUserFields = new Set([
   "credits",
@@ -115,6 +117,14 @@ const participantIdentityValues = (participant) => {
 const router = Router();
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
+  if (String(req.params.entity).toLowerCase() === "user" && req.method === "PATCH"
+    && [...roleFields].some(key => Object.hasOwn(req.body || {}, key) || Object.hasOwn(req.body?.metadata || {}, key))) {
+    return res.status(403).json({ error: "Use the protected role management action." });
+  }
+  if (String(req.params.entity).toLowerCase() === "user" && req.method === "PATCH"
+    && accountIdentityFields.some(key => Object.hasOwn(req.body || {}, key) || Object.hasOwn(req.body?.metadata || {}, key))) {
+    return res.status(403).json({ error: "Change account names through Account Settings." });
+  }
   if (String(req.params.entity).toLowerCase() === "partyroom") return res.status(403).json({ error: "Use the Co-ed / Switcheroo endpoints" });
   if (["friendrequest", "friendship"].includes(String(req.params.entity).toLowerCase())) {
     return res.status(403).json({ error: "Use the protected friend endpoints" });
@@ -161,7 +171,7 @@ const redactIpData = (value) => {
   );
 };
 
-const protectIpVisibility = (req, value) => hasRole(req.user, "admin") ? value : redactIpData(value);
+const protectIpVisibility = (req, value) => hasRole(req.user, "admin") ? value : publicStaffPresentation(redactIpData(value));
 const privateOtherUserFields = new Set([
   "vpn_access_allowed",
   "email", "email_verified", "credits", "wallet_balance", "discord_user_id",
@@ -432,7 +442,7 @@ router.post("/:entity", requireAuth, async (req, res, next) => {
     if (req.params.entity === "Tournament" && !hasRole(req.user, "admin")) {
       return res.status(403).json({ error: "Admin or higher is required to create tournaments" });
     }
-    if (req.params.entity === "User" && !hasRole(req.user, "admin")) {
+    if (String(req.params.entity).toLowerCase() === "user") {
       return res.status(403).json({ error: "Accounts can only be created through registration" });
     }
     if (protectedMutationEntities.has(req.params.entity)) {

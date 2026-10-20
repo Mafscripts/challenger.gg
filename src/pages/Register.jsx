@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label";
 import { User, UserPlus, Mail, Lock, Loader2, Gift } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import TurnstileCheck from "@/components/TurnstileCheck";
-
-const usernamePattern = /^[a-z0-9_]{3,20}$/;
+import { displayNameHint, displayNamePattern, usernameHint, usernamePattern } from "@/lib/accountNames";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -53,11 +52,11 @@ export default function Register() {
     const normalizedUsername = username.trim().toLowerCase();
     const cleanDisplayName = displayName.trim();
     if (!usernamePattern.test(normalizedUsername)) {
-      setError("Username must be 3-20 characters and use only letters, numbers, or underscore");
+      setError(usernameHint);
       return;
     }
-    if (!cleanDisplayName) {
-      setError("Display name is required");
+    if (!displayNamePattern.test(cleanDisplayName)) {
+      setError(displayNameHint);
       return;
     }
     if (password !== confirmPassword) {
@@ -141,10 +140,12 @@ export default function Register() {
               className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(210,214,220,0.10)]"
               minLength={3}
               maxLength={20}
-              pattern="[a-z0-9_]{3,20}"
+              pattern={"[a-z0-9_\\-]{3,20}"}
+              aria-describedby="username-help"
               required
             />
           </div>
+          <p id="username-help" className="text-[10px] leading-4 text-vapor">Unique, 3–20 characters. Letters, numbers, _ and - only.</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide text-vapor">Display name</Label>
@@ -159,9 +160,12 @@ export default function Register() {
               onChange={(e) => setDisplayName(e.target.value)}
               className="pl-10 h-11 bg-input/90 border-white/10 transition-all duration-200 placeholder:text-vapor/70 focus-visible:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/25 focus-visible:shadow-[0_0_0_3px_rgba(210,214,220,0.10)]"
               maxLength={60}
+              pattern={"[A-Za-z0-9_\\-]{1,60}"}
+              aria-describedby="display-name-help"
               required
             />
           </div>
+          <p id="display-name-help" className="text-[10px] leading-4 text-vapor">Your public name must also be unique. Letters, numbers, _ and - only; no spaces or symbols.</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-vapor">Email</Label>

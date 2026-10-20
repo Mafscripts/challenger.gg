@@ -19,6 +19,25 @@ export const normalizeRole = (role) => {
 
 export const getRoleConfig = (role) => ROLES[normalizeRole(role)];
 
+// Public titles never reveal which Admin holds the private CEO permissions.
+// Permission checks continue to use normalizeRole/getRoleConfig above.
+export const publicRole = role => normalizeRole(role) === "ceo" ? "admin" : normalizeRole(role);
+export const getPublicRoleConfig = role => ROLES[publicRole(role)];
+export const publicRoleBadges = badges => (Array.isArray(badges) ? badges : []).map(badge => (
+  badge?.type === "ceo" ? { ...badge, type: "admin", name: "Admin" } : badge
+)).filter((badge, index, all) => badge?.type !== "admin" || all.findIndex(item => item?.type === "admin") === index);
+
+export function publicStaffPresentation(value) {
+  if (value instanceof Date) return value;
+  if (Array.isArray(value)) return value.map(publicStaffPresentation);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => {
+    if (["role", "admin_role", "sender_role", "sender_admin_role", "user_role"].includes(key) && item === "ceo") return [key, "admin"];
+    if (key === "badges") return [key, publicRoleBadges(item)];
+    return [key, publicStaffPresentation(item)];
+  }));
+}
+
 export const hasRolePower = (role, minimumRole) => {
   return getRoleConfig(role).power >= getRoleConfig(minimumRole).power;
 };
@@ -39,4 +58,4 @@ export const canManageWallets = (role) => hasRolePower(role, "admin");
 
 export const canViewUserIps = (role) => hasRolePower(role, "admin");
 
-export const canManageRoles = (role) => hasRolePower(role, "super_admin");
+export const canManageRoles = (role) => normalizeRole(role) === "ceo";

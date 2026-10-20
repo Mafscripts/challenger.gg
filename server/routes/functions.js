@@ -9,7 +9,8 @@ import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../a
 import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
-import { ensureUserRecords, hashPassword, publicUser } from "../auth.js";
+import { ensureUserRecords, hashPassword, publicUser, updateUserIdentity } from "../auth.js";
+import { publicStaffPresentation } from "../../src/lib/roles.js";
 import { hasRole, rolePower } from "../roles.js";
 import { knownUserIpAddresses } from "../ban-enforcement.js";
 import { containsBlockedLanguage } from "../profanity-filter.js";
@@ -10119,11 +10120,11 @@ async function moderateDispute(req) {
 }
 
 async function updateUserRole(req) {
-  assertStaff(req, "super_admin");
+  assertStaff(req, "ceo");
   const target = await prisma.user.findUnique({ where: { id: req.body.user_id } });
   if (!target) return { success: false, error: "User not found" };
   const nextRole = req.body.role || "user";
-  if (!rolePower[nextRole]) return { success: false, error: "Invalid role" };
+  if (!Object.hasOwn(rolePower, nextRole)) return { success: false, error: "Invalid role" };
   if (!canModifyUserRole(req.user.role, target.role)) {
     return { success: false, error: "Role hierarchy prevents modifying this account" };
   }
@@ -10132,8 +10133,9 @@ async function updateUserRole(req) {
   }
   const currentBadges = Array.isArray(target.metadata?.badges) ? target.metadata.badges : [];
   const specialBadges = currentBadges.filter((badge) => specialUserBadgeTypes.has(badge?.type));
+  const badgeRole = nextRole === "ceo" ? "admin" : nextRole;
   const roleBadges = nextRole !== "user"
-    ? [{ name: nextRole === "ceo" ? "CEO" : nextRole.replace("_", " "), type: nextRole }]
+    ? [{ name: badgeRole.replaceAll("_", " "), type: badgeRole }]
     : [];
   const user = await prisma.user.update({
     where: { id: target.id },
@@ -10536,10 +10538,8 @@ async function moderateUser(req) {
 }
 
 async function changeDisplayName(req) {
-  const displayName = String(req.body.display_name || "").trim().slice(0, 60);
-  if (!displayName) return { success: false, error: "Display name is required" };
-  const user = await prisma.user.update({ where: { id: req.user.id }, data: { display_name: displayName } });
-  return { success: true, user };
+  const user = await updateUserIdentity(req.user.id, { display_name: req.body.display_name }, req.user);
+  return { success: true, user: publicUser(user) };
 }
 
 const emptyCompetitionTrophyCounts = () => ({ gold: 0, silver: 0, bronze: 0, premium: 0, topfragg: 0, hosted: 0 });
@@ -10915,7 +10915,8 @@ router.post("/:name", requireAuth, async (req, res, next) => {
         code: "PUBLIC_COMMERCE_DISABLED",
       });
     }
-    res.json(await handler(req));
+    const result = await handler(req);
+    res.json(hasRole(req.user, "admin") ? result : publicStaffPresentation(result));
   } catch (error) {
     next(error);
   }

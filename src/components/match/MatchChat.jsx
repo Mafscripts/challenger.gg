@@ -5,7 +5,7 @@ import EmojiPicker from "@/components/chat/EmojiPicker";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { createMatchChatFeed } from "@/lib/matchChatFeed";
-import { effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
+import { effectiveRoleForUser, getPublicRoleConfig, publicRole } from "@/lib/roles";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const chatAccent = {
@@ -51,7 +51,6 @@ const displayMessageContent = (message, staff) => (
 );
 
 const staffChatTones = {
-  ceo: { badge: "border-green/25 bg-green/[0.08] text-green", name: "text-green", bubble: "border-green/20 bg-green/[0.035]" },
   super_admin: { badge: "border-pink-400/25 bg-pink-400/[0.08] text-pink-300", name: "text-pink-300", bubble: "border-pink-400/20 bg-pink-400/[0.035]" },
   admin: { badge: "border-[#ff3030]/60 bg-[#ff3030]/[0.12] text-[#ff3030]", name: "text-[#ff3030]", bubble: "border-[#ff3030]/45 bg-[#ff3030]/[0.06]" },
   moderator: { badge: "border-yellow-400/25 bg-yellow-400/[0.08] text-yellow-300", name: "text-yellow-300", bubble: "border-yellow-400/20 bg-yellow-400/[0.035]" },
@@ -59,8 +58,8 @@ const staffChatTones = {
 };
 
 function StaffChatMessage({ message, senderName, senderAvatar, compact, first }) {
-  const role = effectiveRoleForUser({ role: message.sender_role, admin_role: message.sender_admin_role || message.admin_role });
-  const label = role === "user" ? "Staff" : getRoleConfig(role).label;
+  const role = publicRole(effectiveRoleForUser({ role: message.sender_role, admin_role: message.sender_admin_role || message.admin_role }));
+  const label = role === "user" ? "Staff" : getPublicRoleConfig(role).label;
   const tone = staffChatTones[role] || staffChatTones.user;
   return (
     <article aria-label={`${label} message from ${senderName}`} className={`min-w-0 ${first ? "mt-0" : "mt-3"}`}>

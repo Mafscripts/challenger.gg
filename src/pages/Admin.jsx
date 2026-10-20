@@ -58,7 +58,7 @@ import PageLoader from "@/components/ui/PageLoader";
 import { useAdminConsoleData } from "@/hooks/useAdminConsoleData";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm } from "@/lib/tournamentGames";
-import { canAccessAdminPanel, canManageRoles, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig } from "@/lib/roles";
+import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig, hasRolePower } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
@@ -234,7 +234,7 @@ const defaultRankedStatsForm = {
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "users", label: "Users", icon: Users },
-  { id: "roles", label: "Roles", icon: KeyRound },
+  { id: "roles", label: "Roles", icon: KeyRound, ceoOnly: true },
   { id: "alerts", label: "Alerts", icon: BellRing },
   { id: "tickets", label: "Tickets", icon: Ticket },
   { id: "banAppeals", label: "Ban appeals", icon: Shield, ceoOnly: true },
@@ -1831,7 +1831,7 @@ export default function Admin() {
             <div className="mt-4"><RoleBadge role={currentRole} /></div>
           </div>
           <div className="space-y-1 p-2.5">
-            {tabs.filter((tab) => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || canManageRoles(currentRole))).map((tab) => (
+            {tabs.filter((tab) => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin"))).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -1850,7 +1850,7 @@ export default function Admin() {
           <label className="mb-4 block rounded-xl border border-border bg-card p-3 text-white lg:hidden">
             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-primary">Admin section</span>
             <select value={activeTab} onChange={(event) => setActiveTab(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[var(--arena-inset)] px-3 py-2.5 text-sm font-bold text-white">
-              {tabs.filter((tab) => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || canManageRoles(currentRole))).map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+              {tabs.filter((tab) => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin"))).map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
             </select>
           </label>
 
@@ -1913,7 +1913,7 @@ export default function Admin() {
                   ["System logs", data.auditCounts?.system ?? "…"],
                 ]} />
               </div>
-              {canManageRoles(currentRole) && (
+              {hasRolePower(currentRole, "super_admin") && (
                 <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-cyan/20 bg-cyan/[0.035] p-5">
                   <div><p className="text-sm font-black">Resets & Seasons</p><p className="mt-1 text-xs text-vapor">Manage money, credits, earnings, XP, ELO, records and trophies separately. Start new XP, Ranked and Free 8s seasons.</p></div>
                   <button type="button" onClick={() => setActiveTab("progression")} className="inline-flex items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan"><RotateCcw className="h-4 w-4" />Manage progression</button>
@@ -2396,7 +2396,7 @@ export default function Admin() {
                     </div>
                     <p className="text-xs text-vapor mt-1">Search a player and restore or deduct ELO. Every correction is recorded in the audit log.</p>
                   </div>
-                  {canManageRoles(currentRole) && (
+                  {hasRolePower(currentRole, "super_admin") && (
                     <button
                       type="button"
                       onClick={() => setActiveTab("progression")}

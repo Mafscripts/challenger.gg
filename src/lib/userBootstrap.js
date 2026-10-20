@@ -18,11 +18,11 @@ const cleanUsername = (value, fallback = "player") => {
     .split("@")[0]
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/[^a-z0-9_-]/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 20);
-  const username = cleaned || String(fallback || "player").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20) || "player";
+  const username = cleaned || String(fallback || "player").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 20) || "player";
   return username.length >= 3 ? username : `${username}___`.slice(0, 3);
 };
 
@@ -47,8 +47,8 @@ export async function bootstrapCurrentUser(options = {}) {
   }
 
   const displayName = options.display_name || displayNameFor(authUser, options.email);
-  const username = cleanUsername(options.username || authUser.username || authUser.email || options.email || authUser.id);
-  const handle = cleanUsername(options.handle || username).toLowerCase();
+  const username = String(options.username || authUser.username || cleanUsername(authUser.email || options.email || authUser.id)).trim().toLowerCase();
+  const handle = String(options.handle || authUser.handle || username).trim().toLowerCase();
 
   const payload = {
     username,

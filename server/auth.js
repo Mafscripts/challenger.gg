@@ -3,11 +3,11 @@ import bcrypt from "bcrypt";
 import { prisma } from "./prisma.js";
 import { createEntity, firstEntity, serializeRow, updateEntity } from "./entity.js";
 import { hasRole } from "./roles.js";
+import { displayNameHint, displayNamePattern, normalizeAccountName, usernameHint, usernamePattern } from "../src/lib/accountNames.js";
+import { ensureAccountNamesAvailable, lockAccountNames } from "./account-names.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const JWT_EXPIRES_IN = "7d";
-const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
-const DISPLAY_NAME_MAX_LENGTH = 60;
 const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
 
 export const safeUserMetadata = (metadata = {}) => {
@@ -23,16 +23,16 @@ export const cleanUsername = (value, fallback = "user") => {
     .split("@")[0]
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/[^a-z0-9_-]/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 20);
-  const fallbackCleaned = String(fallback || "user").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20) || "user";
+  const fallbackCleaned = String(fallback || "user").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 20) || "user";
   const username = cleaned || fallbackCleaned;
   return username.length >= 3 ? username : `${username}___`.slice(0, 3);
 };
 
-export const normalizeUsername = (value) => String(value || "").trim().toLowerCase();
+export const normalizeUsername = (value) => normalizeAccountName(value).toLowerCase();
 
 export const validateUsername = (value) => {
   const username = normalizeUsername(value);
@@ -41,8 +41,8 @@ export const validateUsername = (value) => {
     error.status = 400;
     throw error;
   }
-  if (!USERNAME_PATTERN.test(username)) {
-    const error = new Error("Username must be 3-20 characters and use only letters, numbers, or underscore");
+  if (!usernamePattern.test(username)) {
+    const error = new Error(usernameHint);
     error.status = 400;
     throw error;
   }
@@ -50,12 +50,13 @@ export const validateUsername = (value) => {
 };
 
 export const validateDisplayName = (value) => {
-  const displayName = String(value || "").trim().replace(/\s+/g, " ").slice(0, DISPLAY_NAME_MAX_LENGTH);
+  const displayName = normalizeAccountName(value);
   if (!displayName) {
     const error = new Error("Display name is required");
     error.status = 400;
     throw error;
   }
+  if (!displayNamePattern.test(displayName)) throw Object.assign(new Error(displayNameHint), { status: 400 });
   return displayName;
 };
 
@@ -111,19 +112,7 @@ export const hashPassword = (password) => bcrypt.hash(password, 12);
 export const verifyPassword = (password, hash) => bcrypt.compare(password, hash);
 
 export const ensureUsernameAvailable = async (username, userId) => {
-  const existingUsername = await prisma.user.findFirst({ where: { username } });
-  if (existingUsername && existingUsername.id !== userId) {
-    const error = new Error("Username is already taken");
-    error.status = 409;
-    throw error;
-  }
-
-  const existingHandle = await prisma.user.findFirst({ where: { handle: username } });
-  if (existingHandle && existingHandle.id !== userId) {
-    const error = new Error("Username is already taken");
-    error.status = 409;
-    throw error;
-  }
+  await ensureAccountNamesAvailable(prisma, [username], userId);
 };
 
 export const ensureUniqueValue = async (field, base, userId) => {
@@ -162,49 +151,46 @@ export const syncUserIdentityRecords = async (user) => {
 };
 
 export const ensureUserRecords = async (user, payload = {}) => {
-  let username = user.username;
-  if (payload.username) {
-    username = validateUsername(payload.username);
-    await ensureUsernameAvailable(username, user.id);
-  } else if (!username) {
-    username = await ensureUniqueValue("username", user.email || user.id, user.id);
-  }
-
-  const handle = payload.handle
-    ? await ensureUniqueValue("handle", payload.handle, user.id)
-    : (user.handle || await ensureUniqueValue("handle", username, user.id));
-  const display_name = payload.display_name
-    ? validateDisplayName(payload.display_name)
-    : displayNameFor(user, user.email);
-  const region = payload.region || user.region || "na";
-
-  const usersCount = await prisma.user.count();
-  const ceoExists = await prisma.user.findFirst({ where: { role: "ceo" } });
-  const shouldBeCeo = user.role === "ceo" || !ceoExists || usersCount <= 1;
-  const role = shouldBeCeo ? "ceo" : (user.role || "user");
-  const adminRole = shouldBeCeo ? "ceo" : user.admin_role;
-  const metadata = safeUserMetadata(user.metadata);
-  const existingBadges = Array.isArray(metadata.badges) ? metadata.badges : [];
-  const preservedBadges = existingBadges.filter((badge) => !roleBadgeTypes.has(badge?.type));
-  const roleBadges = role !== "user" ? [{ name: role === "ceo" ? "CEO" : role.replace("_", " "), type: role }] : [];
-
-  const updated = await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      username,
-      handle,
-      display_name,
-      region,
-      role,
-      admin_role: adminRole,
-      is_admin: role !== "user",
-      email_verified: user.email_verified === true,
-      metadata: {
-        ...metadata,
-        badges: [...roleBadges, ...preservedBadges],
-      },
-    },
+  const updated = await prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${user.id} FOR UPDATE`;
+    const current = await tx.user.findUnique({ where: { id: user.id } });
+    if (!current) throw Object.assign(new Error("User not found"), { status: 404 });
+    // Bootstrap may fill missing identity fields, but is not a second rename API.
+    for (const field of ["username", "handle", "display_name"]) {
+      if (current[field] && Object.hasOwn(payload, field) && normalizeUsername(payload[field]) !== normalizeUsername(current[field])) {
+        throw Object.assign(new Error("Change your username or display name in Account Settings."), { status: 400 });
+      }
+    }
+    let username = current.username || (payload.username ? validateUsername(payload.username) : await ensureUniqueValue("username", current.email || current.id, current.id));
+    // Automatically generated legacy handles also respect the shared namespace.
+    if (!current.username && !payload.username) {
+      const base = username;
+      for (let suffix = 0; ; suffix += 1) {
+        username = suffix ? `${base.slice(0, 20 - String(suffix).length - 1)}_${suffix}` : base;
+        await lockAccountNames(tx, [username]);
+        try { await ensureAccountNamesAvailable(tx, [username], current.id); break; }
+        catch (error) { if (error.code !== "ACCOUNT_NAME_TAKEN" || suffix >= 100) throw error; }
+      }
+    }
+    const handle = current.handle || username;
+    const display_name = current.display_name || (payload.display_name ? validateDisplayName(payload.display_name) : username);
+    const newNames = [!current.username && username, !current.handle && handle, !current.display_name && display_name].filter(Boolean);
+    await lockAccountNames(tx, newNames);
+    await ensureAccountNamesAvailable(tx, newNames, current.id);
+    // Completing a profile never grants or changes staff permissions.
+    const role = current.role || "user";
+    const metadata = safeUserMetadata(current.metadata);
+    const preservedBadges = (Array.isArray(metadata.badges) ? metadata.badges : []).filter(badge => !roleBadgeTypes.has(badge?.type));
+    const badgeRole = role === "ceo" ? "admin" : role;
+    const roleBadges = role !== "user" ? [{ name: badgeRole.replaceAll("_", " "), type: badgeRole }] : [];
+    return tx.user.update({ where: { id: current.id }, data: {
+      username, handle, display_name, region: payload.region || current.region || "na", role,
+      admin_role: current.admin_role,
+      is_admin: role !== "user", email_verified: current.email_verified === true,
+      metadata: { ...metadata, badges: [...roleBadges, ...preservedBadges] },
+    } });
   });
+  const { username, handle, display_name, region } = updated;
 
   const wallet = await firstEntity("Wallet", { user_id: updated.id }) || await createEntity("Wallet", {
     user_id: updated.id,
@@ -277,95 +263,44 @@ const isSameUtcMonth = (left, right = new Date()) => {
 };
 
 export const updateUserIdentity = async (userId, payload = {}, actor = null) => {
-  const data = {};
-  const changingUsername = Object.prototype.hasOwnProperty.call(payload, "username");
-
-  if (changingUsername) {
-    const username = validateUsername(payload.username);
-    const current = await prisma.user.findUnique({ where: { id: userId } });
-    if (!current) {
-      const error = new Error("User not found");
-      error.status = 404;
-      throw error;
-    }
-
-    if (normalizeUsername(current.username) !== username) {
-      await ensureUsernameAvailable(username, userId);
-
-      const privileged = actor && hasRole(actor, "moderator");
-      const premium = isActivePremium(current);
-      const metadata = safeUserMetadata(current.metadata);
-      const lastPremiumChange = metadata.username_change_last_at;
-      const premiumUsedThisMonth = isSameUtcMonth(lastPremiumChange);
-      const nowIso = new Date().toISOString();
-
-      if (privileged) {
-        data.username = username;
-        data.handle = username;
-      } else if (premium) {
-        if (premiumUsedThisMonth) {
-          const error = new Error("Premium members can change their username once per month. Your next free change is available next month.");
-          error.status = 429;
-          throw error;
+  let charged = false;
+  const user = await prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+    const current = await tx.user.findUnique({ where: { id: userId } });
+    if (!current) throw Object.assign(new Error("User not found"), { status: 404 });
+    const data = {}, names = [];
+    if (Object.hasOwn(payload, "username")) {
+      const username = validateUsername(payload.username);
+      if (normalizeUsername(current.username) !== username) {
+        data.username = username; data.handle = username; names.push(username);
+        const privileged = actor && hasRole(actor, "moderator");
+        const metadata = safeUserMetadata(current.metadata);
+        if (!privileged) {
+          if (isActivePremium(current)) {
+            if (isSameUtcMonth(metadata.username_change_last_at)) throw Object.assign(new Error("Premium members can change their username once per month. Your next free change is available next month."), { status: 429 });
+          } else {
+            if (Number(current.credits || 0) < 5) throw Object.assign(new Error("Changing your username costs 5 credits. You need at least 5 credits."), { status: 400 });
+            data.credits = { decrement: 5 }; charged = true;
+          }
+          data.metadata = { ...metadata, username_change_last_at: new Date().toISOString() };
         }
-        data.username = username;
-        data.handle = username;
-        data.metadata = { ...metadata, username_change_last_at: nowIso };
-      } else {
-        const currentCredits = Number(current.credits || 0);
-        if (currentCredits < 5) {
-          const error = new Error("Changing your username costs 5 credits. You need at least 5 credits.");
-          error.status = 400;
-          throw error;
-        }
-        data.username = username;
-        data.handle = username;
-        data.credits = { decrement: 5 };
-        data.metadata = { ...metadata, username_change_last_at: nowIso };
       }
     }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(payload, "display_name")) {
-    data.display_name = validateDisplayName(payload.display_name);
-  }
-
-  if (Object.keys(data).length === 0) {
-    return prisma.user.findUnique({ where: { id: userId } });
-  }
-
-  let user;
-  if (data.credits?.decrement === 5) {
-    const result = await prisma.user.updateMany({
-      where: { id: userId, credits: { gte: 5 } },
-      data,
-    });
-    if (result.count !== 1) {
-      const error = new Error("Changing your username costs 5 credits. You need at least 5 credits.");
-      error.status = 400;
-      throw error;
+    if (Object.hasOwn(payload, "display_name")) {
+      // Existing legacy names are not silently renamed by an unrelated save.
+      if (normalizeAccountName(payload.display_name) !== current.display_name) {
+        data.display_name = validateDisplayName(payload.display_name); names.push(data.display_name);
+      }
     }
-    user = await prisma.user.findUnique({ where: { id: userId } });
-  } else {
-    user = await prisma.user.update({ where: { id: userId }, data });
-  }
-
-  if (changingUsername && normalizeUsername(user.username) === normalizeUsername(payload.username)) {
-    const current = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, credits: true, metadata: true } });
-    const premium = isActivePremium(user);
-    const privileged = actor && hasRole(actor, "moderator");
-    if (!privileged && !premium) {
-      await createEntity("CreditTransaction", {
-        user_id: userId,
-        amount: -5,
-        type: "username_change",
-        description: "Username change",
-        created_date: new Date().toISOString(),
-        balance_after: current?.credits ?? user.credits,
-      }).catch(() => null);
-    }
-  }
-
+    if (!Object.keys(data).length) return current;
+    await lockAccountNames(tx, names);
+    await ensureAccountNamesAvailable(tx, names, userId);
+    return tx.user.update({ where: { id: userId }, data });
+  });
+  if (charged) await createEntity("CreditTransaction", {
+    user_id: userId, amount: -5, type: "username_change", description: "Username change",
+    created_date: new Date().toISOString(), balance_after: user.credits,
+  }).catch(() => null);
   await syncUserIdentityRecords(user);
   return user;
 };
@@ -392,28 +327,20 @@ export const createUserWithPassword = async ({ email, password, username: rawUse
     throw error;
   }
 
-  await ensureUsernameAvailable(username);
-
-  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-  if (existing) {
-    const error = new Error("Email already registered");
-    error.status = 409;
+  await ensureAccountNamesAvailable(prisma, [username, cleanDisplayName]);
+  const password_hash = await hashPassword(password);
+  try {
+    return await prisma.$transaction(async tx => {
+      await lockAccountNames(tx, [username, cleanDisplayName]);
+      await ensureAccountNamesAvailable(tx, [username, cleanDisplayName]);
+      if (await tx.user.findUnique({ where: { email: normalizedEmail } })) throw Object.assign(new Error("Email already registered"), { status: 409 });
+      return tx.user.create({ data: {
+        email: normalizedEmail, password_hash, username, handle: username, display_name: cleanDisplayName,
+        role: "user", admin_role: null, is_admin: false, email_verified: false,
+      } });
+    });
+  } catch (error) {
+    if (error.code === "P2002") throw Object.assign(new Error(String(error.meta?.target || "").includes("email") ? "Email already registered" : "This name is already taken. Choose a different name."), { status: 409 });
     throw error;
   }
-
-  const user = await prisma.user.create({
-    data: {
-      email: normalizedEmail,
-      password_hash: await hashPassword(password),
-      username,
-      handle: username,
-      display_name: cleanDisplayName,
-      role: "user",
-      admin_role: null,
-      is_admin: false,
-      email_verified: false,
-    },
-  });
-
-  return prisma.user.findUnique({ where: { id: user.id } });
 };
