@@ -29,7 +29,8 @@
     "ios:sync": "npm run ios:build && cap sync ios",
     "ios:open": "cap open ios",
     "ios:assets": "node scripts/ios-assets.mjs",
-    "ios:check": "node --test tests/mobile-oauth.test.mjs tests/mobile-environment.test.mjs"
+    "ios:check": "node --test tests/mobile-oauth.test.mjs tests/mobile-environment.test.mjs",
+    "ios:api-check": "node scripts/check-native-api.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",

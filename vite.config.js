@@ -5,7 +5,7 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const native = mode === 'ios';
-  const nativeApi = process.env.VITE_NATIVE_API_URL || 'https://topfragg.gg/api';
+  const nativeApi = process.env.VITE_NATIVE_API_URL || 'https://www.topfragg.gg/api';
   if (native) {
     const url = new URL(nativeApi);
     if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.pathname !== '/api') {

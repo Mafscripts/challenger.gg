@@ -7,7 +7,7 @@ import fs from "node:fs/promises";
 import viteConfig from "../vite.config.js";
 
 test("native localhost uses HTTPS production API, web development stays local", () => {
-  assert.equal(resolveApiBase(undefined, true, "localhost"), "https://topfragg.gg/api");
+  assert.equal(resolveApiBase(undefined, true, "localhost"), "https://www.topfragg.gg/api");
   assert.equal(resolveApiBase(undefined, false, "localhost"), "http://localhost:4000/api");
   assert.equal(resolveApiBase(undefined, false, "topfragg.gg"), "/api");
   assert.equal(resolveApiBase("https://staging.topfragg.gg/api/", true), "https://staging.topfragg.gg/api");
@@ -42,5 +42,5 @@ test("native build mode embeds the app flag and HTTPS API without changing web m
   assert(!code.includes("import.meta.env"));
   const module = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
   assert.equal(module.isNativeBuild, true);
-  assert.match(module.apiBase, /^https:\/\//);
+  assert.equal(module.apiBase, resolveApiBase(process.env.VITE_NATIVE_API_URL, true));
 });

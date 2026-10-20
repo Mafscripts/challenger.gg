@@ -11,6 +11,8 @@ workflows:
         script: npm ci --no-audit --no-fund
       - name: Check mobile authentication and configuration
         script: npm run ios:check
+      - name: Check live iPhone API connection
+        script: npm run ios:api-check
       - name: Bundle the app and sync iOS
         script: npm run ios:sync
       - name: Build for iPhone simulator without signing
@@ -41,6 +43,8 @@ workflows:
         script: npm ci --no-audit --no-fund
       - name: Check mobile authentication and configuration
         script: npm run ios:check
+      - name: Check live iPhone API connection
+        script: npm run ios:api-check
       - name: Bundle the app and sync iOS
         script: npm run ios:sync
       - name: Apply Apple signing profiles

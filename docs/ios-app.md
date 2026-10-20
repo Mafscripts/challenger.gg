@@ -2,7 +2,7 @@
 
 This repository contains an iPhone project using Capacitor 8, with bundled React screens, TopFragg artwork, safe-area spacing, bottom navigation and browser-based account connections. The user registered the bundle ID `gg.topfragg.app` and created the **Topfragg.gg** app record in App Store Connect.
 
-On October 19, 2026, the user supplied a Codemagic success screenshot for commit `af27476` on `codex/gray-ui-rework`: **TopFragg iPhone simulator check** completed successfully on a Mac mini M2 in 2 minutes 4 seconds and produced `TopFragg-simulator.zip`. This confirms the Xcode simulator build and packaging passed. Runtime behavior has not yet been verified on a simulator or real iPhone; a signed device build, TestFlight upload and deployment of the updated production API remain unconfirmed.
+The simulator and signed Codemagic builds have passed. The user installed build **1.0 (2)** through TestFlight, deployed the production API and supplied a successful missing-ticket check (HTTP 410). The first real-device login showed **Load failed**: a live probe confirmed `https://topfragg.gg/api/auth/login` redirects its preflight to `http://www.topfragg.gg/...`, while the canonical `https://www.topfragg.gg/api` responds directly with correct native CORS headers. The app now defaults to the canonical HTTPS host; an updated signed build and real-device login retest are required. The external testing group is currently waiting for Apple's beta review.
 
 ## What you do next on Windows
 
@@ -18,7 +18,8 @@ Codemagic and Apple account setup are separate from developing this code. No pai
 
 - Deploy the updated API before using account Connect buttons in the app. It adds `POST /api/mobile/oauth/ticket` and `GET /api/mobile/oauth/start`.
 - Set `TOPFRAGG_PUBLIC_URL` to the actual canonical HTTPS website origin. Existing Google, Kick, Twitch and Discord callback URLs stay on the HTTPS website.
-- The native app uses `https://topfragg.gg/api` by default. If the API redirects to `www` or runs on a different canonical host, set the **build-time** `VITE_NATIVE_API_URL` to its final HTTPS `/api` URL in Codemagic. It must match the website origin used by the ticket endpoint; avoid cross-host redirects that drop Authorization headers.
+- The native app uses `https://www.topfragg.gg/api` by default. If the API runs on a different canonical host, set the **build-time** `VITE_NATIVE_API_URL` to its final HTTPS `/api` URL in Codemagic. Remove or update any older override pointing to `https://topfragg.gg/api`. It must match the website origin used by the ticket endpoint; use `TOPFRAGG_PUBLIC_URL=https://www.topfragg.gg` on the server for native account connections. Avoid redirects: preflights can fail, HTTP downgrades are blocked by iOS, and cross-host redirects can drop Authorization headers.
+- Codemagic now checks the live API health and login preflight before bundling. The build fails if this host redirects, cannot be reached, or does not allow native POST requests with Content-Type and Authorization. This checks connectivity without using an account or password; a successful build still needs a real iPhone login test.
 - When `CORS_ORIGIN` restricts web origins, the API additionally accepts the exact `capacitor://localhost` origin. `NATIVE_APP_ORIGINS` can override this list. Native requests still require authentication and all existing restrictions.
 - OAuth launch tickets expire after 90 seconds, are single-use, and never put the player's bearer token into a URL. The server rechecks account restrictions when the browser opens the ticket. Tickets are stored in process memory: with multiple API workers or replicas, use sticky routing or replace the ticket store with a shared atomic store before enabling this flow. A restart expires in-flight attempts safely.
 - Browser callbacks currently finish on the website. After connecting, tap **Done** to return to the app; the app refreshes the connected account. The separate browser might ask you to sign in to view the website's Settings page, but linking itself was authorized by the launch ticket. Automatic return via verified universal links is a later improvement.
@@ -28,6 +29,7 @@ No database migration is needed for this app foundation. Never copy the server `
 ## Local development commands
 
 - `npm run ios:check` — targeted configuration and OAuth security checks; works on Windows.
+- `npm run ios:api-check` — read-only live HTTPS/CORS checks for the API used by the next native build.
 - `npm run ios:assets` — regenerate the icon and launch images from the existing TopFragg vector logo.
 - `npm run ios:build` — bundle the app into the separate ignored `dist-ios` folder. Does not run Prisma generation or change the normal web build.
 - `npm run ios:sync` — bundle and copy the app/plugins into the existing iOS project.

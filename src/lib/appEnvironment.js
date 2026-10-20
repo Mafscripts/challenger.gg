@@ -2,7 +2,7 @@
 export function resolveApiBase(configured, native, hostname = "") {
   const value = String(configured || "").replace(/\/+$/, "");
   if (native) {
-    const url = new URL(value || "https://topfragg.gg/api");
+    const url = new URL(value || "https://www.topfragg.gg/api");
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || url.pathname !== "/api") {
       throw new Error("The iPhone app requires an HTTPS API URL ending in /api.");
     }
@@ -14,7 +14,7 @@ export function resolveApiBase(configured, native, hostname = "") {
 
 export const isNativeBuild = import.meta.env?.VITE_NATIVE_APP === "true";
 export const apiBase = resolveApiBase(import.meta.env?.VITE_API_URL, isNativeBuild, typeof window === "undefined" ? "" : window.location.hostname);
-export const websiteOrigin = isNativeBuild ? new URL(apiBase).origin : (typeof window === "undefined" ? "https://topfragg.gg" : window.location.origin);
+export const websiteOrigin = isNativeBuild ? new URL(apiBase).origin : (typeof window === "undefined" ? "https://www.topfragg.gg" : window.location.origin);
 
 export function currentPublicUrl() {
   return isNativeBuild ? new URL(`${window.location.pathname}${window.location.search}${window.location.hash}`, websiteOrigin).href : window.location.href;

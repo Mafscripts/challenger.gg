@@ -54,7 +54,7 @@ app.use("/api/twitch", twitchRoutes);
 app.use("/api/stream-accounts", streamAccountRoutes);
 app.use("/api/mobile/oauth", createMobileOAuthRouter({
   authenticate: requireAuth,
-  origin: () => process.env.TOPFRAGG_PUBLIC_URL || process.env.APP_URL || "https://topfragg.gg",
+  origin: () => process.env.TOPFRAGG_PUBLIC_URL || process.env.APP_URL || "https://www.topfragg.gg",
   starters: {
     discord: (req, res, next) => beginDiscordConnection(req, res, next, { redirect: true }),
     twitch: (req, res, next) => beginTwitchConnection(req, res, next, { redirect: true }),
