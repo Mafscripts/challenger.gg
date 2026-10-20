@@ -49,18 +49,23 @@
 .competition-hero-actions button.competition-action-pill:not(.competition-game-switch), .competition-hero-actions .competition-actions > button:first-child:not(.competition-game-switch) { color: #06202b; border-color: rgb(var(--comp-accent) / .7); background: linear-gradient(110deg, rgb(var(--comp-accent)), rgb(var(--comp-accent) / .8)); box-shadow: 0 3px 20px rgb(var(--comp-accent) / .1); }
 .competition-hero-actions button:disabled { box-shadow: none; }
 .competition-mode-nav { display: flex; gap: 9px; overflow-x: auto; padding: 2px 1px 5px; scrollbar-width: thin; scrollbar-color: #254154 transparent; }
-.competition-mode-link { position: relative; display: flex; align-items: center; justify-content: center; flex: 1 0 144px; gap: 9px; min-height: 64px; padding: 12px; border: 1px solid rgb(var(--comp-accent) / .18); border-radius: 11px; background: linear-gradient(120deg, rgb(var(--comp-accent) / .04), #101c28); color: #9fb7c8; font-size: 11px; font-weight: 800; white-space: nowrap; transition: border-color .16s, color .16s, box-shadow .16s, background .16s; }
-.competition-nav-icon { display: grid; place-items: center; flex-shrink: 0; width: 33px; height: 33px; border: 1px solid rgb(var(--comp-accent) / .16); border-radius: 8px; color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .07); }
+.competition-mode-link { position: relative; display: flex; align-items: center; justify-content: center; flex: 1 0 144px; gap: 9px; min-height: 64px; padding: 12px; border: 1px solid rgb(var(--comp-accent) / .18); border-radius: 11px; background: linear-gradient(120deg, rgb(var(--comp-accent) / .04), #101c28); color: #9fb7c8; font-size: 11px; font-weight: 800; white-space: nowrap; transition: border-color .22s, color .22s; }
+.competition-nav-icon { display: grid; place-items: center; flex-shrink: 0; width: 33px; height: 33px; border: 1px solid rgb(var(--comp-accent) / .16); border-radius: 8px; color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .07); transition: border-color .22s, background-color .22s; }
 .competition-mode-link[aria-current] { color: rgb(var(--comp-accent)); border-color: rgb(var(--comp-accent) / .55); background: rgb(var(--comp-accent) / .08); box-shadow: inset 0 -2px rgb(var(--comp-accent) / .8); }
-.competition-mode-link:is(:hover, :focus-visible) { border-color: rgb(var(--comp-accent) / .9); color: #f4faff; background: linear-gradient(120deg, rgb(var(--comp-accent) / .24), #142b3a); box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .35), inset 0 -3px rgb(var(--comp-accent)); }
+.competition-mode-link:is(:hover, :focus-visible) { border-color: rgb(var(--comp-accent) / .9); color: #f4faff; }
 .competition-mode-link:is(:hover, :focus-visible) .competition-nav-icon { border-color: rgb(var(--comp-accent) / .65); background: rgb(var(--comp-accent) / .22); }
-.competition-mode-link[aria-current]:is(:hover, :focus-visible) { color: rgb(var(--comp-accent)); background: linear-gradient(120deg, rgb(var(--comp-accent) / .3), #142b3a); }
+.competition-mode-link[aria-current]:is(:hover, :focus-visible) { color: rgb(var(--comp-accent)); }
+/* Animate an overlay instead of swapping gradients or moving the hit area. */
+.competition-mode-link, .competition-section-tabs > :is(button, a) { position: relative; isolation: isolate; overflow: hidden; }
+.competition-mode-link::before, .competition-section-tabs > :is(button, a)::before { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgb(var(--comp-accent) / .12), rgb(var(--comp-accent) / .26)); transform: scaleX(0); transform-origin: left; transition: transform .38s cubic-bezier(.22, .61, .36, 1); pointer-events: none; content: ""; }
+.competition-mode-link::after, .competition-section-tabs > :is(button, a)::after { position: absolute; inset: auto 0 0; height: 3px; background: rgb(var(--comp-accent)); transform: scaleX(0); transform-origin: left; transition: transform .38s cubic-bezier(.22, .61, .36, 1); pointer-events: none; content: ""; }
+.competition-mode-link:is(:hover, :focus-visible)::before, .competition-mode-link:is(:hover, :focus-visible)::after, .competition-section-tabs > :is(button, a):is(:hover, :focus-visible)::before, .competition-section-tabs > :is(button, a):is(:hover, :focus-visible)::after { transform: scaleX(1); }
 .competition-stat-card { --stat-accent: 20 216 255; position: relative; display: flex; align-items: center; gap: 15px; min-width: 0; min-height: 96px; overflow: hidden; padding: 18px; border: 1px solid rgb(var(--stat-accent) / .22); border-radius: 12px; background: linear-gradient(120deg, rgb(var(--stat-accent) / .07), #111d29 85%); box-shadow: inset 0 1px #ffffff06; transition: border-color .2s, transform .2s; }
 .competition-stat-card[data-tone="green"] { --stat-accent: 52 239 159; }
 .competition-stat-card[data-tone="purple"] { --stat-accent: 180 149 255; }
 .competition-stat-card[data-tone="gold"] { --stat-accent: 255 200 82; }
 .competition-stat-card::after { position: absolute; inset: 15px auto 15px 0; width: 2px; border-radius: 2px; background: rgb(var(--stat-accent) / .6); content: ""; }
-.competition-stat-card:hover { transform: translateY(-2px); border-color: rgb(var(--stat-accent) / .45); }
+.competition-stat-card:hover { border-color: rgb(var(--stat-accent) / .45); }
 .competition-stat-card > div:first-child { border: 1px solid rgb(var(--stat-accent) / .22); border-radius: 11px; color: rgb(var(--stat-accent)); background: rgb(var(--stat-accent) / .09); }
 .competition-stat-icon { display: grid; place-items: center; flex-shrink: 0; width: 43px; height: 43px; }
 .competition-stat-card > div:nth-child(2) { min-width: 0; }
@@ -69,19 +74,21 @@
 .competition-stat-detail { margin-top: 4px; color: #7997aa; font-size: 10px; line-height: 1.5; }
 .competition-ladder-panel { border-color: rgb(var(--comp-accent) / .22); box-shadow: 0 12px 35px #0002; }
 .competition-ladder-panel > div:first-child { background: linear-gradient(100deg, rgb(var(--comp-accent) / .055), transparent); }
-.competition-standing-row { position: relative; transition: background .2s; }
+.competition-standing-row { position: relative; isolation: isolate; transition: box-shadow .22s; }
 .competition-ladder .competition-standing-row[data-podium="1"] { background: linear-gradient(90deg, #ffc8520d, transparent 60%); box-shadow: inset 3px 0 #ffc85266; }
 .competition-standing-row[data-podium="2"] { box-shadow: inset 3px 0 #b5d4e44d; }
 .competition-standing-row[data-podium="3"] { box-shadow: inset 3px 0 #d99d6355; }
 .competition-standing-row[data-self] { outline: 1px solid rgb(var(--comp-accent) / .18); outline-offset: -1px; }
 .competition-ladder .competition-standing-row[data-self] { background: rgb(var(--comp-accent) / .07); }
-.competition-ladder .competition-standing-row:is(:hover, :focus-within) { background: rgb(var(--comp-accent) / .16); box-shadow: inset 4px 0 rgb(var(--comp-accent)), inset 0 1px rgb(var(--comp-accent) / .25), inset 0 -1px rgb(var(--comp-accent) / .25); }
+.competition-ladder .competition-standing-row::before { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgb(var(--comp-accent) / .08), rgb(var(--comp-accent) / .18)); transform: scaleX(0); transform-origin: left; transition: transform .38s cubic-bezier(.22, .61, .36, 1); pointer-events: none; content: ""; }
+.competition-ladder .competition-standing-row:is(:hover, :focus-within)::before { transform: scaleX(1); }
+.competition-ladder .competition-standing-row:is(:hover, :focus-within) { box-shadow: inset 4px 0 rgb(var(--comp-accent)), inset 0 1px rgb(var(--comp-accent) / .25), inset 0 -1px rgb(var(--comp-accent) / .25); }
 .competition-ladder .competition-standing-row:is(:hover, :focus-within) .leaderboard-avatar { border-color: rgb(var(--comp-accent) / .7); }
 .competition-match-row { transition: background .2s, box-shadow .2s; }
 .competition-match-row:is(:hover, :focus-within) { background: rgb(var(--comp-accent, 20 216 255) / .16); box-shadow: inset 4px 0 rgb(var(--comp-accent, 20 216 255)); }
-.competition-section-tabs > :is(button, a) { transition: color .16s, background .16s, box-shadow .16s; }
+.competition-section-tabs > :is(button, a) { transition: color .22s, box-shadow .22s; }
 .competition-section-tabs > [aria-pressed="true"] { color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .13); box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .3); }
-.competition-section-tabs > :is(button, a):is(:hover, :focus-visible) { color: #f4faff; background: rgb(var(--comp-accent) / .24); box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .65); }
+.competition-section-tabs > :is(button, a):is(:hover, :focus-visible) { color: #f4faff; box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .65); }
 .competition-hero:not(.account-page-hero) .competition-hero-actions .competition-actions .competition-action-pill:not(.overview-leave):not(:disabled):is(:hover, :focus-visible), .competition-surface .competition-filter-pill:not(:disabled):is(:hover, :focus-visible) { color: #f4faff; border-color: rgb(var(--comp-accent) / .85); background: rgb(var(--comp-accent) / .2); box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .25); }
 /* Keep filled action labels dark enough to read on their accent background. */
 .competition-hero:not(.account-page-hero) .competition-hero-actions .competition-actions button.competition-action-pill:not(.competition-game-switch):not(.overview-leave):not(:disabled):is(:hover, :focus-visible), .competition-hero:not(.account-page-hero) .competition-hero-actions .competition-actions > button:first-child:not(.competition-game-switch):not(.overview-leave):not(:disabled):is(:hover, :focus-visible) { color: #06202b; background: rgb(var(--comp-accent)); box-shadow: 0 0 0 2px rgb(var(--comp-accent) / .3), 0 4px 20px rgb(var(--comp-accent) / .2); }
@@ -141,4 +148,4 @@
   .competition-stat-value { font-size: 18px; }
 }
 @media (hover: none) { .competition-mode-link:hover, .competition-stat-card:hover, .competition-surface .tournament-list-card:hover { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .competition-hero *, .competition-hero *::before, .competition-hero *::after, .competition-mode-link, .competition-section-tabs > :is(button, a), .competition-stat-card, .competition-standing-row, .competition-match-row, .competition-empty-state svg, .competition-surface .tournament-list-card { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .competition-hero *, .competition-hero *::before, .competition-hero *::after, .competition-mode-link, .competition-mode-link::before, .competition-mode-link::after, .competition-nav-icon, .competition-section-tabs > :is(button, a), .competition-section-tabs > :is(button, a)::before, .competition-section-tabs > :is(button, a)::after, .competition-stat-card, .competition-standing-row, .competition-standing-row::before, .competition-match-row, .competition-empty-state svg, .competition-surface .tournament-list-card { animation: none !important; transition: none !important; } }
