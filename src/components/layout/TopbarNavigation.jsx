@@ -1,12 +1,10 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { Activity, ChevronDown } from "lucide-react";
 import { topbarNavGroups } from "./navigationGroups";
 import { NavbarDestinations, NavbarMatches } from "./NavbarMenus";
 
 export default function TopbarNavigation({ isActive, openMenu, matchesOpen, onMenuToggle, onMatchesToggle, onClose, activeMatches, userId, historyPath }) {
   return <div className="clean-primary-nav hidden xl:flex" aria-label="Main navigation">
-    <Link to="/dashboard" className="clean-nav-link" aria-current={isActive("/dashboard") ? "page" : undefined} onClick={onClose}>Home</Link>
     {topbarNavGroups.map((group) => {
       const open = openMenu === group.label;
       const active = group.items.some((item) => isActive(item.path));
