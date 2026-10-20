@@ -187,6 +187,10 @@ const auth = {
     return result;
   },
 
+  deleteAccount(payload) {
+    return apiFetch("/auth/delete-account", { method: "POST", body: payload });
+  },
+
   getRegistrationConfig() {
     return apiFetch("/auth/registration-config");
   },
@@ -419,6 +423,11 @@ export const base44 = {
     },
   },
   auth,
+  community: {
+    blocked: () => apiFetch("/community/blocked"),
+    block: (userId, blocked) => apiFetch("/community/block", { method: "POST", body: { user_id: userId, blocked } }),
+    report: (messageId, reason) => apiFetch("/community/report", { method: "POST", body: { message_id: messageId, reason } }),
+  },
   discord: {
     membership() { requireToken(); return apiFetch("/discord/membership", { dedupe: false }); },
     connect(returnTo) {

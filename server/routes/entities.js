@@ -5,6 +5,7 @@ import { hasRole } from "../roles.js";
 import { publicStaffPresentation } from "../../src/lib/roles.js";
 
 const protectedMutationEntities = new Set([
+  "BlockedUser",
   "Team",
   "TeamMember",
   "TeamInvite",
@@ -71,6 +72,7 @@ const discordIdentityFields = new Set([
   "discord_connected_at",
 ]);
 const sensitiveReadEntities = new Set([
+  "BlockedUser",
   "MapPool",
   "DiscordEventDispatch",
   "WalletTransaction",

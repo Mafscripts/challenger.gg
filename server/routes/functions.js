@@ -15,6 +15,7 @@ import { publicStaffPresentation } from "../../src/lib/roles.js";
 import { hasRole, rolePower } from "../roles.js";
 import { knownUserIpAddresses } from "../ban-enforcement.js";
 import { containsBlockedLanguage } from "../profanity-filter.js";
+import { messagingBlocked } from "../community-safety.js";
 import { issueRankedVoiceToken } from "../ranked-voice.js";
 import { issueEightsLiveToken, publishEightsLobbyUpdate } from "../eights-live.js";
 import { ensureReferralCode, ensureReferralProgram } from "../referrals.js";
@@ -6031,6 +6032,9 @@ async function sendMessage(req) {
   if (recipientId === req.user.id) return { success: false, error: "You cannot message yourself" };
   if (!content) return { success: false, error: "Message is required" };
   if (content.length > 1000) return { success: false, error: "Message is too long" };
+
+  if (containsBlockedLanguage(content)) return { success: false, error: "Message blocked by the community language filter" };
+  if (await messagingBlocked(prisma, req.user.id, recipientId)) return { success: false, error: "Messaging is not available between these accounts" };
 
   const recipient = await prisma.user.findUnique({ where: { id: recipientId } });
   if (!recipient || recipient.is_banned) return { success: false, error: "Player is not available" };

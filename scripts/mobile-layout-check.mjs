@@ -11,8 +11,9 @@ await fs.mkdir(output, { recursive: true });
 const browser = await chromium.launch({ channel: "msedge", headless: true });
 const results = [], errors = [];
 const quick = process.argv.includes("--quick");
+const quickWidth = Number(process.argv.find(value => value.startsWith("--width="))?.slice(8) || 390);
 try {
-  const viewports = quick ? [{ width: 390, height: 844 }] : [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 430, height: 932 }, { width: 768, height: 1024 }, { width: 1440, height: 1000 }];
+  const viewports = quick ? [{ width: quickWidth, height: quickWidth <= 320 ? 568 : 844 }] : [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 430, height: 932 }, { width: 768, height: 1024 }, { width: 1440, height: 1000 }];
   for (const viewport of viewports) {
     const context = await browser.newContext({ viewport, isMobile: viewport.width < 768, hasTouch: viewport.width < 768 });
     const state = desktopExample();
@@ -30,8 +31,12 @@ try {
       const url = new URL(route.request().url());
       let data;
       if (url.pathname.endsWith("/public/home-overview")) data = { stats: {}, tournaments: [], ladder: [], matches: [] };
+      else if (url.pathname.endsWith("/community/blocked")) data = { user_ids: [] };
       else if (url.pathname.endsWith("/functions/getDirectMessages")) data = { success: true, messages: [message], users: state.users.map(user => ({ ...user, name: user.display_name })) };
-      else if (url.pathname.endsWith("/functions/searchMessageRecipients")) data = { success: true, users: state.users.map(user => ({ ...user, name: user.display_name })) };
+      else if (url.pathname.endsWith("/functions/searchMessageRecipients")) {
+        const requested = route.request().postDataJSON()?.recipient_id;
+        data = { success: true, users: state.users.filter(user => requested ? user.id === requested : user.id !== state.user.id).map(user => ({ ...user, name: user.display_name })) };
+      }
       else if (url.pathname.endsWith("/entities/Message")) data = url.searchParams.get("filter")?.includes("tournament_invitation") ? [] : [message];
       else if (url.pathname.endsWith("/entities/Notification")) data = [notification];
       else return route.fallback();
@@ -51,6 +56,7 @@ try {
           return false;
         };
         return { viewport: { width: innerWidth, height: window.visualViewport?.height || innerHeight }, documentWidth: document.documentElement.scrollWidth,
+          dialogOverflow: [...document.querySelectorAll(".arena-dialog")].filter(visible).filter(el => el.scrollWidth > el.clientWidth + 1).map(el => ({ width: el.clientWidth, contentWidth: el.scrollWidth })),
           elements: Object.fromEntries(selectors.map(selector => { const el = document.querySelector(selector); return [selector, el && visible(el) ? rect(el) : null]; })),
           overflow: [...document.querySelectorAll("main a,main button,main input,main textarea,main h1,main h2,main [role=dialog]")].filter(visible).filter(el => { const r = el.getBoundingClientRect(); return (r.x < -1 || r.right > innerWidth + 1) && !inHorizontalScroller(el); }).slice(0, 8).map(el => ({ tag: el.tagName, text: el.textContent?.trim().slice(0, 60), ...rect(el) })) };
       }, selectors);
@@ -63,6 +69,10 @@ try {
     }
     await page.goto(state.origin + "/messages?conversation=" + state.users[1].id, { waitUntil: "networkidle" });
     await inspect("message-thread", [".messages-workspace", ".messages-composer", ".native-tab-bar"]);
+    await page.getByRole("button", { name: "Report or block player" }).click();
+    await page.getByRole("button", { name: "Send report", exact: true }).waitFor({ state: "visible" });
+    await inspect("conversation-safety", ["[role=dialog]"]);
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Open emoji picker" }).click();
     await inspect("emoji-picker", [".chat-emoji-popover"]);
     await page.keyboard.press("Escape");
@@ -99,6 +109,11 @@ try {
     await page.getByRole("textbox", { name: "Search players by username or display name" }).fill("Tutorial");
     await inspect("recipient-search", [".messages-recipient-dialog"]);
     await page.keyboard.press("Escape");
+    await page.goto(state.origin + "/settings#settings-delete-account", { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Delete my account", exact: true }).click();
+    await inspect("account-deletion-confirmation", ["[role=alertdialog]"]);
+    if (await page.getByRole("button", { name: "Permanently delete", exact: true }).isEnabled()) throw new Error("Account deletion must require confirmation and password.");
+    await page.getByRole("button", { name: "Keep account", exact: true }).click();
     await page.goto(state.origin + "/dashboard", { waitUntil: "networkidle" });
     for (const [label, selector] of [["Open messages", "#nav-messages-preview"], ["Open notifications", "#nav-notifications-preview"], ["Open account menu for", "#nav-account-menu"]]) {
       await page.getByRole("button", { name: new RegExp(label) }).click();
@@ -111,7 +126,7 @@ try {
 } finally {
   await browser.close();
   await fs.writeFile(path.join(output, "report.json"), JSON.stringify({ results, errors }, null, 2));
-  const overflows = results.filter(row => row.documentWidth > row.viewport.width || row.overflow.length).map(({name,width,overflow}) => ({name,width,overflow}));
+  const overflows = results.filter(row => row.documentWidth > row.viewport.width || row.overflow.length || row.dialogOverflow.length).map(({name,width,overflow,dialogOverflow}) => ({name,width,overflow,dialogOverflow}));
   const clipped = results.flatMap(row => Object.entries(row.elements).flatMap(([selector, rect]) => {
     if (!rect || selector === ".native-tab-bar" || selector === ".app-topbar" || selector === ".messages-workspace") return [];
     const bottom = row.elements[".native-tab-bar"]?.y ?? row.viewport.height;

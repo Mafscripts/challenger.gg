@@ -6,6 +6,7 @@ export const settingGroups = [
       { label: "Custom name color", description: "Choose how your name looks", icon: "Palette", target: "settings-name-color", keywords: "appearance animated premium style" },
       { label: "Game rank", description: "Manage your screenshot rank", icon: "Award", target: "settings-rank", keywords: "verification screenshot skill activision" },
       { label: "Password", description: "Update your sign-in password", icon: "KeyRound", target: "settings-password", keywords: "login security change reset" },
+      { label: "Delete account", description: "Permanently remove your account", icon: "ShieldCheck", target: "settings-delete-account", keywords: "delete removal privacy data erase close" },
     ],
   },
   {

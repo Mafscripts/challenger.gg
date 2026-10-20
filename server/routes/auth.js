@@ -23,8 +23,19 @@ import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
 import { getAnimatedNameFreeTrial } from "../freeTrial.js";
 import { registrationSecurityConfig, verifyRegistrationTurnstile } from "../turnstile.js";
 import { assertNetworkAccess, isNetworkAccessError, networkProtectionEnabled } from "../network-access.js";
+import { deleteOwnAccount } from "../admin-users.js";
 
 const router = Router();
+const deletionAttempts = new Map();
+router.post("/delete-account", requireAuth, async (req, res, next) => {
+  const now = Date.now();
+  for (const [id, attempts] of deletionAttempts) if (now - attempts.started > 15 * 60_000) deletionAttempts.delete(id);
+  const attempt = deletionAttempts.get(req.user.id) || { started: now, count: 0 };
+  if (attempt.count >= 5) return res.status(429).json({ error: "Please wait 15 minutes before trying account deletion again." });
+  attempt.count++; deletionAttempts.set(req.user.id, attempt);
+  try { const result = await deleteOwnAccount(prisma, req.user, req.body || {}, verifyPassword); deletionAttempts.delete(req.user.id); res.json(result); }
+  catch (error) { next(error); }
+});
 const VERIFICATION_TTL_MS = 10 * 60 * 1000;
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
 const VERIFICATION_RESEND_WINDOW_MS = 60 * 60 * 1000;

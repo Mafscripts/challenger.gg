@@ -18,6 +18,7 @@ import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
 import EmojiPicker from "@/components/chat/EmojiPicker";
+import ConversationSafety from "@/components/chat/ConversationSafety";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { clearSentDraft, createDirectMessageInbox } from "@/lib/directMessageInbox";
 import "@/styles/messages.css";
@@ -434,6 +435,7 @@ export default function Messages() {
                 <button type="button" onClick={() => setMobileChatOpen(false)} className="messages-back" aria-label="Back to conversations"><ArrowLeft size={18} /></button>
                 <PlayerAvatar player={activePlayer} />
                 <div className="messages-thread-identity"><div><PlayerName player={activePlayer} /><UserBadges user={activePlayer} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></div><p>@{activePlayer.handle || activePlayer.username || "player"}</p></div>
+                <ConversationSafety playerId={activePlayer.id} userId={currentUser.id} messages={activeMessages} />
                 <Link to={`/profile/${activePlayer.username || activePlayer.id}`} className="messages-profile-link"><User size={13} /><span>View profile</span><ArrowRight size={12} /></Link>
               </header>
               <div className="messages-chat-region">
