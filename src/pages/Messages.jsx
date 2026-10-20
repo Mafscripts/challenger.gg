@@ -17,6 +17,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import ConversationSafety from "@/components/chat/ConversationSafety";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -24,7 +25,6 @@ import { clearSentDraft, createDirectMessageInbox } from "@/lib/directMessageInb
 import "@/styles/messages.css";
 import AccountPageHero from "@/components/ui/AccountPageHero";
 
-const initials = (name) => String(name || "Player").trim().slice(0, 1).toUpperCase();
 const messageTime = (value) => value
   ? new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   : "";
@@ -49,13 +49,10 @@ const sameMessageGroup = (previous, current) => Boolean(previous && current
   && previous.sender_id === current.sender_id && messageDay(previous.created_date) === messageDay(current.created_date)
   && new Date(current.created_date) - new Date(previous.created_date) <= 5 * 60 * 1000);
 function PlayerAvatar({ player, size = "md" }) {
-  const [failedAvatar, setFailedAvatar] = useState("");
   const dimensions = size === "lg" ? "h-12 w-12" : size === "sm" ? "h-7 w-7" : "h-10 w-10";
   return (
     <div className={`${dimensions} shrink-0 overflow-hidden rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 to-orange/10 flex items-center justify-center font-black text-cyan`}>
-      {player?.avatar_url && player.avatar_url !== failedAvatar ? (
-        <img src={player.avatar_url} alt="" onError={() => setFailedAvatar(player.avatar_url)} className="h-full w-full object-cover" />
-      ) : initials(player?.name)}
+      <PlayerAvatarImage src={player?.avatar_url} />
     </div>
   );
 }

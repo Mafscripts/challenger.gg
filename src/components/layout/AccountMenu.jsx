@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronRight, Crown, History, LogOut, Settings, ShieldCheck, Ticket, User, Users, Wallet } from "lucide-react";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
 import NavigationHoverFill from "./NavigationHoverFill";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 
 export default function AccountMenu({ name, role, avatar, profilePath, staff, sidebar, onClose }) {
   const links = [
@@ -15,7 +16,7 @@ export default function AccountMenu({ name, role, avatar, profilePath, staff, si
   ];
   return <div id="nav-account-menu" className="nav-popover nav-popover-enter nav-profile-popover profile-menu-compact absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-1rem))] rounded-2xl" aria-label="Account menu">
     <Link to={profilePath} onClick={onClose} className="profile-menu-header" aria-label={`View ${name}'s profile`}>
-      <span className="profile-menu-avatar"><User size={19} aria-hidden="true" />{avatar && <img src={avatar} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />}</span>
+      <span className="profile-menu-avatar"><PlayerAvatarImage src={avatar} /></span>
       <span className="profile-menu-identity"><strong>{name}</strong><span>View profile</span></span>
       <span className="profile-menu-role" data-staff={staff}>{role}</span><ChevronRight className="profile-menu-header-arrow" size={14} aria-hidden="true" />
     </Link>

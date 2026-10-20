@@ -41,6 +41,7 @@ import ReferralSection from "@/components/settings/ReferralSection";
 import StreamOverlaySection from "@/components/settings/StreamOverlaySection";
 import "@/styles/settings.css";
 import PageLoader from "@/components/ui/PageLoader";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 
 const icons = { AtSign, Award, Coins, Gamepad2, Gift, KeyRound, Link2, MessageCircle, MonitorPlay, PanelLeft, Palette, Radio, ShieldCheck, UserRound, WalletCards };
 const groupDetails = {
@@ -61,7 +62,6 @@ export default function Settings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [failedAvatar, setFailedAvatar] = useState("");
   const [query, setQuery] = useState("");
   const preserveSettingsScroll = state?.preserveSettingsScroll === true;
   const target = settingTarget(hash, search);
@@ -112,7 +112,7 @@ export default function Settings() {
             <button className="competition-action-pill" type="button" onClick={() => openSetting("settings-password")}><KeyRound size={14} />Password</button>
           </nav>}
           metadata={user && <Link to={`/profile/${user.username || user.id}`} className="settings-profile-link" aria-label={`View ${displayName}'s profile`}>
-            <span className="settings-profile-avatar">{avatar && failedAvatar !== avatar ? <img src={avatar} alt="" onError={() => setFailedAvatar(avatar)} /> : displayName.slice(0, 2).toUpperCase()}</span>
+            <span className="settings-profile-avatar"><PlayerAvatarImage src={avatar} /></span>
             <span className="settings-profile-copy"><small>YOUR PLAYER PROFILE</small><strong>{displayName}</strong><span>View profile<ArrowUpRight size={12} /></span></span>
             <ArrowUpRight size={17} aria-hidden="true" />
           </Link>} />

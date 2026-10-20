@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import { Link, useLocation } from "react-router-dom";
 import {
   Wallet, MessageSquare, ChevronDown, User,
@@ -1127,8 +1128,7 @@ export default function Navbar() {
           aria-controls="nav-account-menu"
         >
           <span className="topbar-avatar topbar-account-avatar" aria-hidden="true">
-            <User size={18} />
-            {profileAvatar && <img key={profileAvatar} src={profileAvatar} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+            <PlayerAvatarImage src={profileAvatar} loading="eager" />
           </span>
           <span className="topbar-account-copy">
             <span className="topbar-account-name">{accountName}</span>

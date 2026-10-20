@@ -35,6 +35,7 @@ import { publicRoleBadges } from "@/lib/roles";
 import UserBadges from "@/components/ui/UserBadges";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import RecentMatchesPanel from "@/components/match/RecentMatchesPanel";
 import { matchDateMs } from "@/lib/matchPresentation";
 import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
@@ -576,7 +577,7 @@ export default function Profile() {
             <div className="flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
               <div className="profile-avatar-frame relative shrink-0">
                 <div className="profile-avatar flex items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-4xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)]">
-                  {avatarDraft || profile?.avatar_url ? <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" /> : name.charAt(0)}
+                  <PlayerAvatarImage src={avatarDraft || profile?.avatar_url || user?.avatar_url} alt={name} loading="eager" />
                 </div>
               </div>
               <div className="min-w-0">

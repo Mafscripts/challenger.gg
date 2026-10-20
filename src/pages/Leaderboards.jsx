@@ -9,6 +9,7 @@ import CompetitionHero from "@/components/competition/CompetitionHero";
 import { getRankForElo } from "@/lib/ranks";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
 import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
 
@@ -31,7 +32,7 @@ function PlayerName({ row }) {
 }
 
 function PlayerAvatar({ row }) {
-  return <span className="leaderboard-avatar">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" loading="lazy" /> : row.name.charAt(0).toUpperCase()}</span>;
+  return <span className="leaderboard-avatar"><PlayerAvatarImage src={row.user?.avatar_url} /></span>;
 }
 
 export default function Leaderboards() {

@@ -3,15 +3,14 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronRight, Crown, MessageSquare, Trophy, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import "@/styles/navbar-messages.css";
 
 function MessageAvatar({ player, message, invitation }) {
-  const [failedUrl, setFailedUrl] = useState("");
   const avatar = player?.avatar_url || message.sender_avatar_url;
   return <span className="nav-message-avatar" aria-hidden="true">
     {invitation ? <TopfraggLogo showWordmark={false} markClassName="!h-10 !w-10" />
-      : avatar && avatar !== failedUrl ? <img src={avatar} alt="" onError={() => setFailedUrl(avatar)} />
-        : <span className="nav-message-initial">{(player?.name || message.sender_name || "Player").trim().slice(0, 2).toUpperCase()}</span>}
+      : <PlayerAvatarImage src={avatar} />}
   </span>;
 }
 

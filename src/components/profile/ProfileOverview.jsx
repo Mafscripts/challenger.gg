@@ -7,6 +7,7 @@ import RankBadge from "@/components/ui/RankBadge";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 import NavigationHoverFill from "@/components/layout/NavigationHoverFill";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import { competitionLabelFor, matchTeamsFor, matchResultFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
 import { teamPageUrl, teamPurposeFor } from "@/lib/teamPresentation";
 import "@/styles/profile-dashboard.css";
@@ -20,8 +21,7 @@ function Heading({ title, children, icon: Icon }) {
 }
 
 function PlayerAvatar({ player }) {
-  const [failed, setFailed] = useState(false);
-  return <span className="pd-friend-avatar">{player.avatar_url && !failed ? <img src={player.avatar_url} alt="" loading="lazy" onError={() => setFailed(true)} /> : String(player.name || "P").charAt(0).toUpperCase()}</span>;
+  return <span className="pd-friend-avatar"><PlayerAvatarImage src={player.avatar_url} /></span>;
 }
 
 export function ProfileFriends({ friends = [], total = 0, next_offset = null, loading = false, expanded = false, onViewAll, onManageRequests, onLoadMore, loadingMore = false, error = false }) {

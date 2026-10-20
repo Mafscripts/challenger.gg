@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Clock3, Loader2, UserMinus, UserPlus, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import "@/styles/profile-friends.css";
 
 export default function FriendActions({ userId, currentUserId }) {
@@ -100,7 +101,7 @@ export function FriendRequestsPanel({ userId }) {
     <div className="friend-requests-heading"><Users /><h2>Friend requests</h2><span>Incoming & sent</span></div>
     {error && <p className="friend-error" role="alert">{error} <button onClick={() => setRevision((value) => value + 1)}>Retry</button></p>}
     {loading ? <p className="pd-empty" role="status">Loading friend requests…</p> : data.requests.length ? <div className="friend-request-list">{data.requests.map((request) => <article key={request.id} className="friend-request-row">
-      <Link className="friend-request-player" to={`/profile/${encodeURIComponent(request.player.username || request.player.id)}`}><span className="friend-request-avatar">{request.player.avatar_url ? <img src={request.player.avatar_url} alt="" /> : request.player.name.charAt(0).toUpperCase()}</span><span><strong>{request.player.name}</strong><small>{request.direction === "incoming" ? "Sent you a friend request" : "Waiting for their response"}</small></span></Link>
+      <Link className="friend-request-player" to={`/profile/${encodeURIComponent(request.player.username || request.player.id)}`}><span className="friend-request-avatar"><PlayerAvatarImage src={request.player.avatar_url} /></span><span><strong>{request.player.name}</strong><small>{request.direction === "incoming" ? "Sent you a friend request" : "Waiting for their response"}</small></span></Link>
       <div className="friend-buttons">{request.direction === "incoming" ? <><button className="friend-action friend-action-primary" disabled={Boolean(busy)} onClick={() => act(request, "accept")}><Check />Accept</button><button className="friend-action" disabled={Boolean(busy)} onClick={() => act(request, "decline")}><X />Decline</button></> : <button className="friend-action" disabled={Boolean(busy)} onClick={() => act(request, "cancel")}>Cancel request</button>}</div>
     </article>)}</div> : !error && <p className="pd-empty">No pending friend requests. Visit a player's profile and choose Add friend.</p>}
     {data.next_offset !== null && <button className="pd-view-all" disabled={loadingMore} onClick={loadMore}>{loadingMore ? "Loading…" : "Load next 25 requests"}</button>}

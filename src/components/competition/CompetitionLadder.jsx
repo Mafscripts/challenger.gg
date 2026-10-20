@@ -20,6 +20,7 @@ import { useQuery } from "@tanstack/react-query";
 import useCompetitionLeaderboard, { leaderboardQueryOptions } from "@/hooks/useCompetitionLeaderboard";
 import { useAuth } from "@/lib/AuthContext";
 import TrophyCounts from "@/components/ui/TrophyCounts";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import TPRankBadge, { TPRankGuide } from "./TPRankBadge";
 import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
 import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
@@ -362,7 +363,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             ) : standings.length === 0 ? <div className="px-5 py-12 text-center text-sm text-vapor">The standings begin when the first match is completed.</div> : pagination.visibleRows.map((row, index) => (
               <div key={row.id} data-podium={pagination.offset + index < 3 ? pagination.offset + index + 1 : undefined} data-self={String(row.userId) === String(currentUser?.id) || undefined} className={`competition-standing-row grid min-h-[66px] ${standingColumns} items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors`}>
                 <span className={`font-mono font-black ${rankTone(pagination.offset + index)}`}>{pagination.offset + index < 3 ? <Trophy className="mr-2 inline h-3.5 w-3.5" /> : null}#{pagination.offset + index + 1}</span>
-                <Link to={`/profile/${row.slug}`} className="flex min-w-0 items-center gap-3 font-bold text-white hover:text-cyan"><span className="leaderboard-avatar">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" loading="lazy" /> : row.name.charAt(0).toUpperCase()}</span><span data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</span></Link>
+                <Link to={`/profile/${row.slug}`} className="flex min-w-0 items-center gap-3 font-bold text-white hover:text-cyan"><span className="leaderboard-avatar"><PlayerAvatarImage src={row.user?.avatar_url} /></span><span data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</span></Link>
                 {mode === "xp" && <span className="text-center"><TPRankBadge xp={row.tpRank?.xp} matchesPlayed={row.tpRank?.matchesPlayed} position={row.tpRank?.position} loading={!row.tpRank} /></span>}
                 <span className="text-center font-mono font-black text-green">{row.wins}</span>
                 <span className="text-center font-mono font-black text-red-400">{row.losses}</span>

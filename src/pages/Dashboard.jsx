@@ -8,11 +8,11 @@ import {
   Coins,
   Crosshair,
   Gamepad2,
-  Medal,
   Trophy,
   Zap,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import { Mw4SeasonSignal } from "@/components/season/Mw4Season";
 import PageLoader from "@/components/ui/PageLoader";
 import HomeModeNavigation from "@/components/home/HomeModeNavigation";
@@ -360,7 +360,7 @@ function TournamentLadder({ players, loading }) {
             <span className={`font-mono text-sm font-black ${index < 3 ? "text-orange" : "text-vapor"}`}>#{index + 1}</span>
             <div className="flex min-w-0 items-center gap-3">
               <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-                {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : <Medal className={`h-4 w-4 ${index < 3 ? "text-orange" : "text-cyan"}`} />}
+                <PlayerAvatarImage src={player.avatar_url} />
               </div>
               <div className="min-w-0"><p data-name-effect={player.display_name_color || undefined} style={player.display_name_color ? { "--player-name-color": player.display_name_color } : undefined} className={`player-name-wrap text-sm font-black text-white transition-colors group-hover:text-orange ${player.display_name_color ? "player-name-color" : ""}`}>{playerName(player)}</p><p className="truncate text-[9px] uppercase tracking-wider text-vapor">Tournament competitor</p></div>
             </div>
