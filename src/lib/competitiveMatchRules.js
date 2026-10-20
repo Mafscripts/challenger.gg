@@ -1,0 +1,4 @@
+export const hardpointDisconnectRule = "If the highest team score is 100 or less when a player disconnects mid-game, the map resets. If the highest team score is over 100, the affected team must play one player down until that player rejoins, or forfeit.";
+export const searchDestroyDisconnectRule = "If a player disconnects mid-game, finish the current round, then end the game. The result of that round stands. Resume from the resulting score, following admin instructions where required.";
+export const disconnectEvidenceRule = "When a player disconnects, submit a clip showing the 30 seconds before the disconnect. Refusing or failing to provide the required clip results in map forfeiture.";
+export const streamBroadcastRule = "Post a working stream link in the official match chat before the match begins. Enable VODs and keep them accessible for at least 24 hours after the series, with gameplay and voice communication audio included.";

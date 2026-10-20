@@ -1,4 +1,5 @@
 import { competitionStreamRule, requiresCompetitionStream } from "@/lib/competitionStreaming";
+import { disconnectEvidenceRule, hardpointDisconnectRule, searchDestroyDisconnectRule, streamBroadcastRule } from "@/lib/competitiveMatchRules";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Camera, ChevronDown, ExternalLink, ShieldCheck } from "lucide-react";
@@ -18,13 +19,14 @@ const commonRules = [
 const rulesFor = ({ matchType, gameMode, playRule, customRules }) => {
   const mode = String(gameMode || "").toLowerCase();
   const rules = [...commonRules];
-  if (requiresCompetitionStream(matchType)) rules.unshift(competitionStreamRule);
+  if (requiresCompetitionStream(matchType)) rules.unshift(competitionStreamRule, streamBroadcastRule);
+  rules.push(disconnectEvidenceRule);
 
   if (mode.includes("hardpoint") || mode === "hp") {
-    rules.push("Hardpoint disconnect: reset below 150 combined score; at 150 or higher, play the map out.");
+    rules.push(`Hardpoint disconnect: ${hardpointDisconnectRule}`);
   }
   if (mode.includes("search") || mode === "snd") {
-    rules.push("Search & Destroy disconnect: end the game and resume from the point where play stopped.");
+    rules.push(`Search & Destroy disconnect: ${searchDestroyDisconnectRule}`);
   }
   if (matchType === "ranked") {
     rules.push("Leaving a ranked match in progress gives an automatic loss and ELO penalty.");
