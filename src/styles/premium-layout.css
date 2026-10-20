@@ -1,0 +1,46 @@
+/* Premium uses the shared 1600px page shell and competition surfaces. */
+.premium-refresh[data-competition="premium"], .premium-refresh [data-competition="premium"] { --comp-accent: 180 149 255; }
+.premium-refresh .page-container { max-width: 1600px; }
+.premium-refresh :is(.premium-hero, .premium-name-lab, .premium-plan-deck, .premium-signal, .premium-compare) { min-width: 0; border: 1px solid #b495ff38; border-radius: 18px; background: linear-gradient(125deg, #b495ff08, transparent 65%), #101c28; box-shadow: 0 12px 35px #0002, inset 0 1px #ffffff08; }
+.premium-refresh .premium-hero { background: radial-gradient(ellipse at 90% 0, #ff952316, transparent 60%), linear-gradient(120deg, #141f30, #0c1925); }
+.premium-refresh .premium-hero-layout { align-items: center; }
+.premium-refresh .premium-hero-layout > div { min-width: 0; }
+.premium-refresh .premium-hero-perks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.premium-refresh .premium-hero-perk { min-height: 100px; border-radius: 12px; border-color: var(--premium-border); background: linear-gradient(120deg, var(--premium-soft), #0c172133); }
+.premium-refresh .premium-hero-perk-icon { box-shadow: none; }
+.premium-refresh .premium-name-lab { scroll-margin-top: 88px; border-color: #14d8ff38; }
+.premium-refresh .premium-name-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); align-items: center; gap: 32px; margin-bottom: 28px; }
+.premium-refresh .premium-name-intro > div { min-width: 0; }
+.premium-refresh .premium-name-intro h2 { font-size: clamp(26px, 2.5vw, 36px); }
+.premium-refresh .premium-live-card { margin-top: 0; border: 1px solid #14d8ff38; border-radius: 14px; background: linear-gradient(120deg, #14d8ff0c, #0d1725); }
+.premium-refresh .premium-effect-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding-top: 24px; border-top: 1px solid #14d8ff22; }
+.premium-refresh .premium-effect-choice { min-width: 0; min-height: 110px; border-color: #14d8ff25; border-radius: 12px; background: linear-gradient(120deg, #14d8ff06, #0b1723); }
+.premium-refresh .premium-effect-choice.is-selected { border-color: #14d8ff99; background: linear-gradient(125deg, #14d8ff18, #b495ff12); box-shadow: inset 0 0 0 1px #14d8ff22; }
+.premium-refresh .premium-effect-choice > span { overflow-wrap: anywhere; }
+.premium-refresh .premium-plan { min-width: 0; border-radius: 12px; background: #0b1723; }
+.premium-refresh .premium-plan.is-selected { border-color: #ff952399; background: linear-gradient(125deg, #ff952318, #0b1723); box-shadow: inset 0 0 0 1px #ff952322; }
+.premium-refresh .premium-benefit { min-width: 0; border-color: var(--premium-border); border-radius: 14px; background: linear-gradient(125deg, var(--premium-soft), transparent 70%), #101c28; box-shadow: inset 0 1px #ffffff08; }
+.premium-refresh .premium-benefit-icon { box-shadow: none; }
+.premium-refresh .premium-compare { scroll-margin-top: 88px; }
+.premium-refresh :is(button, a):focus-visible { outline: 2px solid #b495ff; outline-offset: 3px; }
+@media (min-width: 1400px) {
+  .premium-refresh .premium-effect-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-width: 1000px) {
+  .premium-refresh .premium-name-intro { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .premium-refresh .premium-live-card { max-width: 520px; width: 100%; }
+  .premium-refresh .premium-effect-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .premium-refresh .premium-hero-perks { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .premium-refresh .premium-hero-perk { min-height: 76px; padding: 12px; }
+  .premium-refresh .premium-effect-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .premium-refresh .premium-effect-choice { padding: 14px 10px; }
+  .premium-refresh .premium-effect-choice > .player-name-color { font-size: 15px; }
+  .premium-refresh .premium-live-card { padding: 14px; }
+  .premium-refresh .premium-live-card > div { flex-wrap: wrap; }
+  .premium-refresh .premium-compare > div { padding-inline: 14px; column-gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .premium-refresh :is(.premium-effect-choice, .premium-benefit, .premium-hero-perk, .premium-plan) { transition: none; transform: none; }
+}

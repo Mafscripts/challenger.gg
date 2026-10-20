@@ -1,4 +1,5 @@
 export const competitionPresentation = {
+  premium: { title: "Premium", eyebrow: "TopFragg membership", icon: "Crown", motto: "Your name. Your signal.", facts: [["Sparkles", "Animated name effects"], ["Crown", "Premium identity"], ["ShieldCheck", "Priority support"]] },
   notifications: { title: "Notifications", eyebrow: "Your latest activity", icon: "Bell", motto: "Stay one step ahead.", facts: [["Bell", "Match updates"], ["Trophy", "Competition alerts"], ["Clock", "24-hour inbox"]] },
   messages: { title: "Messages", eyebrow: "Your private inbox", icon: "MessageSquare", motto: "Keep your squad connected.", facts: [["MessageSquare", "Player conversations"], ["Trophy", "Tournament invites"], ["ShieldCheck", "Report & block"]] },
   notifications: { title: "Notifications", eyebrow: "Your latest activity", icon: "Bell", motto: "Stay one step ahead.", facts: [["Bell", "Match updates"], ["Trophy", "Competition alerts"], ["Clock", "24-hour inbox"]] },

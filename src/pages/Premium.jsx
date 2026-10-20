@@ -15,10 +15,11 @@ import {
   Sparkles,
   Trophy,
 } from "lucide-react";
-import PageHeader from "@/components/ui/PageHeader";
+import AccountPageHero from "@/components/ui/AccountPageHero";
 import UserBadges from "@/components/ui/UserBadges";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import "@/styles/premium-layout.css";
 
 const plans = [
   { id: "weekly", label: "Weekly", price: "3.99", note: "Try Premium for 7 days" },
@@ -118,25 +119,23 @@ export default function Premium() {
   };
 
   return (
-    <div className="premium-page min-h-screen py-8">
-      <div className="mx-auto max-w-[1500px] space-y-6 px-4 lg:px-6">
-        <PageHeader
+    <div className="premium-page premium-refresh account-page competition-surface page-shell" data-competition="premium">
+      <div className="page-container space-y-6">
+        <AccountPageHero
+          mode="premium"
           eyebrow="Topfragg membership"
           title="Premium"
           description="A sharper profile, faster support and better access across every competitive room."
-          className="dark-focus dark-media"
+          metadata={premiumActive ? `Active until ${expiryText}` : `$${selectedPlanDetails.price} / ${selectedPlan === "yearly" ? "year" : selectedPlan === "weekly" ? "week" : "month"}`}
           action={(
-            <div className={`rounded-xl border px-4 py-3 text-right ${premiumActive ? "border-green/30 bg-green/10" : "border-orange/20 bg-orange/[0.06]"}`}>
-              <p className={`text-[9px] font-black uppercase tracking-[0.18em] ${premiumActive ? "text-green" : "text-orange"}`}>{premiumActive ? "Active membership" : "From"}</p>
-              <p className="mt-1 font-mono text-2xl font-black text-white">${selectedPlanDetails.price} <span className="text-xs text-vapor">/ {selectedPlan === "yearly" ? "year" : selectedPlan === "weekly" ? "week" : "month"}</span></p>
-            </div>
+            <><a href="#premium-effects" className="competition-action-pill account-primary-action"><Palette size={16} />Explore name effects</a><a href="#compare" className="competition-action-pill"><BadgeCheck size={16} />Compare benefits</a></>
           )}
         />
 
         <section className="premium-hero relative overflow-hidden rounded-3xl border border-orange/20">
           <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-orange/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-cyan/10 blur-3xl" />
-          <div className="relative grid gap-8 p-6 lg:grid-cols-[1.08fr_.92fr] lg:p-10">
+          <div className="premium-hero-layout relative grid gap-8 p-6 lg:grid-cols-[1.08fr_.92fr] lg:p-10">
             <div className="flex flex-col justify-center">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-orange/25 bg-orange/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange"><Crown className="h-3.5 w-3.5" /> Topfragg Premium</div>
               <h2 className="mt-5 max-w-2xl font-heading text-3xl font-black leading-[1.02] text-white sm:text-4xl lg:text-6xl">Your name.<br /><span className="text-orange">Your signal.</span></h2>
@@ -161,13 +160,15 @@ export default function Premium() {
           </div>
         </section>
 
-        <section className="premium-name-lab relative overflow-hidden rounded-3xl border border-cyan/20 p-5 sm:p-7 lg:p-9">
+        <section id="premium-effects" className="premium-name-lab relative overflow-hidden rounded-3xl border border-cyan/20 p-5 sm:p-7 lg:p-9">
           <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_30%,rgba(34,211,238,.14),transparent_55%)]" />
-          <div className="relative grid gap-6 xl:grid-cols-[.86fr_1.14fr] xl:items-center">
-            <div>
+          <div className="premium-name-layout relative">
+            <div className="premium-name-intro">
+              <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-cyan/25 bg-cyan/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-cyan"><Sparkles className="h-3.5 w-3.5" /> Premium name lab</div>
               <h2 className="mt-4 max-w-xl font-heading text-3xl font-black leading-[1.02] text-white sm:text-4xl">Not just a color.<br /><span className="text-cyan">A moving identity.</span></h2>
               <p className="mt-4 max-w-xl text-sm leading-6 text-vapor">Choose an effect in Edit Profile. It follows you through profiles, tournament rosters, wagers, matchrooms and leaderboards.</p>
+              </div>
 
               <div className="premium-live-card mt-6 rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3"><span className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Live player-card preview</span><span className="inline-flex items-center gap-1 rounded-full border border-yellow-300/25 bg-yellow-300/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-yellow-200"><Crown className="h-3 w-3" /> Premium</span></div>
@@ -179,10 +180,10 @@ export default function Premium() {
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="premium-effect-grid">
               {nameEffectShowcase.map((effect) => {
                 const selected = effect.id === selectedEffect.id;
-                return <button key={effect.id} type="button" onClick={() => setSelectedEffectId(effect.id)} className={`premium-effect-choice group relative overflow-hidden rounded-2xl border p-4 text-left transition ${selected ? "is-selected" : ""}`}>
+                return <button key={effect.id} type="button" aria-pressed={selected} onClick={() => setSelectedEffectId(effect.id)} className={`premium-effect-choice group relative overflow-hidden rounded-2xl border p-4 text-left transition ${selected ? "is-selected" : ""}`}>
                   <span className={`pointer-events-none absolute -right-4 -top-5 h-20 w-20 rounded-full bg-gradient-to-br ${effect.tone} opacity-[.14] blur-2xl`} />
                   <span data-name-effect={effect.id} style={{ "--player-name-color": effect.id }} className="player-name-color relative block font-heading text-lg font-black tracking-tight">TOPFRAGG</span>
                   <span className="relative mt-2 block text-[10px] font-black uppercase tracking-wider text-white">{effect.label}</span>
@@ -199,7 +200,7 @@ export default function Premium() {
             <div><p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Choose your membership</p><h2 className="mt-1 text-lg font-black text-white">Use your Topfragg wallet</h2><p className="mt-1 text-xs text-vapor">No external checkout. Your selected plan is charged from your available wallet balance.</p></div>
             <div className="grid w-full gap-2 sm:grid-cols-3 lg:max-w-[620px]">
               {plans.map((plan) => (
-                <button key={plan.id} type="button" onClick={() => setSelectedPlan(plan.id)} className={`premium-plan relative rounded-xl border p-3 text-left transition ${selectedPlan === plan.id ? "is-selected" : ""}`}>
+                <button key={plan.id} type="button" aria-pressed={selectedPlan === plan.id} onClick={() => setSelectedPlan(plan.id)} className={`premium-plan relative rounded-xl border p-3 text-left transition ${selectedPlan === plan.id ? "is-selected" : ""}`}>
                   {plan.featured && <span className="absolute -top-2 right-2 rounded-full bg-orange px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-background">Popular</span>}
                   <span className="block text-[10px] font-black uppercase tracking-wider text-white">{plan.label}</span><span className="mt-1 block font-mono text-lg font-black text-orange">${plan.price}</span><span className="mt-1 block text-[10px] text-vapor">{plan.note}</span>
                 </button>

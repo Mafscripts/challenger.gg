@@ -1,10 +1,10 @@
 import React from "react";
-import { Bell, BookOpen, CalendarDays, Clock, Crosshair, DollarSign, Gamepad2, Globe2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, Clock, Crown, Crosshair, DollarSign, Gamepad2, Globe2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { competitionTheme } from "@/lib/competitionPresentation";
 import "@/styles/competition-presentation.css";
 
-const icons = { Bell, BookOpen, Clock, Crosshair, DollarSign, Gamepad2, Globe2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap };
+const icons = { Bell, BookOpen, Clock, Crown, Crosshair, DollarSign, Gamepad2, Globe2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap };
 
 export default function CompetitionHero({ mode = "ranked", title, eyebrow, description, action, count, countLabel = "players", artwork, gameId, metadata, facts, className = "" }) {
   const theme = competitionTheme(mode), Icon = icons[theme.icon];
