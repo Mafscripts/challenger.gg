@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { trophyCountsFor, recentTrophiesFor } from "../lib/trophyCounts.js";
 import { getProfileArena } from "../profile-arena.js";
 import { friendStatus, changeFriendship, listFriendRequests } from "../friends.js";
+import { playerAvatarFor } from "../lib/playerAvatars.js";
 
 const router = Router();
 
@@ -96,11 +97,11 @@ router.get("/:userId/friends", requireAuth, async (req, res, next) => {
       pageIds.length ? prisma.playerProfile.findMany({ where: { OR: pageIds.map((id) => ({ metadata: { path: ["user_id"], equals: id } })) }, orderBy: { created_date: "desc" }, select: { metadata: true } }) : [],
     ]);
     const avatar = new Map();
-    for (const { metadata } of profiles) if (!avatar.has(metadata?.user_id)) avatar.set(metadata?.user_id, metadata?.avatar_url);
+    for (const { metadata } of profiles) if (!avatar.has(metadata?.user_id)) avatar.set(metadata?.user_id, metadata);
     const byId = new Map(users.map((user) => [user.id, user]));
     res.json({ total: ids.length, next_offset: offset + pageIds.length < ids.length ? offset + pageIds.length : null, friends: pageIds.filter((id) => byId.has(id)).map((id) => {
       const user = byId.get(id);
-      return { id, username: user.username, name: user.display_name || user.username || "Player", avatar_url: avatar.get(id) || user.metadata?.avatar_url || "" };
+      return { id, username: user.username, name: user.display_name || user.username || "Player", avatar_url: playerAvatarFor(user, avatar.get(id)) };
     }) });
   } catch (error) { next(error); }
 });

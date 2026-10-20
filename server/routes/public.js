@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { listEntities } from "../entity.js";
 import { prisma } from "../prisma.js";
+import { withPlayerAvatars } from "../lib/playerAvatars.js";
 import { EIGHTS_CONFIG_ID } from "../free-eights-games.js";
 import { DEFAULT_EIGHTS_GAMES, withMw4Preview } from "../../src/lib/freeEightsGames.js";
 
@@ -87,11 +88,11 @@ router.get("/home-overview", async (_req, res, next) => {
       .sort((a, b) => new Date(a.start_date || 8640000000000000) - new Date(b.start_date || 8640000000000000))
       .slice(0, 6)
       .map(safeTournament);
-    const ladder = users
+    const ladderPlayers = users
       .filter((row) => number(row.tournament_wins) > 0)
       .sort((a, b) => number(b.tournament_wins) - number(a.tournament_wins) || number(b.lifetime_earnings) - number(a.lifetime_earnings))
-      .slice(0, 16)
-      .map(safePlayer);
+      .slice(0, 16);
+    const ladder = (await withPlayerAvatars(prisma, ladderPlayers)).map(safePlayer);
     const matches = [
       ...wagers.filter((row) => openMatchStatuses.has(String(row.status || "open").toLowerCase())).map((row) => safeMatch(row, "wager")),
       ...rankedMatches.filter((row) => openMatchStatuses.has(String(row.status || "open").toLowerCase())).map((row) => safeMatch(row, "ranked")),

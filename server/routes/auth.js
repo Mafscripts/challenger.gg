@@ -2,6 +2,7 @@ import { streamChannelUrl } from "../../src/lib/competitionStreaming.js";
 import { Router } from "express";
 import crypto from "node:crypto";
 import { prisma } from "../prisma.js";
+import { withPlayerAvatars } from "../lib/playerAvatars.js";
 import {
   createUserWithPassword,
   ensureUserRecords,
@@ -326,8 +327,9 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
-router.get("/me", requireAuth, async (req, res) => {
-  res.json(req.user);
+router.get("/me", requireAuth, async (req, res, next) => {
+  try { res.json((await withPlayerAvatars(prisma, [req.user]))[0]); }
+  catch (error) { next(error); }
 });
 
 router.patch("/me", requireAuth, async (req, res, next) => {
@@ -384,7 +386,7 @@ router.patch("/me", requireAuth, async (req, res, next) => {
     if (Object.keys(identityPayload).length > 0) {
       user = await updateUserIdentity(req.user.id, identityPayload, req.user);
     }
-    res.json(publicUser(user));
+    res.json((await withPlayerAvatars(prisma, [publicUser(user)]))[0]);
   } catch (error) {
     next(error);
   }

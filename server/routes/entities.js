@@ -3,6 +3,8 @@ import { createEntity, deleteEntity, getEntity, listEntities, updateEntity } fro
 import { requireAuth } from "../middleware/auth.js";
 import { hasRole } from "../roles.js";
 import { publicStaffPresentation } from "../../src/lib/roles.js";
+import { prisma } from "../prisma.js";
+import { withPlayerAvatars } from "../lib/playerAvatars.js";
 
 const protectedMutationEntities = new Set([
   "BlockedUser",
@@ -363,7 +365,7 @@ router.get("/:entity", requireAuth, async (req, res, next) => {
       return res.json(protectIpVisibility(req, rows.filter((row) => belongsToTradeUser(row, req.user.id))));
     }
     if (req.params.entity === "User") {
-      return res.json(protectIpVisibility(req, rows.map((row) => visibleUser(req, row))));
+      return res.json(protectIpVisibility(req, await withPlayerAvatars(prisma, rows.map((row) => visibleUser(req, row)))));
     }
     if (req.params.entity === "TournamentParticipant") {
       return res.json(protectIpVisibility(req, await visibleTournamentParticipants(req, rows, filter)));
@@ -424,7 +426,10 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
     if (req.params.entity === "ChatMessage" && row.match_type === "tournament" && !await canViewTournamentChat(req, row.conversation_id)) {
       return res.status(403).json({ error: "Only tournament match participants can view this chat" });
     }
-    res.json(protectIpVisibility(req, req.params.entity === "User" ? visibleUser(req, row) : row));
+    const result = req.params.entity === "User"
+      ? (await withPlayerAvatars(prisma, [visibleUser(req, row)]))[0]
+      : row;
+    res.json(protectIpVisibility(req, result));
   } catch (error) {
     next(error);
   }

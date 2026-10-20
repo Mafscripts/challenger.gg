@@ -10,6 +10,7 @@ import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../a
 import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
+import { playerAvatarFor } from "../lib/playerAvatars.js";
 import { ensureUserRecords, hashPassword, publicUser, updateUserIdentity } from "../auth.js";
 import { publicStaffPresentation } from "../../src/lib/roles.js";
 import { hasRole, rolePower } from "../roles.js";
@@ -5922,14 +5923,14 @@ async function sendMessage(req) {
 
 const messageUserSummary = async (user) => {
   if (!user) return null;
-  const profile = await firstEntity("PlayerProfile", { user_id: user.id }).catch(() => null);
+  const profile = await firstEntity("PlayerProfile", { user_id: user.id }, "-created_date").catch(() => null);
   return {
     id: user.id,
     name: nameFor(user),
     display_name_color: user.display_name_color || profile?.display_name_color || "",
     username: user.username || "",
     handle: user.handle || user.username || "",
-    avatar_url: profile?.avatar_url || user.avatar_url || "",
+    avatar_url: playerAvatarFor(user, profile),
     role: user.role || "user",
     is_premium: Boolean(user.is_premium),
     premium_expires: user.premium_expires || null,

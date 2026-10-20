@@ -4,6 +4,7 @@ import { bootstrapCurrentUser, clearBootstrapSession } from "@/lib/userBootstrap
 import { RESTRICTION_EVENT, readRestriction, clearRestriction, isRestriction } from "@/lib/accountRestriction";
 import { NETWORK_RESTRICTION_EVENT, readNetworkRestriction, clearNetworkRestriction } from "@/lib/networkAccess";
 import { isNativeApp, NATIVE_RESUME_EVENT } from "@/lib/nativeApp";
+import { queryClientInstance } from "@/lib/query-client";
 
 const AuthContext = createContext();
 
@@ -16,6 +17,23 @@ export const AuthProvider = ({ children }) => {
   const [appPublicSettings] = useState(null);
   const [restriction, setRestriction] = useState(readRestriction);
   const [networkRestriction, setNetworkRestriction] = useState(readNetworkRestriction);
+
+  useEffect(() => {
+    const refreshProfile = (event) => {
+      const detail = event.detail;
+      if (!user?.id || detail?.userId !== user.id) return;
+      const patch = {
+        ...(detail.avatarUrl !== undefined ? { avatar_url: detail.avatarUrl } : {}),
+        ...(detail.displayNameColor !== undefined ? { display_name_color: detail.displayNameColor } : {}),
+      };
+      setUser((current) => current?.id === detail.userId ? { ...current, ...patch } : current);
+      queryClientInstance.setQueriesData({ queryKey: ["leaderboard-users"] }, (players) => (
+        Array.isArray(players) ? players.map((player) => player.id === detail.userId ? { ...player, ...patch } : player) : players
+      ));
+    };
+    window.addEventListener("topfragg:profile-updated", refreshProfile);
+    return () => window.removeEventListener("topfragg:profile-updated", refreshProfile);
+  }, [user?.id]);
 
   useEffect(() => {
     const blocked = (event) => { setNetworkRestriction(event.detail); setIsLoadingAuth(false); setAuthChecked(true); };

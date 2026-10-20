@@ -5,6 +5,7 @@ import { createEntity, firstEntity, serializeRow, updateEntity } from "./entity.
 import { hasRole } from "./roles.js";
 import { displayNameHint, displayNamePattern, normalizeAccountName, usernameHint, usernamePattern } from "../src/lib/accountNames.js";
 import { ensureAccountNamesAvailable, lockAccountNames } from "./account-names.js";
+import { playerAvatarFor } from "./lib/playerAvatars.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const JWT_EXPIRES_IN = "7d";
@@ -137,7 +138,7 @@ export const syncUserIdentityRecords = async (user) => {
     display_name: user.display_name,
   };
 
-  const profile = await firstEntity("PlayerProfile", { user_id: user.id }).catch(() => null);
+  const profile = await firstEntity("PlayerProfile", { user_id: user.id }, "-created_date").catch(() => null);
   const rankedStats = await firstEntity("RankedStats", { user_id: user.id }).catch(() => null);
   const xpStats = await firstEntity("XPStats", { user_id: user.id }).catch(() => null);
 
@@ -204,7 +205,7 @@ export const ensureUserRecords = async (user, payload = {}) => {
     total_wagered: 0,
   });
 
-  const profile = await firstEntity("PlayerProfile", { user_id: updated.id }) || await createEntity("PlayerProfile", {
+  const profile = await firstEntity("PlayerProfile", { user_id: updated.id }, "-created_date") || await createEntity("PlayerProfile", {
     user_id: updated.id,
     display_name,
     handle,
@@ -247,7 +248,8 @@ export const ensureUserRecords = async (user, payload = {}) => {
   }
 
   const identityRecords = await syncUserIdentityRecords(updated);
-  return { user: publicUser(updated), wallet, profile: identityRecords.profile || profile };
+  const currentProfile = identityRecords.profile || profile;
+  return { user: { ...publicUser(updated), avatar_url: playerAvatarFor(updated, currentProfile) }, wallet, profile: currentProfile };
 };
 
 const isActivePremium = (user) => (

@@ -315,7 +315,7 @@ const entityClient = (entity) => ({
     requireToken();
     const value = await apiFetch(`/entities/${entity}`, { method: "POST", body: payload, dedupe: false });
     entityCache.clear();
-    if (entity === "Wallet" || entity === "WalletTransaction") invalidateMeCache();
+    if (["Wallet", "WalletTransaction", "PlayerProfile"].includes(entity)) invalidateMeCache();
     return value;
   },
 
@@ -324,7 +324,7 @@ const entityClient = (entity) => ({
     const value = await apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`, { method: "PATCH", body: payload, dedupe: false });
     entityCache.clear();
     notifyCancelledMatch(value, entity);
-    if (entity === "Wallet" || entity === "WalletTransaction") invalidateMeCache();
+    if (["Wallet", "WalletTransaction", "PlayerProfile"].includes(entity)) invalidateMeCache();
     if (entity === "User" && meCache.value?.id === id) {
       meCache = { value, expiresAt: now() + ME_CACHE_MS, promise: null };
     }
@@ -335,7 +335,7 @@ const entityClient = (entity) => ({
     requireToken();
     const value = await apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`, { method: "DELETE", dedupe: false });
     entityCache.clear();
-    if (entity === "Wallet" || entity === "WalletTransaction") invalidateMeCache();
+    if (["Wallet", "WalletTransaction", "PlayerProfile"].includes(entity)) invalidateMeCache();
     return value;
   },
 });

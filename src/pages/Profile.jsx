@@ -511,7 +511,7 @@ export default function Profile() {
       else nextProfile = await base44.entities.PlayerProfile.create(profilePatch);
       setProfile(nextProfile);
       setUser((current) => ({ ...current, ...nextUser, display_name_color: canUseNameColor ? nextNameColor : "" }));
-      window.dispatchEvent(new CustomEvent("topfragg:profile-updated", { detail: { avatarUrl: nextProfile?.avatar_url || "", displayNameColor: canUseNameColor ? nextNameColor : "" } }));
+      window.dispatchEvent(new CustomEvent("topfragg:profile-updated", { detail: { userId: user.id, avatarUrl: nextProfile?.avatar_url || "", displayNameColor: canUseNameColor ? nextNameColor : "" } }));
       setProfileResult({ success: true, message: "Profile saved." });
     } catch (error) {
       setProfileResult({ success: false, message: error.message || "Could not save profile." });

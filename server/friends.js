@@ -1,3 +1,5 @@
+import { withPlayerAvatars } from "./lib/playerAvatars.js";
+
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 const pair = (a, b, left, right) => ({ OR: [
   { AND: [field(left, a), field(right, b)] }, { AND: [field(left, b), field(right, a)] },
@@ -94,11 +96,11 @@ export async function listFriendRequests(db, actorId, offset = 0) {
   const page = rows.slice(0, 25);
   const ids = [...new Set(page.map((row) => row.metadata.sender_id === actorId ? row.metadata.recipient_id : row.metadata.sender_id))];
   const users = await db.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, display_name: true, metadata: true } });
-  const byId = new Map(users.map((user) => [user.id, user]));
+  const byId = new Map((await withPlayerAvatars(db, users)).map((user) => [user.id, user]));
   return { requests: page.flatMap((row) => {
     const incoming = row.metadata.recipient_id === actorId;
     const other = byId.get(incoming ? row.metadata.sender_id : row.metadata.recipient_id);
     return other ? [{ id: row.id, direction: incoming ? "incoming" : "outgoing", sent_at: row.created_date,
-      player: { id: other.id, username: other.username, name: nameFor(other), avatar_url: other.metadata?.avatar_url || "" } }] : [];
+      player: { id: other.id, username: other.username, name: nameFor(other), avatar_url: other.avatar_url } }] : [];
   }), next_offset: rows.length > 25 ? offset + 25 : null };
 }
