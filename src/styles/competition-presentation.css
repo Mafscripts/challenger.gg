@@ -108,7 +108,7 @@
 .competition-surface .tournaments-toolbar, .competition-surface .tournaments-list-panel { border-color: rgb(var(--comp-accent) / .18); background: linear-gradient(120deg, rgb(var(--comp-accent) / .035), #101c28 80%); }
 .competition-surface .tournaments-filter-group .arena-tab[aria-pressed="true"] { color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .1); box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .25); }
 .competition-surface .tournament-list-card { border-color: #ffc85222; border-radius: 12px; background: linear-gradient(100deg, #ffc85206, #0c1721); transition: border-color .2s, background .2s, transform .2s; }
-.competition-surface .tournament-list-card:hover { border-color: #ffc85266; background: linear-gradient(100deg, #ffc8520d, #111f2b); transform: translateY(-2px); }
+.competition-surface .tournament-list-card:hover { border-color: #ffc85266; }
 .competition-surface .tournament-list-card[data-event-status="in_progress"], .competition-surface .tournament-list-card[data-event-status="live"] { border-left: 3px solid #34ef9f99; }
 .competition-surface .tournament-list-card[data-event-status="registration"], .competition-surface .tournament-list-card[data-event-status="open"] { border-left: 3px solid #14d8ff99; }
 .competition-surface .tournaments-featured-hero { border-color: #ffc85244; box-shadow: 0 10px 40px #ffc85206; }

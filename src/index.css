@@ -1990,10 +1990,6 @@
     transform: scaleY(1);
   }
 
-  .tournament-list-card:hover {
-    transform: translateX(2px);
-  }
-
   .tournament-detail-header {
     background:
       radial-gradient(circle at 88% 0%, hsl(var(--cyan) / .07), transparent 18rem),

@@ -7,6 +7,7 @@ import {
   ArrowRight,
   ChevronDown,
   Clock,
+  Gamepad2,
   Loader2,
   LogOut,
   Medal,
@@ -22,6 +23,8 @@ import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
+import NavigationHoverFill from "@/components/layout/NavigationHoverFill";
+import "@/styles/tournaments-page.css";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
 import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
@@ -204,75 +207,29 @@ const currentMatchForUser = (matches, participantKeys, teamKeys) => {
 };
 
 function FeaturedTournamentHero({ tournament, now, onSelect }) {
-  const bannerUrl = "/assets/competition/play-hero.png";
+  const bannerUrl = tournament.banner_url || tournament.cover_image_url || (tournamentGameId(tournament) === "mw4" ? "/assets/mw4/hero.webp" : tournamentImageUrl(tournament)) || "/assets/home/featured-tournaments.png";
   const entryInfo = tournamentEntryInfo(tournament);
-  const actionLabel = ["open", "registration"].includes(tournament.status)
-    ? "Enter tournament"
-    : "View tournament";
+  const registered = Math.max(0, Number(tournament.registered_teams) || 0);
+  const capacity = Math.max(0, Number(tournament.max_teams) || 0);
+  const filled = capacity > 0 ? Math.min(100, registered / capacity * 100) : 0;
+  const actionLabel = ["open", "registration"].includes(tournament.status) ? "Enter tournament" : "View tournament";
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="tournaments-featured-hero dark-media group relative mb-6 min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_28px_80px_-42px_rgba(0,0,0,.9)]"
-    >
-      <img src={bannerUrl} alt="Topfragg Play competition hub" className="absolute inset-0 h-full w-full object-cover object-center" />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,15,22,.98)_0%,rgba(11,15,22,.92)_48%,rgba(11,15,22,.5)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_10%,rgba(255,130,0,.12),transparent_34%),linear-gradient(180deg,transparent_30%,rgba(8,12,18,.88)_100%)]" />
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-orange/70 via-cyan/30 to-transparent" />
-      <div className="relative grid min-h-[360px] lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex min-w-0 flex-col justify-end p-6 sm:p-9 lg:p-12 xl:p-14">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md border border-orange/35 bg-orange/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-orange">Featured tournament</span>
-            <span className={`rounded-md border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${statusTone(tournament.status)}`}>
-              {statusLabels[tournament.status] || tournament.status}
-            </span>
-            <TournamentEntryBadge tournament={tournament} />
-          </div>
-          <h2 className="mt-6 max-w-3xl text-4xl font-black leading-[.92] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">{tournament.name}</h2>
-          <p className="mt-5 max-w-2xl text-[15px] leading-7 text-vapor">
-            {tournament.description || `${compactModeLabel(tournament)}. Enter with your roster and compete for the featured prize pool.`}
-          </p>
-        </div>
-
-        <aside className="relative flex flex-col justify-between border-t border-white/[0.08] bg-background/65 p-6 backdrop-blur-md lg:border-l lg:border-t-0 lg:p-7">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-vapor">Tournament overview</p>
-            <div className="mt-4 rounded-xl border border-green/25 bg-[linear-gradient(145deg,rgba(0,255,153,.13),rgba(0,255,153,.035))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_16px_40px_rgba(0,0,0,.18)]">
-              <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green text-background shadow-[0_0_24px_rgba(0,255,153,.24)]">
-                  <Trophy className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-green/75">Prize pool</p>
-                  <p className="mt-1 font-mono text-2xl font-black leading-none text-green">{formatMoney(tournament.prize_pool)}</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-white/[0.07] bg-white/[0.035] p-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Entry</p>
-                <p className={`mt-2 text-[10px] font-black uppercase ${entryInfo.tone.split(" ").at(-1)}`}>{entryInfo.label}</p>
-              </div>
-              <div className="rounded-lg border border-white/[0.07] bg-white/[0.035] p-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.16em] text-vapor">Format</p>
-                <p className="mt-2 text-[10px] font-black uppercase text-white">{tournament.team_size || "1v1"}</p>
-              </div>
-            </div>
-            <div className="mt-2 grid grid-cols-[84px_minmax(0,1fr)] gap-2">
-              <CompactStat label="Teams" value={`${tournament.registered_teams || 0}/${tournament.max_teams || 0}`} />
-              <TournamentCountdown tournament={tournament} now={now} />
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => onSelect(tournament.id)}
-            className="mt-5 inline-flex w-full shrink-0 items-center justify-between rounded-xl bg-orange px-5 py-3.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_30px_rgba(255,130,0,.16)] transition-all hover:-translate-y-0.5 hover:bg-orange/90 hover:shadow-[0_14px_34px_rgba(255,130,0,.24)]"
-          >
-            {actionLabel} <ArrowRight className="h-4 w-4" />
-          </button>
-        </aside>
+    <section className="tournaments-featured-hero tournament-spotlight" aria-labelledby="featured-tournament-title">
+      <div className="tournament-spotlight-art" aria-hidden="true"><img src={bannerUrl} alt="" decoding="async" /></div>
+      <div className="tournament-spotlight-copy">
+        <div className="tournament-spotlight-labels"><span className="tournament-spotlight-eyebrow"><Trophy size={14} aria-hidden="true" />Featured event</span><span className={`tournament-spotlight-status ${statusTone(tournament.status)}`}>{statusLabels[tournament.status] || tournament.status}</span></div>
+        <h2 id="featured-tournament-title">{tournament.name}</h2>
+        <p className="tournament-spotlight-description">{tournament.description || "Compete with your team and follow the bracket from the first round to the final."}</p>
+        <div className="tournament-spotlight-meta"><span><Gamepad2 size={15} aria-hidden="true" />{tournamentGameName(tournament)}</span><span><Users size={15} aria-hidden="true" />{tournament.team_size || "1v1"}</span><span><Clock size={15} aria-hidden="true" />{formatDate(tournament.start_date)}</span></div>
       </div>
-    </motion.section>
+      <aside className="tournament-spotlight-summary" aria-label="Featured tournament details">
+        <div className="tournament-spotlight-prize"><span className="tournament-spotlight-trophy"><Trophy size={23} aria-hidden="true" /></span><div><p>Prize pool</p><strong>{formatMoney(tournament.prize_pool)}</strong></div></div>
+        <dl className="tournament-spotlight-details"><div><dt>Entry</dt><dd className={entryInfo.tone.split(" ").at(-1)}>{entryInfo.label}</dd></div><div><dt>Teams registered</dt><dd>{registered}<span> / {capacity || "—"}</span></dd></div></dl>
+        <div className="tournament-spotlight-capacity" aria-hidden="true"><span style={{ width: `${filled}%` }} /></div>
+        <div className="tournament-spotlight-countdown"><TournamentCountdown tournament={tournament} now={now} /></div>
+        <button type="button" onClick={() => onSelect(tournament.id)} className="tournament-spotlight-action site-hover site-hover-filled">{actionLabel}<ArrowRight size={17} aria-hidden="true" /></button>
+      </aside>
+    </section>
   );
 }
 
@@ -757,11 +714,11 @@ export default function Tournaments() {
                 </div>
               </div>
               {liveMatch ? (
-                <Link to={`/tournament-match/${liveMatch.id}`} className="inline-flex items-center gap-2 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400 transition-all hover:bg-red-500/20">
+                <Link to={`/tournament-match/${liveMatch.id}`} className="site-hover inline-flex items-center gap-2 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400 transition-all">
                   {activeUserMatch ? "Open My Match" : "Open Live Match"} <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               ) : (
-                <button onClick={() => handleSelectTournament(tournament.id)} className="inline-flex items-center gap-2 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400 transition-all hover:bg-red-500/20">
+                <button onClick={() => handleSelectTournament(tournament.id)} className="site-hover inline-flex items-center gap-2 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400 transition-all">
                   View Tournament <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -801,7 +758,7 @@ export default function Tournaments() {
               <button
                 type="button"
                 onClick={() => setVisibleTournamentCount((current) => Math.min(current + 8, 16))}
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-background/35 px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:border-orange/25 hover:bg-orange/[0.06] hover:text-orange"
+                className="site-hover mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-background/35 px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.14em] text-vapor transition-colors hover:border-orange/25 hover:text-orange"
               >
                 Load more tournaments <ChevronDown className="h-4 w-4" />
               </button>
@@ -888,7 +845,7 @@ export default function Tournaments() {
                       type="button"
                       onClick={() => handleLeaveTournament(selectedTournament)}
                       disabled={leavingId === selectedTournament.id}
-                      className="inline-flex items-center gap-2 px-3 py-2 bg-red-500/10 text-red-300 text-xs font-bold rounded-lg border border-red-500/20 hover:bg-red-500/20 disabled:opacity-50 uppercase tracking-wider"
+                      className="site-hover inline-flex items-center gap-2 px-3 py-2 bg-red-500/10 text-red-300 text-xs font-bold rounded-lg border border-red-500/20 disabled:opacity-50 uppercase tracking-wider"
                     >
                       {leavingId === selectedTournament.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
                       Leave
@@ -897,7 +854,7 @@ export default function Tournaments() {
                   {selectedUserMatch && (
                     <Link
                       to={`/tournament-match/${selectedUserMatch.id}`}
-                      className="px-3 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 uppercase tracking-wider"
+                      className="site-hover px-3 py-2 bg-cyan/10 text-cyan text-xs font-bold rounded-lg border border-cyan/20 uppercase tracking-wider"
                     >
                       Open My Match
                     </Link>
@@ -920,7 +877,7 @@ export default function Tournaments() {
                         ))}
                       </select>
                       {compatibleTeamsFor(selectedTournament).length === 0 && (
-                        <button type="button" onClick={() => openTournamentTeamCreator(selectedTournament)} className="inline-flex items-center gap-1.5 rounded-lg border border-orange/25 bg-orange/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-orange hover:bg-orange/20">
+                        <button type="button" onClick={() => openTournamentTeamCreator(selectedTournament)} className="site-hover inline-flex items-center gap-1.5 rounded-lg border border-orange/25 bg-orange/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-orange">
                           <Plus className="h-3 w-3" /> Create Team
                         </button>
                       )}
@@ -1149,7 +1106,7 @@ function TournamentRulesPanel({ tournament }) {
       <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-vapor">
         {rules || "This event follows the Topfragg competitive rules, match reporting process, and dispute policy."}
       </div>
-      <Link to="/rules" className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2.5 text-xs font-black uppercase tracking-wider text-foreground hover:border-primary/30 hover:bg-primary/[0.06] hover:text-primary">
+      <Link to="/rules" className="site-hover mt-5 inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2.5 text-xs font-black uppercase tracking-wider text-foreground hover:border-primary/30 hover:text-primary">
         View Platform Rules <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </section>
@@ -1324,10 +1281,11 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
   return (
     <motion.article
       data-event-status={tournament.status}
-      className={`tournament-list-card group relative grid w-full grid-cols-[48px_minmax(0,1fr)] gap-2.5 overflow-hidden rounded-lg border px-3 py-2.5 text-left transition-all lg:grid-cols-[48px_minmax(230px,1fr)_auto] lg:items-center ${
-        selected ? "is-selected border-cyan/25 bg-cyan/[0.055]" : "border-white/[0.055] bg-background/20 hover:border-white/15 hover:bg-white/[0.03]"
+      className={`tournament-list-card navigation-hover group relative grid w-full grid-cols-[48px_minmax(0,1fr)] gap-2.5 overflow-hidden rounded-lg border px-3 py-2.5 text-left lg:grid-cols-[48px_minmax(230px,1fr)_auto] lg:items-center ${
+        selected ? "is-selected border-cyan/25 bg-cyan/[0.055]" : "border-white/[0.055] bg-background/20"
       }`}
     >
+      <NavigationHoverFill />
       <button type="button" onClick={() => onSelect(tournament.id)} className="absolute inset-0 z-0" aria-label={`View ${tournament.name} overview`} />
       <div className="pointer-events-none relative z-[1] h-12 w-12 overflow-hidden rounded-md border border-white/[0.07] bg-background">
         <img src={imageUrl || "/assets/tournaments/black-ops-7.webp"} alt="" className="block h-full w-full object-contain object-center" />
@@ -1348,7 +1306,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
           <button
             type="button"
             onClick={(event) => { event.stopPropagation(); onJoin(); }}
-            className="pointer-events-auto relative z-10 col-span-2 inline-flex items-center justify-center gap-1.5 rounded-md bg-orange px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-white shadow-[0_6px_16px_rgba(255,130,0,.14)] transition-colors hover:bg-orange/90 sm:col-span-1"
+            className="site-hover site-hover-filled pointer-events-auto relative z-10 col-span-2 inline-flex items-center justify-center gap-1.5 rounded-md bg-orange px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-white shadow-[0_6px_16px_rgba(255,130,0,.14)] sm:col-span-1"
           >
             <Users className="h-3 w-3" /> Join
           </button>
