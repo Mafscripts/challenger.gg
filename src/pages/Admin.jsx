@@ -551,13 +551,16 @@ export default function Admin() {
   const currentRole = effectiveRoleFor(currentUser);
   const allowedTabs = useMemo(() => tabs.filter(tab => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin"))), [currentRole]);
   const workspaceRef = useRef(null);
-  const selectAdminSection = id => {
-    if (!allowedTabs.some(tab => tab.id === id)) return;
-    setActiveTab(id);
+  const focusAdminWorkspace = () => {
     window.requestAnimationFrame(() => {
       workspaceRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
       workspaceRef.current?.focus({ preventScroll: true });
     });
+  };
+  const selectAdminSection = (id, { focus = true } = {}) => {
+    if (!allowedTabs.some(tab => tab.id === id)) return;
+    setActiveTab(id);
+    if (focus) focusAdminWorkspace();
   };
 
   useEffect(() => {
@@ -1842,7 +1845,7 @@ export default function Admin() {
       <div className="admin-layout">
         <AdminNavigation sections={allowedTabs} activeTab={activeTab} onSelect={selectAdminSection} role={currentRole} />
         <main className="admin-console-main">
-          <AdminNavigation mobile sections={allowedTabs} activeTab={activeTab} onSelect={selectAdminSection} role={currentRole} />
+          <AdminNavigation mobile sections={allowedTabs} activeTab={activeTab} onSelect={selectAdminSection} onAfterClose={focusAdminWorkspace} role={currentRole} />
           <header className="admin-console-header">
             <div className="admin-console-header-copy"><p className="admin-console-eyebrow"><TopfraggLogo showWordmark={false} markClassName="!h-7 !w-7" />TOPFRAGG STAFF WORKSPACE</p><h1>Admin Console<span>.</span></h1><p>Support your players. Run the competition. Keep the arena moving.</p></div>
             <Shield className="admin-console-header-art" size={156} strokeWidth={1} aria-hidden="true" />

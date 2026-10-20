@@ -25,7 +25,9 @@
 .admin-nav-group > button > span:nth-child(2) { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .admin-nav-group > button > svg { flex-shrink: 0; color: #54778c; }
 .admin-nav-icon { display: grid; place-items: center; flex-shrink: 0; width: 31px; height: 31px; border: 1px solid rgb(var(--admin-accent) / .16); border-radius: 8px; color: rgb(var(--admin-accent)); background: rgb(var(--admin-accent) / .065); }
-.admin-nav-group > button:hover { color: #eef8ff; background: rgb(var(--admin-accent) / .045); border-color: rgb(var(--admin-accent) / .17); }
+@media (hover: hover) { .admin-nav-group > button:hover { color: #eef8ff; background: rgb(var(--admin-accent) / .045); border-color: rgb(var(--admin-accent) / .17); } }
+.admin-nav-group > button, .admin-mobile-launcher, .admin-mobile-shortcuts > button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.admin-nav-group > button:active { background: rgb(var(--admin-accent) / .1); }
 .admin-nav-group > button[aria-current] { border-color: rgb(var(--admin-accent) / .3); background: rgb(var(--admin-accent) / .08); color: rgb(var(--admin-accent)); box-shadow: inset 2px 0 rgb(var(--admin-accent)); }
 .admin-nav-empty { padding: 20px 9px; color: #89a8bb; font-size: 12px; line-height: 1.8; }
 .admin-mobile-navigation { display: none; }
@@ -86,7 +88,7 @@
 .admin-navigation-dialog > header p { margin-top: 7px; color: #8cabbf; font-size: 12px; }
 .admin-navigation-dialog .admin-nav-search { flex-shrink: 0; margin: 0 18px 10px; }
 .admin-navigation-dialog .admin-nav-search input { font-size: 16px; }
-.admin-navigation-dialog-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px max(12px, env(safe-area-inset-bottom)); }
+.admin-navigation-dialog-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y pinch-zoom; padding: 0 8px max(12px, env(safe-area-inset-bottom)); }
 .admin-navigation-dialog .admin-nav-group > button { min-height: 52px; font-size: 13px; }
 .admin-navigation-dialog > button:last-child { display: grid; place-items: center; min-width: 40px; min-height: 40px; right: 10px; top: 10px; }
 .admin-action-dialog { max-height: calc(100dvh - 32px); overscroll-behavior: contain; }
@@ -97,15 +99,20 @@
   .admin-page .admin-layout { grid-template-columns: minmax(0, 1fr); }
   .admin-console-sidebar { display: none; }
   .admin-mobile-navigation { position: sticky; top: 76px; z-index: 30; display: block; margin-bottom: 18px; padding: 9px; border: 1px solid #14d8ff30; border-radius: 12px; background: #0d1e2bf5; box-shadow: 0 8px 22px #0004; backdrop-filter: blur(18px); }
-  .admin-mobile-launcher { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 49px; padding: 2px 5px; text-align: left; }
+  .admin-mobile-launcher { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 43px; padding: 2px 5px; text-align: left; }
   .admin-mobile-launcher > span:nth-child(2) { min-width: 0; flex: 1; }
   .admin-mobile-launcher small { display: block; color: #789db2; font-size: 8px; font-weight: 750; letter-spacing: .08em; }
   .admin-mobile-launcher strong { display: block; margin-top: 4px; color: #e7f6ff; font-size: 13px; font-weight: 850; }
   .admin-mobile-browse { display: flex; align-items: center; gap: 6px; flex-shrink: 0; color: #6deaff; font-size: 11px; font-weight: 800; }
-  .admin-mobile-shortcuts { display: flex; gap: 6px; margin-top: 7px; padding-top: 8px; border-top: 1px solid #ffffff0b; }
-  .admin-mobile-shortcuts > button { display: inline-flex; align-items: center; justify-content: center; flex: 1; gap: 6px; min-height: 44px; padding: 7px; border: 1px solid transparent; border-radius: 7px; color: #8ba9bd; font-size: 10px; font-weight: 750; }
-  .admin-mobile-shortcuts > button[aria-current] { border-color: #14d8ff30; color: #59e3ff; background: #14d8ff0b; }
-  .admin-page .admin-workspace { scroll-margin-top: 220px; }
+  .admin-mobile-shortcuts { position: relative; display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; margin-top: 6px; padding: 10px 24px 5px 4px; border-top: 1px solid #ffffff0b; scroll-snap-type: x proximity; scroll-padding-inline: 4px 24px; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent); }
+  .admin-mobile-shortcuts::-webkit-scrollbar { display: none; }
+  .admin-mobile-shortcuts > button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 7px; min-height: 44px; padding: 9px 12px; border: 1px solid rgb(var(--admin-accent) / .15); border-radius: 8px; color: #9eb9ca; background: #09192466; font-size: 11px; font-weight: 750; white-space: nowrap; scroll-snap-align: center; }
+  .admin-mobile-shortcuts > button > svg { flex-shrink: 0; color: rgb(var(--admin-accent) / .8); }
+  .admin-mobile-shortcuts > button[aria-current] { border-color: rgb(var(--admin-accent) / .5); color: rgb(var(--admin-accent)); background: rgb(var(--admin-accent) / .1); box-shadow: inset 0 -2px rgb(var(--admin-accent) / .65); }
+  .admin-mobile-shortcuts > button:active { background: rgb(var(--admin-accent) / .16); }
+  .admin-mobile-swipe-hint { display: flex; align-items: center; gap: 6px; margin: 3px 4px 0; color: #6e94aa; font-size: 9px; line-height: 1.5; }
+  .admin-mobile-swipe-hint > span:last-child { margin-left: auto; color: #8bb2c7; font-variant-numeric: tabular-nums; }
+  .admin-page .admin-workspace { scroll-margin-top: 240px; }
 }
 @container admin-workspace (min-width: 1400px) { .admin-page .admin-stat-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 @container admin-workspace (max-width: 1100px) {
@@ -195,7 +202,7 @@
 @media (min-width: 1024px) {
   .app-layout-sidebar .admin-console-sidebar { top: 20px; max-height: calc(100dvh - 40px); }
   .app-layout-sidebar .admin-mobile-navigation { top: 12px; }
-  .app-layout-sidebar .admin-workspace { scroll-margin-top: 160px; }
+  .app-layout-sidebar .admin-workspace { scroll-margin-top: 180px; }
 }
 @container admin-console (min-width: 1201px) { .app-layout-sidebar .admin-page .admin-workspace { scroll-margin-top: 24px; } }
 @media (prefers-reduced-motion: reduce) { .admin-page *, .admin-navigation-dialog *, .admin-action-dialog * { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
