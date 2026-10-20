@@ -38,6 +38,7 @@
 .competition-hero-actions { position: relative; padding: 18px 40px; border-top: 1px solid rgb(var(--comp-accent) / .14); background: #08152170; }
 .competition-hero-actions .competition-actions { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; }
 .competition-hero-actions .competition-action-pill { width: auto; min-height: 43px; border-radius: 9px; border-color: rgb(var(--comp-accent) / .22); background: rgb(var(--comp-accent) / .045); font-size: 12px; }
+.competition-hero-actions .competition-actions .competition-game-switch { flex: 0 1 auto; width: auto; max-width: 100%; height: 44px; min-height: 44px; justify-content: center; gap: 10px; padding: 0 14px; border-radius: 9px; }
 .competition-hero-actions .competition-action-pill:hover:not(:disabled) { color: rgb(var(--comp-accent)); border-color: rgb(var(--comp-accent) / .6); }
 .competition-hero-actions button.competition-action-pill:not(.competition-game-switch), .competition-hero-actions .competition-actions > button:first-child:not(.competition-game-switch) { color: #06202b; border-color: rgb(var(--comp-accent) / .7); background: linear-gradient(110deg, rgb(var(--comp-accent)), rgb(var(--comp-accent) / .8)); box-shadow: 0 3px 20px rgb(var(--comp-accent) / .1); }
 .competition-hero-actions button:disabled { box-shadow: none; }

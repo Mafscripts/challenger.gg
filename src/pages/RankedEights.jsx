@@ -3,7 +3,7 @@ import StreamRequirementNotice from "@/components/competition/StreamRequirementN
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { freeEightsTeamSize } from "@/lib/freeEightsFormat";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, CalendarDays, Crown, Plus } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, Gamepad2, Plus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
@@ -257,8 +257,8 @@ export default function RankedEights() {
             </button>
           )}{!isMoney && (
             <Select value={gameId} onValueChange={switchGame}>
-              <SelectTrigger aria-label="Switch game" className="competition-action-pill competition-game-switch">
-                <span className="text-vapor">Switch game</span><SelectValue />
+              <SelectTrigger aria-label="Switch game" title="Switch game" className="competition-action-pill competition-game-switch">
+                <Gamepad2 className="h-4 w-4 shrink-0 text-vapor" aria-hidden="true" /><span className="min-w-0"><SelectValue /></span>
               </SelectTrigger>
               <SelectContent className="rounded-xl border-white/10 bg-[#111821] text-white">
                 {games.map((game) => (
