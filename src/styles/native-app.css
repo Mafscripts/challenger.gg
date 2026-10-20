@@ -1,0 +1,20 @@
+.topfragg-native { background: #08111b; color-scheme: dark; -webkit-text-size-adjust: 100%; }
+.topfragg-native body { overscroll-behavior-y: none; }
+.topfragg-native .app-content { padding-top: calc(4rem + env(safe-area-inset-top, 0px)); }
+.topfragg-native .app-shell-auth { padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+.topfragg-native .app-topbar { padding-top: env(safe-area-inset-top, 0px); height: calc(4rem + env(safe-area-inset-top, 0px)); }
+.topfragg-native .mobile-menu-enter { padding-top: calc(5rem + env(safe-area-inset-top, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.topfragg-native .app-footer-wrap { display: none; }
+.topfragg-native .arena-auth { padding-top: max(2rem, env(safe-area-inset-top, 0px)); padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px)); }
+.topfragg-native input, .topfragg-native select, .topfragg-native textarea { font-size: max(16px, 1em); }
+.topfragg-native .native-tab-bar {
+  position: fixed; inset: auto 0 0; z-index: 30;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+  background: rgb(8 17 27 / 96%); border-top: 1px solid rgb(0 214 255 / 18%);
+  backdrop-filter: blur(20px); box-shadow: 0 -8px 32px rgb(0 0 0 / 20%);
+}
+.native-tab-bar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 48px; color: #8c9dad; border-radius: 12px; font-size: 10px; font-weight: 700; -webkit-tap-highlight-color: transparent; }
+.native-tab-bar a.is-active { color: #00d6ff; background: linear-gradient(180deg, rgb(0 214 255 / 12%), transparent); }
+.native-tab-bar a:focus-visible { outline: 2px solid #00d6ff; outline-offset: -2px; }
+.native-tab-bar a:active { background: rgb(0 214 255 / 16%); }

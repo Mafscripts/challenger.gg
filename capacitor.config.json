@@ -1,0 +1,22 @@
+{
+  "appId": "gg.topfragg.app",
+  "appName": "TopFragg",
+  "webDir": "dist-ios",
+  "backgroundColor": "#08111b",
+  "loggingBehavior": "debug",
+  "ios": {
+    "contentInset": "never",
+    "preferredContentMode": "mobile",
+    "backgroundColor": "#08111b",
+    "allowsLinkPreview": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchFadeOutDuration": 180,
+      "backgroundColor": "#08111b",
+      "showSpinner": false
+    },
+    "StatusBar": { "style": "DARK" }
+  }
+}

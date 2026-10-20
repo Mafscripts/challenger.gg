@@ -13,6 +13,7 @@ import {
   Unlink,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { connectAccount, isNativeApp, NATIVE_RESUME_EVENT } from "@/lib/nativeApp";
 import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -39,6 +40,13 @@ export default function DiscordSection({ user, onUserUpdate }) {
   const connected = Boolean(user?.discord_user_id);
 
   useEffect(() => {
+    if (!isNativeApp) return;
+    const refresh = () => { setConnectionAction(null); void onUserUpdate(); };
+    window.addEventListener(NATIVE_RESUME_EVENT, refresh);
+    return () => window.removeEventListener(NATIVE_RESUME_EVENT, refresh);
+  }, [onUserUpdate]);
+
+  useEffect(() => {
     setWebhookUrl(user?.discord_webhook_url || "");
     setAlertsEnabled(Boolean(user?.discord_alerts_enabled));
   }, [user]);
@@ -61,8 +69,7 @@ export default function DiscordSection({ user, onUserUpdate }) {
     const query = params.toString();
     window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
     setConnectionAction("connect");
-    base44.discord.connect()
-      .then((result) => window.location.assign(result.authorization_url))
+    connectAccount("discord", () => base44.discord.connect())
       .catch((error) => {
         setConnectionResult({ success: false, message: error.message || "Discord connection is unavailable." });
         setConnectionAction(null);
@@ -73,8 +80,7 @@ export default function DiscordSection({ user, onUserUpdate }) {
     setConnectionAction("connect");
     setConnectionResult(null);
     try {
-      const result = await base44.discord.connect();
-      window.location.assign(result.authorization_url);
+      await connectAccount("discord", () => base44.discord.connect());
     } catch (error) {
       setConnectionResult({ success: false, message: error.message || "Discord connection is unavailable." });
       setConnectionAction(null);

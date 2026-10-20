@@ -70,7 +70,7 @@ export default function Settings() {
   const searchResults = searchSettings(query);
 
   const loadUser = useCallback(async () => {
-    const me = await base44.auth.me();
+    const me = await base44.auth.me({ force: true });
     setUser(me);
   }, []);
 

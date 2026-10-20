@@ -67,7 +67,7 @@ const currentTwitchUser = async (accessToken, clientId) => {
   return user;
 };
 
-router.post("/connect", requireAuth, async (req, res, next) => {
+export async function beginTwitchConnection(req, res, next, { redirect = false } = {}) {
   try {
     const config = oauthConfig(req);
     const authorizationUrl = new URL(`${TWITCH_IDENTITY_API}/authorize`);
@@ -79,9 +79,10 @@ router.post("/connect", requireAuth, async (req, res, next) => {
       force_verify: "true",
       state: createState(req.user.id, config.stateSecret),
     }).toString();
-    res.json({ authorization_url: authorizationUrl.toString() });
+    return redirect ? res.redirect(302, authorizationUrl.toString()) : res.json({ authorization_url: authorizationUrl.toString() });
   } catch (error) { next(error); }
-});
+}
+router.post("/connect", requireAuth, (req, res, next) => beginTwitchConnection(req, res, next));
 
 router.get("/callback", async (req, res) => {
   let config;

@@ -1,4 +1,5 @@
 import { trophyAssets } from "@/lib/trophyAssets";
+import { websiteOrigin } from "@/lib/appEnvironment";
 import React, { useEffect, useState } from "react";
 import { DollarSign, Medal, Swords, Target, Zap } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
@@ -43,7 +44,7 @@ const trophies = [
 
 export const playerOverlayUrl = (identifier, theme = "blue") => {
   const selectedTheme = normalizePlayerOverlayTheme(theme);
-  return `${window.location.origin}/overlay/player/${encodeURIComponent(identifier)}${selectedTheme === "blue" ? "" : `?theme=${selectedTheme}`}`;
+  return `${websiteOrigin}/overlay/player/${encodeURIComponent(identifier)}${selectedTheme === "blue" ? "" : `?theme=${selectedTheme}`}`;
 };
 
 export function usePlayerOverlay(identifier) {

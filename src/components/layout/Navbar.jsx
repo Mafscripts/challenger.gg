@@ -14,6 +14,7 @@ import { applyNotificationChange } from "@/lib/notificationInbox";
 import TopbarNavigation from "./TopbarNavigation";
 import { topbarMobileSections } from "./navigationGroups";
 import { useNavigationLayout } from "./NavigationLayoutProvider";
+import { isNativeApp } from "@/lib/nativeApp";
 import AccountMenu from "./AccountMenu";
 import NavigationChrome from "./NavigationChrome";
 import SidebarBalances from "./SidebarBalances";
@@ -201,7 +202,8 @@ const formatMessageTime = (value) => {
 };
 
 export default function Navbar() {
-  const navigationLayout = useNavigationLayout()?.layout || "topbar";
+  const savedNavigationLayout = useNavigationLayout()?.layout || "topbar";
+  const navigationLayout = isNativeApp ? "topbar" : savedNavigationLayout;
   const [sidebarWidth, setSidebarWidth] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);

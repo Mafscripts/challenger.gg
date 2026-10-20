@@ -1,0 +1,55 @@
+workflows:
+  ios-simulator:
+    name: TopFragg iPhone simulator check
+    instance_type: mac_mini_m2
+    max_build_duration: 40
+    environment:
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Install dependencies
+        script: npm ci --no-audit --no-fund
+      - name: Check mobile authentication and configuration
+        script: npm run ios:check
+      - name: Bundle the app and sync iOS
+        script: npm run ios:sync
+      - name: Build for iPhone simulator without signing
+        script: |
+          xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios-simulator CODE_SIGNING_ALLOWED=NO build
+      - name: Package simulator app
+        script: ditto -c -k --sequesterRsrc --keepParent build/ios-simulator/Build/Products/Debug-iphonesimulator/App.app build/TopFragg-simulator.zip
+    artifacts:
+      - build/TopFragg-simulator.zip
+      - /tmp/xcodebuild_logs/*.log
+
+  ios-signed:
+    name: TopFragg signed iPhone build
+    instance_type: mac_mini_m2
+    max_build_duration: 40
+    # Upload matching Apple distribution signing files in Codemagic first.
+    # No automatic triggers or uploads to TestFlight/App Store are configured.
+    environment:
+      node: 22
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: gg.topfragg.app
+    scripts:
+      - name: Install dependencies
+        script: npm ci --no-audit --no-fund
+      - name: Check mobile authentication and configuration
+        script: npm run ios:check
+      - name: Bundle the app and sync iOS
+        script: npm run ios:sync
+      - name: Apply Apple signing profiles
+        script: xcode-project use-profiles
+      - name: Set unique build number
+        script: |
+          cd ios/App
+          agvtool new-version -all "$BUILD_NUMBER"
+      - name: Build signed IPA
+        script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log

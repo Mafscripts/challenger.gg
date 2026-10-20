@@ -7,19 +7,9 @@ import { notifyCancelledMatch, notifyCancelledMatchResponse } from "@/lib/cancel
 import { notifyMatchPostedResponse } from "@/lib/notificationInbox";
 import { rememberRestriction, clearRestriction, appealHeaders } from "@/lib/accountRestriction";
 import { rememberNetworkRestriction, clearNetworkRestriction } from "@/lib/networkAccess";
+import { apiBase } from "@/lib/appEnvironment";
 
-const normalizeApiBase = (value) => String(value || "").replace(/\/+$/, "");
-
-const API_BASE = (() => {
-  const configuredBase = normalizeApiBase(import.meta.env.VITE_API_URL || "/api");
-  if (configuredBase && configuredBase !== "/api") return configuredBase;
-
-  if (typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
-    return "http://localhost:4000/api";
-  }
-
-  return configuredBase || "/api";
-})();
+const API_BASE = apiBase;
 const TOKEN_KEYS = ["auth_token", "base44_access_token", "token"];
 const ENTITY_CACHE_MS = 15_000;
 const ME_CACHE_MS = 60_000;
@@ -332,6 +322,12 @@ const entityClient = (entity) => ({
 });
 
 export const base44 = {
+  mobileOAuth: {
+    createTicket(provider) {
+      requireToken();
+      return apiFetch("/mobile/oauth/ticket", { method: "POST", body: { provider }, dedupe: false });
+    },
+  },
   banAppeals: {
     me: (before) => apiFetch(`/ban-appeals/me${toQuery({ before })}`, { headers: appealHeaders() }),
     send: (body) => apiFetch("/ban-appeals/me/messages", { method: "POST", body, headers: appealHeaders() }),

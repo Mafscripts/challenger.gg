@@ -1,4 +1,5 @@
 import CompetitionHero from "@/components/competition/CompetitionHero";
+import { currentPublicUrl } from "@/lib/appEnvironment";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Check, ChevronDown, Copy, ExternalLink, Headphones, Link2, Mars, Plus, RefreshCw, Shuffle, Trash2, Users, Venus, X } from "lucide-react";
@@ -104,8 +105,8 @@ function PartyRoom() {
     finally { setBusy(false); }
   };
   const copy = async () => {
-    try { await navigator.clipboard.writeText(window.location.href); setNotice("Invite link copied. Players can open it and link their own slot."); }
-    catch { setNotice(`Share this room: ${window.location.href}`); }
+    try { await navigator.clipboard.writeText(currentPublicUrl()); setNotice("Invite link copied. Players can open it and link their own slot."); }
+    catch { setNotice(`Share this room: ${currentPublicUrl()}`); }
   };
   const entries = useMemo(() => room ? partyDrawEntries(room) : [], [room]);
   const invalid = useMemo(() => room ? partyValidation(room) : null, [room]);

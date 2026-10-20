@@ -8,6 +8,8 @@ import { User, UserPlus, Mail, Lock, Loader2, Gift } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import TurnstileCheck from "@/components/TurnstileCheck";
 import { displayNameHint, displayNamePattern, usernameHint, usernamePattern } from "@/lib/accountNames";
+import { isNativeApp, openAppBrowser } from "@/lib/nativeApp";
+import { websiteOrigin } from "@/lib/appEnvironment";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ export default function Register() {
   const referralCode = String(searchParams.get("ref") || "").trim().toUpperCase();
 
   useEffect(() => {
+    if (isNativeApp) return;
     let active = true;
     setSecurityConfigError("");
     base44.auth.getRegistrationConfig().then((config) => {
@@ -96,6 +99,13 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  if (isNativeApp) return <AuthLayout icon={UserPlus} title="Join TopFragg" subtitle="Create your player account" compact>
+    <p className="mb-5 text-sm leading-6 text-vapor">Create and verify your account in the secure browser. Then return to the app and sign in.</p>
+    <Button className="w-full" onClick={() => { void openAppBrowser(`${websiteOrigin}/register${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ""}`).catch(() => setError("The browser could not be opened. Please try again.")); }}>Create account</Button>
+    {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
+    <Link to="/login" className="mt-5 block text-center text-sm font-bold text-cyan">Already registered? Sign in</Link>
+  </AuthLayout>;
 
   return (
     <AuthLayout

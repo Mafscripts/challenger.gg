@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Link2, Loader2, Radio, RefreshCw, Twitch, Unlink, Youtube } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { connectAccount, isNativeApp, NATIVE_RESUME_EVENT } from "@/lib/nativeApp";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const providers = [
@@ -52,6 +53,12 @@ export default function StreamConnectionsSection({ user, onUserUpdate }) {
 
   useEffect(() => { void loadStatus(); }, [loadStatus]);
   useEffect(() => {
+    if (!isNativeApp) return;
+    const refresh = () => { setBusy(null); void loadStatus(); void onUserUpdate(); };
+    window.addEventListener(NATIVE_RESUME_EVENT, refresh);
+    return () => window.removeEventListener(NATIVE_RESUME_EVENT, refresh);
+  }, [loadStatus, onUserUpdate]);
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const twitchOutcome = params.get("twitch");
     if (callbackMessages[twitchOutcome]) {
@@ -72,8 +79,7 @@ export default function StreamConnectionsSection({ user, onUserUpdate }) {
   const connect = async provider => {
     setBusy(provider); setResult(null);
     try {
-      const response = await connectionApi(provider).connect();
-      window.location.assign(response.authorization_url);
+      await connectAccount(provider, () => connectionApi(provider).connect());
     } catch (error) { setResult({ success: false, message: error.message || "Connection is unavailable." }); setBusy(null); }
   };
   const disconnect = async () => {

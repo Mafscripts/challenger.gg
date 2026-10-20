@@ -136,7 +136,7 @@ const currentDiscordUser = async (accessToken) => {
   return body;
 };
 
-router.post("/connect", requireAuth, async (req, res, next) => {
+export async function beginDiscordConnection(req, res, next, { redirect = false } = {}) {
   try {
     const config = oauthConfig(req);
     const state = createState(req.user.id, config.stateSecret, req.body?.return_to);
@@ -154,11 +154,12 @@ router.post("/connect", requireAuth, async (req, res, next) => {
       state,
       prompt: "consent",
     }).toString();
-    res.json({ authorization_url: authorizationUrl.toString() });
+    return redirect ? res.redirect(302, authorizationUrl.toString()) : res.json({ authorization_url: authorizationUrl.toString() });
   } catch (error) {
     next(error);
   }
-});
+}
+router.post("/connect", requireAuth, (req, res, next) => beginDiscordConnection(req, res, next));
 
 router.get("/callback", async (req, res) => {
   let config;

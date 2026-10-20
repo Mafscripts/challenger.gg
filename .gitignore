@@ -16,6 +16,18 @@ node_modules
 .npm-cache
 dist
 dist-ssr
+dist-ios
+ios/App/App/public
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
+ios/App/Pods
+ios/App/build
+ios/App/DerivedData
+ios/App/App.xcodeproj/xcuserdata
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata
+ios/capacitor-cordova-ios-plugins
+*.p12
+*.mobileprovision
 *.local
 
 # Editor directories and files

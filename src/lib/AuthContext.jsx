@@ -3,6 +3,7 @@ import { base44, invalidateApiCache } from "@/api/base44Client";
 import { bootstrapCurrentUser, clearBootstrapSession } from "@/lib/userBootstrap";
 import { RESTRICTION_EVENT, readRestriction, clearRestriction, isRestriction } from "@/lib/accountRestriction";
 import { NETWORK_RESTRICTION_EVENT, readNetworkRestriction, clearNetworkRestriction } from "@/lib/networkAccess";
+import { isNativeApp, NATIVE_RESUME_EVENT } from "@/lib/nativeApp";
 
 const AuthContext = createContext();
 
@@ -122,6 +123,19 @@ export const AuthProvider = ({ children }) => {
   }, [completeAuth, markUnauthenticated]);
 
   const checkAppState = useCallback(() => checkUserAuth(), [checkUserAuth]);
+  useEffect(() => {
+    if (!isNativeApp) return;
+    const refresh = async () => {
+      if (!await base44.auth.isAuthenticated()) return;
+      try { completeAuth(await base44.auth.me({ force: true })); }
+      catch (error) {
+        // A temporary mobile network outage must not sign the player out.
+        if ([401, 403, 404].includes(error.status)) markUnauthenticated();
+      }
+    };
+    window.addEventListener(NATIVE_RESUME_EVENT, refresh);
+    return () => window.removeEventListener(NATIVE_RESUME_EVENT, refresh);
+  }, [completeAuth, markUnauthenticated]);
   const resumeNetworkAccess = useCallback(async () => {
     clearNetworkRestriction();
     setNetworkRestriction(null);

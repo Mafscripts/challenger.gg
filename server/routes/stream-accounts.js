@@ -10,6 +10,15 @@ const readCookie = (req, name) => {
   try { return item ? decodeURIComponent(item.slice(name.length + 1)) : ""; } catch { return ""; }
 };
 
+export function beginStreamConnection(req, res, next, { env = process.env, redirect = false, provider = req.params.provider } = {}) {
+  try {
+    const config = streamAccountConfig(provider, env);
+    const authorization = createStreamAuthorization(config, req.user.id);
+    res.cookie(cookieName(config.provider), authorization.cookie, cookieOptions(config.provider, config.origin.startsWith("https:")));
+    return redirect ? res.redirect(302, authorization.authorizationUrl) : res.json({ authorization_url: authorization.authorizationUrl });
+  } catch (error) { next(error); }
+}
+
 export function createStreamAccountsRouter({ db = prisma, authenticate = requireAuth, fetcher = (...args) => fetch(...args), env = process.env } = {}) {
   const router = Router();
   router.get("/status", authenticate, async (req, res, next) => {
@@ -22,14 +31,7 @@ export function createStreamAccountsRouter({ db = prisma, authenticate = require
       })));
     } catch (error) { next(error); }
   });
-  router.post("/:provider/connect", authenticate, (req, res, next) => {
-    try {
-      const config = streamAccountConfig(req.params.provider, env);
-      const authorization = createStreamAuthorization(config, req.user.id);
-      res.cookie(cookieName(config.provider), authorization.cookie, cookieOptions(config.provider, config.origin.startsWith("https:")));
-      res.json({ authorization_url: authorization.authorizationUrl });
-    } catch (error) { next(error); }
-  });
+  router.post("/:provider/connect", authenticate, (req, res, next) => beginStreamConnection(req, res, next, { env }));
   router.get("/:provider/callback", async (req, res) => {
     const provider = req.params.provider;
     if (!streamAccountProviders.includes(provider)) return res.status(404).json({ error: "Unknown streaming provider" });

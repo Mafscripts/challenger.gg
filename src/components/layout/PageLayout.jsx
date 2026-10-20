@@ -6,6 +6,8 @@ import Navbar from "./Navbar";
 import { NavigationLayoutProvider, useNavigationLayout } from "./NavigationLayoutProvider";
 import "@/styles/navigation-layout.css";
 import CompetitionRouteFrame from "@/components/competition/CompetitionRouteFrame";
+import NativeTabBar from "./NativeTabBar";
+import { isNativeApp } from "@/lib/nativeApp";
 
 const Footer = lazy(() => import("./Footer"));
 
@@ -43,7 +45,7 @@ function PageLayoutShell() {
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
-    <div className={`app-style-arena app-season-mw4 relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"} ${isAdminRoute ? "app-shell-admin" : ""} ${isAuthenticated && layout === "sidebar" ? "app-layout-sidebar" : "app-layout-topbar"}`}>
+    <div className={`app-style-arena app-season-mw4 relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"} ${isAdminRoute ? "app-shell-admin" : ""} ${!isNativeApp && isAuthenticated && layout === "sidebar" ? "app-layout-sidebar" : "app-layout-topbar"}`}>
       <div className="page-ambient" aria-hidden="true" />
       <Navbar />
       <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">
@@ -53,6 +55,7 @@ function PageLayoutShell() {
           </div>
         </Suspense>
       </main>
+      <NativeTabBar />
       <div className="app-footer-wrap relative z-[1]">
         <DeferredFooter />
       </div>

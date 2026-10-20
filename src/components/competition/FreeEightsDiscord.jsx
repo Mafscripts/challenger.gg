@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { AlertTriangle, CheckCircle2, ChevronDown, ExternalLink, Headphones, Link2, Loader2, Mic, MicOff, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { connectAccount, isNativeApp, NATIVE_RESUME_EVENT } from "@/lib/nativeApp";
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
 import { freeEightsVoiceChannelName } from "@/lib/freeEightsRoomIdentity";
@@ -50,13 +51,18 @@ export function FreeEightsDiscordDialog({ open, onOpenChange, returnTo = "/ranke
   const connectButton = useRef(null);
   const opener = useRef(null);
   useEffect(() => { if (open) setError(""); }, [open]);
+  useEffect(() => {
+    if (!isNativeApp) return;
+    const refresh = () => { setConnecting(false); onOpenChange?.(false); };
+    window.addEventListener(NATIVE_RESUME_EVENT, refresh);
+    return () => window.removeEventListener(NATIVE_RESUME_EVENT, refresh);
+  }, [onOpenChange]);
   const connect = async () => {
     if (connecting) return;
     setConnecting(true);
     setError("");
     try {
-      const result = await base44.discord.connect(returnTo);
-      window.location.assign(result.authorization_url);
+      await connectAccount("discord", () => base44.discord.connect(returnTo));
     } catch (error) {
       setError(error.message || "Discord could not be connected. Please try again.");
       setConnecting(false);
