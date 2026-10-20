@@ -8,7 +8,6 @@ import {
   Ban,
   Camera,
   ChevronRight,
-  DollarSign,
   Flame,
   Gamepad2,
   Globe2,
@@ -50,6 +49,8 @@ import { activisionIdFor } from "@/lib/activision";
 import { normalizeImageSource, prepareImageFile } from "@/lib/images";
 import { isInventoryTrophy, trophyCountsFor } from "@/lib/trophyCounts";
 import { participantBelongsToUser, profileMatchOutcome, profileMatchSideFor, tournamentMatchSideFor } from "@/lib/profileMatchResults";
+import "@/styles/competition-presentation.css";
+import "@/styles/profile-layout.css";
 
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
@@ -540,25 +541,33 @@ export default function Profile() {
   }
 
   const tabs = [
-    { id: "overview", label: "Home", icon: Gamepad2 },
-    { id: "matches", label: "Match History", icon: Swords },
-    { id: "trophies", label: "Trophies & Badges", icon: Trophy },
-    { id: "teams", label: isOwnProfile ? "My Teams" : "Teams", icon: Users },
+    { id: "overview", label: "Overview", icon: Gamepad2 },
+    { id: "matches", label: "Matches", icon: Swords },
+    { id: "statistics", label: "Competition stats", icon: Target },
+    { id: "teams", label: "Teams", icon: Users },
+    { id: "trophies", label: "Trophies & badges", icon: Trophy },
     { id: "friends", label: "Friends", icon: Users },
-    { id: "statistics", label: "Arena", icon: Target },
   ];
+  const changeSection = nextTab => {
+    setTab(nextTab);
+    window.requestAnimationFrame(() => document.getElementById("profile-sections")?.scrollIntoView({ block: "start", behavior: "instant" }));
+  };
+  const openProfileEditor = () => {
+    setProfileResult(null); setEditingProfile(true);
+    window.requestAnimationFrame(() => document.getElementById("profile-editor")?.scrollIntoView({ block: "start", behavior: "instant" }));
+  };
 
   return (
-    <div className="profile-page min-h-screen py-6 sm:py-8">
-      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+    <div className="profile-page profile-refresh competition-surface page-shell" data-competition="profile">
+      <div className="page-container">
         <section className="profile-hero relative overflow-hidden rounded-2xl border border-white/10 bg-card">
           {bannerDraft && <img src={bannerDraft} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-35" />}
           <div className="profile-hero-shade pointer-events-none absolute inset-0" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan via-orange to-transparent" />
-          <div className="relative flex min-h-[240px] flex-col justify-start gap-7 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between lg:p-8">
+          <div className="profile-identity relative flex flex-col justify-start gap-7 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between lg:p-8">
             <div className="flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
               <div className="relative shrink-0">
-                <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-4xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)] sm:h-36 sm:w-36">
+                <div className="profile-avatar flex items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-4xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)]">
                   {avatarDraft || profile?.avatar_url ? <img src={avatarDraft || profile.avatar_url} alt={name} className="h-full w-full object-cover" /> : name.charAt(0)}
                 </div>
               </div>
@@ -575,22 +584,23 @@ export default function Profile() {
                   <ScreenshotRankPill rank={user.screenshot_rank} />
                   <UserBadges user={user} streamerHref={hasStreamerBadge ? `/streamer-tournaments?host=${user.id}` : ""} />
                 </div>
+                <p className="profile-handle">@{user.username || user.handle || "player"}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-md border border-cyan/20 bg-cyan/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider text-cyan">{activisionIdFor(user) || "Activision ID not set"}</span>
+                  <span className="profile-gaming-id"><Gamepad2 size={14} /><span>Activision ID</span><strong>{activisionIdFor(user) || "Not set"}</strong></span>
                 </div>
 
               </div>
             </div>
 
-            <div className="w-full shrink-0 lg:w-[280px] lg:self-start">
+            <div className="profile-identity-actions w-full shrink-0 lg:w-[300px]">
               <div className="flex gap-2">
                 {isOwnProfile ? (
                   <>
-                    <button type="button" onClick={() => { setProfileResult(null); setEditingProfile((current) => !current); }} className={`inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-[9px] font-black uppercase tracking-wider ${editingProfile ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-white/10 bg-black/20 text-white hover:border-cyan/30 hover:text-cyan"}`}>
-                      <Pencil className="h-3.5 w-3.5" /> Edit profile
+                    <button type="button" onClick={() => { setProfileResult(null); setEditingProfile((current) => !current); }} aria-expanded={editingProfile} aria-controls="profile-editor" className={`profile-edit-action inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold ${editingProfile ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-white/10 bg-black/20 text-white hover:border-cyan/30 hover:text-cyan"}`}>
+                      <Pencil className="h-3.5 w-3.5" />{editingProfile ? "Close editor" : "Edit profile"}
                     </button>
-                    <Link to="/settings" className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 text-[9px] font-black uppercase tracking-wider text-white hover:border-cyan/30 hover:text-cyan">
-                      <Settings className="h-3.5 w-3.5" /> Settings
+                    <Link to="/settings" className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 text-xs font-bold text-white hover:border-cyan/30 hover:text-cyan">
+                      <Settings className="h-3.5 w-3.5" /> Account settings
                     </Link>
                   </>
                 ) : currentUser?.id ? (
@@ -598,14 +608,14 @@ export default function Profile() {
                 ) : null}
               </div>
               {!isOwnProfile && currentUser?.id && <FriendActions key={user.id} userId={user.id} currentUserId={currentUser.id} />}
-              {isOwnProfile && <Link to="/settings#settings-overlay" className="mt-3 flex items-center justify-center gap-2 text-xs font-bold text-cyan"><MonitorPlay size={15} />Your Twitch player overlay<ChevronRight size={13} /></Link>}
             </div>
           </div>
 
-          <ProfileHeaderBar socials={socialLinks} trophies={trophyOverviewCards} />
+          <ProfileHeaderBar socials={socialLinks} region={region} joinedDate={joinedDate} />
 
           {isOwnProfile && editingProfile && (
-            <div className="relative border-t border-white/10 bg-black/10 p-4 sm:p-5">
+            <div id="profile-editor" className="profile-editor relative border-t border-white/10 bg-black/10 p-4 sm:p-5">
+              <div className="profile-editor-heading"><div><h2>Profile appearance</h2><p>Update your photo, banner and bio. Change your username in <Link to="/settings#settings-account">Account settings</Link>.</p></div><Link to="/settings#settings-overlay"><MonitorPlay size={15} />Player overlay<ChevronRight size={13} /></Link></div>
               <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span><input value={avatarDraft} onChange={(event) => setAvatarDraft(event.target.value)} onBlur={() => { try { setAvatarDraft(normalizeImageSource(avatarDraft)); } catch { /* Save displays validation. */ } }} placeholder="https://i.imgur.com/example.png" className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
@@ -622,15 +632,15 @@ export default function Profile() {
           )}
         </section>
 
-        <nav className="arena-tabs mt-4 grid grid-cols-3 sm:grid-cols-6" aria-label="Profile sections">
+        <nav id="profile-sections" className="profile-section-tabs arena-tabs mt-5 grid grid-cols-3 sm:grid-cols-6" aria-label="Profile sections">
           {tabs.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id} className="arena-tab relative flex min-h-12 items-center justify-center gap-2 px-2 text-[9px] font-black transition-colors sm:text-[10px]">
+            <button key={id} type="button" onClick={() => changeSection(id)} aria-pressed={tab === id} className="arena-tab relative flex min-h-12 items-center justify-center gap-2 px-2 text-xs font-bold transition-colors">
               <Icon className="hidden h-3.5 w-3.5 sm:block" /> {label}
             </button>
           ))}
         </nav>
 
-        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} recentTrophies={recentTrophies} trophiesLoading={trophiesLoading} trophiesError={trophiesError} teams={profileTeams} teamsLoading={historyLoading} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} canManageFriends={isOwnProfile} onTab={setTab} />}
+        {tab === "overview" && <ProfileOverview arena={arena} arenaLoading={arenaLoading} arenaError={arenaError} onRetry={() => setArenaRetry((value) => value + 1)} user={user} profile={profile} matches={profileMatches} matchesLoading={historyLoading || arenaLoading} trophyCount={trophyCount} recentTrophies={recentTrophies} trophiesLoading={trophiesLoading} trophiesError={trophiesError} teams={profileTeams} teamsLoading={historyLoading} friends={{ ...friends, error: friendsError }} friendsLoading={friendsLoading} canManageFriends={isOwnProfile} onTab={changeSection} onEditProfile={openProfileEditor} />}
 
         {tab === "statistics" && (
           <div className="mt-5 space-y-6">
@@ -640,7 +650,7 @@ export default function Profile() {
         )}
         {tab === "trophies" && <div className="mt-5 space-y-6"><TrophyOverview trophies={trophyOverviewCards} items={earnedTrophyItems} /><AchievementsPanel achievements={achievementCards} badges={badges} expanded /></div>}
         {tab === "friends" && <div className="mt-5 space-y-5">{isOwnProfile && <FriendRequestsPanel key={user.id} userId={user.id} />}<ProfileFriends {...friends} loading={friendsLoading} error={friendsError} expanded onLoadMore={loadMoreFriends} loadingMore={friendsLoadingMore} /></div>}
-        {tab === "matches" && <div className="mt-5"><RecentMatchesPanel key={user.id} matches={profileMatches} userId={user.id} loading={historyLoading || arenaLoading} expanded /></div>}
+        {tab === "matches" && <div className="pd-panel profile-match-history mt-5"><RecentMatchesPanel key={user.id} matches={profileMatches} userId={user.id} loading={historyLoading || arenaLoading} expanded /></div>}
         {tab === "teams" && <div className="mt-5"><TeamsList key={user.id} teams={profileTeams} loading={historyLoading} profileUserId={user.id} isOwnProfile={isOwnProfile} /></div>}
       </div>
     </div>
@@ -822,7 +832,7 @@ function TrophyOverview({ trophies, items = [] }) {
 function RankProgressPanel({ rank, rankLabel, elo, rankProgress, rankJourneyIndex, className = "" }) {
   return (
     <SectionCard className={`p-6 sm:p-7 ${className}`}>
-      <SectionHeader title="Rank Progress" action="Leaderboard" to="/leaderboards" />
+      <SectionHeader title="Ranked ELO progression" action="Leaderboard" to="/leaderboards" />
       <div className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-cyan/[0.075] via-white/[0.025] to-transparent p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)] sm:p-6">
         <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-cyan/10 blur-3xl" />
         <div className="relative grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">

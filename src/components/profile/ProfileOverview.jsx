@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronRight, Gamepad2, Shield, Swords, Trophy, Users } from "lucide-react";
+import { ArrowRight, ChevronRight, Gamepad2, Medal, Shield, Swords, Trophy, Users } from "lucide-react";
 import TPRankBadge from "@/components/competition/TPRankBadge";
 import FreeEightsRankBadge from "@/components/competition/FreeEightsRankBadge";
 import RankBadge from "@/components/ui/RankBadge";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
-import { matchOpponentFor, matchRouteFor, matchScoreFor } from "@/lib/matchPresentation";
+import RecentMatchesPanel from "@/components/match/RecentMatchesPanel";
 import { teamPageUrl, teamPurposeFor } from "@/lib/teamPresentation";
 import "@/styles/profile-dashboard.css";
 
@@ -41,7 +41,7 @@ export function ArenaRecords({ data, loading = false, error = false, onRetry, sc
   const rows = (data?.arenas || []).filter((row) => filter === "all" || row.mode === filter);
   const wins = rows.reduce((sum, row) => sum + row.wins, 0), losses = rows.reduce((sum, row) => sum + row.losses, 0);
   return <section className="pd-panel pd-arena">
-    <Heading title="Arena" icon={Swords} />
+    <Heading title="Competition stats" icon={Swords} />
     <div className="pd-filters" aria-label="Arena competition">
       {[{ id: "all", label: "All arenas" }, ...Object.entries(modes).map(([id, mode]) => ({ id, label: mode.label }))].map((mode) => <button key={mode.id} aria-pressed={filter === mode.id} onClick={() => setFilter(mode.id)}>{mode.label}</button>)}
     </div>
@@ -58,7 +58,7 @@ export function ArenaRecords({ data, loading = false, error = false, onRetry, sc
             </div></td><td className="pd-wins">{number(row.wins)}</td><td className="pd-losses">{number(row.losses)}</td>
           </tr>)}
         </tbody><tfoot><tr><td colSpan={2}>Total record</td><td className="pd-wins">{number(wins)}</td><td className="pd-losses">{number(losses)}</td></tr></tfoot></table></div>
-          : <div className="pd-empty-inline"><Gamepad2 /><p>No ranked games played{filter !== "all" ? " in this arena" : " yet"}.</p></div>}
+          : <div className="pd-empty-inline"><Gamepad2 /><p>No completed matches{filter !== "all" ? " in this competition" : " in these competitions yet"}.</p></div>}
     <p className="pd-footnote">Completed Ranked, Free 8s and XP Matches only. XP is shared across XP arenas.</p>
   </section>;
 }
@@ -82,28 +82,43 @@ function FeaturedTeams({ teams, userId, loading, onViewAll }) {
   </section>;
 }
 
-function RecentArenaMatches({ matches = [], userId, loading, error, onViewAll }) {
-  return <section className="pd-panel pd-recent"><Heading title="Recent matches" icon={Swords} />
-    {loading ? <p className="pd-empty" role="status">Loading match activity…</p> : error ? <p className="pd-empty">Match activity is temporarily unavailable.</p> : matches.length ? <div className="pd-recent-list">{matches.slice(0, 4).map((match) => {
-      const score = matchScoreFor(match, userId), won = match.profile_result === "win";
-      return <Link to={matchRouteFor(match)} key={`${match.match_type}:${match.id}`} className={`pd-recent-row ${won ? "is-win" : "is-loss"}`}><span className="pd-result-mark">{won ? "W" : "L"}</span><span className="pd-recent-copy"><strong>{matchOpponentFor(match, userId)}</strong><small>{match.game_name}</small><span>{match.match_type === "8s" ? "Free 8s" : match.match_type === "xp" ? "XP Matches" : "Ranked"} · {match.game_mode_display || match.game_mode || "Match"}</span></span><span className="pd-recent-score"><b>{score.text}</b><small>{new Date(match.match_completed_date || match.completed_date || match.created_date).toLocaleDateString()}</small></span><ChevronRight /></Link>;
-    })}</div> : <div className="pd-empty-inline"><Swords /><p>Completed arena matches will appear here.</p></div>}
-    {matches.length > 0 && <button onClick={onViewAll} className="pd-view-all">View match history <ArrowRight /></button>}
-  </section>;
-}
-
-export default function ProfileOverview({ arena, arenaLoading, arenaError, onRetry, user, profile, recentTrophies, trophiesLoading, trophiesError, teams, teamsLoading, friends, friendsLoading, canManageFriends, onTab }) {
+export default function ProfileOverview({ arena, arenaLoading, arenaError, onRetry, user, profile, matches = [], matchesLoading, trophyCount = 0, recentTrophies, trophiesLoading, trophiesError, teams, teamsLoading, friends, friendsLoading, canManageFriends, onTab, onEditProfile }) {
   const rank = arena?.tp_rank, played = rank?.matchesPlayed > 0;
-  return <div className="profile-dashboard">
-    <aside className="pd-sidebar">
-      <section className="pd-panel pd-rank-panel"><p className="pd-eyebrow">TopFragg · XP Matches</p><h2>TP RANK</h2><div className="pd-rank-stage">{arenaError ? <span className="pd-unranked">Rank unavailable</span> : <TPRankBadge xp={rank?.xp} matchesPlayed={rank?.matchesPlayed} position={rank?.position} loading={arenaLoading} size="hero" />}</div>
-        {!arenaLoading && !arenaError && <><strong className="pd-rank-name">{played ? rank.position === 1 ? "Champion" : rank.elite ? "Top 1000" : rank.name : "Unranked"}</strong><p className="pd-rank-points">{number(rank?.xp)} <span>XP</span></p><p className="pd-rank-help">{played ? `${number(rank.matchesPlayed)} XP matches played` : "Play your first XP Match to earn your star."}</p></>}
-        <Link to="/xp#standings" className="pd-view-all">XP leaderboard <ArrowRight /></Link>
-      </section>
-      <section className="pd-panel pd-about"><Heading title="About me" /><p>{profile?.bio || "This player hasn't added a bio yet."}</p><dl><div><dt>Member since</dt><dd>{new Date(profile?.account_created_date || user.account_created_date || user.created_date).toLocaleDateString()}</dd></div><div><dt>Region</dt><dd>{profile?.country || user.region || "Not set"}</dd></div></dl></section>
-    </aside>
-    <div className="pd-main"><TrophyShelf trophies={recentTrophies} loading={trophiesLoading} error={trophiesError} onViewAll={() => onTab("trophies")} /><ProfileFriends {...friends} loading={friendsLoading} onManageRequests={canManageFriends ? () => onTab("friends") : undefined} onViewAll={() => onTab("friends")} />
-      <div className="pd-columns"><div className="pd-column"><FeaturedTeams teams={teams} userId={user.id} loading={teamsLoading} onViewAll={() => onTab("teams")} /><RecentArenaMatches matches={arena?.recent_matches} userId={user.id} loading={arenaLoading} error={arenaError} onViewAll={() => onTab("matches")} /></div><ArenaRecords data={arena} loading={arenaLoading} error={arenaError} onRetry={onRetry} screenshotRank={user.screenshot_rank} /></div>
+  const wins = (arena?.arenas || []).reduce((sum, row) => sum + (Number(row.wins) || 0), 0);
+  const losses = (arena?.arenas || []).reduce((sum, row) => sum + (Number(row.losses) || 0), 0);
+  const total = wins + losses;
+  const summaries = [
+    { label: "Arena matches", value: number(total), detail: "Ranked · Free 8s · XP", icon: Swords, tab: "statistics", loading: arenaLoading || arenaError },
+    { label: "Arena win rate", value: total ? `${Math.round(wins / total * 100)}%` : "—", detail: `${number(wins)} wins · ${number(losses)} losses`, icon: Medal, tab: "statistics", loading: arenaLoading || arenaError },
+    { label: "Trophies", value: number(trophyCount), detail: "Open trophy cabinet", icon: Trophy, tab: "trophies", loading: trophiesLoading },
+    { label: "Teams", value: number(teams.length), detail: "Competition rosters", icon: Users, tab: "teams", loading: teamsLoading },
+  ];
+  return <div className="profile-overview">
+    <div className="pd-summary-grid" aria-label="Player summary">{summaries.map(({ label, value, detail, icon: Icon, tab, loading }) => <button key={label} type="button" className="competition-stat-card pd-summary-card" onClick={() => onTab(tab)}><div className="competition-stat-icon"><Icon size={21} /></div><div><p className="competition-stat-label">{label}</p><strong className="competition-stat-value">{loading ? "—" : value}</strong><p className="competition-stat-detail">{detail}</p></div><ChevronRight size={14} aria-hidden="true" /></button>)}</div>
+    <div className="profile-dashboard">
+      <div className="pd-main">
+        <section className={`pd-panel pd-activity${!matches.length ? " pd-activity-empty" : ""}`}>
+          <RecentMatchesPanel key={user.id} matches={matches} userId={user.id} loading={matchesLoading} title="Recent match activity" availableModesOnly onViewAll={() => onTab("matches")} />
+          {!matchesLoading && !matches.length && <div className="pd-activity-start"><p>{canManageFriends ? "Your matches and results will appear here once you start playing." : "This player has no recent matches to show yet."}</p>{canManageFriends && <Link to="/matchfinder" className="pd-primary-action"><Swords size={16} />Find your first match<ArrowRight size={14} /></Link>}</div>}
+        </section>
+        {(arenaLoading || arenaError || (arena?.arenas || []).length > 0) && <ArenaRecords data={arena} loading={arenaLoading} error={arenaError} onRetry={onRetry} screenshotRank={user.screenshot_rank} />}
+        {(teamsLoading || teams.length > 0) && <FeaturedTeams teams={teams} userId={user.id} loading={teamsLoading} onViewAll={() => onTab("teams")} />}
+        {(trophiesLoading || trophiesError || recentTrophies?.length > 0) && <TrophyShelf trophies={recentTrophies} loading={trophiesLoading} error={trophiesError} onViewAll={() => onTab("trophies")} />}
+      </div>
+      <aside className="pd-sidebar">
+        <section className="pd-panel pd-rank-panel" data-ranked={played}>
+          <Heading title="XP progression" icon={Medal} />
+          <div className="pd-rank-summary">
+            {(arenaLoading || played) && <div className="pd-rank-stage"><TPRankBadge xp={rank?.xp} matchesPlayed={rank?.matchesPlayed} position={rank?.position} loading={arenaLoading} size="large" /></div>}
+            <div>{arenaError ? <strong className="pd-unranked">Rank unavailable</strong> : !arenaLoading && <><strong className="pd-rank-name">{played ? rank.position === 1 ? "Champion" : rank.elite ? "Top 1000" : rank.name : "Unranked"}</strong><p className="pd-rank-points">{number(rank?.xp)} <span>XP</span></p></>}</div>
+          </div>
+          {!arenaLoading && !arenaError && <p className="pd-rank-help">{played ? `${number(rank.matchesPlayed)} XP matches played` : "Complete your first XP Match to earn a rank star."}</p>}
+          {arenaError ? <button type="button" onClick={onRetry} className="pd-view-all">Try again<ArrowRight /></button> : <Link to="/xp#standings" className="pd-view-all">XP leaderboard<ArrowRight /></Link>}
+        </section>
+        <section className="pd-panel pd-about"><Heading title="About the player" /><p>{profile?.bio || (canManageFriends ? "Add a bio to introduce yourself to other players." : "This player hasn't added a bio yet.")}</p>{canManageFriends && <button type="button" className="pd-view-all" onClick={onEditProfile}>Edit bio & appearance<ChevronRight /></button>}</section>
+        {!friendsLoading && friends?.total > 0 && <ProfileFriends {...friends} onManageRequests={canManageFriends ? () => onTab("friends") : undefined} onViewAll={() => onTab("friends")} />}
+        {canManageFriends && !teamsLoading && teams.length === 0 && <section className="pd-panel pd-team-start"><Heading title="Play as a team" icon={Shield} /><p>Find a roster or create your own team for your next competition.</p><Link to="/teams" className="pd-view-all">Browse teams<ArrowRight /></Link></section>}
+      </aside>
     </div>
   </div>;
 }

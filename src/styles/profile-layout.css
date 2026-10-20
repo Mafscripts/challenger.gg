@@ -1,0 +1,106 @@
+/* Identity first, activity next; detailed collections live in the section tabs. */
+.profile-refresh { --comp-accent: 20 216 255; }
+.profile-refresh .profile-hero { isolation: isolate; border-color: #14d8ff44; border-radius: 20px; background: radial-gradient(ellipse at 85% 0, #14d8ff14, transparent 65%), linear-gradient(115deg, #112635, #0a1623 70%); box-shadow: 0 18px 50px #0003, inset 0 1px #ffffff09; }
+.profile-refresh .profile-hero::before { position: absolute; z-index: -1; inset: 0; background-image: linear-gradient(#9fd0e00a 1px, transparent 1px), linear-gradient(90deg, #9fd0e00a 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(90deg, transparent, #000); content: ""; }
+.profile-refresh .profile-identity { min-height: 204px; }
+.profile-refresh .profile-avatar { width: 112px; height: 112px; }
+.profile-refresh .profile-identity h1 { overflow-wrap: anywhere; font-size: clamp(28px, 3vw, 42px); letter-spacing: -.035em; }
+.profile-refresh .profile-handle { margin-top: 9px; color: #88a6ba; font-size: 12px; overflow-wrap: anywhere; }
+.profile-refresh .profile-gaming-id { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 7px; min-width: 0; padding: 7px 10px; border: 1px solid #14d8ff30; border-radius: 8px; background: #14d8ff09; color: #b2ccdc; font-size: 10px; }
+.profile-refresh .profile-gaming-id svg { flex-shrink: 0; color: #14d8ff; }
+.profile-refresh .profile-gaming-id > span { font-size: 9px; color: #7f9bad; }
+.profile-refresh .profile-gaming-id strong { color: #d8eef8; overflow-wrap: anywhere; }
+.profile-refresh .profile-identity-actions > div:first-child { flex-wrap: wrap; }
+.profile-refresh .profile-identity-actions :is(button, a) { min-height: 44px; }
+.profile-refresh .profile-identity-actions .profile-edit-action { border-color: #14d8ff99; color: #06202b; background: linear-gradient(110deg, #14d8ff, #14d8ffcc); }
+.profile-refresh .profile-header-bar { padding: 12px 32px; border-color: #14d8ff22; background: #08152170; }
+.profile-refresh .profile-header-details { display: flex; flex-wrap: wrap; gap: 10px 20px; color: #89a6b9; font-size: 11px; }
+.profile-refresh .profile-header-details > span { display: inline-flex; align-items: center; gap: 7px; }
+.profile-refresh .profile-header-details svg { color: #14d8ff99; flex-shrink: 0; }
+.profile-refresh .profile-header-socials { margin-left: auto; }
+.profile-refresh .profile-section-tabs { scroll-margin-top: 88px; gap: 6px; padding: 6px; border: 1px solid #14d8ff2e; border-radius: 12px; background: #0c1925; }
+.profile-refresh .profile-section-tabs .arena-tab { min-width: 0; padding: 10px 8px; border-radius: 8px; color: #9fb7c8; line-height: 1.5; }
+.profile-refresh .profile-section-tabs .arena-tab[aria-pressed="true"] { color: #14d8ff; background: #14d8ff18; box-shadow: inset 0 0 0 1px #14d8ff44; }
+.profile-refresh .profile-overview { margin-top: 22px; }
+.profile-refresh .pd-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.profile-refresh .pd-summary-card { text-align: left; }
+.profile-refresh .pd-summary-card > svg:last-child { margin-left: auto; flex-shrink: 0; color: #6f8da2; }
+.profile-refresh .pd-summary-card:nth-child(2) { --stat-accent: 52 239 159; }
+.profile-refresh .pd-summary-card:nth-child(3) { --stat-accent: 255 200 82; }
+.profile-refresh .pd-summary-card:nth-child(4) { --stat-accent: 180 149 255; }
+.profile-refresh .profile-dashboard { grid-template-columns: minmax(0, 1fr) 310px; gap: 22px; margin-top: 22px; }
+.profile-refresh .pd-panel, .profile-refresh .glass { border-color: #14d8ff30; border-radius: 16px; background: linear-gradient(125deg, #14d8ff07, transparent 65%), #101c28; box-shadow: 0 12px 35px #0002, inset 0 1px #ffffff06; }
+.profile-refresh .pd-heading { flex-wrap: wrap; gap: 9px; }
+.profile-refresh .pd-heading h2 { color: #e6f1f8; font-size: 14px; }
+.profile-refresh .pd-heading > div { min-width: 0; flex-shrink: 1; }
+.profile-refresh .pd-heading .pd-text-action { font-size: 10px; }
+.profile-refresh .pd-view-all { min-height: 36px; }
+.profile-refresh .pd-sidebar { display: flex; flex-direction: column; }
+.profile-refresh .pd-sidebar .pd-panel { padding: 20px; }
+.profile-refresh .pd-sidebar .pd-friend-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.profile-refresh .pd-sidebar .pd-friend-avatar { width: 44px; height: 44px; }
+.profile-refresh .pd-rank-panel { text-align: left; }
+.profile-refresh .pd-rank-summary { display: flex; align-items: center; gap: 18px; min-height: 58px; }
+.profile-refresh .pd-rank-summary .pd-rank-stage { display: flex; align-items: center; justify-content: center; min-height: 0; flex-shrink: 0; padding: 0; }
+.profile-refresh .pd-rank-summary .tp-rank-star { width: 70px; height: 70px; }
+.profile-refresh .pd-rank-summary .tp-rank-number { font-size: 9px; min-width: 38px; }
+.profile-refresh .pd-rank-name { color: #edf6fc; font-size: 19px; }
+.profile-refresh .pd-rank-points { margin-top: 5px; color: #14d8ff; font-size: 18px; }
+.profile-refresh .pd-rank-help { margin-top: 14px; font-size: 11px; }
+.profile-refresh .pd-rank-panel .pd-view-all { justify-content: flex-start; margin-top: 12px; }
+.profile-refresh .pd-about > p, .profile-refresh .pd-team-start > p { font-size: 12px; line-height: 1.8; color: #8faabd; }
+.profile-refresh .pd-activity-empty .profile-mode-filters { display: none; }
+.profile-refresh .pd-activity .profile-matches-empty { border: 0; padding: 20px 16px 10px; background: transparent; }
+.profile-refresh .pd-activity .profile-matches-empty > div { flex-direction: column; justify-content: center; gap: 12px; min-height: 94px; text-align: center; }
+.profile-refresh .pd-activity .profile-matches-empty svg { box-sizing: content-box; width: 24px; height: 24px; padding: 13px; border: 1px solid #14d8ff38; border-radius: 15px; background: #14d8ff0a; }
+.profile-refresh .pd-activity-start { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 0 16px 22px; text-align: center; }
+.profile-refresh .pd-activity-start > p { color: #8faabd; font-size: 12px; line-height: 1.8; }
+.profile-refresh .pd-primary-action { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; border: 1px solid #14d8ff99; border-radius: 9px; color: #06202b; background: linear-gradient(110deg, #14d8ff, #14d8ffcc); font-size: 12px; font-weight: 800; }
+.profile-refresh .profile-mode-pill { border-color: #14d8ff30; border-radius: 9px; background: #14d8ff08; }
+.profile-refresh .profile-match-row { border-color: #14d8ff28; background: linear-gradient(110deg, #14d8ff06, #0c1721); }
+.profile-refresh .profile-match-row:hover { border-color: #14d8ff66; }
+.profile-refresh .pd-filters { gap: 6px; }
+.profile-refresh .pd-filters button { min-height: 36px; border-color: #14d8ff22; border-radius: 8px; }
+.profile-refresh .pd-filters button[aria-pressed="true"] { border-color: #14d8ff66; background: #14d8ff18; }
+.profile-refresh .pd-record-table { min-width: 420px; font-size: 11px; }
+.profile-refresh .pd-arena-game strong { font-size: 12px; }
+.profile-refresh .pd-footnote { font-size: 10px; }
+.profile-refresh .pd-about .pd-view-all, .profile-refresh .pd-team-start .pd-view-all { justify-content: flex-start; margin-top: 14px; }
+.profile-refresh .profile-editor { scroll-margin-top: 88px; }
+.profile-refresh .profile-editor-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.profile-refresh .profile-editor-heading h2 { font-size: 18px; font-weight: 850; }
+.profile-refresh .profile-editor-heading p { max-width: 65ch; margin-top: 6px; color: #8faabd; font-size: 12px; line-height: 1.8; }
+.profile-refresh .profile-editor-heading a { color: #14d8ff; }
+.profile-refresh .profile-editor-heading > a { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
+.profile-refresh .profile-editor input, .profile-refresh .profile-editor textarea { min-width: 0; }
+.profile-refresh :is(button, a):focus-visible { outline: 2px solid #14d8ff; outline-offset: 3px; }
+@media (max-width: 1100px) {
+  .profile-refresh .pd-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-refresh .profile-dashboard { grid-template-columns: minmax(0, 1fr); }
+  .profile-refresh .pd-sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 18px; }
+}
+@media (max-width: 640px) {
+  .profile-refresh .profile-identity { min-height: 0; gap: 20px; }
+  .profile-refresh .profile-identity > div:first-child { flex-direction: row; gap: 14px; align-items: flex-start; }
+  .profile-refresh .profile-avatar { width: 72px; height: 72px; font-size: 28px; border-radius: 14px; }
+  .profile-refresh .profile-identity h1 { font-size: 27px; }
+  .profile-refresh .profile-identity > div:first-child > div:last-child { flex: 1; }
+  .profile-refresh .profile-identity-actions :is(button, a) { font-size: 11px; }
+  .profile-refresh .profile-header-bar { padding: 12px 20px; }
+  .profile-refresh .profile-header-details { font-size: 10px; }
+  .profile-refresh .profile-header-socials { margin-left: 0; }
+  .profile-refresh .profile-section-tabs { gap: 4px; }
+  .profile-refresh .profile-section-tabs .arena-tab { padding: 10px 4px; font-size: 10px; }
+  .profile-refresh .pd-summary-grid { gap: 10px; }
+  .profile-refresh .pd-summary-card { gap: 10px; padding: 13px; }
+  .profile-refresh .pd-summary-card .competition-stat-icon { width: 32px; height: 32px; border-radius: 9px; }
+  .profile-refresh .pd-summary-card .competition-stat-icon svg { width: 17px; height: 17px; }
+  .profile-refresh .pd-summary-card .competition-stat-label { font-size: 8px; letter-spacing: .05em; }
+  .profile-refresh .pd-summary-card .competition-stat-detail { font-size: 9px; line-height: 1.7; }
+  .profile-refresh .pd-summary-card > svg:last-child { display: none; }
+  .profile-refresh .pd-sidebar { display: flex; flex-direction: column; gap: 16px; }
+  .profile-refresh .pd-sidebar .pd-panel { width: 100%; }
+  .profile-refresh .pd-panel { padding: 16px; }
+  .profile-refresh .pd-heading { gap: 7px; }
+  .profile-refresh .pd-heading h2 { font-size: 13px; }
+}

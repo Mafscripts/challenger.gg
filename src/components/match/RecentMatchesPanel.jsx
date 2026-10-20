@@ -10,10 +10,11 @@ function ProfileSectionTitle({ title, count }) {
 function EmptyPanel({ icon: Icon, text }) {
   return <div className="flex items-center gap-3 text-sm text-vapor"><Icon className="h-5 w-5 shrink-0 text-cyan" /><p>{text}</p></div>;
 }
-export default function RecentMatchesPanel({ matches, userId, className = "", expanded = false, loading = false, onViewAll, title, activityLimit = 50 }) {
+export default function RecentMatchesPanel({ matches, userId, className = "", expanded = false, loading = false, onViewAll, title, activityLimit = 50, availableModesOnly = false }) {
   const [competition, setCompetition] = useState("All");
   const [page, setPage] = useState(0);
   const categories = ["All", "Challenge a Team", "Free 8s", "Money 8s", "Ranked", "XP Match", "Tournament", "Wager"];
+  const visibleCategories = availableModesOnly ? categories.filter((category) => category === "All" || matches.some((match) => competitionLabelFor(match) === category)) : categories;
   const filtered = competition === "All" ? matches : matches.filter((match) => competitionLabelFor(match) === competition);
   const pageCount = Math.max(1, Math.ceil(filtered.length / activityLimit));
   const currentPage = Math.min(page, pageCount - 1);
@@ -24,7 +25,7 @@ export default function RecentMatchesPanel({ matches, userId, className = "", ex
     <section className={className}>
       <ProfileSectionTitle title={title || (expanded ? "Match history" : "Recent matches")} count={loading ? "Loading" : expanded && visible.length ? `${currentPage * activityLimit + 1}–${currentPage * activityLimit + visible.length} of ${filtered.length} recent matches` : `${visible.length} of ${filtered.length} recent matches`} />
       <div className="profile-mode-filters mb-4 flex flex-wrap gap-2" aria-label="Filter matches by competition">
-        {categories.map((category) => <button key={category} type="button" aria-pressed={competition === category} onClick={() => { setCompetition(category); setPage(0); }} className="competition-action-pill profile-mode-pill">
+        {visibleCategories.map((category) => <button key={category} type="button" aria-pressed={competition === category} onClick={() => { setCompetition(category); setPage(0); }} className="competition-action-pill profile-mode-pill">
           {category === "All" ? "All modes" : category === "XP Match" ? "XP" : category === "Tournament" ? "Tournaments" : category === "Wager" ? "Wagers" : category}
           <span className="profile-mode-count">{category === "All" ? matches.length : matches.filter((match) => competitionLabelFor(match) === category).length}</span>
         </button>)}
