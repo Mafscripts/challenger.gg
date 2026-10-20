@@ -26,6 +26,23 @@ export async function connectAccount(provider, webConnect) {
 export async function initializeNativeApp() {
   if (!isNativeApp) return;
   document.documentElement.classList.add("topfragg-native");
+  // iOS can shrink only the visual viewport when the keyboard opens. Keep chat
+  // controls within that visible area, and free the tab bar's space while typing.
+  let fullHeight = window.visualViewport?.height || window.innerHeight;
+  const updateViewport = () => {
+    const height = window.visualViewport?.height || window.innerHeight;
+    const editing = document.activeElement?.matches("input:not([type='checkbox']):not([type='radio']), textarea, [contenteditable='true']");
+    if (!editing) fullHeight = Math.max(fullHeight, height);
+    document.documentElement.style.setProperty("--app-viewport-height", `${height}px`);
+    document.documentElement.style.setProperty("--app-viewport-top", `${window.visualViewport?.offsetTop || 0}px`);
+    document.documentElement.dataset.nativeKeyboard = String(Boolean(editing && fullHeight - height > 100));
+  };
+  updateViewport();
+  window.visualViewport?.addEventListener("resize", updateViewport);
+  window.visualViewport?.addEventListener("scroll", updateViewport);
+  window.addEventListener("resize", updateViewport);
+  document.addEventListener("focusin", updateViewport);
+  document.addEventListener("focusout", () => window.requestAnimationFrame(updateViewport));
   const [{ App }, { Browser }, { SplashScreen }, { StatusBar, Style }] = await Promise.all([
     import("@capacitor/app"), import("@capacitor/browser"), import("@capacitor/splash-screen"), import("@capacitor/status-bar"),
   ]);

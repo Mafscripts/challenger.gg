@@ -15,6 +15,9 @@
 .chat-emoji-grid button { display: flex; width: 100%; height: 38px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #fff; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: 22px; line-height: 1; }
 .chat-emoji-grid button:hover, .chat-emoji-grid button:focus-visible { border-color: hsl(var(--cyan) / .25); background: hsl(var(--cyan) / .1); outline: none; transform: scale(1.08); }
 .chat-emoji-footer { padding: 9px 13px 11px; border-top: 1px solid rgb(255 255 255 / .06); color: hsl(var(--vapor) / .72); font-size: 10px; text-align: center; }
+.chat-emoji-popover { display: flex; flex-direction: column; max-height: calc(var(--app-viewport-height, 100dvh) - var(--app-safe-area-top, 0px) - var(--app-safe-area-bottom, 0px) - 24px); }
+.chat-emoji-popover :is(.chat-emoji-heading, .chat-emoji-categories, .chat-emoji-footer) { flex-shrink: 0; }
+.chat-emoji-popover .chat-emoji-grid { min-height: 0; }
 .messages-page .messages-composer-field .chat-emoji-trigger { border-color: transparent; background: transparent; color: hsl(var(--vapor)); }
 .messages-page .messages-composer-field .chat-emoji-trigger:hover, .messages-page .messages-composer-field .chat-emoji-trigger[aria-expanded="true"] { border-color: hsl(var(--orange) / .25); background: hsl(var(--orange) / .1); color: hsl(var(--orange)); }
 .messages-page .messages-composer-field .chat-emoji-trigger:disabled { border-color: transparent; background: transparent; color: hsl(var(--vapor) / .4); }

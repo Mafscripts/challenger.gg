@@ -2,7 +2,7 @@
 
 This repository contains an iPhone project using Capacitor 8, with bundled React screens, TopFragg artwork, safe-area spacing, bottom navigation and browser-based account connections. The user registered the bundle ID `gg.topfragg.app` and created the **Topfragg.gg** app record in App Store Connect.
 
-The simulator and signed Codemagic builds have passed. The user installed build **1.0 (2)** through TestFlight, deployed the production API and supplied a successful missing-ticket check (HTTP 410). The first real-device login showed **Load failed**: a live probe confirmed `https://topfragg.gg/api/auth/login` redirects its preflight to `http://www.topfragg.gg/...`, while the canonical `https://www.topfragg.gg/api` responds directly with correct native CORS headers. The app now defaults to the canonical HTTPS host; an updated signed build and real-device login retest are required. The external testing group is currently waiting for Apple's beta review.
+The simulator and signed Codemagic builds have passed. The first real-device login on build **1.0 (2)** showed **Load failed**: a live probe confirmed `https://topfragg.gg/api/auth/login` redirects its preflight to `http://www.topfragg.gg/...`, while the canonical `https://www.topfragg.gg/api` responds directly with correct native CORS headers. The app now defaults to that canonical HTTPS host. The user deployed the production API, installed build **1.0 (3)** and supplied an authenticated iPhone screenshot. Subsequent mobile layout fixes need a new signed build and real-device retest. The external group's last reported state was waiting for Apple's beta review.
 
 ## What you do next on Windows
 
@@ -34,6 +34,12 @@ No database migration is needed for this app foundation. Never copy the server `
 - `npm run ios:build` — bundle the app into the separate ignored `dist-ios` folder. Does not run Prisma generation or change the normal web build.
 - `npm run ios:sync` — bundle and copy the app/plugins into the existing iOS project.
 - `npm run ios:open` — open Xcode on a Mac.
+
+## Responsive app checks
+
+`scripts/mobile-layout-check.mjs` exercises the local Vite server in iOS build mode at 320, 390 and 430 CSS pixels, and checks tablet/desktop web layouts at 768 and 1440 pixels. Start Vite with `--mode ios --host 127.0.0.1 --port 5180`, then run the script with the path to an installed Playwright `index.mjs` (or use a local `playwright` package). It uses a separate headless Edge session and intercepted fake API responses; no real account, message or competition is changed. Reports and screenshots go to ignored `tmp/mobile-audit-*` folders.
+
+The checks cover the main competition, Settings, Messages, Teams and Admin screens; screen bounds for header menus and message controls; recipient search; emoji selection; and both layout-viewport and visual-viewport keyboard resizing. Intentionally scrollable tables and tab strips are excluded from page overflow failures. `npm run ios:check` also checks active bottom tabs for competition pages and match rooms. Browser emulation does not replace real iPhone checks for the keyboard, safe-area insets, native plugins or microphone access.
 
 Capacitor uses Swift Package Manager. Xcode 26 or later and Node 22 or later are required by [Capacitor 8](https://capacitorjs.com/docs/getting-started/environment-setup). The manual [Codemagic workflows](https://docs.codemagic.io/yaml-quick-start/building-an-ionic-app/) have no automatic build triggers or notification recipients. Only the signed workflow uploads to App Store Connect; it does not submit reviews or release the app publicly. The simulator workflow stays unsigned and does not upload to Apple.
 

@@ -49,7 +49,7 @@
     left: max(8px, env(safe-area-inset-left, 0px));
     right: max(8px, env(safe-area-inset-right, 0px));
     width: auto;
-    max-height: calc(100dvh - var(--nav-popover-top, 72px) - var(--nav-popover-bottom-space, 16px));
+    max-height: calc(var(--app-viewport-height, 100dvh) - var(--nav-popover-top, 72px) - var(--nav-popover-bottom-space, 16px));
     display: flex;
     flex-direction: column;
   }

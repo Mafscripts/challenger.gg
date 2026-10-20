@@ -34,20 +34,32 @@ export default function EmojiPicker({ onSelect, disabled = false, closeSignal })
       const popover = popoverRef.current?.getBoundingClientRect();
       if (!anchor || !popover) return;
 
-      const width = popover.width || Math.min(356, window.innerWidth - 32);
+      const viewport = window.visualViewport;
+      const rootStyle = getComputedStyle(document.documentElement);
+      const safeTop = Number.parseFloat(rootStyle.getPropertyValue("--app-safe-area-top")) || 0;
+      const safeBottom = Number.parseFloat(rootStyle.getPropertyValue("--app-safe-area-bottom")) || 0;
+      const viewportWidth = viewport?.width || window.innerWidth;
+      const viewportHeight = (viewport?.height || window.innerHeight) - safeTop - safeBottom;
+      const viewportLeft = viewport?.offsetLeft || 0;
+      const viewportTop = (viewport?.offsetTop || 0) + safeTop;
+      const width = popover.width || Math.min(356, viewportWidth - 32);
       const height = popover.height;
-      const left = Math.max(16, Math.min(window.innerWidth - width - 16, anchor.right - width));
-      const spaceAbove = anchor.top - 12;
+      const left = Math.max(viewportLeft + 16, Math.min(viewportLeft + viewportWidth - width - 16, anchor.right - width));
+      const spaceAbove = anchor.top - viewportTop - 12;
       const preferredTop = spaceAbove >= height ? anchor.top - height - 12 : anchor.bottom + 12;
-      const top = Math.max(12, Math.min(preferredTop, window.innerHeight - height - 12));
+      const top = Math.max(viewportTop + 12, Math.min(preferredTop, viewportTop + viewportHeight - height - 12));
       setPosition({ left, top });
     };
 
     updatePosition();
     window.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     return () => {
       window.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
   }, [open, category]);

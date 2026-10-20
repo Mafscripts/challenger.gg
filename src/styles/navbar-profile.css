@@ -45,7 +45,7 @@
 .profile-menu-compact .profile-menu-logout:hover { background: rgb(248 113 113 / .06); }
 .profile-menu-compact :is(a, button):focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: -2px; }
 @media (max-width: 639px) {
-  .app-topbar-v2 .nav-popover.nav-profile-popover.profile-menu-compact { position: fixed; top: var(--nav-popover-top, 72px); left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; max-height: calc(100dvh - var(--nav-popover-top, 72px) - var(--nav-popover-bottom-space, 16px)); }
+  .app-topbar-v2 .nav-popover.nav-profile-popover.profile-menu-compact { position: fixed; top: var(--nav-popover-top, 72px); left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; max-height: calc(var(--app-viewport-height, 100dvh) - var(--nav-popover-top, 72px) - var(--nav-popover-bottom-space, 16px)); }
   .profile-menu-compact .profile-menu-link { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .profile-menu-compact :is(.profile-menu-header, .profile-menu-link) { transition: none; } }

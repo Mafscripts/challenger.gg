@@ -12,13 +12,13 @@ import {
   Send,
   Trophy,
   User,
-  X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
 import EmojiPicker from "@/components/chat/EmojiPicker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { clearSentDraft, createDirectMessageInbox } from "@/lib/directMessageInbox";
 import "@/styles/messages.css";
 
@@ -473,17 +473,13 @@ export default function Messages() {
           </section>
         </div>
       </div>
-      {composerOpen && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/75 p-4 pt-[12vh] backdrop-blur-sm" onMouseDown={() => setComposerOpen(false)}>
-          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl" onMouseDown={event => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/10 p-5">
-              <div>
-                <p className="text-lg font-black">New message</p>
-                <p className="text-xs text-vapor">Search for a TopFragg player</p>
-              </div>
-              <button onClick={() => setComposerOpen(false)} className="rounded-lg p-2 text-vapor hover:bg-white/5 hover:text-white"><X className="h-5 w-5" /></button>
-            </div>
-            <div className="p-5">
+      <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
+          <DialogContent className="messages-recipient-dialog">
+            <DialogHeader className="shrink-0 border-b border-white/10 p-5 pr-12 text-left">
+              <DialogTitle>New message</DialogTitle>
+              <DialogDescription>Search for a TopFragg player</DialogDescription>
+            </DialogHeader>
+            <div className="messages-recipient-dialog-body p-5">
               <div className="messages-recipient-search">
                 <Search size={18} aria-hidden="true" />
                 <input
@@ -494,7 +490,7 @@ export default function Messages() {
                   aria-label="Search players by username or display name"
                 />
               </div>
-              <div className="mt-3 min-h-36 max-h-80 overflow-y-auto">
+              <div className="mt-3 min-h-0 max-h-80 overflow-y-auto">
                 {searching ? (
                   <p className="py-10 text-center text-sm text-vapor">Searching...</p>
                 ) : playerQuery.trim().length < 2 ? (
@@ -510,9 +506,8 @@ export default function Messages() {
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
