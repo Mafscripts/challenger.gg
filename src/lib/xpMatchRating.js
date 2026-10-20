@@ -1,6 +1,6 @@
-export const XP_MATCH_BASE_CHANGE = 100;
-export const XP_MATCH_MIN_CHANGE = 10;
-export const XP_MATCH_MAX_CHANGE = 190;
+export const XP_MATCH_BASE_CHANGE = 20;
+export const XP_MATCH_MIN_CHANGE = 5;
+export const XP_MATCH_MAX_CHANGE = 40;
 const EXPECTATION_SCALE = 2000;
 
 export const normalizeMatchXP = (value) => Number.isFinite(Number(value)) ? Math.max(0, Math.round(Number(value))) : 0;

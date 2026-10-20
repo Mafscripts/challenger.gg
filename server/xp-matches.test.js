@@ -32,11 +32,11 @@ function fixture() {
 test("XP changes use team averages, reward upsets, and cap the change", () => {
   const match = roster();
   const equal = xpMatchStrength(match, { a: 1000, b: 3000, c: 2000, d: 2000 });
-  assert.equal(xpMatchOutcome(equal, "alpha").change, 100);
-  assert.equal(xpMatchOutcome(equal, "bravo").change, 100);
+  assert.equal(xpMatchOutcome(equal, "alpha").change, 20);
+  assert.equal(xpMatchOutcome(equal, "bravo").change, 20);
   const uneven = xpMatchStrength(match, { a: 10000, b: 10000, c: 0, d: 0 });
-  assert.equal(xpMatchOutcome(uneven, "alpha").change, 10);
-  assert.equal(xpMatchOutcome(uneven, "bravo").change, 190);
+  assert.equal(xpMatchOutcome(uneven, "alpha").change, 5);
+  assert.equal(xpMatchOutcome(uneven, "bravo").change, 40);
   assert.equal(completeXPMatchRoster(match), true);
   assert.equal(completeXPMatchRoster({ ...match, team_bravo_player_ids: ["a", "d"] }), false);
   assert.equal(completeXPMatchRoster({ ...match, team_bravo_player_ids: ["c"] }), false);
@@ -85,7 +85,7 @@ test("matching captain reports award every roster member exactly once", async ()
   assert.equal(completed.match.status, "completed");
   for (const id of ["a", "b", "c", "d"]) {
     const won = ["a", "b"].includes(id);
-    assert.equal(completed.xp_changes[id].delta, won ? 100 : -100);
+    assert.equal(completed.xp_changes[id].delta, won ? 20 : -20);
     assert.equal(f.state().stats.find((row) => row.metadata.user_id === id).metadata.preserved, true);
   }
   const before = structuredClone(f.state());
@@ -103,7 +103,7 @@ test("a result uses frozen strength and never reduces XP below zero", async () =
   const result = await submitXPMatchResult(f.db, { id: "c" }, input);
   assert.equal(result.xp_changes.a.delta, -5);
   assert.equal(result.xp_changes.a.new_xp, 0);
-  assert.equal(result.xp_changes.c.delta, 190);
+  assert.equal(result.xp_changes.c.delta, 40);
 });
 
 test("failed writes roll back every player's XP and match completion", async () => {
