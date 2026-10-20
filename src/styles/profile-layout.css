@@ -52,13 +52,15 @@
 .profile-refresh .pd-sidebar .pd-panel { padding: 20px; }
 .profile-refresh .pd-sidebar .pd-friend-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .profile-refresh .pd-sidebar .pd-friend-avatar { width: 44px; height: 44px; }
-.profile-refresh .pd-rank-panel { min-height: 430px; text-align: center; background: radial-gradient(ellipse at 50% 38%, #14d8ff18, transparent 65%), #101c28; }
-.profile-refresh .pd-rank-panel[data-ranked="true"] { border-color: #facc1555; background: radial-gradient(ellipse at 50% 38%, #facc151b, transparent 65%), #101c28; }
+.profile-refresh .pd-rank-panel { --xp-rank-glow: 250 204 21; min-height: 430px; text-align: center; background: radial-gradient(ellipse at 50% 38%, #14d8ff18, transparent 65%), #101c28; }
+.profile-refresh .pd-rank-panel[data-xp-elite="top1000"] { --xp-rank-glow: 98 255 176; }
+.profile-refresh .pd-rank-panel[data-xp-elite="champion"] { --xp-rank-glow: 99 207 255; }
+.profile-refresh .pd-rank-panel[data-ranked="true"] { border-color: rgb(var(--xp-rank-glow) / .33); background: radial-gradient(ellipse at 50% 38%, rgb(var(--xp-rank-glow) / .11), transparent 65%), #101c28; }
 .profile-refresh .pd-rank-panel .pd-heading { text-align: left; }
 .profile-refresh .pd-rank-panel .pd-heading h2 { letter-spacing: .08em; }
 .profile-refresh .pd-rank-summary { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; min-height: 290px; }
 .profile-refresh .pd-rank-summary .pd-rank-stage { display: flex; align-items: center; justify-content: center; min-height: 190px; flex-shrink: 0; padding: 10px 0; }
-.profile-refresh .pd-rank-summary .tp-rank-star { width: 174px; height: 174px; filter: drop-shadow(0 0 22px #facc1533); }
+.profile-refresh .pd-rank-summary .tp-rank-star { width: 174px; height: 174px; filter: drop-shadow(0 0 22px rgb(var(--xp-rank-glow) / .2)); }
 .profile-refresh .pd-rank-summary .tp-rank-number { font-size: 16px; min-width: 75px; }
 .profile-refresh .pd-rank-name { color: #edf6fc; font-size: 25px; }
 .profile-refresh .pd-rank-points { margin-top: 9px; color: #14d8ff; font-size: 27px; }

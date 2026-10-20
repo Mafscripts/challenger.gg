@@ -122,7 +122,7 @@ export default function ProfileOverview({ arena, arenaLoading, arenaError, onRet
         {(teamsLoading || teams.length > 0) && <FeaturedTeams teams={teams} userId={user.id} loading={teamsLoading} onViewAll={() => onTab("teams")} />}
       </div>
       <aside className="pd-sidebar">
-        <section className="pd-panel pd-rank-panel" data-ranked={played}>
+        <section className="pd-panel pd-rank-panel" data-ranked={played} data-xp-elite={played && rank.elite ? rank.position === 1 ? "champion" : "top1000" : undefined}>
           <Heading title="XP progression" icon={Medal} />
           <div className="pd-rank-summary">
             {(arenaLoading || played) && <div className="pd-rank-stage"><TPRankBadge xp={rank?.xp} matchesPlayed={rank?.matchesPlayed} position={rank?.position} loading={arenaLoading} size="hero" /></div>}

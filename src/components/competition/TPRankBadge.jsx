@@ -9,21 +9,22 @@ function TPStar({ rank }) {
   const uid = useId().replace(/:/g, "");
   const level = rank.elite ? 9 : rank.level;
   const champion = rank.elite && rank.position === 1;
-  const metal = rank.elite || level === 7 ? "#e9bd55" : level === 8 ? "#e8ddff" : rank.color;
-  const dark = rank.elite ? "#76501d" : level >= 7 ? "#61557a" : "#253d55";
-  const gem = rank.elite ? champion ? "#ff7771" : "#c292ff" : rank.color;
+  const metal = rank.elite ? champion ? "#edfaff" : "#eafff2" : level === 7 ? "#e9bd55" : level === 8 ? "#e8ddff" : rank.color;
+  const dark = rank.elite ? champion ? "#142d44" : "#142f26" : level >= 7 ? "#61557a" : "#253d55";
+  const gem = rank.elite ? champion ? "#63cfff" : "#62ffb0" : rank.color;
+  const highlight = rank.elite ? "#f4ffff" : "#fffbed";
   const paint = (name) => `url(#tp-${name}-${uid})`;
   const spark = (cx, cy, radius) => `${cx} ${cy-radius} ${cx+radius*.3} ${cy-radius*.3} ${cx+radius} ${cy} ${cx+radius*.3} ${cy+radius*.3} ${cx} ${cy+radius} ${cx-radius*.3} ${cy+radius*.3} ${cx-radius} ${cy} ${cx-radius*.3} ${cy-radius*.3}`;
   return <svg className={`tp-rank-star${rank.elite ? " tp-rank-star-elite" : ""}`} viewBox="0 0 96 96" fill="none" aria-hidden="true">
     <defs>
       <linearGradient id={`tp-metal-${uid}`} x1="20" y1="10" x2="72" y2="85" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#fffbed" /><stop offset=".19" stopColor={metal} /><stop offset=".42" stopColor="#fffdf3" /><stop offset=".48" stopColor={metal} /><stop offset=".76" stopColor={dark} /><stop offset="1" stopColor={metal} />
+        <stop stopColor={highlight} /><stop offset=".19" stopColor={metal} /><stop offset=".42" stopColor={highlight} /><stop offset=".48" stopColor={metal} /><stop offset=".76" stopColor={dark} /><stop offset="1" stopColor={metal} />
       </linearGradient>
       <linearGradient id={`tp-edge-${uid}`} x1="28" y1="14" x2="65" y2="81" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#fffdf1" /><stop offset=".42" stopColor={metal} /><stop offset=".6" stopColor={dark} /><stop offset="1" stopColor={metal} />
+        <stop stopColor={highlight} /><stop offset=".42" stopColor={metal} /><stop offset=".6" stopColor={dark} /><stop offset="1" stopColor={metal} />
       </linearGradient>
       <linearGradient id={`tp-gem-${uid}`} x1="38" y1="30" x2="60" y2="62" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#fff" /><stop offset=".25" stopColor={gem} /><stop offset="1" stopColor={rank.elite ? "#50284f" : "#142739"} />
+        <stop stopColor="#fff" /><stop offset=".25" stopColor={gem} /><stop offset="1" stopColor={rank.elite ? dark : "#142739"} />
       </linearGradient>
       <radialGradient id={`tp-core-${uid}`}><stop stopColor={gem} stopOpacity=".24" /><stop offset="1" stopColor="#08131f" /></radialGradient>
     </defs>
@@ -50,20 +51,22 @@ function TPStar({ rank }) {
     <path d="m48 45 0 15-15 8 3-17Zm0 0 7-8-7-15Z" fill="#07101d" fillOpacity=".4" />
     {level >= 2 && <polygon points="48 33 52 41 61 43 55 49 56 58 48 54 40 58 41 49 35 43 44 41" fill={level >= 5 ? "#0b1624" : paint("gem")} stroke={paint("edge")} strokeWidth="1" />}
     {level >= 5 && <>
-      <path d="m48 34 8 12-8 13-8-13Z" fill={paint("gem")} stroke="#fff8e5" strokeWidth=".8" />
+      <path d="m48 34 8 12-8 13-8-13Z" fill={paint("gem")} stroke={highlight} strokeWidth=".8" />
       <path d="m48 34 0 12 8 0m-8 13V46l-8 0" stroke="#fff" strokeOpacity=".4" strokeWidth=".7" />
     </>}
     {level >= 6 && !champion && <path d="m37 13 11-6 11 6-11 6Z" fill={paint("metal")} stroke={metal} strokeWidth=".6" />}
     {rank.elite && <>
       <path d="m33 77 15 5 15-5-4 10H37Z" fill={paint("metal")} stroke={metal} strokeWidth="1" />
-      <path d="m39 80 9 3 9-3" stroke="#fff8df" strokeWidth=".7" />
-      <polygon points={spark(8,18,4)} fill="#fff4c5" /><polygon points={spark(88,18,4)} fill="#fff4c5" />
+      <path d="m39 80 9 3 9-3" stroke={gem} strokeWidth="1.2" />
+      <path d="m8 28 16 10M12 49l14 6m62-27-16 10m12 11-14 6M26 72l9 7m35-7-9 7" stroke={gem} strokeWidth="1.5" />
+      <circle cx="48" cy="45" r="32.5" stroke={gem} strokeOpacity=".65" strokeWidth=".8" strokeDasharray="5 7" />
+      <polygon points={spark(8,18,4)} fill={gem} /><polygon points={spark(88,18,4)} fill={gem} />
     </>}
     {champion && <>
-      <path d="m30 21-3-17 13 8 8-11 8 11 13-8-3 17-18 5Z" fill="#5b391a" stroke="#fff1b6" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="m30 21-3-17 13 8 8-11 8 11 13-8-3 17-18 5Z" fill={dark} stroke={gem} strokeWidth="1.4" strokeLinejoin="round" />
       <path d="m31 7 9 9 8-11 8 11 9-9-2 12-15 4-15-4Z" fill={paint("metal")} />
-      <path d="m48 12 3 5-3 4-3-4Z" fill="#ff8a7e" stroke="#ffe5be" strokeWidth=".6" />
-      <path d="M34 24 48 28l14-4" stroke="#fff0b5" strokeWidth="2" />
+      <path d="m48 12 3 5-3 4-3-4Z" fill={gem} stroke={highlight} strokeWidth=".6" />
+      <path d="M34 24 48 28l14-4" stroke={gem} strokeWidth="2" />
     </>}
   </svg>;
 }
@@ -76,7 +79,7 @@ export default function TPRankBadge({ xp = 0, matchesPlayed = 0, position = null
   const next = TP_RANK_TIERS.find((tier) => tier.minXp > rank.xp);
   const description = `${rank.xp.toLocaleString()} XP · ${rank.matchesPlayed.toLocaleString()} completed XP matches.${rank.elite ? ` Exclusive numbered star for XP leaderboard #${rank.position}.` : next ? ` Next star at ${next.minXp.toLocaleString()} XP.` : " Maximum XP star."}`;
   return <BadgeTooltip label={`TP RANK · ${rank.elite ? `${rank.position === 1 ? "Champion " : ""}#${rank.position}` : rank.name}`} description={description} toneClass="text-cyan">
-    <span tabIndex={0} className={`tp-rank-badge tp-rank-${size}${rank.elite ? " tp-rank-elite" : ""}${rank.elite && rank.position === 1 ? " tp-rank-champion" : ""}`} style={{ "--tp-rank-color": rank.elite ? "#facc15" : rank.color }} aria-label={`TP RANK ${rank.name}${rank.position ? `, #${rank.position}` : ""}, ${rank.xp} XP`}>
+    <span tabIndex={0} className={`tp-rank-badge tp-rank-${size}${rank.elite ? " tp-rank-elite" : ""}${rank.elite && rank.position === 1 ? " tp-rank-champion" : ""}`} style={{ "--tp-rank-color": rank.elite ? rank.position === 1 ? "#63cfff" : "#62ffb0" : rank.color }} aria-label={`TP RANK ${rank.name}${rank.position ? `, #${rank.position}` : ""}, ${rank.xp} XP`}>
       <span className="tp-rank-symbol"><TPStar rank={rank} />{rank.elite && <span className="tp-rank-number">#{rank.position}</span>}</span>
       {showXp && <span className="tp-rank-xp">{rank.xp.toLocaleString()} XP</span>}
     </span>
@@ -93,7 +96,7 @@ export function TPRankGuide() {
       </div>
       <div className="tp-rank-guide-elite">
         <TPRankBadge xp={50000} matchesPlayed={1} position={127} size="large" />
-        <div><strong>Top 1000 · Your own number</strong><p>The highest 1,000 eligible players on the XP leaderboard wear the exclusive gold star with their current position. Your position updates with the standings and replaces your regular XP star.</p></div>
+        <div><strong>Top 1000 · Your own number</strong><p>The highest 1,000 eligible players on the XP leaderboard wear the exclusive black, white and emerald emblem with their current position. Your position updates with the standings and replaces your regular XP star.</p></div>
         <TPRankBadge xp={50000} matchesPlayed={1} position={1} size="large" />
         <div><strong>#1 · Champion</strong><p>Only the current leader wears the crowned Champion star.</p></div>
       </div>
