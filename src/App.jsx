@@ -46,6 +46,7 @@ const CDL = lazy(() => import('@/pages/CDL'));
 const News = lazy(() => import('@/pages/News'));
 const Rules = lazy(() => import('@/pages/Rules'));
 const Support = lazy(() => import('@/pages/Support'));
+const PublicSupport = lazy(() => import('@/pages/PublicSupport'));
 const Terms = lazy(() => import('@/pages/Terms'));
 const Privacy = lazy(() => import('@/pages/Privacy'));
 const Settings = lazy(() => import('@/pages/Settings'));
@@ -86,6 +87,12 @@ function DeferredToaster() {
   return ready ? <Suspense fallback={null}><Toaster /></Suspense> : null;
 }
 
+function SupportEntry() {
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+  if (isLoadingAuth) return <PageLoader label="Loading support" />;
+  return isAuthenticated ? <Support /> : <PublicSupport />;
+}
+
 const AuthenticatedApp = () => {
   const { isLoadingPublicSettings, authError, navigateToLogin, restriction, networkRestriction } = useAuth();
 
@@ -118,6 +125,7 @@ const AuthenticatedApp = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/support" element={<SupportEntry />} />
         <Route path="/rules" element={<Rules />} />
         <Route path="/league" element={<League />} />
         <Route path="/league/division/:divisionId" element={<League />} />
@@ -157,7 +165,6 @@ const AuthenticatedApp = () => {
           <Route path="/premium" element={<Premium />} />
           <Route path="/cdl" element={<CDL />} />
           <Route path="/news" element={<News />} />
-          <Route path="/support" element={<Support />} />
           <Route path="/my-tickets" element={<Support ticketCenter />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/thank-you" element={<ThankYou />} />

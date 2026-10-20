@@ -63,7 +63,11 @@ These values are prepared for the existing English (U.S.) record, not submitted 
 - Subtitle: **Competitive gaming companion**
 - Support URL: `https://www.topfragg.gg/support`
 - Privacy policy URL: `https://www.topfragg.gg/privacy`
+- Public support email: `support@topfragg.gg` (owner confirmed).
+- Copyright: **2026 Topfragg LLC** (owner confirmed).
 - Requested availability: worldwide. Actual storefront selection is still pending.
+
+The `/support` website route has a public contact page for signed-out visitors; signed-in users retain their private ticket center. Deploy this website change before final submission so the App Store support link works without an account. It does not require replacing the selected signed iPhone build merely to update the external support URL's contents.
 
 Description draft:
 

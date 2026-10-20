@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Shield } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
+import { topfraggSupportEmail } from "@/lib/supportContact";
 
 const linkClass = "text-cyan underline underline-offset-4 hover:text-foreground";
 const ExternalLink = ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className={linkClass}>{children}</a>;
@@ -30,6 +31,7 @@ const sections = [
     <p>Linked channel identity remains stored while the connection is present, until you disconnect it or request deletion. Account, competition, support and financial records have different retention needs. Records needed for payments, tax, disputes, fraud prevention or legal obligations may be retained after an account deletion request; they are not needed to keep a YouTube connection active.</p>
   </> },
   { id: "deletion", title: "Disconnecting and deleting your data", content: <>
+    <p>For privacy and account questions, email <a href={`mailto:${topfraggSupportEmail}`} className={linkClass}>{topfraggSupportEmail}</a>. You do not need to sign in to contact us by email.</p>
     <p>To delete your TopFragg account, open <Link to="/settings#settings-delete-account" className={linkClass}>Settings → Account &amp; security → Delete account</Link>. Confirm your current password and account name. Eligible accounts are deleted immediately. Active competitions and outstanding funds must be settled first; Support can help with these cases. Personal account records and messages you sent are removed, while shared competition and transaction records are anonymized or retained where required for the purposes described above.</p>
     <p>To remove your stored YouTube or Kick connection, open <Link to="/settings#streaming" className={linkClass}>Settings → Connections → Streaming accounts</Link> and choose Disconnect. This deletes the verified channel identity and its matching saved channel link from your account. A separately entered channel link can be removed under Channel links &amp; socials.</p>
     <p>You can also revoke Google's authorization in your <ExternalLink href="https://security.google.com/settings/security/permissions">Google Account permissions</ExternalLink>. Revoking access at Google and deleting data already stored on TopFragg are separate actions: also disconnect on TopFragg or contact support to remove the stored connection. We do not retain Google tokens for ongoing access.</p>
