@@ -1,3 +1,4 @@
+import { competitionStreamChannels, requiresCompetitionStream, streamChannelUrl } from "./competitionStreaming";
 import { trophyCountsFor, trophyFields } from "./trophyCounts";
 
 export async function loadWagerParticipants(base44, wager, options = {}) {
@@ -16,6 +17,7 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
     const profileRow = profileRows?.[0] || {};
 
     const trophies = trophyCountsFor(userRow, profileRow);
+    const streamChannels = Object.fromEntries(competitionStreamChannels(userRow).map(channel => [channel.provider, channel.url]));
 
     return {
       id: participant.id,
@@ -39,15 +41,17 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
       badges: userRow?.badges || [],
       verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
       streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
-      force_stream_required: userRow?.force_stream_required || userRow?.stream_override_required || false,
+      stream_required_by_rules: requiresCompetitionStream(wager.match_type || "wagers"),
+      force_stream_required: requiresCompetitionStream(wager.match_type || "wagers") || userRow?.force_stream_required || userRow?.stream_override_required || false,
       monitor_cam_required: userRow?.monitor_cam_required || userRow?.required_monitor_cam || userRow?.moni_cam_required || false,
       trophies,
       ...trophyFields(trophies),
       socials: {
         discord: userRow?.discord_username || profileRow.discord || userRow?.discord || "",
         twitter: profileRow.twitter || profileRow.x || userRow?.twitter || userRow?.x || "",
-        twitch: profileRow.twitch || userRow?.twitch || "",
-        youtube: profileRow.youtube || userRow?.youtube || "",
+        twitch: streamChannels.twitch || streamChannelUrl("twitch", userRow?.twitch_login) || userRow?.twitch || profileRow.twitch || "",
+        youtube: streamChannels.youtube || userRow?.youtube || profileRow.youtube || "",
+        kick: streamChannels.kick || userRow?.kick || profileRow.kick || "",
         website: profileRow.website || userRow?.website || "",
       },
       team: participant.team,

@@ -1,5 +1,5 @@
-import { competitionTwitchRequiredMessage, hasCompetitionTwitch } from "@/lib/competitionTwitch";
-import TwitchRequirementNotice from "@/components/competition/TwitchRequirementNotice";
+import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
+import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
@@ -194,8 +194,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   }, [isOpen]);
 
   const handleCreate = async () => {
-    if ((isWager || isMoneyEights) && !hasCompetitionTwitch(user)) {
-      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
+    if ((isWager || isMoneyEights) && !hasCompetitionStream(user)) {
+      toast({ title: "Stream channel required", description: competitionStreamRequiredMessage, variant: "destructive" });
       return;
     }
     if (isEights && !hasFreeEightsDiscordLink(user)) {
@@ -480,7 +480,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           {/* Content */}
           <div className="overflow-y-auto p-6">
             <ActivisionIdNotice user={user} className="mb-5" />
-            {(isWager || isMoneyEights) && <TwitchRequirementNotice user={user} className="mb-5" />}
+            {(isWager || isMoneyEights) && <StreamRequirementNotice user={user} className="mb-5" />}
             {/* Step 1: Game Mode */}
             {step === 1 && (
               <div>

@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { AtSign, Globe2, Link2, Loader2, Save, Twitch, Youtube } from "lucide-react";
+import { AtSign, Globe2, Link2, Loader2, Save, Twitch, Youtube, Radio } from "lucide-react";
+import { streamChannelUrl } from "@/lib/competitionStreaming";
 import { base44 } from "@/api/base44Client";
 
 const socialFields = [
   { key: "x", label: "X", icon: AtSign, placeholder: "@yourhandle or x.com/yourhandle" },
   { key: "twitch", label: "Twitch", icon: Twitch, placeholder: "yourchannel or twitch.tv/yourchannel" },
   { key: "youtube", label: "YouTube", icon: Youtube, placeholder: "@yourchannel or youtube.com/@yourchannel" },
+  { key: "kick", label: "Kick", icon: Radio, placeholder: "yourchannel or kick.com/yourchannel" },
   { key: "website", label: "Website", icon: Globe2, placeholder: "yourwebsite.com" },
 ];
 
@@ -29,9 +31,14 @@ export default function SocialsSection({ user, onUserUpdate }) {
     setSaving(true);
     setResult(null);
     try {
-      await base44.auth.updateMe(Object.fromEntries(
-        socialFields.map(({ key }) => [key, socials[key].trim().slice(0, 200)])
-      ));
+      const payload = Object.fromEntries(socialFields.map(({ key }) => [key, socials[key].trim().slice(0, 200)]));
+      for (const provider of ["twitch", "youtube", "kick"]) {
+        if (!payload[provider]) continue;
+        const url = streamChannelUrl(provider, payload[provider]);
+        if (!url) throw new Error(`Add a valid ${socialFields.find(field => field.key === provider).label} channel link or handle.`);
+        payload[provider] = url;
+      }
+      await base44.auth.updateMe(payload);
       await onUserUpdate();
       setResult({ success: true, message: "Social links saved." });
     } catch (error) {
@@ -52,8 +59,8 @@ export default function SocialsSection({ user, onUserUpdate }) {
           <Link2 className="h-5 w-5 text-cyan" />
         </div>
         <div>
-          <h2 className="text-lg font-bold">Socials</h2>
-          <p className="text-xs text-vapor">Add a handle or paste a full link to show its icon on your player card.</p>
+          <h2 className="text-lg font-bold">Streaming channels & socials</h2>
+          <p className="text-xs text-vapor">Add your Twitch, YouTube or Kick channel. Streaming every map is mandatory in Cash Matches, Tournaments and Money 8s on all platforms, including console.</p>
         </div>
       </div>
 

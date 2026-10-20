@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeftRight, AtSign, Globe2, MessageCircle, Trophy, Twitch, Youtube } from "lucide-react";
+import { ArrowLeftRight, AtSign, Globe2, MessageCircle, Trophy, Twitch, Youtube, Radio } from "lucide-react";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import UserBadges from "@/components/ui/UserBadges";
@@ -35,6 +35,7 @@ const socialsFor = (player) => player?.socials || {
   twitter: player?.twitter || player?.x || player?.twitter_url,
   twitch: player?.twitch || player?.twitch_url,
   youtube: player?.youtube || player?.youtube_url,
+  kick: player?.kick || player?.kick_url,
   website: player?.website || player?.website_url,
 };
 const recordFor = (player) => ({
@@ -48,6 +49,7 @@ const socialDefinitions = [
   { key: "twitter", label: "X", icon: AtSign, toneClass: "text-white", description: "Open this player's X profile." },
   { key: "twitch", label: "Twitch", icon: Twitch, toneClass: "text-purple-300", description: "Open this player's Twitch channel." },
   { key: "youtube", label: "YouTube", icon: Youtube, toneClass: "text-red-400", description: "Open this player's YouTube channel." },
+  { key: "kick", label: "Kick", icon: Radio, toneClass: "text-green-400", description: "Open this player's Kick channel." },
   { key: "website", label: "Website", icon: Globe2, toneClass: "text-cyan", description: "Open this player's website." },
 ];
 
@@ -62,6 +64,7 @@ const socialUrl = (key, value) => {
   const handle = text.replace(/^@/, "");
   if (key === "twitter") return `https://x.com/${handle}`;
   if (key === "twitch") return `https://twitch.tv/${handle}`;
+  if (key === "kick") return `https://kick.com/${handle}`;
   if (key === "youtube") return `https://youtube.com/${handle}`;
   return key === "website" ? `https://${text}` : "";
 };

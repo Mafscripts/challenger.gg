@@ -1,5 +1,5 @@
-import { competitionTwitchRequiredMessage, hasCompetitionTwitch } from "@/lib/competitionTwitch";
-import TwitchRequirementNotice from "@/components/competition/TwitchRequirementNotice";
+import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
+import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { freeEightsTeamSize } from "@/lib/freeEightsFormat";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -129,8 +129,8 @@ export default function RankedEights() {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
     }
-    if (isMoney && !hasCompetitionTwitch(user)) {
-      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
+    if (isMoney && !hasCompetitionStream(user)) {
+      toast({ title: "Stream channel required", description: competitionStreamRequiredMessage, variant: "destructive" });
       return;
     }
     setJoining(lobby.id);
@@ -272,7 +272,7 @@ export default function RankedEights() {
         />
         {comingSoon && <div className="mw4-launch-notice"><span className="mw4-signal-status">Coming soon</span><p>MW4 has its own leaderboard. Matches open when the game and map pools are ready.</p><Link to="/ranked/8s?game=bo7">Play Black Ops 7 <ArrowRight className="h-4 w-4" /></Link></div>}
         {!comingSoon && <ActivisionIdNotice user={user} className="mb-6" />}
-        {isMoney && <TwitchRequirementNotice user={user} className="mb-6" />}
+        {isMoney && <StreamRequirementNotice user={user} className="mb-6" />}
         {!isMoney && !comingSoon && <FreeEightsDiscordNotice user={user} />}
         {!isMoney && !comingSoon && <FreeEightsRankNotice user={user} />}
 

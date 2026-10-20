@@ -1,10 +1,10 @@
 import React from "react";
-import { Globe2, MessageCircle, Twitch, Twitter, Youtube } from "lucide-react";
+import { Globe2, MessageCircle, Twitch, Twitter, Youtube, Radio } from "lucide-react";
 import TrophyCounts from "@/components/ui/TrophyCounts";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 import "@/styles/profile-header.css";
 
-const icons = { discord: MessageCircle, twitter: Twitter, x: Twitter, twitch: Twitch, youtube: Youtube, website: Globe2 };
+const icons = { discord: MessageCircle, twitter: Twitter, x: Twitter, twitch: Twitch, youtube: Youtube, kick: Radio, website: Globe2 };
 
 export default function ProfileHeaderBar({ socials = [], trophies = [] }) {
   const counts = Object.fromEntries(trophies.map((trophy) => [trophy.key, trophy.value]));

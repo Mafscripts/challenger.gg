@@ -1,3 +1,4 @@
+import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
@@ -712,6 +713,7 @@ function WagersMatchRoomView() {
             </div>
           </div>
           </div>
+          {!isComplete && <div className="m-3 sm:m-4"><StreamRequirementNotice user={user} /></div>}
           <div className="grid gap-4 border-t border-white/[0.06] p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_410px]">
             <div className="min-w-0 space-y-4">
               <MatchTeamTable label="Team Alpha" name={hostDisplayName} color="orange" players={teamAPlayers} captainId={wager.host_id} finalScore={wager.confirmed_score_alpha ?? scoreA} isComplete={isComplete} isWinner={hostWinner} />

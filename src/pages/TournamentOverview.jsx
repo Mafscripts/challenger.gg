@@ -1,5 +1,5 @@
-import { competitionTwitchRequiredMessage, hasCompetitionTwitch } from "@/lib/competitionTwitch";
-import TwitchRequirementNotice from "@/components/competition/TwitchRequirementNotice";
+import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
+import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -376,8 +376,8 @@ export default function TournamentOverview() {
   };
 
   const handleJoin = async () => {
-    if (!hasCompetitionTwitch(user)) {
-      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
+    if (!hasCompetitionStream(user)) {
+      toast({ title: "Stream channel required", description: competitionStreamRequiredMessage, variant: "destructive" });
       return;
     }
     if (!hasActivisionId(user)) {
@@ -571,7 +571,7 @@ export default function TournamentOverview() {
 
       <div className="mx-auto max-w-[1500px] px-4 lg:px-8">
         <ActivisionIdNotice user={user} className="mt-5" />
-        <TwitchRequirementNotice user={user} className="mt-5" />
+        <StreamRequirementNotice user={user} className="mt-5" />
         <div className="arena-tabs mt-4">
           <div className="flex min-w-max" role="tablist">
             {[["overview", "Overview"], ["bracket", "Bracket"], ["participants", `Participants ${participants.length}`], ["rules", "Rules"]].map(([value, label]) => (

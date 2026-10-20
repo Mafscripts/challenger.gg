@@ -1,3 +1,5 @@
+import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
+import { competitionStreamChannels, streamChannelUrl } from "@/lib/competitionStreaming";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -250,6 +252,7 @@ function rosterPlayerMatchesUser(player, user) {
 }
 
 function playerWithStats(player, userRow, profileRow) {
+  const streamChannels = Object.fromEntries(competitionStreamChannels(userRow).map(channel => [channel.provider, channel.url]));
   const wagerWins = statNumber(userRow?.wager_wins);
   const wagerLosses = statNumber(userRow?.wager_losses);
   const profileWins = statNumber(profileRow?.total_wins);
@@ -269,7 +272,8 @@ function playerWithStats(player, userRow, profileRow) {
     streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
     is_premium: Boolean(userRow?.is_premium),
     premium_expires: userRow?.premium_expires || null,
-    force_stream_required: userRow?.force_stream_required || userRow?.stream_override_required || false,
+    stream_required_by_rules: true,
+    force_stream_required: true,
     monitor_cam_required: userRow?.monitor_cam_required || userRow?.required_monitor_cam || userRow?.moni_cam_required || false,
     wins: Math.max(profileWins, wagerWins),
     losses: Math.max(profileLosses, wagerLosses),
@@ -278,8 +282,9 @@ function playerWithStats(player, userRow, profileRow) {
     socials: {
       discord: profileRow?.discord || userRow?.discord || "",
       twitter: profileRow?.twitter || profileRow?.x || userRow?.twitter || userRow?.x || userRow?.twitter_url || "",
-      twitch: profileRow?.twitch || userRow?.twitch || userRow?.twitch_url || "",
-      youtube: profileRow?.youtube || userRow?.youtube || userRow?.youtube_url || "",
+      twitch: streamChannels.twitch || streamChannelUrl("twitch", userRow?.twitch_login) || userRow?.twitch || profileRow?.twitch || "",
+      youtube: streamChannels.youtube || userRow?.youtube || profileRow?.youtube || "",
+      kick: streamChannels.kick || userRow?.kick || profileRow?.kick || "",
       website: profileRow?.website || userRow?.website || userRow?.website_url || "",
     },
   };
@@ -1376,6 +1381,7 @@ function TournamentMatchRoomView() {
           </div>
         )} beforeTeams={(
           <>
+        {!isComplete && <div className="m-3 sm:m-4"><StreamRequirementNotice user={user} /></div>}
         {!isComplete && match.team_a_id && match.team_b_id && (
           <div className={`relative m-3 overflow-hidden sm:m-4 rounded-xl border ${startWindowExpired ? "border-orange/35" : "border-border"}`}>
             <div className="relative overflow-hidden bg-card px-5 py-5 sm:px-6">

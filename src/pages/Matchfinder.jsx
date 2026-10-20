@@ -1,4 +1,4 @@
-import { competitionTwitchRequiredMessage, hasCompetitionTwitch, requiresCompetitionTwitch } from "@/lib/competitionTwitch";
+import { competitionStreamRequiredMessage, hasCompetitionStream, requiresCompetitionStream } from "@/lib/competitionStreaming";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
@@ -236,8 +236,8 @@ export default function Matchfinder() {
       return;
     }
 
-    if (!hasCompetitionTwitch(user)) {
-      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
+    if (!hasCompetitionStream(user)) {
+      toast({ title: "Stream channel required", description: competitionStreamRequiredMessage, variant: "destructive" });
       return;
     }
     setAcceptingId(wagerToAccept.id);
@@ -290,8 +290,8 @@ export default function Matchfinder() {
       setRankPromptOpen(true);
       return;
     }
-    if (requiresCompetitionTwitch(category) && !hasCompetitionTwitch(user)) {
-      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
+    if (requiresCompetitionStream(category) && !hasCompetitionStream(user)) {
+      toast({ title: "Stream channel required", description: competitionStreamRequiredMessage, variant: "destructive" });
       return;
     }
     if (category === "wagers") {

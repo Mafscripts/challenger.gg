@@ -1,4 +1,4 @@
-import { competitionTwitchError } from "../competition-twitch.js";
+import { competitionStreamError } from "../competition-streaming.js";
 import { activeProgressionSeason, progressionResetOverview, resetProgression } from "../progression-resets.js";
 import { matchAfterProgressionReset } from "../../src/lib/progressionResets.js";
 import { Router } from "express";
@@ -3498,7 +3498,7 @@ async function payWagerEntry(req) {
   if (!wager || ["completed", "cancelled", "disputed"].includes(wager.status)) {
     return { success: false, error: "Wager is not payable" };
   }
-  const twitchError = await competitionTwitchError(prisma, wager.match_type || "wagers", [req.user.id]);
+  const twitchError = await competitionStreamError(prisma, wager.match_type || "wagers", [req.user.id]);
   if (twitchError) return twitchError;
   const entryFee = money(wager.entry_fee ?? wager.amount);
   const participants = await listEntities("WagerParticipant", { wager_id: wager.id, user_id: req.user.id }, "-joined_date", 10).catch(() => []);
@@ -3600,7 +3600,7 @@ async function registerTournament(req) {
   const duplicate = await firstEntity("TournamentParticipant", { tournament_id: tournament.id, team_id: team.id }).catch(() => null);
   if (duplicate) return { success: false, error: "Already registered" };
 
-  const twitchError = await competitionTwitchError(prisma, "tournament", [req.user.id, ...members.map(member => member.user_id)]);
+  const twitchError = await competitionStreamError(prisma, "tournament", [req.user.id, ...members.map(member => member.user_id)]);
   if (twitchError) return twitchError;
 
   const validationError = await assertTournamentRegistrationAllowed(req, tournament, team, members);
@@ -6517,7 +6517,7 @@ async function createWager(req) {
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const requestedMatchType = String(req.body.match_type || "").toLowerCase();
   const matchType = isEightsMatchType(requestedMatchType) ? requestedMatchType : requestedMatchType === "xp" ? "xp" : "wagers";
-  const twitchError = await competitionTwitchError(prisma, matchType, [req.user.id]);
+  const twitchError = await competitionStreamError(prisma, matchType, [req.user.id]);
   if (twitchError) return twitchError;
   const gameSettings = matchType === "8s" ? eightsLobbySettings(await loadEightsGames(prisma), req.body) : {};
   const entryFee = matchType === "8s" ? 0 : money(req.body.entry_fee ?? req.body.amount);
@@ -6548,7 +6548,7 @@ async function createWager(req) {
     }
     const rosterActivisionError = await activisionIdErrorForMembers(hostRoster);
     if (rosterActivisionError) return { success: false, error: rosterActivisionError, code: "ACTIVISION_ID_REQUIRED" };
-    const rosterTwitchError = await competitionTwitchError(prisma, matchType, hostRoster.map(member => member.user_id));
+    const rosterTwitchError = await competitionStreamError(prisma, matchType, hostRoster.map(member => member.user_id));
     if (rosterTwitchError) return rosterTwitchError;
     const paymentError = await wagerRosterPaymentError({ roster: hostRoster, entryFee, paymentMode, payer: req.user });
     if (paymentError) return { success: false, error: paymentError };
@@ -6742,7 +6742,7 @@ async function acceptWagerUnlocked(req) {
     return { success: false, error: "Wager is not open" };
   }
   if (isExpiredOpenMatch(wager)) return { success: false, code: "MATCH_CANCELLED", error: `This lobby expired after ${matchfinderPostLifetimeMs(wager) / 60000} minutes. Join or create another match.` };
-  const twitchError = await competitionTwitchError(prisma, wager.match_type || "wagers", [req.user.id]);
+  const twitchError = await competitionStreamError(prisma, wager.match_type || "wagers", [req.user.id]);
   if (twitchError) return twitchError;
   const discordError = freeEightsDiscordJoinError(wager.match_type, req.userRow);
   if (discordError) return discordError;
@@ -6779,7 +6779,7 @@ async function acceptWagerUnlocked(req) {
   const hostCount = enrolledParticipants.filter((participant) => participant.team === "host").length;
   const challengerCount = enrolledParticipants.filter((participant) => participant.team === "challenger").length;
   let individualSide = isIndividualEights && hostCount <= challengerCount ? "host" : "challenger";
-  const enrolledTwitchError = await competitionTwitchError(prisma, wagerMatchType, [wager.host_id, ...enrolledParticipants.map(member => member.user_id)]);
+  const enrolledTwitchError = await competitionStreamError(prisma, wagerMatchType, [wager.host_id, ...enrolledParticipants.map(member => member.user_id)]);
   if (enrolledTwitchError) return enrolledTwitchError;
   const enrolledActivisionError = await activisionIdErrorForMembers(enrolledParticipants);
   if (enrolledActivisionError) return { success: false, error: enrolledActivisionError, code: "ACTIVISION_ID_REQUIRED" };
@@ -6797,7 +6797,7 @@ async function acceptWagerUnlocked(req) {
     }
     const rosterActivisionError = await activisionIdErrorForMembers(challengerRoster);
     if (rosterActivisionError) return { success: false, error: rosterActivisionError, code: "ACTIVISION_ID_REQUIRED" };
-    const rosterTwitchError = await competitionTwitchError(prisma, wagerMatchType, challengerRoster.map(member => member.user_id));
+    const rosterTwitchError = await competitionStreamError(prisma, wagerMatchType, challengerRoster.map(member => member.user_id));
     if (rosterTwitchError) return rosterTwitchError;
     if (challengerTeam.id === wager.host_team_id) {
       return { success: false, error: "Select a different team" };

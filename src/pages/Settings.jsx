@@ -70,7 +70,7 @@ const settingGroups = [
     icon: Link2,
     items: [
       { label: "Gaming IDs", icon: Gamepad2, target: "settings-gaming" },
-      { label: "Social profiles", icon: AtSign, target: "settings-socials" },
+      { label: "Streaming channels", icon: AtSign, target: "settings-socials" },
       { label: "Twitch", icon: MessageCircle, target: "settings-twitch" },
       { label: "Stream overlay", icon: MonitorPlay, target: "settings-overlay" },
       { label: "Discord", icon: MessageCircle, target: "settings-discord" },
@@ -78,7 +78,7 @@ const settingGroups = [
   },
 ];
 
-const legacyTargets = { "gaming-ids": "settings-gaming", credits: "settings-credits", discord: "settings-discord", twitch: "settings-twitch" };
+const legacyTargets = { streaming: "settings-socials", "gaming-ids": "settings-gaming", credits: "settings-credits", discord: "settings-discord", twitch: "settings-twitch" };
 const groupDetails = {
   appearance: { title: "Your navigation, your choice", description: "Choose the layout that feels right for you." },
   account: { title: "Account & security", description: "Manage how players see you and keep your login up to date." },

@@ -109,7 +109,7 @@ export default function UserBadges({
         );
       })}
       {forcedStream && (
-        <BadgeTooltip enabled={showTooltip} label="Stream Required" description="Admin requires this player to stream" icon={AlertTriangle} toneClass="text-orange" placement={tooltipPlacement}>
+        <BadgeTooltip enabled={showTooltip} label="Stream Required" description={user?.stream_required_by_rules ? "Every player in this competition must stream on Twitch, YouTube or Kick, including console and verified players." : "Admin requires this player to stream"} icon={AlertTriangle} toneClass="text-orange" placement={tooltipPlacement}>
           <span tabIndex={showTooltip ? 0 : undefined} aria-label={iconOnly ? "Stream Required" : undefined}
             className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `rounded-md ${sizeClass}`} relative inline-flex cursor-default select-none items-center border border-orange/25 bg-orange/10 font-black uppercase tracking-wider text-orange`}>
             {iconOnly ? <AlertTriangle className={iconClass} /> : "Stream Required"}

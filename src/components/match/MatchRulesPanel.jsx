@@ -1,3 +1,4 @@
+import { competitionStreamRule, requiresCompetitionStream } from "@/lib/competitionStreaming";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Camera, ChevronDown, ExternalLink, ShieldCheck } from "lucide-react";
@@ -17,6 +18,7 @@ const commonRules = [
 const rulesFor = ({ matchType, gameMode, playRule, customRules }) => {
   const mode = String(gameMode || "").toLowerCase();
   const rules = [...commonRules];
+  if (requiresCompetitionStream(matchType)) rules.unshift(competitionStreamRule);
 
   if (mode.includes("hardpoint") || mode === "hp") {
     rules.push("Hardpoint disconnect: reset below 150 combined score; at 150 or higher, play the map out.");

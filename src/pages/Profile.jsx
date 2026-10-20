@@ -1,3 +1,4 @@
+import { streamChannelUrl } from "@/lib/competitionStreaming";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -84,6 +85,7 @@ const socialFields = [
   { key: "x", label: "X" },
   { key: "twitch", label: "Twitch" },
   { key: "youtube", label: "YouTube" },
+  { key: "kick", label: "Kick" },
   { key: "website", label: "Website" },
 ];
 
@@ -95,14 +97,17 @@ const socialUrlFor = (label, value) => {
   if (/^https?:\/\//i.test(text)) return text;
   if (label === "Twitter" || label === "X") return `https://x.com/${normalizeHandle(text)}`;
   if (label === "Twitch") return `https://twitch.tv/${normalizeHandle(text)}`;
+  if (label === "Kick") return `https://kick.com/${normalizeHandle(text)}`;
   if (label === "YouTube") return `https://youtube.com/${normalizeHandle(text)}`;
   return "";
 };
 const socialLinksFor = (profile, user) => socialFields
   .map((field) => {
-    const value = field.key === "discord"
+    const streamValue = ["twitch", "youtube", "kick"].includes(field.key)
+      ? streamChannelUrl(field.key, user?.[field.key] || (field.key === "twitch" ? user?.twitch_login : "")) : "";
+    const value = streamValue || (field.key === "discord"
       ? (user?.discord_username || profile?.discord_username || profile?.discord || user?.discord)
-      : (profile?.[field.key] || user?.[field.key] || user?.[`${field.key}_url`]);
+      : (profile?.[field.key] || user?.[field.key] || user?.[`${field.key}_url`]));
     return value ? { ...field, value, url: socialUrlFor(field.label, value) } : null;
   })
   .filter(Boolean);

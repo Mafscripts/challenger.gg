@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BookOpen, ChevronRight, Search, Shield, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera, MessageCircle, Twitch, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, ChevronRight, Search, Shield, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera, MessageCircle, Radio, X } from "lucide-react";
+import { competitionStreamRule } from "@/lib/competitionStreaming";
 import PageHeader from "@/components/ui/PageHeader";
 import "@/styles/rules.css";
 
@@ -36,7 +37,7 @@ const sections = [
     title: "Match Rules",
     icon: Swords,
     rules: [
-      "Money 8s requires every player to connect their own Twitch account in Settings > Connected accounts > Twitch before creating or joining a lobby, including console players.",
+      competitionStreamRule,
       "No Stretch Defuse.",
       "Nade Delay must be set to Off.",
       killCamRule,
@@ -47,7 +48,7 @@ const sections = [
       "Disconnections within the first 30 seconds may trigger a restart at moderator discretion.",
       "Intentional disconnections forfeit the match.",
       "Screen recording is strongly recommended for all competitive matches.",
-      "Verified players do not have to stream by default. They must stream only when an opponent requests it with clips or evidence and an admin validates that request.",
+      "Verified status does not waive mandatory streaming in Cash Matches, Tournaments or Money 8s. In other modes, verified players must stream when an opponent provides clips or evidence and an admin validates the request.",
       "Admins may override a verified player and force them to stream when match integrity requires it.",
     ],
   },
@@ -109,7 +110,7 @@ const sections = [
     title: "Wager Rules",
     icon: DollarSign,
     rules: [
-      "Every player must connect their own Twitch account in Settings > Connected accounts > Twitch before entering. This is required on all platforms, including console.",
+      competitionStreamRule,
       "All wager funds are held in escrow during the match.",
       "Both parties must confirm the result for payouts to process.",
       "Disputed wagers are reviewed by moderators within 24 hours.",
@@ -123,7 +124,7 @@ const sections = [
     title: "Tournament Rules",
     icon: Users,
     rules: [
-      "Every player must connect their own Twitch account in Settings > Connected accounts > Twitch before entering. This is required on all platforms, including console.",
+      competitionStreamRule,
       "Teams must check in 15 minutes before tournament start time.",
       "Failure to check in forfeits your spot and registration fee.",
       "Substitutes must be registered before the tournament begins.",
@@ -146,13 +147,14 @@ const sections = [
   },
   {
     title: "Stream Requirements",
-    icon: Twitch,
+    icon: Radio,
     rules: [
-      "Every player must connect their own Twitch account before entering Cash Matches, Tournaments or Money 8s.",
-      "This requirement applies to all platforms, including PC, PlayStation and Xbox. Console players must also connect Twitch.",
-      "Every member of the playing roster needs their own connection. A captain's Twitch connection does not cover teammates, even when the captain pays the full team's entry fees.",
-      "Connect your Twitch account through Settings > Connected accounts > Twitch. Adding a Twitch name or channel link to your social profile does not count as a connected account.",
-      "Creating or joining a Cash Match or Money 8s lobby, and registering a tournament roster, is blocked until the required Twitch connections are in place. The requirement is checked before entry fees are charged.",
+      competitionStreamRule,
+      "Choose one supported platform: Twitch, YouTube or Kick. Every player must add their own channel in Settings > Connected accounts > Streaming channels before entering.",
+      "Every member of the playing roster must stream. A captain's stream does not cover teammates, even when the captain pays the full team's entry fees.",
+      "Streaming is compulsory on all platforms, including PC, PlayStation and Xbox. Console players and verified players are not exempt.",
+      "Keep your stream running from the start to the end of every map. If you cannot stream or your broadcast stops, notify staff through the match room or support ticket system immediately.",
+      "Match creation, entry and tournament registration are blocked until every required roster member has a saved Twitch, YouTube or Kick channel. Entry fees are only charged after this check passes.",
     ],
   },
 ];
@@ -179,7 +181,7 @@ const descriptions = [
   "Escrow, payouts, score confirmation and wager disputes.",
   "Check-in, rosters, brackets and tournament results.",
   "Fair play, evidence and competitive integrity.",
-  "Mandatory Twitch connections for Cash Matches, Tournaments and Money 8s on every platform.",
+  "Mandatory streaming on Twitch, YouTube or Kick for Cash Matches, Tournaments and Money 8s.",
 ];
 
 export default function Rules() {

@@ -1,5 +1,5 @@
-import { competitionTwitchRequiredMessage, hasCompetitionTwitch } from "@/lib/competitionTwitch";
-import TwitchRequirementNotice from "@/components/competition/TwitchRequirementNotice";
+import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
+import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -161,8 +161,8 @@ export default function Wagers() {
       return;
     }
 
-    if (!hasCompetitionTwitch(user)) {
-      toast({ title: "Twitch connection required", description: competitionTwitchRequiredMessage, variant: "destructive" });
+    if (!hasCompetitionStream(user)) {
+      toast({ title: "Stream channel required", description: competitionStreamRequiredMessage, variant: "destructive" });
       return;
     }
 
@@ -381,7 +381,7 @@ export default function Wagers() {
           }
         />
         <ActivisionIdNotice user={user} className="mb-5" />
-        <TwitchRequirementNotice user={user} className="mb-5" />
+        <StreamRequirementNotice user={user} className="mb-5" />
 
         <section className="glass overflow-hidden rounded-xl border border-white/5">
           <div className="border-b border-white/5 px-5 py-4"><h2 className="font-black">My wager history</h2><p className="mt-1 text-xs text-vapor">Your completed and previous wager matches.</p></div>

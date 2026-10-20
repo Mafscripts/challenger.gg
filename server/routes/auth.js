@@ -1,3 +1,4 @@
+import { streamChannelUrl } from "../../src/lib/competitionStreaming.js";
 import { Router } from "express";
 import crypto from "node:crypto";
 import { prisma } from "../prisma.js";
@@ -330,6 +331,7 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       "x",
       "twitch",
       "youtube",
+      "kick",
       "website",
       "discord_webhook_url",
       "discord_alerts_enabled",
@@ -344,6 +346,14 @@ router.patch("/me", requireAuth, async (req, res, next) => {
     }
     if (Object.hasOwn(rest, "navigation_layout") && !["topbar", "sidebar"].includes(rest.navigation_layout)) {
       return res.status(400).json({ error: "Choose topbar or sidebar navigation" });
+    }
+    for (const provider of ["twitch", "youtube", "kick"]) {
+      if (!Object.hasOwn(rest, provider)) continue;
+      if (typeof rest[provider] !== "string") return res.status(400).json({ error: `Add a valid ${provider} channel link or handle.` });
+      const value = rest[provider].trim();
+      const url = value ? streamChannelUrl(provider, value) : "";
+      if (value && !url) return res.status(400).json({ error: `Add a valid ${provider} channel link or handle.` });
+      rest[provider] = url;
     }
     let user = current;
     const requestedNameColor = String(rest.display_name_color || "").trim();
