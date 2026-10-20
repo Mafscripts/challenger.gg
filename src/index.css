@@ -1013,7 +1013,9 @@
       inset 0 1px 0 rgb(255 255 255 / .065),
       0 26px 72px rgb(0 0 0 / .5),
       0 0 0 1px rgb(0 0 0 / .3);
-    backdrop-filter: blur(28px) saturate(135%);
+    /* Menu panels have their own background; avoid filtering the page on every repaint. */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .app-topbar-v2 .topbar-actions {
