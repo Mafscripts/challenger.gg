@@ -39,15 +39,28 @@
 .profile-refresh .pd-sidebar .pd-panel { padding: 20px; }
 .profile-refresh .pd-sidebar .pd-friend-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .profile-refresh .pd-sidebar .pd-friend-avatar { width: 44px; height: 44px; }
-.profile-refresh .pd-rank-panel { text-align: left; }
-.profile-refresh .pd-rank-summary { display: flex; align-items: center; gap: 18px; min-height: 58px; }
-.profile-refresh .pd-rank-summary .pd-rank-stage { display: flex; align-items: center; justify-content: center; min-height: 0; flex-shrink: 0; padding: 0; }
-.profile-refresh .pd-rank-summary .tp-rank-star { width: 70px; height: 70px; }
-.profile-refresh .pd-rank-summary .tp-rank-number { font-size: 9px; min-width: 38px; }
-.profile-refresh .pd-rank-name { color: #edf6fc; font-size: 19px; }
-.profile-refresh .pd-rank-points { margin-top: 5px; color: #14d8ff; font-size: 18px; }
-.profile-refresh .pd-rank-help { margin-top: 14px; font-size: 11px; }
-.profile-refresh .pd-rank-panel .pd-view-all { justify-content: flex-start; margin-top: 12px; }
+.profile-refresh .pd-rank-panel { min-height: 430px; text-align: center; background: radial-gradient(ellipse at 50% 38%, #14d8ff18, transparent 65%), #101c28; }
+.profile-refresh .pd-rank-panel[data-ranked="true"] { border-color: #facc1555; background: radial-gradient(ellipse at 50% 38%, #facc151b, transparent 65%), #101c28; }
+.profile-refresh .pd-rank-panel .pd-heading { text-align: left; }
+.profile-refresh .pd-rank-panel .pd-heading h2 { letter-spacing: .08em; }
+.profile-refresh .pd-rank-summary { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; min-height: 290px; }
+.profile-refresh .pd-rank-summary .pd-rank-stage { display: flex; align-items: center; justify-content: center; min-height: 190px; flex-shrink: 0; padding: 10px 0; }
+.profile-refresh .pd-rank-summary .tp-rank-star { width: 174px; height: 174px; filter: drop-shadow(0 0 22px #facc1533); }
+.profile-refresh .pd-rank-summary .tp-rank-number { font-size: 16px; min-width: 75px; }
+.profile-refresh .pd-rank-name { color: #edf6fc; font-size: 25px; }
+.profile-refresh .pd-rank-points { margin-top: 9px; color: #14d8ff; font-size: 27px; }
+.profile-refresh .pd-rank-help { margin-top: 18px; font-size: 11px; }
+.profile-refresh .pd-rank-panel .pd-view-all { margin-top: 18px; }
+.profile-refresh .pd-compact-match { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 10px 0; border-bottom: 1px solid #14d8ff1c; }
+.profile-refresh .pd-compact-match:last-child { border-bottom: 0; }
+.profile-refresh .pd-compact-match-copy { flex: 1; min-width: 0; }
+.profile-refresh .pd-compact-match-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #edf6fc; font-size: 11px; }
+.profile-refresh .pd-compact-match-copy small { display: block; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #8faabd; font-size: 9px; }
+.profile-refresh .pd-compact-match-result { flex-shrink: 0; text-align: right; }
+.profile-refresh .pd-compact-match-result b { display: block; color: #edf6fc; font-size: 12px; }
+.profile-refresh .pd-compact-match-result small { display: block; margin-top: 3px; font-size: 9px; }
+.profile-refresh .pd-compact-match > svg { width: 12px; flex-shrink: 0; color: #14d8ff; }
+.profile-refresh .pd-compact-match:hover strong { color: #14d8ff; }
 .profile-refresh .pd-about > p, .profile-refresh .pd-team-start > p { font-size: 12px; line-height: 1.8; color: #8faabd; }
 .profile-refresh .pd-activity-empty .profile-mode-filters { display: none; }
 .profile-refresh .pd-activity .profile-matches-empty { border: 0; padding: 20px 16px 10px; background: transparent; }
@@ -77,7 +90,7 @@
 @media (max-width: 1100px) {
   .profile-refresh .pd-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .profile-refresh .profile-dashboard { grid-template-columns: minmax(0, 1fr); }
-  .profile-refresh .pd-sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 18px; }
+  .profile-refresh .pd-sidebar { order: -1; display: flex; flex-direction: column; gap: 18px; }
 }
 @media (max-width: 640px) {
   .profile-refresh .profile-identity { min-height: 0; gap: 20px; }
