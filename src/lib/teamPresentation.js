@@ -3,7 +3,7 @@ import { normalizeTeamRosterSize } from "@/lib/teamFormats";
 const teamTypes = {
   challenge: { label: "Challenge a Team", description: "A dedicated roster for team challenges.", icon: "challenge" },
   tournament: { label: "Tournaments", description: "Compete together in team tournaments.", icon: "tournament" },
-  wager: { label: "Wagers", description: "Your roster for team cash matches.", icon: "wager" },
+  wager: { label: "Cash Matches", description: "Your roster for team cash matches.", icon: "wager" },
   ranked: { label: "Ranked", description: "Play team matches and climb the ranked ladder.", icon: "ranked" },
   general: { label: "General", description: "A shared team for your regular squad.", icon: "general" },
 };

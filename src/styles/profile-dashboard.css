@@ -46,7 +46,10 @@
 .pd-empty-inline { display: flex; align-items: center; gap: 10px; min-height: 54px; color: hsl(var(--muted-foreground)); font-size: 11px; line-height: 1.7; }.pd-empty-inline > svg { width: 20px; height: 20px; flex-shrink: 0; color: hsl(var(--cyan) / .45); }
 .pd-empty { padding: 24px 0; font-size: 12px; color: hsl(var(--muted-foreground)); }.pd-empty .pd-text-action { margin-top: 12px; }
 .pd-columns { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
-.pd-team-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid hsl(var(--border) / .45); }.pd-team-row:first-child { padding-top: 2px; }.pd-team-row:last-child { border: 0; padding-bottom: 0; }.pd-team-row:hover strong { color: hsl(var(--cyan)); }
+.pd-team-row { display: flex; align-items: center; gap: 12px; padding: 16px 10px; border-bottom: 1px solid hsl(var(--border) / .45); border-radius: 6px; }
+.pd-team-row:last-child { border-bottom: 0; }
+.pd-team-row:hover strong { color: hsl(var(--cyan)); }
+.pd-team-copy { padding-block: 2px; line-height: 1.6; }
 .pd-team-logo { display: grid; place-items: center; overflow: hidden; width: 48px; height: 48px; flex-shrink: 0; border: 1px solid hsl(var(--border)); border-radius: 9px; background: var(--arena-inset); color: hsl(var(--cyan)); font: 800 13px/1 ui-monospace, monospace; }.pd-team-logo img { width: 100%; height: 100%; object-fit: contain; }
 .pd-team-copy { flex: 1; min-width: 0; }.pd-team-copy strong { display: block; font-size: 12px; overflow-wrap: anywhere; }.pd-team-copy small { display: block; margin-top: 4px; font-size: 9px; color: hsl(var(--muted-foreground)); }.pd-team-copy > span { display: block; margin-top: 4px; color: hsl(var(--cyan)); font-size: 9px; text-transform: capitalize; }
 .pd-team-record { text-align: right; flex-shrink: 0; }.pd-team-record b { font: 800 12px/1.5 ui-monospace, monospace; }.pd-team-record small { display: block; font-size: 8px; color: hsl(var(--muted-foreground)); }.pd-team-record b span { color: hsl(var(--muted-foreground)); }.pd-team-row > svg { width: 12px; color: hsl(var(--muted-foreground)); }

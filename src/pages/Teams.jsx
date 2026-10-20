@@ -40,6 +40,17 @@ import TrophyCounts from "@/components/ui/TrophyCounts";
 import { isInventoryTrophy } from "@/lib/trophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
 import { normalizeTeamRosterSize, teamRosterFormat } from "@/lib/teamFormats";
+import "@/styles/teams-page.css";
+
+const competitionFilters = [
+  { id: "all", label: "All competitions", icon: Users },
+  { id: "challenge", label: "Challenge a Team", icon: Shield },
+  { id: "tournament", label: "Tournaments", icon: Trophy },
+  { id: "wager", label: "Cash Matches", icon: Swords },
+  { id: "ranked", label: "Ranked", icon: Target },
+  { id: "general", label: "General", icon: Users },
+];
+const teamPurposeIcon = (team) => competitionFilters.find((filter) => filter.id === teamPurposeFor(team).icon)?.icon || Shield;
 
 const teamInitials = (team) => {
   const words = String(team?.name || "").trim().split(/\s+/).filter(Boolean);
@@ -47,16 +58,10 @@ const teamInitials = (team) => {
   return String(words[0] || team?.tag || "--").slice(0, 2).toUpperCase();
 };
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString()}`;
-const playerEarnings = (user) => Math.max(
-  Number(user?.lifetime_earnings || 0),
-  Number(user?.total_wager_earnings || 0),
-  Number(user?.total_earnings || 0),
-  Number(user?.earnings || 0),
-);
 const formatDate = (value) => value ? new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "TBD";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "TBD";
 const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
-const teamTypeLabel = (team) => ({ challenge: "Challenge a Team", ranked: "Ranked", wager: "Wager", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
+const teamTypeLabel = (team) => ({ challenge: "Challenge a Team", ranked: "Ranked", wager: "Cash Matches", tournament: "Tournament", general: "General" }[team?.team_type || "general"] || "General");
 const titleCase = (value) => String(value || "pending").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const teamBannerMaxBytes = 1.5 * 1024 * 1024;
 const statNumber = (value) => {
@@ -354,7 +359,6 @@ export default function Teams() {
       team,
       members,
       requiredPlayers,
-      rosterPercent: Math.min(100, Math.round((members.length / Math.max(1, requiredPlayers)) * 100)),
       rosterReady: members.length >= requiredPlayers,
       wins,
       losses,
@@ -363,20 +367,12 @@ export default function Teams() {
       currentTournament,
     };
   }), [membersByTeam, teams, tournamentById, tournamentMatches, tournamentParticipants, wagers]);
-  const teamOverview = useMemo(() => {
-    const wins = teamSummaries.reduce((total, summary) => total + summary.wins, 0);
-    const losses = teamSummaries.reduce((total, summary) => total + summary.losses, 0);
-    return {
-      teamCount: teamSummaries.length,
-      playerCount: teamSummaries.reduce((total, summary) => total + summary.members.length, 0),
-      readyCount: teamSummaries.filter((summary) => summary.rosterReady).length,
-      activeMatchCount: teamSummaries.filter((summary) => summary.activeMatch).length,
-      readiness: teamSummaries.length
-        ? Math.round(teamSummaries.reduce((total, summary) => total + summary.rosterPercent, 0) / teamSummaries.length)
-        : 0,
-      winRate: wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0,
-    };
-  }, [teamSummaries]);
+  const teamOverview = useMemo(() => ({
+    teamCount: teamSummaries.length,
+    playerCount: teamSummaries.reduce((total, summary) => total + summary.members.length, 0),
+    readyCount: teamSummaries.filter((summary) => summary.rosterReady).length,
+    activeMatchCount: teamSummaries.filter((summary) => summary.activeMatch).length,
+  }), [teamSummaries]);
   const visibleTeamSummaries = useMemo(() => {
     const query = search.trim().toLowerCase();
     const visible = teamSummaries.filter((summary) => {
@@ -646,7 +642,7 @@ export default function Teams() {
   }
 
   return (
-    <div className="teams-page min-h-screen py-6">
+    <div className="teams-page teams-refresh min-h-screen py-6" data-team-type={view === "details" && selectedTeam ? teamPurposeFor(selectedTeam).icon : "all"}>
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         {view === "my_teams" && <TeamsCommandHero overview={teamOverview} onCreate={() => setCreateOpen(true)} />}
 
@@ -671,13 +667,16 @@ export default function Teams() {
         )}
 
         {teams.length === 0 ? (
-          <EmptyState icon={Users} title="Your first roster starts here" description="Create a Solo, Duo, Trio or Squad team, then invite the players you want to compete with." action={<button onClick={() => setCreateOpen(true)} className="create-cta rounded-lg px-4 py-2.5 text-xs font-black uppercase transition-all">Create Team</button>} />
+          <EmptyState icon={Users} title="Your first roster starts here" description="Create a Solo, Duo, Trio or Squad team, then invite the players you want to compete with." action={<button type="button" onClick={() => setCreateOpen(true)} className="teams-button teams-button-primary site-hover site-hover-filled"><Plus className="h-4 w-4" />Create team</button>} />
         ) : view === "my_teams" ? (
           <section className="min-w-0">
-            <div className="profile-mode-filters mb-4 flex flex-wrap gap-2" aria-label="Filter teams by competition">
-              {[{ id: "all", label: "All competitions" }, { id: "challenge", label: "Challenge a Team" }, { id: "tournament", label: "Tournaments" }, { id: "wager", label: "Wagers" }, { id: "ranked", label: "Ranked" }, { id: "general", label: "General" }].map((type) => <button key={type.id} type="button" aria-pressed={typeFilter === type.id} onClick={() => setTypeFilter(type.id)} className="competition-action-pill profile-mode-pill">{type.label}<span className="profile-mode-count">{type.id === "all" ? teamSummaries.length : teamSummaries.filter((summary) => teamPurposeFor(summary.team).icon === type.id).length}</span></button>)}
+            <div className="teams-competition-filters" aria-label="Filter teams by competition">
+              {competitionFilters.map((type) => {
+                const Icon = type.icon;
+                return <button key={type.id} type="button" data-team-type={type.id} aria-pressed={typeFilter === type.id} onClick={() => setTypeFilter(type.id)} className="teams-competition-filter site-hover"><Icon className="h-4 w-4" />{type.label}<span>{type.id === "all" ? teamSummaries.length : teamSummaries.filter((summary) => teamPurposeFor(summary.team).icon === type.id).length}</span></button>;
+              })}
             </div>
-            <div className="mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-card/55 p-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="teams-toolbar mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-wrap gap-1.5" aria-label="Filter teams by roster status">
                 {teamFilters.map((filter) => (
                   <button
@@ -685,7 +684,7 @@ export default function Teams() {
                     type="button"
                     onClick={() => setTeamFilter(filter.id)}
                     aria-pressed={teamFilter === filter.id}
-                    className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${teamFilter === filter.id ? "bg-cyan/10 text-cyan ring-1 ring-cyan/25" : "text-vapor hover:bg-cyan/[0.06] hover:text-cyan"}`}
+                    className="teams-status-filter site-hover"
                   >
                     {filter.label}
                   </button>
@@ -711,7 +710,7 @@ export default function Teams() {
             {visibleTeamSummaries.length === 0 ? (
               <EmptyState icon={Search} title="No teams found" description="Try another filter, team name, tag or region." />
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              <div className="teams-card-grid">
                 {visibleTeamSummaries.map((summary) => (
                   <TeamSummaryCard key={summary.team.id} team={summary.team} members={summary.members} usersById={memberUsersById} activeMatch={summary.activeMatch} currentTournament={summary.currentTournament} profileUserId={currentUser?.id} membership={summary.members.find((member) => String(member.user_id) === String(currentUser?.id))} isOwnProfile={Boolean(summary.team.captain_id === currentUser?.id || summary.members.some((member) => String(member.user_id) === String(currentUser?.id)))} onOpen={(tab) => openTeam(summary.team, tab)} />
                 ))}
@@ -737,7 +736,7 @@ export default function Teams() {
               onSettings={() => selectDetailTab("settings")}
             />
 
-            <nav className="arena-tabs mb-6 mt-4 flex" aria-label="Team sections">
+            <nav className="arena-tabs teams-detail-tabs mb-6 mt-4 flex" aria-label="Team sections">
               {detailTabs.map((tab) => {
                 const Icon = tab.icon;
                 return <button key={tab.id} type="button" onClick={() => selectDetailTab(tab.id)} aria-pressed={detailTab === tab.id} className="arena-tab inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-xs font-black transition-colors"><Icon className="h-3.5 w-3.5" /> {tab.id === "settings" && !isSelectedCaptain ? "Details" : tab.label}</button>;
@@ -773,7 +772,7 @@ function TeamLogo({ team, className = "h-16 w-16", textClassName = "text-xl" }) 
   );
 }
 
-function TeamBanner({ team, imageClassName = "opacity-65 transition-transform duration-300 group-hover:scale-[1.025]" }) {
+function TeamBanner({ team, imageClassName = "opacity-40" }) {
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
@@ -782,98 +781,83 @@ function TeamBanner({ team, imageClassName = "opacity-65 transition-transform du
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-secondary">
-      {team.banner_url && !imageFailed && <img src={team.banner_url} alt="" onError={() => setImageFailed(true)} className={`absolute inset-0 block h-full w-full object-cover ${imageClassName}`} />}
+      {team.banner_url && !imageFailed && <img src={team.banner_url} alt="" onError={() => setImageFailed(true)} decoding="async" className={`absolute inset-0 block h-full w-full object-cover ${imageClassName}`} />}
     </div>
   );
 }
 
 function TeamsCommandHero({ overview, onCreate }) {
   return (
-    <section className="premium-panel relative mb-4 overflow-hidden rounded-xl border border-border bg-card">
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-primary" />
-      <div className="relative p-4 sm:p-5">
-        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan">Team command center</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Your Teams</h1>
-            <p className="mt-1 text-xs text-vapor">Manage squads, roster readiness and upcoming matches.</p>
-          </div>
-          <button onClick={onCreate} className="create-cta inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-[10px] font-black uppercase tracking-wider transition-all">
-            <Plus className="h-3.5 w-3.5" /> Create Team
-          </button>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <CommandMetric label="Total teams" value={overview.teamCount} detail="Active squads" icon={Shield} />
-          <CommandMetric label="Roster places filled" value={overview.playerCount} detail="Players can belong to several teams" icon={Users} />
-          <CommandMetric label="Roster completion" value={`${overview.readiness}%`} detail={`${overview.readyCount} full rosters`} icon={CheckCircle} />
-          <CommandMetric label="Win rate" value={`${overview.winRate}%`} detail={`${overview.activeMatchCount} active match${overview.activeMatchCount === 1 ? "" : "es"}`} icon={TrendingUp} />
-        </div>
+    <section className="teams-command-hero">
+      <div className="teams-command-heading">
+        <div><p className="teams-eyebrow"><Shield className="h-3.5 w-3.5" /> Your competitive squads</p><h1>Your teams<span>.</span></h1><p>Build your roster. Find your competition. Play as one.</p></div>
+        <div className="teams-command-art" aria-hidden="true"><Shield /><Swords /></div>
+        <button type="button" onClick={onCreate} className="teams-button teams-button-primary site-hover site-hover-filled"><Plus className="h-4 w-4" />Create team<ArrowRight className="h-4 w-4" /></button>
+      </div>
+      <div className="teams-command-metrics">
+        <CommandMetric label="Active teams" value={overview.teamCount} detail="Your competition rosters" icon={Shield} tone="cyan" />
+        <CommandMetric label="Roster places" value={overview.playerCount} detail="Across all your teams" icon={Users} tone="purple" />
+        <CommandMetric label="Ready to play" value={`${overview.readyCount} / ${overview.teamCount}`} detail="Teams with a full roster" icon={CheckCircle} tone="green" />
+        <CommandMetric label="Open matches" value={overview.activeMatchCount} detail="Match rooms to check" icon={Swords} tone="orange" />
       </div>
     </section>
   );
 }
 
-function CommandMetric({ label, value, detail, icon: Icon }) {
+function CommandMetric({ label, value, detail, icon: Icon, tone }) {
   return (
-    <div className="rounded-lg border border-white/[0.07] bg-background/45 p-3">
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan/10 text-cyan ring-1 ring-cyan/15"><Icon className="h-4 w-4" /></span>
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-vapor">{label}</p>
-          <p className="font-mono text-lg font-black text-white">{value}</p>
-        </div>
-      </div>
-      <p className="mt-1.5 text-[11px] leading-4 text-vapor">{detail}</p>
+    <div className="teams-command-metric" data-tone={tone}>
+      <span><Icon className="h-4 w-4" /></span><div><p>{label}</p><strong>{value}</strong><small>{detail}</small></div>
     </div>
   );
 }
 
 function TeamHero({ team, teams, members, wins, losses, winRate, streak, isCaptain, isMember, onBack, onSelectTeam, onInvite, onRoster, onSettings }) {
+  const PurposeIcon = teamPurposeIcon(team);
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-cyan/15 bg-card shadow-[0_24px_60px_-38px_rgba(0,0,0,.95)]">
-      <TeamBanner team={team} imageClassName="opacity-[0.12]" />
-      <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(8,13,19,.97)_0%,rgba(15,23,32,.94)_52%,rgba(9,16,23,.86)_100%)]" />
-      <div className="relative flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/60 px-5 py-3 sm:px-8">
-        <button onClick={onBack} className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-vapor transition-colors hover:bg-white/[0.04] hover:text-cyan"><ArrowLeft className="h-3.5 w-3.5" /> All teams</button>
-        <div className="flex items-center gap-3">
-          <span className="hidden text-[9px] font-black uppercase tracking-[0.16em] text-vapor/70 sm:inline">Viewing team</span>
+    <section className="teams-detail-hero">
+      <TeamBanner team={team} imageClassName="opacity-40" />
+      <div className="teams-detail-shade" />
+      <div className="teams-detail-utility">
+        <button type="button" onClick={onBack} className="teams-back site-hover"><ArrowLeft className="h-3.5 w-3.5" /> All teams</button>
+        <label className="teams-switcher">
+          <span>{teams.length > 1 ? "Switch team" : "Viewing team"}</span>
           {teams.length > 1 ? (
-            <select value={team.id} onChange={(event) => onSelectTeam(event.target.value)} className="min-w-44 rounded-lg border border-white/[0.08] bg-secondary/85 px-3 py-2 text-xs font-black focus:border-cyan/30 focus:outline-none">
+            <select value={team.id} onChange={(event) => onSelectTeam(event.target.value)}>
               {teams.map((item) => <option key={item.id} value={item.id}>{item.name} [{item.tag}]</option>)}
             </select>
           ) : (
-            <span className="rounded-lg border border-white/[0.08] bg-secondary/65 px-3 py-2 text-xs font-black">{team.name} [{team.tag}]</span>
+            <strong>{team.name}</strong>
           )}
-        </div>
+        </label>
       </div>
-      <div className="relative grid gap-7 p-6 sm:p-8 xl:grid-cols-[1fr_auto] xl:items-end">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <TeamLogo team={team} className="h-24 w-24 sm:h-28 sm:w-28" textClassName="text-3xl" />
+      <div className="teams-detail-heading">
+        <div className="teams-detail-identity">
+          <TeamLogo team={team} className="teams-detail-logo h-24 w-24" textClassName="text-3xl" />
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan">[{team.tag || "TEAM"}]</p>
-            <h1 className="mt-2 truncate text-4xl font-black tracking-tight sm:text-5xl">{team.name}</h1>
-            <p className="mt-2 text-sm text-vapor">Led by {team.captain_name || "Captain"} · Founded {formatDate(team.created_date)}</p>
-            <p className="mt-2 text-sm text-vapor">{teamPurposeFor(team).description}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <p className="teams-eyebrow"><PurposeIcon className="h-3.5 w-3.5" />{teamPurposeFor(team).label}<span> / [{team.tag || "TEAM"}]</span></p>
+            <h1>{team.name}</h1>
+            <p className="teams-detail-founder">Led by {team.captain_name || "Captain"} · Founded {formatDate(team.created_date)}</p>
+            <div className="teams-detail-pills">
               <TeamPill icon={Gamepad2} text={`${teamRosterFormat(team.roster_size)} · ${teamPlayerFormat(team)}`} emphasized />
-              <TeamPill icon={Trophy} text={teamTypeLabel(team)} />
               <TeamPill icon={Globe2} text={String(team.region || "global").toUpperCase()} />
               <TeamPill icon={Users} text={`${members.length}/${normalizeTeamRosterSize(team.roster_size)} players`} />
               <TeamPill icon={isCaptain ? Crown : Users} text={isCaptain ? "You are captain" : isMember ? "You are a member" : "Viewing team"} />
             </div>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {isCaptain && members.length < normalizeTeamRosterSize(team.roster_size) && <button onClick={onInvite} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-2.5 text-xs font-black uppercase tracking-wider text-background"><UserPlus className="h-3.5 w-3.5" /> Invite Player</button>}
-              <button type="button" onClick={onRoster} className="inline-flex items-center gap-2 rounded-full border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-xs font-bold text-cyan"><Users className="h-3.5 w-3.5" />{isCaptain ? "Manage roster" : "View roster"}</button>
-              <button onClick={onSettings} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-bold text-vapor hover:border-cyan/20 hover:text-cyan"><Shield className="h-3.5 w-3.5" />{isCaptain ? "Team settings" : "Team details"}</button>
-            </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[500px]">
+        <div className="teams-detail-actions">
+          <p>{isCaptain ? "Captain controls" : "Your team hub"}</p>
+          {isCaptain && members.length < normalizeTeamRosterSize(team.roster_size) && <button type="button" onClick={onInvite} className="teams-button teams-button-primary site-hover site-hover-filled"><UserPlus className="h-4 w-4" />Invite player</button>}
+          <button type="button" onClick={onRoster} className="teams-button site-hover"><Users className="h-4 w-4" />{isCaptain ? "Manage roster" : "View roster"}<ArrowRight className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={onSettings} className="teams-button teams-button-muted site-hover"><Shield className="h-4 w-4" />{isCaptain ? "Team settings" : "Team details"}</button>
+        </div>
+      </div>
+      <div className="teams-detail-metrics">
           <HeroMetric icon={Swords} label="Record" value={`${wins}-${losses}`} tone="text-cyan" />
-          <HeroMetric icon={TrendingUp} label="Win rate" value={`${winRate}%`} tone="text-green" />
+          <HeroMetric icon={TrendingUp} label="Win rate" value={wins + losses ? `${winRate}%` : "—"} tone="text-green" />
           <HeroMetric icon={Zap} label="Win streak" value={`${streak}W`} tone="text-orange" />
           <HeroMetric icon={Trophy} label="Ranking" value={team.ranking > 0 ? `#${team.ranking}` : "Unranked"} tone="text-yellow-300" />
-        </div>
       </div>
     </section>
   );
@@ -881,18 +865,18 @@ function TeamHero({ team, teams, members, wins, losses, winRate, streak, isCapta
 
 function OverviewTab({ team, members, usersById, matches, nextMatch, tournaments, isCaptain, onInvite, onRoster, onMatches, onTournaments }) {
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_.75fr]">
-        <Panel title="Active roster" eyebrow={`${members.length}/${normalizeTeamRosterSize(team.roster_size)} players`} action={<button onClick={onRoster} className="text-[10px] font-black uppercase tracking-wider text-cyan">Full roster →</button>}>
+    <div className="teams-overview-grid">
+      <div className="teams-overview-main">
+        <Panel title="Your lineup" eyebrow={`${members.length}/${normalizeTeamRosterSize(team.roster_size)} players`} action={<button type="button" onClick={onRoster} className="teams-text-action site-hover">Full roster <ArrowRight className="h-3.5 w-3.5" /></button>}>
           <RosterPanel team={team} members={members} usersById={usersById} isCaptain={isCaptain} onInvite={onInvite} compact />
         </Panel>
+        <Panel title="Recent matches" eyebrow={`${matches.length} tracked`} action={<button type="button" onClick={onMatches} className="teams-text-action site-hover">Match history <ArrowRight className="h-3.5 w-3.5" /></button>}><MatchList matches={matches} limit={4} embedded /></Panel>
+      </div>
+      <div className="teams-overview-side">
         <Panel title="Next match" eyebrow="Match center">
           {nextMatch ? <FeaturedMatch match={nextMatch} /> : <CompactEmpty icon={Clock} title="No upcoming match" text="Your next scheduled match will appear here." />}
         </Panel>
-      </div>
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Panel title="Recent matches" eyebrow={`${matches.length} tracked`} action={<button onClick={onMatches} className="text-[10px] font-black uppercase tracking-wider text-cyan">Match history →</button>}><MatchList matches={matches} limit={4} embedded /></Panel>
-        <Panel title="Tournament journey" eyebrow={`${tournaments.length} entered`} action={<button onClick={onTournaments} className="text-[10px] font-black uppercase tracking-wider text-cyan">All tournaments →</button>}><TournamentList entries={tournaments} limit={4} embedded /></Panel>
+        <Panel title="Tournament journey" eyebrow={`${tournaments.length} entered`} action={<button type="button" onClick={onTournaments} className="teams-text-action site-hover">View all <ArrowRight className="h-3.5 w-3.5" /></button>}><TournamentList entries={tournaments} limit={4} embedded /></Panel>
       </div>
     </div>
   );
@@ -903,6 +887,25 @@ function RosterPanel({ team, members, usersById, isCaptain, busy, onInvite, onKi
   const openSlots = Math.max(0, limit - members.length);
   const visibleMembers = compact ? members.slice(0, 4) : members;
   const visibleOpenSlots = compact ? Math.min(openSlots, Math.max(0, 4 - visibleMembers.length)) : openSlots;
+  if (compact) {
+    return <div className="teams-lineup">
+      {visibleMembers.map((member) => {
+        const user = usersById[member.user_id] || {};
+        const name = user.display_name || user.full_name || user.username || member.user_name || "Unnamed player";
+        const captain = String(team.captain_id) === String(member.user_id);
+        return <div key={member.id} className="teams-lineup-row">
+          <Link to={`/profile/${encodeURIComponent(user.id || member.user_id || member.user_name || "")}`} className="teams-lineup-player site-hover">
+            <span className="teams-lineup-avatar">{user.avatar_url ? <img src={user.avatar_url} alt="" loading="lazy" decoding="async" /> : name.charAt(0).toUpperCase()}</span>
+            <span className="min-w-0"><strong>{name}</strong><small>{captain ? <Crown className="h-3 w-3 text-orange" /> : <Users className="h-3 w-3" />}{captain ? "Team captain" : "Member"} · {String(user.region || team.region || "Global").toUpperCase()}</small></span>
+            <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0" />
+          </Link>
+          <div className="teams-lineup-identity"><UserBadges user={user} badges={user.badges || []} size="xs" iconOnly showMonitorCam /><ActivisionIdLabel user={user} /></div>
+          <div className="teams-lineup-trophies"><TrophyCounts trophies={user.team_trophies} /></div>
+        </div>;
+      })}
+      {visibleOpenSlots > 0 && <button type="button" disabled={!isCaptain} onClick={isCaptain ? onInvite : undefined} className="teams-lineup-open site-hover"><UserPlus className="h-5 w-5" /><span><strong>{visibleOpenSlots} open {visibleOpenSlots === 1 ? "spot" : "spots"}</strong><small>{isCaptain ? "Invite your next teammate" : "Waiting for the captain"}</small></span>{isCaptain && <Plus className="ml-auto h-4 w-4" />}</button>}
+    </div>;
+  }
   return (
     <div className="space-y-4">
     {!compact && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-card p-5"><div><h2 className="text-lg font-black">Team roster · {members.length}/{limit}</h2><p className="mt-1 text-sm text-vapor">{isCaptain ? "Invite players to fill open spots. Open a player profile to see their stats." : "View the players in this team. Only the captain can invite or remove players."}</p></div>{isCaptain && openSlots > 0 && <button type="button" onClick={onInvite} disabled={busy} className="team-summary-action team-summary-primary"><UserPlus className="h-4 w-4" />Invite player</button>}</div>}
@@ -911,22 +914,21 @@ function RosterPanel({ team, members, usersById, isCaptain, busy, onInvite, onKi
         const user = usersById[member.user_id] || {};
         const name = user.display_name || user.full_name || user.username || member.user_name || "Unnamed player";
         return (
-          <article key={member.id} className="group rounded-2xl border border-white/5 bg-secondary/35 p-4 transition-colors hover:border-cyan/15 hover:bg-secondary/50">
+          <article key={member.id} className="teams-roster-card rounded-xl border border-white/5 p-4">
             <div className="flex items-start gap-3">
-              <Link to={`/profile/${encodeURIComponent(user.id || member.user_id || member.user_name || "")}`} className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/5 bg-background font-mono font-black text-cyan">
+              <Link to={`/profile/${encodeURIComponent(user.id || member.user_id || member.user_name || "")}`} className="site-hover flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/5 bg-background font-mono font-black text-cyan">
                 {user.avatar_url ? <img src={user.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
               </Link>
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2"><Link to={`/profile/${encodeURIComponent(user.id || member.user_id || member.user_name || "")}`} className="truncate text-sm font-black hover:text-cyan">{name}</Link><UserBadges user={user} badges={user.badges || []} size="xs" iconOnly showMonitorCam /></div>
+                <div className="flex flex-wrap items-center gap-2"><Link to={`/profile/${encodeURIComponent(user.id || member.user_id || member.user_name || "")}`} className="site-hover rounded px-1 py-1 text-sm font-black break-all">{name}</Link><UserBadges user={user} badges={user.badges || []} size="xs" iconOnly showMonitorCam /></div>
                 <p className={`mt-1 text-[10px] font-black uppercase tracking-wider ${member.role === "captain" ? "text-orange" : "text-vapor"}`}>{member.role === "captain" ? "Team captain" : member.role || "Member"}</p>
                 <ActivisionIdLabel user={user} className="mt-2 max-w-full" />
               </div>
               {member.role === "captain" ? <Crown className="h-4 w-4 shrink-0 text-orange" /> : isCaptain && onKick ? <button onClick={() => onKick(member)} disabled={busy} title="Remove player" aria-label={`Remove ${name} from the team`} className="rounded-lg p-2 text-vapor transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40"><UserMinus className="h-4 w-4" /></button> : null}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <MiniMetric label="Wager W-L" value={`${user.wager_wins || 0}-${user.wager_losses || 0}`} />
+            <div className="mt-4 grid grid-cols-2 gap-2">
               <MiniMetric label="Region" value={String(user.region || team.region || "-").toUpperCase()} />
-              <MiniMetric label="Earnings" value={formatMoney(playerEarnings(user))} />
+              <MiniMetric label="Joined team" value={formatDate(member.joined_date || member.created_date)} />
             </div>
             <div className="mt-3 border-t border-white/[0.05] pt-3">
               <div className="mb-2 flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Trophies</p><p className="text-[9px] font-bold text-vapor/60">Player card stats</p></div>
@@ -936,7 +938,7 @@ function RosterPanel({ team, members, usersById, isCaptain, busy, onInvite, onKi
         );
       })}
       {Array.from({ length: visibleOpenSlots }, (_, index) => (
-        <button key={`open-${index}`} type="button" disabled={!isCaptain || busy} onClick={isCaptain ? onInvite : undefined} className="flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.015] p-5 text-center transition-colors enabled:hover:border-cyan/25 enabled:hover:bg-cyan/[0.035] disabled:cursor-default">
+        <button key={`open-${index}`} type="button" disabled={!isCaptain || busy} onClick={isCaptain ? onInvite : undefined} className="site-hover flex min-h-36 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.015] p-5 text-center disabled:cursor-default">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/10 text-cyan"><Plus className="h-4 w-4" /></span><p className="mt-3 text-xs font-black uppercase tracking-wider">Open roster slot</p><p className="mt-1 text-[10px] text-vapor">{isCaptain ? "Invite a player" : "Waiting for captain"}</p>
         </button>
       ))}
@@ -954,7 +956,7 @@ function MatchList({ matches, limit = 10, embedded = false }) {
 function MatchRow({ match }) {
   const scoreReady = match.completed && match.ownScore != null && match.opponentScore != null;
   return (
-    <Link to={match.href} className="grid gap-3 px-1 py-4 transition-colors hover:bg-white/[0.02] sm:grid-cols-[auto_1fr_auto] sm:items-center sm:px-3">
+    <Link to={match.href} className="teams-match-row site-hover grid gap-3 px-3 py-4 sm:grid-cols-[auto_1fr_auto] sm:items-center">
       <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${match.outcome === "win" ? "bg-green/10 text-green" : match.outcome === "loss" ? "bg-red-500/10 text-red-400" : "bg-cyan/10 text-cyan"}`}>{match.source === "Tournament" ? <Trophy className="h-4 w-4" /> : <Swords className="h-4 w-4" />}</span>
       <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-black">vs {match.opponent}</p><span className={`rounded px-2 py-0.5 text-[9px] font-black uppercase ${match.outcome === "win" ? "bg-green/10 text-green" : match.outcome === "loss" ? "bg-red-500/10 text-red-400" : "bg-white/5 text-vapor"}`}>{match.outcome || titleCase(match.status)}</span></div><p className="mt-1 truncate text-[11px] text-vapor">{match.tournamentName ? `${match.tournamentName} · ` : ""}{match.source} · {match.mode} · {formatDateTime(match.date)}</p></div>
       <div className="flex items-center justify-between gap-3 sm:justify-end"><span className="font-mono text-lg font-black text-cyan">{scoreReady ? `${match.ownScore}-${match.opponentScore}` : "TBD"}</span><ArrowRight className="h-3.5 w-3.5 text-vapor" /></div>
@@ -964,7 +966,7 @@ function MatchRow({ match }) {
 
 function FeaturedMatch({ match }) {
   return (
-    <Link to={match.href} className="block rounded-2xl border border-cyan/15 bg-[linear-gradient(135deg,rgba(210,214,220,.055),rgba(255,255,255,.015))] p-5 transition-colors hover:border-cyan/30">
+    <Link to={match.href} className="teams-featured-match site-hover block rounded-xl border border-cyan/15 p-5">
       <div className="flex items-center justify-between gap-3"><span className="rounded-lg bg-cyan/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan">{match.source}</span><span className="text-[10px] font-bold uppercase text-vapor">{titleCase(match.status)}</span></div>
       <p className="mt-6 text-[10px] font-black uppercase tracking-wider text-vapor">Next opponent</p><h3 className="mt-1 truncate text-2xl font-black">{match.opponent}</h3>
       <div className="mt-5 grid grid-cols-2 gap-3"><MiniMetric label="Mode" value={match.mode} /><MiniMetric label="Starts" value={formatDateTime(match.date)} /></div>
@@ -978,7 +980,11 @@ function TournamentList({ entries, limit = 10, embedded = false }) {
   if (rows.length === 0) return <CompactEmpty icon={Trophy} title="No tournaments yet" text="Tournament registrations and placements will appear here." />;
   return <div className={embedded ? "divide-y divide-white/5" : "grid gap-4 md:grid-cols-2"}>{rows.map((entry) => {
     const tournament = entry.tournament || {};
-    return <Link key={entry.id} to={`/tournaments?tournament=${encodeURIComponent(entry.tournament_id)}`} className={`${embedded ? "flex items-center gap-3 px-1 py-4 sm:px-3" : "rounded-2xl border border-white/5 bg-card p-5"} group transition-colors hover:border-cyan/20 hover:bg-white/[0.02]`}><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-yellow-400/10 text-yellow-300"><Trophy className="h-4 w-4" /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-black">{tournament.name || tournament.title || entry.team_name || "Tournament"}</p><span className="rounded bg-white/5 px-2 py-0.5 text-[9px] font-black uppercase text-vapor">{titleCase(tournament.status || (entry.eliminated ? "eliminated" : "registered"))}</span></div><p className="mt-1 text-[11px] text-vapor">Seed #{entry.seed || "-"} · {entry.final_rank ? `Placed #${entry.final_rank}` : entry.eliminated ? `Eliminated${entry.eliminated_round ? ` round ${entry.eliminated_round}` : ""}` : "In competition"}</p></div><div className="text-right"><p className="font-mono text-sm font-black text-green">{entry.prize_won > 0 ? formatMoney(entry.prize_won) : "—"}</p><p className="mt-1 text-[9px] uppercase text-vapor">Prize</p></div></Link>;
+    return <Link key={entry.id} to={`/tournaments?tournament=${encodeURIComponent(entry.tournament_id)}`} className={`teams-tournament-row site-hover ${embedded ? "" : "teams-tournament-card"}`}>
+      <span className="teams-tournament-icon"><Trophy className="h-4 w-4" /></span>
+      <div className="min-w-0 flex-1"><p className="teams-tournament-name">{tournament.name || tournament.title || entry.team_name || "Tournament"}</p><span className="teams-tournament-status">{titleCase(tournament.status || (entry.eliminated ? "eliminated" : "registered"))}</span><p className="mt-2 text-[10px] leading-5 text-vapor">Seed #{entry.seed || "-"} · {entry.final_rank ? `Placed #${entry.final_rank}` : entry.eliminated ? `Eliminated${entry.eliminated_round ? ` round ${entry.eliminated_round}` : ""}` : "In competition"}</p></div>
+      <div className="teams-tournament-prize"><strong>{entry.prize_won > 0 ? formatMoney(entry.prize_won) : "—"}</strong><small>Prize</small></div><ArrowRight className="h-3.5 w-3.5 shrink-0 text-vapor" />
+    </Link>;
   })}</div>;
 }
 
@@ -1006,7 +1012,7 @@ function SettingsPanel({ team, membership, members, usersById, isCaptain, busy, 
                     </Link>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-black">{name}</p><UserBadges user={player} size="xs" iconOnly showMonitorCam tooltipPlacement="bottom" /><span className={`rounded-md px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${isCaptainMember ? "bg-orange/10 text-orange" : "bg-white/5 text-vapor"}`}>{isCaptainMember ? "Captain" : "Member"}</span></div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1"><ActivisionIdLabel user={player} className="max-w-full" /><span className="text-[10px] font-black text-green">{formatMoney(playerEarnings(player))} earned</span></div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1"><ActivisionIdLabel user={player} className="max-w-full" /><span className="text-[10px] text-vapor">{String(player.region || team.region || "Global").toUpperCase()}</span></div>
                     </div>
                   </div>
                   {isCaptain && !isCaptainMember && (
@@ -1094,11 +1100,11 @@ function InvitePlayerModal({ isOpen, onClose, team, value, onChange, onSubmit, b
 }
 
 function Panel({ title, eyebrow, action, children }) {
-  return <section className="rounded-2xl border border-white/5 bg-card/75 p-5 shadow-[0_18px_45px_-34px_rgba(0,0,0,.95)] sm:p-6"><div className="mb-5 flex items-center justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-wider text-cyan/75">{eyebrow}</p><h2 className="mt-1 text-lg font-black">{title}</h2></div>{action}</div>{children}</section>;
+  return <section className="teams-panel"><header><div><p className="teams-eyebrow">{eyebrow}</p><h2>{title}</h2></div>{action}</header>{children}</section>;
 }
 
 function HeroMetric({ icon: Icon, label, value, tone }) {
-  return <div className="rounded-2xl border border-white/5 bg-background/55 p-4"><div className="flex items-center justify-between gap-2"><p className="text-[9px] font-black uppercase tracking-wider text-vapor">{label}</p><Icon className={`h-4 w-4 ${tone}`} /></div><p className={`mt-3 truncate font-mono text-xl font-black ${tone}`}>{value}</p></div>;
+  return <div className="teams-hero-metric"><Icon className={`h-4 w-4 ${tone}`} /><div><p>{label}</p><strong className={tone}>{value}</strong></div></div>;
 }
 
 function MiniMetric({ label, value }) {
@@ -1115,7 +1121,7 @@ function FieldLabel({ children }) {
 }
 
 function CompactEmpty({ icon: Icon, title, text }) {
-  return <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.01] p-6 text-center"><Icon className="h-7 w-7 text-vapor/30" /><p className="mt-3 text-sm font-black">{title}</p><p className="mt-1 max-w-xs text-xs leading-5 text-vapor">{text}</p></div>;
+  return <div className="teams-compact-empty"><span><Icon className="h-5 w-5" /></span><div><p>{title}</p><small>{text}</small></div></div>;
 }
 
 function EmptyState({ icon: Icon, title, description, action }) {
