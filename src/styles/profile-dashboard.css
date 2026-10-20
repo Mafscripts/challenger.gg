@@ -54,8 +54,20 @@
 .pd-team-copy { flex: 1; min-width: 0; }.pd-team-copy strong { display: block; font-size: 12px; overflow-wrap: anywhere; }.pd-team-copy small { display: block; margin-top: 4px; font-size: 9px; color: hsl(var(--muted-foreground)); }.pd-team-copy > span { display: block; margin-top: 4px; color: hsl(var(--cyan)); font-size: 9px; text-transform: capitalize; }
 .pd-team-record { text-align: right; flex-shrink: 0; }.pd-team-record b { font: 800 12px/1.5 ui-monospace, monospace; }.pd-team-record small { display: block; font-size: 8px; color: hsl(var(--muted-foreground)); }.pd-team-record b span { color: hsl(var(--muted-foreground)); }.pd-team-row > svg { width: 12px; color: hsl(var(--muted-foreground)); }
 .pd-filters { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 16px; }.pd-filters button { font-size: 9px; font-weight: 700; color: hsl(var(--muted-foreground)); border: 1px solid transparent; border-radius: 6px; padding: 6px 8px; }.pd-filters button[aria-pressed="true"] { background: hsl(var(--cyan) / .08); border-color: hsl(var(--cyan) / .18); color: hsl(var(--cyan)); }
-.pd-table-scroll { overflow-x: auto; }.pd-record-table { width: 100%; min-width: 380px; border-collapse: collapse; font-size: 10px; }.pd-record-table th { text-align: left; padding: 10px 6px; border-bottom: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }.pd-record-table th:nth-last-child(-n+2) { text-align: right; }.pd-record-table td { padding: 13px 6px; border-bottom: 1px solid hsl(var(--border) / .45); vertical-align: middle; }.pd-record-table td:nth-last-child(-n+2) { text-align: right; width: 30px; font: 800 11px/1.5 ui-monospace, monospace; }.pd-record-table tfoot td { border: 0; padding-top: 16px; font-weight: 800; }.pd-wins { color: hsl(var(--green)); }.pd-losses { color: #ff777f; }
-.pd-arena-game { display: flex; align-items: center; gap: 9px; }.pd-arena-game strong { display: block; font-size: 10px; line-height: 1.5; }.pd-arena-game:hover strong { color: hsl(var(--cyan)); }.pd-arena-game small { display: block; margin-top: 3px; font-size: 9px; color: hsl(var(--muted-foreground)); }
+.pd-table-scroll { overflow-x: auto; }
+.pd-record-table { width: 100%; min-width: 380px; border-collapse: collapse; font-size: 10px; }
+.pd-record-table th { text-align: left; padding: 12px; border-bottom: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.pd-record-table th:nth-last-child(-n+2) { text-align: right; }
+.pd-record-table td { padding: 10px 12px; border-bottom: 1px solid hsl(var(--border) / .45); vertical-align: middle; }
+.pd-record-table tbody td:first-child { padding: 4px 0; }
+.pd-record-table td:nth-last-child(-n+2) { text-align: right; width: 42px; font: 800 11px/1.5 ui-monospace, monospace; }
+.pd-record-table tfoot td { border: 0; padding: 18px 12px 8px; font-weight: 800; }
+.pd-wins { color: hsl(var(--green)); }.pd-losses { color: #ff777f; }
+.pd-arena-game { display: flex; align-items: center; gap: 11px; min-height: 54px; padding: 10px 12px; border-radius: 6px; }
+.pd-arena-game > span:last-child { min-width: 0; }
+.pd-arena-game strong { display: block; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.pd-arena-game:hover strong { color: hsl(var(--cyan)); }
+.pd-arena-game small { display: block; margin-top: 3px; font-size: 9px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
 .pd-game-mark { display: grid; place-items: center; width: 28px; height: 32px; border: 1px solid currentColor; border-radius: 6px; background: hsl(var(--background) / .5); flex-shrink: 0; }.pd-game-mark svg { width: 13px; height: 13px; }.pd-tone-cyan { color: hsl(var(--cyan) / .7); }.pd-tone-orange { color: hsl(var(--orange) / .8); }.pd-tone-purple { color: #bd9af5; }
 .pd-rating { display: flex; align-items: center; gap: 7px; font: 800 10px/1.5 ui-monospace, monospace; white-space: nowrap; }.pd-rating > span > small { display: block; font-size: 8px; font-weight: 500; line-height: 1.6; color: hsl(var(--muted-foreground)); }.pd-rating .group\/rank > div { width: 30px; height: 30px; }.pd-rating .tp-rank-star { width: 27px; height: 27px; }.pd-rating .tp-rank-number { min-width: 27px; font-size: 7px; padding: 1px 2px; }
 .pd-footnote { padding-top: 15px; font-size: 9px; line-height: 1.7; color: hsl(var(--muted-foreground)); }
