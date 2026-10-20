@@ -249,7 +249,7 @@ The bot ends expired giveaways automatically, prevents duplicate entries and ann
 
 ## 11. Twitch live alerts
 
-Players can open **Settings → Twitch live alerts** and select **Connect Twitch**. The connection stores the Twitch channel identity, not a Twitch password or a reusable player token.
+Players can open **Settings → Connections → Streaming accounts** and select **Connect Twitch** alongside YouTube and Kick. The connection stores the Twitch channel identity, not a Twitch password or a reusable player token.
 
 To enable it on production, create a Twitch application in the Twitch Developer Console and add this OAuth redirect URL:
 

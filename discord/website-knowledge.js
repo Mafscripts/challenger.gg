@@ -1,4 +1,4 @@
-// Reviewed against App.jsx, Settings.jsx, DiscordSection.jsx, TwitchSection.jsx,
+// Reviewed against App.jsx, Settings.jsx, DiscordSection.jsx, StreamConnectionsSection.jsx,
 // FreeEightsDiscord.jsx, RankedEights.jsx, CreateLobbyModal.jsx, Teams.jsx and TournamentJoinModal.jsx.
 // Update this authored guide when the website's flows change.
 export const websiteTopics = [
@@ -34,8 +34,8 @@ export const websiteTopics = [
   },
   {
     id: "twitch", match: /\b(twitch|streamer|stream\w*|live alerts)\b/i,
-    en: "Sign in and open Settings → Connections → Twitch, press Connect Twitch and approve with the channel you stream from. Discord live alerts also require your Discord account to be linked and the staff-assigned Streamer role.",
-    nl: "Log in en ga naar Settings → Connections → Twitch. Klik Connect Twitch en keur goed met je streamaccount. Voor Discord-livealerts moet ook Discord gekoppeld zijn en heb je de Streamer-rol van staff nodig.", links: [["Twitch settings", "/settings#settings-twitch"]],
+    en: "Sign in and open Settings → Connections → Streaming accounts, press Connect Twitch and approve with the channel you stream from. Discord live alerts also require your Discord account to be linked and the staff-assigned Streamer role.",
+    nl: "Log in en ga naar Settings → Connections → Streaming accounts. Klik Connect Twitch en keur goed met je streamaccount. Voor Discord-livealerts moet ook Discord gekoppeld zijn en heb je de Streamer-rol van staff nodig.", links: [["Streaming accounts", "/settings#settings-streaming"]],
   },
   {
     id: "voice", match: /\b(voice|waiting room|wachtkamer|microfoon|mic|room link|discord room|discord kanaal)\b/i,

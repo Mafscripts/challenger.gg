@@ -262,10 +262,21 @@ test("settings, requirement notices and match rules expose the three providers a
   }
   assert.match(api.renderNotice({ id: "player" }), /href="\/settings#streaming"/);
   const connections = api.renderConnections({ id: "player", youtube: "@player", kick: "player" });
+  assert.match(connections, /Connect Twitch/);
   assert.match(connections, /Connect YouTube/);
   assert.match(connections, /Connect Kick/);
   assert.match(connections, /Not connected/);
   assert.doesNotMatch(connections, /Disconnect YouTube/);
+  assert.doesNotMatch(connections, /Disconnect Twitch|Twitch section below/);
+  const twitchConnected = api.renderConnections({ id: "player", twitch_user_id: "12345", twitch_login: "mychannel", twitch_display_name: "My Twitch Channel" });
+  assert.match(twitchConnected, /Disconnect Twitch/);
+  assert.match(twitchConnected, /My Twitch Channel/);
+  assert.match(twitchConnected, /href="https:\/\/www.twitch.tv\/mychannel"/);
+  assert.match(twitchConnected, /Twitch live alerts/);
+  assert.match(twitchConnected, /Discord Streamer role/);
+  const manualTwitch = api.renderConnections({ id: "player", twitch: "https://twitch.tv/manualchannel" });
+  assert.match(manualTwitch, /Connect Twitch/);
+  assert.doesNotMatch(manualTwitch, /Disconnect Twitch/);
   const connected = api.renderConnections({ id: "player", stream_connections: { youtube: { id: "UCabcdefghijklmnopqrstuv", url: "https://youtube.com/channel/UCabcdefghijklmnopqrstuv", display_name: "My verified channel" } } });
   assert.match(connected, /Disconnect YouTube/);
   assert.match(connected, /My verified channel/);

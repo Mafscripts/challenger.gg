@@ -60,7 +60,7 @@ export default function SocialsSection({ user, onUserUpdate }) {
         </div>
         <div>
           <h2 className="text-lg font-bold">Channel links & socials</h2>
-          <p className="text-xs text-vapor">Add public channel links for your player card. To verify your YouTube or Kick account, use the Connect buttons in Streaming accounts above.</p>
+          <p className="text-xs text-vapor">Add public channel links for your player card. To verify your Twitch, YouTube or Kick account, use the Connect buttons in Streaming accounts above.</p>
         </div>
       </div>
 

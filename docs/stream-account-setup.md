@@ -1,6 +1,6 @@
-# YouTube and Kick account connections
+# Streaming account connections
 
-Settings → Connections → Streaming accounts contains **Connect YouTube** and **Connect Kick**. These use the provider's sign-in screen and save the authenticated channel identity. Public channel links remain available separately under Channel links & socials. Twitch retains its existing connection flow.
+Settings → Connections → Streaming accounts contains **Connect Twitch**, **Connect YouTube** and **Connect Kick** in one panel. These use the provider's sign-in screen and save the authenticated channel identity. Public channel links remain available separately under Channel links & socials. Twitch uses its existing `/api/twitch` connection flow and existing credentials; no new Twitch configuration is needed. The connected Twitch card includes Discord live-alert guidance. Older `#twitch` and `#settings-twitch` settings links open the shared Streaming accounts panel.
 
 ## Server environment
 
