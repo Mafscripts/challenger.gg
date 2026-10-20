@@ -12,6 +12,7 @@ import {
   Medal,
   Plus,
   Trophy,
+  Radio,
   Users,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -656,10 +657,11 @@ export default function Tournaments() {
   }
 
   return (
-    <div className="tournaments-page min-h-screen py-6">
+    <div className="tournaments-page competition-surface min-h-screen py-6" data-competition="tournaments">
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
         <CompetitionHeader
           mode="tournaments"
+          titleOverride="Tournaments"
           playerCount={officialTournaments.length}
           className="mb-5"
           action={<div className="competition-actions">
@@ -679,6 +681,15 @@ export default function Tournaments() {
 
         <ActivisionIdNotice user={user} className="mb-5" />
         <StreamRequirementNotice user={user} className="mb-5" />
+
+        <div className="competition-event-stats mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: "Official events", value: officialTournaments.length, detail: "In the tournament center", icon: Trophy, tone: "gold" },
+            { label: "Registration open", value: officialTournaments.filter(event => ["open", "registration"].includes(event.status)).length, detail: "Find your next competition", icon: Users, tone: "cyan" },
+            { label: "Live events", value: liveTournaments.length, detail: "Brackets currently in play", icon: Medal, tone: "green" },
+            { label: "Streaming", value: "Every player", detail: "PC, PlayStation & Xbox", icon: Radio, tone: "purple" },
+          ].map(({ label, value, detail, icon: Icon, tone }) => <div key={label} className="competition-stat-card" data-tone={tone}><div className="competition-stat-icon"><Icon size={21} /></div><div><p className="competition-stat-label">{label}</p><strong className="competition-stat-value">{value}</strong><p className="competition-stat-detail">{detail}</p></div></div>)}
+        </div>
 
         {featuredTournament && (
           <FeaturedTournamentHero tournament={featuredTournament} now={now} onSelect={handleSelectTournament} />
@@ -1312,6 +1323,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
         : "text-cyan";
   return (
     <motion.article
+      data-event-status={tournament.status}
       className={`tournament-list-card group relative grid w-full grid-cols-[48px_minmax(0,1fr)] gap-2.5 overflow-hidden rounded-lg border px-3 py-2.5 text-left transition-all lg:grid-cols-[48px_minmax(230px,1fr)_auto] lg:items-center ${
         selected ? "is-selected border-cyan/25 bg-cyan/[0.055]" : "border-white/[0.055] bg-background/20 hover:border-white/15 hover:bg-white/[0.03]"
       }`}

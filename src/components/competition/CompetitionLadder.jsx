@@ -3,7 +3,6 @@ import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
-  ChevronRight,
   Clock3,
   Coins,
   DollarSign,
@@ -23,14 +22,17 @@ import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
 import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
 import { buildFreeEightsStandings } from "@/lib/freeEightsStandings";
 import { CompetitionHeaderContext } from "./CompetitionHeaderContext";
+import CompetitionHero from "./CompetitionHero";
+import { competitionTheme } from "@/lib/competitionPresentation";
 
 const navigation = [
   { key: "ranked", label: "Ranked", to: "/ranked", icon: Medal },
-  { key: "xp", label: "XP Matches", to: "/xp", icon: Zap },
-  { key: "wagers", label: "Wagers", to: "/wagers", icon: Coins },
-  { key: "eights", label: "8s", to: "/ranked/8s", icon: Users },
+  { key: "eights", label: "Free 8s", to: "/ranked/8s", icon: Users },
   { key: "money8s", label: "Money 8s", to: "/ranked/8s?mode=money", icon: DollarSign },
-  { key: "tournaments", label: "Upcoming Tournaments", to: "/tournaments", icon: Trophy },
+  { key: "xp", label: "XP Matches", to: "/xp", icon: Zap },
+  { key: "challenge", label: "Challenge a Team", to: "/challenge-a-team", icon: ShieldCheck },
+  { key: "wagers", label: "Cash Matches", to: "/wagers", icon: Coins },
+  { key: "tournaments", label: "Tournaments", to: "/tournaments", icon: Trophy },
 ];
 
 const modeCopy = {
@@ -45,22 +47,22 @@ const modeCopy = {
     eyebrow: "XP competition ladder",
     title: "XP Matches",
     description: "Play 1v1 to 4v4. Beat stronger teams for more XP; losing to weaker teams costs more.",
-    accent: "text-cyan",
-    line: "bg-cyan",
+    accent: "text-purple-300",
+    line: "bg-purple-400",
   },
   wagers: {
     eyebrow: "Cash competition ladder",
-    title: "Wagers",
-    description: "Post a wager, accept a challenge and climb the cash standings.",
+    title: "Cash Matches",
+    description: "Post a cash match, accept a challenge and climb the cash standings.",
     accent: "text-green",
     line: "bg-green",
   },
   eights: {
     eyebrow: "Free 8s ELO ladder",
-    title: "8s",
+    title: "Free 8s",
     description: "Join solo for 2v2, 3v3 or 4v4 with balanced teams and climb the same 8s ELO standings.",
-    accent: "text-orange",
-    line: "bg-orange",
+    accent: "text-blue-300",
+    line: "bg-blue-400",
   },
   money8s: {
     eyebrow: "Money 8s ladder",
@@ -73,21 +75,10 @@ const modeCopy = {
     eyebrow: "Tournament center",
     title: "Upcoming Tournaments",
     description: "Choose an upcoming event, enter with your team and follow every bracket.",
-    accent: "text-orange",
-    line: "bg-orange",
+    accent: "text-amber-300",
+    line: "bg-amber-400",
   },
 };
-
-const competitionBulletImpacts = [
-  { left: "61%", top: "17%", size: "25px", delay: ".25s", rotate: "-8deg" },
-  { left: "69%", top: "29%", size: "34px", delay: ".85s", rotate: "12deg" },
-  { left: "87%", top: "19%", size: "22px", delay: "1.45s", rotate: "36deg" },
-  { left: "82%", top: "41%", size: "27px", delay: "2.05s", rotate: "-18deg" },
-  { left: "67%", top: "55%", size: "20px", delay: "2.65s", rotate: "18deg" },
-  { left: "74%", top: "69%", size: "31px", delay: "3.25s", rotate: "29deg" },
-  { left: "92%", top: "65%", size: "23px", delay: "3.85s", rotate: "-33deg" },
-  { left: "86%", top: "84%", size: "19px", delay: "4.45s", rotate: "7deg" },
-];
 
 const trophyTypes = [
   { key: "gold", label: "Gold", image: trophyAssets.gold, fields: ["gold_count"] },
@@ -137,56 +128,18 @@ export function CompetitionHeader(props) {
   return registerHeader ? null : <>{headerIntro}<CompetitionHeaderView {...props} /></>;
 }
 
-export function CompetitionHeaderView({ mode = "xp", playerCount = 0, action, className = "", titleOverride, eyebrowOverride, descriptionOverride, gameId }) {
+export function CompetitionHeaderView({ mode = "xp", playerCount, action, className = "", titleOverride, eyebrowOverride, descriptionOverride, gameId }) {
   const { pathname, search } = useLocation();
   const withinPlay = ["/ranked", "/xp", "/wagers", "/ranked/8s"].includes(pathname);
   const isMw4 = mode === "eights" && gameId === "mw4";
-  const copy = isMw4 ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || modeCopy.xp;
+  const copy = isMw4 ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || competitionTheme(mode);
   const headerImage = isMw4 ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png";
-  const headerHeight = "min-h-[350px] lg:min-h-[370px]";
+
   return (
     <div className={`space-y-5 ${className}`}>
-      <section className={`premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] ${headerHeight} ${isMw4 ? "mw4-feature" : ""}`}>
-        <img src={headerImage} alt="" fetchPriority="high" decoding="sync" className="absolute inset-0 h-full w-full object-cover object-[center_34%] opacity-90" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.96)_0%,hsl(var(--background)/0.76)_23%,hsl(var(--background)/0.12)_44%,transparent_72%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(0deg,hsl(var(--background)/0.42)_0%,transparent_48%)]" />
-        <div className="landing-bullet-field absolute inset-0 z-[5]" aria-hidden="true">
-          {competitionBulletImpacts.map((impact, index) => (
-            <span
-              key={`${impact.left}-${impact.top}`}
-              className="landing-bullet-hole"
-              style={{
-                left: impact.left,
-                top: impact.top,
-                width: impact.size,
-                height: impact.size,
-                "--impact-delay": impact.delay,
-                "--impact-rotation": impact.rotate,
-                "--impact-index": index,
-              }}
-            />
-          ))}
-        </div>
-        <div className={`relative z-10 grid gap-8 p-7 md:p-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end ${headerHeight}`}>
-          <div>
-            <div className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.28em] ${copy.accent}`}><span className={`h-1.5 w-1.5 ${copy.line}`} /> {eyebrowOverride || copy.eyebrow}</div>
-            <h1 className="mt-4 max-w-xl font-heading text-4xl font-black uppercase leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,.75)] sm:text-5xl">{titleOverride || copy.title}</h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-white/75">{descriptionOverride || copy.description}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">Cross platform</span>
-              <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{monthLabel()}</span>
-              <span className="rounded-md border border-white/15 bg-background/55 px-3 py-2 text-[9px] font-black uppercase tracking-[0.14em] text-vapor backdrop-blur-sm">{playerCount ?? "—"} {mode === "tournaments" ? "events" : "players"}</span>
-            </div>
-          </div>
-          {action && (
-            <div className="w-full lg:w-[320px]">
-              {action}
-            </div>
-          )}
-        </div>
-      </section>
+      <CompetitionHero mode={mode} gameId={gameId} title={titleOverride || copy.title} eyebrow={eyebrowOverride || copy.eyebrow} description={descriptionOverride || copy.description} artwork={headerImage} action={action} count={playerCount} countLabel={mode === "tournaments" ? "events" : "players"} />
 
-      <nav className="arena-tabs grid sm:grid-cols-2 lg:grid-cols-6" aria-label="Competition modes">
+      <nav className="competition-mode-nav" aria-label="Competition modes">
         {navigation.map(({ key, label, to, icon: Icon }) => {
           const active = key === mode;
           return (
@@ -195,10 +148,10 @@ export function CompetitionHeaderView({ mode = "xp", playerCount = 0, action, cl
               to={key === "tournaments" && withinPlay ? `${pathname}${search}#upcoming-tournaments` : to}
               state={{ preserveCompetitionScroll: true }}
               aria-current={active ? "page" : undefined}
-              className="arena-tab relative flex min-h-14 items-center justify-center gap-2 px-4 py-4 text-xs font-black transition-colors"
+              data-competition={key}
+              className="competition-mode-link"
             >
-              <Icon className={`h-4 w-4 ${active ? copy.accent : ""}`} /> {label}
-              {active && <span className={`absolute inset-x-0 bottom-0 h-0.5 ${copy.line}`} />}
+              <span className="competition-nav-icon"><Icon size={19} /></span><span>{label}</span>
             </Link>
           );
         })}
@@ -381,7 +334,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   const hasPremium = Boolean(me?.is_premium && (!me?.premium_expires || new Date(me.premium_expires) > new Date()));
 
   const summary = mode === "wagers" ? [
-    { label: "Open wagers", value: openCount, detail: "Ready to accept", icon: Gamepad2, tone: "text-cyan" },
+    { label: "Open cash matches", value: openCount, detail: "Ready to accept", icon: Gamepad2, tone: "text-cyan" },
     { label: "Your wallet", value: `$${number(me?.wallet_balance).toFixed(2)}`, detail: "Available balance", icon: Coins, tone: "text-green" },
     { label: "Account", value: hasPremium ? "Premium" : "Standard", detail: `${hasPremium ? 5 : 10}% platform fee`, icon: ShieldCheck, tone: "text-cyan" },
     { label: "Ladder winnings", value: `$${totalScore.toLocaleString()}`, detail: `${standings.length} ranked players`, icon: Trophy, tone: "text-green" },
@@ -404,19 +357,19 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   ];
 
   return (
-    <div className="mb-7 space-y-5">
+    <div className="competition-ladder mb-7 space-y-5" data-competition={mode} data-game={gameId}>
       <CompetitionHeader mode={mode} gameId={gameId} playerCount={loading ? null : standings.length} action={action} titleOverride={headerTitle} eyebrowOverride={headerEyebrow} descriptionOverride={headerDescription} headerIntro={headerIntro} />
 
       <div className={`grid gap-3 sm:grid-cols-2 ${mode === "wagers" ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {summary.map(({ label, value, detail, icon: Icon, tone }) => (
-          <div key={label} className="premium-card flex min-h-[82px] items-center gap-4 rounded-xl border border-white/[0.07] p-4">
+          <div key={label} data-tone={tone.includes("green") ? "green" : tone.includes("purple") ? "purple" : tone.includes("orange") ? "gold" : "cyan"} className="competition-stat-card premium-card flex min-h-[82px] items-center gap-4 rounded-xl border border-white/[0.07] p-4">
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/[0.035] ${tone}`}><Icon className="h-5 w-5" /></div>
             <div className="min-w-0"><p className="text-[8px] font-black uppercase tracking-[0.2em] text-vapor">{label}</p><p className={`mt-1 truncate font-mono text-lg font-black ${tone}`}>{value}</p><p className="mt-0.5 truncate text-[9px] text-vapor/75">{detail}</p></div>
           </div>
         ))}
       </div>
 
-      <section ref={standingsRef} id={activeTab} className="leaderboard-surface" style={mode === "eights" && gameId === "mw4" ? { "--ladder-accent": "#facc15" } : undefined}>
+      <section ref={standingsRef} id={activeTab} className="competition-ladder-panel leaderboard-surface" style={mode === "eights" && gameId === "mw4" ? { "--ladder-accent": "#facc15" } : undefined}>
         <div className="flex flex-col gap-4 border-b border-white/[0.07] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div><div className="flex items-center gap-2"><span className={`h-2 w-2 ${copy.line}`} /><h2 className="font-black">{competitionTitle || copy.title} {activeTab === "matchfinder" ? "matchfinder" : "standings"}</h2></div><p className="mt-1 text-xs text-vapor">{activeTab === "matchfinder" ? `${openCount} open ${openCount === 1 ? "match" : "matches"} in this competition.` : mode === "eights" ? "Ranked by 8s ELO, highest first." : "A separate leaderboard for this competition."}</p></div>
           <div className="flex rounded-lg border border-white/[0.07] bg-black/15 p-1 text-[9px] font-black uppercase tracking-wider">
@@ -443,7 +396,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
                 ))}
               </div>
             ) : standings.length === 0 ? <div className="px-5 py-12 text-center text-sm text-vapor">The standings begin when the first match is completed.</div> : pagination.visibleRows.map((row, index) => (
-              <div key={row.id} className={`competition-standing-row grid min-h-[66px] ${standingColumns} items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors ${String(row.userId) === String(currentUser?.id) ? "!bg-cyan/[0.055]" : ""}`}>
+              <div key={row.id} data-podium={pagination.offset + index < 3 ? pagination.offset + index + 1 : undefined} data-self={String(row.userId) === String(currentUser?.id) || undefined} className={`competition-standing-row grid min-h-[66px] ${standingColumns} items-center gap-3 border-b border-white/[0.045] px-5 py-3 text-xs transition-colors ${String(row.userId) === String(currentUser?.id) ? "!bg-cyan/[0.055]" : ""}`}>
                 <span className={`font-mono font-black ${rankTone(pagination.offset + index)}`}>{pagination.offset + index < 3 ? <Trophy className="mr-2 inline h-3.5 w-3.5" /> : null}#{pagination.offset + index + 1}</span>
                 <Link to={`/profile/${row.slug}`} className="flex min-w-0 items-center gap-3 font-bold text-white hover:text-cyan"><span className="leaderboard-avatar">{row.user?.avatar_url ? <img src={row.user.avatar_url} alt="" loading="lazy" /> : row.name.charAt(0).toUpperCase()}</span><span data-name-effect={row.user?.display_name_color || undefined} style={row.user?.display_name_color ? { "--player-name-color": row.user.display_name_color } : undefined} className={`player-name-wrap ${row.user?.display_name_color ? "player-name-color" : ""}`}>{row.name}</span></Link>
                 {mode === "xp" && <span className="text-center"><TPRankBadge xp={row.tpRank?.xp} matchesPlayed={row.tpRank?.matchesPlayed} position={row.tpRank?.position} loading={!row.tpRank} /></span>}

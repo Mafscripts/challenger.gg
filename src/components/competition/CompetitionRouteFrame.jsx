@@ -27,7 +27,7 @@ export default function CompetitionRouteFrame({ children }) {
   } : header;
 
   return <CompetitionHeaderContext.Provider value={mode ? registerHeader : null}>
-    <div className={mode ? "competition-route-frame" : undefined}>
+    <div className={mode ? "competition-route-frame competition-surface" : undefined} data-competition={mode ? upcoming ? "tournaments" : mode : undefined}>
       {mode && <div className="mx-auto max-w-[1600px] px-4 pt-8 lg:px-6">
         {!upcoming && header.headerIntro}
         <CompetitionHeaderView {...shownHeader} mode={upcoming ? "tournaments" : mode} />

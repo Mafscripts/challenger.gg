@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import CompetitionHero from "@/components/competition/CompetitionHero";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
 import { toast } from "@/components/ui/use-toast";
@@ -369,28 +370,19 @@ export default function Matchfinder() {
   };
 
   return (
-    <main className="min-h-screen py-8">
+    <main className="competition-surface min-h-screen py-8" data-competition="matchfinder">
       <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} returnTo="/matchfinder?category=eights" />
       <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} returnFocusTo={discordPromptTrigger} />
       <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} returnFocusTo={discordPromptTrigger} />
       <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
-        <section className="relative isolate min-h-[350px] overflow-hidden rounded-2xl border border-white/[0.1] bg-[#07111c] shadow-[0_18px_60px_rgba(0,0,0,.24)] lg:min-h-[370px]" aria-labelledby="matchfinder-title">
-          <img src="/assets/competition/matchfinder-hero.png" alt="Topfragg Matchfinder competition hub" className="absolute inset-0 h-full w-full object-cover object-center" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07111c]/75 via-transparent to-[#07111c]/10" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#07111c]/20 via-transparent to-[#07111c]/35" />
-          <h1 id="matchfinder-title" className="sr-only">Matchfinder</h1>
-          <div className="absolute right-4 top-4 flex items-center gap-3 rounded-xl border border-white/[0.12] bg-[#07111c]/75 px-3 py-2.5 shadow-xl backdrop-blur-md sm:right-6 sm:top-6 sm:px-4 sm:py-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-yellow-300/20 bg-yellow-300/10 text-yellow-300"><Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" /></span>
-            <div><p className="font-mono text-lg font-black leading-none text-white sm:text-xl">{totalOpen}</p><p className="mt-1 text-[8px] font-black uppercase tracking-[0.17em] text-vapor">Available now</p></div>
-          </div>
-        </section>
+        <CompetitionHero mode="matchfinder" description="Choose your competition, check the match settings and find the right opponent. All your open matches in one place." count={totalOpen} countLabel="open matches" />
 
         <nav className="matchfinder-mode-nav mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-6" aria-label="Matchfinder categories">
           {categories.map((category) => {
             const Icon = category.icon;
             const active = activeCategory === category.key;
             return (
-              <button key={category.key} type="button" onClick={() => setActiveCategory(category.key)} aria-pressed={active} title={category.label} className="competition-action-pill matchfinder-mode-pill">
+              <button key={category.key} type="button" onClick={() => setActiveCategory(category.key)} aria-pressed={active} data-competition={category.key} title={category.label} className="competition-action-pill matchfinder-mode-pill competition-filter-pill">
                 <span className="flex min-w-0 items-center gap-2"><Icon className="h-4 w-4 shrink-0" /><span className="truncate">{category.label}</span></span>
                 <span className="matchfinder-mode-count">{matches[category.key]?.length || 0}</span>
               </button>

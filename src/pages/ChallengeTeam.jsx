@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Headphones, Plus, RefreshCw, Swords, Trophy, User, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { CompetitionHeader } from "@/components/competition/CompetitionLadder";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
@@ -25,7 +26,7 @@ const rowGrid = "grid min-w-[940px] grid-cols-[minmax(150px,1fr)_minmax(220px,1.
 const sectionTitle = "text-sm font-black uppercase tracking-[0.14em]";
 const noteClass = "text-xs leading-5 text-vapor";
 const labelClass = "flex flex-col gap-2 text-xs font-bold text-vapor";
-const panelClass = "overflow-hidden rounded-2xl border border-white/[0.09] bg-card";
+const panelClass = "competition-challenge-panel overflow-hidden rounded-2xl border border-white/[0.09] bg-card";
 
 export default function ChallengeTeam() {
   const { id } = useParams();
@@ -75,13 +76,13 @@ export default function ChallengeTeam() {
   const openJoin = (entry) => { setTeamId(""); setJoining(entry); };
   const ladderRows = data?.standings?.[ladder] || [];
   const active = (data?.matches || []).filter((entry) => !["completed", "cancelled"].includes(entry.status));
-  return <div className={id ? "match-room-theme min-h-screen bg-[#0b1016] py-6" : "competition-page min-h-screen py-8"}><div className="mx-auto w-full max-w-[1600px] px-4 lg:px-6">
-    {!id && <header className="premium-panel relative overflow-hidden rounded-2xl border border-white/[0.07] p-5 sm:p-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan"><Swords className="h-4 w-4" />Team challenges<span className="rounded border border-orange/20 bg-orange/10 px-1.5 py-0.5 text-[8px] text-orange">New</span></p><h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Challenge a Team</h1><p className="mt-2 text-sm leading-6 text-vapor">Your squad against a complete team or a side of solo challengers. Play 1v1, 2v2, 3v3 or 4v4 and climb your own XP ladder.</p></div>
-        <div className="flex shrink-0 flex-wrap gap-2"><button className={primaryButton} onClick={() => { setTeamId(""); setPosting(true); }}><Plus className="h-4 w-4" />Post a challenge</button><button className={secondaryButton} onClick={() => setCreateTeam(true)}><Users className="h-4 w-4" />Create a roster</button></div>
-      </div>
-    </header>}
+  return <div className={id ? "match-room-theme min-h-screen bg-[#0b1016] py-6" : "competition-page competition-surface min-h-screen py-8"} data-competition={id ? undefined : "challenge"}><div className="mx-auto w-full max-w-[1600px] px-4 lg:px-6">
+    {!id && <CompetitionHeader mode="challenge" titleOverride="Challenge a Team" eyebrowOverride="Your squad. Your challenge." descriptionOverride="Your squad against a complete team or a side of solo challengers. Play 1v1, 2v2, 3v3 or 4v4 and climb your own XP ladder." action={<div className="competition-actions"><button className={primaryButton} onClick={() => { setTeamId(""); setPosting(true); }}><Plus className="h-4 w-4" />Post a challenge</button><button className={secondaryButton} onClick={() => setCreateTeam(true)}><Users className="h-4 w-4" />Create a roster</button></div>} />}
+    {!id && <div className="my-5 grid gap-3 sm:grid-cols-3">{[
+      { label: "Active challenges", value: overview.isPending ? "—" : active.length, detail: "In this competition", icon: Swords, tone: "purple" },
+      { label: "Your rosters", value: overview.isPending ? "—" : teams.length, detail: "Build your next lineup", icon: Users, tone: "cyan" },
+      { label: "Entry", value: "Free", detail: "1v1, 2v2, 3v3 & 4v4", icon: Trophy, tone: "gold" },
+    ].map(({ label, value, detail, icon: Icon, tone }) => <div key={label} className="competition-stat-card" data-tone={tone}><div className="competition-stat-icon"><Icon size={21} /></div><div><p className="competition-stat-label">{label}</p><strong className="competition-stat-value">{value}</strong><p className="competition-stat-detail">{detail}</p></div></div>)}</div>}
     {!data?.voice_enabled && !overview.isPending && <div className="my-4 flex items-start gap-3 rounded-xl border border-orange/20 bg-orange/5 p-4 text-xs leading-5 text-vapor"><Headphones className="h-4 w-4 shrink-0 text-orange" /><p>Discord voice is not enabled yet. Matches can be posted, but starting requires the Discord bot and voice configuration.</p></div>}
     {!user?.discord_user_id && <div className="my-4 flex flex-wrap items-center gap-3 rounded-xl border border-purple-300/20 bg-purple-300/5 p-4"><Headphones className="h-4 w-4 text-purple-200" /><p className={`flex-1 ${noteClass}`}>Connect Discord and join the Topfragg server to play.</p><Link className={secondaryButton} to="/settings">Connect Discord<ArrowRight className="h-3.5 w-3.5" /></Link></div>}
     {(overview.error || room.error) && <div className="my-4 flex items-center justify-between gap-3 rounded-xl border border-orange/20 bg-orange/5 p-4" role="alert"><p className={noteClass}>{(room.error || overview.error).message}</p><button className={secondaryButton} onClick={() => { overview.refetch(); if (id) room.refetch(); }}><RefreshCw className="h-4 w-4" />Retry</button></div>}

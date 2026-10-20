@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DollarSign, Flame, Globe2, Search, Trophy, TrendingUp, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import CompetitionHero from "@/components/competition/CompetitionHero";
 import { getRankForElo } from "@/lib/ranks";
 import UserBadges from "@/components/ui/UserBadges";
 import PageLoader from "@/components/ui/PageLoader";
@@ -143,16 +144,9 @@ export default function Leaderboards() {
   if (loading) return <PageLoader label="Loading leaderboards" />;
 
   return (
-    <div className="leaderboard-page">
+    <div className="leaderboard-page competition-surface" data-competition={activeTab === "elo" ? "ranked" : activeTab}>
       <div className="leaderboard-container">
-        <header className="leaderboard-hero">
-          <div>
-            <div className="leaderboard-eyebrow"><TrendingUp size={14} /> TopFragg / Competitive rankings</div>
-            <h1>Leaderboards</h1>
-            <p>The TopFragg leaderboards. Compare ranked ELO, tournament wins and cash match earnings, 50 players at a time.</p>
-          </div>
-          <div className="leaderboard-hero-mark" aria-hidden="true"><Trophy size={32} strokeWidth={1.5} /></div>
-        </header>
+        <CompetitionHero mode={activeTab === "elo" ? "ranked" : activeTab} title="Leaderboards" eyebrow={selectedTab.label + " / Competitive rankings"} description="Compare ranked ELO, tournament wins and cash match earnings. Find your place among the TopFragg competitors." className="mb-6" />
 
         <div className="leaderboard-filters">
           <div className="leaderboard-tabs" role="group" aria-label="Leaderboard competition">

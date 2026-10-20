@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, Clock, Loader2, Monitor, Plus, Radio, Swords, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-import PageHeader from "@/components/ui/PageHeader";
+import CompetitionHero from "@/components/competition/CompetitionHero";
 import PageLoader from "@/components/ui/PageLoader";
 
 const gameModeOptions = [
@@ -117,9 +117,11 @@ export default function StreamerTournaments() {
   }
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="competition-surface min-h-screen py-8" data-competition="streamer">
       <div className="mx-auto max-w-[1500px] px-4 lg:px-6">
-        <PageHeader
+        <CompetitionHero
+          mode="streamer"
+          className="mb-6"
           eyebrow="Streamer competition"
           title="Streamer Switcheroos"
           description="Public streamer-hosted lobbies with random teams, live brackets and dedicated chat moderation."
