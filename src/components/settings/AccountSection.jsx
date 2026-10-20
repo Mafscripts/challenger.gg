@@ -118,8 +118,9 @@ export default function AccountSection({ user, onUserUpdate }) {
       <div className="mb-6">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-xs font-semibold text-vapor uppercase tracking-wider mb-2 block">Username</label>
+            <label htmlFor="settings-profile-username" className="text-xs font-semibold text-vapor uppercase tracking-wider mb-2 block">Username</label>
             <input
+              id="settings-profile-username" name="profile-username" autoComplete="off"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
@@ -154,8 +155,9 @@ export default function AccountSection({ user, onUserUpdate }) {
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-vapor uppercase tracking-wider mb-2 block">Display Name</label>
+            <label htmlFor="settings-profile-display-name" className="text-xs font-semibold text-vapor uppercase tracking-wider mb-2 block">Display Name</label>
             <input
+              id="settings-profile-display-name" name="profile-display-name" autoComplete="off"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -191,8 +193,10 @@ export default function AccountSection({ user, onUserUpdate }) {
           <Lock className="w-4 h-4 text-vapor" />
           <h3 className="text-sm font-semibold">Change Password</h3>
         </div>
-        <div className="space-y-3">
+        <form id="settings-password-form" className="space-y-3" onSubmit={event => { event.preventDefault(); handlePasswordChange(); }}>
+          <input type="text" name="username" autoComplete="username" value={user?.username || user?.email || ""} readOnly tabIndex={-1} aria-label="Account username" className="sr-only" />
           <input
+            id="settings-current-password" name="current-password" autoComplete="current-password" aria-label="Current password"
             type="password"
             placeholder="Current password"
             value={currentPassword}
@@ -201,6 +205,7 @@ export default function AccountSection({ user, onUserUpdate }) {
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
+              id="settings-new-password" name="new-password" autoComplete="new-password" aria-label="New password"
               type="password"
               placeholder="New password"
               value={newPassword}
@@ -208,6 +213,7 @@ export default function AccountSection({ user, onUserUpdate }) {
               className="px-4 py-2.5 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
             />
             <input
+              id="settings-confirm-password" name="confirm-password" autoComplete="new-password" aria-label="Confirm new password"
               type="password"
               placeholder="Confirm new password"
               value={confirmPassword}
@@ -216,7 +222,7 @@ export default function AccountSection({ user, onUserUpdate }) {
             />
           </div>
           <button
-            onClick={handlePasswordChange}
+            type="submit"
             disabled={pwSaving || !currentPassword || !newPassword || !confirmPassword}
             className="flex items-center gap-2 px-5 py-2.5 bg-cyan/10 text-cyan text-sm font-bold rounded-lg border border-cyan/20 hover:bg-cyan/20 transition-all disabled:opacity-50"
           >
@@ -228,7 +234,7 @@ export default function AccountSection({ user, onUserUpdate }) {
               {pwResult.message}
             </div>
           )}
-        </div>
+        </form>
       </div>
     </motion.div>
   );

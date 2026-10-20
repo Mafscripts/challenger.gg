@@ -1,8 +1,10 @@
 import React from "react";
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 import { commerceUnavailableMessage } from "@/lib/commerce";
+import { isNativeApp } from "@/lib/nativeApp";
 
 export default function CommercePausedNotice({ compact = false, className = "" }) {
+  if (!isNativeApp) return null;
   return (
     <div role="note" aria-label="Test credits only" className={`rounded-2xl border border-cyan/15 bg-cyan/[0.055] ${compact ? "p-3" : "p-5"} ${className}`}>
       <div className="flex items-start gap-3">
