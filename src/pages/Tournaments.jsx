@@ -206,7 +206,41 @@ const currentMatchForUser = (matches, participantKeys, teamKeys) => {
     })[0] || null;
 };
 
-function FeaturedTournamentHero({ tournament, now, onSelect }) {
+// Only countdown leaves subscribe to this clock, not the full tournament page.
+function useTournamentClock(deadline) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    let timer;
+    const until = new Date(deadline || "").getTime();
+    const tick = () => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= until) window.clearInterval(timer);
+    };
+    const sync = () => {
+      window.clearInterval(timer);
+      tick();
+      if (document.visibilityState === "visible" && until > Date.now()) {
+        timer = window.setInterval(tick, 1000);
+      }
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [deadline]);
+  return now;
+}
+
+function LiveMatchStartNotice({ match }) {
+  const now = useTournamentClock(match?.start_deadline);
+  const startWindow = matchStartWindow(match, now);
+  return startWindow ? <p className={`mt-1 flex items-center gap-1.5 text-xs font-bold ${startWindow.expired ? "text-orange" : "text-cyan"}`}><Clock className="h-3.5 w-3.5" />{startWindow.label}</p> : null;
+}
+
+function FeaturedTournamentHero({ tournament, onSelect }) {
   const bannerUrl = tournament.banner_url || tournament.cover_image_url || (tournamentGameId(tournament) === "mw4" ? "/assets/mw4/hero.webp" : tournamentImageUrl(tournament)) || "/assets/home/featured-tournaments.png";
   const entryInfo = tournamentEntryInfo(tournament);
   const registered = Math.max(0, Number(tournament.registered_teams) || 0);
@@ -226,7 +260,7 @@ function FeaturedTournamentHero({ tournament, now, onSelect }) {
         <div className="tournament-spotlight-prize"><span className="tournament-spotlight-trophy"><Trophy size={23} aria-hidden="true" /></span><div><p>Prize pool</p><strong>{formatMoney(tournament.prize_pool)}</strong></div></div>
         <dl className="tournament-spotlight-details"><div><dt>Entry</dt><dd className={entryInfo.tone.split(" ").at(-1)}>{entryInfo.label}</dd></div><div><dt>Teams registered</dt><dd>{registered}<span> / {capacity || "—"}</span></dd></div></dl>
         <div className="tournament-spotlight-capacity" aria-hidden="true"><span style={{ width: `${filled}%` }} /></div>
-        <div className="tournament-spotlight-countdown"><TournamentCountdown tournament={tournament} now={now} /></div>
+        <div className="tournament-spotlight-countdown"><TournamentCountdown tournament={tournament} /></div>
         <button type="button" onClick={() => onSelect(tournament.id)} className="tournament-spotlight-action site-hover site-hover-filled">{actionLabel}<ArrowRight size={17} aria-hidden="true" /></button>
       </aside>
     </section>
@@ -255,7 +289,6 @@ export default function Tournaments() {
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState(null);
   const [leavingId, setLeavingId] = useState(null);
-  const [now, setNow] = useState(() => Date.now());
   const [joinedTournamentIds, setJoinedTournamentIds] = useState(new Set());
   const [userTeams, setUserTeams] = useState([]);
   const [selectedTeamByTournament, setSelectedTeamByTournament] = useState({});
@@ -264,6 +297,7 @@ export default function Tournaments() {
   const [joinTournamentId, setJoinTournamentId] = useState(null);
   const selectedTournamentIdRef = useRef(null);
   const refreshInFlightRef = useRef(false);
+  const participantsLoadedRef = useRef(new Set());
 
   useEffect(() => {
     loadTournaments();
@@ -286,11 +320,6 @@ export default function Tournaments() {
   useEffect(() => {
     selectedTournamentIdRef.current = selectedTournamentId;
   }, [selectedTournamentId]);
-
-  useEffect(() => {
-    const countdownInterval = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(countdownInterval);
-  }, []);
 
   useEffect(() => {
     setVisibleTournamentCount(8);
@@ -361,8 +390,8 @@ export default function Tournaments() {
         setUserTeams([]);
       }
 
+      // Only live banners need match data here; the event route loads its own bracket.
       const tournamentIdsToRefresh = new Set([
-        nextSelectedId,
         ...officialRows
           .filter((tournament) => ["live", "in_progress"].includes(tournament.status))
           .map((tournament) => tournament.id),
@@ -509,14 +538,16 @@ export default function Tournaments() {
   const loadMatches = async (tournamentId, { includeParticipants = true } = {}) => {
     if (!tournamentId) return;
     try {
+      const fetchParticipants = includeParticipants || !participantsLoadedRef.current.has(tournamentId);
       const [matches, participants] = await Promise.all([
         base44.entities.TournamentMatch.filterFresh({ tournament_id: tournamentId }, "round", 256),
-        includeParticipants
-          ? base44.entities.TournamentParticipant.filterFresh({ tournament_id: tournamentId }, "seed", 256).catch(() => [])
+        fetchParticipants
+          ? base44.entities.TournamentParticipant.filterFresh({ tournament_id: tournamentId }, "seed", 256).catch(() => null)
           : Promise.resolve(null),
       ]);
       setMatchesByTournament((current) => ({ ...current, [tournamentId]: matches || [] }));
       if (participants) {
+        participantsLoadedRef.current.add(tournamentId);
         setParticipantsByTournament((current) => ({ ...current, [tournamentId]: participants }));
       }
     } catch (error) {
@@ -649,7 +680,7 @@ export default function Tournaments() {
         </div>
 
         {featuredTournament && (
-          <FeaturedTournamentHero tournament={featuredTournament} now={now} onSelect={handleSelectTournament} />
+          <FeaturedTournamentHero tournament={featuredTournament} onSelect={handleSelectTournament} />
         )}
 
         <div className="tournaments-toolbar mb-4 flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-card/55 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -689,7 +720,6 @@ export default function Tournaments() {
             "awaiting_team_a_report",
             "awaiting_team_b_report",
           ].includes(match.status));
-          const liveStartWindow = matchStartWindow(liveMatch, now);
 
           return (
             <motion.div
@@ -706,11 +736,7 @@ export default function Tournaments() {
                   <p className="text-[11px] text-vapor">
                     {statusLabels[tournament.status] || tournament.status} - {tournament.registered_teams || 0}/{tournament.max_teams} teams
                   </p>
-                  {liveStartWindow && (
-                    <p className={`mt-1 flex items-center gap-1.5 text-xs font-bold ${liveStartWindow.expired ? "text-orange" : "text-cyan"}`}>
-                      <Clock className="h-3.5 w-3.5" /> {liveStartWindow.label}
-                    </p>
-                  )}
+                  <LiveMatchStartNotice match={liveMatch} />
                 </div>
               </div>
               {liveMatch ? (
@@ -750,7 +776,6 @@ export default function Tournaments() {
                   onSelect={handleSelectTournament}
                   canJoin={canJoinTournament(tournament)}
                   onJoin={() => setJoinTournamentId(tournament.id)}
-                  now={now}
                 />
               ))}
             </div>
@@ -793,7 +818,7 @@ export default function Tournaments() {
                     <CompactStat label="Prize" value={formatMoney(selectedTournament.prize_pool)} tone="green" />
                     <CompactStat label="Entry" value={tournamentEntryInfo(selectedTournament).label} tone={isFreeTournament(selectedTournament) ? "cyan" : "default"} />
                     <CompactStat label="Teams" value={`${selectedTournament.registered_teams || 0}/${selectedTournament.max_teams || 0}`} />
-                    <CompactStat label="Starts in" value={timeUntil(selectedTournament.start_date, now)} tone="cyan" />
+                    <CompactStat label="Starts in" value={timeUntil(selectedTournament.start_date)} tone="cyan" />
                   </div>
                 </div>
               )}
@@ -945,7 +970,8 @@ export default function Tournaments() {
   );
 }
 
-function TournamentCountdown({ tournament, now }) {
+function TournamentCountdown({ tournament }) {
+  const now = useTournamentClock(tournament?.start_date);
   const countdown = countdownUntil(tournament?.start_date, now);
   const status = String(tournament?.status || "").toLowerCase();
   if (!countdown) {
@@ -1256,9 +1282,8 @@ function TournamentCardStat({ label, value, tone = "text-white", icon: Icon }) {
   );
 }
 
-function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoin, now }) {
-  const imageUrl = tournamentImageUrl(tournament);
-  const entryInfo = tournamentEntryInfo(tournament);
+function TournamentScheduleStat({ tournament }) {
+  const now = useTournamentClock(tournament.start_date);
   const startLabel = timeUntil(tournament.start_date, now);
   const scheduleCompleted = startLabel === "Completed";
   const tournamentStatus = String(tournament.status || "").toLowerCase();
@@ -1278,6 +1303,12 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
       : tournamentStatus === "completed"
         ? "text-green"
         : "text-cyan";
+  return <TournamentCardStat label={scheduleCompleted ? "Status" : "Starts in"} value={scheduleStatusValue} tone={scheduleStatusTone} icon={Clock} />;
+}
+
+function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoin }) {
+  const imageUrl = tournamentImageUrl(tournament);
+  const entryInfo = tournamentEntryInfo(tournament);
   return (
     <motion.article
       data-event-status={tournament.status}
@@ -1301,7 +1332,7 @@ function TournamentCard({ tournament, selected, joined, canJoin, onSelect, onJoi
         <TournamentCardStat label="Prize pool" value={formatMoney(tournament.prize_pool)} tone="text-green" icon={Trophy} />
         <TournamentCardStat label="Entry" value={entryInfo.label} tone={entryInfo.tone.split(" ").at(-1)} />
         <TournamentCardStat label="Teams" value={`${tournament.registered_teams || 0} / ${tournament.max_teams || 0}`} icon={Users} />
-        <TournamentCardStat label={scheduleCompleted ? "Status" : "Starts in"} value={scheduleStatusValue} tone={scheduleStatusTone} icon={Clock} />
+        <TournamentScheduleStat tournament={tournament} />
         {canJoin ? (
           <button
             type="button"

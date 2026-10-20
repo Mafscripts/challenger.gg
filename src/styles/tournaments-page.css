@@ -1,5 +1,7 @@
 /* A single event image, clear hierarchy and compact entry details. */
 .tournaments-page { --site-hover-color: #ffc852; }
+/* These panels already have a solid surface; avoid filtering content beneath them. */
+.tournaments-page :is(.tournaments-toolbar, .tournaments-list-panel, .tournament-live-strip) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 .tournaments-page .tournament-spotlight { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 320px; min-height: 310px; overflow: hidden; margin-bottom: 24px; border: 1px solid #ffc85238; border-radius: 18px; background: #101c28; box-shadow: 0 12px 35px #0002, inset 0 1px #ffffff08; }
 .tournament-spotlight-art { position: absolute; inset: 0 320px 0 30%; z-index: -1; pointer-events: none; }
 .tournament-spotlight-art img { width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .5; }
