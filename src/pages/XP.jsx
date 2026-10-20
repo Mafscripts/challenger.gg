@@ -122,7 +122,7 @@ export default function XP() {
         leaderboardRefreshTick += 1;
         if (leaderboardRefreshTick >= 5) {
           leaderboardRefreshTick = 0;
-          const leaderboard = await base44.entities.XPStats.filterFresh({}, "-total_xp", 500);
+          const leaderboard = await base44.functions.invoke("getXPStandings", {}).then(response => response.data?.rows || []);
           if (active) {
             const position = (leaderboard || []).findIndex((stats) => stats.user_id === user.id);
             setLeaderboardPosition(position >= 0 ? position + 1 : null);
@@ -159,7 +159,7 @@ export default function XP() {
 
       const [matches, statsRows, captainTeams] = await Promise.all([
         base44.entities.XPMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 20),
-        base44.entities.XPStats.filterFresh({}, "-total_xp", 500),
+        base44.functions.invoke("getXPStandings", {}).then(response => response.data?.rows || []),
         loadCaptainRankedTeams(currentUser?.id),
       ]);
 

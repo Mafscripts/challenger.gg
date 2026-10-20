@@ -1306,69 +1306,9 @@ async function ensureRankedStats(userId) {
   });
 }
 
-async function ensureXPStats(userId) {
-  const user = await userFor(userId);
-  if (!user) return null;
-  const existing = await firstEntity("XPStats", { user_id: userId });
-  if (existing) return existing;
-  const identity = identityFor(user);
-  const season = await activeProgressionSeason(prisma, "xp");
-  return createEntity("XPStats", {
-    user_id: userId,
-    username: identity.username,
-    level: user.xp_level || 1,
-    current_xp: 0,
-    total_xp: 0,
-    xp_to_next_level: 1000,
-    prestige: 0,
-    weekly_xp: 0,
-    daily_missions_completed: 0,
-    win_streak: 0,
-    region: user.region || "na",
-    season: season?.season_number || 1,
-    ...(season?.applied_at ? { progression_reset_at: season.applied_at } : {}),
-    last_played_date: nowIso(),
-  });
-}
-
-function applyXpProgress(stats, amount, didWin) {
-  let level = Number(stats.level || 1);
-  let currentXp = Number(stats.current_xp || 0) + amount;
-  let xpToNext = Number(stats.xp_to_next_level || 1000);
-
-  while (currentXp >= xpToNext) {
-    currentXp -= xpToNext;
-    level += 1;
-    xpToNext = Math.round(1000 + ((level - 1) * 150));
-  }
-
-  return {
-    level,
-    current_xp: currentXp,
-    total_xp: Number(stats.total_xp || 0) + amount,
-    xp_to_next_level: xpToNext,
-    weekly_xp: Number(stats.weekly_xp || 0) + amount,
-    win_streak: didWin ? Number(stats.win_streak || 0) + 1 : 0,
-    last_played_date: nowIso(),
-  };
-}
-
-async function updateXPOutcome(userId, didWin) {
-  const stats = await ensureXPStats(userId);
-  if (!stats) return null;
-  const patch = applyXpProgress(stats, didWin ? WIN_XP : LOSS_XP, didWin);
-  const updated = await updateEntity("XPStats", stats.id, patch);
-  await prisma.user.update({
-    where: { id: userId },
-    data: { xp_level: updated.level },
-  }).catch(() => null);
-  return updated;
-}
-
 async function updateProfileOutcome(userId, didWin, eloDelta = 0) {
   const profile = await ensurePlayerProfile(userId);
   if (!profile) return null;
-  const xpAmount = didWin ? WIN_XP : LOSS_XP;
   const currentStreak = didWin ? Number(profile.current_win_streak || 0) + 1 : 0;
   const currentElo = Math.max(0, Number(profile.elo || 0) + eloDelta);
   return updateEntity("PlayerProfile", profile.id, {
@@ -1377,7 +1317,6 @@ async function updateProfileOutcome(userId, didWin, eloDelta = 0) {
     total_losses: Number(profile.total_losses || 0) + (didWin ? 0 : 1),
     current_win_streak: currentStreak,
     best_win_streak: Math.max(Number(profile.best_win_streak || 0), currentStreak),
-    xp: Number(profile.xp || 0) + xpAmount,
     level: Math.max(Number(profile.level || 1), (await firstEntity("XPStats", { user_id: userId }))?.level || 1),
     elo: currentElo,
     peak_elo: Math.max(Number(profile.peak_elo || 0), currentElo),
@@ -1403,51 +1342,6 @@ async function updateRankedOutcome(userId, didWin, requestedEloDelta = null) {
   });
 }
 
-async function applyMatchRewards({ winnerId, loserId, ranked = false }) {
-  const xpChanges = {};
-  const applyXpReward = async (userId, didWin) => {
-    if (!userId) return;
-    const before = await ensureXPStats(userId);
-    const after = await updateXPOutcome(userId, didWin);
-    xpChanges[userId] = {
-      won: didWin,
-      amount: didWin ? WIN_XP : LOSS_XP,
-      previous_level: Number(before?.level || 1),
-      previous_current_xp: Number(before?.current_xp || 0),
-      previous_total_xp: Number(before?.total_xp || 0),
-      previous_xp_to_next_level: Number(before?.xp_to_next_level || 1000),
-      new_level: Number(after?.level || before?.level || 1),
-      new_current_xp: Number(after?.current_xp || before?.current_xp || 0),
-      new_total_xp: Number(after?.total_xp || before?.total_xp || 0),
-      new_xp_to_next_level: Number(after?.xp_to_next_level || before?.xp_to_next_level || 1000),
-    };
-  };
-
-  if (winnerId) {
-    await applyXpReward(winnerId, true);
-    await updateProfileOutcome(winnerId, true, ranked ? RANKED_WIN_ELO : 0);
-    await prisma.user.update({
-      where: { id: winnerId },
-      data: { current_win_streak: { increment: 1 } },
-    }).catch(() => null);
-  }
-  if (loserId) {
-    await applyXpReward(loserId, false);
-    await updateProfileOutcome(loserId, false, ranked ? RANKED_LOSS_ELO : 0);
-    await prisma.user.update({
-      where: { id: loserId },
-      data: { current_win_streak: 0 },
-    }).catch(() => null);
-  }
-  if (ranked) {
-    await Promise.all([
-      winnerId ? updateRankedOutcome(winnerId, true) : Promise.resolve(null),
-      loserId ? updateRankedOutcome(loserId, false) : Promise.resolve(null),
-    ]);
-  }
-  return xpChanges;
-}
-
 async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
   const changes = {};
   const winners = [...new Set(winnerIds.filter(Boolean))];
@@ -1469,7 +1363,6 @@ async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
   const apply = async (userId, didWin) => {
     const before = statsByUser[userId];
     const requestedDelta = didWin ? winnerEloGain : -loserEloLoss;
-    await updateXPOutcome(userId, didWin);
     await updateProfileOutcome(userId, didWin, requestedDelta);
     const after = await updateRankedOutcome(userId, didWin, requestedDelta);
     await prisma.user.update({
@@ -1489,36 +1382,20 @@ async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
 }
 
 async function applyParticipantRewards(winnerIds = [], loserIds = []) {
-  const uniqueWinnerIds = [...new Set(winnerIds.filter(Boolean))];
-  const uniqueLoserIds = [...new Set(loserIds.filter(Boolean))].filter((id) => !uniqueWinnerIds.includes(id));
+  const winners = [...new Set(winnerIds.filter(Boolean))];
+  const losers = [...new Set(loserIds.filter(Boolean))].filter(id => !winners.includes(id));
   const changes = {};
-  const apply = async (userId, didWin) => {
-    const before = await ensureXPStats(userId);
-    const after = await updateXPOutcome(userId, didWin);
+  const apply = async (userId, won) => {
     await Promise.all([
-      updateProfileOutcome(userId, didWin, 0),
-      prisma.user.update({ where: { id: userId }, data: { current_win_streak: didWin ? { increment: 1 } : 0 } }).catch(() => null),
+      updateProfileOutcome(userId, won, 0),
+      prisma.user.update({ where: { id: userId }, data: { current_win_streak: won ? { increment: 1 } : 0 } }).catch(() => null),
     ]);
-    changes[userId] = {
-      won: didWin,
-      amount: didWin ? WIN_XP : LOSS_XP,
-      previous_level: Number(before?.level || 1),
-      previous_current_xp: Number(before?.current_xp || 0),
-      previous_total_xp: Number(before?.total_xp || 0),
-      previous_xp_to_next_level: Number(before?.xp_to_next_level || 1000),
-      new_level: Number(after?.level || before?.level || 1),
-      new_current_xp: Number(after?.current_xp || before?.current_xp || 0),
-      new_total_xp: Number(after?.total_xp || before?.total_xp || 0),
-      new_xp_to_next_level: Number(after?.xp_to_next_level || before?.xp_to_next_level || 1000),
-    };
+    // Keep the per-player result/reversal record, but never grant XP Match XP.
+    changes[userId] = { won, amount: 0, xp_source: "none" };
   };
-  await Promise.all([
-    ...uniqueWinnerIds.map((userId) => apply(userId, true)),
-    ...uniqueLoserIds.map((userId) => apply(userId, false)),
-  ]);
+  await Promise.all([...winners.map(id => apply(id, true)), ...losers.map(id => apply(id, false))]);
   return changes;
 }
-
 const currentEightsMonthKey = () => new Date().toISOString().slice(0, 7);
 
 async function updateEightsOutcome(userId, didWin, gameId = "bo7") {
@@ -1573,34 +1450,14 @@ async function updateEightsOutcome(userId, didWin, gameId = "bo7") {
   });
 }
 
-async function reverseXPOutcome(userId, didWin) {
-  const stats = await firstEntity("XPStats", { user_id: userId }).catch(() => null);
-  if (!stats) return null;
-  const amount = didWin ? WIN_XP : LOSS_XP;
-  const updated = await updateEntity("XPStats", stats.id, {
-    current_xp: Math.max(0, Number(stats.current_xp || 0) - amount),
-    total_xp: Math.max(0, Number(stats.total_xp || 0) - amount),
-    weekly_xp: Math.max(0, Number(stats.weekly_xp || 0) - amount),
-    win_streak: didWin ? Math.max(0, Number(stats.win_streak || 0) - 1) : Number(stats.win_streak || 0),
-    last_played_date: nowIso(),
-  });
-  await prisma.user.update({
-    where: { id: userId },
-    data: { xp_level: updated.level || stats.level || 1 },
-  }).catch(() => null);
-  return updated;
-}
-
 async function reverseProfileOutcome(userId, didWin) {
   const profile = await firstEntity("PlayerProfile", { user_id: userId }).catch(() => null);
   if (!profile) return null;
-  const amount = didWin ? WIN_XP : LOSS_XP;
   return updateEntity("PlayerProfile", profile.id, {
     total_matches: Math.max(0, Number(profile.total_matches || 0) - 1),
     total_wins: Math.max(0, Number(profile.total_wins || 0) - (didWin ? 1 : 0)),
     total_losses: Math.max(0, Number(profile.total_losses || 0) - (didWin ? 0 : 1)),
     current_win_streak: didWin ? Math.max(0, Number(profile.current_win_streak || 0) - 1) : Number(profile.current_win_streak || 0),
-    xp: Math.max(0, Number(profile.xp || 0) - amount),
     last_active_date: nowIso(),
   });
 }
@@ -1610,7 +1467,6 @@ async function reverseParticipantRewards(winnerIds = [], loserIds = []) {
   const uniqueLoserIds = [...new Set(loserIds.filter(Boolean))].filter((id) => !uniqueWinnerIds.includes(id));
   await Promise.all(uniqueWinnerIds.map(async (userId) => {
     await Promise.all([
-      reverseXPOutcome(userId, true),
       reverseProfileOutcome(userId, true),
     ]);
     const user = await userFor(userId);
@@ -1622,7 +1478,6 @@ async function reverseParticipantRewards(winnerIds = [], loserIds = []) {
     }
   }));
   await Promise.all(uniqueLoserIds.map((userId) => Promise.all([
-    reverseXPOutcome(userId, false),
     reverseProfileOutcome(userId, false),
   ])));
 }

@@ -31,7 +31,7 @@ export function buildProfileArena({ userId, ranked = [], xp = [], eights = [], p
   const ensure = (mode, data) => {
     const gameId = normalizeGame(data), key = `${mode}:${gameId}`;
     if (!arenas.has(key)) arenas.set(key, { id: key, mode, game_id: gameId, game_name: gameTitle(data), wins: 0, losses: 0,
-      rating: mode === "xp" ? normalizeMatchXP(xpStats?.total_xp) : latestRatings.get(key) ?? null, rating_label: mode === "xp" ? "Global XP" : "ELO" });
+      rating: mode === "xp" ? normalizeMatchXP(tpStanding?.total_xp ?? 0) : latestRatings.get(key) ?? null, rating_label: mode === "xp" ? "XP Matches" : "ELO" });
     return arenas.get(key);
   };
   const seenStats = new Set();
@@ -71,7 +71,7 @@ export function buildProfileArena({ userId, ranked = [], xp = [], eights = [], p
     }
   }
   const rows = [...arenas.values()].sort((a, b) => a.game_name.localeCompare(b.game_name) || a.mode.localeCompare(b.mode));
-  return { arenas: rows, tp_rank: tpStanding?.tp_rank || tpRank({ xp: xpStats?.total_xp }),
+  return { arenas: rows, tp_rank: tpStanding?.tp_rank || tpRank(),
     recent_matches: recent.sort((a, b) => new Date(b.match_completed_date || b.completed_date || b.created_date) - new Date(a.match_completed_date || a.completed_date || a.created_date)).slice(0, 50),
     wins: rows.reduce((sum, row) => sum + row.wins, 0), losses: rows.reduce((sum, row) => sum + row.losses, 0) };
 }

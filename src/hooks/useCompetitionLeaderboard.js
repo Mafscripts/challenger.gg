@@ -35,8 +35,8 @@ export default function useCompetitionLeaderboard(mode, gameId) {
   // These decorate rows and summary cards; they must not block the standings.
   const extraXP = useQuery({
     ...leaderboardQueryOptions,
-    queryKey: ["leaderboard-extra-xp", user?.id],
-    queryFn: () => base44.entities.XPStats.filter({}, "-total_xp", 500),
+    queryKey: ["competition-standings", user?.id, "xp", "all"],
+    queryFn: async () => (await base44.functions.invoke("getXPStandings", {})).data?.rows || [],
     enabled: enabled && ["money8s", "wagers"].includes(mode),
   });
   const tournaments = useQuery({

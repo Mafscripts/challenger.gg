@@ -2,6 +2,7 @@ import { prisma } from "./prisma.js";
 import { notificationCutoff } from "../src/lib/notificationRetention.js";
 import { normalizeFreeEightsCancellationNotifications } from "./wager-cancellation-notifications.js";
 import { isMatchfinderPostVisible, MATCHFINDER_POST_LIFETIME_MS, FREE_EIGHTS_POST_LIFETIME_MS } from "../src/lib/matchfinderPosts.js";
+import { buildXPMatchRecords, emptyXPMatchRecord } from "./xp-match-records.js";
 
 export const entityAliases = {
   SupportTicket: "supportTicket",
@@ -40,6 +41,28 @@ export const serializeRow = (row) => {
     ...serialized,
   };
 };
+
+async function isolatedXPStats(rows) {
+  const ids = [...new Set(rows.map(row => row.user_id).filter(id => typeof id === "string" && id))];
+  if (!ids.length) return rows;
+  const playerFilter = ids.length <= 8 ? { OR: ids.flatMap(id => [
+    { metadata: { path: ["host_id"], equals: id } },
+    { metadata: { path: ["challenger_id"], equals: id } },
+    { metadata: { path: ["team_alpha_player_ids"], array_contains: [id] } },
+    { metadata: { path: ["team_bravo_player_ids"], array_contains: [id] } },
+  ]) } : null;
+  const matches = await prisma.xPMatch.findMany({
+    where: { AND: [{ metadata: { path: ["status"], equals: "completed" } }, ...(playerFilter ? [playerFilter] : [])] },
+    select: { id: true, metadata: true, created_date: true },
+  });
+  const records = buildXPMatchRecords([...rows].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
+    .map(row => ({ metadata: row })), matches);
+  return rows.map(row => {
+    const record = records.get(row.user_id) || emptyXPMatchRecord();
+    return { ...row, ...record, xp_source: "xp_matches", level: Math.floor(record.total_xp / 1000) + 1,
+      current_xp: record.total_xp % 1000, xp_to_next_level: 1000 };
+  });
+}
 
 const userFields = new Set([
   "email",
@@ -179,6 +202,7 @@ export const getEntity = async (entity, id) => {
     throw error;
   }
   const serialized = serializeRow(row);
+  if (entity === "XPStats") return (await isolatedXPStats([serialized]))[0];
   return entity === "Notification" ? (await normalizeFreeEightsCancellationNotifications(prisma, [serialized]))[0] : serialized;
 };
 
@@ -226,6 +250,7 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
       take: entity === "Message" ? take : 500,
     });
   let flattened = rows.map(serializeRow);
+  if (entity === "XPStats") flattened = await isolatedXPStats(flattened);
 
   flattened = flattened.filter((row) => Object.entries(filter || {}).every(([key, value]) => {
     if (matchfinderOnly && key === "matchfinder_visible") return isMatchfinderPostVisible(row, now);

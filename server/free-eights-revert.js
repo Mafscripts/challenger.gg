@@ -93,7 +93,7 @@ export async function revertFreeEightsResult(db, admin, matchId, expectedComplet
       } });
       const xp = await userRow(tx.xPStats, id);
       let xpLevel;
-      if (xp) {
+      if (xp && amount > 0 && xp.metadata?.xp_source !== "xp_matches") {
         if (!matchAfterProgressionReset(match, row, xp.metadata?.progression_reset_at)) fail("This result belongs to archived XP progression and cannot change the current season.");
         const progress = reverseXp(xp.metadata, amount);
         xpLevel = progress.level;

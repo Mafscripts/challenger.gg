@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { tpRank } from "../src/lib/tpRanks.js";
 import { isExpiredOpenMatch } from "./matchfinder-expiry.js";
 import { completeXPMatchRoster, normalizeMatchXP, xpMatchOutcome, xpMatchRoster, xpMatchStrength, xpMatchTeamSize } from "../src/lib/xpMatchRating.js";
-import { matchAfterProgressionReset } from "../src/lib/progressionResets.js";
+import { buildXPMatchRecords, emptyXPMatchRecord } from "./xp-match-records.js";
 import { activeProgressionSeason } from "./progression-resets.js";
 
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
@@ -14,25 +14,17 @@ const stamp = () => new Date().toISOString();
 export async function getXPStandings(db) {
   const [rows, completed] = await Promise.all([
     db.xPStats.findMany({ orderBy: { created_date: "desc" }, select: { id: true, metadata: true } }),
-    db.xPMatch.findMany({ where: field("status", "completed"), select: { metadata: true, created_date: true } }),
+    db.xPMatch.findMany({ where: field("status", "completed"), select: { id: true, metadata: true, created_date: true } }),
   ]);
-  const cutoffs = new Map();
-  for (const row of rows) if (!cutoffs.has(row.metadata?.user_id)) cutoffs.set(row.metadata?.user_id, row.metadata?.progression_reset_at);
-  const games = new Map();
-  for (const row of completed) {
-    const match = row.metadata;
-    for (const id of new Set([...xpMatchRoster(match, "alpha"), ...xpMatchRoster(match, "bravo")])) {
-      if (typeof id === "string" && id && matchAfterProgressionReset(match, row, cutoffs.get(id))) games.set(id, (games.get(id) || 0) + 1);
-    }
-  }
+  const records = buildXPMatchRecords(rows, completed);
   const latest = new Map();
   for (const row of rows) {
     const stats = row.metadata || {};
     if (!stats.user_id || latest.has(stats.user_id)) continue;
     latest.set(stats.user_id, { id: row.id, user_id: stats.user_id, username: stats.username || "Player",
-      total_xp: normalizeMatchXP(stats.total_xp), wins: normalizeMatchXP(stats.wins), losses: normalizeMatchXP(stats.losses),
-      win_streak: normalizeMatchXP(stats.win_streak), matches_played: games.get(stats.user_id) || 0 });
+      ...(records.get(stats.user_id) || emptyXPMatchRecord()) });
   }
+  for (const [userId, record] of records) if (!latest.has(userId)) latest.set(userId, { id: userId, user_id: userId, username: "Player", ...record });
   return [...latest.values()].filter((row) => row.matches_played > 0)
     .sort((a, b) => b.total_xp - a.total_xp || b.wins - a.wins || String(a.user_id).localeCompare(String(b.user_id)))
     .map((row, index) => ({ ...row, tp_rank: tpRank({ xp: row.total_xp, matchesPlayed: row.matches_played, position: index + 1 }) }));
@@ -78,13 +70,24 @@ async function loadStats(tx, ids) {
   const rows = await tx.xPStats.findMany({ where: { OR: ids.map((id) => field("user_id", id)) }, orderBy: { created_date: "desc" } });
   const byUser = new Map();
   for (const row of rows) if (!byUser.has(row.metadata.user_id)) byUser.set(row.metadata.user_id, row);
+  const completed = await tx.xPMatch.findMany({ where: { AND: [field("status", "completed"), { OR: ids.flatMap(id => [
+    field("host_id", id), field("challenger_id", id),
+    { metadata: { path: ["team_alpha_player_ids"], array_contains: [id] } },
+    { metadata: { path: ["team_bravo_player_ids"], array_contains: [id] } },
+  ]) }] }, select: { id: true, metadata: true, created_date: true } });
+  const records = buildXPMatchRecords(rows, completed);
+  for (const id of ids) {
+    const stored = byUser.get(id), record = records.get(id) || emptyXPMatchRecord();
+    byUser.set(id, { ...stored, metadata: { ...stored?.metadata, ...record, xp_source: "xp_matches",
+      level: Math.floor(record.total_xp / 1000) + 1, current_xp: record.total_xp % 1000, xp_to_next_level: 1000 } });
+  }
   return byUser;
 }
 
 async function captureStrength(tx, match) {
   const ids = [...xpMatchRoster(match, "alpha"), ...xpMatchRoster(match, "bravo")];
   const stats = await loadStats(tx, ids);
-  return xpMatchStrength(match, Object.fromEntries(ids.map((id) => [id, stats.get(id)?.metadata?.total_xp])));
+  return { ...xpMatchStrength(match, Object.fromEntries(ids.map((id) => [id, stats.get(id)?.metadata?.total_xp]))), rating_source: "xp_matches" };
 }
 
 export async function createXPMatchLobby(db, payload, party) {
@@ -235,7 +238,7 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
     const ids = [...xpMatchRoster(match, "alpha"), ...xpMatchRoster(match, "bravo")];
     let stats = await loadStats(tx, ids);
     // Lock existing progression rows before reading balances used for the update.
-    for (const statsId of [...stats.values()].map((entry) => entry.id).sort()) {
+    for (const statsId of [...stats.values()].map((entry) => entry.id).filter(Boolean).sort()) {
       await tx.$executeRaw`SELECT id FROM "XPStats" WHERE id = ${statsId} FOR UPDATE`;
     }
     stats = await loadStats(tx, ids);
@@ -243,14 +246,14 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
     const usersById = new Map(users.map((user) => [user.id, user]));
     if (users.length !== ids.length) return error("An XP match player no longer exists");
     const frozen = match.xp_strength_snapshot;
-    const validSnapshot = frozen?.version === 1 && Object.keys(frozen.players || {}).length === ids.length
+    const validSnapshot = frozen?.version === 1 && frozen.rating_source === "xp_matches" && Object.keys(frozen.players || {}).length === ids.length
       && ids.every((userId) => Object.hasOwn(frozen.players || {}, userId));
     const strength = xpMatchStrength(match, validSnapshot ? frozen.players
       : Object.fromEntries(ids.map((userId) => [userId, stats.get(userId)?.metadata?.total_xp])), validSnapshot ? frozen.captured_at : stamp());
     const outcome = xpMatchOutcome(strength, winningSide);
     const winners = new Set(xpMatchRoster(match, winningSide));
     const changes = {};
-    const activeSeason = ids.some((id) => !stats.has(id)) ? await activeProgressionSeason(tx, "xp") : null;
+    const activeSeason = ids.some((id) => !stats.get(id)?.id) ? await activeProgressionSeason(tx, "xp") : null;
     for (const userId of ids) {
       const previous = stats.get(userId);
       const current = previous?.metadata || {};
@@ -265,8 +268,8 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
         wins: Number(current.wins || 0) + (won ? 1 : 0), losses: Number(current.losses || 0) + (won ? 0 : 1),
         matches_played: Number(current.matches_played || 0) + 1, win_streak: won ? Number(current.win_streak || 0) + 1 : 0,
         last_played_date: stamp(), region: current.region || usersById.get(userId).region || "na", season: current.season || activeSeason?.season_number || 1,
-        ...(!previous && activeSeason?.applied_at ? { progression_reset_at: activeSeason.applied_at } : {}) };
-      if (previous) await tx.xPStats.update({ where: { id: previous.id }, data: { metadata } });
+        ...(!previous?.id && activeSeason?.applied_at ? { progression_reset_at: activeSeason.applied_at } : {}) };
+      if (previous?.id) await tx.xPStats.update({ where: { id: previous.id }, data: { metadata } });
       else await tx.xPStats.create({ data: { metadata } });
       await tx.user.update({ where: { id: userId }, data: { xp_level: level } });
       changes[userId] = { previous_xp: before, new_xp: after, delta, won, expected_change: won ? outcome.change : -outcome.change,
@@ -277,7 +280,7 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
       winner_id: winnerId, winner_name: nameFor(usersById.get(winnerId)), winner_score: Math.max(alphaScore, bravoScore), loser_score: Math.min(alphaScore, bravoScore),
       confirmed_score_alpha: alphaScore, confirmed_score_bravo: bravoScore, reported_score_alpha: alphaScore, reported_score_bravo: bravoScore,
       reported_score_by: actor.id, proof_urls: input.proof_urls || match.proof_urls || [],
-      xp_changes: changes, xp_strength_snapshot: strength, xp_rating_outcome: outcome, match_completed_date: stamp() });
+      xp_changes: changes, xp_strength_snapshot: { ...strength, rating_source: "xp_matches" }, xp_rating_outcome: outcome, match_completed_date: stamp() });
     return { success: true, winner_id: winnerId, winner_name: saved.winner_name, xp_changes: changes, match: saved };
   }, { timeout: 20000, maxWait: 15000 });
 }
