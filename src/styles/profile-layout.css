@@ -41,14 +41,14 @@
 .profile-refresh .pd-top-showcases .pd-trophy-symbol { width: 33px; height: 48px; }
 .profile-refresh .pd-top-showcases .pd-trophy { width: 54px; }
 .profile-refresh .pd-top-showcases .pd-empty { padding: 15px 0; }
-.profile-refresh .profile-dashboard { grid-template-columns: minmax(0, 1fr) 310px; gap: 22px; margin-top: 22px; }
+.profile-refresh .profile-dashboard { grid-template-columns: 310px minmax(0, 1fr); gap: 22px; margin-top: 22px; }
 .profile-refresh .pd-panel, .profile-refresh .glass { border-color: #14d8ff30; border-radius: 16px; background: linear-gradient(125deg, #14d8ff07, transparent 65%), #101c28; box-shadow: 0 12px 35px #0002, inset 0 1px #ffffff06; }
 .profile-refresh .pd-heading { flex-wrap: wrap; gap: 9px; }
 .profile-refresh .pd-heading h2 { color: #e6f1f8; font-size: 14px; }
 .profile-refresh .pd-heading > div { min-width: 0; flex-shrink: 1; }
 .profile-refresh .pd-heading .pd-text-action { font-size: 10px; }
 .profile-refresh .pd-view-all { min-height: 36px; }
-.profile-refresh .pd-sidebar { display: flex; flex-direction: column; }
+.profile-refresh .pd-sidebar { order: -1; display: flex; flex-direction: column; }
 .profile-refresh .pd-sidebar .pd-panel { padding: 20px; }
 .profile-refresh .pd-sidebar .pd-friend-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .profile-refresh .pd-sidebar .pd-friend-avatar { width: 44px; height: 44px; }
