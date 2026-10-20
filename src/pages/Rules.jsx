@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ArrowLeftRight, Ban, BookOpen, Camera, Check, ChevronRight, ClipboardCheck, Clock, Copy, DollarSign, Flag, Gamepad2, Handshake, List, Medal, MessageCircle, MessageSquare, Radio, Scale, Search, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy, Unplug, Users, Video, Wifi, X } from "lucide-react";
-import PageHeader from "@/components/ui/PageHeader";
+import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { ruleGroups, ruleQuickLinks, ruleSections, searchRulebook } from "@/lib/rulebook";
 import "@/styles/rules.css";
 
 const icons = { ArrowLeftRight, Ban, Camera, ClipboardCheck, Clock, DollarSign, Flag, Gamepad2, Handshake, Medal, MessageCircle, MessageSquare, Radio, Scale, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy, Unplug, Users, Video, Wifi };
 const sectionFromHash = hash => ruleSections.find(section => `#${section.id}` === hash)?.id || ruleSections[0].id;
+const groupTones = { essentials: "cyan", "in-match": "purple", integrity: "green", platform: "gold" };
+const quickTones = ["gold", "green", "cyan", "purple"];
 
 function Highlight({ text, query }) {
   const words = query.trim().split(/\s+/).filter(Boolean).map(word => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -57,13 +59,27 @@ export default function Rules() {
 
   return <main className="rules-page">
     <div className="rules-container">
-      <PageHeader eyebrow="The TopFragg rulebook" title="Rules & Regulations" description="Clear standards. Fair competition. Everything you need before, during and after your match." action={<Link to="/support" className="rules-support-link"><MessageCircle size={15} /> Contact support <ArrowRight size={14} /></Link>} />
+      <header className="rules-hero">
+        <div className="rules-hero-copy">
+          <p className="rules-hero-kicker"><span /> THE TOPFRAGG RULEBOOK <span className="rules-hero-season">OFFICIAL RULES</span></p>
+          <h1>Rules &<br /><span>Regulations.</span></h1>
+          <p className="rules-hero-description">Bring your best. Play it fair.<br />Everything you need before, during and after your match.</p>
+          <div className="rules-hero-actions"><button type="button" onClick={() => selectSection(active.id)} className="rules-explore"><BookOpen size={17} />Explore the rules<ArrowRight size={16} /></button><Link to="/support" className="rules-support-link"><MessageCircle size={16} /> Contact support</Link></div>
+          <div className="rules-hero-tags"><span><Gamepad2 size={14} />PC & console</span><span><Radio size={14} />Twitch · YouTube · Kick</span><span><ShieldCheck size={14} />Fair play first</span></div>
+        </div>
+        <div className="rules-hero-art" aria-hidden="true">
+          <div className="rules-emblem-orbit rules-emblem-orbit-outer" /><div className="rules-emblem-orbit rules-emblem-orbit-inner" />
+          <div className="rules-emblem"><TopfraggLogo showWordmark={false} className="rules-brand-symbol" markClassName="rules-brand-mark" /></div>
+          <span className="rules-orbit-symbol rules-orbit-swords"><Swords size={26} /></span><span className="rules-orbit-symbol rules-orbit-shield"><ShieldCheck size={26} /></span><span className="rules-orbit-symbol rules-orbit-trophy"><Trophy size={26} /></span>
+          <span className="rules-art-caption">PLAY WITH INTEGRITY.<strong>WIN WITH PRIDE.</strong></span>
+        </div>
+      </header>
       <div className="rules-edition"><span><ShieldCheck size={13} /> Official competition standards</span><span>PC · PlayStation · Xbox</span><time dateTime="2026-10-19">Updated October 19, 2026</time></div>
 
       <nav className="rules-essentials" aria-label="Important match requirements">
         {ruleQuickLinks.map(({ id, value, label, detail, icon }, index) => {
           const Icon = icons[icon];
-          return <button type="button" key={`${id}-${index}`} onClick={() => selectSection(id)}><Icon size={19} /><span><small>{label}</small><strong>{value}</strong><span>{detail}</span></span><ChevronRight className="rules-quick-arrow" size={15} /></button>;
+          return <button type="button" data-tone={quickTones[index]} key={`${id}-${index}`} onClick={() => selectSection(id)}><span className="rules-quick-icon"><Icon size={23} /></span><span className="rules-quick-copy"><small>{label}</small><strong>{value}</strong><span>{detail}</span></span><ChevronRight className="rules-quick-arrow" size={15} /></button>;
         })}
       </nav>
 
@@ -71,8 +87,9 @@ export default function Rules() {
       <nav className="rules-groups" aria-label="Rulebook groups">
         {ruleGroups.map((item, index) => {
           const Icon = icons[item.icon];
-          return <button type="button" key={item.id} aria-pressed={!searching && !showAll && group.id === item.id} onClick={() => selectSection(ruleSections.find(section => section.group === item.id).id)}>
-            <span className="rules-group-top"><Icon size={20} /><span>0{index + 1}</span></span><strong>{item.title}</strong><span className="rules-group-description">{item.description}</span><span className="rules-group-bottom">{ruleSections.filter(section => section.group === item.id).length} topics <ArrowRight size={14} /></span>
+          return <button type="button" data-tone={groupTones[item.id]} key={item.id} aria-pressed={!searching && !showAll && group.id === item.id} onClick={() => selectSection(ruleSections.find(section => section.group === item.id).id)}>
+            <Icon className="rules-group-watermark" size={116} aria-hidden="true" />
+            <span className="rules-group-top"><span className="rules-group-icon"><Icon size={26} /></span><span>0{index + 1}</span></span><strong>{item.title}</strong><span className="rules-group-description">{item.description}</span><span className="rules-group-bottom"><span>{ruleSections.filter(section => section.group === item.id).length} topics</span><span className="rules-group-arrow"><ArrowRight size={16} /></span></span>
           </button>;
         })}
       </nav>
@@ -83,11 +100,11 @@ export default function Rules() {
       </div>
 
       <div className="rules-layout">
-        <aside className="rules-sidebar">
+        <aside className="rules-sidebar" data-tone={groupTones[group.id]}>
           <div className="rules-sidebar-heading"><BookOpen size={17} /><div><p className="rules-eyebrow">Browse topics</p><h2>{searching || showAll ? "Full rulebook" : group.title}</h2></div></div>
           <label className="rules-mobile-select"><span>Jump to a topic</span><select value={active.id} onChange={event => selectSection(event.target.value)}>{ruleGroups.map(item => <optgroup key={item.id} label={item.title}>{ruleSections.filter(section => section.group === item.id).map(section => <option key={section.id} value={section.id}>{section.title}</option>)}</optgroup>)}</select></label>
           <nav aria-label="Rule topics" className="rules-navigation">
-            {ruleGroups.filter(item => searching || showAll || item.id === group.id).map(item => <div key={item.id} className="rules-nav-group">
+            {ruleGroups.filter(item => searching || showAll || item.id === group.id).map(item => <div key={item.id} className="rules-nav-group" data-tone={groupTones[item.id]}>
               {(searching || showAll) && <p>{item.title}</p>}
               {ruleSections.filter(section => section.group === item.id).map(section => {
                 const Icon = icons[section.icon];
@@ -103,7 +120,7 @@ export default function Rules() {
             <div className="rules-reader-bar"><span><BookOpen size={13} />{searching ? "Search results" : showAll ? "Complete rulebook" : group.title}</span><span>{searching ? `${displayed.length} topics` : showAll ? `${ruleSections.length} topics` : `Topic ${String(activeIndex + 1).padStart(2, "0")} / ${ruleSections.length}`}</span></div>
             {!displayed.length ? <div className="rules-empty"><Search size={30} /><h2>No rules found</h2><p>Try “stream”, “Hardpoint”, “roster” or a shorter search.</p><button type="button" className="rules-support-link" onClick={() => setQuery("")}>Clear search <X size={14} /></button></div> : displayed.map(section => {
               const Icon = icons[section.icon];
-              return <section key={section.id} id={section.id} className="rules-section" aria-labelledby={`heading-${section.id}`}>
+              return <section key={section.id} id={section.id} className="rules-section" data-tone={groupTones[section.group]} aria-labelledby={`heading-${section.id}`}>
                 <header className="rules-section-header"><div className="rules-section-icon"><Icon size={23} /></div><div><p className="rules-eyebrow">{ruleGroups.find(item => item.id === section.group).title}</p><h2 id={`heading-${section.id}`}><Highlight text={section.title} query={query} /></h2><p className="rules-section-description">{section.description}</p></div><button type="button" className="rules-icon-button rules-copy" title="Copy link to this topic" aria-label={copiedId === section.id ? `Link copied for ${section.title}` : `Copy link to ${section.title}`} onClick={() => copySection(section.id)}>{copiedId === section.id ? <Check size={16} /> : <Copy size={16} />}</button></header>
                 {section.summary && !searching && <div className="rules-takeaway"><ShieldCheck size={17} /><div><span>At a glance</span><p>{section.summary}</p></div></div>}
                 <ol className="rules-list">{section.entries.map(({ rule, ruleIndex }) => {
