@@ -1,4 +1,5 @@
 import { competitionStreamError } from "../competition-streaming.js";
+import { isInventoryTrophy } from "../lib/trophyCounts.js";
 import { activeProgressionSeason, progressionResetOverview, resetProgression } from "../progression-resets.js";
 import { matchAfterProgressionReset } from "../../src/lib/progressionResets.js";
 import { Router } from "express";
@@ -10550,7 +10551,7 @@ const competitionTrophyType = (item = {}) => {
     .join(" ")
     .trim()
     .toLowerCase();
-  if (item.item_category !== "trophy" && !text.includes("trophy")) return null;
+  if (!isInventoryTrophy(item)) return null;
   if (text.includes("topfrag") || text.includes("topfragg")) return "topfragg";
   if (text.includes("hosted") || text.includes("host trophy")) return "hosted";
   if (text.includes("premium")) return "premium";

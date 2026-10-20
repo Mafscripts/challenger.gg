@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { hasRole } from "./roles.js";
 import { PROGRESSION_CATEGORIES, SEASON_LADDERS, seasonLadder } from "../src/lib/progressionResets.js";
 import { getRankForElo } from "../src/lib/ranks.js";
+import { isInventoryTrophy } from "./lib/trophyCounts.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const json = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -15,10 +16,6 @@ const highestSeason = (seasons, stats, ladder) => Math.max(
   stats.reduce((max, row) => Math.max(max, Number(row.metadata?.season) || 1), 1),
 );
 const tableNames = { user: "User", wallet: "Wallet", playerProfile: "PlayerProfile", xPStats: "XPStats", rankedStats: "RankedStats", eightsStats: "EightsStats", xPLeaderboard: "XPLeaderboard", team: "Team", userInventory: "UserInventory", season: "Season", withdrawalRequest: "WithdrawalRequest" };
-const isTrophy = (metadata) => {
-  const category = metadata.item_category || metadata.category;
-  return category ? category === "trophy" : [metadata.item_name, metadata.unlock_key, metadata.purchase_method].filter(Boolean).join(" ").toLowerCase().includes("trophy");
-};
 const name = (actor) => actor.display_name || actor.username || actor.full_name || actor.id;
 
 function selection(body, season) {
@@ -52,7 +49,7 @@ function totals(rows) {
     money: users.reduce((sum, user) => sum + Number(byUser.get(user.id)?.metadata?.available_balance ?? user.wallet_balance ?? 0), 0),
     credits: users.reduce((sum, user) => sum + Number(user.credits || 0), 0),
     earnings: users.reduce((sum, user) => sum + Number(user.lifetime_earnings || 0), 0),
-    trophy_items: (rows.userInventory || []).filter((row) => isTrophy(json(row.metadata))).length,
+    trophy_items: (rows.userInventory || []).filter((row) => isInventoryTrophy(json(row.metadata))).length,
     xp_records: (rows.xPStats || []).length, ranked_records: (rows.rankedStats || []).length, free8s_records: (rows.eightsStats || []).length,
   };
 }
@@ -117,7 +114,7 @@ export async function resetProgression(db, actor, body = {}, { now = () => new D
       fail("Resolve pending payments and held match funds before resetting money balances.", 409);
     }
     if (selected.has("money") && rows.withdrawalRequest.some((row) => ["pending", "processing"].includes(row.metadata?.status))) fail("Resolve pending withdrawals before resetting money balances.", 409);
-    const trophyIds = new Set((rows.userInventory || []).filter((row) => isTrophy(json(row.metadata))).map((row) => row.id));
+    const trophyIds = new Set((rows.userInventory || []).filter((row) => isInventoryTrophy(json(row.metadata))).map((row) => row.id));
     const affected = {}, newSeasons = [];
     const saveRows = async (key, patch) => {
       let count = 0;

@@ -48,7 +48,7 @@ import { getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
 import { activisionIdFor } from "@/lib/activision";
 import { normalizeImageSource, prepareImageFile } from "@/lib/images";
-import { trophyCountsFor } from "@/lib/trophyCounts";
+import { isInventoryTrophy, trophyCountsFor } from "@/lib/trophyCounts";
 import { participantBelongsToUser, profileMatchOutcome, profileMatchSideFor, tournamentMatchSideFor } from "@/lib/profileMatchResults";
 
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
@@ -471,7 +471,7 @@ export default function Profile() {
   const trophyOverviewCards = trophyOverviewFor(user, profile, inventory, matches, publicTrophyCounts);
   const earnedTrophyItems = inventory.filter((item) => {
     const text = `${item.item_category || ""} ${item.item_name || ""}`.toLowerCase();
-    return (item.item_category === "trophy" || text.includes("trophy")) && !text.includes("invit") && !text.includes("champion") && !text.includes("hosted") && !text.includes("host trophy") && !text.includes("topfrag");
+    return isInventoryTrophy(item) && !text.includes("invit") && !text.includes("champion") && !text.includes("hosted") && !text.includes("host trophy") && !text.includes("topfrag");
   }).slice(0, 12);
   const profileMatches = useMemo(() => [...new Map([...matches, ...(arena?.recent_matches || [])].map((match) => [`${match.match_type}:${match.id}`, match])).values()]
     .sort((a, b) => matchDateMs(b) - matchDateMs(a)).slice(0, 50), [arena, matches]);

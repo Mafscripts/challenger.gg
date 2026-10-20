@@ -1,1 +1,1 @@
-export { countInventoryTrophies, trophyCountsFor, trophyFields } from "../../server/lib/trophyCounts.js";
+export { isInventoryTrophy, countInventoryTrophies, trophyCountsFor, trophyFields } from "../../server/lib/trophyCounts.js";

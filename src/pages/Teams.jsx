@@ -37,6 +37,7 @@ import { teamPageUrl, teamPlayerFormat, teamPurposeFor } from "@/lib/teamPresent
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
 import UserBadges from "@/components/ui/UserBadges";
 import TrophyCounts from "@/components/ui/TrophyCounts";
+import { isInventoryTrophy } from "@/lib/trophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
 import { normalizeTeamRosterSize, teamRosterFormat } from "@/lib/teamFormats";
 
@@ -71,7 +72,7 @@ const countInventoryTrophies = (items = []) => {
       .join(" ")
       .trim()
       .toLowerCase();
-    if (item.item_category !== "trophy" && !text.includes("trophy")) return;
+    if (!isInventoryTrophy(item)) return;
 
     if (text.includes("invit") || text.includes("champion")) return;
     if (text.includes("premium")) counts.premium += 1;

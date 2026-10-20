@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Package } from "lucide-react";
 import RarityBadge from "@/components/ui/RarityBadge";
 import { base44 } from "@/api/base44Client";
+import { isInventoryTrophy } from "@/lib/trophyCounts";
 import PageHeader from "@/components/ui/PageHeader";
 
 const categoryLabels = {
@@ -50,7 +51,7 @@ export default function Inventory() {
       const inventory = await base44.entities.UserInventory.filter({ user_id: user.id }, "-acquired_date", 100);
       const visibleInventory = inventory.filter((item) => {
         const text = `${item.item_category || ""} ${item.item_name || ""} ${item.unlock_key || ""}`.toLowerCase();
-        const isTrophy = item.item_category === "trophy" || text.includes("trophy");
+        const isTrophy = isInventoryTrophy(item);
         return !(isTrophy && (text.includes("invit") || text.includes("champion")));
       });
       setOwnedItems(visibleInventory.map(item => ({

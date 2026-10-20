@@ -3,12 +3,20 @@ const number = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+// An explicit cosmetic category takes precedence over words in its name/rarity.
+// Legacy awards without a category can still be recognized by their trophy name.
+export function isInventoryTrophy(item = {}) {
+  const category = String(item.item_category || item.category || "").trim().toLowerCase();
+  if (category) return category === "trophy";
+  return [item.item_name, item.unlock_key, item.purchase_method].filter(Boolean).join(" ").toLowerCase().includes("trophy");
+}
+
 export function countInventoryTrophies(items = []) {
   const counts = { gold: 0, silver: 0, bronze: 0, premium: 0, topfragg: 0, hosted: 0 };
   for (const item of items || []) {
     const text = [item.item_category, item.item_name, item.unlock_key, item.item_rarity, item.purchase_method]
       .filter(Boolean).join(" ").trim().toLowerCase();
-    if (item.item_category !== "trophy" && !text.includes("trophy")) continue;
+    if (!isInventoryTrophy(item)) continue;
     if (text.includes("invit") || text.includes("champion")) continue;
     if (text.includes("topfrag")) counts.topfragg += 1;
     else if (text.includes("hosted") || text.includes("host trophy")) counts.hosted += 1;

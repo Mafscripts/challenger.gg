@@ -4,6 +4,7 @@ import { activeProgressionSeason, progressionResetOverview, resetProgression } f
 import { PROGRESSION_CATEGORIES } from "../src/lib/progressionResets.js";
 import { getXPStandings } from "./xp-matches.js";
 import { buildProfileArena } from "./profile-arena.js";
+import { trophyCountsFor, recentTrophiesFor } from "./lib/trophyCounts.js";
 
 const ceo = { id: "ceo", role: "ceo", username: "CEO" };
 const timestamp = "2026-10-19T12:00:00.000Z", now = () => new Date(timestamp);
@@ -116,6 +117,30 @@ test("all progression covers dedicated ELO columns, cached XP, team records and 
   assert.deepEqual(state.playerProfile[0].metadata.showcase_item_ids, ["frame"]);
   assert.equal(state.playerProfile[0].metadata.is_premium, true);
   assert.equal(state.season.filter((entry) => entry.metadata.is_active).length, 3, "a category reset is not a season change");
+});
+
+test("a trophy-only reset leaves no displayed awards while preserving gold cosmetics and match records", async () => {
+  const f = fixture();
+  const state = f.state();
+  Object.assign(state.userInventory[1].metadata, { item_name: "Gold Trophy Frame", item_rarity: "legendary" });
+  state.userInventory.push(row("legacy-trophy", { user_id: "u", category: "trophy", item_name: "Gold Award" }));
+  state.userInventory.push(row("capitalized-trophy", { user_id: "u", item_category: "Trophy", item_name: "Gold Award" }));
+  state.playerProfile[0].metadata.showcase_item_ids.push("legacy-trophy", "capitalized-trophy");
+  const result = await resetProgression(f.db, ceo, resetBody(["trophies"]), { now });
+  const after = f.state();
+  assert.equal(result.affected.trophy_items_removed, 3);
+  assert.deepEqual(after.userInventory.map((item) => item.id), ["frame"]);
+  const inventory = after.userInventory.map((item) => ({ ...item.metadata, id: item.id, created_date: item.created_date }));
+  assert.deepEqual(trophyCountsFor(after.user[0].metadata, after.playerProfile[0].metadata, inventory),
+    { gold: 0, silver: 0, bronze: 0, premium: 0, topfragg: 0, hosted: 0 });
+  assert.deepEqual(recentTrophiesFor(after.user[0].metadata, after.playerProfile[0].metadata, inventory), []);
+  assert.deepEqual(after.playerProfile[0].metadata.showcase_item_ids, ["frame"]);
+  assert.equal(after.user[0].tournament_wins, 1, "a trophy reset preserves match records");
+  assert.equal(after.user[0].credits, 21);
+  assert.equal(after.playerProfile[0].metadata.elo, 2900);
+  const newAward = { id: "new-win", item_category: "trophy", item_name: "Gold Tournament Trophy", acquired_date: "2026-10-20T12:00:00Z" };
+  assert.equal(trophyCountsFor(after.user[0].metadata, after.playerProfile[0].metadata, [...inventory, newAward]).gold, 1);
+  assert.deepEqual(recentTrophiesFor(after.user[0].metadata, after.playerProfile[0].metadata, [...inventory, newAward]).map((item) => item.id), ["new-win"]);
 });
 
 test("a ladder reset cannot reset another ladder, credits, cash or trophies", async () => {
