@@ -10,7 +10,7 @@ function MessageAvatar({ player, message, invitation }) {
   const avatar = player?.avatar_url || message.sender_avatar_url;
   return <span className="nav-message-avatar" aria-hidden="true">
     {invitation ? <TopfraggLogo showWordmark={false} markClassName="!h-10 !w-10" />
-      : <PlayerAvatarImage src={avatar} />}
+      : <PlayerAvatarImage user={player} src={avatar} />}
   </span>;
 }
 

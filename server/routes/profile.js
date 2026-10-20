@@ -114,7 +114,7 @@ router.get("/:userId/friends", requireAuth, async (req, res, next) => {
     const ids = [...new Set(rows.filter((row) => row.metadata?.is_active !== false).map(({ metadata }) => metadata.user_id === userId ? metadata.friend_id : metadata.user_id).filter((id) => typeof id === "string" && id && id !== userId))];
     const pageIds = ids.slice(offset, offset + 25);
     const [users, profiles] = await Promise.all([
-      prisma.user.findMany({ where: { id: { in: pageIds } }, select: { id: true, username: true, display_name: true, metadata: true } }),
+      prisma.user.findMany({ where: { id: { in: pageIds } }, select: { id: true, username: true, display_name: true, role: true, admin_role: true, is_admin: true, metadata: true } }),
       pageIds.length ? prisma.playerProfile.findMany({ where: { OR: pageIds.map((id) => ({ metadata: { path: ["user_id"], equals: id } })) }, orderBy: { created_date: "desc" }, select: { metadata: true } }) : [],
     ]);
     const avatar = new Map();

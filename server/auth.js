@@ -6,6 +6,7 @@ import { hasRole } from "./roles.js";
 import { displayNameHint, displayNamePattern, normalizeAccountName, usernameHint, usernamePattern } from "../src/lib/accountNames.js";
 import { ensureAccountNamesAvailable, lockAccountNames } from "./account-names.js";
 import { playerAvatarFor } from "./lib/playerAvatars.js";
+import { staffAvatarFor } from "../src/lib/staffAvatars.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const JWT_EXPIRES_IN = "7d";
@@ -87,6 +88,9 @@ export const publicUser = (user) => {
     "ip_history",
   ];
   sensitiveFields.forEach((field) => delete serialized[field]);
+  const staffAvatar = staffAvatarFor(serialized);
+  serialized.staff_avatar_url = staffAvatar || null;
+  if (staffAvatar) serialized.avatar_url = staffAvatar;
   return serialized;
 };
 

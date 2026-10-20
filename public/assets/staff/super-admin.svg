@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" fill="none" role="img" aria-label="TopFragg SUPER ADMIN insignia">
+  <defs>
+    <linearGradient id="base" x1="28" y1="16" x2="230" y2="248" gradientUnits="userSpaceOnUse"><stop stop-color="#15252f"/><stop offset=".46" stop-color="#081219"/><stop offset="1" stop-color="#03090f"/></linearGradient>
+    <linearGradient id="metal" x1="78" y1="35" x2="172" y2="187" gradientUnits="userSpaceOnUse"><stop stop-color="#f6efff"/><stop offset=".22" stop-color="#b49bdf"/><stop offset=".43" stop-color="#f6efff"/><stop offset=".48" stop-color="#3b285e"/><stop offset=".78" stop-color="#b49bdf"/><stop offset="1" stop-color="#f6efff"/></linearGradient>
+    <linearGradient id="edge" x1="38" y1="22" x2="211" y2="236" gradientUnits="userSpaceOnUse"><stop stop-color="#bb9bff"/><stop offset=".35" stop-color="#3b285e"/><stop offset=".7" stop-color="#bb9bff"/><stop offset="1" stop-color="#3b285e"/></linearGradient>
+    <linearGradient id="shield" x1="94" y1="65" x2="167" y2="179" gradientUnits="userSpaceOnUse"><stop stop-color="#3b285e"/><stop offset=".55" stop-color="#0b1822"/><stop offset="1" stop-color="#030b12"/></linearGradient>
+    <radialGradient id="halo"><stop stop-color="#bb9bff" stop-opacity=".17"/><stop offset="1" stop-color="#bb9bff" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="256" height="256" rx="38" fill="#03090e"/>
+  <rect x="5" y="5" width="246" height="246" rx="34" fill="url(#base)" stroke="url(#edge)" stroke-width="2"/>
+  <path d="M38 17H25l-9 9v16m202-25h13l9 9v16M16 214v16l9 9h13m180 0h13l9-9v-16" stroke="#bb9bff" stroke-opacity=".55" stroke-width="2"/>
+  <circle cx="128" cy="116" r="100" fill="url(#halo)"/>
+  <path d="m128 27 83 43v88l-83 44-83-44V70Z" stroke="#bb9bff" stroke-opacity=".14"/>
+  <path d="M26 128h18m168 0h18M128 14v8M23 75l13 6m197-6-13 6" stroke="#bb9bff" stroke-opacity=".4" stroke-width="2"/>
+  <g fill="url(#metal)" stroke="#3b285e" stroke-width="1.5" stroke-linejoin="round"><path d="m75 101-39-27 4 29 25 22-20-5 16 29 33 24-6-28Z"/><path d="m39 84 31 28m-24 18 29 24" fill="none" stroke="#e5d5ff" stroke-opacity=".5" stroke-width="2"/></g>
+  <g transform="translate(256 0) scale(-1 1)" fill="url(#metal)" stroke="#3b285e" stroke-width="1.5" stroke-linejoin="round"><path d="m75 101-39-27 4 29 25 22-20-5 16 29 33 24-6-28Z"/><path d="m39 84 31 28m-24 18 29 24" fill="none" stroke="#e5d5ff" stroke-opacity=".5" stroke-width="2"/></g>
+  <path d="m128 57 58 23v44c0 33-23 52-58 65-35-13-58-32-58-65V80Z" fill="#02080e" stroke="url(#metal)" stroke-width="4"/>
+  <path d="m128 64 51 20v40c0 29-20 46-51 58-31-12-51-29-51-58V84Z" fill="url(#shield)" stroke="#bb9bff" stroke-width="1.5"/>
+  <path d="m128 71 44 17v35c0 25-17 40-44 51-27-11-44-26-44-51V88Z" stroke="#f6efff" stroke-opacity=".12"/>
+  <path d="m128 73 43 16v33c0 8-2 15-6 21L96 86Z" fill="#f6efff" fill-opacity=".035"/>
+  <path d="M95 96h66l-5 10h-23v42l-10 9v-51h-23Z" fill="#f6efff"/>
+  <path d="M104 120h49l-4 9h-45Z" fill="#bb9bff"/>
+  <path d="m89 91 7-3m64 0 7 3m-39 74v5" stroke="#f6efff" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/>
+  <path d="m128 17 11 18 21 5-15 15 2 21-19-10-19 10 2-21-15-15 21-5Z" fill="url(#metal)" stroke="#dcc9ff" stroke-width="2"/><path d="m128 32 7 13-7 11-7-11Z" fill="#7d53cf"/>
+  <path d="m118 185 10-6 10 6-10 8Z" fill="#d0b4ff"/>
+  <path d="m49 208 13-10h132l13 10-6 24H55Z" fill="#030b12" stroke="url(#metal)" stroke-width="2"/>
+  <path d="M65 203h126l8 7-3 16H60l-3-16Z" fill="#bb9bff" fill-opacity=".08"/>
+  <path d="m57 211 7-6m135 6-7-6" stroke="#bb9bff" stroke-width="2"/>
+  <text x="128" y="220" fill="#f6efff" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="900" letter-spacing="1.2" text-anchor="middle">SUPER ADMIN</text>
+  <path d="M92 242h24m24 0h24" stroke="#bb9bff" stroke-opacity=".4"/>
+  <path d="m128 238 4 4-4 4-4-4Z" fill="#bb9bff"/>
+</svg>

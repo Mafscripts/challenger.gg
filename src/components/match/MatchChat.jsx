@@ -7,6 +7,9 @@ import { useAuth } from "@/lib/AuthContext";
 import { createMatchChatFeed } from "@/lib/matchChatFeed";
 import { effectiveRoleForUser, getPublicRoleConfig, publicRole } from "@/lib/roles";
 import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
+import { STAFF_AVATARS } from "@/lib/staffAvatars";
+
+const staffArtwork = new Set(Object.values(STAFF_AVATARS));
 
 const chatAccent = {
   icon: "text-blue-400",
@@ -58,6 +61,7 @@ const staffChatTones = {
 };
 
 function StaffChatMessage({ message, senderName, senderAvatar, compact, first }) {
+  const avatarUser = { role: message.sender_role, admin_role: message.sender_admin_role || message.admin_role };
   const role = publicRole(effectiveRoleForUser({ role: message.sender_role, admin_role: message.sender_admin_role || message.admin_role }));
   const label = role === "user" ? "Staff" : getPublicRoleConfig(role).label;
   const tone = staffChatTones[role] || staffChatTones.user;
@@ -65,7 +69,7 @@ function StaffChatMessage({ message, senderName, senderAvatar, compact, first })
     <article aria-label={`${label} message from ${senderName}`} className={`min-w-0 ${first ? "mt-0" : "mt-3"}`}>
       <header className="flex min-w-0 items-center gap-2.5">
         <span className={`h-8 w-8 shrink-0 overflow-hidden rounded-lg border ${tone.badge}`} aria-hidden="true">
-          <PlayerAvatarImage src={senderAvatar} />
+          <PlayerAvatarImage user={avatarUser} src={senderAvatar} />
         </span>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
           <span className={`min-w-0 break-words text-xs font-bold leading-5 [overflow-wrap:anywhere] ${tone.name}`}>{senderName}</span>
@@ -163,24 +167,18 @@ function MatchChatView({
       .flatMap((player) => playerIdentifiers(player).map((id) => [id, player])),
   ), [teamAPlayerIds, teamBPlayerIds]);
 
-  // Older system messages have no saved avatar, and staff need not be on a team.
-  // Resolve each missing staff photo once per room, independently of chat polling.
+  // Refresh legacy staff photos once per room, independently of chat polling.
   useEffect(() => {
-    const ids = [...new Set(messages.filter((message) => isStaffMessage(message) && !message.sender_avatar_url)
+    const ids = [...new Set(messages.filter((message) => isStaffMessage(message) && !staffArtwork.has(message.sender_avatar_url))
       .map((message) => String(message.sender_id || "")).filter((id) => id && id !== "system"))];
     for (const id of ids) {
       if (requestedStaffAvatarsRef.current.has(id) || playersById.get(id)?.avatar_url || (id === currentUser?.id && currentUser?.avatar_url)) continue;
       requestedStaffAvatarsRef.current.add(id);
-      void Promise.all([
-        base44.entities.PlayerProfile.filter({ user_id: id }, "-created_date", 1).catch(() => null),
-        base44.entities.User.get(id).catch(() => null),
-      ]).then(([profiles, sender]) => {
+      void base44.entities.User.get(id).then((sender) => {
         if (!mountedRef.current) return;
-        const profile = profiles?.[0];
-        const avatar = profile?.avatar_url || profile?.profile_picture_url || sender?.avatar_url || "";
+        const avatar = sender?.avatar_url || "";
         if (avatar) setStaffAvatars((previous) => ({ ...previous, [id]: avatar }));
-        if (!profiles && !sender) requestedStaffAvatarsRef.current.delete(id);
-      });
+      }).catch(() => requestedStaffAvatarsRef.current.delete(id));
     }
   }, [messages, playersById, currentUser?.id, currentUser?.avatar_url]);
 
@@ -372,7 +370,8 @@ function MatchChatView({
             || message.sender_name_color
             || senderPlayer?.display_name_color
             || "";
-          const senderAvatar = message.sender_avatar_url || staffAvatars[senderId] || senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "") || "";
+          const currentAvatar = senderPlayer?.avatar_url || (isOwnMessage ? currentUser?.avatar_url : "");
+          const senderAvatar = staff ? (staffAvatars[senderId] || currentAvatar || message.sender_avatar_url || "") : (message.sender_avatar_url || currentAvatar || "");
           if (staff) return <StaffChatMessage key={message.id} message={message} senderName={senderName} senderAvatar={senderAvatar} compact={compact} first={messageIndex === 0} />;
           const previousMessage = messages[messageIndex - 1];
           const groupedWithPrevious = Boolean(
@@ -386,7 +385,7 @@ function MatchChatView({
           ) : (
             <span className="flex w-9 shrink-0 justify-center">
               <span className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-black/30 text-[10px] font-black ${teamTone?.border || "border-white/10 text-white"}`}>
-                <PlayerAvatarImage src={senderAvatar} />
+                <PlayerAvatarImage user={senderPlayer} src={senderAvatar} />
               </span>
             </span>
           );

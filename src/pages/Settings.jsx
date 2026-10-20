@@ -112,7 +112,7 @@ export default function Settings() {
             <button className="competition-action-pill" type="button" onClick={() => openSetting("settings-password")}><KeyRound size={14} />Password</button>
           </nav>}
           metadata={user && <Link to={`/profile/${user.username || user.id}`} className="settings-profile-link" aria-label={`View ${displayName}'s profile`}>
-            <span className="settings-profile-avatar"><PlayerAvatarImage src={avatar} /></span>
+            <span className="settings-profile-avatar"><PlayerAvatarImage user={user} src={avatar} /></span>
             <span className="settings-profile-copy"><small>YOUR PLAYER PROFILE</small><strong>{displayName}</strong><span>View profile<ArrowUpRight size={12} /></span></span>
             <ArrowUpRight size={17} aria-hidden="true" />
           </Link>} />

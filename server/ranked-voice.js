@@ -1,3 +1,4 @@
+import { playerAvatarFor } from "./lib/playerAvatars.js";
 import jwt from "jsonwebtoken";
 import WebSocket, { WebSocketServer } from "ws";
 import { getEntity } from "./entity.js";
@@ -62,7 +63,7 @@ const currentMembership = async (matchId, userId) => {
 const participantFor = (client) => ({
   user_id: client.user.id,
   username: userName(client.user),
-  avatar_url: client.user.metadata?.avatar_url || "",
+  avatar_url: playerAvatarFor(client.user),
   side: client.membership?.side || null,
   muted: Boolean(client.muted),
   deafened: Boolean(client.deafened),

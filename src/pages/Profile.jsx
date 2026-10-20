@@ -36,6 +36,7 @@ import UserBadges from "@/components/ui/UserBadges";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
 import PageLoader from "@/components/ui/PageLoader";
 import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
+import { displayedStaffAvatar } from "@/lib/staffAvatars";
 import RecentMatchesPanel from "@/components/match/RecentMatchesPanel";
 import { matchDateMs } from "@/lib/matchPresentation";
 import TeamSummaryCard from "@/components/teams/TeamSummaryCard";
@@ -314,7 +315,7 @@ export default function Profile() {
       if (!isActive()) return;
       const loadedProfile = profileRows[0] || null;
       setProfile(loadedProfile);
-      setAvatarDraft(loadedProfile?.avatar_url || userRow?.avatar_url || "");
+      setAvatarDraft(loadedProfile?.avatar_url || (displayedStaffAvatar(userRow) ? "" : userRow?.avatar_url) || "");
       setBannerDraft(loadedProfile?.banner_url || "");
       setBioDraft(loadedProfile?.bio || "");
       setNameColorDraft(userRow?.display_name_color || loadedProfile?.display_name_color || "");
@@ -424,6 +425,7 @@ export default function Profile() {
   };
 
   const name = displayName(user, profile);
+  const staffAvatarActive = Boolean(displayedStaffAvatar(user));
   const rank = getRankForElo(rankedStats?.elo || profile?.elo || 0);
   const rankedWins = Number(rankedStats?.wins ?? 0);
   const rankedLosses = Number(rankedStats?.losses ?? 0);
@@ -577,7 +579,7 @@ export default function Profile() {
             <div className="flex min-w-0 flex-1 flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
               <div className="profile-avatar-frame relative shrink-0">
                 <div className="profile-avatar flex items-center justify-center overflow-hidden rounded-2xl border border-cyan/25 bg-secondary font-heading text-4xl font-black text-cyan shadow-[0_14px_35px_rgba(0,0,0,.3)]">
-                  <PlayerAvatarImage src={avatarDraft || profile?.avatar_url || user?.avatar_url} alt={name} loading="eager" />
+                  <PlayerAvatarImage user={user} src={avatarDraft || profile?.avatar_url || user?.avatar_url} alt={name} loading="eager" />
                 </div>
               </div>
               <div className="min-w-0">
@@ -627,11 +629,12 @@ export default function Profile() {
 
           {isOwnProfile && editingProfile && (
             <div id="profile-editor" className="profile-editor relative border-t border-white/10 bg-black/10 p-4 sm:p-5">
-              <div className="profile-editor-heading"><div><h2>Profile appearance</h2><p>Update your photo, banner and bio. Change your username in <Link to="/settings#settings-account">Account settings</Link>.</p></div><Link to="/settings#settings-overlay"><MonitorPlay size={15} />Player overlay<ChevronRight size={13} /></Link></div>
+              <div className="profile-editor-heading"><div><h2>Profile appearance</h2><p>{staffAvatarActive ? "Update your banner and bio." : "Update your photo, banner and bio."} Change your username in <Link to="/settings#settings-account">Account settings</Link>.</p></div><Link to="/settings#settings-overlay"><MonitorPlay size={15} />Player overlay<ChevronRight size={13} /></Link></div>
+              {staffAvatarActive && <p className="mb-3 rounded-lg border border-cyan/20 bg-cyan/5 px-3 py-2 text-xs text-cyan">Your staff insignia is applied automatically across TopFragg. Your personal photo is saved for when you no longer hold a staff role.</p>}
               <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span><input value={avatarDraft} onChange={(event) => setAvatarDraft(event.target.value)} onBlur={() => { try { setAvatarDraft(normalizeImageSource(avatarDraft)); } catch { /* Save displays validation. */ } }} placeholder="https://i.imgur.com/example.png" className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
-                  <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Upload profile picture</span><input type="file" accept="image/*" onChange={handleAvatarFile} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
+                  <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Profile picture URL</span><input disabled={staffAvatarActive} value={avatarDraft} onChange={(event) => setAvatarDraft(event.target.value)} onBlur={() => { try { setAvatarDraft(normalizeImageSource(avatarDraft)); } catch { /* Save displays validation. */ } }} placeholder="https://i.imgur.com/example.png" className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
+                  <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">Upload profile picture</span><input type="file" accept="image/*" disabled={staffAvatarActive} onChange={handleAvatarFile} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40" /></label>
                   <label className="space-y-1"><span className="text-xs font-bold text-vapor">Upload profile banner</span><input type="file" accept="image/*" disabled={bannerLoading || profileSaving} onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setBannerLoading(true); setProfileResult(null); try { setBannerDraft(await prepareImageFile(file)); } catch (error) { setProfileResult({ success: false, message: error.message || "Could not load banner." }); } finally { setBannerLoading(false); } }} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40 disabled:opacity-50" /><span role="status" className="block text-xs text-vapor">{bannerLoading ? "Preparing banner..." : "Wide images work best · max 8MB"}</span></label>
                   {bannerDraft && <button type="button" disabled={bannerLoading || profileSaving} onClick={() => setBannerDraft("")} className="justify-self-start text-xs font-bold text-cyan hover:underline disabled:opacity-50">Remove banner</button>}
                   {canUseNameColor && <label className="space-y-1"><span className="text-[9px] font-black uppercase tracking-wider text-vapor">{canUseAnimatedEffects ? (isPremium ? "Premium name effect" : "Free trial animated effect") : "Verified name color"}</span><select value={nameColorDraft} onChange={(event) => setNameColorDraft(event.target.value)} className="w-full rounded-lg border border-white/10 bg-secondary px-3 py-2 text-sm outline-none focus:border-cyan/40">{verifiedNameColors.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}{canUseAnimatedEffects && <optgroup label="Animated name effects">{premiumNameEffects.map((color) => <option key={color.label} value={color.value}>{color.label}</option>)}</optgroup>}</select></label>}

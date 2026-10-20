@@ -52,7 +52,7 @@ function PlayerAvatar({ player, size = "md" }) {
   const dimensions = size === "lg" ? "h-12 w-12" : size === "sm" ? "h-7 w-7" : "h-10 w-10";
   return (
     <div className={`${dimensions} shrink-0 overflow-hidden rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 to-orange/10 flex items-center justify-center font-black text-cyan`}>
-      <PlayerAvatarImage src={player?.avatar_url} />
+      <PlayerAvatarImage user={player} src={player?.avatar_url} />
     </div>
   );
 }

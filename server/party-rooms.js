@@ -1,3 +1,4 @@
+import { playerAvatarFor } from "./lib/playerAvatars.js";
 import { randomInt, randomUUID } from "node:crypto";
 import { hasRole } from "./roles.js";
 import { assignPartyTeams, partyCapacity, partyDrawEntries, partySpinning, partyValidation, PARTY_MAX_TEAMS, PARTY_SPIN_MS } from "../src/lib/partyWheel.js";
@@ -74,7 +75,7 @@ export async function getPartyRoom(db, id, { matchId = null } = {}) {
     } });
     const profiles = new Map(users.map((user) => [user.id, { id: user.id, username: user.username, display_name: user.display_name,
       role: user.role, admin_role: user.admin_role, is_admin: user.is_admin, is_premium: user.is_premium,
-      avatar_url: user.metadata?.avatar_url || null, display_name_color: user.metadata?.display_name_color || null,
+      avatar_url: playerAvatarFor(user), display_name_color: user.metadata?.display_name_color || null,
       activision_id: user.metadata?.activision_id || user.metadata?.activision_name || null }]));
     room.players = room.players.map((player) => profiles.has(player.user_id) ? { ...player, profile: profiles.get(player.user_id) } : player);
   }

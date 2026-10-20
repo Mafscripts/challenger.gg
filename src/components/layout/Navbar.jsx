@@ -1128,7 +1128,7 @@ export default function Navbar() {
           aria-controls="nav-account-menu"
         >
           <span className="topbar-avatar topbar-account-avatar" aria-hidden="true">
-            <PlayerAvatarImage src={profileAvatar} loading="eager" />
+            <PlayerAvatarImage user={user || authUser} src={profileAvatar} loading="eager" />
           </span>
           <span className="topbar-account-copy">
             <span className="topbar-account-name">{accountName}</span>
@@ -1137,7 +1137,7 @@ export default function Navbar() {
           <span className="topbar-account-chevron" aria-hidden="true"><ChevronDown size={14} /></span>
         </button>
 
-        {profileOpen && <AccountMenu
+        {profileOpen && <AccountMenu user={user || authUser}
           name={accountName}
           role={accountRole}
           avatar={profileAvatar}

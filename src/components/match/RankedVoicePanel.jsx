@@ -6,7 +6,7 @@ import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 function VoiceAvatar({ participant }) {
   return (
     <div className={`relative h-8 w-8 shrink-0 rounded-full border p-0.5 transition ${participant.speaking ? "border-green shadow-[0_0_0_3px_rgba(74,222,128,.12)]" : "border-white/10"}`}>
-      <PlayerAvatarImage src={participant.avatar_url} className="rounded-full" />
+      <PlayerAvatarImage user={participant} src={participant.avatar_url} className="rounded-full" />
       <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#151d26] ${participant.speaking && !participant.muted ? "animate-pulse bg-green" : "bg-vapor/40"}`} />
     </div>
   );

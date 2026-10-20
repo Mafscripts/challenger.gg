@@ -1,3 +1,4 @@
+import { playerAvatarFor } from "../lib/playerAvatars.js";
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { serializeRow } from "../entity.js";
@@ -55,7 +56,7 @@ async function playerSnapshot(identifier) {
       username: row.username || "",
       display_name: row.display_name || profile.display_name || row.full_name || row.username || "Player",
       display_name_color: String(user.display_name_color || profile.display_name_color || ""),
-      avatar_url: profile.avatar_url || user.avatar_url || "",
+      avatar_url: playerAvatarFor(user, profile),
       is_premium: Boolean(row.is_premium && (!row.premium_expires || row.premium_expires.getTime() > Date.now())),
       verified_player: Boolean(user.verified_player || user.is_verified_player || badges.some(badge => badge?.type === "verified_player")),
       streamer_badge: Boolean(user.streamer_badge || user.is_streamer || badges.some(badge => badge?.type === "streamer")),

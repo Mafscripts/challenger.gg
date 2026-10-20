@@ -21,7 +21,7 @@ function Heading({ title, children, icon: Icon }) {
 }
 
 function PlayerAvatar({ player }) {
-  return <span className="pd-friend-avatar"><PlayerAvatarImage src={player.avatar_url} /></span>;
+  return <span className="pd-friend-avatar"><PlayerAvatarImage user={player} src={player.avatar_url} /></span>;
 }
 
 export function ProfileFriends({ friends = [], total = 0, next_offset = null, loading = false, expanded = false, onViewAll, onManageRequests, onLoadMore, loadingMore = false, error = false }) {

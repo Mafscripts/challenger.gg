@@ -1,3 +1,4 @@
+import { playerAvatarFor } from "./lib/playerAvatars.js";
 import { prisma } from "./prisma.js";
 import { hasRole } from "./roles.js";
 import { hasDiscordLink, freeEightsDiscordMembershipJoinError } from "./free-eights-discord.js";
@@ -48,7 +49,7 @@ async function available(tx, ids, exclude = "") {
   if (wagers.some((row) => row.metadata.match_type === "8s" && !["completed", "cancelled", "expired", "closed"].includes(row.metadata.status))) fail("Finish your Free 8s match before joining Challenge a Team", 409);
 }
 const playerFor = (user, side, teamId, captain) => ({ user_id: user.id, user_name: nameFor(user), username: user.username || user.id,
-  avatar_url: user.metadata?.avatar_url || "", activision_id: user.metadata?.activision_id || user.activision_id,
+  avatar_url: playerAvatarFor(user), activision_id: user.metadata?.activision_id || user.activision_id,
   side, team_id: teamId || "", captain: user.id === captain });
 async function standing(tx, kind, id, name) {
   return tx.challengeStanding.upsert({ where: { kind_subject_id: { kind, subject_id: id } },
@@ -135,13 +136,13 @@ export function createChallengeHandlers({ db = prisma, checkMembership = async (
     const teamIds = [match.alpha_team?.id, match.bravo_team?.id].filter(Boolean);
     const [state, users, standings] = await Promise.all([
       db.discordEventDispatch.findUnique({ where: { event_key: challengeVoiceKey(match.id) } }),
-      db.user.findMany({ where: { id: { in: ids } }, select: { id: true, metadata: true, is_premium: true, premium_expires: true, discord_username: true } }),
+      db.user.findMany({ where: { id: { in: ids } }, select: { id: true, role: true, admin_role: true, is_admin: true, metadata: true, is_premium: true, premium_expires: true, discord_username: true } }),
       db.challengeStanding.findMany({ where: { OR: [{ kind: "solo", subject_id: { in: ids } }, { kind: "team", subject_id: { in: teamIds } }] } }),
     ]);
     // Match tables receive public presentation fields only, never account details.
     const profiles = new Map(users.map((user) => [user.id, {
       ...Object.fromEntries(["avatar_url", "display_name_color", "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer", "force_stream_required", "monitor_cam_required", "twitter", "twitch", "youtube", "website"].filter((key) => user.metadata?.[key] !== undefined).map((key) => [key, user.metadata[key]])),
-      is_premium: user.is_premium, premium_expires: user.premium_expires, discord_username: user.discord_username,
+      avatar_url: playerAvatarFor(user), role: user.role, admin_role: user.admin_role, is_admin: user.is_admin, is_premium: user.is_premium, premium_expires: user.premium_expires, discord_username: user.discord_username,
     }]));
     match.players = match.players.map((player) => ({ ...player, ...profiles.get(player.user_id) }));
     match.standings = standings.map(({ kind, subject_id, xp, wins, losses }) => ({ kind, subject_id, xp, wins, losses }));

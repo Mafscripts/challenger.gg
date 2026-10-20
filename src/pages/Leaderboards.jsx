@@ -32,7 +32,7 @@ function PlayerName({ row }) {
 }
 
 function PlayerAvatar({ row }) {
-  return <span className="leaderboard-avatar"><PlayerAvatarImage src={row.user?.avatar_url} /></span>;
+  return <span className="leaderboard-avatar"><PlayerAvatarImage user={row.user} src={row.user?.avatar_url} /></span>;
 }
 
 export default function Leaderboards() {

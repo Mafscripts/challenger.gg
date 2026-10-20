@@ -1,8 +1,12 @@
+import { staffAvatarFor } from "../../src/lib/staffAvatars.js";
+
 const imageUrl = (value) => typeof value === "string" ? value.trim() : "";
 
-// PlayerProfile is the source for uploaded avatars; old accounts may still
-// carry an avatar on User or use the legacy profile_picture_url field.
+// Staff artwork is a read-time override, so uploaded photos remain untouched.
+// PlayerProfile owns uploads; legacy accounts can still use a User photo.
 export function playerAvatarFor(user, profile) {
+  const staffAvatar = staffAvatarFor(user);
+  if (staffAvatar) return staffAvatar;
   const details = profile?.metadata || profile;
   return imageUrl(details?.avatar_url) || imageUrl(details?.profile_picture_url)
     || imageUrl(user?.avatar_url) || imageUrl(user?.metadata?.avatar_url) || "";
@@ -21,5 +25,5 @@ export async function withPlayerAvatars(db, users) {
     const id = profile.metadata?.user_id;
     if (!byUser.has(id)) byUser.set(id, profile);
   }
-  return users.map((user) => user ? { ...user, avatar_url: playerAvatarFor(user, byUser.get(user.id)) } : user);
+  return users.map((user) => user ? { ...user, avatar_url: playerAvatarFor(user, byUser.get(user.id)), staff_avatar_url: staffAvatarFor(user) || null } : user);
 }

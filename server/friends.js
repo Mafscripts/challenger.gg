@@ -95,7 +95,7 @@ export async function listFriendRequests(db, actorId, offset = 0) {
     orderBy: { created_date: "desc" }, skip: offset, take: 26, select: { id: true, created_date: true, metadata: true } });
   const page = rows.slice(0, 25);
   const ids = [...new Set(page.map((row) => row.metadata.sender_id === actorId ? row.metadata.recipient_id : row.metadata.sender_id))];
-  const users = await db.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, display_name: true, metadata: true } });
+  const users = await db.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, display_name: true, role: true, admin_role: true, is_admin: true, metadata: true } });
   const byId = new Map((await withPlayerAvatars(db, users)).map((user) => [user.id, user]));
   return { requests: page.flatMap((row) => {
     const incoming = row.metadata.recipient_id === actorId;

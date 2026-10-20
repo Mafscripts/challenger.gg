@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" fill="none" role="img" aria-label="TopFragg MODERATOR insignia">
+  <defs>
+    <linearGradient id="base" x1="28" y1="16" x2="230" y2="248" gradientUnits="userSpaceOnUse"><stop stop-color="#15252f"/><stop offset=".46" stop-color="#081219"/><stop offset="1" stop-color="#03090f"/></linearGradient>
+    <linearGradient id="metal" x1="78" y1="35" x2="172" y2="187" gradientUnits="userSpaceOnUse"><stop stop-color="#edfff7"/><stop offset=".22" stop-color="#80cbae"/><stop offset=".43" stop-color="#edfff7"/><stop offset=".48" stop-color="#174939"/><stop offset=".78" stop-color="#80cbae"/><stop offset="1" stop-color="#edfff7"/></linearGradient>
+    <linearGradient id="edge" x1="38" y1="22" x2="211" y2="236" gradientUnits="userSpaceOnUse"><stop stop-color="#59ebb2"/><stop offset=".35" stop-color="#174939"/><stop offset=".7" stop-color="#59ebb2"/><stop offset="1" stop-color="#174939"/></linearGradient>
+    <linearGradient id="shield" x1="94" y1="65" x2="167" y2="179" gradientUnits="userSpaceOnUse"><stop stop-color="#174939"/><stop offset=".55" stop-color="#0b1822"/><stop offset="1" stop-color="#030b12"/></linearGradient>
+    <radialGradient id="halo"><stop stop-color="#59ebb2" stop-opacity=".17"/><stop offset="1" stop-color="#59ebb2" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="256" height="256" rx="38" fill="#03090e"/>
+  <rect x="5" y="5" width="246" height="246" rx="34" fill="url(#base)" stroke="url(#edge)" stroke-width="2"/>
+  <path d="M38 17H25l-9 9v16m202-25h13l9 9v16M16 214v16l9 9h13m180 0h13l9-9v-16" stroke="#59ebb2" stroke-opacity=".55" stroke-width="2"/>
+  <circle cx="128" cy="116" r="100" fill="url(#halo)"/>
+  <path d="m128 27 83 43v88l-83 44-83-44V70Z" stroke="#59ebb2" stroke-opacity=".14"/>
+  <path d="M26 128h18m168 0h18M128 14v8M23 75l13 6m197-6-13 6" stroke="#59ebb2" stroke-opacity=".4" stroke-width="2"/>
+  <g fill="url(#metal)" stroke="#174939" stroke-width="1.5" stroke-linejoin="round"><path d="m74 104-34-14 9 24 18 10-20-4 14 24 30 18-7-26Z"/><path d="m46 100 23 14m-14 17 21 15" fill="none" stroke="#cfffe8" stroke-opacity=".5" stroke-width="2"/></g>
+  <g transform="translate(256 0) scale(-1 1)" fill="url(#metal)" stroke="#174939" stroke-width="1.5" stroke-linejoin="round"><path d="m74 104-34-14 9 24 18 10-20-4 14 24 30 18-7-26Z"/><path d="m46 100 23 14m-14 17 21 15" fill="none" stroke="#cfffe8" stroke-opacity=".5" stroke-width="2"/></g>
+  <path d="m128 57 58 23v44c0 33-23 52-58 65-35-13-58-32-58-65V80Z" fill="#02080e" stroke="url(#metal)" stroke-width="4"/>
+  <path d="m128 64 51 20v40c0 29-20 46-51 58-31-12-51-29-51-58V84Z" fill="url(#shield)" stroke="#59ebb2" stroke-width="1.5"/>
+  <path d="m128 71 44 17v35c0 25-17 40-44 51-27-11-44-26-44-51V88Z" stroke="#edfff7" stroke-opacity=".12"/>
+  <path d="m128 73 43 16v33c0 8-2 15-6 21L96 86Z" fill="#edfff7" fill-opacity=".035"/>
+  <path d="M95 96h66l-5 10h-23v42l-10 9v-51h-23Z" fill="#edfff7"/>
+  <path d="M104 120h49l-4 9h-45Z" fill="#59ebb2"/>
+  <path d="m89 91 7-3m64 0 7 3m-39 74v5" stroke="#edfff7" stroke-opacity=".5" stroke-width="2" stroke-linecap="round"/>
+  <path d="m128 20 25 11v19c0 14-12 22-25 28-13-6-25-14-25-28V31Z" fill="url(#metal)" stroke="#adf9d7" stroke-width="2"/><path d="m117 46 8 8 16-19" fill="none" stroke="#146b4e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="128" cy="188" r="5" fill="#9bf8cf"/>
+  <path d="m49 208 13-10h132l13 10-6 24H55Z" fill="#030b12" stroke="url(#metal)" stroke-width="2"/>
+  <path d="M65 203h126l8 7-3 16H60l-3-16Z" fill="#59ebb2" fill-opacity=".08"/>
+  <path d="m57 211 7-6m135 6-7-6" stroke="#59ebb2" stroke-width="2"/>
+  <text x="128" y="220" fill="#edfff7" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="900" letter-spacing="1.2" text-anchor="middle">MODERATOR</text>
+  <path d="M92 242h24m24 0h24" stroke="#59ebb2" stroke-opacity=".4"/>
+  <path d="m128 238 4 4-4 4-4-4Z" fill="#59ebb2"/>
+</svg>

@@ -1,6 +1,7 @@
+import { playerAvatarFor } from "./lib/playerAvatars.js";
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
-const selection = { id: true, username: true, display_name: true, handle: true, metadata: true };
-const summary = (user) => ({ id: user.id, name: user.username || user.display_name || user.handle || "Player", username: user.username || user.handle || "", avatar_url: user.metadata?.avatar_url || null });
+const selection = { id: true, username: true, display_name: true, handle: true, role: true, admin_role: true, is_admin: true, metadata: true };
+const summary = (user) => ({ id: user.id, name: user.username || user.display_name || user.handle || "Player", username: user.username || user.handle || "", avatar_url: playerAvatarFor(user) });
 
 export async function searchPartyPlayers(db, query) {
   const value = typeof query === "string" ? query.trim().slice(0, 32) : "";
