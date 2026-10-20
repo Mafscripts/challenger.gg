@@ -98,14 +98,17 @@ async function apiFetch(path, options = {}) {
   const method = options.method || "GET";
   const body = options.body === undefined ? undefined : JSON.stringify(options.body);
   const key = `${method}:${path}:${body || ""}`;
-  const canDedupe = method === "GET" || options.dedupe;
+  const canDedupe = options.dedupe ?? (method === "GET");
 
   if (canDedupe && inflight.has(key)) {
     return inflight.get(key);
   }
 
+  const controller = options.timeoutMs > 0 ? new AbortController() : null;
+  const timeout = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : null;
   const request = fetch(`${API_BASE}${path}`, {
     method,
+    ...(controller ? { signal: controller.signal } : {}),
     ...(options.credentials ? { credentials: options.credentials } : {}),
     headers: {
       Accept: "application/json",
@@ -138,8 +141,16 @@ async function apiFetch(path, options = {}) {
       throw error;
     }
     return data;
+  }).catch((error) => {
+    if (controller?.signal.aborted) {
+      const timeoutError = new Error("The request took too long. Please try again.");
+      timeoutError.code = "REQUEST_TIMEOUT";
+      throw timeoutError;
+    }
+    throw error;
   }).finally(() => {
-    inflight.delete(key);
+    if (timeout !== null) clearTimeout(timeout);
+    if (inflight.get(key) === request) inflight.delete(key);
   });
 
   if (canDedupe) inflight.set(key, request);
@@ -279,9 +290,9 @@ const entityClient = (entity) => ({
     return value;
   },
 
-  filterFresh(filter = {}, order, limit) {
+  filterFresh(filter = {}, order, limit, options = {}) {
     requireToken();
-    return apiFetch(`/entities/${entity}${toQuery({ filter, order, limit })}`, { dedupe: false });
+    return apiFetch(`/entities/${entity}${toQuery({ filter, order, limit })}`, { ...options, dedupe: false });
   },
 
   async get(id) {
@@ -295,9 +306,9 @@ const entityClient = (entity) => ({
     return value;
   },
 
-  getFresh(id) {
+  getFresh(id, options = {}) {
     requireToken();
-    return apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`, { dedupe: false });
+    return apiFetch(`/entities/${entity}/${encodeURIComponent(id)}`, { ...options, dedupe: false });
   },
 
   async create(payload) {

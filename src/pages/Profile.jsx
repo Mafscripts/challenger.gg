@@ -47,6 +47,7 @@ import { base44 } from "@/api/base44Client";
 import { verifiedNameColors, premiumNameEffects, allNameColors } from "@/lib/nameColors";
 import { getRankForElo, getRankProgress } from "@/lib/ranks";
 import { bootstrapCurrentUser } from "@/lib/userBootstrap";
+import { useAuth } from "@/lib/AuthContext";
 import { activisionIdFor } from "@/lib/activision";
 import { normalizeImageSource, prepareImageFile } from "@/lib/images";
 import { isInventoryTrophy, trophyCountsFor } from "@/lib/trophyCounts";
@@ -54,6 +55,7 @@ import { participantBelongsToUser, profileMatchOutcome, profileMatchSideFor, tou
 import "@/styles/competition-presentation.css";
 import "@/styles/profile-layout.css";
 
+const PROFILE_READ_OPTIONS = { timeoutMs: 15_000 };
 const displayName = (user, profile) => user?.display_name || profile?.display_name || user?.full_name || user?.username || user?.email || "Unnamed player";
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "N/A";
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -149,15 +151,16 @@ function trophyOverviewFor(user, profile, inventory = [], matches = [], publicCo
 
 export default function Profile() {
   const { username } = useParams();
+  const { user: sessionUser } = useAuth();
   const [tab, setTab] = useRouteSection("tab", "overview", ["overview", "matches", "statistics", "teams", "trophies", "friends"]);
   const [loading, setLoading] = useState(true);
+  const [profileLoadError, setProfileLoadError] = useState(false);
+  const [profileRetry, setProfileRetry] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [rankedStats, setRankedStats] = useState(null);
-  const [xpStats, setXpStats] = useState(null);
-  const [wallet, setWallet] = useState(null);
   const [animatedNameTrialActive, setAnimatedNameTrialActive] = useState(false);
   const [inventory, setInventory] = useState([]);
   const [publicTrophyCounts, setPublicTrophyCounts] = useState(null);
@@ -255,12 +258,14 @@ export default function Profile() {
 
   useEffect(() => {
     let active = true;
-    loadProfile(() => active);
+    loadProfile(() => active, sessionUser);
     return () => { active = false; };
-  }, [username]);
+  }, [username, sessionUser?.id, profileRetry]);
 
-  const loadProfile = async (isActive) => {
+  const loadProfile = async (isActive, authUser) => {
+    let profileReady = false;
     setLoading(true);
+    setProfileLoadError(false);
     setHistoryLoading(true);
     setEditingProfile(false);
     setUser(null);
@@ -269,20 +274,20 @@ export default function Profile() {
     setInventory([]);
     setPublicTrophyCounts(null);
     setMatches([]);
-    setWallet(null);
-    setXpStats(null);
     setAnimatedNameTrialActive(false);
     try {
       let userRow = null;
-      const authUser = await base44.auth.me().catch(() => null);
-      if (!isActive()) return;
       setCurrentUser(authUser);
       if (username) {
-        if (authUser && (username === authUser.username || username === authUser.id)) {
+        if (authUser && (cleanKey(username) === cleanKey(authUser.username) || username === authUser.id)) {
           userRow = authUser;
         } else {
-          const byUsername = await base44.entities.User.filter({ username }, "-created_date", 1).catch(() => []);
-          userRow = byUsername[0] || await base44.entities.User.get(username).catch(() => null);
+          const byUsername = await base44.entities.User.filterFresh({ username }, "-created_date", 1, PROFILE_READ_OPTIONS);
+          if (!isActive()) return;
+          userRow = byUsername[0] || await base44.entities.User.getFresh(username, PROFILE_READ_OPTIONS).catch((error) => {
+            if (error.status === 404) return null;
+            throw error;
+          });
         }
       } else {
         userRow = authUser;
@@ -299,15 +304,11 @@ export default function Profile() {
           .catch(() => {});
       }
 
-      const [
-        profileRows,
-        rankedRows,
-        xpRows,
-      ] = await Promise.all([
-        base44.entities.PlayerProfile.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
-        base44.entities.RankedStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
-        base44.entities.XPStats.filter({ user_id: userRow.id }, "-season", 1).catch(() => []),
-      ]);
+      // Secondary statistics must never block the profile header.
+      void base44.entities.RankedStats.filterFresh({ user_id: userRow.id }, "-season", 1, PROFILE_READ_OPTIONS)
+        .then((rows) => { if (isActive()) setRankedStats(rows[0] || null); })
+        .catch(() => {});
+      const profileRows = await base44.entities.PlayerProfile.filterFresh({ user_id: userRow.id }, "-created_date", 1, PROFILE_READ_OPTIONS);
 
       if (!isActive()) return;
       const loadedProfile = profileRows[0] || null;
@@ -316,10 +317,9 @@ export default function Profile() {
       setBannerDraft(loadedProfile?.banner_url || "");
       setBioDraft(loadedProfile?.bio || "");
       setNameColorDraft(userRow?.display_name_color || loadedProfile?.display_name_color || "");
-      setRankedStats(rankedRows[0] || null);
-      setXpStats(xpRows[0] || null);
 
       // Teams load independently as soon as the profile player is known.
+      profileReady = true;
       setLoading(false);
       if (isOwn) {
         const bootstrap = !userRow.username || !loadedProfile
@@ -328,16 +328,14 @@ export default function Profile() {
         bootstrap.then(async (updatedUser) => {
           if (!isActive()) return;
           if (updatedUser) setUser(updatedUser);
-          const [freshProfileRows, walletRows, inventoryRows] = await Promise.all([
+          const [freshProfileRows, inventoryRows] = await Promise.all([
             updatedUser && !loadedProfile
-              ? base44.entities.PlayerProfile.filterFresh({ user_id: userRow.id }, "-created_date", 1).catch(() => [])
+              ? base44.entities.PlayerProfile.filterFresh({ user_id: userRow.id }, "-created_date", 1, PROFILE_READ_OPTIONS).catch(() => [])
               : Promise.resolve([]),
-            base44.entities.Wallet.filter({ user_id: userRow.id }, "-created_date", 1).catch(() => []),
             base44.entities.UserInventory.filter({ user_id: userRow.id }, "-acquired_date", 200).catch(() => []),
           ]);
           if (!isActive()) return;
           if (freshProfileRows[0]) setProfile(freshProfileRows[0]);
-          setWallet(walletRows[0] || null);
           setInventory(inventoryRows || []);
         }).catch(() => {});
         base44.functions.invoke("getAnimatedNameFreeTrialStatus", {})
@@ -415,6 +413,7 @@ export default function Profile() {
       setMatches(combinedMatches);
     } catch (error) {
       console.error("Could not load profile", error);
+      if (isActive() && !profileReady) setProfileLoadError(true);
     } finally {
       if (isActive()) {
         setLoading(false);
@@ -455,12 +454,6 @@ export default function Profile() {
   const rankProgress = getRankProgress(elo);
   const topfraggRankLabel = hasXpMatches ? (rank.name || `${rank.tier} ${rank.division || ""}`).trim() : "Unranked";
   const currentStreak = Number(rankedStats?.win_streak || user?.current_win_streak || 0);
-  const earnedMoney = Math.max(
-    statNumber(wallet?.total_earnings),
-    statNumber(user?.lifetime_earnings),
-    statNumber(profile?.total_earnings),
-    statNumber(user?.total_wager_earnings),
-  );
   const socialLinks = socialLinksFor(profile, user);
   const joinedDate = formatDate(profile?.account_created_date || user?.account_created_date || user?.created_date);
   const region = profile?.country || user?.region || "Region N/A";
@@ -528,6 +521,19 @@ export default function Profile() {
 
   if (loading) {
     return <PageLoader label="Loading profile" />;
+  }
+
+  if (profileLoadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <Shield className="w-12 h-12 text-cyan mx-auto mb-4" />
+          <h1 className="text-2xl font-black mb-2">Could not load profile</h1>
+          <p className="text-vapor mb-4">The connection was interrupted or the server took too long to respond.</p>
+          <button type="button" className="arena-button" onClick={() => setProfileRetry((value) => value + 1)}>Try again</button>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
