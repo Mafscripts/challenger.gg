@@ -33,7 +33,7 @@ export default function RecentMatchesPanel({ matches, userId, className = "", ex
       {loading ? (
         <div role="status" className="rounded-xl border border-white/10 bg-card p-5 text-sm text-vapor">Loading matches...</div>
       ) : visible.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-card p-5"><EmptyPanel icon={Gamepad2} text={competition === "All" ? "No matches found." : "No matches for this mode in your recent activity."} /></div>
+        <div className="profile-matches-empty rounded-xl border border-white/10 bg-card p-5"><EmptyPanel icon={Gamepad2} text={competition === "All" ? "No matches found." : "No matches for this mode in your recent activity."} /></div>
       ) : (
         <div className="space-y-2.5">
           {visible.map((match) => {

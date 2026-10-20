@@ -22,6 +22,7 @@ import ConversationSafety from "@/components/chat/ConversationSafety";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { clearSentDraft, createDirectMessageInbox } from "@/lib/directMessageInbox";
 import "@/styles/messages.css";
+import AccountPageHero from "@/components/ui/AccountPageHero";
 
 const initials = (name) => String(name || "Player").trim().slice(0, 1).toUpperCase();
 const messageTime = (value) => value
@@ -392,16 +393,11 @@ export default function Messages() {
   }
 
   return (
-    <div className="messages-page min-h-screen py-6">
-      <div className="mx-auto max-w-[1450px] px-4 lg:px-6">
-        <header className="messages-page-heading">
-          <span className="messages-page-mark" aria-hidden="true"><MessageSquare size={24} /></span>
-          <div><p>Your private inbox</p><h1>Messages</h1></div>
-          <div className="messages-page-actions">
-            {unreadCount > 0 && <span className="messages-unread-summary">{unreadCount} unread</span>}
-            <button type="button" onClick={() => setComposerOpen(true)} className="messages-new-button"><Plus size={15} />New message</button>
-          </div>
-        </header>
+    <div className="messages-page account-page competition-surface py-6" data-competition="messages" data-thread-open={mobileChatOpen}>
+      <div className="page-container">
+        <div className="messages-account-heading">
+          <AccountPageHero mode="messages" description="Stay in touch with players, follow tournament invitations and keep your conversations in one place." count={conversations.length} countLabel="conversations" metadata={`${unreadCount} unread`} action={<button type="button" onClick={() => setComposerOpen(true)} className="competition-action-pill account-primary-action"><Plus size={15} />New message</button>} />
+        </div>
 
         <div className="messages-workspace" data-thread-open={mobileChatOpen}>
           <aside className="messages-sidebar">

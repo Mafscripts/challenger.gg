@@ -1,0 +1,125 @@
+/* Account destinations share the competition pages' hero, geometry and surfaces. */
+[data-competition="support"] { --comp-accent: 20 216 255; }
+[data-competition="matches"] { --comp-accent: 106 179 255; }
+[data-competition="wallet"] { --comp-accent: 52 239 159; }
+[data-competition="notifications"] { --comp-accent: 255 200 82; }
+[data-competition="messages"] { --comp-accent: 20 216 255; }
+.account-page { min-height: 100vh; min-width: 0; }
+.account-page .account-page-hero { margin-bottom: 24px; }
+.account-page .account-page-hero .competition-hero-copy h1 { min-block-size: auto; }
+.account-page .account-page-hero .competition-hero-main { min-height: 276px; }
+.account-page .account-page-hero .competition-hero-description { min-block-size: auto; }
+.account-page .account-page-hero .competition-hero-facts { min-block-size: auto; }
+.account-page .account-page-hero .competition-hero-copy { grid-template-rows: auto auto auto auto; }
+.account-page .competition-action-pill { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; padding: 10px 15px; font-weight: 750; }
+.account-page .competition-action-pill:disabled { cursor: default; opacity: .5; }
+.account-page .competition-hero-actions .account-primary-action { border-color: rgb(var(--comp-accent) / .65); background: linear-gradient(110deg, rgb(var(--comp-accent)), rgb(var(--comp-accent) / .8)); color: #06202b; }
+.account-page .competition-hero-actions button.competition-action-pill:not(.account-primary-action) { color: #c4d7e5; border-color: rgb(var(--comp-accent) / .22); background: rgb(var(--comp-accent) / .045); box-shadow: none; }
+.account-page .competition-hero-actions button.competition-action-pill.account-danger-action { color: #fda4af; border-color: #fb718538; background: #fb71850a; }
+.account-page .account-panel { min-width: 0; border: 1px solid rgb(var(--comp-accent) / .2); border-radius: 16px; background: linear-gradient(125deg, rgb(var(--comp-accent) / .035), transparent 65%), #101c28; box-shadow: 0 12px 35px #0002, inset 0 1px #ffffff06; }
+.account-page .account-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
+.account-page .competition-stat-card { --stat-accent: var(--comp-accent); }
+.account-page .account-section-tabs { border: 1px solid rgb(var(--comp-accent) / .18); border-radius: 12px; padding: 6px; background: #0c1925; gap: 6px; }
+.account-page .account-section-tabs .arena-tab { min-width: 0; min-height: 44px; border-radius: 8px; }
+.account-page .account-section-tabs .arena-tab[aria-pressed="true"] { color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .1); box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .3); }
+.account-page .account-matches-panel { padding: 24px; }
+.account-page .profile-mode-pill { border-color: rgb(var(--comp-accent) / .2); background: rgb(var(--comp-accent) / .03); border-radius: 9px; color: #9fb8c9; font-size: 11px; }
+.account-page .profile-mode-pill[aria-pressed="true"] { color: rgb(var(--comp-accent)); border-color: rgb(var(--comp-accent) / .55); background: rgb(var(--comp-accent) / .1); }
+.account-page .profile-match-row { border-color: rgb(var(--comp-accent) / .16); background: linear-gradient(110deg, rgb(var(--comp-accent) / .035), #0c1721); transition: border-color .2s, background .2s; }
+.account-page .profile-match-row:hover { border-color: rgb(var(--comp-accent) / .5); background-color: rgb(var(--comp-accent) / .04); }
+.account-page .profile-matches-empty { border-style: dashed; border-color: rgb(var(--comp-accent) / .2); background: #0b1823; }
+.account-page .profile-matches-empty > div { min-height: 160px; flex-direction: column; justify-content: center; text-align: center; gap: 16px; }
+.account-page .profile-matches-empty svg { width: 52px; height: 52px; padding: 12px; border: 1px solid rgb(var(--comp-accent) / .25); border-radius: 15px; color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .06); }
+.support-page.account-page .support-container { max-width: 1600px; padding-inline: 16px; }
+.support-page.account-page .support-summary { gap: 14px; border: 0; border-radius: 0; background: transparent; overflow: visible; }
+.support-page.account-page .support-summary button { position: relative; min-width: 0; border: 1px solid #14d8ff38; border-radius: 12px; background: linear-gradient(120deg, #14d8ff0c, #111d29 85%); box-shadow: inset 0 1px #ffffff06; }
+.support-page.account-page .support-summary button[data-kind="reply"] { border-color: #ffc85238; background: linear-gradient(120deg, #ffc8520c, #111d29 85%); }
+.support-page.account-page .support-summary button[data-kind="closed"] { border-color: #34ef9f38; background: linear-gradient(120deg, #34ef9f0c, #111d29 85%); }
+.support-page.account-page .support-summary button[aria-current] { outline: 1px solid currentColor; outline-offset: -1px; color: #14d8ff; }
+.support-page.account-page .support-summary button[data-kind="reply"][aria-current] { color: #ffc852; }
+.support-page.account-page .support-summary button[data-kind="closed"][aria-current] { color: #34ef9f; }
+.support-page.account-page :is(.support-inbox, .support-detail) { border-color: #14d8ff30; border-radius: 16px; background: linear-gradient(125deg, #14d8ff08, transparent 65%), #101c28; box-shadow: 0 12px 35px #0002, inset 0 1px #ffffff06; }
+.support-page.account-page :is(.support-detail-heading, .support-inbox-heading) { background: linear-gradient(100deg, #14d8ff09, transparent); }
+.support-page.account-page .support-filter-tabs { margin: 12px 16px; padding: 5px; gap: 5px; border: 1px solid #14d8ff22; border-radius: 10px; background: #0c1925; }
+.support-page.account-page .support-filter-tabs button { flex: 1; min-width: 0; }
+.support-page.account-page .support-list-empty > svg { box-sizing: content-box; padding: 14px; border: 1px solid #14d8ff38; border-radius: 16px; background: #14d8ff0a; }
+.support-page.account-page .support-primary { border-color: #14d8ff99; background: linear-gradient(110deg, #14d8ff, #14d8ffcc); color: #06202b; box-shadow: 0 3px 20px #14d8ff12; }
+.support-page.account-page .support-primary:hover:not(:disabled) { border-color: #8fefff; background: #61e5ff; }
+.account-page.wallet-page .wallet-balance-card { --balance-accent: 20 216 255; position: relative; overflow: hidden; border-color: rgb(var(--balance-accent) / .25); background: linear-gradient(120deg, rgb(var(--balance-accent) / .05), #111d29 85%); }
+.account-page.wallet-page .wallet-balance-card[data-tone="gold"] { --balance-accent: 255 200 82; }
+.account-page.wallet-page .wallet-balance-card[data-tone="green"] { --balance-accent: 52 239 159; }
+.account-page.wallet-page .wallet-balance-card[data-tone="purple"] { --balance-accent: 180 149 255; }
+.account-page.wallet-page .wallet-balance-card::before { position: absolute; inset: 18px auto 18px 0; width: 2px; background: rgb(var(--balance-accent) / .65); content: ""; }
+.account-page.wallet-page .wallet-balance-card > div:first-child { border-color: rgb(var(--balance-accent) / .15); background: rgb(var(--balance-accent) / .045); padding: 20px; }
+.account-page.wallet-page .wallet-balance-card > div:first-child :is(svg, span, p) { color: rgb(var(--balance-accent)); }
+.account-page.wallet-page .wallet-balance-card > div:first-child span { font-family: inherit; font-size: 10px; letter-spacing: .1em; }
+.account-page.wallet-page .wallet-balance-card > div:first-child p { font-family: inherit; font-size: clamp(24px, 2.3vw, 34px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.account-page.wallet-page .wallet-balance-card > div:last-child { padding: 20px; }
+.account-page.wallet-page .wallet-activity-panel > div:last-child { min-width: 0; }
+.account-page :is(button, a, input, textarea, select):focus-visible { outline: 2px solid rgb(var(--comp-accent)); outline-offset: 3px; }
+.notifications-page .account-section-tabs .arena-tab { flex: 1; }
+.notifications-page .notification-card { position: relative; overflow: hidden; }
+.notifications-page .notification-card[data-unread="true"] { border-color: rgb(var(--comp-accent) / .4); background: linear-gradient(110deg, rgb(var(--comp-accent) / .07), #101c28 80%); box-shadow: inset 3px 0 rgb(var(--comp-accent) / .75); }
+.notifications-page .notification-card:hover { border-color: rgb(var(--comp-accent) / .5); }
+.notifications-page .notification-card h3, .notifications-page .notification-card p { overflow-wrap: anywhere; }
+.notifications-page .notification-card > div > div:last-child > div > div:first-child { min-width: 0; }
+.notifications-page .notification-card > div > div:last-child > div > div:last-child { flex-shrink: 0; }
+.notifications-page .notification-card button { min-height: 36px; min-width: 36px; display: grid; place-items: center; }
+.notifications-page .notifications-empty > svg { box-sizing: content-box; width: 28px; height: 28px; padding: 16px; border: 1px solid rgb(var(--comp-accent) / .25); border-radius: 17px; background: rgb(var(--comp-accent) / .06); color: rgb(var(--comp-accent)); }
+.messages-page.account-page .messages-account-heading { display: block; padding: 0; margin: 0; }
+.messages-page.account-page .account-page-hero .competition-hero-main { min-height: 230px; }
+.messages-page.account-page .messages-workspace { border-color: rgb(var(--comp-accent) / .25); background: #0d1925; box-shadow: 0 12px 35px #0002, inset 0 1px #ffffff06; }
+.messages-page.account-page .messages-sidebar { background: linear-gradient(145deg, #14d8ff09, transparent 65%), #101c28; border-color: #14d8ff22; }
+.messages-page.account-page .messages-thread-heading { background: linear-gradient(100deg, #14d8ff09, transparent); border-color: #14d8ff22; }
+.messages-page.account-page .messages-conversation-link[data-selected="true"] { border-color: #14d8ff55; background: linear-gradient(100deg, #14d8ff12, #14d8ff04); box-shadow: inset 2px 0 #14d8ff99; }
+.messages-page.account-page .messages-chat-region { background: radial-gradient(ellipse at top right, #14d8ff05, transparent 65%); }
+.messages-page.account-page .messages-new-button { background: linear-gradient(110deg, #14d8ff, #14d8ffcc); color: #06202b; border-color: #14d8ff99; }
+.messages-page.account-page .messages-new-button:hover { background: #61e5ff; }
+.messages-page.account-page .messages-composer { background: #0b1823; border-color: #14d8ff22; }
+.messages-page.account-page .messages-composer-field { border-color: #14d8ff33; border-radius: 12px; background: #112330; }
+.messages-page.account-page .messages-composer-field:focus-within { border-color: #14d8ff80; }
+@media (min-width: 1024px) { .support-page.account-page .support-container { padding-inline: 24px; } }
+@media (min-width: 768px) {
+  .messages-page.account-page .account-page-hero .competition-hero-main { min-height: 150px; padding: 20px 28px; grid-template-columns: minmax(0, 1fr) 140px; }
+  .messages-page.account-page .account-page-hero .competition-hero-copy { grid-template-rows: auto auto auto; gap: 10px; }
+  .messages-page.account-page .account-page-hero .competition-hero-description { display: none; }
+  .messages-page.account-page .account-page-hero .competition-hero-emblem { width: 130px; }
+  .messages-page.account-page .account-page-hero .competition-mode-emblem { width: 76px; height: 76px; border-radius: 20px; }
+  .messages-page.account-page .account-page-hero .competition-mode-emblem > svg { width: 46px; height: 46px; }
+  .messages-page.account-page .account-page-hero :is(.competition-emblem-spark, .competition-emblem-medal) { width: 28px; height: 28px; border-radius: 8px; }
+  .messages-page.account-page .account-page-hero :is(.competition-emblem-spark, .competition-emblem-medal) svg { width: 15px; height: 15px; }
+  .messages-page.account-page .account-page-hero .competition-hero-emblem > p { display: none; }
+  .messages-page.account-page .account-page-hero .competition-hero-footer { min-height: 64px; padding: 12px 28px; }
+  .messages-page.account-page .messages-workspace { height: min(780px, calc(100dvh - 400px)); min-height: 360px; }
+}
+@media (max-width: 767px) {
+  .messages-page.account-page { min-height: 0; padding-block: 16px; }
+  .messages-page.account-page .messages-account-heading { flex-shrink: 0; }
+  .messages-page.account-page .account-page-hero { margin-bottom: 14px; border-radius: 14px; }
+  .messages-page.account-page .account-page-hero .competition-hero-main { min-height: 0; padding: 16px; }
+  .messages-page.account-page .account-page-hero .competition-hero-copy { gap: 6px; }
+  .messages-page.account-page .account-page-hero .competition-hero-copy h1 { font-size: 27px; }
+  .messages-page.account-page .account-page-hero :is(.competition-hero-description, .competition-hero-facts) { display: none; }
+  .messages-page.account-page .account-page-hero .competition-hero-footer { flex-direction: row; flex-wrap: wrap; gap: 10px; min-height: 0; padding: 10px 16px; }
+  .messages-page.account-page .account-page-hero .competition-actions { flex-wrap: nowrap; }
+  .messages-page.account-page .account-page-hero .competition-action-pill { min-height: 36px; padding: 8px 10px; }
+  .messages-page.account-page[data-thread-open="true"] .messages-account-heading { display: none; }
+  .notifications-page .notification-card { padding: 16px; }
+  .notifications-page .notification-card > div { gap: 12px; }
+  .notifications-page .notification-card > div > div:first-child { width: 36px; height: 36px; }
+  .notifications-page .notification-card > div > div:first-child svg { width: 20px; height: 20px; }
+  .account-page .account-stats { gap: 8px; }
+  .account-page .account-stats .competition-stat-card { align-items: flex-start; flex-direction: column; gap: 10px; padding: 12px; }
+  .account-page .account-stats .competition-stat-label { font-size: 8px; line-height: 1.7; letter-spacing: .05em; }
+  .account-page .account-matches-panel { padding: 16px; }
+  .account-page .account-section-tabs .arena-tab { padding-inline: 8px; font-size: 11px; overflow-wrap: anywhere; }
+  .support-page.account-page .support-summary { gap: 8px; }
+  .support-page.account-page .support-filter-tabs { gap: 3px; }
+  .support-page.account-page .support-filter-tabs button { padding-inline: 6px; }
+  .account-page.wallet-page .wallet-balance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .account-page.wallet-page .wallet-balance-card > div { padding: 16px; }
+  .account-page.wallet-page .wallet-balance-card button { font-size: 10px; padding-inline: 6px; }
+  .account-page.wallet-page .wallet-activity-panel > div:last-child { padding: 16px; }
+}
+.topfragg-native[data-native-keyboard="true"] .messages-page.account-page .messages-account-heading { display: none; }
+@media (max-width: 380px) { .account-page.wallet-page .wallet-balance-grid { grid-template-columns: minmax(0, 1fr); } }

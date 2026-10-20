@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogPortal, DialogOverlay, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { disputeEvidenceUrls, disputeReasonLabel } from "@/lib/matchDisputes";
 import "@/styles/support.css";
+import AccountPageHero from "@/components/ui/AccountPageHero";
 
 const visibleProof = (ticket) => [...new Set([...(ticket.submitted_proof || []), ...(ticket.proof_urls || []), ...(ticket.additional_proof || [])])].filter((url) => {
   try { return disputeEvidenceUrls([url]).length > 0; } catch { return false; }
@@ -226,12 +227,12 @@ export default function Support({ ticketCenter = false }) {
   const selectFilter = nextFilter => { setFilter(nextFilter); setComposing(false); setMobileDetail(false); };
 
   return (
-    <div className="support-page">
+    <div className="support-page account-page competition-surface" data-competition="support">
       <div className="support-container">
-        <header className="support-heading">
-          <div><span className="support-eyebrow"><ShieldCheck size={14} aria-hidden="true" />Player support</span><h1>{ticketCenter ? "My Tickets" : "Support Center"}</h1><p>Track your requests, share evidence and talk to the Topfragg team.</p></div>
-          <button type="button" className="support-primary" onClick={openComposer} disabled={loading || !user}><Plus size={18} />New ticket</button>
-        </header>
+        <AccountPageHero mode="support" title={ticketCenter ? "My Tickets" : "Support Center"} description="Track your requests, share evidence and talk to the Topfragg team." count={loading ? null : counts.all} countLabel="tickets" metadata="Private support · TopFragg staff" action={<>
+          <button type="button" className="competition-action-pill account-primary-action" onClick={openComposer} disabled={loading || !user}><Plus size={18} />New ticket</button>
+          <Link className="competition-action-pill" to={ticketCenter ? "/support" : "/my-tickets"}><Inbox size={16} />{ticketCenter ? "Support Center" : "My Tickets"}</Link>
+        </>} />
         <nav className="support-summary" aria-label="Filter your tickets">
           {[{ id: "active", label: "Active tickets", icon: Inbox }, { id: "reply", label: "Your reply needed", icon: MessageSquare }, { id: "closed", label: "Closed & resolved", icon: CheckCheck }].map(item => {
             const Icon = item.icon;

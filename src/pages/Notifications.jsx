@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Bell, CheckCheck, Trash2, AlertCircle, Info, Trophy, Star, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-import PageHeader from "@/components/ui/PageHeader";
+import AccountPageHero from "@/components/ui/AccountPageHero";
 import PageLoader from "@/components/ui/PageLoader";
 import { isCurrentNotification } from "@/lib/notificationRetention";
 import { applyNotificationChange } from "@/lib/notificationInbox";
@@ -190,24 +190,24 @@ export default function Notifications() {
   }
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-6">
-        <PageHeader
-          eyebrow="Your activity"
-          title="Notifications"
+    <div className="account-page notifications-page competition-surface page-shell" data-competition="notifications">
+      <div className="page-container">
+        <AccountPageHero
+          mode="notifications"
+          count={notifications.length} countLabel="notifications" metadata={`${unreadCount} unread`}
           description={`${unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}.` : "All caught up."} Notifications are automatically deleted after 24 hours.`}
           action={<div className="flex flex-wrap items-center gap-2">
             <button
               onClick={markAllAsRead}
               disabled={unreadCount === 0}
-              className="flex items-center gap-2 rounded-xl border border-blue-400/25 bg-blue-500/10 px-4 py-2.5 text-xs font-bold text-blue-300 transition-all hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+              className="competition-action-pill account-primary-action"
             >
               <CheckCheck className="w-4 h-4" /> Mark All Read
             </button>
             <button
               onClick={deleteAllNotifications}
               disabled={notifications.length === 0 || removingAll}
-              className="px-4 py-2 bg-red-500/10 text-red-400 text-xs font-bold rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="competition-action-pill account-danger-action"
             >
               <Trash2 className="w-4 h-4" /> {removingAll ? "Removing..." : "Remove All"}
             </button>
@@ -215,7 +215,7 @@ export default function Notifications() {
         />
 
         {/* Filter Tabs */}
-        <div className="arena-tabs mb-6 flex w-fit items-center">
+        <div className="account-section-tabs arena-tabs mb-6 flex items-center" role="group" aria-label="Notification status">
           {[
             { value: "all", label: "All", count: notifications.length },
             { value: "unread", label: "Unread", count: unreadCount },
@@ -237,9 +237,9 @@ export default function Notifications() {
 
         {/* Notifications List */}
         {loadError && <div role="alert" className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm"><span>Could not load notifications.</span><button type="button" onClick={loadNotifications} className="font-bold text-cyan">Try again</button></div>}
-        <div className="space-y-3">
+        <div className="notifications-list space-y-3">
           {filteredNotifications.length === 0 && !loadError ? (
-            <div className="glass rounded-xl border border-white/5 p-12 text-center">
+            <div className="account-panel notifications-empty p-8 sm:p-12 text-center">
               <Bell className="w-16 h-16 text-vapor/30 mx-auto mb-4" />
               <h3 className="text-lg font-bold mb-2">No notifications</h3>
               <p className="text-vapor text-sm">
@@ -252,7 +252,8 @@ export default function Notifications() {
                 key={notification.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`glass rounded-xl border p-5 transition-all cursor-pointer ${
+                data-unread={!notification.is_read}
+                className={`account-panel notification-card p-5 transition-all cursor-pointer ${
                   !notification.is_read 
                     ? "border-cyan/20 bg-cyan/5" 
                     : "border-white/5 hover:border-white/10"
@@ -296,6 +297,7 @@ export default function Notifications() {
                           <span className="w-2 h-2 bg-cyan rounded-full" />
                         )}
                         <button
+                          type="button" aria-label={`Delete notification: ${notification.title}`}
                           onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
                           className="p-1.5 hover:bg-red-500/10 text-vapor hover:text-red-400 rounded transition-all"
                         >

@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/use-toast";
 import TransactionHistory from "@/components/wallet/TransactionHistory";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 import { publicCommerceEnabled } from "@/lib/commerce";
-import PageHeader from "@/components/ui/PageHeader";
+import AccountPageHero from "@/components/ui/AccountPageHero";
 import PageLoader from "@/components/ui/PageLoader";
 
 
@@ -64,20 +64,23 @@ export default function Wallet() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-obsidian py-6">
-      <div className="max-w-7xl mx-auto px-4 lg:px-6">
+    <div className="account-page wallet-page competition-surface page-shell" data-competition="wallet">
+      <div className="page-container">
         
-        <PageHeader eyebrow="Account funds" title="Topfragg Wallet" description="View your available balance, test funds and transaction history." />
+        <AccountPageHero mode="wallet" description="View your available balance, test funds and transaction history." metadata={publicCommerceEnabled ? "Your wallet activity" : "Virtual test credits · No cash value"} action={<>
+          <Link to="/my-matches" className="competition-action-pill account-primary-action"><TrendingUp size={16} />My Matches</Link>
+          <Link to="/my-tickets" className="competition-action-pill"><Shield size={16} />Get support</Link>
+        </>} />
 
         <CommercePausedNotice className="mb-6" />
 
         {/* Balance Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="wallet-balance-grid grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Available Balance */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-xl border border-cyan/20 overflow-hidden"
+            className="wallet-balance-card account-panel" data-tone="cyan"
           >
             <div className="bg-cyan/5 border-b border-cyan/20 px-6 py-4">
               <div className="flex items-center gap-2 mb-2">
@@ -109,7 +112,7 @@ export default function Wallet() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass rounded-xl border border-orange/20 overflow-hidden"
+            className="wallet-balance-card account-panel" data-tone="gold"
           >
             <div className="bg-orange/5 border-b border-orange/20 px-6 py-4">
               <div className="flex items-center gap-2 mb-2">
@@ -129,7 +132,7 @@ export default function Wallet() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="glass rounded-xl border border-green/20 overflow-hidden"
+            className="wallet-balance-card account-panel" data-tone="green"
           >
             <div className="bg-green/5 border-b border-green/20 px-6 py-4">
               <div className="flex items-center gap-2 mb-2">
@@ -152,7 +155,7 @@ export default function Wallet() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="glass rounded-xl border border-purple/20 overflow-hidden"
+            className="wallet-balance-card account-panel" data-tone="purple"
           >
             <div className="bg-purple/5 border-b border-purple/20 px-6 py-4">
               <div className="flex items-center gap-2 mb-2">
@@ -169,8 +172,8 @@ export default function Wallet() {
         </div>
 
         {/* Tabs */}
-        <div className="glass rounded-xl border border-white/5 overflow-hidden mb-6">
-          <div className="arena-tabs mx-3 mt-3 flex" aria-label="Wallet sections">
+        <div className="account-panel wallet-activity-panel overflow-hidden mb-6">
+          <div className="account-section-tabs arena-tabs mx-3 mt-3 flex" aria-label="Wallet sections">
             <button
               aria-pressed={activeTab === "overview"} onClick={() => setActiveTab("overview")}
               className={`arena-tab flex-1 px-3 py-3 text-xs font-bold transition-colors ${

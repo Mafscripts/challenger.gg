@@ -1,14 +1,14 @@
 import React from "react";
-import { BookOpen, CalendarDays, Crosshair, DollarSign, Gamepad2, KeyRound, Medal, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Zap } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, Clock, Crosshair, DollarSign, Gamepad2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { competitionTheme } from "@/lib/competitionPresentation";
 import "@/styles/competition-presentation.css";
 
-const icons = { BookOpen, Crosshair, DollarSign, Gamepad2, KeyRound, Medal, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Zap };
+const icons = { Bell, BookOpen, Clock, Crosshair, DollarSign, Gamepad2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap };
 
 export default function CompetitionHero({ mode = "ranked", title, eyebrow, description, action, count, countLabel = "players", artwork, gameId, metadata, className = "" }) {
   const theme = competitionTheme(mode), Icon = icons[theme.icon];
-  const CountIcon = countLabel.includes("event") ? Trophy : countLabel.includes("match") ? Swords : Users;
+  const CountIcon = countLabel.includes("event") ? Trophy : countLabel.includes("match") ? Swords : countLabel.includes("ticket") ? Inbox : countLabel.includes("notification") ? Bell : countLabel.includes("conversation") ? MessageSquare : Users;
   return <header className={`competition-hero ${className}`} data-competition={mode} data-game={gameId}>
     {artwork && <img src={artwork} alt="" className="competition-hero-artwork" decoding="async" />}
     <div className="competition-hero-main">
