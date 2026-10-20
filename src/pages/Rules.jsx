@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { Shield, ChevronDown, AlertTriangle, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera, MessageCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, ChevronRight, Search, Shield, Users, Swords, Trophy, DollarSign, Monitor, Clock, Wifi, RotateCcw, Bomb, Camera, MessageCircle, X } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
+import "@/styles/rules.css";
 
 const killCamRule = "Kill cams must remain enabled for the duration of every match.";
 
@@ -143,76 +143,131 @@ const sections = [
   },
 ];
 
+const sectionGroups = [
+  { title: "Platform", indices: [0, 1, 11] },
+  { title: "Match essentials", indices: [2, 5, 6] },
+  { title: "Game modes", indices: [3, 4] },
+  { title: "Competitions", indices: [7, 8, 9, 10] },
+];
+
+const readingOrder = sectionGroups.flatMap(group => group.indices);
+
+const descriptions = [
+  "Account requirements, community conduct and dispute procedures.",
+  "Keep the player finder useful, safe and focused on finding a team.",
+  "The settings and standards to follow in every competitive match.",
+  "How to handle disconnections during a Hardpoint map.",
+  "How to resume a Search & Destroy map after a disconnection.",
+  "Arrival deadlines and what happens when an opponent does not show up.",
+  "Hosting order, seeding and connection requirements.",
+  "Team formats, XP results and match cancellation requirements.",
+  "Placements, ELO, seasons and account integrity.",
+  "Escrow, payouts, score confirmation and wager disputes.",
+  "Check-in, rosters, brackets and tournament results.",
+  "Fair play, evidence and competitive integrity.",
+];
+
 export default function Rules() {
-  const [openSection, setOpenSection] = useState(0);
+  const [activeSection, setActiveSection] = useState(0);
+  const [query, setQuery] = useState("");
+  const search = query.trim().toLowerCase();
+  const activePosition = readingOrder.indexOf(activeSection);
+  const results = readingOrder.map(index => ({
+    ...sections[index],
+    index,
+    entries: sections[index].rules.map((text, ruleIndex) => ({ text, ruleIndex })).filter(({ text }) => (
+      !search || sections[index].title.toLowerCase().includes(search) || text.toLowerCase().includes(search)
+    )),
+  })).filter(section => section.entries.length > 0);
+  const displayed = search ? results : results.filter(section => section.index === activeSection);
+  const resultCount = results.reduce((total, section) => total + section.entries.length, 0);
+  const selectSection = (index) => { setActiveSection(index); setQuery(""); };
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="max-w-4xl mx-auto px-4 lg:px-6">
-        <PageHeader eyebrow="Competition standards" title="Rules & Regulations" description="The rules that keep every Topfragg match fair, competitive and respectful." />
+    <div className="rules-page min-h-screen py-8">
+      <div className="mx-auto max-w-[1600px] px-4 lg:px-6">
+        <PageHeader
+          eyebrow="Competition standards"
+          title="Rules & Regulations"
+          description="Everything you need to compete fairly. Choose a category or search for a specific rule."
+          action={<Link to="/support" className="rules-support-link"><MessageCircle className="h-4 w-4" /> Contact support <ArrowRight className="h-3.5 w-3.5" /></Link>}
+        />
 
-        <div className="space-y-3">
-          {sections.map((section, i) => {
-            const Icon = section.icon;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="glass rounded-xl border border-white/5 overflow-hidden"
-              >
-                <button
-                  onClick={() => setOpenSection(openSection === i ? -1 : i)}
-                  className="w-full flex items-center gap-4 p-5 text-left hover:bg-white/[0.02] transition-colors"
-                >
-                  <div className="p-2 rounded-lg bg-secondary">
-                    <Icon className="w-4 h-4 text-cyan" />
-                  </div>
-                  <span className="font-bold flex-1">{section.title}</span>
-                  <ChevronDown className={`w-4 h-4 text-vapor transition-transform ${openSection === i ? "rotate-180" : ""}`} />
-                </button>
-                <AnimatePresence>
-                  {openSection === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-5 pb-5 pl-16">
-                        <ol className="space-y-3">
-                          {section.rules.map((rule, j) => {
-                            const isKillCamRule = rule === killCamRule;
-                            return (
-                              <li
-                                key={j}
-                                className={`flex gap-3 text-sm leading-relaxed ${isKillCamRule ? "-ml-3 rounded-lg border border-cyan/25 bg-cyan/[0.07] px-3 py-2 text-white" : "text-vapor"}`}
-                              >
-                                <span className="mt-0.5 shrink-0 font-mono text-xs text-cyan">{j + 1}.</span>
-                                {isKillCamRule && <Camera className="mt-0.5 h-4 w-4 shrink-0 text-cyan" />}
-                                <span>{rule}</span>
-                              </li>
-                            );
-                          })}
-                        </ol>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
-        </div>
+        <div className="rules-layout">
+          <aside className="rules-sidebar arena-panel">
+            <div className="rules-sidebar-heading"><BookOpen className="h-4 w-4 text-cyan" /><h2>Rulebook</h2><span>{sections.length} categories</span></div>
+            <nav aria-label="Rule categories" className="rules-navigation">
+              {sectionGroups.map(group => (
+                <div key={group.title} className="rules-nav-group">
+                  <p>{group.title}</p>
+                  {group.indices.map(index => {
+                    const section = sections[index];
+                    const Icon = section.icon;
+                    return <button key={section.title} type="button" aria-current={!search && activeSection === index ? "true" : undefined} onClick={() => selectSection(index)} className="rules-nav-item">
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{section.title}</span>
+                      <ChevronRight className="rules-nav-chevron h-3.5 w-3.5 shrink-0" />
+                    </button>;
+                  })}
+                </div>
+              ))}
+            </nav>
+          </aside>
 
-        {/* Contact */}
-        <div className="glass rounded-xl border border-white/5 p-8 mt-10 text-center">
-          <AlertTriangle className="w-8 h-8 text-orange mx-auto mb-4" />
-          <h3 className="font-bold text-lg mb-2">Need to Report a Violation?</h3>
-          <p className="text-vapor text-sm mb-4">If you witness rule violations, please report them through the match room dispute system or contact our support team.</p>
-          <Link to="/support" className="inline-flex items-center gap-2 px-6 py-2.5 bg-cyan/10 text-cyan border border-cyan/20 rounded-lg text-sm font-bold hover:bg-cyan/20 transition-all">
-            Contact Support
-          </Link>
+          <div className="rules-content">
+            <div className="rules-search-bar">
+              <label className="rules-search">
+                <Search className="h-4 w-4 shrink-0 text-cyan" />
+                <span className="sr-only">Search all rules</span>
+                <input type="search" placeholder="Search all rules..." value={query} onChange={event => setQuery(event.target.value)} />
+              </label>
+              {query && <button type="button" className="rules-clear-search" onClick={() => setQuery("")} aria-label="Clear search"><X className="h-4 w-4" /></button>}
+              <span className="rules-search-count" role="status">{search ? `${resultCount} ${resultCount === 1 ? "rule" : "rules"} found` : "Official rulebook"}</span>
+            </div>
+
+            <div className="rules-reader arena-panel">
+              {displayed.length === 0 ? (
+                <div className="rules-empty">
+                  <Search className="h-7 w-7 text-cyan" />
+                  <h2>No rules found</h2>
+                  <p>Try a different keyword or choose a category from the rulebook.</p>
+                  <button type="button" onClick={() => setQuery("")} className="rules-support-link">Clear search <X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : displayed.map(section => {
+                const Icon = section.icon;
+                return <section key={section.title} aria-labelledby={`rules-section-${section.index}`} className="rules-section">
+                  <header className="rules-section-header">
+                    <div className="rules-section-icon"><Icon className="h-5 w-5" /></div>
+                    <div className="min-w-0">
+                      <p className="rules-eyebrow">{sectionGroups.find(group => group.indices.includes(section.index)).title}</p>
+                      <h2 id={`rules-section-${section.index}`}>{section.title}</h2>
+                      <p className="rules-section-description">{descriptions[section.index]}</p>
+                    </div>
+                    <span className="rules-section-count">{section.entries.length} {section.entries.length === 1 ? "rule" : "rules"}</span>
+                  </header>
+                  <ol className="rules-list" role="list">
+                    {section.entries.map(({ text, ruleIndex }) => (
+                      <li key={ruleIndex} value={ruleIndex + 1} className={text === killCamRule ? "rules-list-item rules-list-item-important" : "rules-list-item"}>
+                        <span className="rules-number" aria-hidden="true">{String(ruleIndex + 1).padStart(2, "0")}</span>
+                        <div>{text === killCamRule && <span className="rules-required"><Camera className="h-3 w-3" /> Required setting</span>}<p>{text}</p></div>
+                      </li>
+                    ))}
+                  </ol>
+                </section>;
+              })}
+              {!search && <div className="rules-pagination">
+                <button type="button" disabled={activePosition === 0} onClick={() => selectSection(readingOrder[activePosition - 1])}><ArrowLeft className="h-3.5 w-3.5" /> Previous category</button>
+                <span>{String(activePosition + 1).padStart(2, "0")} <span>/ {sections.length}</span></span>
+                <button type="button" disabled={activePosition === readingOrder.length - 1} onClick={() => selectSection(readingOrder[activePosition + 1])}>Next category <ArrowRight className="h-3.5 w-3.5" /></button>
+              </div>}
+            </div>
+
+            <div className="rules-help">
+              <Shield className="h-5 w-5 shrink-0 text-cyan" />
+              <div><h3>Need a ruling or want to report a violation?</h3><p>Use the match room dispute system for match disputes. For other concerns, open a support ticket and include any relevant evidence.</p></div>
+              <Link to="/support">Open a ticket <ArrowRight className="h-3.5 w-3.5" /></Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
