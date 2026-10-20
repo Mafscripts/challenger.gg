@@ -145,7 +145,7 @@ const sections = [
     ],
   },
   {
-    title: "Twitch Requirements",
+    title: "Stream Requirements",
     icon: Twitch,
     rules: [
       "Every player must connect their own Twitch account before entering Cash Matches, Tournaments or Money 8s.",
