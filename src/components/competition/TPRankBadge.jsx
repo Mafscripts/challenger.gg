@@ -3,39 +3,71 @@ import BadgeTooltip from "@/components/ui/BadgeTooltip";
 import { tpRank, TP_RANK_TIERS } from "@/lib/tpRanks";
 import "@/styles/tp-rank.css";
 
-const star = "32 8 38.2 23.5 55 24.7 42.2 35.6 46.3 52 32 43 17.7 52 21.8 35.6 9 24.7 25.8 23.5Z";
+const star = "48 22 55 37 72 39 60 51 63 68 48 60 33 68 36 51 24 39 41 37";
 
 function TPStar({ rank }) {
   const uid = useId().replace(/:/g, "");
-  const fillId = `tp-metal-${uid}`;
-  const detailed = rank.elite ? 8 : rank.level;
-  return <svg className={`tp-rank-star${rank.elite ? " tp-rank-star-elite" : ""}`} viewBox="0 0 64 64" fill="none" aria-hidden="true">
-    <defs><linearGradient id={fillId} x1="12" y1="8" x2="49" y2="56" gradientUnits="userSpaceOnUse">
-      <stop stopColor={rank.elite ? "#fff8cd" : "#ffffff"} />
-      <stop offset=".36" stopColor={rank.elite ? "#fde68a" : rank.color} />
-      <stop offset=".67" stopColor={rank.elite ? "#b87912" : rank.color} />
-      <stop offset="1" stopColor={rank.elite ? "#fff1b8" : "#334155"} />
-    </linearGradient></defs>
-    {detailed >= 3 && <circle cx="32" cy="31" r="25" stroke="currentColor" strokeOpacity=".35" strokeWidth="1" strokeDasharray={detailed >= 5 ? "2 3" : "35 7"} />}
-    {detailed >= 4 && <path d="m4 29 8 6 4 17-8-7Zm56 0-8 6-4 17 8-7ZM10 49l11 8 1 4-12-8Zm44 0-11 8-1 4 12-8Z" fill="currentColor" fillOpacity=".7" />}
-    {detailed >= 6 && <path d="m32 1 3 5-3 5-3-5Zm-27 16 4 1 2 5-5-1Zm54 0-4 1-2 5 5-1ZM29 57h6l-3 6Z" fill="currentColor" />}
-    {detailed >= 7 && <path d="M16 10 7 24M48 10l9 14M4 32l-2 8m60-8 1 8M25 59h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />}
+  const level = rank.elite ? 9 : rank.level;
+  const champion = rank.elite && rank.position === 1;
+  const metal = rank.elite || level === 7 ? "#e9bd55" : level === 8 ? "#e8ddff" : rank.color;
+  const dark = rank.elite ? "#76501d" : level >= 7 ? "#61557a" : "#253d55";
+  const gem = rank.elite ? champion ? "#ff7771" : "#c292ff" : rank.color;
+  const paint = (name) => `url(#tp-${name}-${uid})`;
+  const spark = (cx, cy, radius) => `${cx} ${cy-radius} ${cx+radius*.3} ${cy-radius*.3} ${cx+radius} ${cy} ${cx+radius*.3} ${cy+radius*.3} ${cx} ${cy+radius} ${cx-radius*.3} ${cy+radius*.3} ${cx-radius} ${cy} ${cx-radius*.3} ${cy-radius*.3}`;
+  return <svg className={`tp-rank-star${rank.elite ? " tp-rank-star-elite" : ""}`} viewBox="0 0 96 96" fill="none" aria-hidden="true">
+    <defs>
+      <linearGradient id={`tp-metal-${uid}`} x1="20" y1="10" x2="72" y2="85" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#fffbed" /><stop offset=".19" stopColor={metal} /><stop offset=".42" stopColor="#fffdf3" /><stop offset=".48" stopColor={metal} /><stop offset=".76" stopColor={dark} /><stop offset="1" stopColor={metal} />
+      </linearGradient>
+      <linearGradient id={`tp-edge-${uid}`} x1="28" y1="14" x2="65" y2="81" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#fffdf1" /><stop offset=".42" stopColor={metal} /><stop offset=".6" stopColor={dark} /><stop offset="1" stopColor={metal} />
+      </linearGradient>
+      <linearGradient id={`tp-gem-${uid}`} x1="38" y1="30" x2="60" y2="62" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#fff" /><stop offset=".25" stopColor={gem} /><stop offset="1" stopColor={rank.elite ? "#50284f" : "#142739"} />
+      </linearGradient>
+      <radialGradient id={`tp-core-${uid}`}><stop stopColor={gem} stopOpacity=".24" /><stop offset="1" stopColor="#08131f" /></radialGradient>
+    </defs>
+    {/* Each tier adds a different silhouette, so rank remains visible at small sizes. */}
+    {level >= 3 && <path d={level >= 8 ? "M48 7 77 20 84 49 70 74 48 88 26 74 12 49 19 20Z" : "M48 15 72 24 75 53 65 71 48 82 31 71 21 53 24 24Z"} fill="#07121d" stroke={paint("edge")} strokeWidth={level >= 8 ? 2 : 1.5} />}
+    {level >= 4 && [false, true].map(right => <g key={`wings-${right}`} transform={right ? "translate(96 0) scale(-1 1)" : undefined}>
+      <path d={level >= 6 ? "M29 35 4 22 9 40 24 48 6 41 13 56 27 61 13 56 21 71 36 75 32 59Z" : "M28 36 11 30 17 48 25 53 18 49 23 64 35 70 31 52Z"} fill={paint("metal")} stroke={dark} strokeWidth=".9" strokeLinejoin="round" />
+      <path d={level >= 6 ? "m9 29 17 11M12 47l14 7M19 63l12 5" : "m17 37 10 7m-3 13 7 6"} stroke="#fff" strokeOpacity=".45" strokeWidth="1" />
+    </g>)}
+    {level >= 7 && [false, true].map(right => <g key={`laurel-${right}`} transform={right ? "translate(96 0) scale(-1 1)" : undefined}>
+      <path d="M43 84C17 78 10 56 17 32" stroke={paint("edge")} strokeWidth="1.4" />
+      {[0,1,2,3].map(i => <path key={i} d={`M${19+i*3} ${47+i*8}q-11 -1 -9 -12q9 0 9 12Z`} fill={paint("metal")} transform={`rotate(${-i*9} ${19+i*3} ${47+i*8})`} />)}
+    </g>)}
+    {level >= 5 && <circle cx="48" cy="45" r={level >= 8 ? 31 : 27} fill={paint("core")} stroke={paint("edge")} strokeWidth="1.3" />}
+    {level >= 8 && <>
+      <path d="m48 2 5 10-5 7-5-7Zm0 76 5 7-5 9-5-9Z" fill={paint("metal")} stroke={metal} strokeWidth=".7" />
+      <path d="m15 18 12-7m42 0 12 7M12 69l10 10m52 0 10-10" stroke={metal} strokeWidth="1.4" />
+      {[[-1,1],[1,1],[-1,-1],[1,-1]].map(([x,y]) => <polygon key={`${x}:${y}`} points={spark(48+x*30,45+y*23,3)} fill={gem} />)}
+    </>}
+    {level === 2 && <path d="m48 17 29 20-11 34H30L19 37Z" stroke={metal} strokeOpacity=".6" strokeWidth="1.2" />}
+    <polygon points={star} fill={paint("metal")} stroke="#050c14" strokeWidth="3.6" strokeLinejoin="round" />
+    <polygon points={star} fill={paint("metal")} stroke={paint("edge")} strokeWidth="1.6" strokeLinejoin="round" />
+    <path d="m48 22 0 23-24-6 17-2Zm0 23 15 23-3-17 12-12Z" fill="#fff" fillOpacity=".28" />
+    <path d="m48 45 0 15-15 8 3-17Zm0 0 7-8-7-15Z" fill="#07101d" fillOpacity=".4" />
+    {level >= 2 && <polygon points="48 33 52 41 61 43 55 49 56 58 48 54 40 58 41 49 35 43 44 41" fill={level >= 5 ? "#0b1624" : paint("gem")} stroke={paint("edge")} strokeWidth="1" />}
+    {level >= 5 && <>
+      <path d="m48 34 8 12-8 13-8-13Z" fill={paint("gem")} stroke="#fff8e5" strokeWidth=".8" />
+      <path d="m48 34 0 12 8 0m-8 13V46l-8 0" stroke="#fff" strokeOpacity=".4" strokeWidth=".7" />
+    </>}
+    {level >= 6 && !champion && <path d="m37 13 11-6 11 6-11 6Z" fill={paint("metal")} stroke={metal} strokeWidth=".6" />}
     {rank.elite && <>
-      <path d="M12 13 22 6M42 6l10 7M2 26l5-3M62 26l-5-3" stroke="#f0abfc" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="m32 1 2 3-2 3-2-3ZM2 40l2 2-2 2-2-2Zm60 0 2 2-2 2-2-2Z" fill="#fff6db" />
-      <circle cx="32" cy="31" r="29" stroke="#fde68a" strokeOpacity=".35" strokeWidth=".7" />
+      <path d="m33 77 15 5 15-5-4 10H37Z" fill={paint("metal")} stroke={metal} strokeWidth="1" />
+      <path d="m39 80 9 3 9-3" stroke="#fff8df" strokeWidth=".7" />
+      <polygon points={spark(8,18,4)} fill="#fff4c5" /><polygon points={spark(88,18,4)} fill="#fff4c5" />
     </>}
-    {rank.elite && rank.position === 1 && <path d="m18 12 2-10 7 5 5-7 5 7 7-5 2 10-14-3Z" fill="#fff2b0" stroke="#facc15" strokeWidth=".8" />}
-    <path d={`M${star}`} fill={`url(#${fillId})`} stroke={rank.elite ? "#fff1b8" : "currentColor"} strokeWidth="1.2" strokeLinejoin="round" />
-    {detailed >= 2 && <>
-      <path d="M32 8v24l-22-7.3L25.8 23.5Z" fill="white" fillOpacity=".25" />
-      <path d="m32 32 14.3 20L42.2 35.6 55 24.7Z" fill="#07111e" fillOpacity=".35" />
-      <path d="M32 32v11L17.7 52Z" fill="#07111e" fillOpacity=".25" />
+    {champion && <>
+      <path d="m30 21-3-17 13 8 8-11 8 11 13-8-3 17-18 5Z" fill="#5b391a" stroke="#fff1b6" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="m31 7 9 9 8-11 8 11 9-9-2 12-15 4-15-4Z" fill={paint("metal")} />
+      <path d="m48 12 3 5-3 4-3-4Z" fill="#ff8a7e" stroke="#ffe5be" strokeWidth=".6" />
+      <path d="M34 24 48 28l14-4" stroke="#fff0b5" strokeWidth="2" />
     </>}
-    {detailed >= 5 && <path d="m32 20 3 8 8 .5-6 5 1.8 8-6.8-4.3-6.8 4.3 1.8-8-6-5 8-.5Z" fill="#0b1016" fillOpacity=".65" stroke="currentColor" strokeWidth=".8" />}
-    {detailed >= 8 && <path d="m32 25 4 6-4 6-4-6Z" fill={rank.elite ? "#f0abfc" : "#fff8d6"} stroke="white" strokeWidth=".7" />}
   </svg>;
 }
+
 
 export default function TPRankBadge({ xp = 0, matchesPlayed = 0, position = null, loading = false, showXp = false, size = "compact" }) {
   const rank = tpRank({ xp, matchesPlayed, position });
