@@ -232,8 +232,10 @@ export const ruleSections = [
     description: "Team formats, XP results and match cancellation requirements.",
     rules: [
       "XP Matches support 1v1, 2v2, 3v3 and 4v4. All players on both completed rosters receive their own XP result.",
-      "Average team XP is recorded when the lobby fills. Equal teams play for +20 XP on a win and -20 XP on a loss. Wins over stronger teams earn more, and losses to weaker teams cost more.",
+      "Only XP Match results count toward XP progression and team strength. Each team's average player XP is recorded when both rosters fill; team leaderboard position does not determine the reward.",
+      "Equal teams play for +20 XP on a win and -20 XP on a loss. Against a team averaging 1,000 XP more, a win earns +30 XP and a loss costs 10 XP. Against a team averaging 1,000 XP less, a win earns +10 XP and a loss costs 30 XP.",
       "The calculated XP change ranges from 5 to 40 per player. Total XP cannot go below zero. Both captains must confirm the same final score.",
+      "Every player on the winning roster gains the calculated amount and every player on the losing roster loses that amount, limited by their available XP. The final map score does not multiply the XP reward.",
       "Once an opponent joins, cancellation requires a request accepted by the opposing captain. A declined or unanswered request leaves the match active and it must be played. Agreed cancellations do not change XP.",
       "Unmatched open posts may be removed by their host. Contact staff for disputes or exceptional circumstances.",
     ],
