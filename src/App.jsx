@@ -47,6 +47,7 @@ const News = lazy(() => import('@/pages/News'));
 const Rules = lazy(() => import('@/pages/Rules'));
 const Support = lazy(() => import('@/pages/Support'));
 const Terms = lazy(() => import('@/pages/Terms'));
+const Privacy = lazy(() => import('@/pages/Privacy'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const PlayerOverlay = lazy(() => import('@/pages/PlayerOverlay'));
 const ThankYou = lazy(() => import('@/pages/ThankYou'));
@@ -116,6 +117,7 @@ const AuthenticatedApp = () => {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/rules" element={<Rules />} />
         <Route path="/league" element={<League />} />
         <Route path="/league/division/:divisionId" element={<League />} />

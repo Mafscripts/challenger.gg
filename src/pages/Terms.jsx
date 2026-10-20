@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FileText, Shield, Swords, Wallet, ShoppingBag, Users, AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -80,6 +81,7 @@ const sections = [
       "Support tickets, match evidence, chat, transaction records, and moderation records may be reviewed by authorized staff.",
       "We may retain records needed for legal, tax, fraud prevention, payment, dispute, security, and platform integrity purposes.",
       "Do not submit sensitive personal information unless it is required for support, payment, identity, or compliance review.",
+      <>Our <Link to="/privacy" className="text-cyan underline underline-offset-4">Privacy Policy</Link> explains account data, Google and YouTube API access, connected channels, sharing, storage and deletion controls in detail.</>,
     ],
   },
 ];
@@ -122,7 +124,7 @@ export default function Terms() {
                 </div>
                 <ol className="space-y-3">
                   {section.body.map((item, itemIndex) => (
-                    <li key={item} className="text-sm text-vapor leading-relaxed flex gap-3">
+                    <li key={itemIndex} className="text-sm text-vapor leading-relaxed flex gap-3">
                       <span className="text-cyan font-mono text-xs mt-0.5 shrink-0">{itemIndex + 1}.</span>
                       <span>{item}</span>
                     </li>

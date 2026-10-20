@@ -29,7 +29,7 @@ const footerLinks = {
     { label: "Rules", path: "/rules" },
     { label: "FAQ", path: "/#faq" },
     { label: "Contact", path: "/support" },
-    { label: "Privacy Policy", path: "/terms#privacy" },
+    { label: "Privacy Policy", path: "/privacy" },
     { label: "Terms of Service", path: "/terms" },
   ],
 };

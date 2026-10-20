@@ -1,5 +1,5 @@
-import streamAccountRoutes from "./routes/stream-accounts.js";
 import "dotenv/config";
+import streamAccountRoutes from "./routes/stream-accounts.js";
 import express from "express";
 import cors from "cors";
 import authRoutes, { registerHandler } from "./routes/auth.js";

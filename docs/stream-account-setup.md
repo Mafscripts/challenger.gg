@@ -27,6 +27,14 @@ Keep the existing strong `JWT_SECRET`. The browser-bound OAuth state is encrypte
 
 See [Google's web-server OAuth guide](https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps) and [the channels.list endpoint](https://developers.google.com/youtube/v3/docs/channels/list). The callback requests the authenticated user's own channel with `mine=true`; an account without a YouTube channel gets an explanatory error.
 
+## Google branding review
+
+The public Privacy Policy is `/privacy`, linked from the website footer, the existing Terms privacy section and Streaming accounts. Deploy the frontend before setting `https://topfragg.gg/privacy` as the Privacy Policy URL in Google Auth Platform → Branding. It describes the actual channel identity request, storage, use, public display and disconnect controls. Updating the page alone does not guarantee Google's approval.
+
+If Google reports that the home page is not registered to you, verify the Domain property `topfragg.gg` in [Google Search Console](https://search.google.com/search-console/) using the same Google account associated with the OAuth project. Add the exact TXT record Google provides at your domain's DNS provider, then click Verify. Keep the TXT record after verification. Follow Google's displayed waiting period before retrying branding review (the current issue dialog asks for 24 hours).
+
+Declare `https://www.googleapis.com/auth/youtube.readonly` in Data Access → Add or remove scopes. Branding and sensitive data access are separate reviews. Only choose "I have fixed the issues" after the live policy and domain verification are ready.
+
 ## Kick
 
 1. Register your application in Kick's developer settings and enable the developer features if your account requires them.
