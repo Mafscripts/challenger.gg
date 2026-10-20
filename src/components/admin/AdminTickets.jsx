@@ -85,7 +85,7 @@ export default function AdminTickets({ user, onRefresh }) {
       </div>
     </div>
     <Dialog open={Boolean(deleting)} onOpenChange={(open) => { if (!open && !busy) setDeleting(null); }}>
-      <DialogContent className="max-w-md border-white/10 bg-card">
+      <DialogContent className="admin-action-dialog max-w-md border-white/10 bg-card">
         <DialogTitle>Delete closed ticket?</DialogTitle>
         <DialogDescription>Ticket #{deleting?.record_id.slice(-8)} and its linked match cases, conversations and evidence references will be permanently removed. Match results and XP stay unchanged.</DialogDescription>
         {deleteError && <p role="alert" className="text-sm text-red-300">{deleteError}</p>}

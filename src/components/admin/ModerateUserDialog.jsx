@@ -31,7 +31,7 @@ export default function ModerateUserDialog({ request, busy, onClose, onSubmit })
     catch (failure) { setError(failure.message || "Could not save the moderation action. Please try again."); }
   };
   return <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
-    <DialogContent className="max-h-[90dvh] max-w-[560px] gap-0 overflow-y-auto p-0">
+    <DialogContent className="admin-action-dialog max-h-[90dvh] max-w-[560px] gap-0 overflow-y-auto p-0">
       <header className="border-b border-white/10 bg-background/30 p-5 pr-12 sm:p-6 sm:pr-12">
         <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-vapor">Account moderation</p>
         <DialogTitle className="flex items-center gap-3 text-xl"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${restoring ? "border-green/25 bg-green/10 text-green" : "border-red-500/25 bg-red-500/10 text-[#ff3b3b]"}`}><Icon className="h-5 w-5" /></span>{config.title}</DialogTitle>

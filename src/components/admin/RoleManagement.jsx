@@ -35,7 +35,7 @@ export default function RoleManagement({ directory, actorRole, search, onSearch,
         {search && <button aria-label="Clear user search" onClick={() => onSearch("")}><X size={14} /></button>}</div>
     </header>
     <div className="ar-list-summary"><strong>{search.trim() ? "Search results" : "Players & staff"}</strong><span>{directory.rows.length} of {directory.total} loaded</span></div>
-    <div className="ar-table-wrap"><table>
+    <div className="ar-table-wrap"><table className="admin-responsive-table" role="table" aria-label="Staff and player roles">
       <thead><tr><th>Player</th><th>Current role</th><th>New role</th><th><span className="sr-only">Actions</span></th></tr></thead>
       <tbody>{directory.rows.map((user) => {
         const currentRole = normalizeRole(user.role);
@@ -43,12 +43,12 @@ export default function RoleManagement({ directory, actorRole, search, onSearch,
         const editable = canEdit(currentRole);
         const changed = selected !== currentRole;
         return <tr key={user.id}>
-          <td><div className="ar-player"><span className="ar-avatar">{nameFor(user).slice(0, 1).toUpperCase()}</span><div><strong>{nameFor(user)}</strong><span>{user.email || (user.username ? `@${user.username}` : "Player account")}</span></div></div></td>
-          <td><RoleBadge role={currentRole} internal /></td>
-          <td>{editable ? <div className="ar-select"><select aria-label={`New role for ${nameFor(user)}`} value={selected} disabled={Boolean(saving)} onChange={(event) => setDrafts((current) => ({ ...current, [user.id]: event.target.value }))}>
+          <td data-label="Player"><div className="ar-player"><span className="ar-avatar">{nameFor(user).slice(0, 1).toUpperCase()}</span><div><strong>{nameFor(user)}</strong><span>{user.email || (user.username ? `@${user.username}` : "Player account")}</span></div></div></td>
+          <td data-label="Current role"><RoleBadge role={currentRole} internal /></td>
+          <td data-label="New role">{editable ? <div className="ar-select"><select aria-label={`New role for ${nameFor(user)}`} value={selected} disabled={Boolean(saving)} onChange={(event) => setDrafts((current) => ({ ...current, [user.id]: event.target.value }))}>
             {roles.filter((role) => role === currentRole || canEdit(role)).map((role) => <option key={role} value={role}>{getRoleConfig(role).label}</option>)}
           </select><ChevronDown size={13} /></div> : <span className="ar-protected"><LockKeyhole size={13} /> {canManageRoles(actorRole) ? "Protected account" : "View only"}</span>}</td>
-          <td><div className="ar-action">{editable && <button aria-label={`Save role for ${nameFor(user)}`} disabled={!changed || Boolean(saving)} onClick={() => save(user, selected)}>
+          <td data-label="Actions"><div className="ar-action">{editable && <button aria-label={`Save role for ${nameFor(user)}`} disabled={!changed || Boolean(saving)} onClick={() => save(user, selected)}>
             {saving === user.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}{saving === user.id ? "Saving..." : "Save role"}</button>}
             {failure?.id === user.id && <p role="alert">{failure.message}</p>}</div></td>
         </tr>;

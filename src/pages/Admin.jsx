@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
   Archive,
+  ArrowUpRight,
   Award,
   BadgeDollarSign,
   BellRing,
@@ -52,7 +53,10 @@ import { toast } from "@/components/ui/use-toast";
 import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import RankBadge from "@/components/ui/RankBadge";
-import PageHeader from "@/components/ui/PageHeader";
+import AdminNavigation from "@/components/admin/AdminNavigation";
+import TopfraggLogo from "@/components/brand/TopfraggLogo";
+import { adminSectionInfo } from "@/lib/adminNavigation";
+import "@/styles/admin-console.css";
 import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
 import { useAdminConsoleData } from "@/hooks/useAdminConsoleData";
@@ -422,7 +426,7 @@ const userBadgePreset = (user) => {
 };
 function StatCard({ icon: Icon, label, value, color = "text-cyan" }) {
   return (
-    <div className="glass rounded-xl border border-white/5 p-4">
+    <div className="admin-overview-stat" data-stat-tone={color}>
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`w-4 h-4 ${color}`} />
         <span className="text-[10px] text-vapor uppercase">{label}</span>
@@ -545,6 +549,20 @@ export default function Admin() {
   const [referralProgram, setReferralProgram] = useState(null);
   const [animatedNameFreeTrial, setAnimatedNameFreeTrial] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
+  const allowedTabs = useMemo(() => tabs.filter(tab => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin"))), [currentRole]);
+  const workspaceRef = useRef(null);
+  const selectAdminSection = id => {
+    if (!allowedTabs.some(tab => tab.id === id)) return;
+    setActiveTab(id);
+    window.requestAnimationFrame(() => {
+      workspaceRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+      workspaceRef.current?.focus({ preventScroll: true });
+    });
+  };
+
+  useEffect(() => {
+    if (!loading && canAccessAdminPanel(currentRole) && !allowedTabs.some(tab => tab.id === activeTab)) setActiveTab("dashboard");
+  }, [activeTab, allowedTabs, currentRole, loading]);
 
   const adminQueries = useAdminConsoleData(currentUser, activeTab, { search: activeTab === "roles" ? roleSearch : searchQuery, sharedOnly: sharedIpOnly });
   const receivedRows = useRef({});
@@ -1816,58 +1834,24 @@ export default function Admin() {
     );
   }
 
+  const activeSection = allowedTabs.find(tab => tab.id === activeTab) || allowedTabs[0];
+  const activeInfo = adminSectionInfo(activeSection.id);
+  const ActiveIcon = activeSection.icon;
   return (
-    <div className="admin-page min-h-screen py-5 lg:py-6">
-      <div className="admin-layout mx-auto max-w-[1880px] px-4 lg:px-6">
-        <aside className="admin-sidebar dark-media" aria-label="Admin sections">
-          <div className="border-b border-white/10 p-5">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary"><Shield className="h-5 w-5" /></span>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Staff workspace</p>
-                <h2 className="mt-1 text-base font-black text-white">Admin Console</h2>
-              </div>
-            </div>
-            <div className="mt-4"><RoleBadge role={currentRole} /></div>
-          </div>
-          <div className="space-y-1 p-2.5">
-            {tabs.filter((tab) => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin"))).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                aria-current={activeTab === tab.id ? "page" : undefined}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-bold transition-colors"
-              >
-                <tab.icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        </aside>
+    <div className="admin-page min-h-screen" data-admin-tone={activeInfo.tone}>
+      <div className="admin-layout">
+        <AdminNavigation sections={allowedTabs} activeTab={activeTab} onSelect={selectAdminSection} role={currentRole} />
+        <main className="admin-console-main">
+          <AdminNavigation mobile sections={allowedTabs} activeTab={activeTab} onSelect={selectAdminSection} role={currentRole} />
+          <header className="admin-console-header">
+            <div className="admin-console-header-copy"><p className="admin-console-eyebrow"><TopfraggLogo showWordmark={false} markClassName="!h-7 !w-7" />TOPFRAGG STAFF WORKSPACE</p><h1>Admin Console<span>.</span></h1><p>Support your players. Run the competition. Keep the arena moving.</p></div>
+            <Shield className="admin-console-header-art" size={156} strokeWidth={1} aria-hidden="true" />
+            <div className="admin-console-header-tools"><RoleBadge role={currentRole} /><Link to="/" className="admin-console-button">View website<ArrowUpRight size={15} aria-hidden="true" /></Link><button type="button" onClick={loadAdminData} disabled={adminQueries.refreshing} className="admin-console-button admin-console-primary"><RefreshCw size={15} className={adminQueries.refreshing ? "animate-spin" : undefined} aria-hidden="true" />{adminQueries.refreshing ? "Refreshing…" : "Refresh data"}</button></div>
+          </header>
 
-        <main className="min-w-0">
-          <label className="mb-4 block rounded-xl border border-border bg-card p-3 text-white lg:hidden">
-            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-primary">Admin section</span>
-            <select value={activeTab} onChange={(event) => setActiveTab(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[var(--arena-inset)] px-3 py-2.5 text-sm font-bold text-white">
-              {tabs.filter((tab) => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin"))).map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
-            </select>
-          </label>
-
-        <PageHeader
-          eyebrow="Platform management"
-          title="Admin Console"
-          description="Manage users, roles, support, matches, economy, inventory and audit logs."
-          className="dark-focus dark-media mb-5"
-          action={<div className="flex items-center gap-3">
-              <RoleBadge role={currentRole} />
-              <button onClick={loadAdminData} disabled={adminQueries.refreshing} className="rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:border-primary/35 hover:text-primary">
-                {adminQueries.refreshing ? "Refreshing..." : "Refresh"}
-              </button>
-          </div>}
-        />
-
-        <div className="admin-stat-grid mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-9">
+        <details className="admin-overview" key={activeTab} open={activeTab === "dashboard" ? true : undefined}>
+          <summary><LayoutDashboard size={16} aria-hidden="true" /><span>Platform overview<small>Players, queues & competition totals</small></span><ChevronDown size={16} aria-hidden="true" /></summary>
+        <div className="admin-stat-grid">
           <StatCard icon={Users} label="Users" value={adminQueries.status.userCount.ready ? stats.totalUsers : "…"} />
           <StatCard icon={BellRing} label="Alerts" value={adminQueries.status.adminAlerts.ready ? stats.openAdminAlerts : "…"} color="text-red-400" />
           <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.ticketCounts.ready ? stats.openTickets : "…"} color="text-orange" />
@@ -1879,7 +1863,9 @@ export default function Admin() {
           <StatCard icon={CreditCard} label="Wallet Total" value={adminQueries.status.walletSummary.ready ? formatMoney(stats.walletTotal) : "…"} color="text-green" />
         </div>
 
-        <div className="admin-workspace glass overflow-hidden rounded-xl border">
+        </details>
+        <section id="admin-workspace" ref={workspaceRef} tabIndex={-1} aria-labelledby="admin-section-title" className="admin-workspace">
+          <header className="admin-section-heading"><span><ActiveIcon size={23} aria-hidden="true" /></span><div><p>{activeInfo.group}</p><h2 id="admin-section-title">{activeSection.label}</h2><span>{activeInfo.description}</span></div></header>
           {adminQueries.sectionLoading ? (
             <div role="status" className="flex items-center gap-3 p-6 text-sm text-vapor"><Loader2 className="h-5 w-5 animate-spin" /> Loading {tabs.find((tab) => tab.id === activeTab)?.label || "section"}...</div>
           ) : adminQueries.sectionError ? (
@@ -2102,7 +2088,7 @@ export default function Admin() {
               )}
               <div className="overflow-visible">
                 <div className="overflow-x-auto overflow-y-visible">
-                <table className="w-full">
+                <table className="admin-responsive-table w-full" role="table" aria-label="Player directory">
                   <thead>
                     <tr className="border-b border-white/5 text-xs text-vapor uppercase">
                       <th className="text-left py-3 px-4">User</th>
@@ -2117,7 +2103,7 @@ export default function Admin() {
                   <tbody>
                     {filteredUsers.map((user) => (
                       <tr key={user.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                        <td className="py-3 px-4">
+                        <td data-label="Player" className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-sm">{userName(user)}</p>
                             {canViewUserIps(currentRole) && sharedIpCount(user) > 0 && (
@@ -2131,9 +2117,9 @@ export default function Admin() {
                           </div>
                           <p className="text-xs text-vapor">{user.email}</p><UserBadges user={user} size="xs" />
                         </td>
-                        <td className="py-3 px-4"><RoleBadge role={user.role || "user"} /></td>
+                        <td data-label="Role" className="py-3 px-4"><RoleBadge role={user.role || "user"} /></td>
 
-                        <td className="py-3 px-4 min-w-[155px]">
+                        <td data-label="Status" className="py-3 px-4 min-w-[155px]">
                           <div className="flex flex-col items-start gap-1.5">
                             <StatusPill status={user.is_banned ? "banned" : "active"} />
                             {hasActivePremium(user) && (
@@ -2143,9 +2129,9 @@ export default function Admin() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-sm font-mono">{formatMoney(walletByUserId[user.id]?.available_balance ?? 0)}</td>
+                        <td data-label="Wallet" className="py-3 px-4 text-sm font-mono">{formatMoney(walletByUserId[user.id]?.available_balance ?? 0)}</td>
                         {canViewUserIps(currentRole) && (
-                          <td className="py-3 px-4 text-xs text-vapor" title={ipHistoryText(user)}>
+                          <td data-label="IP addresses" className="py-3 px-4 text-xs text-vapor" title={ipHistoryText(user)}>
                             {knownIpAddresses(user).length > 0 ? (
                               <div className="space-y-1 font-mono">
                                 {knownIpAddresses(user).slice(0, 1).map((ip) => <div key={ip}>{ip}</div>)}
@@ -2155,8 +2141,8 @@ export default function Admin() {
                             ) : <span className="text-[10px] text-vapor/70">Awaiting activity</span>}
                           </td>
                         )}
-                        <td className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
-                        <td className="relative z-20 overflow-visible py-3 px-4">
+                        <td data-label="Joined" className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
+                        <td data-label="Actions" className="relative z-20 overflow-visible py-3 px-4">
                           <div className="flex items-center justify-end gap-2 overflow-visible">
                             <Link to={`/profile/${user.username || user.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20">Profile</Link>
                             <div className="relative z-[80]">
@@ -2169,7 +2155,7 @@ export default function Admin() {
                               </button>
                               {openManageUserId === user.id && (
                                 <Dialog open onOpenChange={(open) => { if (!open) setOpenManageUserId(null); }}>
-                                  <DialogContent className="admin-user-dialog">
+                                  <DialogContent className="admin-action-dialog admin-user-dialog">
                                     <header className="au-dialog-heading">
                                       <div className="au-user-initial">{userName(user).slice(0, 1).toUpperCase()}</div>
                                       <div><span className="au-eyebrow">ACCOUNT MANAGEMENT</span><DialogTitle>{userName(user)}</DialogTitle><DialogDescription>{user.email}</DialogDescription></div>
@@ -3006,7 +2992,7 @@ export default function Admin() {
                           </div>
                         </div>
 
-                        <div className="grid min-w-[360px] grid-cols-3 gap-2">
+                        <div className="admin-tournament-summary grid grid-cols-3 gap-2">
                           <div className="rounded-xl border border-white/[0.07] bg-background/30 p-3">
                             <p className="text-[9px] font-black uppercase tracking-wider text-vapor">Teams</p>
                             <p className="mt-1 text-lg font-black text-white">{tournament.registered_teams || 0}<span className="text-sm text-vapor">/{tournament.max_teams}</span></p>
@@ -3385,7 +3371,7 @@ export default function Admin() {
             <AuditLog key={`${currentUser.id}:${currentRole}`} user={currentUser} />
           )}
           </Suspense>}
-        </div>
+        </section>
         </main>
       </div>
       {moderationRequest && <ModerateUserDialog
@@ -3399,7 +3385,7 @@ export default function Admin() {
 
 function SummaryPanel({ title, rows }) {
   return (
-    <div className="border border-white/5 rounded-lg p-4">
+    <div className="admin-summary-panel">
       <h3 className="font-bold text-sm mb-3">{title}</h3>
       <div className="space-y-2 text-sm">
         {rows.map(([label, value]) => (
@@ -3431,7 +3417,7 @@ function ListSection({ title, rows, empty, render, scrollable = false }) {
 
 function RowGrid({ columns, compact = false }) {
   return (
-    <div className={`grid ${compact ? "lg:grid-cols-5" : "lg:grid-cols-6"} gap-3 w-full px-5 py-4`}>
+    <div className={`admin-record-grid grid ${compact ? "lg:grid-cols-5" : "lg:grid-cols-6"} gap-3 w-full px-5 py-4`}>
       {columns.map(([label, value]) => (
         <div key={label} className={label === "Details" ? "lg:col-span-2" : ""}>
           <p className="text-[10px] text-vapor uppercase mb-1">{label}</p>

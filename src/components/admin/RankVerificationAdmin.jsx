@@ -67,6 +67,6 @@ export default function RankVerificationAdmin({ users }) {
         {selected.review_reason && <p className="mt-3 text-xs text-vapor">Last review: {selected.review_reason}</p>}
       </div>}
     </div>
-    <Dialog open={Boolean(preview)} onOpenChange={(open) => { if (!open) setPreview(""); }}><DialogContent className="max-w-5xl"><DialogTitle>Rank screenshot</DialogTitle><DialogDescription>Review the uploaded emblem before assigning a rank.</DialogDescription>{preview && <img src={preview} alt="Full rank screenshot submitted by player" className="max-h-[75vh] w-full object-contain" />}</DialogContent></Dialog>
+    <Dialog open={Boolean(preview)} onOpenChange={(open) => { if (!open) setPreview(""); }}><DialogContent className="admin-action-dialog max-w-5xl"><DialogTitle>Rank screenshot</DialogTitle><DialogDescription>Review the uploaded emblem before assigning a rank.</DialogDescription>{preview && <img src={preview} alt="Full rank screenshot submitted by player" className="max-h-[75vh] w-full object-contain" />}</DialogContent></Dialog>
   </section>;
 }

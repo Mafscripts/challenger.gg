@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarDays, Clock3, RefreshCw, Trophy, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock3, RefreshCw, ShieldCheck, Sparkles, Swords, Ticket, Trophy, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -45,22 +45,40 @@ function entryLabel(tournament) {
 
 export default function UpcomingTournaments({ query }) {
   const tournaments = query.data || [];
-  return <section className="play-upcoming-tournaments leaderboard-surface" aria-label="Upcoming tournaments">
-    <header className="play-upcoming-heading"><div><p className="play-upcoming-eyebrow">Next on the schedule</p><h2>Upcoming tournaments</h2><p>Choose an event to view its rules, teams and registration details.</p></div><button type="button" disabled={query.isFetching} onClick={() => query.refetch()} aria-label="Refresh upcoming tournaments"><RefreshCw size={15} /></button></header>
+  return <section className="play-upcoming-tournaments" aria-label="Upcoming tournaments" aria-busy={query.isPending || query.isFetching}>
+    <header className="play-upcoming-heading">
+      <span className="play-upcoming-heading-icon" aria-hidden="true"><CalendarDays size={26} /><span /></span>
+      <div className="play-upcoming-heading-copy"><p className="play-upcoming-eyebrow">Next on the schedule</p><h2>Upcoming tournaments<span>.</span></h2><p>Pick your event. Bring your roster. Compete for the win.</p></div>
+      <div className="play-upcoming-heading-actions">{!query.isPending && tournaments.length > 0 && <span className="play-upcoming-total"><Trophy size={13} aria-hidden="true" />{tournaments.length} upcoming</span>}<button type="button" disabled={query.isFetching} onClick={() => query.refetch()} aria-label="Refresh upcoming tournaments"><RefreshCw size={15} className={query.isFetching ? "play-upcoming-refreshing" : undefined} aria-hidden="true" /><span>Refresh</span></button></div>
+    </header>
     {query.isPending ? <div className="play-upcoming-empty" role="status"><CalendarDays size={28} /><strong>Loading upcoming events…</strong></div>
       : query.isError && !query.data ? <div className="play-upcoming-empty" role="alert"><CalendarDays size={28} /><strong>The schedule is temporarily unavailable.</strong><button type="button" onClick={() => query.refetch()}>Try again</button></div>
         : tournaments.length === 0 ? <div className="play-upcoming-empty"><CalendarDays size={28} /><strong>No upcoming tournaments announced.</strong><p>New events will appear here when registration opens.</p></div>
-          : tournaments.map(tournament => {
+          : <div className="play-upcoming-events">{tournaments.map((tournament, index) => {
             const scheduled = Number.isFinite(startTime(tournament));
             const date = scheduled ? new Date(tournament.start_date) : null;
             const full = Number(tournament.max_teams) > 0 && Number(tournament.registered_teams || 0) >= Number(tournament.max_teams);
-            return <article key={tournament.id} className="play-upcoming-event">
-              <div className="play-upcoming-schedule"><span className="play-upcoming-calendar"><strong>{date ? date.getDate() : "—"}</strong><small>{date ? date.toLocaleDateString([], { month: "short" }) : "TBA"}</small></span><div>{date ? <time dateTime={tournament.start_date}><strong>{date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false, timeZoneName: "short" })}</strong><small>{date.toLocaleDateString([], { weekday: "short", year: "numeric" })}</small></time> : <strong>Date to be announced</strong>}</div></div>
-              <div className="play-upcoming-identity"><span className="play-upcoming-state" data-full={full}>{full ? "Full" : "Registration open"}</span><h3>{tournament.name || "Topfragg tournament"}</h3><p>{tournament.team_size || "Team size TBA"}<span aria-hidden="true"> · </span>{modeLabels[tournament.game_mode] || tournament.game_mode || "Format to be announced"}</p></div>
-              <div className="play-upcoming-details"><span><Trophy size={13} /><strong>${Number(tournament.prize_pool || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong><small>Prize pool</small></span><span><Users size={13} /><strong>{tournament.registered_teams || 0}{Number(tournament.max_teams) > 0 ? ` / ${tournament.max_teams}` : ""}</strong><small>Teams</small></span><span><strong>{entryLabel(tournament)}</strong><small>Entry</small></span></div>
+            const entry = entryLabel(tournament);
+            const capacity = Number(tournament.max_teams);
+            const filled = capacity > 0 ? Math.min(100, Math.max(0, Number(tournament.registered_teams || 0) / capacity * 100)) : 0;
+            return <article key={tournament.id} className="play-upcoming-event" data-next={index === 0}>
+              <div className="play-upcoming-schedule">
+                <span className="play-upcoming-calendar"><small>{date ? date.toLocaleDateString([], { month: "short" }) : "Date"}</small><strong>{date ? date.getDate() : "—"}</strong><span>{date ? date.toLocaleDateString([], { weekday: "short" }) : "TBA"}</span></span>
+                {date ? <time dateTime={tournament.start_date}><span><Clock3 size={12} aria-hidden="true" />{date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}</span><small>{new Intl.DateTimeFormat([], { timeZoneName: "short" }).formatToParts(date).find(part => part.type === "timeZoneName")?.value} · {date.getFullYear()}</small></time> : <span className="play-upcoming-date-tba">Date to be announced</span>}
+              </div>
+              <div className="play-upcoming-identity">
+                <div className="play-upcoming-badges"><span className="play-upcoming-official"><ShieldCheck size={12} aria-hidden="true" />Official event</span>{index === 0 && <span className="play-upcoming-next"><Sparkles size={12} aria-hidden="true" />Up next</span>}<span className="play-upcoming-state" data-full={full}><span />{full ? "Full" : "Registration open"}</span></div>
+                <h3>{tournament.name || "Topfragg tournament"}</h3>
+                <p><span><Users size={13} aria-hidden="true" />{tournament.team_size || "Team size TBA"}</span><span><Swords size={13} aria-hidden="true" />{modeLabels[tournament.game_mode] || tournament.game_mode || "Format to be announced"}</span></p>
+              </div>
               <Link to={`/tournaments/${encodeURIComponent(tournament.id)}`} className="play-upcoming-event-link" aria-label={`View ${tournament.name || "tournament"}`}>View tournament<ArrowRight size={14} /></Link>
+              <dl className="play-upcoming-details">
+                <div data-tone="gold"><dt><span className="play-upcoming-detail-icon"><Trophy size={20} aria-hidden="true" /></span>Prize pool</dt><dd>${Number(tournament.prize_pool || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}<Trophy className="play-upcoming-detail-watermark" size={55} aria-hidden="true" /></dd></div>
+                <div data-tone="cyan"><dt><span className="play-upcoming-detail-icon"><Users size={20} aria-hidden="true" /></span>Registered teams</dt><dd>{tournament.registered_teams || 0}{capacity > 0 && <small> / {tournament.max_teams}</small>}{capacity > 0 && <span className="play-upcoming-capacity" aria-hidden="true"><span style={{ width: `${filled}%` }} /></span>}</dd></div>
+                <div data-tone={entry === "Free entry" ? "green" : "purple"}><dt><span className="play-upcoming-detail-icon"><Ticket size={20} aria-hidden="true" /></span>Entry requirement</dt><dd>{entry}</dd></div>
+              </dl>
             </article>;
-          })}
+          })}</div>}
     <footer className="play-upcoming-footer"><span><Clock3 size={12} />Times are shown in your local timezone.</span><Link to="/tournaments">Full tournament center<ArrowRight size={12} /></Link></footer>
   </section>;
 }

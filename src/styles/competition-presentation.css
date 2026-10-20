@@ -89,12 +89,6 @@
 .competition-surface .tournament-list-card[data-event-status="in_progress"], .competition-surface .tournament-list-card[data-event-status="live"] { border-left: 3px solid #34ef9f99; }
 .competition-surface .tournament-list-card[data-event-status="registration"], .competition-surface .tournament-list-card[data-event-status="open"] { border-left: 3px solid #14d8ff99; }
 .competition-surface .tournaments-featured-hero { border-color: #ffc85244; box-shadow: 0 10px 40px #ffc85206; }
-.competition-surface .play-upcoming-tournaments { border-color: rgb(var(--comp-accent) / .22); }
-.competition-surface .play-upcoming-heading { background: linear-gradient(100deg, rgb(var(--comp-accent) / .055), transparent); }
-.competition-surface .play-upcoming-calendar { border-color: rgb(var(--comp-accent) / .28); background: rgb(var(--comp-accent) / .06); }
-.competition-surface .play-upcoming-calendar small, .competition-surface .play-upcoming-eyebrow { color: rgb(var(--comp-accent)); }
-.competition-surface .play-upcoming-event-link { border-color: rgb(var(--comp-accent) / .35); color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .07); }
-.competition-surface .play-upcoming-event:hover { background: rgb(var(--comp-accent) / .025); }
 .competition-surface .tournament-live-strip { box-shadow: inset 3px 0 #34ef9f70; }
 .competition-surface .leaderboard-hero { border-color: rgb(var(--comp-accent) / .3); background: radial-gradient(ellipse at top right, rgb(var(--comp-accent) / .1), transparent 70%), #10202d; }
 .competition-surface .leaderboard-tabs button[aria-pressed="true"] { color: rgb(var(--comp-accent)); border-color: rgb(var(--comp-accent) / .4); background: rgb(var(--comp-accent) / .08); }
