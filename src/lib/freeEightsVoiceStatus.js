@@ -48,7 +48,7 @@ export function freeEightsVoiceView(result, players, now = Date.now()) {
     const observed = available ? statuses.get(player.user_id)?.status : null;
     const lastObserved = result?.lastConfirmed?.players?.find((row) => samePlayer(row, player))?.status;
     const status = confirmedStatuses.has(observed) ? observed : lastObserved || "unknown";
-    return { ...player, status, ready: available && ["in_waiting_room", "in_team_voice"].includes(observed) };
+    return { ...player, status, fresh: available, ready: available && ["in_waiting_room", "in_team_voice"].includes(observed) };
   });
   const displayVoice = voice || result?.lastConfirmed;
   return { voice: displayVoice && { ...displayVoice, waiting_room_url: voice?.closed ? null : voice?.waiting_room_url || result?.lastWaitingRoomUrl || result?.lastConfirmed?.waiting_room_url || null },
@@ -59,8 +59,16 @@ export function freeEightsVoiceView(result, players, now = Date.now()) {
     warning: !checking && (!available || Boolean(voice?.error)) };
 }
 
-export function freeEightsVoiceDisplaySignature(result, players) {
-  const view = freeEightsVoiceView(result, players);
+export function freeEightsVoiceDisplaySignature(result, players, now = Date.now()) {
+  const view = freeEightsVoiceView(result, players, now);
   return JSON.stringify([result?.matchId, result?.userId, view.voice?.waiting_room_url,
     view.playerStates.map((player) => [player.user_id, player.team, player.status])]);
+}
+
+export function freeEightsVoiceRenderSignature(result, players, now = Date.now()) {
+  const view = freeEightsVoiceView(result, players, now);
+  // A recovered/stale observation changes readiness even when badges match.
+  // Timestamps themselves stay out so polling does not repaint unchanged rooms.
+  return JSON.stringify([freeEightsVoiceDisplaySignature(result, players, now), view.available,
+    view.checking, view.refreshing, view.configurationFailure, view.warning, view.voice?.closed, view.voice?.error]);
 }

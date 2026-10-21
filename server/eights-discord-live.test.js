@@ -50,6 +50,11 @@ test("authenticated bot receives immediate completion/cancellation events across
   publishEightsLobbyUpdate("match1", "cancelled");
   await waitFor(() => updates.length === 2 && playerUpdates.length === 1);
   assert.equal(playerUpdates[0].reason, "cancelled");
+  stop.publishVoice("match2");
+  stop.publishVoice("match1");
+  await waitFor(() => playerUpdates.length === 2);
+  assert.deepEqual(playerUpdates[1], { type: "eights-voice-updated", wager_id: "match1" });
+  assert.deepEqual(updates, ["match2", "match1"], "presence signals must not loop back into the bot updater");
   for (const socket of wss.clients) socket.terminate();
   await waitFor(() => readyCount === 2);
   publishEightsLobbyUpdate("match3", "cancelled");
@@ -86,6 +91,24 @@ test("direct voice updates bypass a blocked match, coalesce duplicates, and retr
   await waitFor(() => calls.filter(id => id === "busy").length === 2);
   updater.stop(); updater.request("after-stop");
   assert.ok(!calls.includes("after-stop"));
+});
+
+test("gateway voice changes target the affected lobby, including a player leaving voice", async (t) => {
+  const calls = [];
+  const updater = createFreeEightsVoiceUpdater(async id => { calls.push(id); });
+  t.after(updater.stop);
+  updater.track("a", { channels: { waiting: "wait-a" }, member_discord_ids: ["player-a"] });
+  updater.track("b", { channels: { waiting: "wait-b" }, member_discord_ids: ["player-b"] });
+  updater.requestVoiceChange({ channelId: "unrelated" }, { channelId: "other", id: "outsider" });
+  updater.requestVoiceChange({ channelId: null }, { channelId: "wait-a", id: "player-a" });
+  await waitFor(() => calls.length === 1);
+  assert.deepEqual(calls, ["a"]);
+  updater.requestVoiceChange({ channelId: "wait-b" }, { channelId: null, id: "player-b" });
+  await waitFor(() => calls.length === 2);
+  assert.deepEqual(calls, ["a", "b"]);
+  updater.track("a", { cleaned: true });
+  updater.requestVoiceChange({ channelId: "wait-a" }, { channelId: null, id: "player-a" });
+  assert.deepEqual(calls, ["a", "b"], "cleaned rooms do not schedule more Discord work");
 });
 
 test("completion and cancellation endpoints signal the bot as soon as terminal status commits, before secondary records finish", async (t) => {

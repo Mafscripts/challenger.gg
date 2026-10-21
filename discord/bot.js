@@ -65,6 +65,18 @@ async function runMemberVerificationSync(guild) {
   }
 }
 let freeEightsVoiceSyncRunning = false;
+let freeEightsVoiceUpdates = null;
+let freeEightsLiveUpdates = null;
+const freeEightsObservations = new Map();
+function observeFreeEightsState(id, state) {
+  freeEightsVoiceUpdates?.track(id, state);
+  const signature = JSON.stringify([state.roster_signature, state.channels?.waiting, state.players, state.error, state.cleaned]);
+  const previous = freeEightsObservations.get(id);
+  const checkedAt = Date.parse(state.checked_at) || 0;
+  if (previous?.signature !== signature || checkedAt - (previous?.checkedAt || 0) >= 20_000) freeEightsLiveUpdates?.publishVoice(id);
+  if (state.cleaned) freeEightsObservations.delete(id);
+  else freeEightsObservations.set(id, { signature, checkedAt });
+}
 let challengeVoiceRunning = false;
 let partyVoiceRunning = false;
 async function runPartyVoiceSync(guild) {
@@ -96,7 +108,7 @@ async function runFreeEightsResultsSync(guild) {
     freeEightsResultsSyncRunning = false;
   }
 }
-async function runFreeEightsVoiceSync(guild, { refreshInventory = true } = {}) {
+async function runFreeEightsVoiceSync(guild, { refreshInventory = false } = {}) {
   if (freeEightsVoiceSyncRunning) {
     freeEightsVoiceSyncQueued = true;
     freeEightsVoiceInventoryRefreshQueued ||= refreshInventory;
@@ -104,7 +116,7 @@ async function runFreeEightsVoiceSync(guild, { refreshInventory = true } = {}) {
   }
   freeEightsVoiceSyncRunning = true;
   try {
-    await syncFreeEightsVoice(guild, { refreshInventory });
+    await syncFreeEightsVoice(guild, { refreshInventory, onState: observeFreeEightsState });
   } catch (error) {
     console.error("[Topfragg Free 8s Discord] sync-failed:", error.message);
   } finally {
@@ -565,16 +577,17 @@ client.once(Events.ClientReady, async (readyClient) => {
   }
   void runMemberVerificationSync(guild);
   setInterval(() => runMemberVerificationSync(guild), 60_000);
-  const voiceUpdates = createFreeEightsVoiceUpdater((id) => syncFreeEightsVoice(guild, { matchIds: [id], refreshInventory: false }));
-  void runFreeEightsVoiceSync(guild);
+  freeEightsVoiceUpdates = createFreeEightsVoiceUpdater((id) => syncFreeEightsVoice(guild, { matchIds: [id], refreshInventory: false, onState: observeFreeEightsState }), { retryMs: 500 });
+  void runFreeEightsVoiceSync(guild, { refreshInventory: true });
   void runChallengeVoiceSync(guild);
   void runPartyVoiceSync(guild);
   setInterval(() => runPartyVoiceSync(guild), 5000);
   setInterval(() => runChallengeVoiceSync(guild), 5000);
   setInterval(() => runFreeEightsVoiceSync(guild), 5000);
+  setInterval(() => runFreeEightsVoiceSync(guild, { refreshInventory: true }), 60_000);
   try {
-    startFreeEightsLiveUpdates({ guildId: config.guildId, publicUrl: config.publicUrl,
-      onUpdate: voiceUpdates.request, onReady: () => { void runFreeEightsVoiceSync(guild); } });
+    freeEightsLiveUpdates = startFreeEightsLiveUpdates({ guildId: config.guildId, publicUrl: config.publicUrl,
+      onUpdate: freeEightsVoiceUpdates.request, onReady: () => { void runFreeEightsVoiceSync(guild); } });
   } catch (error) {
     console.error("[Topfragg Free 8s Discord] Live connection unavailable; polling remains active:", error.message);
   }
@@ -600,7 +613,7 @@ client.on(Events.GuildMemberAdd, (member) => {
 client.on(Events.GuildMemberRemove, syncMemberCountFromEvent);
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   if (newState.guild.id === config.guildId && oldState.channelId !== newState.channelId) {
-    void runFreeEightsVoiceSync(newState.guild, { refreshInventory: false });
+    freeEightsVoiceUpdates?.requestVoiceChange(oldState, newState);
     void runChallengeVoiceSync(newState.guild);
     void runPartyVoiceSync(newState.guild);
   }

@@ -72,6 +72,16 @@ export const attachEightsLiveServer = (server) => {
         const client = { socket, discord: true };
         clients.add(client);
         send(socket, { type: "eights-discord-ready" });
+        socket.on("message", (raw) => {
+          try {
+            const event = JSON.parse(String(raw));
+            if (event.type !== "eights-voice-updated" || typeof event.wager_id !== "string" || !/^[a-z0-9_-]{1,128}$/i.test(event.wager_id)) return;
+            // Do not echo to bots: an observation must not start another sweep.
+            clients.forEach((watcher) => {
+              if (!watcher.discord && watcher.wagerId === event.wager_id) send(watcher.socket, { type: "eights-voice-updated", wager_id: event.wager_id });
+            });
+          } catch { /* Ignore malformed bot signals; polling remains available. */ }
+        });
         socket.on("close", () => clients.delete(client));
         socket.on("error", () => clients.delete(client));
         return;

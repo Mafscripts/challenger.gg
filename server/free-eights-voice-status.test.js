@@ -5,12 +5,25 @@ import discordRoutes from "./routes/discord.js";
 import { prisma } from "./prisma.js";
 import { signUser } from "./auth.js";
 import { freeEightsWaitingRoomReady, publicFreeEightsVoiceStatus, voiceRosterSignature } from "./free-eights-discord.js";
-import { freeEightsVoiceDisplaySignature, freeEightsVoiceView, recordFreeEightsVoiceResponse } from "../src/lib/freeEightsVoiceStatus.js";
+import { freeEightsVoiceDisplaySignature, freeEightsVoiceRenderSignature, freeEightsVoiceView, recordFreeEightsVoiceResponse } from "../src/lib/freeEightsVoiceStatus.js";
 
 const players = [{ user_id: "a", team: "host" }, { user_id: "b", team: "challenger" }];
 const data = () => ({ enabled: true, configured: true, fresh: true, snapshot_age_ms: 1000,
   checked_at: "2000-01-01T00:00:00Z", players: players.map((player) => ({ ...player, status: "in_waiting_room" })) });
 const receive = (previous, extras = {}) => recordFreeEightsVoiceResponse(previous, { matchId: "match1", userId: "a", now: 100_000, data: data(), ...extras });
+
+test("unchanged badges still refresh when a stale observation becomes current", () => {
+  const good = receive(null);
+  const stale = receive(good, { data: { ...data(), fresh: false, snapshot_age_ms: 30_000 }, now: 130_000 });
+  assert.equal(freeEightsVoiceDisplaySignature(stale, players, 130_000), freeEightsVoiceDisplaySignature(good, players, 100_000));
+  assert.notEqual(freeEightsVoiceRenderSignature(stale, players, 130_000), freeEightsVoiceRenderSignature(good, players, 100_000));
+  assert.ok(freeEightsVoiceView(stale, players, 130_000).playerStates.every(player => !player.fresh && !player.ready));
+  const recovered = receive(stale, { now: 131_000 });
+  assert.equal(freeEightsVoiceRenderSignature(recovered, players, 131_000), freeEightsVoiceRenderSignature(good, players, 100_000));
+  assert.ok(freeEightsVoiceView(recovered, players, 131_000).playerStates.every(player => player.fresh && player.ready));
+  const repeated = receive(recovered, { now: 132_000, data: { ...data(), checked_at: "new timestamp" } });
+  assert.equal(freeEightsVoiceRenderSignature(repeated, players, 132_000), freeEightsVoiceRenderSignature(recovered, players, 131_000));
+});
 
 test("one failed request retains the recent exact-roster status without an orange outage", () => {
   const good = receive(null);

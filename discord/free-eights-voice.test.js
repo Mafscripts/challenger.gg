@@ -319,7 +319,7 @@ test("intermediate creation/reshuffle saves cannot publish empty or partially up
       if (!publicStatus.fresh) continue;
       freshWrites++;
       assert.equal(Object.keys(state.players).length, 8);
-      assert.ok(publicStatus.players.every((player) => player.status === "in_team_voice"));
+      assert.ok(publicStatus.players.every((player) => ["in_waiting_room", "in_team_voice", "not_in_waiting_room"].includes(player.status)));
     }
     assert.ok(freshWrites > 0);
   };
@@ -330,6 +330,42 @@ test("intermediate creation/reshuffle saves cannot publish empty or partially up
   f.match.metadata.teams_generated_at = "2026-10-07T00:02:00Z";
   await f.sync();
   checkWrites();
+  assert.ok(Object.values(f.state().players).every(player => player.status === "in_team_voice"), "the final observation follows the completed assignment");
+});
+
+test("a slow cosmetic rename does not delay a waiting-room leave observation", async () => {
+  const f = fixture();
+  f.match.metadata.teams_generated_at = "";
+  await f.sync();
+  const waiting = f.channels.get(f.state().channels.waiting);
+  waiting.name = "Legacy name";
+  f.voices.get(f.users[0].discord_user_id).channelId = null;
+  let releaseRename, startedRename;
+  const gate = new Promise(resolve => { releaseRename = resolve; });
+  const started = new Promise(resolve => { startedRename = resolve; });
+  waiting.setName = async name => { startedRename(); await gate; waiting.name = name; };
+  const sync = f.sync({}, { refreshInventory: false });
+  await started;
+  try {
+    assert.equal(f.state().players[f.users[0].id].status, "not_in_waiting_room");
+    assert.equal(freeEightsWaitingRoomReady(config, f.match.metadata, f.participants, f.state()), false);
+    assert.ok(f.users.slice(1).every(user => f.state().players[user.id].status === "in_waiting_room"));
+  } finally { releaseRename(); await sync; }
+});
+
+test("the saved observation sees a player leaving while another player's move finishes", async () => {
+  const f = fixture();
+  await f.sync();
+  for (const user of f.users) f.voices.get(user.discord_user_id).channelId = f.state().channels.waiting;
+  const last = f.voices.get(f.users.at(-1).discord_user_id);
+  const move = last.setChannel;
+  last.setChannel = async function (id) {
+    await move.call(this, id);
+    f.voices.get(f.users[0].discord_user_id).channelId = null;
+  };
+  await f.sync({}, { refreshInventory: false });
+  assert.equal(f.state().players[f.users[0].id].status, "not_in_waiting_room");
+  assert.ok(f.users.slice(1).every(user => f.state().players[user.id].status === "in_team_voice"));
 });
 
 test("a disconnected gateway cannot refresh cached presence or release map generation", async () => {

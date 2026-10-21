@@ -172,7 +172,7 @@ export async function cleanupFreeEightsVoice(guild, state, { db = prisma, guard 
   return false;
 }
 
-async function reconcileMatch(guild, db, matchId, config, guard, log, inventory) {
+async function reconcileMatch(guild, db, matchId, config, guard, log, inventory, onState) {
   const key = freeEightsVoiceKey(matchId);
   const previous = await db.discordEventDispatch.findUnique({ where: { event_key: key } });
   const state = structuredClone(previous?.metadata || { match_id: matchId });
@@ -204,6 +204,8 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       data: { metadata: state },
     });
     if (!saved.count) throw new Error("Voice state claimed by a newer worker; refusing stale state write");
+    try { onState?.(matchId, state); }
+    catch (error) { log("presence-signal-failed", { match_id: matchId, error: error.message }); }
   };
   const row = await db.wager.findUnique({ where: { id: matchId } });
   const match = row?.metadata;
@@ -230,8 +232,13 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
     }
   }
   // Validate every ID before any moves, edits or cleanup for the match.
+  const observedChannels = {};
   for (const side of knownSides) {
-    if (state.channels[side]) await channelOwner(db, guild, state, side, state.channels[side]);
+    if (state.channels[side]) {
+      const owner = await channelOwner(db, guild, state, side, state.channels[side]);
+      const channel = inventory?.get(state.channels[side]);
+      if (channel?.type === ChannelType.GuildVoice && channel.parentId === owner.category_id && !owner.deleted_at) observedChannels[side] = channel.id;
+    }
   }
   const changedConfig = state.guild_id && (state.guild_id !== config.guildId
     || (state.return_room_id !== undefined && state.return_room_id !== config.waitingRoomId)
@@ -267,6 +274,34 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
     log("configuration-error", { match_id: matchId });
   }
   const readyChannels = {};
+  const moveFailures = new Map();
+  const observePresence = async (channels) => {
+    const observed = {};
+    // Sample every player together, after any awaited Discord work. Never stamp
+    // an early player's old channel as fresh after later REST calls complete.
+    for (const player of participants) {
+      const identity = identities.get(player.user_id);
+      let status = "not_linked";
+      if (hasDiscordLink(identity)) {
+        const source = guild.voiceStates.cache.get(identity.discord_user_id)?.channelId;
+        const target = assign ? channels[player.team] : null;
+        status = !config.enabled || !configured || !channels.waiting ? "unavailable"
+          : target && source === target ? "in_team_voice"
+            : source === channels.waiting ? "in_waiting_room" : "not_in_waiting_room";
+        const failure = moveFailures.get(player.user_id);
+        if (failure && source === failure.source && source !== failure.target) status = "move_failed";
+      }
+      observed[player.user_id] = { status };
+      if (state.players[player.user_id]?.status !== status) log("waiting-room-presence", { match_id: matchId, user_id: player.user_id, status });
+    }
+    state.players = observed;
+    state.roster_signature = signature;
+    state.checked_at = new Date().toISOString();
+    await save();
+  };
+  // Existing room presence is independent of slow channel edits/renames.
+  // Only owned channels checked against the current gateway inventory qualify.
+  if (observedChannels.waiting && !cleanupAll) await observePresence(observedChannels);
   if (config.enabled && configured) {
     const prepareSides = assign ? currentSides : ["waiting"];
     let reservations = guildCategoryReservations.get(guild);
@@ -430,17 +465,12 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
       log("departed-player-cleanup-failed", { match_id: matchId, discord_user_id: id, error: error.message });
     }
   }
-  const observedPlayers = {};
   for (const player of participants) {
     const identity = identities.get(player.user_id);
-    let status = "not_linked";
     if (hasDiscordLink(identity)) {
-      status = config.enabled && configured && readyChannels.waiting ? "not_in_waiting_room" : "unavailable";
       const voice = guild.voiceStates.cache.get(identity.discord_user_id);
       const source = voice?.channelId;
       const target = assign && teamSides.every((side) => readyChannels[side]) ? readyChannels[player.team] : null;
-      if (target && source === target) status = "in_team_voice";
-      else if (source && source === readyChannels.waiting) status = "in_waiting_room";
       const managedSide = knownSides.find((side) => state.channels[side] === source && source);
       if (target && source && source !== target && managedSide) {
         await guard();
@@ -458,27 +488,21 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory)
         try {
           if (voice.channelId !== source) throw new Error("Voice presence changed during assignment");
           await voice.setChannel(target, `Free 8s ${matchId} generated team assignment`);
-          status = "in_team_voice";
           log("move-success", { match_id: matchId, user_id: player.user_id, side: player.team });
         } catch (error) {
-          status = "move_failed";
+          moveFailures.set(player.user_id, { source, target });
           log("move-failed", { match_id: matchId, user_id: player.user_id, code: error.code, error: error.message });
         }
       }
     }
-    observedPlayers[player.user_id] = { status };
-    if (previous?.metadata?.players?.[player.user_id]?.status !== status) log("waiting-room-presence", { match_id: matchId, user_id: player.user_id, status });
   }
-  // Publish one complete observation, never an empty/partial roster stamped
-  // as fresh while REST channel creation or player moves are still running.
-  state.players = observedPlayers;
-  state.roster_signature = signature;
-  state.checked_at = new Date().toISOString();
-  await save();
+  // Publish a complete post-move observation from the gateway, without
+  // treating an optimistic REST response as confirmed channel presence.
+  await observePresence(readyChannels);
 }
 
-export async function syncFreeEightsVoice(guild, { db = prisma, config = freeEightsDiscordConfig(), log = freeEightsVoiceLog, refreshInventory = true, matchIds = null } = {}) {
-  if (guild.client.isReady?.() === false) { log("gateway-not-ready", { guild_id: guild.id }); return; }
+export async function syncFreeEightsVoice(guild, { db = prisma, config = freeEightsDiscordConfig(), log = freeEightsVoiceLog, refreshInventory = true, matchIds = null, onState } = {}) {
+  if (guild.client.isReady?.() === false || guild.available === false) { log("gateway-not-ready", { guild_id: guild.id }); return; }
   const managed = matchIds ? [] : await db.discordEventDispatch.findMany({ where: { event_key: { startsWith: "free8s-voice:" } } });
   const matches = !matchIds && config.enabled ? await db.wager.findMany({ where: { AND: [
     { metadata: { path: ["match_type"], equals: "8s" } },
@@ -506,10 +530,10 @@ export async function syncFreeEightsVoice(guild, { db = prisma, config = freeEig
           const [lock] = await tx.$queryRaw`SELECT pg_try_advisory_xact_lock(hashtext(${freeEightsVoiceKey(id)})) AS locked`;
           if (!lock.locked) { deferredMatchIds.push(id); return; }
           const guard = () => {
-            if (guild.client.isReady?.() === false) throw new Error("Discord gateway disconnected; cached voice presence is not current");
+            if (guild.client.isReady?.() === false || guild.available === false) throw new Error("Discord gateway disconnected; cached voice presence is not current");
             return tx.$queryRaw`SELECT 1`;
           };
-          const result = await reconcileMatch(guild, db, id, config, guard, log, inventory);
+          const result = await reconcileMatch(guild, db, id, config, guard, log, inventory, onState);
           if (result?.retry) deferredMatchIds.push(id);
         }, { timeout: 60_000, maxWait: 5_000 });
       } catch (error) {

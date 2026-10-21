@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { freeEightsVoiceDisplaySignature, freeEightsVoiceView, recordFreeEightsVoiceResponse } from "@/lib/freeEightsVoiceStatus";
+import { freeEightsVoiceRenderSignature, freeEightsVoiceView, recordFreeEightsVoiceResponse } from "@/lib/freeEightsVoiceStatus";
 
 export function useFreeEightsVoice({ matchId, players, user, rosterVersion = "", enabled = true }) {
   const [voiceResult, setVoiceResult] = useState(null);
@@ -10,36 +10,47 @@ export function useFreeEightsVoice({ matchId, players, user, rosterVersion = "",
     if (!enabled || !matchId || !user?.id) return;
     let cancelled = false;
     let inFlight = false;
+    let queued = false;
+    let displayedSignature = null;
     if (latestResult.current?.matchId !== matchId || latestResult.current?.userId !== user.id) {
       latestResult.current = recordFreeEightsVoiceResponse(null, { matchId, userId: user.id, data: null });
     }
     const recordResponse = (response) => {
       const next = recordFreeEightsVoiceResponse(latestResult.current, { matchId, userId: user.id, ...response });
       latestResult.current = next;
-      // Poll timestamps, stale snapshots and retries stay in the background.
-      // Publish only a changed room link or a changed observed player status.
-      setVoiceResult((previous) => freeEightsVoiceDisplaySignature(previous, players) === freeEightsVoiceDisplaySignature(next, players) ? previous : next);
+      const signature = freeEightsVoiceRenderSignature(next, players);
+      if (signature !== displayedSignature) {
+        displayedSignature = signature;
+        setVoiceResult(next);
+      }
     };
-    const refresh = async () => {
-      if (cancelled || inFlight) return;
+    const refresh = async (priority = false) => {
+      if (cancelled) return;
+      if (inFlight) { queued ||= priority; return; }
       inFlight = true;
       try {
         const data = await base44.discord.freeEightsVoice(matchId);
         if (!cancelled) recordResponse({ data });
       } catch {
         if (!cancelled) recordResponse({ failed: true });
-      } finally { inFlight = false; }
+      } finally {
+        inFlight = false;
+        if (queued && !cancelled) { queued = false; void refresh(); }
+      }
     };
     refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, 1000);
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
-    window.addEventListener("focus", refresh);
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(true); };
+    const onVoiceUpdate = (event) => { if (String(event.detail?.matchId) === String(matchId)) void refresh(true); };
+    window.addEventListener("focus", onVisible);
+    window.addEventListener("topfragg:free-eights-voice-updated", onVoiceUpdate);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true; window.clearInterval(timer);
-      window.removeEventListener("focus", refresh);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener("topfragg:free-eights-voice-updated", onVoiceUpdate);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [enabled, matchId, user?.id, rosterKey, rosterVersion]);

@@ -240,7 +240,7 @@ router.get("/free-eights/:wagerId", requireAuth, async (req, res, next) => {
     if (!participants.some((participant) => participant.user_id === req.user.id) && !hasRole(req.user, "moderator")) {
       return res.status(403).json({ error: "Only lobby players or staff can view voice readiness" });
     }
-    res.json(publicFreeEightsVoiceStatus(freeEightsDiscordConfig(), { ...row.metadata, id: row.id }, participants, dispatch?.metadata));
+    res.set("Cache-Control", "no-store").json(publicFreeEightsVoiceStatus(freeEightsDiscordConfig(), { ...row.metadata, id: row.id }, participants, dispatch?.metadata));
   } catch (error) {
     next(error);
   }

@@ -31,13 +31,21 @@ export function startFreeEightsLiveUpdates({ guildId, publicUrl, onUpdate, onRea
     });
   };
   connect();
-  return () => { stopped = true; clearTimeout(reconnect); clearInterval(heartbeat); socket?.terminate(); };
+  const stop = () => { stopped = true; clearTimeout(reconnect); clearInterval(heartbeat); socket?.terminate(); };
+  // Only signals a new saved snapshot; player data stays behind the scoped API.
+  stop.publishVoice = (id) => {
+    if (!stopped && socket?.readyState === WebSocket.OPEN && /^[a-z0-9_-]{1,128}$/i.test(id)) {
+      socket.send(JSON.stringify({ type: "eights-voice-updated", wager_id: id }));
+    }
+  };
+  return stop;
 }
 
 // Targeted updates bypass the full-lobby sweep. Duplicate updates coalesce
 // per match; a held advisory lock retries without blocking other matches.
 export function createFreeEightsVoiceUpdater(sync, { retryMs = 1000, onError = console.error } = {}) {
   const pending = new Map();
+  const tracked = new Map();
   let stopped = false;
   const request = (id) => {
     if (stopped) return;
@@ -61,5 +69,17 @@ export function createFreeEightsVoiceUpdater(sync, { retryMs = 1000, onError = c
       finally { state.running = false; if (!state.timer) pending.delete(id); }
     })();
   };
-  return { request, stop: () => { stopped = true; for (const state of pending.values()) clearTimeout(state.timer); pending.clear(); } };
+  return { request,
+    track: (id, state) => {
+      if (state.cleaned) { tracked.delete(id); return; }
+      tracked.set(id, { channels: new Set(Object.values(state.channels || {}).filter(Boolean)), members: new Set(state.member_discord_ids || []) });
+    },
+    requestVoiceChange: (oldState, newState) => {
+      const memberId = newState.id || newState.member?.id || oldState.id;
+      for (const [id, state] of tracked) {
+        if (state.channels.has(oldState.channelId) || state.channels.has(newState.channelId) || state.members.has(memberId)) request(id);
+      }
+    },
+    stop: () => { stopped = true; for (const state of pending.values()) clearTimeout(state.timer); pending.clear(); tracked.clear(); },
+  };
 }

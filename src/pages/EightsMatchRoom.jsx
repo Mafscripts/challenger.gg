@@ -360,6 +360,9 @@ function EightsMatchRoomView() {
         socket.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
+            if (["eights-voice-updated", "eights-lobby-ready"].includes(message.type) && String(message.wager_id) === String(id)) {
+              window.dispatchEvent(new CustomEvent("topfragg:free-eights-voice-updated", { detail: { matchId: id } }));
+            }
             if (message.type === "eights-lobby-updated" && String(message.wager_id) === String(id)) loadRoom(true);
           } catch {
             // Ignore malformed transient messages; the regular sync remains a fallback.

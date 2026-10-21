@@ -491,7 +491,7 @@ export const base44 = {
     },
     freeEightsVoice(wagerId) {
       requireToken();
-      return apiFetch(`/discord/free-eights${wagerId ? `/${encodeURIComponent(wagerId)}` : ""}`, { dedupe: false });
+      return apiFetch(`/discord/free-eights${wagerId ? `/${encodeURIComponent(wagerId)}` : ""}`, { dedupe: false, timeoutMs: 5000 });
     },
     status() {
       requireToken();
