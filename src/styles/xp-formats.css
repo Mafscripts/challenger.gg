@@ -29,3 +29,5 @@
 .xp-format-refresh:disabled { opacity: .5; cursor: default; }
 
 .xp-format-table .leaderboard-avatar { display: block; width: 36px; height: 36px; flex: 0 0 36px; overflow: hidden; border: 1px solid #b495ff30; border-radius: 9px; background: #091520; }
+
+.xp-team-select-menu .xp-format-option { min-height: 40px; }
