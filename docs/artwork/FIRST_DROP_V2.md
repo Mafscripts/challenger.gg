@@ -4,7 +4,7 @@ All 22 catalog items now have an individual image, not one shared image per bonu
 
 The XP family is a carbine, compact pulse-SMG and long precision sniper. The blade family is a dagger, karambit and katana. The Ranked family is a crystal crown, falcon crest and singularity crown. Treasury pieces are a vault medallion, fractured geode and octagonal sigil. Cash weapons are a sidearm, energy revolver and twin-barrel hand cannon. Fee emblems are a winged crest, cobra, dragon eye, wolf, eclipse and orbital halo. The tournament reward keeps its crystal star trophy.
 
-## Original SVG animation design (historical)
+## Animation design
 
 The illustration silhouette and the card remain stationary. Motion is restricted to thin traces inside the colored energy channels. The original illustration renders unmodified underneath. Broad shine sweeps, translucent color washes, filled facets, dark-armor overlays and radial glare have been removed from all 22 current images and the seven legacy images. Each item has its own palette, timing, source image and animation configuration.
 
@@ -44,11 +44,3 @@ Apply normal database migrations, deploy the assets and build/restart the applic
 ## Shine removal revision
 
 This composition-only revision keeps all catalog paths, owners and bonuses unchanged and needs no new database migration. The shared image renderer and standalone gallery request SVGs with `?v=crisp-3` to bypass previously cached animations. Static WebP posters remain unchanged. Only the asset-authoring scripts were run; no application build, tests, browser checks or database operations were performed.
-
-## Current material rendering
-
-All 22 current items now use different actual loops supplied by the user, converted to compact video textures and masked into their inlays. This replaces the earlier procedural Ion Rift pilot and the current items' SVG effects in the application. The original SVG files remain usable as standalone artwork and legacy images retain their existing effects. `/dark-matter-preview.html` compares any current item with its original; `/first-drop-v2-preview.html` uses the same video-material renderer as the application. See [the material notes](DARK_MATTER_PILOT.md) for resource limits, authoring, source credits and deployment. No new database migration is needed for this runtime composition change.
-
-## Quality and pacing revision
-
-All current materials now have lossless 1152px source/still artwork, native-resolution higher-fidelity video, complete material-region masks and per-item slower playback. The still used when paused also contains the new material. The previous partially transparent overlay has been replaced by a complete-frame material merge. See [the material notes](DARK_MATTER_PILOT.md) for authoring, media-size tradeoffs and verification limits.

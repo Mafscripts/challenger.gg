@@ -20,7 +20,7 @@
 .reward-admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 16px; }
 .reward-admin-cards article { padding: 15px; border: 1px solid #b495ff30; border-radius: 12px; background: #101c2a; }
 .reward-admin-cards article > div { display: grid; place-items: center; height: 160px; color: #bfa4ff; margin-bottom: 12px; }
-.reward-admin-cards :is(img, .reward-material-artwork) { width: 100%; height: 100%; object-fit: contain; }
+.reward-admin-cards img { width: 100%; height: 100%; object-fit: contain; }
 .reward-admin-cards p { margin-block: 8px; color: #c7adff; font-size: 12px; }
 .reward-admin-cards small, .reward-admin-row small { display: block; margin-block: 6px; font-size: 10px; color: #8fa6bd; overflow-wrap: anywhere; }
 .reward-admin-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 0; border-bottom: 1px solid #b495ff16; font-size: 12px; }
