@@ -3,6 +3,7 @@ import { prisma } from "./prisma.js";
 import { serializeRow } from "./entity.js";
 import { messagingBlocked } from "./community-safety.js";
 import { withPlayerAvatars } from "./lib/playerAvatars.js";
+import { isInventoryTrophy } from "./lib/trophyCounts.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const nameFor = (user) => user?.display_name || user?.username || user?.full_name || "Player";
@@ -160,7 +161,17 @@ export async function getTradeInventory(db, actorId, input) {
   const byId = new Map(catalog.map((row) => [row.id, row.metadata]));
   return { success: true, has_more: rows.length > 500, items: rows.slice(0, 500).map((row) => {
     const item = byId.get(row.metadata.item_id), restriction = tradeItemRestriction(row.metadata, item);
-    return { ...snapshot(row, item || {}), tradable: !restriction, restriction };
+    const text = `${row.metadata.item_category || ""} ${row.metadata.item_name || ""} ${row.metadata.unlock_key || ""}`.toLowerCase();
+    return { ...snapshot(row, item || {}), tradable: !restriction, restriction,
+      ...(ownerId === actorId ? { collection: {
+        description: item?.description || row.metadata.item_description || row.metadata.description || "",
+        equipped: row.metadata.is_equipped === true,
+        acquired_date: row.metadata.acquired_date || "",
+        premium_only: Boolean(item?.is_premium_only || item?.unlock_type === "premium"),
+        catalog_available: Boolean(item),
+        visible: !(isInventoryTrophy(row.metadata) && (text.includes("invit") || text.includes("champion"))),
+      } } : {}),
+    };
   }).filter((item) => ownerId === actorId || item.tradable) };
 }
 
