@@ -1,0 +1,24 @@
+/* XP controls have their own accent, including menus portalled to the body. */
+.xp-team-select-trigger.arena-field { display: flex; gap: 10px; height: 52px; min-width: 0; padding: 12px 14px; border: 1px solid #b495ff50; border-radius: 10px; background: #0c1522; color: #ede5ff; box-shadow: none; text-align: left; font-size: 13px; }
+.xp-team-select-trigger > svg { flex-shrink: 0; color: #bda1ff; }
+.xp-team-select-trigger > span:first-of-type { flex: 1; min-width: 0; text-overflow: ellipsis; overflow: hidden; }
+.xp-team-select-trigger > small { flex-shrink: 0; padding: 4px 7px; border: 1px solid #b495ff28; border-radius: 5px; background: #b495ff09; color: #bca8e7; font-size: 9px; }
+.xp-team-select-trigger.arena-field:is(:focus, :focus-visible, [data-state="open"]) { border-color: #b495ff; box-shadow: 0 0 0 2px #b495ff14; outline: none; --tw-ring-color: transparent; }
+.xp-team-select-trigger.arena-field[data-placeholder] { color: #b2a7c8; }
+.xp-team-select-trigger.arena-field[data-compact] { height: 40px; gap: 7px; padding: 8px 10px; font-size: 11px; }
+.xp-team-select-trigger[data-compact] > small { display: none; }
+.xp-team-select-menu.arena-select-menu { z-index: 160; max-height: min(320px, var(--radix-select-content-available-height)); min-width: var(--radix-select-trigger-width); max-width: calc(100vw - 32px); border: 1px solid #b495ff60; border-radius: 11px; background: #101b2a; color: #eee6ff; box-shadow: 0 14px 35px #0006; animation: none; backdrop-filter: none; }
+.xp-team-select-menu.arena-select-menu[data-state] { animation: none; }
+.xp-team-select-menu [role="listbox"] { padding: 5px; }
+.xp-team-select-option { min-height: 58px; padding: 10px 36px 10px 12px; border: 1px solid transparent; border-radius: 7px; cursor: pointer; }
+.xp-team-select-option strong { display: block; color: #e9e2f6; font-size: 12px; font-weight: 750; line-height: 1.5; overflow-wrap: anywhere; }
+.xp-team-select-option small { display: block; margin-top: 3px; color: #968caf; font-size: 10px; }
+.xp-team-select-menu.arena-select-menu .xp-team-select-option[data-highlighted] { border-color: #b495ff30; background: #b495ff15; color: #e3d4ff; outline: none; }
+.xp-team-select-menu.arena-select-menu .xp-team-select-option[data-state="checked"] { background: #b495ff0e; color: #cdb5ff; }
+.xp-team-select-option[data-highlighted] strong, .xp-team-select-option[data-state="checked"] strong { color: #d0baff; }
+.xp-match-primary { --site-hover-color: #d7c5ff; --site-hover-wash: linear-gradient(90deg, #ffffff05, #ffffff28); min-height: 42px; border: 1px solid #c0a6ff; border-radius: 9px; background: #b495ff; color: #160d2a; box-shadow: none; font-weight: 850; transition: background-color 180ms ease, border-color 180ms ease; }
+.xp-match-primary:not(:disabled):hover { border-color: #d8c7ff; background: #c2a8ff; box-shadow: none; }
+.xp-match-primary:focus-visible { outline: 2px solid #dfd1ff; outline-offset: 3px; }
+.xp-match-primary:disabled { border-color: #b495ff40; background: #b495ff12; color: #bda6e7; opacity: .5; cursor: not-allowed; }
+.create-lobby-dialog[data-mode="xp"] { border-color: #b495ff40; --site-hover-color: #b495ff; }
+@media (prefers-reduced-motion: reduce) { .xp-match-primary { transition: none; } }

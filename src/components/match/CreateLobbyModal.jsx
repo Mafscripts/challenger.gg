@@ -15,6 +15,7 @@ import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { WAGER_PLAY_RULES } from "@/lib/wagerRules";
 import usePlayTeams from "@/hooks/usePlayTeams";
 import MatchPresetPicker from "./MatchPresetPicker";
+import XPTeamSelect from "./XPTeamSelect";
 import { FreeEightsRankDialog, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
@@ -491,7 +492,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="glass flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 will-change-transform"
+          data-mode={mode}
+          className="create-lobby-dialog glass flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 will-change-transform"
         >
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
@@ -581,7 +583,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                       }
                     }}
                     disabled={!selectedGameMode}
-                    className="create-cta px-6 py-2.5 font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider flex items-center gap-2"
+                    className={`${mode === "xp" ? "site-hover xp-match-primary" : "create-cta"} px-6 py-2.5 font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors uppercase tracking-wider flex items-center gap-2`}
                   >
                     Next <ChevronRight className="w-4 h-4" />
                   </button>
@@ -636,6 +638,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     <label className="text-xs text-vapor mb-2 block uppercase tracking-wider">
                       {mode === "xp" ? "XP match team" : isRanked ? "Ranked match team (optional)" : "Select wager team"}
                     </label>
+                    {mode === "xp" ? <XPTeamSelect teams={compatibleTeams} value={selectedTeamId} onValueChange={setSelectedTeamId} loading={teamsQuery.isPending} /> : (
                     <select
                       value={selectedTeamId}
                       required={requiresTeam}
@@ -649,6 +652,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                         </option>
                       ))}
                     </select>
+                    )}
                     {teamsQuery.isPending && <p className="mt-2 text-xs text-vapor">Loading your teams…</p>}
                     {teamsQuery.isError && <button type="button" onClick={() => teamsQuery.refetch()} className="site-hover mt-2 rounded px-2 py-1 text-xs text-cyan">Could not load teams. Retry</button>}
                     {!teamsQuery.isPending && !teamsQuery.isError && compatibleTeams.length === 0 && (
@@ -681,7 +685,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   <button
                     onClick={() => setStep(3)}
                     disabled={!selectedTeamSize || !selectedTeamIsEligible}
-                    className="create-cta px-6 py-2.5 font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider flex items-center gap-2"
+                    className={`${mode === "xp" ? "site-hover xp-match-primary" : "create-cta"} px-6 py-2.5 font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors uppercase tracking-wider flex items-center gap-2`}
                   >
                     Next <ChevronRight className="w-4 h-4" />
                   </button>
@@ -730,7 +734,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   <button
                     onClick={() => mode === "xp" ? handleCreate() : setStep(4)}
                     disabled={mode === "xp" && isCreating}
-                    className="px-6 py-2.5 bg-cyan text-background font-bold text-xs rounded-lg hover:shadow-lg hover:shadow-cyan/25 transition-all uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+                    className={`${mode === "xp" ? "site-hover xp-match-primary" : "bg-cyan text-background hover:shadow-lg hover:shadow-cyan/25"} px-6 py-2.5 font-bold text-xs rounded-lg transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-50`}
                   >
                     {mode === "xp" ? (isCreating ? "Posting..." : "Post XP Match") : <>Next <ChevronRight className="w-4 h-4" /></>}
                   </button>

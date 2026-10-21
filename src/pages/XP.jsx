@@ -4,6 +4,7 @@ import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy } from "lucide-re
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import XPMatchPostAction from "@/components/match/XPMatchPostAction";
+import XPTeamSelect from "@/components/match/XPTeamSelect";
 import { xpMatchAwaitingAcceptance, xpMatchDestination } from "@/lib/xpMatchAccess";
 import useRematchSettings from "@/hooks/useRematchSettings";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
@@ -255,12 +256,9 @@ export default function XP() {
                       <XPMatchPostAction match={match} userId={user?.id} onChanged={loadRankedData} />
                     ) : user ? (
                       <div className="w-48 space-y-2">
-                        <select required aria-label="Select XP team" value={selectedTeamId} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
-                          <option value="" disabled>Select XP team</option>
-                          {compatibleTeams.map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player team)</option>)}
-                        </select>
+                        <XPTeamSelect compact teams={compatibleTeams} value={selectedTeamId} onValueChange={(value) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: value }))} />
                         {!compatibleTeams.length && <Link to={`/teams?create=xp&roster=${matchSize}`} className="site-hover block rounded px-2 py-1 text-[10px] font-bold text-cyan">Create XP team</Link>}
-                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots || !compatibleTeams.some((team) => team.id === selectedTeamId)} onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Accept match"}</button>
+                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots || !compatibleTeams.some((team) => team.id === selectedTeamId)} onClick={() => handleAcceptMatch(match)} className="site-hover xp-match-primary w-full px-4 py-2.5 text-[10px] font-black uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Accept match"}</button>
                       </div>
                     ) : null}
                   />
