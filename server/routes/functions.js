@@ -45,6 +45,7 @@ import { createFreeEightsLobby, joinFreeEightsLobby } from "../free-eights-membe
 import { freeEightsRankJoinError } from "../../src/lib/freeEightsRankRequirement.js";
 import { wagerCancellationNotification } from "../wager-cancellation-notifications.js";
 import { matchPostedNotification } from "../match-posted-notification.js";
+import { xpMatchAwaitingAcceptance } from "../../src/lib/xpMatchAccess.js";
 import { challengeHandlers } from "../challenges.js";
 import { getXPStandings, getXPMatchPlayerRanks, activeXPMatchFor, createXPMatchLobby, joinXPMatchLobby, cancelXPMatchLobby, submitXPMatchResult, requestXPMatchCancellation, respondXPMatchCancellation } from "../xp-matches.js";
 import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
@@ -6326,6 +6327,9 @@ async function sendMatchRoomMessage(req) {
 
   const match = await getEntity(matchEntityFor(matchType), matchId);
   if (!match) return { success: false, error: "Match not found" };
+  if (matchType === "xp" && xpMatchAwaitingAcceptance(match) && !hasRole(req.user, "moderator")) {
+    return { success: false, code: "XP_MATCH_AWAITING_ACCEPTANCE", error: "The XP match room opens after an opponent accepts the post." };
+  }
   if (match.status === "cancelled") return { success: false, error: "This match has been cancelled. Return to matchfinder to join another match.", code: "MATCH_CANCELLED" };
   if (matchType === "tournament") {
     const tournament = await getEntity("Tournament", match.tournament_id);
@@ -8205,11 +8209,17 @@ async function acceptXPMatch(req) {
   try { party = await xpPartyFor(req, rankedTeamSize(match)); }
   catch (error) { return { success: false, error: error.message || "Could not join with this XP party" }; }
   const result = await joinXPMatchLobby(prisma, id, party, (mode) => randomRankedMap(mode, []));
-  if (result.success && result.roster_full) {
-    await notifyUser(match.host_id, {
-      title: "XP match ready", message: "Both teams are full. Open your match room to play.", type: "match",
+  if (result.success && result.room_ready) {
+    const joinedMatch = result.match;
+    const notifyAll = result.opponent_accepted || result.roster_full;
+    const recipients = notifyAll ? [...(joinedMatch.team_alpha_player_ids || [joinedMatch.host_id]), ...(joinedMatch.team_bravo_player_ids || [joinedMatch.challenger_id])] : party.ids;
+    await notifyUsers(recipients, {
+      title: result.roster_full ? "XP match accepted" : "XP opponent accepted",
+      message: result.roster_full ? "The opposing team accepted. Your match room is ready — open it to play."
+        : "An opposing team accepted the post. The match room is open while the remaining team slots fill.",
+      type: "match", event: "xp_match_accepted",
       action_url: `/xp-match/${id}`, related_entity_id: id, related_entity_type: "XPMatch",
-    }).catch(() => null);
+    });
   }
   return result;
 }

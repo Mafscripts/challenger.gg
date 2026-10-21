@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import XPMatchPostAction from "@/components/match/XPMatchPostAction";
+import { xpMatchAwaitingAcceptance, xpMatchDestination } from "@/lib/xpMatchAccess";
 import useRematchSettings from "@/hooks/useRematchSettings";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
@@ -218,7 +220,7 @@ export default function XP() {
     setIsCreateModalOpen(false);
     loadRankedData();
     if (result?.xp_match_id) {
-      toast({ title: "XP lobby created", description: "Your match is available. Players can now join either team." });
+      toast({ title: "XP match posted", description: "We will notify you when an opponent accepts. Until then, you can cancel your post here." });
       navigate("/xp#matchfinder");
     }
   };
@@ -250,24 +252,7 @@ export default function XP() {
                     postedAt={match.created_date}
                     tone="cyan"
                     action={belongsToUser ? (
-                      match.status === "open" && match.host_id === user?.id ? (
-                        <div className="w-48 space-y-2 text-right">
-                          <Link to={`/xp-match/${match.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan hover:bg-cyan/15">Open lobby <ArrowRight className="h-3.5 w-3.5" /></Link>
-                          <button onClick={async () => {
-                            try {
-                              const response = await base44.functions.invoke(match.challenger_id ? "requestXPCancellation" : "cancelXPMatch", { xp_match_id: match.id });
-                              if (!response.data?.success) throw new Error(response.data?.error || "Could not cancel XP match.");
-                              toast({ title: match.challenger_id ? "Cancellation requested" : "XP match cancelled", description: match.challenger_id ? "The opposing captain must agree. Until then, the match must be played." : "Your open post has been removed." });
-                              loadRankedData();
-                              if (match.challenger_id) navigate(`/xp-match/${match.id}`);
-                            } catch (error) {
-                              toast({ title: "Cancel failed", description: error.message || "Could not cancel XP match.", variant: "destructive" });
-                            }
-                          }} disabled={["pending", "declined"].includes(match.xp_cancel_request?.status)} className="px-2 py-1 text-[10px] font-bold text-red-300/80 transition-colors hover:text-red-300 disabled:opacity-40">{match.xp_cancel_request?.status === "declined" ? "Cancellation declined" : match.xp_cancel_request?.status === "pending" ? "Request pending" : match.challenger_id ? "Request cancellation" : "Cancel post"}</button>
-                        </div>
-                      ) : (
-                        <Link to={`/xp-match/${match.id}`} className="inline-flex min-w-44 items-center justify-center rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open match room</Link>
-                      )
+                      <XPMatchPostAction match={match} userId={user?.id} onChanged={loadRankedData} />
                     ) : user ? (
                       <div className="w-48 space-y-2">
                         <select required aria-label="Select XP team" value={selectedTeamId} onChange={(event) => setSelectedPartyByMatch((current) => ({ ...current, [match.id]: event.target.value }))} className="w-full rounded-md border border-white/[0.07] bg-secondary px-2.5 py-2 text-xs text-foreground focus:border-cyan/30 focus:outline-none">
@@ -275,7 +260,7 @@ export default function XP() {
                           {compatibleTeams.map((team) => <option key={team.id} value={team.id}>{team.name} ({team.members.length}-player team)</option>)}
                         </select>
                         {!compatibleTeams.length && <Link to={`/teams?create=xp&roster=${matchSize}`} className="site-hover block rounded px-2 py-1 text-[10px] font-bold text-cyan">Create XP team</Link>}
-                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots || !compatibleTeams.some((team) => team.id === selectedTeamId)} onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Join match"}</button>
+                        <button disabled={Boolean(activeRankedMatch) || Boolean(joiningMatchId) || joined >= slots || !compatibleTeams.some((team) => team.id === selectedTeamId)} onClick={() => handleAcceptMatch(match)} className="w-full rounded-lg bg-cyan px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-background disabled:cursor-not-allowed disabled:opacity-40">{joiningMatchId === match.id ? "Joining..." : activeRankedMatch ? "Finish active match first" : "Accept match"}</button>
                       </div>
                     ) : null}
                   />
@@ -290,8 +275,10 @@ export default function XP() {
                 <span className="text-[10px] text-vapor">Required</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              {activeRankedMatch ? (
-                <Link to={`/xp-match/${activeRankedMatch.id}`} className="competition-action-pill">
+              {activeRankedMatch ? xpMatchAwaitingAcceptance(activeRankedMatch) ? (
+                <span className="competition-action-pill text-vapor">Waiting for opponent acceptance</span>
+              ) : (
+                <Link to={xpMatchDestination(activeRankedMatch)} className="competition-action-pill">
                   Return to Active Match <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
@@ -307,17 +294,17 @@ export default function XP() {
         />
         <ActivisionIdNotice user={user} className="mb-6" />
 
-        {activeRankedMatch && activeRankedMatch.status !== "open" && (
+        {activeRankedMatch && !xpMatchAwaitingAcceptance(activeRankedMatch) && (
           <div className="mb-6 flex flex-col gap-4 rounded-xl border border-cyan/25 bg-cyan/[0.055] p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan/20 bg-cyan/10 text-cyan"><Swords className="h-5 w-5" /></div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan">Your Active XP Match</p>
                 <p className="mt-1 font-black">{activeRankedMatch.team_size} {activeRankedMatch.game_mode_display || modeLabels[activeRankedMatch.game_mode] || activeRankedMatch.game_mode}</p>
-                <p className="mt-1 text-xs text-vapor">{activeRankedMatch.status === "open" ? "Waiting for an opponent" : `${activeRankedMatch.host_name} vs ${activeRankedMatch.challenger_name || "Opponent"}`}</p>
+                <p className="mt-1 text-xs text-vapor">{activeRankedMatch.status === "open" ? "Opponent accepted · Filling remaining team slots" : `${activeRankedMatch.host_name} vs ${activeRankedMatch.challenger_name || "Opponent"}`}</p>
               </div>
             </div>
-            <Link to={`/xp-match/${activeRankedMatch.id}`} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background">
+            <Link to={xpMatchDestination(activeRankedMatch)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan px-5 py-3 text-xs font-black uppercase tracking-wider text-background">
               Open Match Room <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

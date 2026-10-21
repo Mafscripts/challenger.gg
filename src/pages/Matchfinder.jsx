@@ -15,6 +15,8 @@ import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRan
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { freeEightsTeamSize } from "@/lib/freeEightsFormat";
 import XPMatchAcceptDialog from "@/components/match/XPMatchAcceptDialog";
+import XPMatchPostAction from "@/components/match/XPMatchPostAction";
+import { xpMatchDestination } from "@/lib/xpMatchAccess";
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", dot: "bg-cyan" },
@@ -190,7 +192,7 @@ export default function Matchfinder() {
   );
 
   const roomPath = (category, item) => {
-    if (category === "xp") return `/xp-match/${item.id}`;
+    if (category === "xp") return xpMatchDestination(item);
     if (category === "elo") return `/ranked-match/${item.id}`;
     if (["eights", "money8s"].includes(category)) return `/8s-match/${item.id}`;
     if (category === "wagers") return `/wagers-match/${item.id}`;
@@ -382,6 +384,9 @@ export default function Matchfinder() {
     }
     if (activeCategory === "wagers" && String(item.host_id) === String(user?.id)) {
       return <div className="flex min-w-44 flex-col items-end gap-2"><span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-orange"><Clock3 className="h-3.5 w-3.5" /> Awaiting opponent</span><button type="button" onClick={() => cancelOpenWager(item)} disabled={cancellingWagerId === item.id} className="rounded-lg border border-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-vapor transition hover:border-red-400/35 hover:text-red-300 disabled:opacity-50">{cancellingWagerId === item.id ? "Cancelling…" : "Cancel wager"}</button></div>;
+    }
+    if (activeCategory === "xp" && ownsMatch(item)) {
+      return <XPMatchPostAction match={item} userId={user?.id} onChanged={loadMatches} />;
     }
     if (ownsMatch(item)) {
       return <button type="button" onClick={() => navigate(roomPath(activeCategory, item))} className="min-w-44 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-cyan">Open Match Room</button>;

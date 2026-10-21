@@ -4,6 +4,7 @@ import { Activity, ArrowRight, ChevronRight, History, Swords, Trophy } from "luc
 import "@/styles/navbar-menus.css";
 import NavbarPlayerSearch from "./NavbarPlayerSearch";
 import NavigationHoverFill from "./NavigationHoverFill";
+import { xpMatchDestination } from "@/lib/xpMatchAccess";
 
 const menuColors = {
   cyan: "hsl(var(--cyan))", green: "hsl(var(--green))", orange: "hsl(var(--orange))",
@@ -59,7 +60,7 @@ export function NavbarMatches({ matches, userId, historyPath, isActive, onSelect
             : isHost ? match.challenger_name || "Opponent pending" : match.host_name || "Host unavailable";
           const path = match.entity_type === "challenge" ? `/challenge-a-team/${match.id}` : isTournament ? `/tournament-match/${match.id}`
             : match.entity_type === "ranked" ? `/ranked-match/${match.id}`
-              : match.entity_type === "xp" ? `/xp-match/${match.id}`
+              : match.entity_type === "xp" ? xpMatchDestination(match)
                 : (match.match_type === "8s" || match.match_type === "money8s") ? `/8s-match/${match.id}` : `/wagers-match/${match.id}`;
           const type = isTournament ? "tournament" : match.entity_type === "ranked" ? "ranked" : match.entity_type === "xp" ? "xp" : match.match_type;
           const kind = matchKinds[type] || { label: "Cash match", tone: "green", icon: Swords };

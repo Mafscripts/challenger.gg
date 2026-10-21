@@ -5,6 +5,7 @@ import { isExpiredOpenMatch } from "./matchfinder-expiry.js";
 import { completeXPMatchRoster, normalizeMatchXP, xpMatchOutcome, xpMatchRoster, xpMatchStrength, xpMatchTeamSize } from "../src/lib/xpMatchRating.js";
 import { buildXPMatchRecords, emptyXPMatchRecord } from "./xp-match-records.js";
 import { activeProgressionSeason } from "./progression-resets.js";
+import { XP_TEAM_OPPONENT_COOLDOWN_MS, xpMatchAwaitingAcceptance, xpMatchTeamIds, xpTeamOpponentRetryAt } from "../src/lib/xpMatchAccess.js";
 
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 const error = (message) => ({ success: false, error: message });
@@ -151,6 +152,26 @@ export async function joinXPMatchLobby(db, matchId, party, pickMap) {
     const side = ["alpha", "bravo"].filter((key) => xpMatchRoster(match, key).length + party.size <= size)
       .sort((a, b) => xpMatchRoster(match, a).length - xpMatchRoster(match, b).length)[0];
     if (!side) return error("This party no longer fits the available team slots");
+    const opposingTeams = xpMatchTeamIds(match, side === "alpha" ? "bravo" : "alpha");
+    if (party.team?.id && opposingTeams.length) {
+      const now = Date.now();
+      const teamId = party.team.id;
+      // One indexed recent-history read for this team, never one query per player.
+      // The enrollment lock also serializes simultaneous accepts across posts.
+      const recent = await tx.xPMatch.findMany({ where: { AND: [
+        field("status", "completed"), { updated_date: { gte: new Date(now - XP_TEAM_OPPONENT_COOLDOWN_MS) } },
+        { OR: [field("host_party_team_id", teamId), field("challenger_party_team_id", teamId),
+          field("host_team_id", teamId), field("challenger_team_id", teamId),
+          { metadata: { path: ["team_alpha_party_teams"], array_contains: [{ team_id: teamId }] } },
+          { metadata: { path: ["team_bravo_party_teams"], array_contains: [{ team_id: teamId }] } }] },
+      ] }, select: { id: true, metadata: true, created_date: true, updated_date: true } });
+      const retryAt = xpTeamOpponentRetryAt(recent.map(serializeRow), teamId, opposingTeams, now);
+      if (retryAt) {
+        const minutes = Math.ceil((retryAt - now) / 60000);
+        return { ...error(`This XP team recently played one of the opposing teams. The same teams can meet once per 12 hours. Try again in ${Math.floor(minutes / 60)}h ${minutes % 60}m, or select another team.`),
+          code: "XP_TEAM_OPPONENT_COOLDOWN", retry_at: new Date(retryAt).toISOString(), retry_after_seconds: Math.ceil((retryAt - now) / 1000) };
+      }
+    }
     const currentNames = match[`team_${side}_player_names`] || (side === "alpha" ? [match.host_name] : []);
     const updated = { ...match,
       [`team_${side}_player_ids`]: [...xpMatchRoster(match, side), ...party.ids],
@@ -169,7 +190,8 @@ export async function joinXPMatchLobby(db, matchId, party, pickMap) {
     };
     delete metadata.id; delete metadata.updated_date;
     const saved = serializeRow(await tx.xPMatch.update({ where: { id: matchId }, data: { metadata } }));
-    return { success: true, xp_match_id: matchId, match: saved, roster_full: full };
+    return { success: true, xp_match_id: matchId, match: saved, roster_full: full,
+      opponent_accepted: !match.challenger_id && Boolean(updated.challenger_id), room_ready: !xpMatchAwaitingAcceptance(saved) };
   }, { timeout: 15000, maxWait: 15000 });
 }
 

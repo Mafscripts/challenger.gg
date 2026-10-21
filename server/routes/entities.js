@@ -5,6 +5,7 @@ import { hasRole } from "../roles.js";
 import { publicStaffPresentation } from "../../src/lib/roles.js";
 import { prisma } from "../prisma.js";
 import { withPlayerAvatars } from "../lib/playerAvatars.js";
+import { xpMatchAwaitingAcceptance } from "../../src/lib/xpMatchAccess.js";
 
 const protectedMutationEntities = new Set([
   "BlockedUser",
@@ -420,6 +421,9 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "Moderator access required" });
     }
     const row = await getEntity(req.params.entity, req.params.id);
+    if (req.params.entity === "XPMatch" && xpMatchAwaitingAcceptance(row) && !hasRole(req.user, "moderator")) {
+      return res.status(409).json({ error: "The XP match room opens after an opponent accepts your post.", code: "XP_MATCH_AWAITING_ACCEPTANCE" });
+    }
     if (ownTransactionReadEntities.has(req.params.entity) && !hasRole(req.user, "admin") && String(row.user_id || "") !== String(req.user.id)) {
       return res.status(403).json({ error: "You cannot view this transaction" });
     }

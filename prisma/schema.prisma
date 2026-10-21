@@ -312,6 +312,8 @@ model XPMatch {
   created_date DateTime @default(now())
   updated_date DateTime @updatedAt
   metadata     Json     @default("{}")
+
+  @@index([updated_date])
 }
 
 model RankedReward {

@@ -1,4 +1,5 @@
 import { profileMatchOutcome, profileMatchSideFor } from "@/lib/profileMatchResults";
+import { xpMatchDestination } from "./xpMatchAccess.js";
 
 const cleanKey = (value) => String(value || "").trim().toLowerCase();
 export const matchRouteFor = (match) => {
@@ -7,7 +8,7 @@ export const matchRouteFor = (match) => {
   if (match?.tournament_id || type === "tournament" || type === "tournament_match" || type === "streamer_tournament") {
     return `/tournament-match/${match.id}`;
   }
-  if (type === "xp" || type === "xp_match" || type === "xpmatch") return `/xp-match/${match.id}`;
+  if (type === "xp" || type === "xp_match" || type === "xpmatch") return xpMatchDestination(match);
   if (type === "ranked" || type === "elo") return `/ranked-match/${match.id}`;
   if (type === "8s" || type === "eights" || type === "free8s" || type === "free-8s" || type === "free_8s" || type === "money8s" || type === "money-8s" || type === "money_8s") {
     return `/8s-match/${match.id}`;

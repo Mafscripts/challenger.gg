@@ -1,4 +1,5 @@
 import { xpMatchRoster } from "./xpMatchRating.js";
+import { xpMatchDestination } from "./xpMatchAccess.js";
 
 export function xpTeamMatchesFor(matches, teamId) {
   return matches.flatMap((match) => {
@@ -27,7 +28,7 @@ export function xpTeamMatchesFor(matches, teamId) {
       opponentScore: match[`confirmed_score_${other}`] ?? match[`reported_score_${other}`],
       date: match.match_started_date || match.created_date,
       completed_date: match.match_completed_date || match.completed_date,
-      href: `/xp-match/${match.id}`,
+      href: xpMatchDestination(match),
     }];
   });
 }

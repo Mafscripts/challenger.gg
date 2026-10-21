@@ -7,10 +7,10 @@ import { signUser } from "./auth.js";
 import { matchPostedNotification } from "./match-posted-notification.js";
 import { notifyMatchPostedResponse } from "../src/lib/notificationInbox.js";
 
-test("posted match notifications link to the correct room for each competition", () => {
+test("posted match notifications link to matchfinder for unaccepted XP posts and rooms for other competitions", () => {
   for (const [entity, match_type, path, title] of [
     ["RankedMatch", "ranked", "/ranked-match/match", "Ranked match posted"],
-    ["XPMatch", "xp", "/xp-match/match", "XP match posted"],
+    ["XPMatch", "xp", "/xp#matchfinder", "XP match posted"],
     ["Wager", "wagers", "/wagers-match/match", "Cash match posted"],
     ["Wager", "8s", "/8s-match/match", "Free 8s lobby posted"],
     ["Wager", "money8s", "/8s-match/match", "Money 8s lobby posted"],
@@ -63,16 +63,16 @@ test("real match posting creates one unread notification for the authenticated p
   }
 });
 
-test("successful posting refreshes the bell immediately, while rejected posts and unrelated actions do not", (t) => {
+test("successful posting and XP acceptance refresh the bell immediately; rejected and unrelated actions do not", (t) => {
   const previous = globalThis.window;
   globalThis.window = new EventTarget();
   t.after(() => { if (previous === undefined) delete globalThis.window; else globalThis.window = previous; });
   const events = [];
   window.addEventListener("topfragg:notifications-updated", (event) => events.push(event.detail));
-  for (const name of ["createWager", "createRankedMatch", "createXPMatch"]) notifyMatchPostedResponse({ success: true }, name);
-  assert.deepEqual(events, Array.from({ length: 3 }, () => ({ refresh: true })));
+  for (const name of ["createWager", "createRankedMatch", "createXPMatch", "acceptXPMatch"]) notifyMatchPostedResponse({ success: true }, name);
+  assert.deepEqual(events, Array.from({ length: 4 }, () => ({ refresh: true })));
   notifyMatchPostedResponse({ success: false }, "createWager");
   notifyMatchPostedResponse({ success: true }, "getDirectMessages");
   notifyMatchPostedResponse({}, "createXPMatch");
-  assert.equal(events.length, 3);
+  assert.equal(events.length, 4);
 });

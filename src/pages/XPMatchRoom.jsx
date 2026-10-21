@@ -36,6 +36,8 @@ import PageLoader from "@/components/ui/PageLoader";
 import { getRankForElo, getRankProgress } from "@/lib/ranks";
 import { trophyCountsFor, trophyFields } from "@/lib/trophyCounts";
 import { xpMatchOutcome } from "@/lib/xpMatchRating";
+import { xpMatchAwaitingAcceptance } from "@/lib/xpMatchAccess";
+import { isStaffUser } from "@/lib/roles";
 
 const playerName = (user, fallback = "Unnamed player") => (
   user?.display_name || user?.full_name || user?.username || user?.email || fallback
@@ -337,6 +339,10 @@ function XPMatchRoomView() {
         }
         if (active) setMatch(refreshedMatch);
       } catch (error) {
+        if (active && error.data?.code === "XP_MATCH_AWAITING_ACCEPTANCE") {
+          navigate("/xp#matchfinder", { replace: true });
+          return;
+        }
         console.error("Failed to refresh ranked match:", error);
       } finally {
         refreshing = false;
@@ -505,6 +511,10 @@ function XPMatchRoomView() {
         base44.entities.XPMatch.getFresh(id),
       ]);
       let matchData = loadedMatch;
+      if (xpMatchAwaitingAcceptance(matchData) && !isStaffUser(currentUser)) {
+        navigate("/xp#matchfinder", { replace: true });
+        return;
+      }
       if (matchData.status === "cancelled") {
         setMatch(matchData);
         return;
@@ -524,6 +534,11 @@ function XPMatchRoomView() {
       setAlphaPlayers(rosters.alpha);
       setBravoPlayers(rosters.bravo);
     } catch (error) {
+      if (error.data?.code === "XP_MATCH_AWAITING_ACCEPTANCE") {
+        toast({ title: "Waiting for an opponent", description: "The XP match room opens after your post is accepted." });
+        navigate("/xp#matchfinder", { replace: true });
+        return;
+      }
       console.error("Failed to load ranked match:", error);
       toast({ title: "Error loading match", description: error.message || "Match not found", variant: "destructive" });
     } finally {

@@ -9,6 +9,6 @@ export function applyNotificationChange(rows, detail = {}) {
 
 export function notifyMatchPostedResponse(result, functionName) {
   if (typeof window === "undefined" || result?.success !== true
-    || !["createWager", "createRankedMatch", "createXPMatch"].includes(functionName)) return;
+    || !["createWager", "createRankedMatch", "createXPMatch", "acceptXPMatch"].includes(functionName)) return;
   window.dispatchEvent(new CustomEvent("topfragg:notifications-updated", { detail: { refresh: true } }));
 }
