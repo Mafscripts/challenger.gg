@@ -12,7 +12,7 @@
 .trading-page .competition-hero-footer { min-height: 70px; }
 .trading-page .competition-action-pill { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding-inline: 16px; border: 1px solid #b495ff40; }
 .trading-page .competition-action-pill:disabled { opacity: .45; cursor: default; }
-.trading-sections { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-block: 20px; }
+.trading-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-block: 20px; }
 .trading-sections > button { --section-rgb: 20 216 255; --site-hover-color: rgb(var(--section-rgb)); display: flex; align-items: center; gap: 13px; min-width: 0; padding: 18px; text-align: left; border: 1px solid rgb(var(--section-rgb) / .25); border-radius: 12px; color: #deedf8; background: linear-gradient(115deg, rgb(var(--section-rgb) / .07), #101c28 85%); }
 .trading-sections > button[data-section="outgoing"] { --section-rgb: 180 149 255; }
 .trading-sections > button[data-section="history"] { --section-rgb: 52 239 159; }
@@ -119,4 +119,51 @@
   .trading-picker-grid { max-height: 260px; }
   .trading-empty { padding: 32px 18px; }
   .trading-review-partner span { width: 100%; margin: 0; }
+}
+
+/* Public item bidding uses the same static surfaces and sweep interactions. */
+.trading-sections > button[data-section="bidding"] { --section-rgb: 255 207 94; }
+.trading-status[data-status="open"] { color: #81efc0; border-color: #34ef9f45; background: #34ef9f08; }
+.trading-bidding-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.trading-bidding-toolbar > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.trading-bidding-toolbar [aria-pressed="true"] { color: #f8dd9b; border-color: #ffcf5e60; background: #ffcf5e0b; --site-hover-color: #ffcf5e; }
+.trading-listing-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 20px; }
+.trading-listing-card { display: flex; flex-direction: column; border-color: #ffcf5e30; }
+.trading-listing-card > header { align-items: flex-start; }
+.trading-listing-card > header > div { flex: 1; min-width: 0; }
+.trading-listing-card h2 { margin-top: 7px; color: #ecf5fc; font-size: 21px; font-weight: 850; line-height: 1.4; overflow-wrap: anywhere; }
+.trading-listing-card .trading-item-panel { margin-top: auto; }
+.trading-listing-card > footer small { display: flex; align-items: center; gap: 6px; }
+.trading-listing-description { margin-bottom: 16px; color: #a8bfd0; font-size: 12px; line-height: 1.8; white-space: pre-line; overflow-wrap: anywhere; }
+.trading-listing-preview { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.trading-listing-field { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: #d8e9f6; font-size: 12px; font-weight: 750; }
+.trading-listing-field > span { color: #91a7bb; font-size: 10px; font-weight: 500; }
+.trading-listing-field :is(input, textarea) { flex: 1 1 100%; width: 100%; padding: 12px; border: 1px solid #b495ff35; border-radius: 8px; background: #091520; color: #dfeaf6; font-size: 12px; line-height: 1.7; font-weight: 500; }
+.trading-listing-field textarea { resize: vertical; min-height: 90px; }
+.trading-listing-field :is(input, textarea):focus-visible { outline: 2px solid #b495ff; outline-offset: 1px; }
+.trading-listing-review h3 { color: #f0f6fc; font-size: 18px; font-weight: 850; overflow-wrap: anywhere; }
+.trading-listing-review > p { margin-top: 10px; color: #9fb7ca; white-space: pre-line; overflow-wrap: anywhere; font-size: 12px; line-height: 1.8; }
+.trading-listing-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-block: 8px 16px; border-bottom: 1px solid #b495ff20; font-size: 11px; }
+.trading-listing-meta > a { color: #cfbaff; }
+.trading-listing-meta > span:last-child { display: inline-flex; align-items: center; gap: 6px; color: #8fa9bc; }
+.trading-listing-meta .trading-status { margin-left: auto; }
+.trading-listing-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.trading-listing-tools > button:last-child { margin-left: auto; }
+.trading-bids-heading { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-top: 20px; margin-top: 4px; border-top: 1px solid #b495ff20; }
+.trading-bids-heading h3 { display: inline-flex; align-items: center; gap: 7px; color: #f4d58e; font-size: 15px; font-weight: 850; }
+.trading-bids-heading > span { color: #90aabc; font-size: 11px; }
+.trading-bids { display: grid; gap: 12px; }
+.trading-public-bid { padding: 16px; border: 1px solid #b495ff30; border-radius: 11px; background: #0c1824; }
+.trading-public-bid[data-own] { border-color: #14d8ff60; }
+.trading-public-bid > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.trading-public-bid > header a { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #e1edf7; font-size: 13px; font-weight: 800; }
+.trading-public-bid > header a > span { color: #77e8ff; font-size: 10px; }
+.trading-public-bid > header small { color: #8ca6b9; font-size: 10px; }
+.trading-public-bid > footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.trading-bid-source { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-block: -4px 16px; color: #eace8c; font-size: 11px; }
+@media (max-width: 1000px) { .trading-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .trading-listing-grid { grid-template-columns: minmax(0, 1fr); }
+  .trading-listing-tools > button:last-child { margin-left: 0; }
+  .trading-public-bid { padding: 12px; }
 }

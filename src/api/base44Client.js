@@ -16,6 +16,8 @@ const ME_CACHE_MS = 60_000;
 const readOnlyFunctions = new Set([
   "getTradingOverview",
   "getTradeInventory",
+  "getTradeListings",
+  "getTradeListing",
   "getChallengeStandings",
   "getAdminDashboard",
   "getAdminWallets",

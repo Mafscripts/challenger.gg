@@ -48,6 +48,7 @@ import { matchPostedNotification } from "../match-posted-notification.js";
 import { xpMatchAwaitingAcceptance } from "../../src/lib/xpMatchAccess.js";
 import { challengeHandlers } from "../challenges.js";
 import { tradingHandlers, previouslyTradedItemIds } from "../item-trading.js";
+import { tradeListingHandlers } from "../trade-listings.js";
 import { getXPStandings, getXPMatchPlayerRanks, activeXPMatchFor, createXPMatchLobby, joinXPMatchLobby, cancelXPMatchLobby, submitXPMatchResult, requestXPMatchCancellation, respondXPMatchCancellation } from "../xp-matches.js";
 import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
@@ -10600,6 +10601,7 @@ const handlers = {
   getAdminDashboard: (req) => getAdminDashboard(prisma, req.user),
   ...challengeHandlers,
   ...tradingHandlers,
+  ...tradeListingHandlers,
   getAdminWallets: (req) => getAdminWallets(prisma, req.user, req.body),
   getAdminWalletSummary: (req) => getAdminWalletSummary(prisma, req.user),
   getAdminAuditLogs: (req) => getAdminAuditLogs(prisma, req.user, req.body),

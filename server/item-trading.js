@@ -44,14 +44,14 @@ async function notice(tx, userId, offer, title, message, tab) {
     action_url: `/trading?tab=${tab}&offer=${encodeURIComponent(offer.id)}`, related_entity_id: offer.id, related_entity_type: "TradeOffer", created_date: new Date().toISOString() } } });
 }
 
-async function loadUsers(tx, ids) {
+export async function loadUsers(tx, ids) {
   const users = await tx.user.findMany({ where: { id: { in: ids } } });
   if (users.length !== ids.length || users.some((user) => !active(user))) fail("Both players need verified, active accounts", 403);
-  if (await messagingBlocked(tx, ids[0], ids[1])) fail("Trading is not available between these accounts", 403);
+  if (ids.length > 1 && await messagingBlocked(tx, ids[0], ids[1])) fail("Trading is not available between these accounts", 403);
   return new Map(users.map((user) => [user.id, user]));
 }
 
-async function checkedItems(tx, ids, ownerId, receiver) {
+export async function checkedItems(tx, ids, ownerId, receiver) {
   const rows = await tx.userInventory.findMany({ where: { id: { in: ids } } });
   if (rows.length !== ids.length || rows.some((row) => row.metadata.user_id !== ownerId)) fail("An item changed owner or is no longer available. Create a new offer.", 409);
   const catalogIds = [...new Set(rows.map((row) => row.metadata.item_id).filter(Boolean))];
@@ -61,7 +61,7 @@ async function checkedItems(tx, ids, ownerId, receiver) {
     const item = byId.get(row.metadata.item_id);
     const reason = tradeItemRestriction(row.metadata, item);
     if (reason) fail(`${row.metadata.item_name || "Item"}: ${reason}`, 409);
-    if ((item.is_premium_only || item.unlock_type === "premium") && !premium(receiver)) fail(`${nameFor(receiver)} needs Premium to receive ${item.name || "this item"}`, 409);
+    if (receiver && (item.is_premium_only || item.unlock_type === "premium") && !premium(receiver)) fail(`${nameFor(receiver)} needs Premium to receive ${item.name || "this item"}`, 409);
   }
   return rows.map((row) => ({ row, item: snapshot(row, byId.get(row.metadata.item_id)) }));
 }
@@ -98,6 +98,7 @@ export async function respondItemTrade(db, actorId, input) {
     const initial = await tx.tradeOffer.findUnique({ where: { id } });
     if (!initial) fail("Trade offer not found", 404);
     const first = initial.metadata;
+    if (first.kind === "listing") fail("Use the listing controls to close this listing", 400);
     if (action === "cancel" ? first.sender_id !== actorId : first.recipient_id !== actorId) fail("This trade action belongs to the other player", 403);
     for (const userId of [...new Set([first.sender_id, first.recipient_id])].sort()) await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
     await tx.$executeRaw`SELECT id FROM "TradeOffer" WHERE id = ${id} FOR UPDATE`;
@@ -112,6 +113,12 @@ export async function respondItemTrade(db, actorId, input) {
       return { success: true, offer: saved };
     }
     if (offer.version !== 1) fail("Create a new item trade to replace this older offer.", 409);
+    if (offer.kind === "bid") {
+      const listing = await tx.tradeOffer.findUnique({ where: { id: offer.listing_id } });
+      if (!listing || listing.metadata.kind !== "listing" || listing.metadata.seller_id !== actorId || listing.metadata.status !== "open" || !(Date.parse(listing.metadata.expires_date) > Date.now())) fail("This listing is no longer accepting bids", 409);
+      const listed = listing.metadata.items || [];
+      if (listed.length !== offer.recipient_items?.length || listed.some((item) => !offer.recipient_items.some((entry) => entry.inventory_id === item.inventory_id && entry.item_id === item.item_id))) fail("The listed items changed. Place a new bid.", 409);
+    }
     if (Number(offer.sender_credits_offered || 0) !== 0 || Number(offer.recipient_credits_offered || 0) !== 0) fail("This older offer includes credits. Cancel it and create an item trade instead.", 409);
     const senderIds = itemIds(offer.sender_items?.map((item) => item.inventory_id)), recipientIds = itemIds(offer.recipient_items?.map((item) => item.inventory_id));
     if (senderIds.some((inventoryId) => recipientIds.includes(inventoryId))) fail("This offer contains overlapping items", 409);
@@ -141,12 +148,27 @@ export async function respondItemTrade(db, actorId, input) {
     const saved = await save({ status: "accepted", transfers });
     const inventoryIds = JSON.stringify([...senderIds, ...recipientIds]);
     // Other offers referring to a moved copy cannot silently follow its new owner.
-    await tx.$executeRaw`UPDATE "TradeOffer" SET metadata = metadata || jsonb_build_object('status', 'expired', 'expiry_reason', 'An offered item changed owner', 'response_date', ${new Date().toISOString()}::text), updated_date = NOW()
+    const expiredOffers = await tx.$queryRaw`UPDATE "TradeOffer" SET metadata = metadata || jsonb_build_object('status', 'expired', 'expiry_reason', 'An offered item changed owner', 'response_date', ${new Date().toISOString()}::text), updated_date = NOW()
       WHERE id <> ${id} AND metadata->>'status' = 'pending'
         AND (metadata->>'sender_id' IN (${offer.sender_id}, ${offer.recipient_id}) OR metadata->>'recipient_id' IN (${offer.sender_id}, ${offer.recipient_id})) AND EXISTS (
         SELECT 1 FROM jsonb_array_elements((CASE WHEN jsonb_typeof(metadata->'sender_items') = 'array' THEN metadata->'sender_items' ELSE '[]'::jsonb END)
           || (CASE WHEN jsonb_typeof(metadata->'recipient_items') = 'array' THEN metadata->'recipient_items' ELSE '[]'::jsonb END)) AS entry
-        WHERE ${inventoryIds}::jsonb ? (entry->>'inventory_id'))`;
+        WHERE ${inventoryIds}::jsonb ? (entry->>'inventory_id')) RETURNING id, metadata`;
+    // Listings share the trade lock: a direct trade or winning bid closes every listing
+    // containing a moved copy in the same transaction as the inventory exchange.
+    const closedListings = await tx.$queryRaw`UPDATE "TradeOffer" SET metadata = metadata || jsonb_build_object(
+        'status', CASE WHEN id = ${offer.listing_id || ""} THEN 'accepted' ELSE 'expired' END,
+        'accepted_offer_id', CASE WHEN id = ${offer.listing_id || ""} THEN ${id} ELSE '' END,
+        'response_date', ${new Date().toISOString()}::text), updated_date = NOW()
+      WHERE metadata->>'kind' = 'listing' AND metadata->>'status' = 'open' AND EXISTS (
+        SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(metadata->'items') = 'array' THEN metadata->'items' ELSE '[]'::jsonb END) AS entry
+        WHERE ${inventoryIds}::jsonb ? (entry->>'inventory_id')) RETURNING id`;
+    const closedIds = new Set(closedListings.map((listing) => listing.id));
+    const losingBids = expiredOffers.filter((bid) => bid.metadata.kind === "bid" && closedIds.has(bid.metadata.listing_id));
+    if (losingBids.length) await tx.notification.createMany({ data: losingBids.map((bid) => ({ metadata: {
+      user_id: bid.metadata.sender_id, title: "Bidding closed", message: "The listing has closed. Your offered items remain in your inventory.", type: "trade", event: "item_trade_updated", is_read: false,
+      action_url: `/trading?tab=history&offer=${encodeURIComponent(bid.id)}`, related_entity_id: bid.id, related_entity_type: "TradeOffer", created_date: new Date().toISOString(),
+    } })) });
     for (const userId of [offer.sender_id, offer.recipient_id]) await notice(tx, userId, saved, "Item trade completed", "Both sides have exchanged items. Your new items are now in your inventory.", "history");
     return { success: true, offer: saved };
   }, { timeout: 20000, maxWait: 15000 });
