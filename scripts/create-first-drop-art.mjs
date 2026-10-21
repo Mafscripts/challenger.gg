@@ -32,19 +32,13 @@ for (const asset of assets) {
   <feComposite in="glow" in2="SourceGraphic" operator="in"/>
  </filter>
  <mask id="inside" maskUnits="userSpaceOnUse" x="0" y="0" width="768" height="768" style="mask-type:alpha"><use href="#art" filter="url(#channels)"/></mask>
- <linearGradient id="stream" gradientUnits="userSpaceOnUse" x1="-220" y1="0" x2="220" y2="0">
-  <stop offset="0" stop-color="${asset.color}" stop-opacity="0"/><stop offset=".35" stop-color="${asset.color}" stop-opacity="0"/><stop offset=".48" stop-color="${asset.color}" stop-opacity=".45"/><stop offset=".5" stop-color="#ffffff" stop-opacity=".95"/><stop offset=".55" stop-color="${asset.color}" stop-opacity=".35"/><stop offset=".7" stop-color="${asset.color}" stop-opacity="0"/><stop offset="1" stop-color="${asset.color}" stop-opacity="0"/>
-  <animateTransform attributeName="gradientTransform" type="translate" from="-260 0" to="1050 0" dur="${asset.speed}s" repeatCount="indefinite"/>
- </linearGradient>
  <pattern id="filaments" width="240" height="240" patternUnits="userSpaceOnUse" patternTransform="rotate(-28)">
-  <path d="M0 8 H240 M0 113 H240" stroke="${asset.color}" stroke-width="2" opacity=".65"/><path d="M0 14 H240" stroke="#ffffff" stroke-width="1" opacity=".8"/>
+  <path d="M0 8 H240 M0 113 H240" stroke="${asset.color}" stroke-width="2" stroke-dasharray="18 42 5 70" opacity=".65"/><path d="M0 14 H240" stroke="${asset.color}" stroke-width="1" stroke-dasharray="5 85" opacity=".6"/>
   <animateTransform attributeName="patternTransform" type="translate" from="0 -240" to="0 0" dur="${asset.speed * 1.5}s" repeatCount="indefinite" additive="sum"/>
  </pattern>
 </defs>
 <use href="#art"/>
 <g class="energy-motion" mask="url(#inside)">
- <rect width="768" height="768" fill="${asset.color}" opacity=".08"><animate attributeName="opacity" values=".04;.19;.04" dur="${asset.speed * 1.7}s" repeatCount="indefinite"/></rect>
- <rect width="768" height="768" fill="url(#stream)"/>
  <rect width="768" height="768" fill="url(#filaments)" opacity=".5"/>
 </g>
 </svg>`;

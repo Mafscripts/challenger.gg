@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState, useSyncExternalStore } from "react"
 // The animation is inside the SVG image: only its luminous material moves.
 // Shared observers avoid one page/visibility listener per inventory card.
 const firstDrop = /^\/assets\/rewards\/(?:first-drop\/(ion-rift|frost-crown|venom-edge|emerald-vault|crimson-ghost|sovereign-aegis|prism-champion)|first-drop-v2\/first-drop-[a-z0-9-]+)\.svg$/;
+// Refresh revised SVG compositions without changing catalog or owned item URLs.
+const animationRevision = "crisp-3";
 let observer;
 const observers = new Map(), listeners = new Set();
 let media;
@@ -47,5 +49,5 @@ export default function RewardArtwork({ src, alt = "", animate = true, priority 
   useEffect(() => { setVisible(false); if (enabled && ref.current) return observe(ref.current, setVisible, priority); }, [src, enabled, priority]);
   const poster = ownsAnimation ? src.replace(/\.svg$/, ".webp") : src;
   const playing = enabled && visible && motion;
-  return <img ref={ref} src={playing ? src : poster} alt={alt} loading="lazy" decoding="async" onPointerEnter={(event) => { prioritize(ref.current, true); onPointerEnter?.(event); }} onPointerLeave={(event) => { prioritize(ref.current, false); onPointerLeave?.(event); }} onError={(event) => { if (playing) setBrokenAnimation(true); else onError?.(event); }} {...props} />;
+  return <img ref={ref} src={playing ? `${src}?v=${animationRevision}` : poster} alt={alt} loading="lazy" decoding="async" onPointerEnter={(event) => { prioritize(ref.current, true); onPointerEnter?.(event); }} onPointerLeave={(event) => { prioritize(ref.current, false); onPointerLeave?.(event); }} onError={(event) => { if (playing) setBrokenAnimation(true); else onError?.(event); }} {...props} />;
 }

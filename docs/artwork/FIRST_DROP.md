@@ -18,7 +18,7 @@ The strongest owned bonus per type applies; duplicate items do not stack. Bonuse
 
 ## Actual image animation
 
-The image itself is an animated, self-contained SVG. Its generated WebP artwork is embedded in the file. A static color mask isolates the item's colored energy channels; light streams, narrow moving filaments and a slow core pulse stay inside those channels. The weapon, badge outline and card do not rotate, scale or move. There is no JavaScript inside an SVG, no external resource fetch from the SVG, and no full-page particle effect.
+The image itself is an animated, self-contained SVG. Its generated WebP artwork is embedded in the file. A static color mask isolates the item's colored energy channels; only narrow dashed moving filaments stay inside those channels. The later shine-removal revision removes the full-width light sweep and translucent color pulse while preserving the embedded illustration. The weapon, badge outline and card do not rotate, scale or move. There is no JavaScript inside an SVG, no external resource fetch from the SVG, and no full-page particle effect.
 
 The shared RewardArtwork renderer uses static WebP posters while images are outside the viewport, the tab is hidden, or reduced motion is requested. Rolling reveal cards use posters; the winning item animates. Shared observers avoid one browser visibility listener per card. Both image variants retain transparency and show the complete object. Optimized posters are approximately 57–158 KB; animated assets are approximately 79–212 KB each.
 
