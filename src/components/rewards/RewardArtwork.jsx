@@ -1,6 +1,7 @@
+import DarkMatterArtwork, { darkMatterSource } from "./DarkMatterArtwork";
 import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-// The animation is inside the SVG image: only its luminous material moves.
+// Shared motion budget for SVG images and the WebGL dark-matter pilot.
 // Shared observers avoid one page/visibility listener per inventory card.
 const firstDrop = /^\/assets\/rewards\/(?:first-drop\/(ion-rift|frost-crown|venom-edge|emerald-vault|crimson-ghost|sovereign-aegis|prism-champion)|first-drop-v2\/first-drop-[a-z0-9-]+)\.svg$/;
 // Refresh revised SVG compositions without changing catalog or owned item URLs.
@@ -49,5 +50,9 @@ export default function RewardArtwork({ src, alt = "", animate = true, priority 
   useEffect(() => { setVisible(false); if (enabled && ref.current) return observe(ref.current, setVisible, priority); }, [src, enabled, priority]);
   const poster = ownsAnimation ? src.replace(/\.svg$/, ".webp") : src;
   const playing = enabled && visible && motion;
+  if (src === darkMatterSource) return <DarkMatterArtwork ref={ref} src={poster} playing={playing} priority={priority} alt={alt}
+    onPointerEnter={(event) => { prioritize(ref.current, true); onPointerEnter?.(event); }}
+    onPointerLeave={(event) => { prioritize(ref.current, false); onPointerLeave?.(event); }}
+    onError={onError} {...props} />;
   return <img ref={ref} src={playing ? `${src}?v=${animationRevision}` : poster} alt={alt} loading="lazy" decoding="async" onPointerEnter={(event) => { prioritize(ref.current, true); onPointerEnter?.(event); }} onPointerLeave={(event) => { prioritize(ref.current, false); onPointerLeave?.(event); }} onError={(event) => { if (playing) setBrokenAnimation(true); else onError?.(event); }} {...props} />;
 }

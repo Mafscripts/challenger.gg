@@ -44,3 +44,7 @@ Apply normal database migrations, deploy the assets and build/restart the applic
 ## Shine removal revision
 
 This composition-only revision keeps all catalog paths, owners and bonuses unchanged and needs no new database migration. The shared image renderer and standalone gallery request SVGs with `?v=crisp-3` to bypass previously cached animations. Static WebP posters remain unchanged. Only the asset-authoring scripts were run; no application build, tests, browser checks or database operations were performed.
+
+## WebGL material pilot
+
+Ion Rift / Overload now uses a masked WebGL dark-matter material in the application, replacing its SVG line effect. The standalone gallery links to `/dark-matter-preview.html` for the same renderer and an original/live comparison. See [the pilot notes](DARK_MATTER_PILOT.md) for resource limits, integration and deployment. Other items retain their current SVG effects.

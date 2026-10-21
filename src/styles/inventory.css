@@ -51,7 +51,7 @@
 .inventory-item-open { position: relative; display: flex; flex: 1; flex-direction: column; width: 100%; min-width: 0; text-align: left; }
 .inventory-item-open::after { position: absolute; inset: auto 0 0; height: 2px; background: rgb(var(--item-rgb)); transform: scaleX(0); transform-origin: left; transition: transform .38s cubic-bezier(.22, .61, .36, 1); pointer-events: none; content: ""; }
 .inventory-artwork { position: relative; width: 100%; aspect-ratio: 5 / 4; overflow: hidden; background: radial-gradient(ellipse at center, rgb(var(--item-rgb) / .09), transparent 75%), #08111b; }
-:is(.inventory-artwork, .inventory-detail-artwork) img { display: block; width: 100%; height: 100%; object-fit: contain; }
+:is(.inventory-artwork, .inventory-detail-artwork) :is(img, .reward-material-artwork) { display: block; width: 100%; height: 100%; object-fit: contain; }
 .inventory-image-fallback { display: grid; width: 100%; height: 100%; place-items: center; color: rgb(var(--item-rgb) / .5); }
 .inventory-item-badges { position: absolute; inset: 12px 12px auto; display: flex; align-items: flex-start; flex-wrap: wrap; gap: 5px; }
 .inventory-item-badges > span, .inventory-detail-artwork > span:not(.inventory-image-fallback) { color: rgb(var(--item-rgb)); border-color: rgb(var(--item-rgb) / .45); background: #07121eeb; font-size: 8px; line-height: 1.6; letter-spacing: .08em; }
@@ -76,7 +76,7 @@
 .inventory-limit { margin-top: 20px; color: #9cb1c1; font-size: 11px; }
 .arena-dialog.inventory-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 0; width: min(900px, calc(100vw - 32px)); max-width: 900px; max-height: 90dvh; overflow-y: auto; padding: 0; border: 1px solid rgb(var(--item-rgb) / .4); border-radius: 16px; background: #101c28; }
 .inventory-detail-artwork { position: relative; min-width: 0; min-height: 250px; background: radial-gradient(ellipse at center, rgb(var(--item-rgb) / .1), transparent 80%), #08111b; }
-.inventory-detail-artwork img { position: absolute; inset: 0; }
+.inventory-detail-artwork :is(img, .reward-material-artwork) { position: absolute; inset: 0; }
 .inventory-detail-artwork > span:not(.inventory-image-fallback) { position: absolute; top: 18px; left: 18px; }
 .inventory-detail-copy { min-width: 0; padding: 34px 28px 28px; }
 .inventory-detail-eyebrow { display: flex; align-items: center; gap: 6px; margin-bottom: 13px; color: rgb(var(--item-rgb)); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }

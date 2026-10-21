@@ -56,7 +56,7 @@
 .trading-item > div { min-width: 0; }
 .trading-item strong { display: block; margin-bottom: 5px; color: #dbeaf5; font-size: 12px; overflow-wrap: anywhere; }
 .trading-item .trading-item-image { display: grid; place-items: center; flex-shrink: 0; width: 58px; height: 58px; border: 1px solid #90b0cb25; border-radius: 9px; background: #08131e; color: #7c98af; overflow: hidden; }
-.trading-item-image img { width: 100%; height: 100%; object-fit: contain; }
+.trading-item-image :is(img, .reward-material-artwork) { width: 100%; height: 100%; object-fit: contain; }
 .trading-item-detail { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; margin-left: auto; border: 1px solid #b495ff25; border-radius: 7px; color: #b9a2ee; }
 .trading-offer > footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-top: 16px; margin-top: 18px; border-top: 1px solid #b495ff1a; }
 .trading-offer > footer > p { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #a4b6c7; font-size: 10px; }
@@ -93,7 +93,7 @@
 .trading-pick-item[data-disabled] .trading-pick-toggle { border-color: #8fa2b350; color: #a3b3c2; }
 .trading-pick-item:focus-within { outline: 2px solid #b495ff; outline-offset: 1px; }
 .trading-pick-image { position: relative; display: grid; place-items: center; flex-shrink: 0; width: 100%; aspect-ratio: 4 / 3; min-height: 0; overflow: hidden; border-radius: 7px; background: #08121d; color: #607f98; }
-.trading-pick-image img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; min-height: 0; max-height: 100%; object-fit: contain; object-position: center; }
+.trading-pick-image :is(img, .reward-material-artwork) { position: absolute; inset: 0; display: block; width: 100%; height: 100%; min-height: 0; max-height: 100%; object-fit: contain; object-position: center; }
 .trading-pick-item > strong { max-width: 100%; color: #e5eff7; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .trading-pick-item > small { display: flex; align-items: flex-start; gap: 5px; margin-top: auto; padding-top: 3px; color: #d5ba97; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 .trading-pick-item > small svg { flex-shrink: 0; margin-top: 2px; }
