@@ -1,33 +1,45 @@
-# Ion Rift Overload: WebGL dark-matter pilot
+# Item materials from the supplied GIFs
 
-The pilot replaces the SVG line animation for one exact artwork URL:
-`/assets/rewards/first-drop-v2/first-drop-ion-rift-15.svg`.
-Other items and administrator-provided custom artwork keep their current rendering.
+The earlier procedural Ion Rift pilot has been replaced. All 22 current First Drop items now use a different actual animation supplied by the user, converted to video and sampled inside a material mask. The original item artwork and silver/black frame remain in the foreground as a full-resolution still image.
 
-## Material
+## Composition
 
-The full-resolution original WebP stays visible as a normal image. A transparent WebGL canvas renders only the masked energy inlays. The mask has three channels: red for the material, green for the central reactor lens, blue for luminous fissure accents. It combines authored panel boundaries with chroma and brightness selection to protect the silver frame, black cutouts, transparency and surrounding background.
+`content/rewards/material-loops.json` ties each exact current SVG image URL to a supplied file, creator credit, material mask and video. Administrator-provided custom artwork and the seven legacy SVG URLs are not replaced.
 
-The fragment shader uses two separately advected fractal noise volumes with domain warping, purple/indigo/magenta cloud densities, thin intermittent electrical fissures, embedded twinkling particles and a breathing reactor lens. Pointer position offsets the two volumes in opposite directions for subtle parallax. Neither the illustration silhouette nor its metal geometry moves. There is no CSS animation or full-image shine/color wash.
+The former fractal-noise shader has been removed. The shader now samples the real video pixels, preserving their motion, colors and black areas. Only the material mask allows them to appear in the item. It does not add a shine sweep, white sheen or uniform color wash. Pointer movement adds a small texture offset without moving the object silhouette.
 
-## Integration and resource limits
+Twenty-one new masks isolate the existing colored inlays with chroma selection, local neighborhood coverage and protection for low-saturation metal highlights. Ion Rift Overload retains its manually bounded chamber, scope, stock and reactor mask. The complete object and surrounding transparency stay in the original image underneath.
 
-- `RewardArtwork` selects `DarkMatterArtwork` only for the pilot image, including the Marketplace, item detail, Inventory, Trading, Admin and reward reveal wherever that renderer is used.
-- Existing card geometry is retained with a picture containing the original image and canvas.
-- The shared visibility and reduced-motion controls still apply. A reel with animation disabled uses only the poster.
-- The shader module is dynamically imported only after the item becomes visible and animation is permitted. Textures and a context are created then, not on initial page load.
-- One shared loop runs at at most 30fps and draws at most two WebGL surfaces per frame. Detail views and hovered items take priority.
-- Canvas resolution is capped at 640px on a fine-pointer device and 384px on a coarse-pointer device, with device pixel ratio capped at 1.25. This cap affects only the material; the original metal stays at full image resolution.
-- Leaving the viewport, hiding the tab, reduced motion, or unmounting releases the renderer, textures, shaders, buffers, observer, listeners and context. The original picture remains.
-- Missing textures, context loss, unavailable WebGL, shader/link failure or module failure retain the original picture without breaking the page. No third-party service, extra package or database request is used.
+The sniper uses the supplied blue/purple cosmic vortex. Other assignments include green ribbons, lava fractures, crimson plasma, a dark red/black flowing material, star fields, aurora and iridescent meshes. Full mapping and creator credits are recorded in [SUPPLIED_MATERIAL_LOOPS.md](SUPPLIED_MATERIAL_LOOPS.md). Source files are preserved in the user's Downloads folder; they are not copied into the repository.
 
-## Authoring and preview
+## Performance and fallback
 
-- Material renderer and shader: `public/assets/rewards/dark-matter-material.js`.
-- Material mask: `public/assets/rewards/first-drop-v2/first-drop-ion-rift-15.material.webp`.
-- Reproducible mask authoring: `node scripts/create-dark-matter-mask.mjs`.
-- React adapter: `src/components/rewards/DarkMatterArtwork.jsx`.
-- Side-by-side preview: `/dark-matter-preview.html` after deployment. The original and live material share the same illustration. The preview includes a pause button, viewport/tab/reduced-motion handling and the same renderer as the application. Serve it over HTTP; direct local-file module imports may be blocked by the browser.
-- The 22-item gallery links to the live pilot preview. Its remaining thumbnails still use the existing SVG effects.
+- The 22 originals total approximately 185.7 MiB; the 22 optimized video textures total approximately 16.4 MiB. This is the total collection size, not the initial page download.
+- Videos are silent H.264 Main/yuv420p MP4, 480 square pixels, up to 30fps, with fast-start metadata. The supplied frame composition and creator/title metadata are preserved. Selected materials use render-time zoom for their original borders/small central subject.
+- The shared artwork observer allows at most two current material renderers at a time. Only those selected surfaces create WebGL contexts and fetch masks/videos. Hovered and detail items get priority. The remaining cards show their static posters.
+- The renderer independently limits playback, decoding and drawing to two surfaces with one shared 30fps scheduler. Video-frame callbacks avoid re-uploading an unchanged decoded frame where supported.
+- Video URLs are not assigned until a renderer is selected to play. Offscreen/hidden-tab/reduced-motion/unmount paths release the video source, context, textures, buffers, observers and listeners. Losing playback priority pauses the video and shows the still poster.
+- Canvas resolution is capped at 640px on fine-pointer and 384px on coarse-pointer devices, with device pixel ratio capped at 1.25. This affects only moving material; the original frame stays at full image resolution.
+- Missing files, blocked autoplay, video decode failure, unavailable WebGL, shader/link failure, module failure or context loss fall back to the original still image.
+- No new application dependency, database operation or external media service is involved. FFmpeg is an authoring-only tool and is not shipped with the website.
 
-No new database migration or item bonus change is needed. Deploy the code, mask and public module together. The mask authoring script was executed; no application build, tests, syntax check, database migration or browser/visual check was run. The shader's runtime appearance and performance have not been verified on a GPU in this session.
+## Files and authoring
+
+- Runtime module: `public/assets/rewards/dark-matter-material.js`.
+- React adapter: `src/components/rewards/DarkMatterArtwork.jsx` and the shared `RewardArtwork`.
+- Videos and preview metadata: `public/assets/rewards/material-loops/`.
+- Masks: `public/assets/rewards/first-drop-v2/*.material.webp`.
+- Convert supplied GIFs: `node scripts/encode-reward-material-loops.mjs <ffmpeg executable> <supplied GIF folder>`.
+- Recreate the manually bounded sniper mask: `node scripts/create-dark-matter-mask.mjs`.
+- Recreate the remaining masks: `node scripts/create-reward-material-masks.mjs`.
+- Author a portable precomposited sniper example: `node scripts/create-material-video-preview.mjs <ffmpeg executable>`.
+
+## Preview and deployment
+
+After deployment `/dark-matter-preview.html` offers an original/live comparison for any of the 22 items, plus a link to its real source animation. `/first-drop-v2-preview.html` shows the complete collection with the same two-animation budget and the same renderer as the application. Serve these over HTTP; local-file module imports may be blocked.
+
+`public/assets/rewards/material-loops/ion-rift-overload-preview.mp4` is a standalone, precomposited media example. It does not run the application or demonstrate browser/GPU performance.
+
+Deploy the updated application, public module, masks, videos and preview pages together. No new database migration, item IDs, owners or reward/bonus changes are needed. Cache revision `v=2` refreshes the module and masks from the earlier prototype.
+
+The source loops were inspected at multiple frames; media conversion, mask authoring and standalone video authoring were executed. No application build, tests, syntax check, migration or browser/GPU visual check was run. Runtime appearance and performance on target browsers remain unverified.

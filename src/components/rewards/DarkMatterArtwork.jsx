@@ -1,32 +1,38 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import './dark-matter-artwork.css';
+import suppliedLoops from '../../../content/rewards/material-loops.json';
 
-// Pilot material: its authored mask is tied to this exact illustration.
-export const darkMatterSource = '/assets/rewards/first-drop-v2/first-drop-ion-rift-15.svg';
-const materialMask = '/assets/rewards/first-drop-v2/first-drop-ion-rift-15.material.webp';
-const materialModule = '/assets/rewards/dark-matter-material.js?v=1';
+// Each actual supplied loop is tied to its own item and material mask.
+const materialBySource = new Map(suppliedLoops.map((item) => [
+  `/assets/rewards/first-drop-v2/${item.id}.svg`,
+  { ...item, video: `/assets/rewards/material-loops/${item.slug}.mp4`, mask: `/assets/rewards/first-drop-v2/${item.id}.material.webp?v=2` },
+]));
+export const rewardMaterialFor = (src) => materialBySource.get(src);
+const materialModule = '/assets/rewards/dark-matter-material.js?v=2';
 let modulePromise;
 
-const DarkMatterArtwork = forwardRef(function DarkMatterArtwork({ src, playing, priority, alt, className = '', style, onPointerEnter, onPointerLeave, ...imageProps }, ref) {
+const DarkMatterArtwork = forwardRef(function DarkMatterArtwork({ src, material: materialConfig, playing, priority = 0, alt, className = '', style, onPointerEnter, onPointerLeave, ...imageProps }, ref) {
   const canvas = useRef(null), renderer = useRef(null);
   const [ready, setReady] = useState(false), [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [src]);
   useEffect(() => {
     setReady(false);
     if (!playing || failed || !canvas.current) return;
     let cancelled = false, material;
     // No shader module, textures or WebGL context until this item is visible.
-    modulePromise ||= import(/* @vite-ignore */ materialModule);
+    modulePromise ||= import(/* @vite-ignore */ materialModule).catch((error) => { modulePromise = null; throw error; });
     modulePromise.then(({ createDarkMatterRenderer }) => {
       if (cancelled) return;
       material = createDarkMatterRenderer(canvas.current, {
-        source: src, mask: materialMask, priority,
+        source: src, mask: materialConfig.mask, video: materialConfig.video, zoom: materialConfig.zoom, priority,
         onReady: () => { if (!cancelled) setReady(true); },
+        onPause: () => { if (!cancelled) setReady(false); },
         onFailure: () => { if (!cancelled) { setReady(false); setFailed(true); } },
       });
       renderer.current = material;
     }).catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; renderer.current = null; material?.dispose(); };
-  }, [src, playing, priority, failed]);
+  }, [src, materialConfig, playing, priority, failed]);
   const drawing = ready && playing && !failed;
   return <picture ref={ref} className={`reward-material-artwork ${className}`} style={style}
     onPointerEnter={(event) => { renderer.current?.setPriority(priority + 10); onPointerEnter?.(event); }}

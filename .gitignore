@@ -44,3 +44,7 @@ ios/capacitor-cordova-ios-plugins
 .env
 .vite
 /tmp/mobile-audit-*/
+
+# Local media authoring tools and inspection frames
+/output/media-tools/
+/output/art-reference-review/
