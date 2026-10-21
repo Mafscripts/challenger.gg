@@ -383,6 +383,18 @@ export const base44 = {
     },
   },
   profile: {
+    matchPresets() {
+      requireToken();
+      return apiFetch("/profile/match-presets", { timeoutMs: 10_000 });
+    },
+    saveMatchPreset(preset) {
+      requireToken();
+      return apiFetch("/profile/match-presets", { method: "PUT", body: preset, timeoutMs: 10_000 });
+    },
+    deleteMatchPreset(presetId) {
+      requireToken();
+      return apiFetch(`/profile/match-presets/${encodeURIComponent(presetId)}`, { method: "DELETE", timeoutMs: 10_000 });
+    },
     teamPage(teamId) {
       requireToken();
       return apiFetch(`/profile/team-page${toQuery({ team: teamId })}`, { timeoutMs: 15_000 });

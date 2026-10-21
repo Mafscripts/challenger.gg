@@ -14,6 +14,7 @@ import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import { Mw4SeasonSignal } from "@/components/season/Mw4Season";
 import { useAuth } from "@/lib/AuthContext";
 import HomeModeNavigation from "@/components/home/HomeModeNavigation";
+import PlayPreparation from "@/components/competition/PlayPreparation";
 
 const number = (value) => Number(value || 0);
 const formatNumber = (value) => Math.round(Math.max(0, number(value))).toLocaleString();
@@ -141,6 +142,7 @@ export default function PublicHomeOverview() {
         </section>
 
         <HomeModeNavigation resolveHref={protectedHref} />
+        <PlayPreparation className="my-5" />
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {statCards.map(({ label, value, icon: Icon, tone, money }) => (

@@ -13,6 +13,8 @@ import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { WAGER_PLAY_RULES } from "@/lib/wagerRules";
+import usePlayTeams from "@/hooks/usePlayTeams";
+import MatchPresetPicker from "./MatchPresetPicker";
 import { FreeEightsRankDialog, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
@@ -107,7 +109,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const [selectedAmount, setSelectedAmount] = useState(0);
   const [customAmount, setCustomAmount] = useState("");
   const [bestOf, setBestOf] = useState(1);
-  const [userTeams, setUserTeams] = useState([]);
+  const teamsQuery = usePlayTeams(user?.id, isOpen && ["wager", "ranked", "xp"].includes(mode));
+  const userTeams = teamsQuery.data || [];
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [paymentMode, setPaymentMode] = useState("own");
   const [selectedPlayRule, setSelectedPlayRule] = useState("controller_only");
@@ -164,28 +167,6 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     : enteredAmount;
 
   useEffect(() => {
-    if (!isOpen || !user?.id) return;
-    let active = true;
-    const loadTeams = async () => {
-      const memberships = await base44.entities.TeamMember.filter({ user_id: user.id }, "-joined_date", 50).catch(() => []);
-      const teams = await Promise.all((memberships || [])
-        .filter((membership) => membership.is_active !== false)
-        .map(async (membership) => {
-          const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
-          const members = team ? await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 50).catch(() => []) : [];
-          return team && team.is_active !== false
-            ? { ...team, membership, members: (members || []).filter((member) => member.is_active !== false) }
-            : null;
-        }));
-      if (active) setUserTeams(teams.filter(Boolean));
-    };
-    loadTeams();
-    return () => {
-      active = false;
-    };
-  }, [isOpen, user?.id]);
-
-  useEffect(() => {
     if (!isOpen || typeof document === "undefined") return undefined;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -195,8 +176,18 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   }, [isOpen]);
 
   const handleCreate = async () => {
+    if (!selectedGameMode || !modeChoices.some((choice) => choice.id === selectedGameMode)
+      || !selectedTeamSize || isCreating) {
+      toast({ title: "Review match settings", description: "Choose an available mode, team size and eligible team before posting.", variant: "destructive" });
+      return;
+    }
     if (mode === "xp" && !selectedTeam) {
       toast({ title: "XP team required", description: "Select your team before creating an XP match.", variant: "destructive" });
+      setStep(2);
+      return;
+    }
+    if (!selectedTeamIsEligible) {
+      toast({ title: "Select your team", description: "Choose an eligible team before posting this match.", variant: "destructive" });
       setStep(2);
       return;
     }
@@ -436,6 +427,18 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     }
   };
 
+  const applyPreset = (preset) => {
+    setSelectedGameMode(preset.game_mode);
+    setSelectedTeamSize(preset.team_size);
+    setBestOf(preset.best_of);
+    setSelectedPlayRule(preset.play_rule);
+    setSelectedTeamId("");
+    setSelectedAmount(0);
+    setCustomAmount("");
+    setPaymentMode("own");
+    setStep(1);
+  };
+
   const handleClose = () => {
     setStep(1);
     setSelectedGameMode(null);
@@ -475,8 +478,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
             <div>
-              <h2 className="text-xl font-black">{isMoneyEights ? "Create Money 8s Lobby" : isEights ? "Create 8s Lobby" : isRanked ? "Create XP Match" : "Create Wager"}</h2>
-              <p className="text-xs text-vapor mt-0.5">{isEights ? "Choose 2v2, 3v3 or 4v4; all formats share the same leaderboard" : isMoneyEights ? "Pick a series; teams are generated at 8 players" : isRanked ? "Configure your XP match settings" : "Configure your wager settings"}</p>
+              <h2 className="text-xl font-black">{isMoneyEights ? "Create Money 8s Lobby" : isEights ? "Create 8s Lobby" : mode === "xp" ? "Create XP Match" : isRanked ? "Create Ranked Match" : "Create Wager"}</h2>
+              <p className="text-xs text-vapor mt-0.5">{isEights ? "Choose 2v2, 3v3 or 4v4; all formats share the same leaderboard" : isMoneyEights ? "Pick a series; teams are generated at 8 players" : mode === "xp" ? "Configure your XP match settings" : isRanked ? "Configure your Ranked match settings" : "Configure your wager settings"}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-vapor" />
@@ -487,6 +490,14 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           <div className="overflow-y-auto p-6">
             <ActivisionIdNotice user={user} className="mb-5" />
             {(isWager || isMoneyEights) && <StreamRequirementNotice user={user} className="mb-5" />}
+            <MatchPresetPicker
+              key={`${user?.id}:${mode}:${gameConfig?.id || "bo7"}`}
+              userId={user?.id}
+              settings={{ mode, game_id: isEights ? gameConfig?.id || "bo7" : "bo7", game_mode: selectedGameMode,
+                team_size: selectedTeamSize, best_of: bestOf, play_rule: selectedPlayRule }}
+              choices={modeChoices}
+              onApply={applyPreset}
+            />
             {/* Step 1: Game Mode */}
             {step === 1 && (
               <div>
@@ -620,7 +631,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                         </option>
                       ))}
                     </select>
-                    {compatibleTeams.length === 0 && (
+                    {teamsQuery.isPending && <p className="mt-2 text-xs text-vapor">Loading your teams…</p>}
+                    {teamsQuery.isError && <button type="button" onClick={() => teamsQuery.refetch()} className="site-hover mt-2 rounded px-2 py-1 text-xs text-cyan">Could not load teams. Retry</button>}
+                    {!teamsQuery.isPending && !teamsQuery.isError && compatibleTeams.length === 0 && (
                       isRanked ? (
                         <p className="mt-2 text-xs text-vapor">No complete {mode === "xp" ? "XP" : "Ranked"} team fits this mode yet.</p>
                       ) : (
@@ -820,15 +833,15 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                       <p className="text-xs text-vapor">{isEightsLobby ? `${selectedTeamSize} · ${teamSizes.find(ts => ts.id === selectedTeamSize)?.players} solo players` : teamSizes.find(ts => ts.id === selectedTeamSize)?.name}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-green font-bold">{isMoneyEights ? `$${enteredAmount.toFixed(2)} ENTRY · WALLET ESCROW · RANDOM TEAMS` : isEights ? "FREE · RANDOM TEAMS · XP ENABLED" : "FREE TO PLAY"}</p>
+                  <p className="text-xs text-green font-bold">{isMoneyEights ? `$${enteredAmount.toFixed(2)} ENTRY · WALLET ESCROW · RANDOM TEAMS` : isEights ? "FREE · BALANCED TEAMS · FREE 8s ELO" : "FREE TO PLAY"}</p>
                   {selectedTeam && (
                     <p className="text-xs text-vapor mt-2">
-                      XP match party: {selectedTeam.name} ({selectedTeam.members.length} players)
+                      Ranked party: {selectedTeam.name} ({selectedTeam.members.length} players)
                     </p>
                   )}
                 </div>
                 <div className="mb-6">
-                  <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel={isMoneyEights ? "Money 8s lobby" : isEights ? "8s lobby" : "XP match"} />
+                  <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel={isMoneyEights ? "Money 8s lobby" : isEights ? "8s lobby" : "Ranked match"} />
                 </div>
                 <div className="flex justify-between">
                   <button
@@ -842,7 +855,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     disabled={isCreating}
                     className="create-cta px-6 py-2.5 font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider flex items-center gap-2"
                   >
-                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isMoneyEights ? "Open Money 8s Lobby" : isEights ? "Open 8s Lobby" : "Create XP Match"}
+                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isMoneyEights ? "Open Money 8s Lobby" : isEights ? "Open 8s Lobby" : "Create Ranked Match"}
                   </button>}
                 </div>
               </div>

@@ -8,8 +8,24 @@ import { playerAvatarFor } from "../lib/playerAvatars.js";
 import { xpTeamMatchWhere } from "../lib/xpTeamMatches.js";
 import { isExpiredOpenMatch } from "../matchfinder-expiry.js";
 import { getTeamPage, getTeamPageActivity, getTeamPagePlayers, teamPageIds } from "../team-page.js";
+import { listMatchPresets, saveMatchPreset, deleteMatchPreset } from "../match-presets.js";
 
 const router = Router();
+
+router.get("/match-presets", requireAuth, async (req, res, next) => {
+  try { res.json(await listMatchPresets(prisma, req.user.id)); }
+  catch (error) { next(error); }
+});
+
+router.put("/match-presets", requireAuth, async (req, res, next) => {
+  try { res.json(await saveMatchPreset(prisma, req.user.id, req.body)); }
+  catch (error) { next(error); }
+});
+
+router.delete("/match-presets/:presetId", requireAuth, async (req, res, next) => {
+  try { res.json(await deleteMatchPreset(prisma, req.user.id, req.params.presetId)); }
+  catch (error) { next(error); }
+});
 
 router.get("/team-page", requireAuth, async (req, res, next) => {
   try { res.json(await getTeamPage(prisma, req.user.id, req.query.team || "")); }

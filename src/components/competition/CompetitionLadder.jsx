@@ -27,6 +27,7 @@ import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
 import { buildFreeEightsStandings } from "@/lib/freeEightsStandings";
 import { CompetitionHeaderContext } from "./CompetitionHeaderContext";
 import CompetitionHero from "./CompetitionHero";
+import PlayPreparation from "./PlayPreparation";
 import { competitionTheme } from "@/lib/competitionPresentation";
 import { monthlyEightsPrizeLabel, publicCommerceEnabled } from "@/lib/commerce";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
@@ -162,6 +163,7 @@ export function CompetitionHeaderView({ mode = "xp", playerCount, action, classN
           );
         })}
       </nav>
+      <PlayPreparation mode={mode} />
     </div>
   );
 }

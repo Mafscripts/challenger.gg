@@ -121,6 +121,9 @@ const participantIdentityValues = (participant) => {
 const router = Router();
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
+  if (String(req.params.entity).toLowerCase() === "usersettings") {
+    return res.status(403).json({ error: "Use the private account settings endpoints" });
+  }
   if (String(req.params.entity).toLowerCase() === "user" && req.method === "PATCH"
     && [...roleFields].some(key => Object.hasOwn(req.body || {}, key) || Object.hasOwn(req.body?.metadata || {}, key))) {
     return res.status(403).json({ error: "Use the protected role management action." });

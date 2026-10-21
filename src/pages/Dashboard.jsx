@@ -16,6 +16,7 @@ import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
 import { Mw4SeasonSignal } from "@/components/season/Mw4Season";
 import PageLoader from "@/components/ui/PageLoader";
 import HomeModeNavigation from "@/components/home/HomeModeNavigation";
+import PlayPreparation from "@/components/competition/PlayPreparation";
 
 const SLIDE_DURATION = 10000;
 const HOME_REFRESH_INTERVAL = 60000;
@@ -487,6 +488,7 @@ export default function Dashboard() {
     <main className="home-hub home-hub-container w-full">
       <FeaturedNews />
       <HomeModeNavigation />
+      <PlayPreparation className="my-5" />
       <StatsStrip stats={stats} />
       <TournamentRows tournaments={upcoming} now={now} loading={loading} />
       <TournamentLadder players={ladder} loading={loading} />

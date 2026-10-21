@@ -8,10 +8,9 @@ import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
 import { freeEightsVoiceChannelName } from "@/lib/freeEightsRoomIdentity";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 
-export const hasFreeEightsDiscordLink = (user) => /^\d{17,20}$/.test(String(user?.discord_user_id || "")) && Boolean(user?.discord_connected_at);
-export const isFreeEightsDiscordRequired = (result) => result?.code === "FREE_EIGHTS_DISCORD_REQUIRED"
-  || result?.data?.code === "FREE_EIGHTS_DISCORD_REQUIRED"
-  || (result?.error || result?.message) === "Connect Discord to join Free 8s";
+// Keep the account check usable on the home page without loading voice dialogs.
+import { hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/lib/freeEightsDiscord";
+export { hasFreeEightsDiscordLink, isFreeEightsDiscordRequired };
 
 const voiceLabels = {
   not_linked: "Discord Not Linked",
