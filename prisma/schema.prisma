@@ -739,3 +739,43 @@ model RecruitmentPost {
   @@index([status, expires_at])
   @@index([user_id, created_date(sort: Desc)])
 }
+
+
+model CompetitionRewardSettings {
+  id       String @id @default("default")
+  metadata Json   @default("{}")
+}
+
+model CompetitionRewardGrant {
+  id           String   @id @default(cuid())
+  grant_key    String   @unique
+  user_id      String
+  source_key   String
+  created_date DateTime @default(now())
+  revealed_at  DateTime?
+  metadata     Json     @default("{}")
+
+  @@index([user_id, revealed_at, created_date])
+  @@index([source_key])
+}
+
+model CompetitionRewardSeason {
+  id           String   @id
+  starts_at    DateTime
+  ends_at      DateTime
+  status       String   @default("open")
+  metadata     Json     @default("{}")
+
+  @@index([status, ends_at])
+}
+
+model CompetitionRewardCampaign {
+  id           String   @id @default(cuid())
+  created_date DateTime @default(now())
+  starts_at    DateTime
+  ends_at      DateTime
+  active       Boolean  @default(true)
+  metadata     Json     @default("{}")
+
+  @@index([active, ends_at])
+}

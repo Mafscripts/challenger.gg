@@ -2,7 +2,7 @@ export const adminGroups = [
   { id: "overview", label: "Overview & support", tone: "cyan", sections: ["dashboard", "alerts", "tickets", "banAppeals"] },
   { id: "players", label: "Players & access", tone: "purple", sections: ["users", "roles", "verifyRank"] },
   { id: "competition", label: "Competition", tone: "gold", sections: ["live8s", "eightsGames", "ranked", "challenges", "tournaments", "tournamentMatches", "progression", "wagers"] },
-  { id: "economy", label: "Economy & rewards", tone: "green", sections: ["wallets", "withdrawals", "marketplace", "inventory", "referrals", "freeTrials"] },
+  { id: "economy", label: "Economy & rewards", tone: "green", sections: ["wallets", "withdrawals", "marketplace", "rewards", "inventory", "referrals", "freeTrials"] },
   { id: "records", label: "Activity & records", tone: "cyan", sections: ["audit"] },
 ];
 
@@ -18,6 +18,7 @@ const descriptions = {
   tournamentMatches: "Follow tournament matches and their results.", wallets: "Review balances, credits and wallet activity.",
   referrals: "Manage the referral program and its rewards.", freeTrials: "Configure the animated name trial for players.",
   withdrawals: "Review withdrawal requests and payment details.", marketplace: "Manage items, pricing and marketplace availability.",
+  rewards: "Configure random item drops, personal bonuses, two-month seasons and special win events.",
   inventory: "Review items owned by players.", audit: "Search staff actions and platform activity.",
 };
 

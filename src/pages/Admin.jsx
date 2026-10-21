@@ -67,6 +67,7 @@ import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleFor
 import { getRankForElo } from "@/lib/ranks";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 
+const CompetitionRewardsAdmin = lazy(() => import("@/components/admin/CompetitionRewardsAdmin"));
 const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
 const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
@@ -258,6 +259,7 @@ const tabs = [
   { id: "referrals", label: "Referrals", icon: Gift },
   { id: "freeTrials", label: "Free Trials", icon: Sparkles },
   { id: "withdrawals", label: "Withdrawals", icon: Landmark },
+  { id: "rewards", label: "Reward Items & Seasons", icon: Gift, adminOnly: true },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag },
   { id: "inventory", label: "Inventory", icon: Boxes },
   { id: "audit", label: "Audit Logs", icon: ScrollText },
@@ -554,7 +556,7 @@ export default function Admin() {
   const [referralProgram, setReferralProgram] = useState(null);
   const [animatedNameFreeTrial, setAnimatedNameFreeTrial] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
-  const allowedTabs = useMemo(() => tabs.filter(tab => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin"))), [currentRole]);
+  const allowedTabs = useMemo(() => tabs.filter(tab => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin")) && (!tab.adminOnly || hasRolePower(currentRole, "admin"))), [currentRole]);
   const workspaceRef = useRef(null);
   const focusAdminWorkspace = () => {
     window.requestAnimationFrame(() => {
@@ -3151,6 +3153,7 @@ export default function Admin() {
             )} />
           )}
 
+          {activeTab === "rewards" && <Suspense fallback={<PageLoader label="Loading rewards" />}><CompetitionRewardsAdmin /></Suspense>}
           {activeTab === "marketplace" && (
             <div>
               {canManageWallets(currentRole) && (

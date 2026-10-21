@@ -130,6 +130,9 @@ router.param("entity", (req, _res, next, entity) => {
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
   if (String(req.params.entity).toLowerCase() === "recruitmentpost") return res.status(403).json({ error: "Use the protected recruitment endpoints" });
+  if (["competitionrewardsettings", "competitionrewardgrant", "competitionrewardseason", "competitionrewardcampaign"].includes(String(req.params.entity).toLowerCase())) {
+    return res.status(403).json({ error: "Use the protected competition reward actions" });
+  }
   if (String(req.params.entity).toLowerCase() === "usersettings") {
     return res.status(403).json({ error: "Use the private account settings endpoints" });
   }

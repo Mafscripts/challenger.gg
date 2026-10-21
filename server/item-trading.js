@@ -16,9 +16,12 @@ const itemIds = (value) => {
 const premium = (user) => user?.is_premium && (!user.premium_expires || new Date(user.premium_expires).getTime() > Date.now());
 const active = (user) => user && !user.is_banned && user.email_verified === true && !(new Date(user.suspended_until || user.metadata?.suspended_until || 0).getTime() > Date.now());
 const pending = (offer) => offer.status === "pending" && (!offer.expires_date || Date.parse(offer.expires_date) > Date.now());
-const snapshot = (row, catalog) => ({ inventory_id: row.id, item_id: row.metadata.item_id,
+const snapshot = (row, catalog) => {
+  if (row.metadata.unlock_type === "competition_reward") catalog = {};
+  return { inventory_id: row.id, item_id: row.metadata.item_id,
   item_name: catalog.name || row.metadata.item_name || "Item", item_rarity: catalog.rarity || row.metadata.item_rarity || "common",
-  item_image: catalog.image_url || row.metadata.item_image || "", item_category: catalog.category || row.metadata.item_category || "cosmetic" });
+  item_image: catalog.image_url || row.metadata.item_image || "", item_category: catalog.category || row.metadata.item_category || "cosmetic" };
+};
 
 export function tradeItemRestriction(inventory, catalog) {
   if (!catalog) return "This item is no longer in the collection";
@@ -186,7 +189,9 @@ export async function getTradeInventory(db, actorId, input) {
     const text = `${row.metadata.item_category || ""} ${row.metadata.item_name || ""} ${row.metadata.unlock_key || ""}`.toLowerCase();
     return { ...snapshot(row, item || {}), tradable: !restriction, restriction,
       ...(ownerId === actorId ? { collection: {
-        description: item?.description || row.metadata.item_description || row.metadata.description || "",
+        description: (row.metadata.unlock_type === "competition_reward" ? row.metadata.item_description : item?.description) || row.metadata.item_description || row.metadata.description || "",
+        reward: row.metadata.reward_effect || null,
+        reward_expires_at: row.metadata.reward_expires_at || null,
         equipped: row.metadata.is_equipped === true,
         acquired_date: row.metadata.acquired_date || "",
         premium_only: Boolean(item?.is_premium_only || item?.unlock_type === "premium"),

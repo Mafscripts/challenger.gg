@@ -1,3 +1,4 @@
+import RewardSeasonBoard from "@/components/competition/RewardSeasonBoard";
 import XPFormatSelect from "@/components/competition/XPFormatSelect";
 import XPFormatStandings from "@/components/competition/XPFormatStandings";
 import useRouteSection from "@/hooks/useRouteSection";
@@ -62,6 +63,7 @@ export default function Leaderboards() {
   const activeTab = tabs.some((tab) => tab.key === requestedTab) ? requestedTab : "elo";
   const selectedTab = tabs.find((tab) => tab.key === activeTab);
   const [xpFormat, setXPFormat] = useRouteSection("xp_format", "global", ["global", "solo", "duos", "teams"]);
+  const seasonView = searchParams.get("view") === "season";
   const formatXP = activeTab === "xp" && xpFormat !== "global";
   const [eightsGame, setEightsGame] = useState("bo7");
   const [challengeKind, setChallengeKind] = useState("team");
@@ -77,9 +79,9 @@ export default function Leaderboards() {
     ...leaderboardQueryOptions,
     queryKey: ["leaderboard-users", user?.id, userOrder],
     queryFn: () => loadLeaderboardPlayers(userOrder),
-    enabled: Boolean(user?.id),
+    enabled: Boolean(user?.id) && !seasonView,
   });
-  const hasStandaloneStats = !formatXP && !["tournaments", "wagers"].includes(activeTab);
+  const hasStandaloneStats = !seasonView && !formatXP && !["tournaments", "wagers"].includes(activeTab);
   const standingsQuery = useQuery({
     ...leaderboardQueryOptions,
     queryKey: ["competition-standings", user?.id, selectedTab.mode, activeTab === "eights" ? eightsGame : activeTab === "challenge" ? challengeKind : "all"],
@@ -144,7 +146,7 @@ export default function Leaderboards() {
     return query ? rankedRows.filter((row) => `${row.name} ${row.slug}`.toLowerCase().includes(query)) : rankedRows;
   }, [rankedRows, searchQuery]);
   const pagination = useLeaderboardPagination(filteredRows, `${activeTab}:${eightsGame}:${challengeKind}:${region}:${searchQuery}`);
-  const playerAvatars = useLeaderboardAvatars(pagination.visibleRows.map((row) => row.userId));
+  const playerAvatars = useLeaderboardAvatars(seasonView ? [] : pagination.visibleRows.map((row) => row.userId));
   const podium = rankedRows.slice(0, 3);
   const ownStanding = rankedRows.find((row) => row.userId === user?.id || (row.kind === "team" && row.captainId === user?.id));
   const isTeamLadder = activeTab === "challenge" && challengeKind === "team";
@@ -167,9 +169,9 @@ export default function Leaderboards() {
           description="Every win tells a story. Explore the leaders, find your place and set your sights on the next spot."
           className="leaderboard-page-hero mb-6"
           facts={[[selectedTab.factIcon, selectedTab.fact], ["Globe2", region === "Global" ? "Worldwide competition" : `${region} competition`], [isTeamLadder ? "ShieldCheck" : "UserRound", formatXP ? "Team & player XP standings" : isTeamLadder ? "Team profiles & stats" : "Player profiles & stats"]]}
-          count={loading || error || formatXP ? undefined : rankedRows.length} countLabel={isTeamLadder ? "teams" : "players"}
+          count={loading || error || formatXP || seasonView ? undefined : rankedRows.length} countLabel={isTeamLadder ? "teams" : "players"}
           metadata={<><Globe2 size={13} aria-hidden="true" />{region === "Global" ? "Global standings" : `${region} standings`}</>}
-          action={<div className="competition-actions"><button type="button" onClick={() => standingsRef.current?.scrollIntoView({ block: "start", behavior: "auto" })} className="competition-action-pill"><ArrowDown size={15} />View rankings</button>{!formatXP && !loading && !error && ownStanding && <span className="leaderboard-own-position"><Medal size={15} />Your position<strong>#{ownStanding.rank}</strong></span>}</div>}
+          action={<div className="competition-actions"><button type="button" onClick={() => standingsRef.current?.scrollIntoView({ block: "start", behavior: "auto" })} className="competition-action-pill"><ArrowDown size={15} />View rankings</button>{!seasonView && !formatXP && !loading && !error && ownStanding && <span className="leaderboard-own-position"><Medal size={15} />Your position<strong>#{ownStanding.rank}</strong></span>}</div>}
         />
 
         <div className="leaderboard-filters">
@@ -177,14 +179,15 @@ export default function Leaderboards() {
             {tabs.map((tab) => <button type="button" key={tab.key} data-ladder={tab.key} aria-pressed={activeTab === tab.key} onClick={() => selectTab(tab.key)}><span className="leaderboard-tab-icon"><tab.icon size={19} /></span><span><strong>{tab.label}</strong><small>{tab.detail}</small></span><ArrowUpRight className="leaderboard-tab-arrow" size={15} /></button>)}
           </div>
           <div className="leaderboard-scope-filters">
-            {activeTab === "xp" && <XPFormatSelect allowGlobal value={xpFormat} onChange={setXPFormat} />}
+            <div className="xp-ranking-switch" role="group" aria-label="Leaderboard period">{[["all", "Global"], ["season", "Season"]].map(([value, label]) => <button type="button" key={value} aria-pressed={seasonView === (value === "season")} onClick={() => setSearchParams((previous) => { const next = new URLSearchParams(previous); if (value === "season") next.set("view", value); else next.delete("view"); return next; })}>{label}</button>)}</div>
+            {!seasonView && activeTab === "xp" && <XPFormatSelect allowGlobal value={xpFormat} onChange={setXPFormat} />}
             {activeTab === "eights" && <label className="leaderboard-region"><Gamepad2 size={14} /><span>Game</span><select value={eightsGame} onChange={(event) => setEightsGame(event.target.value)}>{games.map((game) => <option key={game.id} value={game.id}>{eightsGameName(game)}</option>)}</select></label>}
-            {activeTab === "challenge" && <div className="leaderboard-kind-switch" role="group" aria-label="Challenge ladder"><button type="button" aria-pressed={challengeKind === "team"} onClick={() => setChallengeKind("team")}>Teams</button><button type="button" aria-pressed={challengeKind === "solo"} onClick={() => setChallengeKind("solo")}>Solo players</button></div>}
+            {!seasonView && activeTab === "challenge" && <div className="leaderboard-kind-switch" role="group" aria-label="Challenge ladder"><button type="button" aria-pressed={challengeKind === "team"} onClick={() => setChallengeKind("team")}>Teams</button><button type="button" aria-pressed={challengeKind === "solo"} onClick={() => setChallengeKind("solo")}>Solo players</button></div>}
             <label className="leaderboard-region"><Globe2 size={14} /><span>Region</span><select value={region} onChange={(event) => setRegion(event.target.value)}>{regions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           </div>
         </div>
 
-        {formatXP ? <div ref={standingsRef} className="leaderboard-list-panel"><XPFormatStandings category={xpFormat} region={region} /></div> : <>
+        {seasonView ? <div ref={standingsRef} className="leaderboard-list-panel"><RewardSeasonBoard mode={selectedTab.mode} gameId={eightsGame} region={region} category={xpFormat} /></div> : formatXP ? <div ref={standingsRef} className="leaderboard-list-panel"><XPFormatStandings category={xpFormat} region={region} /></div> : <>
         {!loading && !error && pagination.page === 1 && !searchQuery.trim() && podium.length > 0 && (
           <section className="leaderboard-podium-section" aria-label={`${region} top three ${isTeamLadder ? "teams" : "players"}`}>
             <div className="leaderboard-section-heading"><h2><Crown size={16} />Leading the way</h2><span>Top {podium.length} · {region === "Global" ? "Worldwide" : region}</span></div>

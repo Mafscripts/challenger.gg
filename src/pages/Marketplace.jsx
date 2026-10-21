@@ -52,6 +52,8 @@ export const dedupeById = (rows = []) => {
 export const unlockRequirementText = (item) => {
   const requirement = item.unlockRequirement || "";
   switch (item.unlockType) {
+    case "competition_reward":
+      return "Win a season ladder or a configured random reward drop";
     case "ranked":
       return requirement ? `Reach ${requirement} ELO` : "Reach the required ranked ELO";
     case "tournament":

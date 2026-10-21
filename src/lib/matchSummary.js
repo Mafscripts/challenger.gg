@@ -22,7 +22,7 @@ export function progressChangeFor(match, mode, playerId) {
   const changes = mode === "xp" ? match.xp_changes : mode === "ranked" ? match.elo_changes : mode === "eights" ? match.free_eights_elo_changes : null;
   const entry = changes?.[playerId];
   if (!entry || number(entry.delta) === null) return null;
-  return { delta: number(entry.delta), before: number(entry.previous_xp ?? entry.previous_elo), after: number(entry.new_xp ?? entry.new_elo), label: mode === "xp" ? "XP" : mode === "eights" ? "Free 8s ELO" : "Ranked ELO" };
+  return { bonus: number(entry.reward_bonus) || 0, delta: number(entry.delta), before: number(entry.previous_xp ?? entry.previous_elo), after: number(entry.new_xp ?? entry.new_elo), label: mode === "xp" ? "XP" : mode === "eights" ? "Free 8s ELO" : "Ranked ELO" };
 }
 
 export function rematchSettingsFor(match, mode) {

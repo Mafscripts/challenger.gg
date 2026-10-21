@@ -1,4 +1,5 @@
-import { calculateFreeEightsElo } from "../src/lib/freeEightsRanks.js";
+import { loadRewardBonuses } from "./competition-rewards.js";
+import { getFreeEightsRank, calculateFreeEightsElo } from "../src/lib/freeEightsRanks.js";
 import { serializeRow } from "./entity.js";
 import { findEightsStatsRow } from "./free-eights-games.js";
 import { eightsGameId } from "../src/lib/freeEightsGames.js";
@@ -39,6 +40,14 @@ export async function completeFreeEightsWithElo(db, matchId, completion) {
     const teamSize = freeEightsTeamSize(match.metadata);
     if (winners.length !== teamSize || losers.length !== teamSize || statsByUser.size !== teamSize * 2) throw new Error("Free 8s ELO requires a complete, distinct roster for the selected format");
     const changes = calculateFreeEightsElo(winners, losers);
+    const winningIds = new Set(winners.map((player) => player.user_id));
+    for (const [id, change] of Object.entries(changes)) change.won = winningIds.has(id);
+    const bonuses = await loadRewardBonuses(tx, winners.map((player) => player.user_id), "free8s");
+    for (const player of winners) {
+      const bonus = bonuses[player.user_id]?.free8s_elo || 0;
+      changes[player.user_id].new_elo += bonus; changes[player.user_id].delta += bonus; changes[player.user_id].reward_bonus = bonus;
+      changes[player.user_id].new_rank = getFreeEightsRank(changes[player.user_id].new_elo).name;
+    }
     for (const [userId, change] of Object.entries(changes)) {
       // A dedicated column prevents legacy/Money 8s JSON stat updates from
       // overwriting Free 8s ELO. No global user rank or RankedStats is touched.

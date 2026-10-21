@@ -23,7 +23,7 @@ const sectionKeys = {
   tournamentMatches: ["tournamentMatches"], wallets: [],
   referrals: ["referralProgram"], freeTrials: ["animatedNameFreeTrial", "users"],
   withdrawals: ["withdrawals", "users"], marketplace: ["marketplace"],
-  inventory: ["inventory", "users"], audit: [],
+  inventory: ["inventory", "users"], rewards: [], audit: [],
 };
 const queryKeys = [...Object.keys(entities), "dashboardOverview", "userCount", "ticketCounts", "auditCounts", "walletSummary", "referralProgram", "animatedNameFreeTrial"];
 const combineQueries = (results) => ({

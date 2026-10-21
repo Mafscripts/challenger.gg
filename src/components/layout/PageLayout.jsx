@@ -11,6 +11,7 @@ import { isNativeApp } from "@/lib/nativeApp";
 import { publicCommerceEnabled } from "@/lib/commerce";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 
+const RewardReveal = lazy(() => import("@/components/rewards/RewardReveal"));
 const Footer = lazy(() => import("./Footer"));
 
 function DeferredFooter() {
@@ -60,6 +61,7 @@ function PageLayoutShell() {
         </Suspense>
       </main>
       <NativeTabBar />
+      {isAuthenticated && <Suspense fallback={null}><RewardReveal /></Suspense>}
       <div className="app-footer-wrap relative z-[1]">
         <DeferredFooter />
       </div>

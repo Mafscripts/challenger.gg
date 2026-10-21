@@ -1,3 +1,5 @@
+import { settleWagerPayout } from "../wager-payout.js";
+import { setRewardCampaignActive, getAdminRewardOverview, saveRewardTemplate, saveRewardSettings, saveRewardCampaign, getMyRewardGrants, getRewardReveal, acknowledgeReward, getRewardSeasonStandings, processCompetitionRewards, loadRewardBonuses, awardTournamentCreditBonus } from "../competition-rewards.js";
 import { Prisma } from "@prisma/client";
 import { competitionStreamError } from "../competition-streaming.js";
 import { isInventoryTrophy } from "../lib/trophyCounts.js";
@@ -1075,151 +1077,8 @@ async function escrowWagerStake({ userId, wagerId, entryFee, team }) {
   return { wallet: updatedWallet, transaction };
 }
 
-async function releaseWagerEscrow(wager, winnerId) {
-  const entryFee = money(wager.entry_fee ?? wager.amount);
-  const isPaidWager = entryFee > 0 && ((wager.match_type || "wagers") === "wagers" || isEightsMatchType(wager.match_type));
-  if (!isPaidWager || !winnerId) return { totalPot: 0, winnerProfit: 0, walletChanges: {} };
-
-  const participants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 10).catch(() => []);
-  const paidParticipants = participants.filter((participant) => money(participant.entry_fee_paid) > 0);
-  const hasEscrowedStake = paidParticipants.some((participant) => (
-    participant.escrowed === true || Boolean(participant.escrow_transaction_id)
-  ));
-  if (paidParticipants.length === 0 || !hasEscrowedStake) {
-    const wallet = await walletFor(winnerId);
-    const updatedWallet = await updateEntity("Wallet", wallet.id, {
-      available_balance: roundedMoney(money(wallet.available_balance) + entryFee),
-      withdrawable_balance: roundedMoney(money(wallet.withdrawable_balance) + entryFee),
-      total_earnings: roundedMoney(money(wallet.total_earnings) + entryFee),
-    });
-    await syncUserWalletBalance(winnerId, updatedWallet);
-    await createWalletTransaction(winnerId, updatedWallet, {
-      type: "wager_payout",
-      amount: entryFee,
-      description: `Legacy wager payout for ${wager.id}`,
-      reference_type: "Wager",
-      reference_id: wager.id,
-    });
-    await prisma.user.update({
-      where: { id: winnerId },
-      data: {
-        total_wager_earnings: { increment: entryFee },
-        lifetime_earnings: { increment: entryFee },
-      },
-    }).catch(() => null);
-    return {
-      totalPot: entryFee,
-      winnerProfit: entryFee,
-      legacy: true,
-      walletChanges: {
-        [winnerId]: {
-          won: true,
-          stake: 0,
-          payout: entryFee,
-          match_delta: entryFee,
-          previous_balance: roundedMoney(money(updatedWallet.available_balance) - entryFee),
-          new_balance: roundedMoney(updatedWallet.available_balance),
-        },
-      },
-    };
-  }
-  const participantRows = paidParticipants.length > 0
-    ? paidParticipants
-    : [
-      { user_id: wager.host_id, entry_fee_paid: entryFee },
-      { user_id: wager.challenger_id, entry_fee_paid: entryFee },
-    ].filter((participant) => participant.user_id);
-  const totalPot = roundedMoney(participantRows.reduce((sum, participant) => sum + money(participant.entry_fee_paid), 0));
-  const winningSide = winnerId === wager.host_id ? "host" : "challenger";
-  const winningPayers = participantRows.filter((participant) => participant.team === winningSide);
-  const winnerStake = roundedMoney(winningPayers
-    .reduce((sum, participant) => sum + money(participant.entry_fee_paid), 0));
-  const winnerProfit = roundedMoney(Math.max(0, totalPot - winnerStake));
-  const totalPotCents = Math.round(totalPot * 100);
-  let allocatedCents = 0;
-  const payoutByParticipant = new Map();
-  winningPayers.forEach((participant, index) => {
-    const stake = money(participant.entry_fee_paid);
-    const payoutCents = index === winningPayers.length - 1
-      ? totalPotCents - allocatedCents
-      : Math.round(totalPotCents * (stake / Math.max(winnerStake, 0.01)));
-    allocatedCents += payoutCents;
-    payoutByParticipant.set(participant.id || participant.user_id, payoutCents / 100);
-  });
-  const walletChanges = {};
-
-  for (const participant of participantRows) {
-    const stake = money(participant.entry_fee_paid);
-    if (!participant.user_id || stake <= 0) continue;
-
-    const wallet = await walletFor(participant.user_id);
-    const won = participant.team === winningSide;
-    const payout = roundedMoney(payoutByParticipant.get(participant.id || participant.user_id) || 0);
-    const balanceBeforeEscrow = roundedMoney(money(wallet.available_balance) + stake);
-    const updatedWallet = await updateEntity("Wallet", wallet.id, {
-      available_balance: roundedMoney(money(wallet.available_balance) + payout),
-      withdrawable_balance: roundedMoney(money(wallet.withdrawable_balance) + payout),
-      pending_balance: roundedMoney(Math.max(0, money(wallet.pending_balance) - stake)),
-      escrow_balance: roundedMoney(Math.max(0, money(wallet.escrow_balance) - stake)),
-      total_earnings: roundedMoney(money(wallet.total_earnings) + Math.max(0, payout - stake)),
-    });
-    await syncUserWalletBalance(participant.user_id, updatedWallet);
-
-    const participantProfit = roundedMoney(Math.max(0, payout - stake));
-    if (participantProfit > 0) {
-      await prisma.user.update({
-        where: { id: participant.user_id },
-        data: {
-          total_wager_earnings: { increment: participantProfit },
-          lifetime_earnings: { increment: participantProfit },
-        },
-      }).catch(() => null);
-    }
-
-    walletChanges[participant.user_id] = {
-      won,
-      stake,
-      payout,
-      match_delta: roundedMoney(payout - stake),
-      previous_balance: balanceBeforeEscrow,
-      new_balance: roundedMoney(updatedWallet.available_balance),
-    };
-
-    await createWalletTransaction(participant.user_id, updatedWallet, {
-      type: payout > 0 ? "wager_payout" : "wager_loss",
-      amount: payout,
-      description: payout > 0 ? `Wager payout for ${wager.id}` : `Wager lost for ${wager.id}`,
-      reference_type: "Wager",
-      reference_id: wager.id,
-    });
-
-    // Money 8s renders the single full-screen result overlay in the match room.
-    // Do not also enqueue a second wallet balance popup here: the overlay already
-    // shows the net result (+$1 on a $1 entry, or -$1 for a loss).
-
-    if (participant.id) {
-      await updateEntity("WagerParticipant", participant.id, {
-        escrow_released: true,
-        escrow_released_date: nowIso(),
-      }).catch(() => null);
-    }
-  }
-
-  const allParticipants = await listEntities("WagerParticipant", { wager_id: wager.id }, "-joined_date", 20).catch(() => []);
-  for (const participant of allParticipants) {
-    if (!participant.user_id || walletChanges[participant.user_id]) continue;
-    const wallet = await walletFor(participant.user_id);
-    walletChanges[participant.user_id] = {
-      won: participant.team === winningSide,
-      stake: 0,
-      payout: 0,
-      match_delta: 0,
-      previous_balance: roundedMoney(wallet.available_balance),
-      new_balance: roundedMoney(wallet.available_balance),
-    };
-  }
-
-  return { totalPot, winnerProfit, walletChanges };
+async function releaseWagerEscrow(wager, winnerId, completion = null) {
+  return settleWagerPayout(prisma, wager, winnerId, completion);
 }
 
 async function refundWagerEscrow(wager, reason = "Wager refunded") {
@@ -1363,9 +1222,11 @@ async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
   const winnerEloGain = clampChange(50 * (1 - winnerExpectedScore));
   const loserEloLoss = clampChange(40 * loserExpectedScore);
 
+  const itemBonuses = await loadRewardBonuses(prisma, winners, "ranked");
   const apply = async (userId, didWin) => {
     const before = statsByUser[userId];
-    const requestedDelta = didWin ? winnerEloGain : -loserEloLoss;
+    const itemBonus = didWin ? itemBonuses[userId]?.ranked_elo || 0 : 0;
+    const requestedDelta = didWin ? winnerEloGain + itemBonus : -loserEloLoss;
     await updateProfileOutcome(userId, didWin, requestedDelta);
     const after = await updateRankedOutcome(userId, didWin, requestedDelta);
     await prisma.user.update({
@@ -1377,6 +1238,7 @@ async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
       previous_elo: Number(before?.elo || 0),
       new_elo: Number(after?.elo || 0),
       delta: Number(after?.elo || 0) - Number(before?.elo || 0),
+      reward_bonus: itemBonus,
       opponent_team_average_elo: Math.round(didWin ? loserAverageElo : winnerAverageElo),
     };
   };
@@ -2054,6 +1916,9 @@ async function completeTournament(tournamentId, winnerId, winnerName, runnerUpId
     where: { id: userId },
     data: { tournament_wins: { increment: 1 } },
   }).catch(() => null)));
+  // Credit bonuses can be recovered by the reward worker without interrupting
+  // the tournament's existing prize distribution if the reward service fails.
+  await awardTournamentCreditBonus(prisma, tournamentId, winnerUserIds).catch((error) => console.error("[tournament-credit-bonus]", error.message));
   const firstPrize = await awardTournamentPrize(tournament, winnerId, winnerUserIds, 1);
   const secondPrize = await awardTournamentPrize(tournament, runnerUpId, runnerUpUserIds, 2);
   const prize = { first: firstPrize, second: secondPrize };
@@ -7660,10 +7525,17 @@ async function completeWagerUnlocked(req) {
       eights_reshuffle_vote_user_ids: [],
     } : {}),
   };
+  const isPaidWager = entryFee > 0 && ((wager.match_type || "wagers") === "wagers" || isEightsMatchType(wager.match_type));
+  let payoutResult;
   if (wager.match_type === "8s") {
     completion.free_eights_reward_snapshot = await captureFreeEightsRewards(prisma, [...winnerUserIds, ...loserUserIds], eightsGameId(wager.game_id));
     const result = await completeFreeEightsWithElo(prisma, wager.id, completion);
     if (!result.applied) return { success: false, error: "Match is already completed" };
+  } else if (isPaidWager) {
+    // Paid completion and every wallet transfer commit together. A payout
+    // failure leaves the report retryable rather than a completed unpaid room.
+    payoutResult = await releaseWagerEscrow(wager, winnerId, completion);
+    if (payoutResult.alreadyCompleted) return { success: true, already_completed: true, winner_id: winnerId, wallet_changes: payoutResult.walletChanges, wager: await getEntity("Wager", wager.id) };
   } else {
     await updateEntity("Wager", wager.id, completion);
   }
@@ -7681,7 +7553,6 @@ async function completeWagerUnlocked(req) {
     completed_date: new Date().toISOString(),
   });
 
-  const isPaidWager = entryFee > 0 && ((wager.match_type || "wagers") === "wagers" || isEightsMatchType(wager.match_type));
   await Promise.all(winnerUserIds.map(async (userId) => {
     const winner = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
     if (!winner) return;
@@ -7695,7 +7566,7 @@ async function completeWagerUnlocked(req) {
     if (!loser) return;
     await prisma.user.update({ where: { id: userId }, data: { wager_losses: loser.wager_losses + 1, current_win_streak: 0 } });
   }));
-  const payoutResult = isPaidWager
+  payoutResult ||= isPaidWager
     ? await releaseWagerEscrow(wager, winnerId)
     : { totalPot: 0, winnerProfit: 0, walletChanges: {} };
   const xpChanges = await applyParticipantRewards(winnerUserIds, loserUserIds);
@@ -10594,6 +10465,21 @@ async function postDiscordCelebration(req) {
 }
 
 const handlers = {
+  setRewardCampaignActive: (req) => setRewardCampaignActive(prisma, req.user, req.body),
+  getAdminRewardOverview: (req) => getAdminRewardOverview(prisma, req.user),
+  saveRewardTemplate: (req) => saveRewardTemplate(prisma, req.user, req.body),
+  saveRewardSettings: (req) => saveRewardSettings(prisma, req.user, req.body),
+  saveRewardCampaign: (req) => saveRewardCampaign(prisma, req.user, req.body),
+  getMyRewardGrants: (req) => getMyRewardGrants(prisma, req.user.id),
+  getRewardReveal: (req) => getRewardReveal(prisma, req.user.id, req.body.grant_id),
+  acknowledgeReward: (req) => acknowledgeReward(prisma, req.user.id, req.body.grant_id),
+  getRewardSeasonStandings: (req) => readLeaderboardSnapshot(`reward-season:${String(req.body.season_id || "current")}`, () => getRewardSeasonStandings(prisma, req.body)),
+  processCompetitionRewards: async (req) => {
+    if (!hasRole(req.user, "admin")) throw Object.assign(new Error("Admin access required"), { status: 403 });
+    void processCompetitionRewards(prisma).catch((error) => console.error("[competition-rewards]", error.message));
+    return { success: true, queued: true };
+  },
+
   getAdminDashboard: (req) => getAdminDashboard(prisma, req.user),
   ...challengeHandlers,
   ...tradingHandlers,

@@ -1,3 +1,4 @@
+import { loadRewardBonuses } from "./competition-rewards.js";
 import { serializeRow } from "./entity.js";
 import { readXPParty } from "./xp-teams.js";
 import { xpCategoryForSize } from "../src/lib/xpCategories.js";
@@ -318,6 +319,7 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
       : Object.fromEntries(ids.map((userId) => [userId, stats.get(userId)?.metadata?.total_xp])), validSnapshot ? frozen.captured_at : stamp());
     const outcome = xpMatchOutcome(strength, winningSide);
     const winners = new Set(xpMatchRoster(match, winningSide));
+    const rewardBonuses = await loadRewardBonuses(tx, [...winners], "xp");
     const changes = {};
     const activeSeason = ids.some((id) => !stats.get(id)?.id) ? await activeProgressionSeason(tx, "xp") : null;
     for (const userId of ids) {
@@ -325,7 +327,8 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
       const current = previous?.metadata || {};
       const won = winners.has(userId);
       const before = normalizeMatchXP(current.total_xp);
-      const after = Math.max(0, before + (won ? outcome.change : -outcome.change));
+      const itemBonus = won ? rewardBonuses[userId]?.xp || 0 : 0;
+      const after = Math.max(0, before + (won ? outcome.change + itemBonus : -outcome.change));
       const delta = after - before;
       const level = Math.floor(after / 1000) + 1;
       const metadata = { ...current, user_id: userId, username: nameFor(usersById.get(userId)),
@@ -338,7 +341,7 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
       if (previous?.id) await tx.xPStats.update({ where: { id: previous.id }, data: { metadata } });
       else await tx.xPStats.create({ data: { metadata } });
       await tx.user.update({ where: { id: userId }, data: { xp_level: level } });
-      changes[userId] = { previous_xp: before, new_xp: after, delta, won, expected_change: won ? outcome.change : -outcome.change,
+      changes[userId] = { previous_xp: before, new_xp: after, delta, won, reward_bonus: itemBonus, expected_change: won ? outcome.change : -outcome.change,
         own_team_average_xp: strength[`${won ? winningSide : winningSide === "alpha" ? "bravo" : "alpha"}_average_xp`],
         opponent_team_average_xp: won ? outcome.loser_average_xp : outcome.winner_average_xp };
     }

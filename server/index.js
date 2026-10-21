@@ -1,3 +1,4 @@
+import { startCompetitionRewardWorker } from "./competition-rewards.js";
 import "dotenv/config";
 import streamAccountRoutes, { beginStreamConnection } from "./routes/stream-accounts.js";
 import express from "express";
@@ -96,11 +97,12 @@ const server = app.listen(port, () => {
 attachRankedVoiceServer(server);
 attachEightsLiveServer(server);
 const stopMatchfinderExpiry = startMatchfinderExpiryWorker(expireMatchfinderPosts);
+const stopCompetitionRewards = startCompetitionRewardWorker(prisma);
 const stopNotificationRetention = startNotificationRetentionWorker(() => purgeExpiredNotifications(prisma));
 
 const shutdown = async () => {
   server.close(async () => {
-    await Promise.all([stopMatchfinderExpiry(), stopNotificationRetention()]);
+    await Promise.all([stopMatchfinderExpiry(), stopNotificationRetention(), stopCompetitionRewards()]);
     await disconnectPrisma();
     process.exit(0);
   });
