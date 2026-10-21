@@ -1,3 +1,4 @@
+import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 import { competitionStreamChannels, requiresCompetitionStream, streamChannelUrl } from "./competitionStreaming";
 import { trophyCountsFor, trophyFields } from "./trophyCounts";
 
@@ -39,6 +40,7 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
       is_premium: userRow?.is_premium || false,
       premium_expires: userRow?.premium_expires || null,
       badges: userRow?.badges || [],
+      console_restricted: consoleRestrictedFor(userRow),
       verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
       streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
       stream_required_by_rules: requiresCompetitionStream(wager.match_type || "wagers"),

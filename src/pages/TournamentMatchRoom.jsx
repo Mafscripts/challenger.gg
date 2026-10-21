@@ -1,3 +1,4 @@
+import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import { competitionStreamChannels, streamChannelUrl } from "@/lib/competitionStreaming";
 import { TrophySymbol } from "@/components/ui/TrophyCounts";
@@ -269,6 +270,7 @@ function playerWithStats(player, userRow, profileRow) {
     avatar_url: userRow?.avatar_url || profileRow?.avatar_url || player?.avatar_url || "",
     activision_id: userRow?.activision_id || player?.activision_id || "",
     badges: userRow?.badges || [],
+    console_restricted: consoleRestrictedFor(userRow),
     verified_player: userRow?.verified_player || userRow?.is_verified_player || false,
     streamer_badge: userRow?.streamer_badge || userRow?.is_streamer || false,
     is_premium: Boolean(userRow?.is_premium),

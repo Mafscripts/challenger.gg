@@ -54,7 +54,7 @@ export async function setAdminUserVpnAccess(db, actor, body = {}) {
 const directoryFields = ["id", "username", "handle", "display_name", "full_name", "role", "admin_role", "is_admin",
   "created_date", "updated_date", "account_created_date", "is_banned", "is_premium", "premium_expires", "region",
   "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer", "force_stream_required",
-  "stream_override_required", "monitor_cam_required", "required_monitor_cam", "moni_cam_required", "monitor_cam_override_required"];
+  "stream_override_required", "monitor_cam_required", "required_monitor_cam", "moni_cam_required", "monitor_cam_override_required", "console_restricted"];
 
 export async function getAdminUsers(db, actor, body = {}) {
   if (!hasRole(actor, "moderator")) fail("Moderator access required", 403);

@@ -65,6 +65,7 @@ import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm } from "@/lib/tournamentGames";
 import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig, hasRolePower } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
+import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 
 const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
@@ -807,6 +808,7 @@ export default function Admin() {
     preset,
     forceStream = Boolean(targetUser.force_stream_required || targetUser.stream_override_required),
     monitorCamRequired = Boolean(targetUser.monitor_cam_required || targetUser.required_monitor_cam || targetUser.moni_cam_required),
+    consoleRestricted = consoleRestrictedFor(targetUser),
   ) => {
     if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage badges.", variant: "destructive" });
@@ -821,6 +823,7 @@ export default function Admin() {
         badge_types: option.types,
         force_stream_required: forceStream,
         monitor_cam_required: monitorCamRequired,
+        console_restricted: consoleRestricted,
       });
       if (response.data?.success) {
         toast({ title: "Badges updated", description: `${userName(targetUser)} badges saved.` });
@@ -2160,7 +2163,7 @@ export default function Admin() {
                                         <KeyRound className="h-3 w-3" /> Set Password
                                       </button>
                                       <div className="mt-1 space-y-2 border-t border-white/5 px-2 pt-2">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-vapor">Badges & stream requirements</p>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-vapor">Badges & player requirements</p>
                                         <select
                                           value={userBadgePreset(user)}
                                           onChange={(event) => handleSetUserBadges(
@@ -2205,6 +2208,15 @@ export default function Admin() {
                                             className="accent-red-500"
                                           />
                                           Monitor cam
+                                        </label>
+                                        <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-purple-300">
+                                          <input type="checkbox" checked={consoleRestrictedFor(user)}
+                                            onChange={(event) => handleSetUserBadges(user, userBadgePreset(user),
+                                              Boolean(user.force_stream_required || user.stream_override_required),
+                                              Boolean(user.monitor_cam_required || user.required_monitor_cam || user.moni_cam_required),
+                                              event.target.checked)}
+                                            disabled={busyId === `${user.id}:badges`} className="accent-purple-400" />
+                                          Console Restricted
                                         </label>
                                       </div>
                                     </div>

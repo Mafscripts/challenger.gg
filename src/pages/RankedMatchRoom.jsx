@@ -1,3 +1,4 @@
+import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
@@ -478,6 +479,7 @@ function RankedMatchRoomView() {
       matches_played: stats.matches_played || 0,
       season: stats.season || userRows?.ranked_season || 1,
       badges: userRows?.badges || [],
+      console_restricted: consoleRestrictedFor(userRows),
       is_premium: Boolean(userRows?.is_premium),
       premium_expires: userRows?.premium_expires || null,
       verified_player: userRows?.verified_player || userRows?.is_verified_player || false,

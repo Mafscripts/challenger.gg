@@ -7,7 +7,7 @@ const presentationFields = [
   "display_name_color", "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer",
   "force_stream_required", "stream_override_required", "monitor_cam_required", "required_monitor_cam",
   "moni_cam_required", "monitor_cam_override_required", "gold_count", "silver_count", "bronze_count",
-  "premium_count", "premium_trophies",
+  "premium_count", "premium_trophies", "console_restricted",
 ];
 const metadataProjection = (fields) => Prisma.sql`jsonb_build_object(${Prisma.join(fields.flatMap((field) => [
   Prisma.sql`${field}::text`, Prisma.sql`metadata -> ${field}::text`,

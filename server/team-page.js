@@ -100,7 +100,7 @@ export async function getTeamPageActivity(db, req, ids) {
 
 const playerFields = ["activision_id", "badges", "display_name_color", "verified_player", "is_verified_player", "streamer_badge", "is_streamer",
   "force_stream_required", "stream_override_required", "monitor_cam_required", "required_monitor_cam", "moni_cam_required", "monitor_cam_override_required",
-  "gold_count", "silver_count", "bronze_count", "premium_count", "premium_trophies"];
+  "gold_count", "silver_count", "bronze_count", "premium_count", "premium_trophies", "console_restricted"];
 const playerMetadata = metadataProjection(playerFields);
 const inventoryMetadata = metadataProjection(["user_id", "item_category", "category", "item_name", "unlock_key", "item_rarity", "purchase_method"]);
 

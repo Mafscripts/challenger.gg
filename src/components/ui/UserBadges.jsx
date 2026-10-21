@@ -1,7 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, BadgeCheck, Crown, Monitor } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Crown, Gamepad2, Monitor } from "lucide-react";
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
+import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 
 const specialBadgeConfig = {
   verified_player: {
@@ -71,7 +72,8 @@ export default function UserBadges({
   ));
   const forcedStream = showForceStream && Boolean(user?.force_stream_required || user?.stream_override_required);
   const monitorCamRequired = showMonitorCam && Boolean(user?.monitor_cam_required || user?.required_monitor_cam || user?.moni_cam_required || user?.monitor_cam_override_required);
-  if (rows.length === 0 && !forcedStream && !monitorCamRequired) return null;
+  const consoleRestricted = consoleRestrictedFor({ ...user, badges: user?.badges ?? user?.metadata?.badges ?? suppliedBadges });
+  if (rows.length === 0 && !forcedStream && !monitorCamRequired && !consoleRestricted) return null;
 
   const sizeClass = size === "xs" ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]";
   const iconClass = size === "xs" ? "h-3.5 w-3.5" : "h-4 w-4";
@@ -108,6 +110,14 @@ export default function UserBadges({
           </BadgeTooltip>
         );
       })}
+      {consoleRestricted && (
+        <BadgeTooltip enabled={showTooltip} label="Console Restricted" description="This player is restricted to playing on console. PC play is not permitted." icon={Gamepad2} toneClass="text-purple-300" placement={tooltipPlacement}>
+          <span tabIndex={showTooltip ? 0 : undefined} aria-label="Console Restricted"
+            className={`${iconOnly ? `justify-center rounded-full ${iconOnlyClass}` : `gap-1.5 rounded-md ${sizeClass}`} relative inline-flex cursor-default select-none items-center border border-purple-400/35 bg-purple-400/10 font-black uppercase tracking-wider text-purple-300`}>
+            <Gamepad2 className={iconClass} />{!iconOnly && "Console Restricted"}
+          </span>
+        </BadgeTooltip>
+      )}
       {forcedStream && (
         <BadgeTooltip enabled={showTooltip} label="Stream Required" description={user?.stream_required_by_rules ? "Every player in this competition must stream on Twitch, YouTube or Kick, including console and verified players." : "Admin requires this player to stream"} icon={AlertTriangle} toneClass="text-orange" placement={tooltipPlacement}>
           <span tabIndex={showTooltip ? 0 : undefined} aria-label={iconOnly ? "Stream Required" : undefined}

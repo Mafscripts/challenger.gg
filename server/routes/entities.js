@@ -150,6 +150,10 @@ router.use("/:entity", (req, res, next) => {
   if (["challengematch", "challengestanding"].includes(String(req.params.entity).toLowerCase())) return res.status(403).json({ error: "Use the protected Challenge a Team actions" });
   if (String(req.params.entity).toLowerCase() === "tryoutroom") return res.status(404).json({ error: "Entity not found" });
   if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method) && Object.hasOwn(req.body || {}, "badges")) return res.status(403).json({ error: "Use admin badge management" });
+  if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method)
+    && (Object.hasOwn(req.body || {}, "console_restricted") || Object.hasOwn(req.body?.metadata || {}, "console_restricted"))) {
+    return res.status(403).json({ error: "Use admin badge management to change console restrictions" });
+  }
   if (String(req.params.entity).toLowerCase() === "mappool" && ["POST", "PATCH", "DELETE"].includes(req.method)) return res.status(403).json({ error: "Use the Free 8s game configuration action" });
   if (String(req.params.entity).toLowerCase() === "rankverification") return res.status(403).json({ error: "Use the protected rank verification endpoints" });
   if (String(req.params.entity).toLowerCase() === "user" && ["POST", "PATCH"].includes(req.method) && Object.hasOwn(req.body || {}, "screenshot_rank")) return res.status(403).json({ error: "Use rank verification or admin rank review" });

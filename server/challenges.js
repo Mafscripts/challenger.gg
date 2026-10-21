@@ -1,4 +1,5 @@
 import { playerAvatarFor } from "./lib/playerAvatars.js";
+import { consoleRestrictedFor } from "../src/lib/playerRestrictions.js";
 import { prisma } from "./prisma.js";
 import { hasRole } from "./roles.js";
 import { hasDiscordLink, freeEightsDiscordMembershipJoinError } from "./free-eights-discord.js";
@@ -142,7 +143,7 @@ export function createChallengeHandlers({ db = prisma, checkMembership = async (
     // Match tables receive public presentation fields only, never account details.
     const profiles = new Map(users.map((user) => [user.id, {
       ...Object.fromEntries(["avatar_url", "display_name_color", "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer", "force_stream_required", "monitor_cam_required", "twitter", "twitch", "youtube", "website"].filter((key) => user.metadata?.[key] !== undefined).map((key) => [key, user.metadata[key]])),
-      avatar_url: playerAvatarFor(user), role: user.role, admin_role: user.admin_role, is_admin: user.is_admin, is_premium: user.is_premium, premium_expires: user.premium_expires, discord_username: user.discord_username,
+      avatar_url: playerAvatarFor(user), console_restricted: consoleRestrictedFor(user), role: user.role, admin_role: user.admin_role, is_admin: user.is_admin, is_premium: user.is_premium, premium_expires: user.premium_expires, discord_username: user.discord_username,
     }]));
     match.players = match.players.map((player) => ({ ...player, ...profiles.get(player.user_id) }));
     match.standings = standings.map(({ kind, subject_id, xp, wins, losses }) => ({ kind, subject_id, xp, wins, losses }));

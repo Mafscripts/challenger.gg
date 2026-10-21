@@ -8,6 +8,7 @@ import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket } from "../adm
 import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount, setAdminUserVpnAccess } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
 import { getAdminDashboard } from "../admin-dashboard.js";
+import { consoleRestrictedFor } from "../../src/lib/playerRestrictions.js";
 import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
@@ -5942,6 +5943,7 @@ const messageUserSummary = async (user) => {
     username: user.username || "",
     handle: user.handle || user.username || "",
     avatar_url: playerAvatarFor(user, profile),
+    console_restricted: consoleRestrictedFor(user),
     role: user.role || "user",
     is_premium: Boolean(user.is_premium),
     premium_expires: user.premium_expires || null,
@@ -10075,6 +10077,9 @@ async function updateUserBadges(req) {
   const streamer = specialBadges.some((badge) => badge.type === "streamer");
   const forceStream = booleanFromBody(req.body, ["force_stream_required", "stream_override_required"]);
   const monitorCamRequired = booleanFromBody(req.body, ["monitor_cam_required", "required_monitor_cam", "moni_cam_required"]);
+  const previousConsoleRestricted = consoleRestrictedFor(target);
+  const consoleRestricted = Object.hasOwn(req.body, "console_restricted")
+    ? booleanFromBody(req.body, ["console_restricted"]) : previousConsoleRestricted;
   const user = await prisma.user.update({
     where: { id: target.id },
     data: {
@@ -10085,6 +10090,7 @@ async function updateUserBadges(req) {
         streamer_badge: streamer,
         force_stream_required: forceStream,
         monitor_cam_required: monitorCamRequired,
+        console_restricted: consoleRestricted,
         stream_exempt_default: verified && !forceStream,
         badge_updated_by: req.user.id,
         badge_updated_by_name: nameFor(req.user),
@@ -10105,13 +10111,18 @@ async function updateUserBadges(req) {
       badge_types: specialBadges.map((badge) => badge.type),
       force_stream_required: forceStream,
       monitor_cam_required: monitorCamRequired,
+      console_restricted: consoleRestricted,
+      previous_console_restricted: previousConsoleRestricted,
     },
     created_date: nowIso(),
   }).catch(() => null);
 
   await notifyUser(target.id, {
-    title: "Profile badges updated",
-    message: specialBadges.length > 0
+    title: consoleRestricted !== previousConsoleRestricted ? "Console restriction updated" : "Profile badges updated",
+    message: consoleRestricted !== previousConsoleRestricted
+      ? consoleRestricted ? "An admin has marked your account as Console Restricted. You must play on console; PC play is not permitted."
+        : "An admin has removed your console restriction."
+      : specialBadges.length > 0
       ? `Your profile badges were updated: ${specialBadges.map((badge) => badge.name).join(", ")}.`
       : "Your special profile badges were updated.",
     type: "system",
@@ -10129,6 +10140,7 @@ async function updateUserBadges(req) {
       monitor_cam_required: monitorCamRequired,
       required_monitor_cam: monitorCamRequired,
       moni_cam_required: monitorCamRequired,
+      console_restricted: consoleRestricted,
       verified_player: verified,
       streamer_badge: streamer,
     },
