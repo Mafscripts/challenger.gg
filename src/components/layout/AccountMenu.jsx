@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Crown, History, LogOut, Settings, ShieldCheck, Ticket, User, Users, Wallet } from "lucide-react";
+import { BookOpen, ChevronRight, CircleAlert, Crown, History, LogOut, Settings, ShieldCheck, Ticket, User, Users, Wallet } from "lucide-react";
 import NavigationLayoutToggle from "./NavigationLayoutToggle";
 import NavigationHoverFill from "./NavigationHoverFill";
 import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
@@ -24,6 +24,7 @@ export default function AccountMenu({ user, name, role, avatar, profilePath, sta
       <nav className="profile-menu-section" aria-label="Your account"><p>Account</p><div className="profile-menu-account-grid">{links.map(({ label, path, icon: Icon }) => <Link key={path} to={path} onClick={onClose} className="profile-menu-link navigation-hover"><NavigationHoverFill /><span className="profile-menu-item-icon"><Icon size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">{label}</span></Link>)}</div></nav>
       <div className="profile-menu-secondary">
         <Link to="/premium" onClick={onClose} className="profile-menu-link profile-menu-premium navigation-hover"><NavigationHoverFill /><span className="profile-menu-item-icon"><Crown size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">Topfragg Premium</span><ChevronRight size={13} className="profile-menu-link-arrow" aria-hidden="true" /></Link>
+        <Link to="/rules" onClick={onClose} className="profile-menu-link profile-menu-rules navigation-hover"><NavigationHoverFill /><span className="profile-menu-item-icon"><BookOpen size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">Rules</span><span className="profile-menu-important"><CircleAlert size={11} aria-hidden="true" />Important</span><ChevronRight size={13} className="profile-menu-link-arrow" aria-hidden="true" /></Link>
         {staff && <Link to="/admin" onClick={onClose} className="profile-menu-link profile-menu-admin-shortcut navigation-hover"><NavigationHoverFill /><span className="profile-menu-item-icon"><ShieldCheck size={15} aria-hidden="true" /></span><span className="profile-menu-link-label">Admin Panel</span><ChevronRight size={13} className="profile-menu-link-arrow" aria-hidden="true" /></Link>}
       </div>
     </div>

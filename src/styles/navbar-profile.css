@@ -35,6 +35,9 @@
 .profile-menu-compact .profile-menu-link-arrow { flex-shrink: 0; color: hsl(var(--vapor) / .4); }
 .profile-menu-compact .profile-menu-secondary { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgb(255 255 255 / .06); }
 .profile-menu-compact .profile-menu-premium .profile-menu-item-icon { color: #e1ce87; }
+.profile-menu-compact .profile-menu-rules { --navigation-hover-color: #f5c36b; margin-top: 5px; border: 1px solid #f5c36b35; background: #f5c36b08; }
+.profile-menu-compact .profile-menu-rules .profile-menu-item-icon { color: #f5c36b; }
+.profile-menu-important { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 6px; border: 1px solid #f5c36b45; border-radius: 5px; background: #f5c36b10; color: #f5d49a; font-size: 8px; font-weight: 850; line-height: 1.3; letter-spacing: .04em; text-transform: uppercase; }
 .profile-menu-compact .profile-menu-admin-shortcut .profile-menu-item-icon { color: #fca5a5; }
 .profile-menu-compact .profile-menu-footer { display: flex; flex-shrink: 0; align-items: center; gap: 6px; padding: 8px 10px; border-top: 1px solid rgb(255 255 255 / .06); }
 .profile-menu-compact .profile-menu-footer[data-layout-switch="true"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
