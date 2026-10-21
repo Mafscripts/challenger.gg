@@ -8,6 +8,7 @@ import '@/styles/player-overlay.css'
 import '@/styles/native-app.css'
 import '@/styles/navigation-hover.css'
 import '@/styles/site-hover.css'
+import '@/styles/embedded-fields.css'
 import { initializeNativeApp } from '@/lib/nativeApp'
 
 void initializeNativeApp().catch(error => console.error('App initialization failed:', error.message))

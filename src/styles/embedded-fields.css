@@ -1,0 +1,32 @@
+/* Composite fields already draw their border and focus on the surrounding
+   container. Never draw a second frame around the text inside that container. */
+:is(
+  .embedded-field,
+  .trading-search,
+  .marketplace-search,
+  .inventory-search,
+  .leaderboard-search,
+  .league-search,
+  .nav-player-search-field,
+  .settings-search-bar,
+  .rules-search,
+  .support-search,
+  .messages-conversation-search,
+  .messages-recipient-search,
+  .messages-composer-field,
+  .admin-nav-search,
+  .admin-audit .al-search,
+  .admin-roles .ar-search,
+  .admin-wallets .aw-search,
+  .party-lookup-field
+) :is(input, textarea),
+:is(input, textarea).bg-transparent:not([class*="border"]) {
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  /* Override page-level focus rules only for these embedded text controls. */
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.league-search:focus-within { border-color: hsl(var(--cyan) / .5); }
