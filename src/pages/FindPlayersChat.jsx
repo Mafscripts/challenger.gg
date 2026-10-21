@@ -150,14 +150,17 @@ export default function FindPlayersChat() {
   useEffect(() => {
     let mounted = true;
     let intervalId;
+    let refreshing = false;
     const initialize = async () => {
       const user = await base44.auth.me().catch(() => null);
       if (!mounted) return;
       setCurrentUser(user);
       await loadRoom();
       if (!mounted) return;
-      intervalId = window.setInterval(() => {
-        if (document.visibilityState === "visible") loadRoom({ silent: true });
+      intervalId = window.setInterval(async () => {
+        if (!mounted || refreshing || document.visibilityState !== "visible") return;
+        refreshing = true;
+        try { await loadRoom({ silent: true }); } finally { refreshing = false; }
       }, 2500);
     };
     initialize();

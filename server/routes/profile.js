@@ -188,6 +188,7 @@ router.get("/:userId/tournament-participants", requireAuth, async (req, res, nex
         OR: [
           { metadata: { path: ["user_id"], equals: userId } },
           { metadata: { path: ["captain_id"], equals: userId } },
+          { metadata: { path: ["team_id"], equals: userId } },
           { metadata: { path: ["members"], array_contains: [{ user_id: userId }] } },
         ],
       },

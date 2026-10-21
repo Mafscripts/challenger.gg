@@ -409,7 +409,7 @@ export default function Dashboard() {
     wagers: [],
     rankedMatches: [],
     tournamentMatches: [],
-    xpStats: [],
+    totalXp: 0,
     cashPaidOut: 0,
   });
 
@@ -422,15 +422,20 @@ export default function Dashboard() {
         base44.entities.Wager.filter({}, "-created_date", 500),
         base44.entities.RankedMatch.filter({}, "-created_date", 500),
         base44.entities.TournamentMatch.filter({}, "-created_date", 500),
-        base44.entities.XPStats.filter({}, "-total_xp", 500),
         base44.public.homeOverview(),
       ]);
+      if (cancelled) return;
+      const homeSummary = requests[5].status === "fulfilled" ? requests[5].value : null;
+      // The public snapshot computes this exact XP total already. Preserve the
+      // independent fallback when that snapshot cannot be loaded.
+      const xpRows = homeSummary ? [] : await base44.entities.XPStats.filter({}, "-total_xp", 500).catch(() => []);
       if (cancelled) return;
       const rows = requests.map((result) => result.status === "fulfilled" && Array.isArray(result.value) ? result.value : []);
       setData({
         tournaments: rows[0], users: rows[1], wagers: rows[2], rankedMatches: rows[3],
-        tournamentMatches: rows[4], xpStats: rows[5],
-        cashPaidOut: requests[6].status === "fulfilled" ? number(requests[6].value?.stats?.cash_paid_out) : 0,
+        tournamentMatches: rows[4],
+        totalXp: homeSummary ? number(homeSummary.stats?.total_xp) : xpRows.reduce((sum, row) => sum + number(row.total_xp ?? row.xp), 0),
+        cashPaidOut: number(homeSummary?.stats?.cash_paid_out),
       });
       setLoading(false);
     };
@@ -470,7 +475,7 @@ export default function Dashboard() {
       matchesPlayed: data.wagers.filter(isCompleted).length + data.rankedMatches.filter(isCompleted).length + data.tournamentMatches.filter(isCompleted).length,
       tournaments: data.tournaments.filter((tournament) => String(tournament.status || "").toLowerCase() !== "draft").length,
       cashPaidOut: data.cashPaidOut,
-      totalXp: data.xpStats.reduce((sum, row) => sum + number(row.total_xp ?? row.xp), 0),
+      totalXp: data.totalXp,
     };
   }, [data]);
 

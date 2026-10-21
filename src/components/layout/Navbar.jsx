@@ -269,6 +269,7 @@ export default function Navbar() {
   const pendingAdminDisputeSoundId = useRef(null);
   const notificationsLoadedAt = useRef(0);
   const notificationsRequestId = useRef(0);
+  const pendingNotificationsRequestId = useRef(0);
   const pendingNotificationReads = useRef(new Set());
   const balancePopupsReady = useRef(false);
   const shownBalancePopupIds = useRef(new Set());
@@ -645,7 +646,8 @@ export default function Navbar() {
   useEffect(() => {
     if (!isAuthenticated) return undefined;
     const interval = window.setInterval(() => {
-      loadNotifications({ fresh: true });
+      if (document.visibilityState === "hidden") return;
+      // The live-header loop already refreshes notifications at this cadence.
       loadMessages({ fresh: true });
     }, 15000);
     return () => window.clearInterval(interval);
@@ -841,9 +843,14 @@ export default function Navbar() {
 
   const loadNotifications = async ({ userId = null, force = false } = {}) => {
     if (!force && Date.now() - notificationsLoadedAt.current < 12000) return;
-    const requestId = ++notificationsRequestId.current;
     const ownerId = userId || notificationOwner.current;
     if (!ownerId) return;
+    // Mutation handlers advance the request ID, allowing a newer read after a
+    // confirmed change while simultaneous header/focus reads share this work.
+    if (!force && pendingNotificationsRequestId.current > 0
+      && pendingNotificationsRequestId.current === notificationsRequestId.current) return;
+    const requestId = ++notificationsRequestId.current;
+    pendingNotificationsRequestId.current = requestId;
     setNotificationsLoading(true);
     setNotificationsError("");
     try {
@@ -858,6 +865,7 @@ export default function Navbar() {
       setNotificationsError("Could not load notifications.");
       console.error('Failed to load notifications:', error);
     } finally {
+      if (pendingNotificationsRequestId.current === requestId) pendingNotificationsRequestId.current = 0;
       if (requestId === notificationsRequestId.current) setNotificationsLoading(false);
     }
   };

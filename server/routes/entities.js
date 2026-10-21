@@ -274,12 +274,12 @@ const canViewWager = async (req, wager) => {
   return participants.some((participant) => String(participant.user_id || "") === String(req.user.id));
 };
 
-const refreshTournamentParticipantNames = async (participant) => {
+const refreshTournamentParticipantNames = async (participant, usersById) => {
   if (!participant?.id) return participant;
   const members = Array.isArray(participant.members) ? participant.members : [];
-  const freshMembers = await Promise.all(members.map(async (member) => {
+  const freshMembers = members.map((member) => {
     if (!member?.user_id) return member;
-    const user = await getEntity("User", member.user_id).catch(() => null);
+    const user = usersById.get(member.user_id);
     if (!user) return member;
     return {
       ...member,
@@ -288,9 +288,9 @@ const refreshTournamentParticipantNames = async (participant) => {
       handle: user.handle || member.handle,
       display_name: user.display_name || member.display_name,
     };
-  }));
+  });
 
-  const captain = participant.captain_id ? await getEntity("User", participant.captain_id).catch(() => null) : null;
+  const captain = usersById.get(participant.captain_id);
   const patch = {};
   if (captain && participant.captain_name !== nameFor(captain)) {
     patch.captain_name = nameFor(captain);
@@ -306,7 +306,16 @@ const refreshTournamentParticipantNames = async (participant) => {
   }));
 };
 
-const visibleTournamentParticipants = async (_req, rows) => Promise.all((rows || []).map(refreshTournamentParticipantNames));
+const visibleTournamentParticipants = async (_req, rows) => {
+  const ids = [...new Set((rows || []).flatMap((row) => [row.captain_id,
+    ...(Array.isArray(row.members) ? row.members.map((member) => member?.user_id) : []),
+  ]).filter((id) => typeof id === "string" && id))];
+  const users = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } },
+    select: { id: true, display_name: true, full_name: true, username: true, handle: true, email: true },
+  }).catch(() => []) : [];
+  const usersById = new Map(users.map((user) => [user.id, user]));
+  return Promise.all((rows || []).map((row) => refreshTournamentParticipantNames(row, usersById)));
+};
 
 const visibleTournamentMatches = async (_req, rows) => rows;
 
@@ -320,11 +329,17 @@ const visibleChatMessages = async (req, rows) => {
 
 const visibleWagers = async (req, rows) => {
   if (hasRole(req.user, "moderator")) return rows;
-  const visible = await Promise.all(rows.map(async (wager) => {
-    if (["open", "registration"].includes(wager.status || "open")) return wager;
-    return await canViewWager(req, wager) ? wager : null;
-  }));
-  return visible.filter(Boolean);
+  const directlyVisible = (wager) => ["open", "registration"].includes(wager.status || "open")
+    || String(wager.host_id || "") === String(req.user.id)
+    || String(wager.challenger_id || "") === String(req.user.id);
+  const ids = rows.filter((wager) => !directlyVisible(wager) && wager.id).map((wager) => String(wager.id));
+  // The same participant visibility check, batched instead of up to 500 reads.
+  const participants = ids.length ? await prisma.wagerParticipant.findMany({ where: { AND: [
+    { metadata: { path: ["user_id"], equals: String(req.user.id) } },
+    { OR: ids.map((id) => ({ metadata: { path: ["wager_id"], equals: id } })) },
+  ] }, select: { metadata: true } }).catch(() => []) : [];
+  const permitted = new Set(participants.map((row) => String(row.metadata?.wager_id || "")));
+  return rows.filter((wager) => directlyVisible(wager) || permitted.has(String(wager.id)));
 };
 
 const visibleTickets = (req, rows) => {

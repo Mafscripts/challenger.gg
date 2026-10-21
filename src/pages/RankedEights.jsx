@@ -76,9 +76,12 @@ export default function RankedEights() {
   const activeLobby = isMoney ? moneyActiveLobby : freeOverview.data?.active_lobby || null;
   const loading = isMoney ? moneyLoading : !comingSoon && freeOverview.isPending;
   const refreshFreeOverview = freeOverview.refetch;
+  const moneyLoadsInFlight = useRef(0);
 
   const load = useCallback(async (quiet = false) => {
     if (!isMoney) return refreshFreeOverview();
+    if (quiet && (document.visibilityState === "hidden" || moneyLoadsInFlight.current > 0)) return;
+    moneyLoadsInFlight.current += 1;
     if (!quiet) setLoading(true);
     try {
       const currentUser = await base44.auth.me();
@@ -98,6 +101,7 @@ export default function RankedEights() {
       console.error("Failed to load 8s:", error);
       toast({ title: isMoney ? "Money 8s unavailable" : "8s unavailable", description: error.message || "Please try again.", variant: "destructive" });
     } finally {
+      moneyLoadsInFlight.current -= 1;
       setLoading(false);
     }
   }, [isMoney, lobbyMatchType, refreshFreeOverview]);

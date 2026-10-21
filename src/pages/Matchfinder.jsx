@@ -106,7 +106,7 @@ export default function Matchfinder() {
     let cancelled = false;
     let inFlight = false;
     const refresh = async () => {
-      if (inFlight || cancelled) return;
+      if (inFlight || cancelled || document.visibilityState === "hidden") return;
       inFlight = true;
       try {
         const overview = await loadFreeEightsOverview(base44);
@@ -132,12 +132,17 @@ export default function Matchfinder() {
     const lobbies = wagerMatches.filter((match) => wagerType(match) === matchType);
     if (!lobbies.length) return;
     let cancelled = false;
+    let countsInFlight = false;
     const refreshCounts = async () => {
-      const counts = await Promise.all(lobbies.map(async (lobby) => {
-        const participants = await base44.entities.WagerParticipant.filterFresh({ wager_id: lobby.id }, "joined_date", 8).catch(() => null);
-        return [lobby.id, participants?.length ?? null];
-      }));
-      if (!cancelled) setEightsCounts(Object.fromEntries(counts));
+      if (cancelled || countsInFlight || document.visibilityState === "hidden") return;
+      countsInFlight = true;
+      try {
+        const counts = await Promise.all(lobbies.map(async (lobby) => {
+          const participants = await base44.entities.WagerParticipant.filterFresh({ wager_id: lobby.id }, "joined_date", 8).catch(() => null);
+          return [lobby.id, participants?.length ?? null];
+        }));
+        if (!cancelled) setEightsCounts(Object.fromEntries(counts));
+      } finally { countsInFlight = false; }
     };
     refreshCounts();
     const interval = window.setInterval(refreshCounts, 6000);

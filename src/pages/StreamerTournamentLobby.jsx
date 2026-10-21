@@ -151,7 +151,12 @@ export default function StreamerTournamentLobby() {
 
   useEffect(() => {
     loadLobby(true);
-    pollRef.current = window.setInterval(() => loadLobby(false), 5000);
+    let refreshing = false;
+    pollRef.current = window.setInterval(async () => {
+      if (refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
+      try { await loadLobby(false); } finally { refreshing = false; }
+    }, 5000);
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };

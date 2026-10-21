@@ -368,7 +368,7 @@ export default function Tournaments() {
       if (!silent) setUser(currentUser);
       if (!silent && currentUser?.id) {
         const [allParticipants, memberships] = await Promise.all([
-          base44.entities.TournamentParticipant.filterFresh({}, "-registered_date", 500).catch(() => []),
+          base44.profile.tournamentParticipants(currentUser.id).catch(() => []),
           base44.entities.TeamMember.filter({ user_id: currentUser.id }, "-joined_date", 20).catch(() => []),
         ]);
         const joined = (allParticipants || []).filter((participant) => (

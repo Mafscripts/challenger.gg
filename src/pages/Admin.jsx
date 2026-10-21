@@ -611,33 +611,42 @@ export default function Admin() {
     window.sessionStorage.setItem("adminActiveTab", activeTab);
 
     if (["tournaments", "marketplace"].includes(activeTab) && currentUser?.id && canAccessAdminPanel(currentRole)) {
-      const refreshMarketplaceItems = () => {
-        base44.entities.MarketplaceItem.filterFresh({}, "-created_date", 500)
-          .then((marketplace) => setData((current) => ({ ...current, marketplace: marketplace.filter(isVisibleMarketplaceItem) })))
-          .catch((error) => console.warn("Failed to refresh marketplace items:", error));
+      let active = true, refreshing = false;
+      const refreshMarketplaceItems = async () => {
+        if (!active || refreshing || document.visibilityState === "hidden") return;
+        refreshing = true;
+        try {
+          const marketplace = await base44.entities.MarketplaceItem.filterFresh({}, "-created_date", 500);
+          if (active) setData((current) => ({ ...current, marketplace: marketplace.filter(isVisibleMarketplaceItem) }));
+        } catch (error) { console.warn("Failed to refresh marketplace items:", error); }
+        finally { refreshing = false; }
       };
       // Initial marketplace data comes from the section query.
       const refreshTimer = window.setInterval(refreshMarketplaceItems, 10000);
-      return () => window.clearInterval(refreshTimer);
+      return () => { active = false; window.clearInterval(refreshTimer); };
     }
     return undefined;
   }, [activeTab, currentUser?.id, currentRole]);
 
   useEffect(() => {
     if (activeTab !== "live8s" || !currentUser?.id) return undefined;
-    let mounted = true;
+    let mounted = true, refreshing = false;
     const refreshLiveEights = async () => {
-      const [freeMatches, moneyMatches] = await Promise.all([
-        base44.entities.Wager.filterFresh({ match_type: "8s" }, "-created_date", 100).catch(() => []),
-        base44.entities.Wager.filterFresh({ match_type: "money8s" }, "-created_date", 100).catch(() => []),
-      ]);
-      if (!mounted) return;
-      setData((current) => ({
-        ...current,
-        eightsMatches: [...(freeMatches || []), ...(moneyMatches || [])]
-          .filter(isLiveEightsLobby)
-          .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0)),
-      }));
+      if (!mounted || refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
+      try {
+        const [freeMatches, moneyMatches] = await Promise.all([
+          base44.entities.Wager.filterFresh({ match_type: "8s" }, "-created_date", 100).catch(() => []),
+          base44.entities.Wager.filterFresh({ match_type: "money8s" }, "-created_date", 100).catch(() => []),
+        ]);
+        if (!mounted) return;
+        setData((current) => ({
+          ...current,
+          eightsMatches: [...(freeMatches || []), ...(moneyMatches || [])]
+            .filter(isLiveEightsLobby)
+            .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0)),
+        }));
+      } finally { refreshing = false; }
     };
     refreshLiveEights();
     const timer = window.setInterval(refreshLiveEights, 4000);

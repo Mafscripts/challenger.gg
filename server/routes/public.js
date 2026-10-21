@@ -23,6 +23,7 @@ router.get("/free-eights-map-images/:id", async (req, res, next) => {
 });
 const CACHE_MS = 60000;
 let homeCache = { expiresAt: 0, value: null };
+let homePending = null;
 
 const number = (value) => Number(value || 0);
 const openStatuses = new Set(["open", "registration", "live", "in_progress"]);
@@ -71,52 +72,57 @@ const safeMatch = (row, kind) => ({
   created_date: row.created_date,
 });
 
+async function loadHomeOverview() {
+  const [tournaments, users, wagers, rankedMatches, tournamentMatches, xpStats, transactions] = await Promise.all([
+    listEntities("Tournament", {}, "-start_date", 500).catch(() => []),
+    listEntities("User", {}, "-tournament_wins", 100).catch(() => []),
+    listEntities("Wager", {}, "-created_date", 500).catch(() => []),
+    listEntities("RankedMatch", {}, "-created_date", 500).catch(() => []),
+    listEntities("TournamentMatch", {}, "-created_date", 500).catch(() => []),
+    listEntities("XPStats", {}, "-total_xp", 500).catch(() => []),
+    listEntities("WalletTransaction", { status: "completed" }, "-created_date", 500).catch(() => []),
+  ]);
+
+  const upcoming = tournaments
+    .filter((row) => openStatuses.has(String(row.status || "").toLowerCase()))
+    .sort((a, b) => new Date(a.start_date || 8640000000000000) - new Date(b.start_date || 8640000000000000))
+    .slice(0, 6)
+    .map(safeTournament);
+  const ladderPlayers = users
+    .filter((row) => number(row.tournament_wins) > 0)
+    .sort((a, b) => number(b.tournament_wins) - number(a.tournament_wins) || number(b.lifetime_earnings) - number(a.lifetime_earnings))
+    .slice(0, 16);
+  const ladder = (await withPlayerAvatars(prisma, ladderPlayers)).map(safePlayer);
+  const matches = [
+    ...wagers.filter((row) => openMatchStatuses.has(String(row.status || "open").toLowerCase())).map((row) => safeMatch(row, "wager")),
+    ...rankedMatches.filter((row) => openMatchStatuses.has(String(row.status || "open").toLowerCase())).map((row) => safeMatch(row, "ranked")),
+  ].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0)).slice(0, 8);
+
+  const value = {
+    stats: {
+      matches_played: wagers.filter((row) => completedStatuses.has(String(row.status || "").toLowerCase())).length
+        + rankedMatches.filter((row) => completedStatuses.has(String(row.status || "").toLowerCase())).length
+        + tournamentMatches.filter((row) => completedStatuses.has(String(row.status || "").toLowerCase())).length,
+      tournaments: tournaments.filter((row) => String(row.status || "").toLowerCase() !== "draft").length,
+      cash_paid_out: transactions
+        .filter((row) => payoutTypes.has(String(row.type || row.transaction_type || "").toLowerCase()))
+        .reduce((sum, row) => sum + Math.abs(number(row.amount)), 0),
+      total_xp: xpStats.reduce((sum, row) => sum + number(row.total_xp ?? row.xp), 0),
+    },
+    tournaments: upcoming,
+    ladder,
+    matches,
+  };
+  homeCache = { value, expiresAt: Date.now() + CACHE_MS };
+  return value;
+}
+
 router.get("/home-overview", async (_req, res, next) => {
   try {
     if (homeCache.value && homeCache.expiresAt > Date.now()) return res.json(homeCache.value);
-
-    const [tournaments, users, wagers, rankedMatches, tournamentMatches, xpStats, transactions] = await Promise.all([
-      listEntities("Tournament", {}, "-start_date", 500).catch(() => []),
-      listEntities("User", {}, "-tournament_wins", 100).catch(() => []),
-      listEntities("Wager", {}, "-created_date", 500).catch(() => []),
-      listEntities("RankedMatch", {}, "-created_date", 500).catch(() => []),
-      listEntities("TournamentMatch", {}, "-created_date", 500).catch(() => []),
-      listEntities("XPStats", {}, "-total_xp", 500).catch(() => []),
-      listEntities("WalletTransaction", { status: "completed" }, "-created_date", 500).catch(() => []),
-    ]);
-
-    const upcoming = tournaments
-      .filter((row) => openStatuses.has(String(row.status || "").toLowerCase()))
-      .sort((a, b) => new Date(a.start_date || 8640000000000000) - new Date(b.start_date || 8640000000000000))
-      .slice(0, 6)
-      .map(safeTournament);
-    const ladderPlayers = users
-      .filter((row) => number(row.tournament_wins) > 0)
-      .sort((a, b) => number(b.tournament_wins) - number(a.tournament_wins) || number(b.lifetime_earnings) - number(a.lifetime_earnings))
-      .slice(0, 16);
-    const ladder = (await withPlayerAvatars(prisma, ladderPlayers)).map(safePlayer);
-    const matches = [
-      ...wagers.filter((row) => openMatchStatuses.has(String(row.status || "open").toLowerCase())).map((row) => safeMatch(row, "wager")),
-      ...rankedMatches.filter((row) => openMatchStatuses.has(String(row.status || "open").toLowerCase())).map((row) => safeMatch(row, "ranked")),
-    ].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0)).slice(0, 8);
-
-    const value = {
-      stats: {
-        matches_played: wagers.filter((row) => completedStatuses.has(String(row.status || "").toLowerCase())).length
-          + rankedMatches.filter((row) => completedStatuses.has(String(row.status || "").toLowerCase())).length
-          + tournamentMatches.filter((row) => completedStatuses.has(String(row.status || "").toLowerCase())).length,
-        tournaments: tournaments.filter((row) => String(row.status || "").toLowerCase() !== "draft").length,
-        cash_paid_out: transactions
-          .filter((row) => payoutTypes.has(String(row.type || row.transaction_type || "").toLowerCase()))
-          .reduce((sum, row) => sum + Math.abs(number(row.amount)), 0),
-        total_xp: xpStats.reduce((sum, row) => sum + number(row.total_xp ?? row.xp), 0),
-      },
-      tournaments: upcoming,
-      ladder,
-      matches,
-    };
-    homeCache = { value, expiresAt: Date.now() + CACHE_MS };
-    return res.json(value);
+    // Visitors arriving together share the existing public snapshot computation.
+    if (!homePending) homePending = loadHomeOverview().finally(() => { homePending = null; });
+    return res.json(await homePending);
   } catch (error) {
     return next(error);
   }

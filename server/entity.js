@@ -238,6 +238,13 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
       { AND: [{ metadata: { path: ["match_type"], equals: "xp" } }, { metadata: { path: ["challenger_id"], not: "" } }] },
     ] } : { created_date: { gt: new Date(now - MATCHFINDER_POST_LIFETIME_MS) } },
   ] };
+  // Limit in SQL only when filtering and ordering are fully handled there.
+  // JSON sorts, computed matchfinder visibility and XP recomputation still need
+  // their original candidate set before the final client-requested slice.
+  const filtersPushedDown = Object.entries(filter || {}).every(([key, value]) =>
+    value === undefined || value === null || value === "" || metadataFilters.includes(key)
+      || (entity === "User" && key === "username" && typeof value === "string"));
+  const queryTake = Number.isInteger(take) && take > 0 && (!order || orderBy) && filtersPushedDown && !matchfinderOnly && entity !== "XPStats" ? take : 500;
   const rows = entity === "Notification"
     ? await delegate.findMany({
       where: notificationWhereFor(filter),
@@ -247,7 +254,7 @@ export const listEntities = async (entity, filter = {}, order, limit = 100) => {
     : await delegate.findMany({
       ...(where ? { where } : {}),
       ...(orderBy ? { orderBy } : {}),
-      take: entity === "Message" ? take : 500,
+      take: entity === "Message" ? take : queryTake,
     });
   let flattened = rows.map(serializeRow);
   if (entity === "XPStats") flattened = await isolatedXPStats(flattened);

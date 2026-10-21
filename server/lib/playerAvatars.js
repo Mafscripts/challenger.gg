@@ -1,4 +1,5 @@
 import { staffAvatarFor } from "../../src/lib/staffAvatars.js";
+import { Prisma } from "@prisma/client";
 
 const imageUrl = (value) => typeof value === "string" ? value.trim() : "";
 
@@ -15,15 +16,13 @@ export function playerAvatarFor(user, profile) {
 export async function withPlayerAvatars(db, users) {
   const ids = [...new Set(users.map((user) => user?.id).filter((id) => typeof id === "string" && id))];
   if (!ids.length) return users;
-  const profiles = await db.playerProfile.findMany({
-    where: { OR: ids.map((id) => ({ metadata: { path: ["user_id"], equals: id } })) },
-    orderBy: { created_date: "desc" },
-    select: { metadata: true },
-  });
-  const byUser = new Map();
-  for (const profile of profiles) {
-    const id = profile.metadata?.user_id;
-    if (!byUser.has(id)) byUser.set(id, profile);
-  }
+  // Pick the latest upload in the database without transferring profile banners,
+  // bios or historical copies of the same player's images to the API process.
+  const profiles = await db.$queryRaw`SELECT DISTINCT ON (metadata ->> 'user_id')
+    metadata ->> 'user_id' AS user_id, metadata ->> 'avatar_url' AS avatar_url,
+    metadata ->> 'profile_picture_url' AS profile_picture_url FROM "PlayerProfile"
+    WHERE metadata ->> 'user_id' IN (${Prisma.join(ids)})
+    ORDER BY metadata ->> 'user_id', created_date DESC, id DESC`;
+  const byUser = new Map(profiles.map((profile) => [profile.user_id, profile]));
   return users.map((user) => user ? { ...user, avatar_url: playerAvatarFor(user, byUser.get(user.id)), staff_avatar_url: staffAvatarFor(user) || null } : user);
 }
