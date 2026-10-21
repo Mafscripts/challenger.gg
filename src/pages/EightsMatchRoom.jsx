@@ -27,7 +27,7 @@ import { freeEightsTeamSize, eightsMajorityVotes } from "@/lib/freeEightsFormat"
 import { isStaffUser } from "@/lib/roles";
 import PageLoader from "@/components/ui/PageLoader";
 import { toast } from "@/components/ui/use-toast";
-import { FreeEightsVoiceStatus } from "@/components/competition/FreeEightsDiscord";
+import { ConnectFreeEightsDiscord, hasFreeEightsDiscordLink } from "@/components/competition/FreeEightsDiscord";
 import { useFreeEightsVoice } from "@/hooks/useFreeEightsVoice";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
 import { useRoomRecord } from "@/components/match/useRoomRecord";
@@ -758,6 +758,17 @@ function EightsMatchRoomView() {
     <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
   </div>;
   const canReportScore = isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved";
+  const voiceControl = !isMoneyEights && (isParticipant || isStaff) && !closedStatuses.has(match.status)
+    ? !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord returnTo={`/8s-match/${match.id}`} />
+      : voiceView.voice?.waiting_room_url ? <a href={voiceView.voice.waiting_room_url} target="_blank" rel="noopener noreferrer">Discord waiting room</a> : null
+    : null;
+  const reshuffleControl = reshuffleOpen && <details className="max-w-sm">
+    <summary>Team reshuffle · {reshuffleVoteCount}/{requiredReshuffleVotes}</summary>
+    <div className="mt-2 rounded-lg border border-purple-300/15 bg-black/15 p-3">
+      <p className="text-xs leading-5 text-vapor">{requiredReshuffleVotes} players must agree before the match starts.</p>
+      {isParticipant && <button type="button" onClick={voteForReshuffle} disabled={reshuffleBusy} aria-pressed={hasReshuffleVote} className="mt-2 disabled:opacity-50"><Shuffle />{hasReshuffleVote ? "Withdraw veto" : "Vote reshuffle"}</button>}
+    </div>
+  </details>;
   const progress = <MatchRoomProgress mode={isMoneyEights ? "money8s" : "eights"} match={match} complete={isComplete}
     userId={user?.id} participant={isParticipant} rosterFull={joined >= playerCapacity} capacity={playerCapacity}
     alphaPlayers={displayedAlpha} bravoPlayers={displayedBravo} hasMaps={seriesMaps.length > 0} voice={voiceView}
@@ -766,9 +777,9 @@ function EightsMatchRoomView() {
     deadline={!drafting && !locked && joined === playerCapacity && countdown !== null ? formatCountdown(countdown) : null}
     actions={{
       report: canReportScore && !currentUserAgreed ? <button type="button" onClick={() => setScoreOpen(true)} className="room-primary-action"><Check />{hasScoreProposal ? "Review submitted score" : "Submit score"}</button> : null,
-      voice: isParticipant && voiceView.voice?.waiting_room_url ? <a href={voiceView.voice.waiting_room_url} target="_blank" rel="noopener noreferrer" className="room-primary-action">Join Discord waiting room</a> : null,
+      voice: voiceControl,
       draft: isParticipant ? <button type="button" onClick={() => openMatchRoomSection("room-captain-draft")} className="room-primary-action"><Users />Choose a player</button> : null,
-    }} />;
+    }} secondaryActions={{ voice: voiceControl, reshuffle: reshuffleControl }} />;
   const prizeCard = <LobbyOverviewCard match={match} isMoneyEights={isMoneyEights} joined={joined} openSpots={openSpots} entryFee={entryFee} livePrizePool={livePrizePool} fullPrizePool={fullPrizePool} isComplete={isComplete} />;
 
   return (
@@ -806,25 +817,8 @@ function EightsMatchRoomView() {
         ) : <FreeEightsMatchHeader match={match} progress={progress} actions={headerActions} status={displayStatus(match.status)} complete={isComplete} />} beforeTeams={(
           <>
           {isMoneyEights && !isComplete && <div className="m-3 sm:m-4"><StreamRequirementNotice user={user} /></div>}
-        {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} playerCapacity={playerCapacity} user={user} waitingForMaps={match.free_eights_waiting_for_voice} captainDraft={drafting} voiceView={voiceView} />}
         {match.match_type === "8s" && (match.status === "open" || draft?.status === "completed") && <FreeEightsCaptainDraft match={match} players={allPlayers} userId={user?.id} isParticipant={isParticipant} busy={draftBusy} votingOpen={match.status === "open" && !locked && !draft} onVote={voteCaptainDraft} onPick={pickCaptainPlayer} playerActions={removePlayerAction} />}
         {canEditTeams && <section className="m-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan/25 bg-cyan/[0.06] p-4 sm:m-4"><div><p className="text-xs font-black text-cyan">Admin team controls</p><p className="mt-1 text-xs text-vapor" role="status">{swapPlayer ? "Choose a player on the other team to swap, or select the same player to cancel." : "Drag a player onto someone on the other team to swap. You can also select two players using their swap buttons."}</p><p className="mt-1 text-[10px] text-vapor">Admin changes override automatic balancing and update Discord team assignments.</p></div><button type="button" onClick={adminReshuffleTeams} disabled={adminBusy} className="inline-flex items-center gap-2 rounded-lg border border-cyan/30 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan disabled:opacity-50"><Shuffle className="h-4 w-4" />Random shuffle</button></section>}
-        {!locked && !closedStatuses.has(match.status) && (
-          <section className="m-3 rounded-xl border border-white/[0.09] bg-card px-4 py-3 sm:m-4 sm:px-5" aria-label="Lobby players">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <Users className="h-4 w-4 text-cyan" aria-hidden="true" />
-              <span className="font-mono text-sm font-black text-white">{joined}/{playerCapacity} <span className="font-sans text-xs font-bold text-vapor">players</span></span>
-              <span className="flex-1 text-xs text-vapor">{openSpots > 0 ? `${openSpots} more ${openSpots === 1 ? "player" : "players"} needed` : "Lobby full"}</span>
-            </div>
-            {reshuffleOpen && (
-              <div className="mt-4 flex flex-col gap-3 border-t border-purple-300/15 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <div><p className="text-[10px] font-black uppercase tracking-wider text-white">Team reshuffle veto</p><p className="mt-1 text-xs text-vapor">{requiredReshuffleVotes} players must agree before the match starts.</p></div>
-                <div className="flex items-center gap-3"><span className="rounded-lg border border-purple-300/20 bg-black/20 px-3 py-2 font-mono text-sm font-black text-purple-200">{reshuffleVoteCount}/{requiredReshuffleVotes}</span>{isParticipant && <button type="button" onClick={voteForReshuffle} disabled={reshuffleBusy} className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-[10px] font-black uppercase tracking-wider disabled:opacity-50 ${hasReshuffleVote ? "border-white/15 bg-white/[0.06] text-white" : "border-purple-300/30 bg-purple-300/10 text-purple-200 hover:bg-purple-300/20"}`}><Shuffle className={`h-3.5 w-3.5 ${reshuffleBusy ? "animate-spin" : ""}`} />{hasReshuffleVote ? "Withdraw veto" : "Vote reshuffle"}</button>}</div>
-              </div>
-            )}
-          </section>
-        )}
-
           </>
         )} teams={(
           <>

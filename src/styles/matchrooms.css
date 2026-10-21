@@ -55,6 +55,11 @@
 .room-progress-action :is(button, a) { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; max-width: 100%; padding: 12px 16px; border: 1px solid transparent; border-radius: 8px; background: rgb(var(--room-accent)); color: #06131b; font-size: 11px; font-weight: 850; line-height: 1.4; text-align: center; text-decoration: none; box-shadow: none; --site-hover-wash: linear-gradient(90deg, #ffffff10, #ffffff38); }
 .room-progress-action svg { width: 16px; height: 16px; flex: 0 0 auto; }
 .room-progress-action :disabled { cursor: default; opacity: .55; }
+.room-progress-secondary { max-width: 100%; }
+.room-progress-secondary :is(a, button, summary) { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; max-width: 100%; padding: 9px 12px; border: 1px solid rgb(var(--room-accent) / .25); border-radius: 8px; background: rgb(var(--room-accent) / .06); color: rgb(var(--room-accent)); font-size: 10px; font-weight: 800; line-height: 1.5; text-align: center; text-decoration: none; cursor: pointer; }
+.room-progress-secondary svg { width: 14px; height: 14px; flex: 0 0 auto; }
+.room-progress-secondary summary { list-style: none; }
+.room-progress-secondary summary::-webkit-details-marker { display: none; }
 .room-progress[data-review="true"] { border-color: #fb923c50; }
 .room-progress[data-review="true"] .room-progress-label { color: #fdba74; }
 .matchroom-refresh .match-room-body { align-items: start; background: #09151e; }
@@ -95,6 +100,7 @@
   .room-progress-controls { align-items: stretch; max-width: none; }
   .room-progress-timer { justify-content: flex-start; }
   .room-progress-action :is(button, a) { width: 100%; }
+  .room-progress-secondary :is(button, a, summary) { width: 100%; }
   .room-hero-main { padding: 20px 16px; }
   .room-hero-title { margin-top: 12px; font-size: 24px; }
   .room-hero-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
