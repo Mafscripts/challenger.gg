@@ -7,7 +7,7 @@ import { notifyCancelledMatch, notifyCancelledMatchResponse } from "@/lib/cancel
 import { notifyMatchPostedResponse } from "@/lib/notificationInbox";
 import { rememberRestriction, clearRestriction, appealHeaders } from "@/lib/accountRestriction";
 import { rememberNetworkRestriction, clearNetworkRestriction } from "@/lib/networkAccess";
-import { apiBase } from "@/lib/appEnvironment";
+import { apiBase, isNativeBuild } from "@/lib/appEnvironment";
 
 const API_BASE = apiBase;
 const TOKEN_KEYS = ["auth_token", "base44_access_token", "token"];
@@ -125,6 +125,7 @@ async function apiFetch(path, options = {}) {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      ...(isNativeBuild ? { "X-Topfragg-Client": "ios" } : {}),
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
       ...(options.headers || {}),
     },

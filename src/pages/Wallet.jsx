@@ -68,7 +68,7 @@ export default function Wallet() {
     <div className="account-page wallet-page competition-surface page-shell" data-competition="wallet">
       <div className="page-container">
         
-        <AccountPageHero mode="wallet" description="View your available balance, test funds and transaction history." metadata={publicCommerceEnabled ? "Your wallet activity" : "Virtual test credits · No cash value"} action={<>
+        <AccountPageHero mode="wallet" description={publicCommerceEnabled ? "View your available balance, winnings and transaction history." : "View your test balance and transaction history."} metadata={publicCommerceEnabled ? "Your wallet activity" : "Virtual test credits · No cash value"} action={<>
           <Link to="/my-matches" className="competition-action-pill account-primary-action"><TrendingUp size={16} />My Matches</Link>
           <Link to="/my-tickets" className="competition-action-pill"><Shield size={16} />Get support</Link>
         </>} />
@@ -96,14 +96,14 @@ export default function Wallet() {
                 disabled
                 className="mb-2 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] py-3 text-sm font-bold uppercase tracking-wider text-vapor"
               >
-                <ArrowDownLeft className="w-4 h-4" /> Deposits Paused
+                <ArrowDownLeft className="w-4 h-4" /> {publicCommerceEnabled ? "Deposits coming soon" : "Deposits Paused"}
               </button>
               <button
                 type="button"
                 disabled
                 className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] py-3 text-sm font-bold uppercase tracking-wider text-vapor"
               >
-                <ArrowUpRight className="w-4 h-4" /> Withdrawals Paused
+                <ArrowUpRight className="w-4 h-4" /> {publicCommerceEnabled ? "Withdrawals coming soon" : "Withdrawals Paused"}
               </button>
             </div>
           </motion.div>
@@ -243,8 +243,7 @@ export default function Wallet() {
                       About Deposits
                     </h3>
                     <p className="text-xs text-vapor leading-relaxed">
-                      Public deposits are disabled during testing. Topfragg staff can grant virtual test credits
-                      with no monetary value.
+                      {publicCommerceEnabled ? "Deposits will be available once payment processing is connected. Contact support for questions about your balance." : "Deposits are disabled in the app test version. Staff can grant virtual test credits with no monetary value."}
                     </p>
                   </div>
                   <div className="bg-green/5 border border-green/20 rounded-lg p-4">
@@ -253,8 +252,7 @@ export default function Wallet() {
                       About Withdrawals
                     </h3>
                     <p className="text-xs text-vapor leading-relaxed">
-                      Test credits have no monetary value and cannot be paid out or redeemed. Your displayed
-                      balance is only for testing supported competition features.
+                      {publicCommerceEnabled ? "Your withdrawable balance is shown above. Contact support for withdrawal assistance while self-service withdrawals are being prepared." : "App test credits have no monetary value and cannot be paid out or redeemed. Your displayed balance is only for testing supported competition features."}
                     </p>
                   </div>
                 </div>

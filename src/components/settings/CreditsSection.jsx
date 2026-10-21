@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Coins, Sparkles } from "lucide-react";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
+import { publicCommerceEnabled } from "@/lib/commerce";
 
 export default function CreditsSection({ user }) {
   const credits = user?.credits || 0;
@@ -20,7 +21,7 @@ export default function CreditsSection({ user }) {
           </div>
           <div>
             <h2 className="font-bold text-lg">Credits</h2>
-            <p className="text-vapor text-xs">Credits granted by staff can be used during testing</p>
+            <p className="text-vapor text-xs">{publicCommerceEnabled ? "Your credits for tournament entries and display name changes" : "Credits granted by staff can be used during app testing"}</p>
           </div>
         </div>
         <div className="text-right">

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveApiBase, validateMobileStartUrl } from "../src/lib/appEnvironment.js";
 import { corsOptions } from "../server/cors-options.js";
+import { commerceAllowed } from "../server/commerce.js";
 import { transform } from "esbuild";
 import fs from "node:fs/promises";
 import viteConfig from "../vite.config.js";
@@ -52,5 +53,25 @@ test("the public iPhone build keeps purchases and cash payouts unavailable", asy
   const module = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
   assert.equal(module.publicCommerceEnabled, false);
   for (const name of ["create-checkout", "depositToWallet", "withdrawFromWallet", "buyWithCredits", "subscribePremium", "forgeMoneyToCredits"]) assert(module.blockedPublicCommerceFunctions.has(name));
+  assert.equal(module.monthlyEightsPrizeLabel, "100 test credits");
+});
+
+test("website commerce and the cash prize are independent of the old app test flag", async () => {
+  const source = await fs.readFile(new URL("../src/lib/commerce.js", import.meta.url), "utf8");
+  const { code } = await transform(source, { format: "esm", define: {
+    "import.meta.env.VITE_NATIVE_APP": JSON.stringify("false"),
+    "import.meta.env.VITE_PUBLIC_COMMERCE_ENABLED": JSON.stringify("false"),
+  } });
+  const module = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
+  assert.equal(module.publicCommerceEnabled, true);
   assert.equal(module.monthlyEightsPrizeLabel, "$100");
+});
+
+test("the API restricts native commerce without applying app testing to the website", () => {
+  const web = { headers: { origin: "https://www.topfragg.gg" } };
+  assert.equal(commerceAllowed(web, { PUBLIC_COMMERCE_ENABLED: "false" }), true);
+  assert.equal(commerceAllowed(web, { WEB_COMMERCE_ENABLED: "false" }), false);
+  assert.equal(commerceAllowed({ headers: { origin: "capacitor://localhost" } }, {}), false);
+  assert.equal(commerceAllowed({ headers: { "x-topfragg-client": "ios" } }, {}), false);
+  assert.equal(commerceAllowed({ headers: { origin: "capacitor://localhost.evil.example" } }, {}), true);
 });

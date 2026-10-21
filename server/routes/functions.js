@@ -1,4 +1,5 @@
 import { settleWagerPayout } from "../wager-payout.js";
+import { commerceAllowed } from "../commerce.js";
 import { setRewardCampaignActive, getAdminRewardOverview, saveRewardTemplate, saveRewardSettings, saveRewardCampaign, getMyRewardGrants, getRewardReveal, acknowledgeReward, getRewardSeasonStandings, processCompetitionRewards, loadRewardBonuses, awardTournamentCreditBonus } from "../competition-rewards.js";
 import { Prisma } from "@prisma/client";
 import { competitionStreamError } from "../competition-streaming.js";
@@ -115,7 +116,6 @@ const findPlayersRoomId = "find-players";
 const findPlayersChatScope = "find_players_chat";
 const findPlayersRateLimits = new Map();
 const findPlayersAdminPingLimits = new Map();
-const publicCommerceEnabled = String(process.env.PUBLIC_COMMERCE_ENABLED || "").toLowerCase() === "true";
 const blockedPublicCommerceFunctions = new Set([
   "buyWithCredits",
   "create-checkout",
@@ -124,7 +124,9 @@ const blockedPublicCommerceFunctions = new Set([
   "subscribePremium",
   "withdrawFromWallet",
 ]);
-const commerceUnavailableMessage = "Purchases and payouts are unavailable. Balances and rewards are virtual test credits with no monetary value.";
+// These existing payment flows are unfinished independently of app test mode.
+const pendingPaymentFunctions = new Set(["create-checkout", "withdrawFromWallet"]);
+const commerceUnavailableMessage = "Purchases and payouts are temporarily unavailable for this client.";
 const tournamentStatusesOpenForRegistration = ["open", "registration"];
 const tournamentStatusesStarted = ["live", "in_progress"];
 const openTicketStatuses = ["open", "in_progress", "waiting_for_admin", "admin_joined", "waiting_for_user", "escalated"];
@@ -10697,11 +10699,14 @@ router.post("/:name", requireAuth, async (req, res, next) => {
   try {
     const handler = handlers[req.params.name];
     if (!handler) return res.status(404).json({ error: `Function ${req.params.name} is not implemented` });
-    if (!publicCommerceEnabled && blockedPublicCommerceFunctions.has(req.params.name)) {
+    if (!commerceAllowed(req) && blockedPublicCommerceFunctions.has(req.params.name)) {
       return res.status(503).json({
         error: commerceUnavailableMessage,
         code: "PUBLIC_COMMERCE_DISABLED",
       });
+    }
+    if (pendingPaymentFunctions.has(req.params.name)) {
+      return res.status(503).json({ error: "This payment service is coming soon. Contact support for assistance.", code: "PAYMENTS_COMING_SOON" });
     }
     const name = req.params.name;
     const snapshotKey = name === "getXPFormatStandings" ? `${name}:${xpCategory(req.body.category).id}` : name === "getXPStandings" || name === "getMoneyEightsStandings" ? name

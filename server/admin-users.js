@@ -196,7 +196,7 @@ export async function deleteAdminUser(db, actor, body = {}) {
   return deleteAccountRecords(db, actor, body);
 }
 
-export async function deleteOwnAccount(db, actor, body, verifyPassword, { testCurrencyOnly = process.env.TEST_CURRENCY_ONLY === "true" } = {}) {
+export async function deleteOwnAccount(db, actor, body, verifyPassword, { testCurrencyOnly = process.env.CURRENCY_MODE === "test" && process.env.TEST_CURRENCY_ONLY === "true" } = {}) {
   return deleteAccountRecords(db, actor, { ...body, user_id: actor.id, reason: "Account deletion requested and confirmed by the account owner." }, verifyPassword, testCurrencyOnly);
 }
 
