@@ -473,6 +473,11 @@ export const base44 = {
     },
   },
   auth,
+  recruitment: {
+    list(params) { requireToken(); return apiFetch(`/recruitment${toQuery(params)}`, { timeoutMs: 15_000 }); },
+    save(post) { requireToken(); return apiFetch("/recruitment", { method: "PUT", body: post, timeoutMs: 15_000 }); },
+    close(id, reason) { requireToken(); return apiFetch(`/recruitment/${encodeURIComponent(id)}/close`, { method: "POST", body: { reason }, timeoutMs: 15_000 }); },
+  },
   community: {
     blocked: () => apiFetch("/community/blocked"),
     block: (userId, blocked) => apiFetch("/community/block", { method: "POST", body: { user_id: userId, blocked } }),

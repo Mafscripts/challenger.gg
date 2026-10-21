@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import AccountPageHero from "@/components/ui/AccountPageHero";
+import RecruitmentBoard from "@/components/competition/RecruitmentBoard";
 import {
   Ban,
   Clock3,
@@ -67,7 +69,7 @@ function RoleBadge({ role }) {
   );
 }
 
-export default function FindPlayersChat() {
+function CommunityChat() {
   const [currentUser, setCurrentUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [participants, setParticipants] = useState([]);
@@ -288,21 +290,8 @@ export default function FindPlayersChat() {
   };
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="mx-auto max-w-7xl px-4 lg:px-6">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan">
-              <Users className="h-4 w-4" /> Community matchmaking
-            </div>
-            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Find Players Chat</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-vapor">Find teammates, substitutes, opponents, and practice partners in one moderated community room.</p>
-          </div>
-          <Link to="/rules" className="inline-flex items-center gap-2 self-start rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-vapor transition-colors hover:border-cyan/25 hover:text-cyan lg:self-auto">
-            <ShieldCheck className="h-4 w-4" /> View chat rules
-          </Link>
-        </div>
-
+    <div className="min-w-0">
+      <div>
         <div className="mb-5 flex items-start gap-3 rounded-xl border border-cyan/20 bg-cyan/[0.055] px-4 py-3">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-cyan" />
           <div>
@@ -487,4 +476,17 @@ export default function FindPlayersChat() {
       )}
     </div>
   );
+}
+
+export default function FindPlayersChat() {
+  const [params, setParams] = useSearchParams();
+  const view = ["mine", "chat"].includes(params.get("view")) ? params.get("view") : "posts";
+  const change = (value) => setParams((current) => { const next = new URLSearchParams(current); if (value === "posts") next.delete("view"); else next.set("view", value); return next; });
+  return <div className="competition-surface page-shell min-h-screen" data-competition="teams"><div className="page-container">
+    <AccountPageHero mode="teams" title="Find teammates." eyebrow="Build your next squad" description="Find players who match your game, competition and schedule. Recruit for your roster or meet your next teammates." />
+    <nav className="my-5 flex flex-wrap gap-2 rounded-xl border border-cyan/20 bg-card p-2" aria-label="Find Players sections">
+      {[{ id: "posts", name: "Players & teams" }, { id: "mine", name: "My posts" }, { id: "chat", name: "Community chat" }].map((item) => <button key={item.id} type="button" aria-current={view === item.id ? "page" : undefined} onClick={() => change(item.id)} className={`site-hover rounded-lg border px-4 py-3 text-xs font-bold ${view === item.id ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-transparent text-vapor"}`}>{item.name}</button>)}
+    </nav>
+    {view === "chat" ? <CommunityChat /> : <RecruitmentBoard key={view} mine={view === "mine"} />}
+  </div></div>;
 }

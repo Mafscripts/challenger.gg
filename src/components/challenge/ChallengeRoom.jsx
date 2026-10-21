@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Headphones, LockKeyhole, RefreshCw, ShieldCheck, Swords, X } from "lucide-react";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
+import MatchResultSummary from "@/components/match/MatchResultSummary";
 import MatchRoomHeader, { MatchRoomTitle } from "@/components/match/MatchRoomHeader";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
@@ -72,7 +73,7 @@ export default function ChallengeRoom({ match, user, busy, action, onJoin, onRef
       <Link to="/challenge-a-team" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" />Challenge a Team</Link>
       <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${complete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{challengeStatusName(match.status)}</span><button onClick={onRefresh} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh challenge"><RefreshCw className="h-4 w-4" /></button></div>
     </div>
-    <MatchRoomShell header={
+    <MatchRoomShell summary={<MatchResultSummary match={match} mode="challenge" complete={complete} userId={user?.id} alphaName={names.alpha} bravoName={names.bravo} alphaPlayers={alphaPlayers} bravoPlayers={bravoPlayers} />} header={
       <MatchRoomHeader label="Challenge a Team" title={<MatchRoomTitle alpha={names.alpha} bravo={names.bravo} />}
         subtitle={match.game_name} status={challengeStatusName(match.status)} complete={complete}
         metadata={[

@@ -53,6 +53,7 @@ model User {
   updated_date         DateTime  @updatedAt
   metadata             Json      @default("{}")
   ban_appeal           BanAppeal?
+  recruitment_posts    RecruitmentPost[]
 }
 
 model BanAppeal {
@@ -708,4 +709,31 @@ model MapVeto {
   created_date DateTime @default(now())
   updated_date DateTime @updatedAt
   metadata     Json     @default("{}")
+}
+
+model RecruitmentPost {
+  id                String   @id @default(cuid())
+  user_id           String
+  owner             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  team_id           String?
+  kind              String
+  competition       String
+  game_id           String
+  region            String
+  language          String
+  rank              String   @default("any")
+  availability      String
+  timezone          String
+  title             String
+  description       String
+  status            String   @default("open")
+  moderation_reason String?
+  expires_at        DateTime
+  created_date      DateTime @default(now())
+  updated_date      DateTime @updatedAt
+
+  @@index([status, created_date(sort: Desc), id(sort: Desc)])
+  @@index([status, competition, game_id, created_date(sort: Desc), id(sort: Desc)])
+  @@index([status, expires_at])
+  @@index([user_id, created_date(sort: Desc)])
 }

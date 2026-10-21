@@ -1,6 +1,6 @@
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -103,7 +103,8 @@ const mapsByMode = {
   ],
 };
 
-export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig }) {
+export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig, initialSettings }) {
+  const appliedInitial = useRef(null);
   const [selectedGameMode, setSelectedGameMode] = useState(null);
   const [selectedTeamSize, setSelectedTeamSize] = useState(null);
   const [selectedAmount, setSelectedAmount] = useState(0);
@@ -174,6 +175,23 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
       document.body.style.overflow = previousOverflow;
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) { appliedInitial.current = null; return; }
+    if (!initialSettings || initialSettings.mode !== mode || appliedInitial.current === initialSettings) return;
+    if (isEights && !gameConfig) return;
+    appliedInitial.current = initialSettings;
+    setSelectedGameMode(modeChoices.some((choice) => choice.id === initialSettings.game_mode) ? initialSettings.game_mode : null);
+    const sizes = isMoneyEights ? ["4v4"] : isEights ? ["2v2", "3v3", "4v4"] : ["1v1", "2v2", "3v3", "4v4"];
+    setSelectedTeamSize(sizes.includes(initialSettings.team_size) ? initialSettings.team_size : null);
+    setBestOf([1, 3, 5].includes(initialSettings.best_of) ? initialSettings.best_of : 1);
+    setSelectedPlayRule(WAGER_PLAY_RULES.some((rule) => rule.value === initialSettings.play_rule) ? initialSettings.play_rule : "controller_only");
+    setSelectedTeamId("");
+    setSelectedAmount(0);
+    setCustomAmount("");
+    setPaymentMode("own");
+    setStep(1);
+  }, [isOpen, initialSettings, mode, gameConfig, isEights, isMoneyEights, modeChoices]);
 
   const handleCreate = async () => {
     if (!selectedGameMode || !modeChoices.some((choice) => choice.id === selectedGameMode)

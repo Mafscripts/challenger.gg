@@ -12,7 +12,7 @@ const footerLinks = {
     { label: "Tournaments", path: "/tournaments" },
   ],
   Community: [
-    { label: "Find Players Chat", path: "/find-players" },
+    { label: "Find Players", path: "/find-players" },
     { label: "Topfragg League", path: "/league" },
     { label: "Leaderboards", path: "/leaderboards" },
     { label: "Teams", path: "/teams" },

@@ -8,6 +8,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import useRematchSettings from "@/hooks/useRematchSettings";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
@@ -31,6 +32,7 @@ export default function Wagers() {
   const requestedTeamId = searchParams.get("team");
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const rematchSettings = useRematchSettings("wager", setIsCreateModalOpen, isCreateModalOpen);
   const [teamCreator, setTeamCreator] = useState({ open: false, wagerId: null, rosterSize: 4 });
   const [openPosts, setWagers] = useState([]);
   const wagers = useMatchfinderPosts(openPosts);
@@ -423,6 +425,7 @@ export default function Wagers() {
 
         {/* Create Lobby Modal */}
         <CreateLobbyModal
+          initialSettings={rematchSettings}
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           user={user}

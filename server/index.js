@@ -14,6 +14,7 @@ import { createMobileOAuthRouter } from "./mobile-oauth.js";
 import { corsOptions } from "./cors-options.js";
 import { createCommunitySafetyRouter } from "./community-safety.js";
 import profileRoutes from "./routes/profile.js";
+import recruitmentRoutes from "./routes/recruitment.js";
 import partyRoomRoutes from "./routes/party-rooms.js";
 import rankVerificationRoutes from "./routes/rank-verification.js";
 import banAppealRoutes from "./routes/ban-appeals.js";
@@ -65,6 +66,7 @@ app.use("/api/mobile/oauth", createMobileOAuthRouter({
   },
 }));
 app.use("/api/profile", profileRoutes);
+app.use("/api/recruitment", recruitmentRoutes);
 app.use("/api/party-rooms", partyRoomRoutes);
 app.use("/api/rank-verification", rankVerificationRoutes);
 app.use("/api/entities", entityRoutes);

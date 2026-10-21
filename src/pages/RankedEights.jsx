@@ -11,6 +11,7 @@ import { loadFreeEightsOverview } from "@/lib/freeEightsData";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import useRematchSettings from "@/hooks/useRematchSettings";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordNotice, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
 import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
@@ -59,6 +60,7 @@ export default function RankedEights() {
   const [discordServerPrompt, setDiscordServerPrompt] = useState(null);
   const discordPromptTrigger = useRef(null);
   const isMoney = searchParams.get("mode") === "money";
+  const rematchSettings = useRematchSettings(isMoney ? "money8s" : "eights", setCreateOpen, createOpen);
   const comingSoon = !isMoney && selectedGame.id === "mw4" && !selectedGame.enabled;
   const lobbyMatchType = isMoney ? "money8s" : "8s";
   const freeOverview = useQuery({
@@ -300,7 +302,7 @@ export default function RankedEights() {
         </section>}
 
       </div>
-      {!comingSoon && <CreateLobbyModal key={`${isMoney}:${gameId}`} isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} gameConfig={selectedGame} />}
+      {!comingSoon && <CreateLobbyModal key={`${isMoney}:${gameId}`} initialSettings={rematchSettings} isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} gameConfig={selectedGame} />}
       {!isMoney && <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} />}
       {!isMoney && <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} returnFocusTo={discordPromptTrigger} />}
       {!isMoney && <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} returnFocusTo={discordPromptTrigger} />}

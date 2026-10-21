@@ -1411,7 +1411,7 @@ export default function Navbar() {
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-vapor hover:text-foreground hover:bg-secondary transition-all"
                     >
                       <MessageSquare className="w-5 h-5" />
-                      Find Players Chat
+                      Find Players
                     </Link>
                     <Link
                       to="/rules"

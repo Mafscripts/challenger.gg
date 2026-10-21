@@ -24,6 +24,7 @@ import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
+import MatchResultSummary from "@/components/match/MatchResultSummary";
 import MatchRoomHeader, { MatchRoomTitle, matchRoomTeamName } from "@/components/match/MatchRoomHeader";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
 import { useRoomRecord } from "@/components/match/useRoomRecord";
@@ -818,7 +819,7 @@ function RankedMatchRoomView() {
   return (
     <div className="match-room-theme matchroom-refresh min-h-screen py-6" data-room-mode="ranked">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <MatchRoomShell header={(
+        <MatchRoomShell summary={<MatchResultSummary match={match} mode="ranked" complete={isComplete} userId={user?.id} alphaName={alphaName} bravoName={bravoName} alphaPlayers={visibleAlphaPlayers} bravoPlayers={visibleBravoPlayers} />} header={(
           <MatchRoomHeader
             label="Ranked match room"
             title={<MatchRoomTitle alpha={alphaName} bravo={bravoName} />}

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useRouteSection from "@/hooks/useRouteSection";
+import useRematchSettings from "@/hooks/useRematchSettings";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Headphones, Plus, RefreshCw, Swords, Trophy, User, Users } from "lucide-react";
@@ -38,11 +39,18 @@ export default function ChallengeTeam() {
   const [ladder, setLadder] = useState("teams");
   const [createTeam, setCreateTeam] = useState(false);
   const [posting, setPosting] = useState(false);
+  const rematchSettings = useRematchSettings("challenge", setPosting, posting);
   const [joining, setJoining] = useState(null);
   const [busy, setBusy] = useState(false);
   const [teamId, setTeamId] = useState("");
   const [gameId, setGameId] = useState("bo7");
   const [formatId, setFormatId] = useState("cdl_bo3");
+  useEffect(() => {
+    if (!rematchSettings) return;
+    setTeamId("");
+    setGameId(rematchSettings.game_id || "bo7");
+    setFormatId(rematchSettings.game_mode || "cdl_bo3");
+  }, [rematchSettings]);
   const overview = useQuery({ queryKey: ["challenge-overview", user?.id], queryFn: () => invoke("getChallengeOverview"), enabled: Boolean(user?.id), refetchInterval: id ? 30000 : 15000, refetchIntervalInBackground: false });
   const room = useQuery({ queryKey: ["challenge-room", id, user?.id], queryFn: () => invoke("getChallengeRoom", { match_id: id }), enabled: Boolean(id && user?.id), refetchInterval: 4000, refetchIntervalInBackground: false });
   const data = overview.data;

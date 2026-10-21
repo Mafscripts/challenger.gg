@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
+import useRematchSettings from "@/hooks/useRematchSettings";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
 import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
@@ -73,6 +74,7 @@ const rankCardTones = {
 export default function XP() {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const rematchSettings = useRematchSettings("xp", setIsCreateModalOpen, isCreateModalOpen);
   const [user, setUser] = useState(null);
   const [currentStats, setCurrentStats] = useState(null);
   const [openPosts, setRankedMatches] = useState([]);
@@ -354,6 +356,7 @@ export default function XP() {
           </aside>
         </div>
         <CreateLobbyModal
+          initialSettings={rematchSettings}
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           user={user}

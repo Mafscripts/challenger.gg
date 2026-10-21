@@ -31,6 +31,7 @@ export const navGroups = [
     tone: "gold",
     items: [
       { label: "Matchfinder", description: "Browse every open competition", path: "/matchfinder", icon: Search, tone: "gold" },
+      { label: "Find Players", description: "Find teammates or recruit for your roster", path: "/find-players", icon: MessageSquare, tone: "cyan" },
       { label: "Leaderboards", description: "Compare the best competitors", path: "/leaderboards", icon: Trophy, tone: "gold" },
     ],
   },
@@ -92,9 +93,7 @@ export const topbarPlayNavGroup = {
   ...playNavGroup,
   items: [...playNavGroup.items, { ...challengeNavItem, description: "1v1 to 4v4 team challenges with a separate XP ladder" }],
 };
-const topbarMatchfinderGroup = { ...navGroups[2], playerSearch: true, items: [...navGroups[2].items,
-  { label: "Find Players Chat", description: "Meet players and find your next squad", path: "/find-players", icon: MessageSquare, tone: "cyan" },
-] };
+const topbarMatchfinderGroup = { ...navGroups[2], playerSearch: true };
 const topbarTournamentGroup = { ...navGroups[0], items: [...navGroups[0].items,
   { label: "Topfragg League", description: "Modern Warfare 4 · Coming soon", path: "/league", icon: ShieldCheck, tone: "cyan" },
 ] };

@@ -23,6 +23,7 @@ import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
+import MatchResultSummary from "@/components/match/MatchResultSummary";
 import MatchRoomHeader, { MatchRoomTitle, matchRoomTeamName } from "@/components/match/MatchRoomHeader";
 import MatchDisputeDialog from "@/components/match/MatchDisputeDialog";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
@@ -713,7 +714,7 @@ function XPMatchRoomView() {
         ...visibleBravoPlayers.map((player) => ({ ...player, user_id: player.id, user_name: player.name, team: "challenger" })),
       ]} userId={user?.id} submitting={disputing} onSubmit={handleCreateDispute} />
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <MatchRoomShell header={(
+        <MatchRoomShell summary={<MatchResultSummary match={match} mode="xp" complete={isComplete} userId={user?.id} alphaName={alphaName} bravoName={bravoName} alphaPlayers={visibleAlphaPlayers} bravoPlayers={visibleBravoPlayers} />} header={(
           <MatchRoomHeader
             label="XP match room"
             title={<MatchRoomTitle alpha={alphaName} bravo={bravoName} />}

@@ -121,6 +121,7 @@ const participantIdentityValues = (participant) => {
 const router = Router();
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
+  if (String(req.params.entity).toLowerCase() === "recruitmentpost") return res.status(403).json({ error: "Use the protected recruitment endpoints" });
   if (String(req.params.entity).toLowerCase() === "usersettings") {
     return res.status(403).json({ error: "Use the private account settings endpoints" });
   }

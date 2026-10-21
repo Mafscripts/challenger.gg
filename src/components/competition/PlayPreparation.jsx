@@ -62,6 +62,7 @@ function Readiness({ mode, user }) {
       </li>)}
     </ul>
     <p className="mt-3 text-[10px] leading-5 text-vapor">{account.isError || refreshError ? "Account could not be refreshed. " : ""}{mode.stream ? "Stream every map. " : ""}{mode.discord ? "Server membership and voice readiness are checked again when you play. " : ""}Match availability, your roster and all player requirements are checked when you create or join.</p>
+    {mode.team && <Link to={`/find-players?competition=${mode.id}`} className="site-hover mr-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-bold text-cyan">Find teammates<ArrowRight className="h-3.5 w-3.5" /></Link>}
     <button type="button" disabled={refreshing || account.isFetching || Boolean(mode.team && teams.isFetching) || Boolean(mode.discord && membership.isFetching)} className="site-hover mt-1 rounded px-2 py-1 text-xs font-bold text-cyan disabled:opacity-50" onClick={refresh}>Refresh setup checks</button>
   </div>;
 }

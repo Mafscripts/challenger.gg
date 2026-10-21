@@ -9,6 +9,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
+import MatchResultSummary from "@/components/match/MatchResultSummary";
 import MatchRoomHeader, { MatchRoomTitle } from "@/components/match/MatchRoomHeader";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
 import { useRoomRecord } from "@/components/match/useRoomRecord";
@@ -698,7 +699,7 @@ function WagersMatchRoomView() {
           startSecondsRemaining={startSecondsRemaining}
         />}
 
-        <MatchRoomShell header={(
+        <MatchRoomShell summary={<MatchResultSummary match={wager} mode="wagers" complete={isComplete} userId={user?.id} alphaName={hostDisplayName} bravoName={challengerDisplayName} alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers} />} header={(
           <MatchRoomHeader
             label="Cash match room" icon={DollarSign}
             title={<MatchRoomTitle alpha={hostDisplayName} bravo={challengerDisplayName} />}

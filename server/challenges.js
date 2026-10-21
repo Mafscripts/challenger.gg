@@ -171,7 +171,7 @@ export function createChallengeHandlers({ db = prisma, checkMembership = async (
         if (!game || !format) fail("Choose an available game and series format");
         const row = await tx.challengeMatch.create({ data: { status: "open", metadata: {
           host_id: req.user.id, size, best_of: format.modes.length, game_id: game.id, game_name: `${game.name} ${game.number}`, game_config: game,
-          series_mode_ids: format.modes, format_name: format.name, alpha_team: { id: team.id, name: team.name, captain_id: req.user.id }, bravo_team: null,
+          series_mode_ids: format.modes, format_id: format.id, format_name: format.name, alpha_team: { id: team.id, name: team.name, captain_id: req.user.id }, bravo_team: null,
           players: users.map((user) => playerFor(user, "alpha", team.id, req.user.id)), reports: {}, messages: [], stakes_enabled: false,
         } } });
         const match = flat(row);
