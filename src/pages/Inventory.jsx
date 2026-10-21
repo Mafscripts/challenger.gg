@@ -61,6 +61,7 @@ export default function Inventory() {
         category: categoryLabels[item.item_category] || item.item_category,
         equipped: item.is_equipped,
         img: item.item_image,
+        tradable: item.is_tradable !== false && !isInventoryTrophy(item) && item.item_category !== "ranked_reward" && !item.is_rank_reward,
       })));
     } catch (error) {
       console.error("Failed to load inventory:", error);
@@ -141,6 +142,7 @@ export default function Inventory() {
               <div className="p-3">
                 <h4 className="font-semibold text-xs mb-1 truncate">{item.name}</h4>
                 <p className="text-[10px] text-vapor">{item.category}</p>
+                {item.tradable && <Link to={`/trading?offer_item=${encodeURIComponent(item.id)}`} className="site-hover mt-3 flex items-center justify-center rounded-lg border border-purple-300/25 bg-purple-300/5 px-3 py-2 text-[10px] font-bold text-purple-300">Offer this item</Link>}
               </div>
             </motion.div>
             ))}

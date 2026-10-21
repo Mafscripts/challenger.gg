@@ -1,4 +1,5 @@
 export const competitionPresentation = {
+  trading: { title: "Trading", eyebrow: "Your collection. Your next exchange.", icon: "Shuffle", motto: "Find it. Offer. Make it yours.", facts: [["Users", "Player-to-player"], ["ShieldCheck", "Review both sides"], ["Clock", "72-hour offers"]] },
   marketplace: { title: "Marketplace", eyebrow: "The TopFragg collection", icon: "Sparkles", motto: "Your style. Your collection.", facts: [["Sparkles", "Cosmetics & collectibles"], ["Trophy", "Earned rewards"], ["Crown", "Premium exclusives"]] },
   leaderboards: { title: "Leaderboards", eyebrow: "The players setting the pace", icon: "Trophy", motto: "Earn your place. Make your mark.", facts: [["Medal", "Competition standings"], ["Globe2", "Regional rankings"], ["UserRound", "Player profiles"]] },
   recruitment: { title: "Find teammates", eyebrow: "Build your next squad", icon: "Users", motto: "Better together. Built to compete.", facts: [["UserRound", "Find your duo"], ["ShieldCheck", "Build your roster"], ["MessageSquare", "Meet the community"]] },

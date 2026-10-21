@@ -120,6 +120,13 @@ const participantIdentityValues = (participant) => {
 };
 
 const router = Router();
+// Generic delegates accept camel-case aliases too. Apply the same ownership and
+// mutation guards to every spelling of trading and inventory records.
+router.param("entity", (req, _res, next, entity) => {
+  const canonical = { tradeoffer: "TradeOffer", userinventory: "UserInventory", inventory: "Inventory", marketplaceitem: "MarketplaceItem" }[String(entity).toLowerCase()];
+  if (canonical) req.params.entity = canonical;
+  next();
+});
 const protectedMutationNames = new Set([...protectedMutationEntities].map((name) => name.toLowerCase()));
 router.use("/:entity", (req, res, next) => {
   if (String(req.params.entity).toLowerCase() === "recruitmentpost") return res.status(403).json({ error: "Use the protected recruitment endpoints" });
@@ -497,7 +504,7 @@ router.post("/:entity", requireAuth, async (req, res, next) => {
 router.patch("/:entity/:id", requireAuth, async (req, res, next) => {
   try {
     if (req.params.entity === "TradeOffer") {
-      return res.status(403).json({ error: "Trading actions are unavailable" });
+      return res.status(403).json({ error: "Use the protected trading action" });
     }
     if (["Message", "Notification"].includes(req.params.entity) && !hasRole(req.user, "admin")) {
       const row = await getEntity(req.params.entity, req.params.id);

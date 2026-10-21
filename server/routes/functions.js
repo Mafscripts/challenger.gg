@@ -47,6 +47,7 @@ import { wagerCancellationNotification } from "../wager-cancellation-notificatio
 import { matchPostedNotification } from "../match-posted-notification.js";
 import { xpMatchAwaitingAcceptance } from "../../src/lib/xpMatchAccess.js";
 import { challengeHandlers } from "../challenges.js";
+import { tradingHandlers, previouslyTradedItemIds } from "../item-trading.js";
 import { getXPStandings, getXPMatchPlayerRanks, activeXPMatchFor, createXPMatchLobby, joinXPMatchLobby, cancelXPMatchLobby, submitXPMatchResult, requestXPMatchCancellation, respondXPMatchCancellation } from "../xp-matches.js";
 import { disputeReasonLabel, validateMatchDispute } from "../../src/lib/matchDisputes.js";
 import { cancelExpiredMatchfinderPost, isExpiredOpenMatch, sweepExpiredMatchfinderPosts } from "../matchfinder-expiry.js";
@@ -632,54 +633,44 @@ async function normalizeTournamentPlacementTrophyFields(source = {}) {
 }
 
 async function grantMarketplaceItemsToUsers(users = [], items = [], context = {}) {
-  const validUsers = users.filter(Boolean);
-  const validItems = items.filter(Boolean);
-  if (validUsers.length === 0 || validItems.length === 0) return [];
-
-  const granted = [];
-  for (const user of validUsers) {
-    const existingInventory = await listEntities("UserInventory", { user_id: user.id }, "-acquired_date", 500).catch(() => []);
-    const ownedItemIds = new Set(existingInventory.map((entry) => entry.item_id).filter(Boolean));
-
-    for (const item of validItems) {
-      if (ownedItemIds.has(item.id)) continue;
-      const requiredWins = context.requiredWinsForItem?.(item);
-      const sourceTournamentId = context.tournament?.id || context.tournament_id || null;
-      const sourceTournamentName = context.tournament?.name || context.tournament_name || null;
-      const inventory = await createEntity("UserInventory", {
-        user_id: user.id,
-        item_id: item.id,
-        item_name: item.name,
-        item_category: item.category,
-        item_rarity: item.rarity,
-        item_image: item.image_url,
-        purchase_method: "admin_grant",
-        price_paid: 0,
-        unlock_type: context.unlock_type || "tournament_reward",
-        unlock_key: context.unlockKeyForItem?.(item) || `${context.unlock_type || "tournament_reward"}:${sourceTournamentId || item.id}`,
-        unlock_requirement: requiredWins ? String(requiredWins) : undefined,
-        source_tournament_id: sourceTournamentId,
-        source_tournament_name: sourceTournamentName,
-        is_unlocked: true,
-        is_equipped: false,
-        is_tradable: item.is_tradeable !== false,
-        acquired_date: nowIso(),
-      });
-
-      ownedItemIds.add(item.id);
-      granted.push({ user_id: user.id, item_id: item.id, item_name: item.name, inventory_id: inventory.id });
-      await notifyUser(user.id, {
-        title: context.notificationTitle || "Tournament reward unlocked",
-        message: context.messageForItem?.(item, user, requiredWins)
-          || `${item.name} unlocked${sourceTournamentName ? ` from ${sourceTournamentName}` : ""}.`,
-        type: "marketplace",
-        action_url: "/inventory",
-        related_entity_id: item.id,
-        related_entity_type: "MarketplaceItem",
-      });
+  const validItems = items.filter(Boolean), granted = [];
+  if (!validItems.length) return granted;
+  for (const user of users.filter(Boolean)) {
+    // Trading locks the same owner row. A concurrent refresh must never re-grant
+    // an earned cosmetic after its original copy has moved to another player.
+    const userGranted = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${user.id} FOR UPDATE`;
+      const current = await tx.user.findUnique({ where: { id: user.id }, select: { id: true } });
+      if (!current) return [];
+      const inventory = await tx.$queryRaw`SELECT metadata->>'item_id' AS item_id FROM "UserInventory" WHERE metadata->>'user_id' = ${user.id}`;
+      const owned = new Set([...inventory.map((row) => row.item_id), ...await previouslyTradedItemIds(tx, user.id)]);
+      const created = [];
+      for (const item of validItems) {
+        if (owned.has(item.id)) continue;
+        const requiredWins = context.requiredWinsForItem?.(item);
+        const sourceTournamentId = context.tournament?.id || context.tournament_id || null;
+        const sourceTournamentName = context.tournament?.name || context.tournament_name || null;
+        const row = await tx.userInventory.create({ data: { metadata: {
+          user_id: user.id, item_id: item.id, item_name: item.name, item_category: item.category, item_rarity: item.rarity, item_image: item.image_url,
+          purchase_method: "admin_grant", price_paid: 0, unlock_type: context.unlock_type || "tournament_reward",
+          unlock_key: context.unlockKeyForItem?.(item) || `${context.unlock_type || "tournament_reward"}:${sourceTournamentId || item.id}`,
+          ...(requiredWins ? { unlock_requirement: String(requiredWins) } : {}), source_tournament_id: sourceTournamentId, source_tournament_name: sourceTournamentName,
+          is_unlocked: true, is_equipped: false, is_tradable: item.is_tradeable !== false, acquired_date: nowIso(),
+        } } });
+        owned.add(item.id);
+        created.push({ user_id: user.id, item_id: item.id, item_name: item.name, inventory_id: row.id });
+      }
+      return created;
+    }, { timeout: 15000, maxWait: 15000 });
+    for (const entry of userGranted) {
+      const item = validItems.find((candidate) => candidate.id === entry.item_id), requiredWins = context.requiredWinsForItem?.(item);
+      const tournamentName = context.tournament?.name || context.tournament_name;
+      await notifyUser(user.id, { title: context.notificationTitle || "Tournament reward unlocked",
+        message: context.messageForItem?.(item, user, requiredWins) || `${item.name} unlocked${tournamentName ? ` from ${tournamentName}` : ""}.`,
+        type: "marketplace", action_url: "/inventory", related_entity_id: item.id, related_entity_type: "MarketplaceItem" });
     }
+    granted.push(...userGranted);
   }
-
   return granted;
 }
 
@@ -10608,6 +10599,7 @@ async function postDiscordCelebration(req) {
 const handlers = {
   getAdminDashboard: (req) => getAdminDashboard(prisma, req.user),
   ...challengeHandlers,
+  ...tradingHandlers,
   getAdminWallets: (req) => getAdminWallets(prisma, req.user, req.body),
   getAdminWalletSummary: (req) => getAdminWalletSummary(prisma, req.user),
   getAdminAuditLogs: (req) => getAdminAuditLogs(prisma, req.user, req.body),
