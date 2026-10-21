@@ -92,12 +92,12 @@ export default function ItemDetail() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className={`relative glass rounded-2xl border overflow-hidden aspect-square group ${
-              item.rarity === "mythic" || item.rarity === "epic" || item.rarity === "legendary" || item.premiumOnly
+              item.unlockType !== "competition_reward" && (item.rarity === "mythic" || item.rarity === "epic" || item.rarity === "legendary" || item.premiumOnly)
                 ? "border-fuchsia-400/30 animate-mythic-glow mythic-shimmer"
                 : "border-white/5"
             }`}
           >
-            <MarketplaceImage item={item} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+            <MarketplaceImage item={item} className={`w-full h-full object-contain ${item.unlockType === "competition_reward" ? "" : "group-hover:scale-105 transition-transform duration-700"}`} />
             <div className="absolute top-4 left-4">
               <RarityBadge rarity={item.rarity} />
             </div>
@@ -171,7 +171,7 @@ export default function ItemDetail() {
                 <Link key={related.id} to={`/item/${related.id}`}>
                   <motion.div whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }} className="glass rounded-xl border border-white/5 overflow-hidden cursor-pointer">
                     <div className="aspect-square bg-secondary overflow-hidden">
-                      <MarketplaceImage item={related} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                      <MarketplaceImage item={related} className={`w-full h-full object-contain ${related.unlockType === "competition_reward" ? "" : "hover:scale-105 transition-transform duration-500"}`} />
                     </div>
                     <div className="p-4">
                       <RarityBadge rarity={related.rarity} className="mb-2" />

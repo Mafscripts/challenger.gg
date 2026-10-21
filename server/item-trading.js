@@ -196,7 +196,7 @@ export async function getTradeInventory(db, actorId, input) {
         acquired_date: row.metadata.acquired_date || "",
         premium_only: Boolean(item?.is_premium_only || item?.unlock_type === "premium"),
         catalog_available: Boolean(item),
-        visible: !(isInventoryTrophy(row.metadata) && (text.includes("invit") || text.includes("champion"))),
+        visible: row.metadata.unlock_type === "competition_reward" || !(isInventoryTrophy(row.metadata) && (text.includes("invit") || text.includes("champion"))),
       } } : {}),
     };
   }).filter((item) => ownerId === actorId || item.tradable) };

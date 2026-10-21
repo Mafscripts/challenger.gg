@@ -1,3 +1,4 @@
+import RewardArtwork from "@/components/rewards/RewardArtwork";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowDownLeft, ArrowUpRight, Check, Lock, Package } from "lucide-react";
@@ -6,7 +7,7 @@ const button = "site-hover trading-button";
 
 export function ItemImage({ item }) {
   const [failed, setFailed] = useState(false);
-  return item.item_image && !failed ? <img src={item.item_image} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} /> : <Package size={24} />;
+  return item.item_image && !failed ? <RewardArtwork src={item.item_image} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} /> : <Package size={24} />;
 }
 export function ItemPanel({ title, tone, items: rawItems = [], credits = 0 }) {
   const items = Array.isArray(rawItems) ? rawItems.filter((item) => item && typeof item === "object") : [];

@@ -6,6 +6,10 @@ Apply `20261021070000_competition_reward_items` with the normal Prisma migration
 
 The migration creates settings and empty reward tables. It does not seed cards, grant items, reset ranks, or charge fees. Earlier pending migrations, including the explicitly requested marketplace collection cleanup, will also run during a normal migration deployment; see `MARKETPLACE_COLLECTION_RESET.md` for that cleanup's deployment instructions.
 
+## First deployment artwork
+
+The later `20261021080000_first_drop_collection` migration adds the First Drop collection: seven animated designs and 22 reward variants. See [the artwork and deployment notes](artwork/FIRST_DROP.md). This does not grant inventory copies or enable rewards.
+
 ## Admin setup
 
 Open **Admin → Reward Items & Seasons**. Create cards with a name, description, optional artwork, rarity, duration and eligible random pools. Artwork can be uploaded later. Each pool supports up to 100 active cards. Deactivate cards to remove them from future draws; earned copies retain their original artwork and effects.

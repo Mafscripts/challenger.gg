@@ -1,3 +1,4 @@
+import RewardArtwork from "./RewardArtwork";
 import React, { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -34,7 +35,7 @@ function Celebration() {
 }
 function Card({ item, chosen = false, moving = false }) {
   const [failed, setFailed] = useState(false);
-  return <article className={`reward-draw-card${chosen ? " reward-draw-chosen" : ""}`} data-rarity={item.rarity}><div>{item.image_url && !failed ? <img src={item.image_url} alt="" loading={moving || chosen ? "eager" : "lazy"} decoding="async" onError={() => setFailed(true)} /> : <Gift size={60} />}</div><small>{item.rarity || "Reward"}</small><strong>{item.name}</strong><p>{item.reward ? rewardLabel(item.reward) : "Two months Premium"}</p></article>;
+  return <article className={`reward-draw-card${chosen ? " reward-draw-chosen" : ""}`} data-rarity={item.rarity}><div>{item.image_url && !failed ? <RewardArtwork animate={!moving} src={item.image_url} alt="" loading={moving || chosen ? "eager" : "lazy"} decoding="async" onError={() => setFailed(true)} /> : <Gift size={60} />}</div><small>{item.rarity || "Reward"}</small><strong>{item.name}</strong><p>{item.reward ? rewardLabel(item.reward) : "Two months Premium"}</p></article>;
 }
 export default function RewardReveal() {
   const { user } = useAuth(), location = useLocation(), navigate = useNavigate(), client = useQueryClient();

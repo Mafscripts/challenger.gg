@@ -1,3 +1,4 @@
+import RewardArtwork from "@/components/rewards/RewardArtwork";
 import { rewardLabel } from "@/lib/competitionRewards";
 import React, { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -24,7 +25,7 @@ const acquisitionDate = (value) => value && Number.isFinite(Date.parse(value)) ?
 function ItemImage({ item }) {
   const [failed, setFailed] = useState(false);
   return item.item_image && !failed
-    ? <img src={item.item_image} alt={item.item_name} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+    ? <RewardArtwork src={item.item_image} alt={item.item_name} loading="lazy" decoding="async" onError={() => setFailed(true)} />
     : <span className="inventory-image-fallback"><Package size={40} aria-hidden="true" /></span>;
 }
 

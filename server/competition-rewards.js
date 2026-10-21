@@ -9,7 +9,7 @@ const stamp = () => new Date().toISOString();
 const admin = (actor) => { if (!hasRole(actor, "admin")) fail("Admin access required", 403); };
 const activeUser = (user) => user && !user.is_banned && !(Date.parse(user.metadata?.suspended_until || "") > Date.now());
 const effectDetails = (reward) => reward && Object.fromEntries(["effect", "value", "sources", "duration_days", "active"].map((key) => [key, reward[key] ?? (key === "sources" ? [] : key === "active" ? true : key === "duration_days" ? 0 : null)]));
-const publicItem = (row) => ({ id: row.id, name: row.metadata.name, image_url: row.metadata.image_url || "", description: row.metadata.description || "", rarity: row.metadata.rarity, reward: effectDetails(row.metadata.reward) });
+const publicItem = (row) => ({ id: row.id, name: row.metadata.name, category: row.metadata.category || "reward_item", image_url: row.metadata.image_url || "", description: row.metadata.description || "", rarity: row.metadata.rarity, reward: effectDetails(row.metadata.reward) });
 export const defaultRewardSettings = { enabled: false, standard_fee: 10, premium_fee: 5, minimum_fee: 0, tournament_drop_chance: 0 };
 export async function rewardSettings(db) {
   if (!db.competitionRewardSettings) return { ...defaultRewardSettings };
@@ -46,7 +46,7 @@ export async function grantRandomReward(tx, userId, sourceKey, pool, details = {
     kind: "item", item, inventory_id: inventoryId, expires_at: expires, pool_ids: pool.map((row) => row.id), ...details,
   } } });
   await tx.userInventory.create({ data: { id: inventoryId, metadata: { user_id: userId, item_id: chosen.id, item_name: item.name, item_description: item.description,
-    item_category: "reward_item", item_rarity: item.rarity, item_image: item.image_url, unlock_type: "competition_reward", unlock_key: key,
+    item_category: item.category || "reward_item", item_rarity: item.rarity, item_image: item.image_url, unlock_type: "competition_reward", unlock_key: key,
     reward_grant_id: grantId, reward_effect: item.reward, reward_expires_at: expires, is_unlocked: true, is_equipped: false, is_tradable: false,
     purchase_method: "competition_reward", acquired_date: stamp() } } });
   await notice(tx, userId, grant, `${details.title || "Competition reward"}: open your cards to reveal your item.`);
@@ -78,7 +78,7 @@ export async function saveRewardTemplate(db, actor, input) {
       if (template.sources.some((source) => existing.filter((row) => row.id !== old?.id && row.metadata.reward.sources.includes(source)).length >= 100)) fail("A drop pool can contain up to 100 active cards. Deactivate an older card first.");
     }
     const metadata = { ...old?.metadata, name: template.name, description: template.description, image_url: template.image_url, rarity: template.rarity,
-      category: "reward_item", unlock_type: "competition_reward", reward: effectDetails(template), is_active: template.active, is_available: true,
+      category: template.category, unlock_type: "competition_reward", reward: effectDetails(template), is_active: template.active, is_available: true,
       show_in_marketplace: true, is_featured: false, is_tradeable: false, is_tradable: false, price_cash: 0, price_credits: 0 };
     const row = old ? await tx.marketplaceItem.update({ where: { id: old.id }, data: { metadata } }) : await tx.marketplaceItem.create({ data: { metadata } });
     await audit(tx, actor, "reward_template_saved", { item_id: row.id, name: template.name, effect: template.effect, value: template.value, sources: template.sources, active: template.active });

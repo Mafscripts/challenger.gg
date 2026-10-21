@@ -35,7 +35,7 @@ export function validateRewardTemplate(input) {
   if (!sources.length || sources.some((source) => !allowed.includes(source))) fail("Choose valid drop pools for this effect");
   const duration_days = Number(input.duration_days || 0);
   if (!Number.isInteger(duration_days) || duration_days < 0 || duration_days > 730) fail("Bonus duration must be 0 (permanent) or 1–730 days");
-  return { name, description, image_url, rarity: ["common", "rare", "epic", "legendary", "mythic", "exclusive"].includes(input.rarity) ? input.rarity : "epic",
+  return { name, description, image_url, category: ["reward_item", "weapon_skin", "knife", "badge", "trophy", "cosmetic", "calling_card"].includes(input.category) ? input.category : "reward_item", rarity: ["common", "rare", "epic", "legendary", "mythic", "exclusive"].includes(input.rarity) ? input.rarity : "epic",
     effect: effect.id, value, sources, duration_days, active: input.active !== false };
 }
 export function effectiveCashFee(premium, discount, settings = {}) {

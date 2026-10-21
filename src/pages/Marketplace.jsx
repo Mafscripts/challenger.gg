@@ -1,3 +1,4 @@
+import RewardArtwork from "@/components/rewards/RewardArtwork";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, ArrowUpRight, CheckCircle2, Coins, Crown, Image as ImageIcon, Lock, Medal, Package, RefreshCw, Search, ShieldCheck, ShoppingBag, SlidersHorizontal, Sparkles, Swords, Trophy } from "lucide-react";
@@ -31,6 +32,7 @@ export const toMarketItem = (item) => ({
 });
 
 const isRemovedInvitationalTrophy = (item) => {
+  if (item?.unlock_type === "competition_reward") return false;
   const text = `${item?.category || ""} ${item?.name || ""} ${item?.description || ""} ${item?.unlock_key || ""}`.toLowerCase();
   const isTrophy = item?.category === "trophy" || text.includes("trophy");
   return isTrophy && (text.includes("invit") || text.includes("champion"));
@@ -87,7 +89,7 @@ export function MarketplaceImage({ item, className = "" }) {
       </div>
     );
   }
-  return <img src={item.img} alt={item.name} loading="lazy" decoding="async" onError={() => setFailed(true)} className={className} />;
+  return <RewardArtwork src={item.img} alt={item.name} loading="lazy" decoding="async" onError={() => setFailed(true)} className={className} />;
 }
 
 export default function Marketplace() {
