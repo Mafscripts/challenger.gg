@@ -12,9 +12,9 @@ const entities = {
   inventory: "UserInventory", adminActions: "AdminAction", systemLogs: "SystemLog",
   messages: "Message",
 };
-const overviewKeys = ["userCount", "adminAlerts", "ticketCounts", "wagers", "rankedMatches", "tournaments", "withdrawals", "walletSummary"];
+const overviewKeys = ["dashboardOverview"];
 const sectionKeys = {
-  dashboard: [...overviewKeys, "tournamentMatches", "marketplace", "inventory", "auditCounts"],
+  dashboard: overviewKeys,
   users: ["wallets"], roles: [], alerts: ["adminAlerts", "tickets"],
   tickets: [], banAppeals: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
@@ -25,7 +25,7 @@ const sectionKeys = {
   withdrawals: ["withdrawals", "users"], marketplace: ["marketplace"],
   inventory: ["inventory", "users"], audit: [],
 };
-const queryKeys = [...Object.keys(entities), "userCount", "ticketCounts", "auditCounts", "walletSummary", "referralProgram", "animatedNameFreeTrial"];
+const queryKeys = [...Object.keys(entities), "dashboardOverview", "userCount", "ticketCounts", "auditCounts", "walletSummary", "referralProgram", "animatedNameFreeTrial"];
 const combineQueries = (results) => ({
   data: Object.fromEntries(results.flatMap((result, index) => result.data === undefined ? [] : [[queryKeys[index], result.data]])),
   status: Object.fromEntries(results.map((result, index) => [queryKeys[index], {
@@ -35,6 +35,11 @@ const combineQueries = (results) => ({
 });
 
 async function loadRows(key) {
+  if (key === "dashboardOverview") {
+    const response = await base44.functions.invoke("getAdminDashboard", {});
+    if (!response.data?.success) throw new Error(response.data?.error || "Could not load dashboard totals");
+    return response.data;
+  }
   if (key === "walletSummary") {
     try {
       const response = await base44.functions.invoke("getAdminWalletSummary", {});
@@ -119,6 +124,8 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}) {
       queryFn: () => key === "referralProgram" && !canManageRoles(role) ? null : loadRows(key),
       enabled: allowed && enabledKeys.has(key),
       staleTime: 30000,
+      refetchInterval: key === "dashboardOverview" && activeTab === "dashboard" ? 60_000 : false,
+      refetchIntervalInBackground: false,
       refetchOnWindowFocus: false,
     })),
     combine: combineQueries,
@@ -139,7 +146,7 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}) {
       if (!active || !response.data?.synced?.length) return;
       void queryClient.invalidateQueries({
         queryKey: ["admin-console", user.id, role],
-        predicate: (query) => ["tournaments", "tournamentMatches", "tournamentParticipants"].includes(query.queryKey[3]),
+        predicate: (query) => ["dashboardOverview", "tournaments", "tournamentMatches", "tournamentParticipants"].includes(query.queryKey[3]),
       });
     }).catch((error) => console.warn("Tournament lifecycle sync failed:", error));
     return () => { active = false; };

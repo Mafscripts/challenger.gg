@@ -7,6 +7,7 @@ import { prisma } from "../prisma.js";
 import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket } from "../admin-tickets.js";
 import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount, setAdminUserVpnAccess } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
+import { getAdminDashboard } from "../admin-dashboard.js";
 import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
@@ -10583,6 +10584,7 @@ async function postDiscordCelebration(req) {
 }
 
 const handlers = {
+  getAdminDashboard: (req) => getAdminDashboard(prisma, req.user),
   ...challengeHandlers,
   getAdminWallets: (req) => getAdminWallets(prisma, req.user, req.body),
   getAdminWalletSummary: (req) => getAdminWalletSummary(prisma, req.user),

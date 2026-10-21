@@ -66,6 +66,7 @@ import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTourn
 import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig, hasRolePower } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 
+const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
 const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
 const RoleManagement = lazy(() => import("@/components/admin/RoleManagement"));
@@ -268,6 +269,7 @@ const initialAdminTab = () => {
 };
 
 const initialData = {
+  dashboardOverview: null,
   users: [],
   userCount: null,
   adminAlerts: [],
@@ -740,18 +742,21 @@ export default function Admin() {
     })
   ), [activeTab, currentRole, data.users, searchQuery, adminQueries.userDirectory.rows]);
 
-  const stats = useMemo(() => ({
-    totalUsers: data.userCount?.total ?? 0,
-    openTickets: data.ticketCounts?.open ?? 0,
-    matchTickets: data.ticketCounts?.match_open ?? 0,
-    activeWagers: data.wagers.filter((wager) => ["open", "in_progress", "ready", "score_conflict"].includes(wager.status)).length,
-    activeRanked: data.rankedMatches.filter((match) => ["open", "ready_check", "ready", "in_progress", "score_conflict"].includes(match.status)).length,
-    activeTournaments: data.tournaments.filter((tournament) => ["live", "in_progress", "registration", "open"].includes(tournament.status)).length,
-    openAdminAlerts: data.adminAlerts.filter(isOpenAdminAlert).length,
-    pendingWithdrawals: data.withdrawals.filter((withdrawal) => withdrawal.status === "pending").length,
-    walletTotal: Number(data.walletSummary?.available || 0),
-  }), [data]);
-
+  const stats = useMemo(() => {
+    const overview = data.dashboardOverview;
+    return {
+      totalUsers: overview?.players.total ?? 0,
+      bannedUsers: overview?.players.banned ?? 0,
+      openTickets: overview?.support.open ?? 0,
+      matchTickets: overview?.support.match_open ?? 0,
+      activeWagers: overview?.matches.wagers.active ?? 0,
+      activeRanked: overview?.matches.ranked.active ?? 0,
+      activeTournaments: (overview?.operations.tournament_live ?? 0) + (overview?.operations.tournament_registration ?? 0),
+      openAdminAlerts: overview?.operations.alerts ?? 0,
+      pendingWithdrawals: overview?.economy?.pending_withdrawals ?? null,
+      walletTotal: overview?.economy?.available ?? null,
+    };
+  }, [data.dashboardOverview]);
   const invokeTicketAction = async (ticket, action, payload = {}, label = "Ticket updated") => {
     setBusyId(`ticket:${ticket.id}:${action}`);
     try {
@@ -1851,21 +1856,22 @@ export default function Admin() {
             <div className="admin-console-header-tools"><RoleBadge role={currentRole} /><Link to="/" className="admin-console-button">View website<ArrowUpRight size={15} aria-hidden="true" /></Link><button type="button" onClick={loadAdminData} disabled={adminQueries.refreshing} className="admin-console-button admin-console-primary"><RefreshCw size={15} className={adminQueries.refreshing ? "animate-spin" : undefined} aria-hidden="true" />{adminQueries.refreshing ? "Refreshing…" : "Refresh data"}</button></div>
           </header>
 
-        <details className="admin-overview" key={activeTab} open={activeTab === "dashboard" ? true : undefined}>
+        {activeTab !== "dashboard" && <details className="admin-overview" key={activeTab}>
           <summary><LayoutDashboard size={16} aria-hidden="true" /><span>Platform overview<small>Players, queues & competition totals</small></span><ChevronDown size={16} aria-hidden="true" /></summary>
         <div className="admin-stat-grid">
-          <StatCard icon={Users} label="Users" value={adminQueries.status.userCount.ready ? stats.totalUsers : "…"} />
-          <StatCard icon={BellRing} label="Alerts" value={adminQueries.status.adminAlerts.ready ? stats.openAdminAlerts : "…"} color="text-red-400" />
-          <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.ticketCounts.ready ? stats.openTickets : "…"} color="text-orange" />
-          <StatCard icon={Gavel} label="Match Tickets" value={adminQueries.status.ticketCounts.ready ? stats.matchTickets : "…"} color="text-yellow-400" />
-          <StatCard icon={BadgeDollarSign} label="Wagers" value={adminQueries.status.wagers.ready ? stats.activeWagers : "…"} color="text-green" />
-          <StatCard icon={Swords} label="Ranked" value={adminQueries.status.rankedMatches.ready ? stats.activeRanked : "…"} color="text-cyan" />
-          <StatCard icon={Trophy} label="Tournaments" value={adminQueries.status.tournaments.ready ? stats.activeTournaments : "…"} color="text-purple-400" />
-          <StatCard icon={Landmark} label="Withdrawals" value={adminQueries.status.withdrawals.ready ? stats.pendingWithdrawals : "…"} color="text-red-400" />
-          <StatCard icon={CreditCard} label="Wallet Total" value={adminQueries.status.walletSummary.ready ? formatMoney(stats.walletTotal) : "…"} color="text-green" />
+          <StatCard icon={Users} label="Users" value={adminQueries.status.dashboardOverview.ready ? stats.totalUsers : "…"} />
+          <StatCard icon={Shield} label="Banned users" value={adminQueries.status.dashboardOverview.ready ? stats.bannedUsers : "…"} color="text-red-400" />
+          <StatCard icon={BellRing} label="Alerts" value={adminQueries.status.dashboardOverview.ready ? stats.openAdminAlerts : "…"} color="text-red-400" />
+          <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.dashboardOverview.ready ? stats.openTickets : "…"} color="text-orange" />
+          <StatCard icon={Gavel} label="Match Tickets" value={adminQueries.status.dashboardOverview.ready ? stats.matchTickets : "…"} color="text-yellow-400" />
+          <StatCard icon={BadgeDollarSign} label="Wagers" value={adminQueries.status.dashboardOverview.ready ? stats.activeWagers : "…"} color="text-green" />
+          <StatCard icon={Swords} label="Ranked" value={adminQueries.status.dashboardOverview.ready ? stats.activeRanked : "…"} color="text-cyan" />
+          <StatCard icon={Trophy} label="Tournaments" value={adminQueries.status.dashboardOverview.ready ? stats.activeTournaments : "…"} color="text-purple-400" />
+          {canManageWallets(currentRole) && <StatCard icon={Landmark} label="Withdrawals" value={adminQueries.status.dashboardOverview.ready ? stats.pendingWithdrawals : "…"} color="text-red-400" />}
+          {canManageWallets(currentRole) && <StatCard icon={CreditCard} label="Wallet Total" value={adminQueries.status.dashboardOverview.ready ? formatMoney(stats.walletTotal) : "…"} color="text-green" />}
         </div>
 
-        </details>
+        </details>}
         <section id="admin-workspace" ref={workspaceRef} tabIndex={-1} aria-labelledby="admin-section-title" className="admin-workspace">
           <header className="admin-section-heading"><span><ActiveIcon size={23} aria-hidden="true" /></span><div><p>{activeInfo.group}</p><h2 id="admin-section-title">{activeSection.label}</h2><span>{activeInfo.description}</span></div></header>
           {adminQueries.sectionLoading ? (
@@ -1876,40 +1882,7 @@ export default function Admin() {
 
           {activeTab === "verifyRank" && <RankVerificationAdmin users={data.users} />}
           {activeTab === "progression" && <ProgressionResets user={currentUser} onChanged={loadAdminData} />}
-          {activeTab === "dashboard" && (
-            <div className="p-6">
-              <h2 className="text-lg font-bold mb-4">Operational Overview</h2>
-              <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
-                <SummaryPanel title="Support Queue" rows={[
-                  ["Open alerts", stats.openAdminAlerts],
-                  ["Open tickets", stats.openTickets],
-                  ["Open match tickets", stats.matchTickets],
-                ]} />
-                <SummaryPanel title="Match Activity" rows={[
-                  ["Active wagers", stats.activeWagers],
-                  ["Active ranked", stats.activeRanked],
-                  ["Tournament matches", data.tournamentMatches.length],
-                ]} />
-                <SummaryPanel title="Economy" rows={[
-                  ["Wallet total", formatMoney(stats.walletTotal)],
-                  ["Pending withdrawals", stats.pendingWithdrawals],
-                  ["Marketplace items", data.marketplace.length],
-                ]} />
-                <SummaryPanel title="Inventory" rows={[
-                  ["Owned items", data.inventory.length],
-                  ["Audit actions", data.auditCounts?.admin ?? "…"],
-                  ["System logs", data.auditCounts?.system ?? "…"],
-                ]} />
-              </div>
-              {hasRolePower(currentRole, "super_admin") && (
-                <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-cyan/20 bg-cyan/[0.035] p-5">
-                  <div><p className="text-sm font-black">Resets & Seasons</p><p className="mt-1 text-xs text-vapor">Manage money, credits, earnings, XP, ELO, records and trophies separately. Start new XP, Ranked and Free 8s seasons.</p></div>
-                  <button type="button" onClick={() => setActiveTab("progression")} className="inline-flex items-center gap-2 rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan"><RotateCcw className="h-4 w-4" />Manage progression</button>
-                </section>
-              )}
-            </div>
-          )}
-
+          {activeTab === "dashboard" && <AdminDashboard overview={adminQueries.data.dashboardOverview} onSelect={selectAdminSection} canReset={hasRolePower(currentRole, "super_admin")} allowedSections={allowedTabs.map((tab) => tab.id)} />}
           {activeTab === "eightsGames" && <FreeEightsGamesAdmin />}
           {activeTab === "challenges" && <ChallengeTeamAdmin />}
           {activeTab === "live8s" && (
@@ -3381,22 +3354,6 @@ export default function Admin() {
         request={moderationRequest} busy={busyId === `${moderationRequest.user.id}:${moderationRequest.action}`}
         onClose={() => setModerationRequest(null)} onSubmit={submitModeration}
       />}
-    </div>
-  );
-}
-
-function SummaryPanel({ title, rows }) {
-  return (
-    <div className="admin-summary-panel">
-      <h3 className="font-bold text-sm mb-3">{title}</h3>
-      <div className="space-y-2 text-sm">
-        {rows.map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-3">
-            <span className="text-vapor">{label}</span>
-            <span className="font-bold text-right">{value}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
