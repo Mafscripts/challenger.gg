@@ -237,7 +237,6 @@ export default function XP() {
           mode="xp"
           headerDescription="Choose Solo, Duos or Teams. Every format advances the same global personal XP rank."
           competitionTitle={`XP ${categoryInfo.label}`}
-          headerIntro={<div className="xp-format-bar"><XPFormatSelect value={category} onChange={setCategory} /><p>{categoryInfo.detail} · A dedicated XP team is required, including Solo. You may belong to one XP team at a time.</p></div>}
           standingsContent={<XPFormatStandings category={category} />}
           currentUser={user}
           openCount={rankedMatches.length}
@@ -281,6 +280,7 @@ export default function XP() {
                 <span className="text-[10px] text-vapor">Required</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
+              <XPFormatSelect value={category} onChange={setCategory} />
               {activeRankedMatch ? xpMatchAwaitingAcceptance(activeRankedMatch) ? (
                 <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-vapor">Waiting for opponent acceptance</span><XPMatchPostAction match={activeRankedMatch} userId={user?.id} onChanged={loadRankedData} /></div>
               ) : (
