@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import XPMatchPostAction from "@/components/match/XPMatchPostAction";
 import XPTeamSelect from "@/components/match/XPTeamSelect";
+import XPFormatSelect from "@/components/competition/XPFormatSelect";
+import XPFormatStandings from "@/components/competition/XPFormatStandings";
+import useRouteSection from "@/hooks/useRouteSection";
+import { xpCategory, xpCategoryForSize } from "@/lib/xpCategories";
 import { xpMatchAwaitingAcceptance, xpMatchDestination } from "@/lib/xpMatchAccess";
 import useRematchSettings from "@/hooks/useRematchSettings";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
@@ -24,19 +28,6 @@ const modeLabels = {
   hp: "Hardpoint",
 };
 
-const activeRankedStatuses = new Set(["open", "accepted", "ready_check", "ready", "in_progress", "pending_confirmation", "awaiting_confirmation", "awaiting_host_report", "awaiting_challenger_report", "score_conflict", "disputed"]);
-
-const selectActiveRankedMatch = (matches, userId) => {
-  const unique = [...new Map((matches || []).map((match) => [match.id, match])).values()];
-  return unique
-    .filter((match) => activeRankedStatuses.has(match.status) && (
-      match.host_id === userId
-      || match.challenger_id === userId
-      || match.team_alpha_player_ids?.includes(userId)
-      || match.team_bravo_player_ids?.includes(userId)
-    ))
-    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
-};
 
 const groupedRanks = RANK_THRESHOLDS.reduce((tiers, rank) => {
   const existing = tiers.find((tier) => tier.tier === rank.tier);
@@ -76,12 +67,20 @@ const rankCardTones = {
 
 export default function XP() {
   const navigate = useNavigate();
+  const [category, setCategory] = useRouteSection("category", "solo", ["solo", "duos", "teams"]);
+  const categoryInfo = xpCategory(category);
+  const loadOpenXPMatches = async () => {
+    const { data } = await base44.functions.invoke("getXPMatchfinder", { category });
+    if (!data?.success) throw new Error(data?.error || "XP matches could not be loaded");
+    return data.rows || [];
+  };
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const rematchSettings = useRematchSettings("xp", setIsCreateModalOpen, isCreateModalOpen);
   const [user, setUser] = useState(null);
   const [currentStats, setCurrentStats] = useState(null);
   const [openPosts, setRankedMatches] = useState([]);
-  const rankedMatches = useMatchfinderPosts(openPosts);
+  const rankedMatches = useMatchfinderPosts(openPosts).filter((match) => xpCategoryForSize(match.team_size) === category);
+  const loadRequest = useRef(0);
   const [activeRankedMatch, setActiveRankedMatch] = useState(null);
   const [leaderboardPosition, setLeaderboardPosition] = useState(null);
   const [loadingMatches, setLoadingMatches] = useState(true);
@@ -91,7 +90,8 @@ export default function XP() {
 
   useEffect(() => {
     loadRankedData();
-  }, []);
+    return () => { loadRequest.current++; };
+  }, [category]);
 
   useEffect(() => {
     let active = true;
@@ -105,13 +105,13 @@ export default function XP() {
       refreshing = true;
       try {
         const [matches, playerMatches, playerStats] = await Promise.all([
-          base44.entities.XPMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 20),
-          base44.entities.XPMatch.filterFresh({}, "-created_date", 100),
+          loadOpenXPMatches(),
+          base44.functions.invoke("getMyActiveXPMatch", {}).then((response) => response.data?.match || null),
           base44.entities.XPStats.filterFresh({ user_id: user.id }, "-total_xp", 1),
         ]);
         if (active) {
           setRankedMatches(matches || []);
-          setActiveRankedMatch(selectActiveRankedMatch(playerMatches || [], user.id));
+          setActiveRankedMatch(playerMatches);
           setCurrentStats((playerStats || [])[0] || null);
         }
 
@@ -145,30 +145,34 @@ export default function XP() {
       window.removeEventListener("focus", refreshOpenMatches);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [user?.id]);
+  }, [user?.id, category]);
 
   const loadRankedData = async () => {
+    const requestId = ++loadRequest.current;
     try {
       setLoadingMatches(true);
       const currentUser = await base44.auth.me().catch(() => null);
       setUser(currentUser);
 
-      const [matches, statsRows, captainTeams] = await Promise.all([
-        base44.entities.XPMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 20),
+      const [matches, statsRows, captainTeams, activeMatch] = await Promise.all([
+        loadOpenXPMatches(),
         base44.functions.invoke("getXPStandings", {}).then(response => response.data?.rows || []),
         loadCaptainXPTeams(currentUser?.id),
+        currentUser?.id ? base44.functions.invoke("getMyActiveXPMatch", {}).then((response) => response.data?.match || null) : null,
       ]);
 
+      if (requestId !== loadRequest.current) return;
       setRankedMatches(matches || []);
       setCurrentStats((statsRows || []).find((stats) => stats.user_id === currentUser?.id) || null);
       setXPTeams(captainTeams || []);
+      setActiveRankedMatch(activeMatch);
       const position = (statsRows || []).findIndex((stats) => stats.user_id === currentUser?.id);
       setLeaderboardPosition(position >= 0 ? position + 1 : null);
     } catch (error) {
       console.error("Failed to load ranked data:", error);
       toast({ title: "XP Matches unavailable", description: "Could not load XP match data.", variant: "destructive" });
     } finally {
-      setLoadingMatches(false);
+      if (requestId === loadRequest.current) setLoadingMatches(false);
     }
   };
 
@@ -222,7 +226,7 @@ export default function XP() {
     loadRankedData();
     if (result?.xp_match_id) {
       toast({ title: "XP match posted", description: "We will notify you when an opponent accepts. Until then, you can cancel your post here." });
-      navigate("/xp#matchfinder");
+      navigate(`/xp?category=${category}#matchfinder`);
     }
   };
 
@@ -231,6 +235,10 @@ export default function XP() {
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <CompetitionLadder
           mode="xp"
+          headerDescription="Choose Solo, Duos or Teams. Every format advances the same global personal XP rank."
+          competitionTitle={`XP ${categoryInfo.label}`}
+          headerIntro={<div className="xp-format-bar"><XPFormatSelect value={category} onChange={setCategory} /><p>{categoryInfo.detail} · A dedicated XP team is required, including Solo. You may belong to one XP team at a time.</p></div>}
+          standingsContent={<XPFormatStandings category={category} />}
           currentUser={user}
           openCount={rankedMatches.length}
           matchfinder={(
@@ -274,7 +282,7 @@ export default function XP() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               {activeRankedMatch ? xpMatchAwaitingAcceptance(activeRankedMatch) ? (
-                <span className="competition-action-pill text-vapor">Waiting for opponent acceptance</span>
+                <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-vapor">Waiting for opponent acceptance</span><XPMatchPostAction match={activeRankedMatch} userId={user?.id} onChanged={loadRankedData} /></div>
               ) : (
                 <Link to={xpMatchDestination(activeRankedMatch)} className="competition-action-pill">
                   Return to Active Match <ArrowRight className="h-4 w-4" />
@@ -346,6 +354,7 @@ export default function XP() {
           onClose={() => setIsCreateModalOpen(false)}
           user={user}
           mode="xp"
+          xpFormat={category}
           onCreate={handleCreate}
         />
       </div>

@@ -21,6 +21,7 @@ export default function TeamSummaryCard({ team, membership, profileUserId, isOwn
   const wins = nonNegative(record?.wins ?? team.total_wins);
   const losses = nonNegative(record?.losses ?? team.total_losses);
   const winRate = wins + losses ? `${Math.round(wins / (wins + losses) * 100)}%` : "—";
+  const showTeamXP = team.team_type === "xp" && record && Object.hasOwn(record, "total_xp");
   const missing = membersKnown ? Math.max(0, size - members.length) : 0;
   const openLabel = isOwnProfile && captain ? "Manage roster" : "View roster";
   const openAction = (tab, label, className) => onOpen ? (
@@ -46,13 +47,13 @@ export default function TeamSummaryCard({ team, membership, profileUserId, isOwn
         </div>
         <dl className="team-card-record">
           <div><dt>Team record</dt><dd><span className="text-green">{wins}W</span><span className="text-vapor"> / </span><span className="text-red-300">{losses}L</span></dd></div>
-          <div><dt>Win rate</dt><dd>{winRate}</dd></div>
+          <div><dt>{showTeamXP ? "Team XP" : "Win rate"}</dt><dd>{showTeamXP ? record?.total_xp === undefined ? "…" : Number(record.total_xp).toLocaleString() : winRate}</dd></div>
           <div><dt>Roster</dt><dd>{membersKnown ? `${members.length} / ${size}` : `${size} players`}</dd></div>
         </dl>
         {membersKnown && <div className="team-card-roster">
           <div className="flex items-center justify-between gap-2 text-[11px]"><span className="font-bold text-white">{isOwnProfile ? "Your lineup" : "Team lineup"}</span><span className={`inline-flex items-center gap-1 ${ready ? "text-green" : "text-vapor"}`}>{ready ? <CheckCircle className="h-3 w-3" /> : <UserPlus className="h-3 w-3" />}{ready ? "Roster full" : `${missing} open ${missing === 1 ? "spot" : "spots"}`}</span></div>
           <div className="team-card-roster-bar"><div style={{ width: `${Math.min(100, members.length / size * 100)}%` }} /></div>
-          <p>{members.slice(0, 4).map((member) => usersById[member.user_id]?.display_name || usersById[member.user_id]?.username || member.user_name || "Player").join(" · ") || "No players yet"}</p>
+          <p>{members.slice(0, 5).map((member) => usersById[member.user_id]?.display_name || usersById[member.user_id]?.username || member.user_name || "Player").join(" · ") || "No players yet"}</p>
         </div>}
         <div className="team-card-footer">
           {activeMatch ? <Link to={activeMatch.href} className="team-card-match site-hover"><Swords className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1"><span className="block font-bold">Open match room</span><span className="mt-1 block truncate text-vapor">vs {activeMatch.opponent}</span></span><ArrowRight className="h-4 w-4 shrink-0" /></Link>

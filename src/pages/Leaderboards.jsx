@@ -1,3 +1,6 @@
+import XPFormatSelect from "@/components/competition/XPFormatSelect";
+import XPFormatStandings from "@/components/competition/XPFormatStandings";
+import useRouteSection from "@/hooks/useRouteSection";
 import React, { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowUpRight, Crown, Crosshair, DollarSign, Flame, Gamepad2, Globe2, Medal, Search, Trophy, TrendingUp, Users, Zap } from "lucide-react";
@@ -58,6 +61,8 @@ export default function Leaderboards() {
   const requestedTab = searchParams.get("tab");
   const activeTab = tabs.some((tab) => tab.key === requestedTab) ? requestedTab : "elo";
   const selectedTab = tabs.find((tab) => tab.key === activeTab);
+  const [xpFormat, setXPFormat] = useRouteSection("xp_format", "global", ["global", "solo", "duos", "teams"]);
+  const formatXP = activeTab === "xp" && xpFormat !== "global";
   const [eightsGame, setEightsGame] = useState("bo7");
   const [challengeKind, setChallengeKind] = useState("team");
   const gamesQuery = useFreeEightsGames(activeTab === "eights");
@@ -74,7 +79,7 @@ export default function Leaderboards() {
     queryFn: () => loadLeaderboardPlayers(userOrder),
     enabled: Boolean(user?.id),
   });
-  const hasStandaloneStats = !["tournaments", "wagers"].includes(activeTab);
+  const hasStandaloneStats = !formatXP && !["tournaments", "wagers"].includes(activeTab);
   const standingsQuery = useQuery({
     ...leaderboardQueryOptions,
     queryKey: ["competition-standings", user?.id, selectedTab.mode, activeTab === "eights" ? eightsGame : activeTab === "challenge" ? challengeKind : "all"],
@@ -161,10 +166,10 @@ export default function Leaderboards() {
         <CompetitionHero mode="leaderboards" title="Leaderboards" eyebrow={isTeamLadder ? "The teams setting the pace" : "The players setting the pace"}
           description="Every win tells a story. Explore the leaders, find your place and set your sights on the next spot."
           className="leaderboard-page-hero mb-6"
-          facts={[[selectedTab.factIcon, selectedTab.fact], ["Globe2", region === "Global" ? "Worldwide competition" : `${region} competition`], [isTeamLadder ? "ShieldCheck" : "UserRound", isTeamLadder ? "Team profiles & stats" : "Player profiles & stats"]]}
-          count={loading || error ? undefined : rankedRows.length} countLabel={isTeamLadder ? "teams" : "players"}
+          facts={[[selectedTab.factIcon, selectedTab.fact], ["Globe2", region === "Global" ? "Worldwide competition" : `${region} competition`], [isTeamLadder ? "ShieldCheck" : "UserRound", formatXP ? "Team & player XP standings" : isTeamLadder ? "Team profiles & stats" : "Player profiles & stats"]]}
+          count={loading || error || formatXP ? undefined : rankedRows.length} countLabel={isTeamLadder ? "teams" : "players"}
           metadata={<><Globe2 size={13} aria-hidden="true" />{region === "Global" ? "Global standings" : `${region} standings`}</>}
-          action={<div className="competition-actions"><button type="button" onClick={() => standingsRef.current?.scrollIntoView({ block: "start", behavior: "auto" })} className="competition-action-pill"><ArrowDown size={15} />View rankings</button>{!loading && !error && ownStanding && <span className="leaderboard-own-position"><Medal size={15} />Your position<strong>#{ownStanding.rank}</strong></span>}</div>}
+          action={<div className="competition-actions"><button type="button" onClick={() => standingsRef.current?.scrollIntoView({ block: "start", behavior: "auto" })} className="competition-action-pill"><ArrowDown size={15} />View rankings</button>{!formatXP && !loading && !error && ownStanding && <span className="leaderboard-own-position"><Medal size={15} />Your position<strong>#{ownStanding.rank}</strong></span>}</div>}
         />
 
         <div className="leaderboard-filters">
@@ -172,12 +177,14 @@ export default function Leaderboards() {
             {tabs.map((tab) => <button type="button" key={tab.key} data-ladder={tab.key} aria-pressed={activeTab === tab.key} onClick={() => selectTab(tab.key)}><span className="leaderboard-tab-icon"><tab.icon size={19} /></span><span><strong>{tab.label}</strong><small>{tab.detail}</small></span><ArrowUpRight className="leaderboard-tab-arrow" size={15} /></button>)}
           </div>
           <div className="leaderboard-scope-filters">
+            {activeTab === "xp" && <XPFormatSelect allowGlobal value={xpFormat} onChange={setXPFormat} />}
             {activeTab === "eights" && <label className="leaderboard-region"><Gamepad2 size={14} /><span>Game</span><select value={eightsGame} onChange={(event) => setEightsGame(event.target.value)}>{games.map((game) => <option key={game.id} value={game.id}>{eightsGameName(game)}</option>)}</select></label>}
             {activeTab === "challenge" && <div className="leaderboard-kind-switch" role="group" aria-label="Challenge ladder"><button type="button" aria-pressed={challengeKind === "team"} onClick={() => setChallengeKind("team")}>Teams</button><button type="button" aria-pressed={challengeKind === "solo"} onClick={() => setChallengeKind("solo")}>Solo players</button></div>}
             <label className="leaderboard-region"><Globe2 size={14} /><span>Region</span><select value={region} onChange={(event) => setRegion(event.target.value)}>{regions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           </div>
         </div>
 
+        {formatXP ? <div ref={standingsRef} className="leaderboard-list-panel"><XPFormatStandings category={xpFormat} region={region} /></div> : <>
         {!loading && !error && pagination.page === 1 && !searchQuery.trim() && podium.length > 0 && (
           <section className="leaderboard-podium-section" aria-label={`${region} top three ${isTeamLadder ? "teams" : "players"}`}>
             <div className="leaderboard-section-heading"><h2><Crown size={16} />Leading the way</h2><span>Top {podium.length} · {region === "Global" ? "Worldwide" : region}</span></div>
@@ -217,6 +224,7 @@ export default function Leaderboards() {
           {loading ? <p role="status" className="px-5 py-12 text-center text-sm text-vapor">Loading standings…</p> : error ? <div role="alert" className="leaderboard-empty"><strong>Standings could not be loaded.</strong><button type="button" onClick={() => { void usersQuery.refetch(); if (hasStandaloneStats) void standingsQuery.refetch(); }} className="site-hover rounded-lg border border-cyan/25 px-4 py-2 text-xs font-bold text-cyan">Try again</button></div> : filteredRows.length === 0 && <div className="leaderboard-empty"><Users size={26} strokeWidth={1.5} /><strong>{rankedRows.length ? isTeamLadder ? "No teams found" : "No players found" : "The ladder starts here"}</strong><p>{rankedRows.length ? "Try another name or change the region." : `Rankings appear when ${isTeamLadder ? "teams" : "players"} start competing in this region.`}</p></div>}
           {filteredRows.length > 0 && <LeaderboardPagination {...paginationProps} />}
         </section>
+        </>}
       </div>
     </div>
   );

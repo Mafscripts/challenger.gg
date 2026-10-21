@@ -12,7 +12,7 @@ const emptyTeamForm = (teamType, rosterSize) => ({
   tag: "",
   region: "na",
   team_type: teamType || "general",
-  roster_size: normalizeTeamRosterSize(rosterSize),
+  roster_size: Math.min(teamType === "xp" ? 5 : 4, normalizeTeamRosterSize(rosterSize)),
   banner_url: "",
 });
 
@@ -170,14 +170,14 @@ export default function CreateTeamModal({
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-2 block text-xs uppercase tracking-wider text-vapor">Team Type</span>
-              <select value={teamForm.team_type} disabled={lockTeamType} onChange={(event) => setTeamForm((current) => ({ ...current, team_type: event.target.value, roster_size: event.target.value === "ranked" ? Math.max(2, current.roster_size) : current.roster_size }))} className="w-full rounded-lg border border-white/5 bg-secondary px-4 py-3 text-sm focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70">
+              <select value={teamForm.team_type} disabled={lockTeamType} onChange={(event) => setTeamForm((current) => ({ ...current, team_type: event.target.value, roster_size: event.target.value === "xp" ? current.roster_size : event.target.value === "ranked" ? Math.min(4, Math.max(2, current.roster_size)) : Math.min(4, current.roster_size) }))} className="w-full rounded-lg border border-white/5 bg-secondary px-4 py-3 text-sm focus:border-cyan/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70">
                 <option value="xp">XP Matches</option><option value="challenge">Challenge a Team</option><option value="ranked">Ranked</option><option value="wager">Cash Matches</option><option value="tournament">Tournament</option><option value="general">General</option>
               </select>
             </label>
             <label className="block">
-              <span className="mb-2 block text-xs uppercase tracking-wider text-vapor">Roster Size</span>
+              <span className="mb-2 block text-xs uppercase tracking-wider text-vapor">Roster Size</span>{teamForm.team_type === "xp" && <p className="mb-2 text-[11px] leading-5 text-vapor">Solo: 1 player · Duos: 2 players · Teams: 3–5 players. You can belong to one XP team at a time. Leave or disband it before switching.</p>}
               <select value={teamForm.roster_size} onChange={(event) => setTeamForm((current) => ({ ...current, roster_size: Number(event.target.value) }))} className="w-full rounded-lg border border-white/5 bg-secondary px-4 py-3 text-sm focus:border-cyan/30 focus:outline-none">
-                {TEAM_ROSTER_FORMATS.filter((format) => teamForm.team_type !== "ranked" || format.value >= 2).map((format) => <option key={format.value} value={format.value}>{format.label}</option>)}
+                {TEAM_ROSTER_FORMATS.filter((format) => (teamForm.team_type === "xp" || format.value <= 4) && (teamForm.team_type !== "ranked" || format.value >= 2)).map((format) => <option key={format.value} value={format.value}>{format.label}</option>)}
               </select>
             </label>
           </div>

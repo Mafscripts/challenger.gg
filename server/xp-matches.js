@@ -1,4 +1,6 @@
 import { serializeRow } from "./entity.js";
+import { readXPParty } from "./xp-teams.js";
+import { xpCategoryForSize } from "../src/lib/xpCategories.js";
 import { randomUUID } from "node:crypto";
 import { tpRank } from "../src/lib/tpRanks.js";
 import { isExpiredOpenMatch } from "./matchfinder-expiry.js";
@@ -12,11 +14,16 @@ const error = (message) => ({ success: false, error: message });
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || "Player";
 const stamp = () => new Date().toISOString();
 
-export async function getXPStandings(db) {
+export async function readXPLedger(db) {
   const [rows, completed] = await Promise.all([
     db.xPStats.findMany({ orderBy: { created_date: "desc" }, select: { id: true, metadata: true } }),
     db.xPMatch.findMany({ where: field("status", "completed"), select: { id: true, metadata: true, created_date: true } }),
   ]);
+  return { rows, completed };
+}
+
+export async function getXPStandings(db, ledger) {
+  const { rows, completed } = ledger || await readXPLedger(db);
   const records = buildXPMatchRecords(rows, completed);
   const latest = new Map();
   for (const row of rows) {
@@ -119,13 +126,14 @@ async function updateXPTeamRecords(tx, match, winningSide) {
 }
 
 export async function createXPMatchLobby(db, payload, party) {
-  if (party.size !== party.ids.length || party.size > xpMatchTeamSize(payload) || !party.ids.includes(payload.host_id)) return error("Select a complete XP party that fits this match");
+  if (party.size !== party.ids.length || party.size !== xpMatchTeamSize(payload) || !party.ids.includes(payload.host_id)) return error("Select a complete XP party that fits this match");
   return db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('topfragg-xp-enrollment'))`;
+    try { party = await readXPParty(tx, party.team?.id, payload.host_id, xpMatchTeamSize(payload)); } catch (failure) { return error(failure.message); }
     const conflict = await partyConflict(tx, party.ids);
     if (conflict) return conflict;
     const match = serializeRow(await tx.xPMatch.create({ data: { metadata: {
-      ...payload, match_type: "xp", host_party_team_id: party.team?.id || "",
+      ...payload, match_type: "xp", xp_category: xpCategoryForSize(payload.team_size), host_party_team_id: party.team?.id || "",
       team_alpha_party_teams: partyTeamSnapshot(party), team_bravo_party_teams: [],
       team_alpha_player_ids: party.ids, team_alpha_player_names: party.names,
       team_alpha_party_sizes: [party.size], joined_players: party.size,
@@ -135,7 +143,7 @@ export async function createXPMatchLobby(db, payload, party) {
 }
 
 export async function joinXPMatchLobby(db, matchId, party, pickMap) {
-  if (party.size !== party.ids.length || ![1, 2, 3, 4].includes(party.size)) return error("Invalid XP party size");
+  if (party.size !== party.ids.length || ![1, 2, 3, 4, 5].includes(party.size)) return error("Invalid XP party size");
   return db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('topfragg-xp-enrollment'))`;
     await tx.$executeRaw`SELECT id FROM "XPMatch" WHERE id = ${matchId} FOR UPDATE`;
@@ -143,6 +151,13 @@ export async function joinXPMatchLobby(db, matchId, party, pickMap) {
     const match = serializeRow(row);
     if (!match || match.status !== "open") return error("XP match is not open");
     if (isExpiredOpenMatch(match)) return error("This XP lobby expired. Join or create another match.");
+    if (xpMatchRoster(match, "alpha").length !== xpMatchTeamSize(match)) return error("This older post does not have a complete XP team. Cancel it and post again with the full roster.");
+    try {
+      const host = await readXPParty(tx, match.host_party_team_id, match.host_id, xpMatchTeamSize(match));
+      const posted = xpMatchRoster(match, "alpha");
+      if (host.ids.some((id) => !posted.includes(id))) return error("The posting team's roster changed. Cancel this post and create a new one.");
+      party = await readXPParty(tx, party.team?.id, party.team?.captain_id || party.ids[0], xpMatchTeamSize(match));
+    } catch (failure) { return error(failure.message); }
     const alpha = xpMatchRoster(match, "alpha"), bravo = xpMatchRoster(match, "bravo");
     const existing = [...alpha, ...bravo];
     if (party.ids.some((id) => existing.includes(id))) return error("You or a teammate are already in this XP match");

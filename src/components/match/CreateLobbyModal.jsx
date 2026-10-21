@@ -16,6 +16,7 @@ import { WAGER_PLAY_RULES } from "@/lib/wagerRules";
 import usePlayTeams from "@/hooks/usePlayTeams";
 import MatchPresetPicker from "./MatchPresetPicker";
 import XPTeamSelect from "./XPTeamSelect";
+import { xpCategoryForSize } from "@/lib/xpCategories";
 import { FreeEightsRankDialog, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
@@ -35,6 +36,7 @@ const teamSizes = [
   { id: "2v2", name: "2v2", players: 4, tone: "green" },
   { id: "3v3", name: "3v3", players: 6, tone: "purple" },
   { id: "4v4", name: "4v4", players: 8, tone: "orange" },
+  { id: "5v5", name: "5v5", players: 10, tone: "purple" },
 ];
 
 const choiceTones = {
@@ -104,7 +106,7 @@ const mapsByMode = {
   ],
 };
 
-export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig, initialSettings }) {
+export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig, initialSettings, xpFormat }) {
   const appliedInitial = useRef(null);
   const [selectedGameMode, setSelectedGameMode] = useState(null);
   const [selectedTeamSize, setSelectedTeamSize] = useState(null);
@@ -154,8 +156,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     userTeams.filter((team) => {
       const teamType = team.team_type || "general";
       const rosterLimit = Number(team.roster_size || team.members.length || 1);
-      const compatibleType = teamType === expectedTeamType || (mode === "xp" && teamType === "ranked");
+      const compatibleType = teamType === expectedTeamType;
       if (!compatibleType || team.captain_id !== user?.id) return false;
+      if (mode === "xp") return rosterLimit === requiredPlayers && team.members.length === rosterLimit;
       if (isRanked) return rosterLimit >= (mode === "xp" ? 1 : 2) && rosterLimit <= requiredPlayers && team.members.length === rosterLimit;
       return team.members.length === requiredPlayers;
     })
@@ -183,8 +186,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     if (isEights && !gameConfig) return;
     appliedInitial.current = initialSettings;
     setSelectedGameMode(modeChoices.some((choice) => choice.id === initialSettings.game_mode) ? initialSettings.game_mode : null);
-    const sizes = isMoneyEights ? ["4v4"] : isEights ? ["2v2", "3v3", "4v4"] : ["1v1", "2v2", "3v3", "4v4"];
-    setSelectedTeamSize(sizes.includes(initialSettings.team_size) ? initialSettings.team_size : null);
+    const sizes = isMoneyEights ? ["4v4"] : isEights ? ["2v2", "3v3", "4v4"] : mode === "xp" ? ["1v1", "2v2", "3v3", "4v4", "5v5"] : ["1v1", "2v2", "3v3", "4v4"];
+    setSelectedTeamSize(sizes.includes(initialSettings.team_size) && (!xpFormat || xpCategoryForSize(initialSettings.team_size) === xpFormat) ? initialSettings.team_size : null);
     setBestOf([1, 3, 5].includes(initialSettings.best_of) ? initialSettings.best_of : 1);
     setSelectedPlayRule(WAGER_PLAY_RULES.some((rule) => rule.value === initialSettings.play_rule) ? initialSettings.play_rule : "controller_only");
     setSelectedTeamId("");
@@ -192,7 +195,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     setCustomAmount("");
     setPaymentMode("own");
     setStep(1);
-  }, [isOpen, initialSettings, mode, gameConfig, isEights, isMoneyEights, modeChoices]);
+  }, [isOpen, initialSettings, mode, gameConfig, isEights, isMoneyEights, modeChoices, xpFormat]);
 
   const handleCreate = async () => {
     if (!selectedGameMode || !modeChoices.some((choice) => choice.id === selectedGameMode)
@@ -448,7 +451,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
   const applyPreset = (preset) => {
     setSelectedGameMode(preset.game_mode);
-    setSelectedTeamSize(preset.team_size);
+    setSelectedTeamSize(mode !== "xp" || !xpFormat || xpCategoryForSize(preset.team_size) === xpFormat ? preset.team_size : null);
     setBestOf(preset.best_of);
     setSelectedPlayRule(preset.play_rule);
     setSelectedTeamId("");
@@ -600,7 +603,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 </h3>
                 {isEights && <p className="mb-4 text-xs text-vapor">Join as solo players. Teams are balanced automatically unless the lobby votes for a captain draft: 3 votes in 2v2, 4 in 3v3 or 5 in 4v4. Every format counts towards the same Free 8s leaderboard.</p>}
                 <div className={`grid gap-4 ${isEights ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-                  {teamSizes.filter((size) => !isEights || size.id !== "1v1").map((size) => {
+                  {teamSizes.filter((size) => (mode === "xp" ? !xpFormat || xpCategoryForSize(size.id) === xpFormat : size.id !== "5v5") && (!isEights || size.id !== "1v1")).map((size) => {
                     const isSelected = selectedTeamSize === size.id;
                     const tone = choiceTones[size.tone];
                     return (
@@ -664,7 +667,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     )}
                     {isRanked && (
                       <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/5 pt-3">
-                        <p className="text-[10px] leading-4 text-vapor">{mode === "xp" ? "Your roster stays together. Smaller parties can fill the remaining slots." : "Parties stay together. Duo pairs with duo; trio leaves one solo slot."}</p>
+                        <p className="text-[10px] leading-4 text-vapor">{mode === "xp" ? "Select a complete roster matching this format. One XP team per player; leave or disband before switching." : "Parties stay together. Duo pairs with duo; trio leaves one solo slot."}</p>
                         <Link to={`/teams?create=${mode === "xp" ? "xp" : "ranked"}&roster=${requiredPlayers}`} className="site-hover shrink-0 rounded px-2 py-1 text-[10px] font-black uppercase tracking-wider text-orange">Create team</Link>
                       </div>
                     )}

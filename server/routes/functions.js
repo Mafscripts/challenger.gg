@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { competitionStreamError } from "../competition-streaming.js";
 import { isInventoryTrophy } from "../lib/trophyCounts.js";
 import { activeProgressionSeason, progressionResetOverview, resetProgression } from "../progression-resets.js";
@@ -15,7 +16,10 @@ import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, seria
 import { playerAvatarFor } from "../lib/playerAvatars.js";
 import { getLeaderboardPlayers, getLeaderboardAvatars, getFreeEightsLeaderboard } from "../leaderboard-players.js";
 import { readLeaderboardSnapshot, invalidateLeaderboardSnapshots } from "../leaderboard-cache.js";
-import { xpTeamMatchWhere } from "../lib/xpTeamMatches.js";
+import { manageXPTeam, readXPParty, assertSingleXPTeam } from "../xp-teams.js";
+import { getXPFormatStandings } from "../xp-format-standings.js";
+import { xpMatchRoster, xpMatchTeamSize } from "../../src/lib/xpMatchRating.js";
+import { xpCategory } from "../../src/lib/xpCategories.js";
 import { ensureUserRecords, hashPassword, publicUser, updateUserIdentity } from "../auth.js";
 import { publicStaffPresentation } from "../../src/lib/roles.js";
 import { hasRole, rolePower } from "../roles.js";
@@ -2981,6 +2985,7 @@ async function manageTeam(req) {
     const name = String(req.body.name || "").trim();
     const tag = String(req.body.tag || "").trim().toUpperCase().slice(0, 6);
     const teamType = normalizeTeamType(req.body.team_type);
+    if (teamType === "xp") return manageXPTeam(prisma, req.user, req.body);
     const rosterSize = Math.min(4, Math.max(1, Number(req.body.roster_size || (teamType === "8s" ? 4 : 2))));
     if (["challenge", "xp"].includes(teamType) && ![1, 2, 3, 4].includes(rosterSize)) return { success: false, error: "Choose a solo, duo, trio or squad roster" };
     if (!name || !tag) return { success: false, error: "Team name and tag are required" };
@@ -3020,19 +3025,13 @@ async function manageTeam(req) {
 
   const team = await getEntity("Team", req.body.team_id || "").catch(() => null);
   if (!team) return { success: false, error: "Team not found" };
+  if (team.team_type === "xp" && ["respond_invite", "kick", "leave", "disband"].includes(action)) return manageXPTeam(prisma, req.user, req.body);
 
   if (team.team_type === "challenge" && ["kick", "leave", "disband"].includes(action)) {
     const active = await prisma.challengeMatch.findFirst({ where: { status: { in: ["open", "ready_check", "in_progress", "awaiting_confirmation", "disputed"] }, OR: [
       { metadata: { path: ["alpha_team", "id"], equals: team.id } }, { metadata: { path: ["bravo_team", "id"], equals: team.id } },
     ] } });
     if (active) return { success: false, error: "Finish or cancel your active challenge before changing this roster" };
-  }
-
-  if (team.team_type === "xp" && ["kick", "leave", "disband"].includes(action)) {
-    const activeMatches = await prisma.xPMatch.findMany({ where: { AND: [xpTeamMatchWhere([team.id]), {
-      NOT: { OR: ["completed", "cancelled", "expired", "closed"].map((status) => ({ metadata: { path: ["status"], equals: status } })) },
-    }] }, select: { id: true, metadata: true, created_date: true } });
-    if (activeMatches.some((row) => !isExpiredOpenMatch(serializeRow(row)))) return { success: false, error: "Finish or cancel your active XP match before changing this roster" };
   }
 
   if (action === "update_assets") {
@@ -3078,7 +3077,9 @@ async function manageTeam(req) {
       if (activeTournamentTeams.length >= MAX_ACTIVE_TOURNAMENT_TEAMS) {
         return { success: false, error: `Player is already active on the maximum of ${MAX_ACTIVE_TOURNAMENT_TEAMS} tournament teams` };
       }
-    } else if (inviteTeamType !== "xp") {
+    } else if (inviteTeamType === "xp") {
+      try { await assertSingleXPTeam(prisma, [target.id], team.id); } catch (error) { return { success: false, error: error.message }; }
+    } else {
       const targetTeams = await userActiveTeamMemberships(target.id, inviteTeamType);
       if (targetTeams.length > 0) return { success: false, error: "Player needs to leave current team" };
     }
@@ -3122,6 +3123,7 @@ async function manageTeam(req) {
       await updateEntity("TeamInvite", invite.id, { status: "cancelled", responded_date: nowIso() }).catch(() => null);
       return { success: false, error: "Team is no longer active" };
     }
+    if (inviteTeam.team_type === "xp") return manageXPTeam(prisma, req.user, { ...req.body, team_id: inviteTeam.id });
     const decision = req.body.decision === "accept" ? "accepted" : "declined";
     if (decision === "declined") {
       const declined = await updateEntity("TeamInvite", invite.id, { status: "declined", responded_date: nowIso() });
@@ -8154,13 +8156,7 @@ async function acceptRankedMatch(req) {
 
 
 async function xpPartyFor(req, slotsPerTeam) {
-  if (!req.body.team_id) throw new Error("Select your team before creating or joining an XP match");
-  const party = await rankedPartyFor(req, req.body.team_id, slotsPerTeam, {
-    findActiveMatch: (userId) => activeXPMatchFor(prisma, userId), label: "XP",
-    allowedTeamTypes: ["xp", "ranked"], minimumSize: 1,
-  });
-  if (!party.ids.includes(req.user.id)) throw new Error("The XP party captain must be part of the active roster");
-  return party;
+  return readXPParty(prisma, req.body.team_id, req.user.id, slotsPerTeam);
 }
 
 async function createXPMatch(req) {
@@ -8170,7 +8166,7 @@ async function createXPMatch(req) {
     return { success: false, error: "Invalid XP game mode" };
   }
   const slotsPerTeam = Number.parseInt(String(req.body.team_size || ""), 10);
-  if (![1, 2, 3, 4].includes(slotsPerTeam) || req.body.team_size !== `${slotsPerTeam}v${slotsPerTeam}`) {
+  if (![1, 2, 3, 4, 5].includes(slotsPerTeam) || req.body.team_size !== `${slotsPerTeam}v${slotsPerTeam}`) {
     return { success: false, error: "Invalid XP team size" };
   }
   let party;
@@ -10680,6 +10676,15 @@ const handlers = {
   refundWager,
   createRankedMatch,
   acceptRankedMatch,
+  getMyActiveXPMatch: async (req) => ({ success: true, match: await activeXPMatchFor(prisma, req.user.id) }),
+  getXPMatchfinder: async (req) => {
+    const sizes = xpCategory(req.body.category).sizes;
+    const rows = await prisma.$queryRaw`SELECT id, created_date, metadata FROM "XPMatch"
+      WHERE metadata->>'status' = 'open' AND metadata->>'team_size' IN (${Prisma.join(sizes.map((size) => `${size}v${size}`))})
+      ORDER BY created_date DESC LIMIT 100`;
+    return { success: true, rows: rows.map(serializeRow).filter((match) => !isExpiredOpenMatch(match) && (match.host_id === req.user.id || xpMatchRoster(match, "alpha").includes(req.user.id) || xpMatchRoster(match, "bravo").includes(req.user.id) || (!match.challenger_id && match.host_party_team_id && xpMatchRoster(match, "alpha").length === xpMatchTeamSize(match)))).slice(0, 20) };
+  },
+  getXPFormatStandings: (req) => getXPFormatStandings(prisma, req.body),
   getXPStandings: async () => ({ success: true, rows: await getXPStandings(prisma) }),
   getXPMatchPlayerRanks: (req) => getXPMatchPlayerRanks(prisma, req.body.xp_match_id),
   createXPMatch,
@@ -10813,7 +10818,7 @@ router.post("/:name", requireAuth, async (req, res, next) => {
       });
     }
     const name = req.params.name;
-    const snapshotKey = name === "getXPStandings" || name === "getMoneyEightsStandings" ? name
+    const snapshotKey = name === "getXPFormatStandings" ? `${name}:${xpCategory(req.body.category).id}` : name === "getXPStandings" || name === "getMoneyEightsStandings" ? name
       : name === "getFreeEightsStandings" ? `${name}:${eightsGameId(req.body.game_id)}`
         : name === "getChallengeStandings" ? `${name}:${String(req.body.kind || "team")}`
         : name === "getLeaderboardPlayers" ? `${name}:${String(req.body.order || "-created_date")}` : null;

@@ -29,7 +29,7 @@ function requiredTables(categories) {
   if (categories.includes("money")) tables.add("withdrawalRequest");
   for (const id of categories) if (ladderDelegate[id]) tables.add(ladderDelegate[id]);
   if (categories.includes("xp")) tables.add("xPLeaderboard");
-  if (categories.some((id) => ["records", "earnings"].includes(id))) tables.add("team");
+  if (categories.some((id) => ["records", "earnings", "xp"].includes(id))) tables.add("team");
   if (categories.includes("trophies")) tables.add("userInventory");
   return [...tables];
 }
@@ -176,7 +176,8 @@ export async function resetProgression(db, actor, body = {}, { now = () => new D
       return { metadata };
     });
     await saveRows("xPLeaderboard", (row) => ({ metadata: { ...json(row.metadata), ...record, xp: 0, total_xp: 0, current_xp: 0, weekly_xp: 0, score: 0, points: 0, level: 1, prestige: 0, progression_reset_at: timestamp, ...(seasonal ? { season: number } : {}) } }));
-    await saveRows("team", (row) => ({ metadata: { ...json(row.metadata),
+    await saveRows("team", (row) => !selected.has("records") && !selected.has("earnings") && row.metadata?.team_type !== "xp" ? null : ({ metadata: { ...json(row.metadata),
+      ...(selected.has("xp") && row.metadata?.team_type === "xp" ? { xp_reset_at: timestamp } : {}),
       ...(selected.has("records") ? { ...record, ...zeros(["total_wins", "total_losses", "total_matches", "tournament_wins"]), ranking: null, records_reset_at: timestamp } : {}),
       ...(selected.has("earnings") ? { ...earnings, earnings_reset_at: timestamp } : {}),
     } }));

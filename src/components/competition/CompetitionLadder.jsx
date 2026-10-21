@@ -53,7 +53,7 @@ const modeCopy = {
   xp: {
     eyebrow: "XP competition ladder",
     title: "XP Matches",
-    description: "Play 1v1 to 4v4. Beat stronger teams for more XP; losing to weaker teams costs more.",
+    description: "Solo 1v1, Duos 2v2 and Teams 3v3 to 5v5. All formats advance your global personal XP rank.",
     accent: "text-purple-300",
     line: "bg-purple-400",
   },
@@ -168,7 +168,7 @@ export function CompetitionHeaderView({ mode = "xp", playerCount, action, classN
   );
 }
 
-export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription, gameId = "bo7", competitionTitle, headerIntro }) {
+export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription, gameId = "bo7", competitionTitle, headerIntro, standingsContent }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user: authenticatedUser } = useAuth();
@@ -283,13 +283,13 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
   };
   const paginationProps = { page: pagination.page, pageCount: pagination.pageCount, total: pagination.total, onPageChange: changePage };
   const standingsUserIds = useMemo(() => pagination.visibleRows.map((row) => String(row.userId || "")).filter(Boolean).join("|"), [pagination.visibleRows]);
-  const playerAvatars = useLeaderboardAvatars(standingsUserIds.split("|"), activeTab === "standings");
+  const playerAvatars = useLeaderboardAvatars(standingsUserIds.split("|"), activeTab === "standings" && !standingsContent);
 
   const trophyQuery = useQuery({
     ...leaderboardQueryOptions,
     queryKey: ["leaderboard-trophies", authenticatedUser?.id, standingsUserIds],
     queryFn: async () => (await base44.functions.invoke("getCompetitionTrophyCounts", { user_ids: standingsUserIds.split("|") })).data?.counts || {},
-    enabled: Boolean(authenticatedUser?.id && standingsUserIds && activeTab === "standings"),
+    enabled: Boolean(authenticatedUser?.id && standingsUserIds && activeTab === "standings" && !standingsContent),
   });
   const leaderboardTrophies = trophyQuery.data || {};
   const me = { ...(usersById.get(String(currentUser?.id)) || {}), ...(currentUser || {}) };
@@ -346,9 +346,9 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
           </div>
         </div>
         {error && <div role="alert" className="flex items-center justify-between gap-3 border-b border-red-400/20 bg-red-500/5 px-5 py-3 text-xs text-red-200"><span>The latest standings could not be loaded.</span><button type="button" onClick={retry} className="font-bold text-cyan">Try again</button></div>}
-        {mode === "xp" && activeTab === "standings" && <TPRankGuide />}
-        {activeTab === "standings" && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} compact />}
-        {activeTab === "matchfinder" ? matchfinder : <div className="overflow-x-auto">
+        {mode === "xp" && activeTab === "standings" && !standingsContent && <TPRankGuide />}
+        {activeTab === "standings" && !standingsContent && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} compact />}
+        {activeTab === "matchfinder" ? matchfinder : standingsContent || <div className="overflow-x-auto">
           <div className={mode === "eights" ? "min-w-[980px]" : "min-w-[1080px]"}>
             <div className={`grid ${standingColumns} gap-3 border-b border-white/[0.06] bg-white/[0.015] px-5 py-3 text-[8px] font-black uppercase tracking-[0.16em] text-vapor`}>
               <span>Rank</span><span>Player</span>{mode === "xp" && <span className="text-center">TP RANK</span>}<span className="text-center">W</span><span className="text-center">L</span><span className="text-center">Win %</span><span className="text-center">Streak</span>{mode !== "eights" && <span className="text-center">XP</span>}<span>Trophies</span>{mode !== "xp" && <span className="text-right">{mode === "wagers" || mode === "money8s" ? "Winnings" : mode === "eights" ? "8s ELO" : "ELO"}</span>}
@@ -387,7 +387,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             ))}
           </div>
         </div>}
-        {activeTab === "standings" && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} />}
+        {activeTab === "standings" && !standingsContent && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} />}
       </section>
     </div>
   );

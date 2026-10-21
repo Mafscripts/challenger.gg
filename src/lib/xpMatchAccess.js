@@ -1,14 +1,15 @@
+import { xpCategoryForSize } from "./xpCategories.js";
 import { xpMatchRoster } from "./xpMatchRating.js";
 
 export const XP_TEAM_OPPONENT_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 
-// Parties can still fill larger matches. The first opposing party's acceptance
-// unlocks the room; posting a match alone never does.
+// A complete opposing team accepts before the room opens. Legacy accepted
+// matches keep their existing access; posting alone never unlocks a room.
 export const xpMatchAwaitingAcceptance = (match) => match?.status === "open"
   && (!match.challenger_id || !xpMatchRoster(match, "bravo").includes(match.challenger_id));
 
 export const xpMatchDestination = (match) => xpMatchAwaitingAcceptance(match)
-  ? "/xp#matchfinder" : `/xp-match/${encodeURIComponent(match.id)}`;
+  ? `/xp${xpCategoryForSize(match.team_size) && xpCategoryForSize(match.team_size) !== "solo" ? `?category=${xpCategoryForSize(match.team_size)}` : ""}#matchfinder` : `/xp-match/${encodeURIComponent(match.id)}`;
 
 export function xpMatchTeamIds(match, side) {
   const parties = match?.[`team_${side}_party_teams`];

@@ -3,13 +3,9 @@ import { xpMatchRoster, xpMatchTeamSize } from "./xpMatchRating.js";
 
 export async function loadCaptainXPTeams(userId) {
   if (!userId) return [];
-  const teams = await base44.entities.Team.filterFresh({ captain_id: userId }, "-created_date", 100);
-  return Promise.all((teams || [])
-    .filter((team) => team.is_active !== false && ["xp", "ranked"].includes(team.team_type))
-    .map(async (team) => {
-      const members = await base44.entities.TeamMember.filterFresh({ team_id: team.id }, "-joined_date", 10);
-      return { ...team, members: (members || []).filter((member) => member.is_active !== false) };
-    }));
+  const result = await base44.profile.teamPage();
+  return (result.teams || []).filter((team) => team.is_active !== false && team.team_type === "xp" && team.captain_id === userId)
+    .map((team) => ({ ...team, members: (result.membersByTeam?.[team.id] || []).filter((member) => member.is_active !== false) }));
 }
 
 export function xpTeamsForMatch(teams, match) {
@@ -20,8 +16,8 @@ export function xpTeamsForMatch(teams, match) {
   return teams.filter((team) => {
     const members = team.members || [];
     const roster = Number(team.roster_size || members.length || 0);
-    return Number.isInteger(roster) && roster >= 1 && roster <= available
-      && members.length === roster
+    return Number.isInteger(roster) && roster === size && roster <= available
+      && members.length === roster && new Set(members.map((member) => member.user_id)).size === roster
       && members.some((member) => member.user_id === team.captain_id)
       && members.every((member) => !joined.has(member.user_id));
   });

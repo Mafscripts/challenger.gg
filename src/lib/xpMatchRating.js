@@ -12,7 +12,7 @@ export function xpMatchRoster(match, side) {
   return captain ? [captain] : [];
 }
 
-export const xpMatchTeamSize = (match) => /^[1-4]v[1-4]$/.test(match?.team_size || "")
+export const xpMatchTeamSize = (match) => /^[1-5]v[1-5]$/.test(match?.team_size || "")
   && match.team_size[0] === match.team_size[2] ? Number(match.team_size[0]) : 1;
 
 export function completeXPMatchRoster(match) {

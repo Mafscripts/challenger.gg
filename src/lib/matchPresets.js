@@ -12,7 +12,7 @@ export function normalizeMatchPreset(input) {
   const eights = ["eights", "money8s"].includes(input.mode);
   if (typeof input.game_mode !== "string" || !/^[a-z0-9_-]{1,64}$/.test(input.game_mode)
     || (!eights && !["snd", "hp", "overload"].includes(input.game_mode))) fail("Choose a valid game mode");
-  const sizes = input.mode === "money8s" ? ["4v4"] : input.mode === "eights" ? ["2v2", "3v3", "4v4"] : ["1v1", "2v2", "3v3", "4v4"];
+  const sizes = input.mode === "money8s" ? ["4v4"] : input.mode === "eights" ? ["2v2", "3v3", "4v4"] : input.mode === "xp" ? ["1v1", "2v2", "3v3", "4v4", "5v5"] : ["1v1", "2v2", "3v3", "4v4"];
   if (!sizes.includes(input.team_size)) fail("Choose a valid team size");
   if (![1, 3, 5].includes(input.best_of)) fail("Choose BO1, BO3 or BO5");
   if (!["controller_only", "mixed_pc_allowed", "console_only"].includes(input.play_rule)) fail("Choose valid input and platform rules");

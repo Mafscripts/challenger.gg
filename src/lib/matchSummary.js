@@ -1,3 +1,4 @@
+import { xpCategoryForSize } from "./xpCategories.js";
 const number = (value) => value !== null && value !== undefined && value !== "" && typeof value !== "boolean" && Number.isFinite(Number(value)) ? Number(value) : null;
 const same = (a, b) => Boolean(a && b && String(a) === String(b));
 
@@ -32,5 +33,5 @@ export function rematchSettingsFor(match, mode) {
     best_of: Number(match.best_of) || 1, play_rule: match.play_rule || "controller_only" };
 }
 
-export const rematchDestination = (mode, gameId) => mode === "xp" ? "/xp" : mode === "ranked" ? "/ranked" : mode === "wagers" ? "/wagers"
+export const rematchDestination = (mode, gameId, teamSize) => mode === "xp" ? `/xp${xpCategoryForSize(teamSize) && xpCategoryForSize(teamSize) !== "solo" ? `?category=${xpCategoryForSize(teamSize)}` : ""}` : mode === "ranked" ? "/ranked" : mode === "wagers" ? "/wagers"
   : mode === "challenge" ? "/challenge-a-team" : `/ranked/8s?${mode === "money8s" ? "mode=money" : `game=${encodeURIComponent(gameId || "bo7")}`}`;

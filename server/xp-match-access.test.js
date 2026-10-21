@@ -13,7 +13,7 @@ const completed = (overrides = {}) => ({
 test("an XP post unlocks only after an opposing captain accepts, including partial lobbies", () => {
   const post = { id: "post", status: "open", host_id: "a", challenger_id: "", team_size: "4v4", team_alpha_player_ids: ["a"] };
   assert.equal(xpMatchAwaitingAcceptance(post), true);
-  assert.equal(xpMatchDestination(post), "/xp#matchfinder");
+  assert.equal(xpMatchDestination(post), "/xp?category=teams#matchfinder");
   assert.equal(xpMatchAwaitingAcceptance({ ...post, challenger_id: "b", team_bravo_player_ids: ["c"] }), true);
   const accepted = { ...post, challenger_id: "b", team_bravo_player_ids: ["b"] };
   assert.equal(xpMatchAwaitingAcceptance(accepted), false);
@@ -65,6 +65,10 @@ function enrollmentFixture({ incomingTeam = "team-b", historicalStatus = "comple
       update: async ({ data }) => { writes++; return { ...post, metadata: data.metadata, updated_date: new Date() }; },
     },
     xPStats: { findMany: async () => [] },
+    team: { findUnique: async ({ where }) => ({ id: where.id, metadata: { team_type: "xp", captain_id: where.id === "team-a" ? "a" : "b", name: "Team", roster_size: 1, is_active: true } }) },
+    teamMember: { findMany: async ({ where }) => [{ id: "member", metadata: { user_id: where.metadata.equals === "team-a" ? "a" : "b", team_id: where.metadata.equals, is_active: true } }] },
+    user: { findMany: async ({ where }) => where.id.in.map((id) => ({ id, username: id, metadata: { activision_id: `${id}#123` } })) },
+    $queryRaw: async (_sql, ...values) => [{ id: values.some((value) => value?.values?.includes("a")) ? "team-a" : incomingTeam, metadata: { team_type: "xp" } }],
   };
   return {
     db: { $transaction: (operation) => operation(tx) }, writes: () => writes,
@@ -92,12 +96,10 @@ test("server admission accepts a new team containing the same player and unlocks
   assert.equal(fixture.writes(), 1);
 });
 
-test("cancelled history permits acceptance and the first opponent unlocks a larger partially filled room", async () => {
+test("a solo XP roster cannot join an incomplete legacy Teams post", async () => {
   const fixture = enrollmentFixture({ historicalStatus: "cancelled", size: "4v4" });
   const result = await joinXPMatchLobby(fixture.db, "post", fixture.party, () => null);
-  assert.equal(result.success, true);
-  assert.equal(result.match.status, "open");
-  assert.equal(result.roster_full, false);
-  assert.equal(result.room_ready, true);
-  assert.equal(result.opponent_accepted, true);
+  assert.equal(result.success, false);
+  assert.match(result.error, /complete XP team/);
+  assert.equal(fixture.writes(), 0);
 });

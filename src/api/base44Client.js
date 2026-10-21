@@ -41,6 +41,9 @@ const readOnlyFunctions = new Set([
   "getLeaderboardAvatars",
   "getMoneyEightsStandings",
   "getXPStandings",
+  "getXPFormatStandings",
+  "getXPMatchfinder",
+  "getMyActiveXPMatch",
   "getCompetitionTrophyCounts",
   "getDirectMessages",
   "searchMessageRecipients",
@@ -412,9 +415,9 @@ export const base44 = {
       requireToken();
       return apiFetch(`/profile/team-page/players${toQuery({ team: teamId })}`, { timeoutMs: 15_000 });
     },
-    teamXPMatches(teamIds) {
+    teamXPMatches(teamIds, includeSummary = false) {
       requireToken();
-      return apiFetch(`/profile/team-xp-matches${toQuery({ team_ids: teamIds })}`, { dedupe: false, timeoutMs: 15_000 });
+      return apiFetch(`/profile/team-xp-matches${toQuery({ team_ids: teamIds, ...(includeSummary ? { summary: "1" } : {}) })}`, { dedupe: false, timeoutMs: 15_000 });
     },
     teams(userId) {
       requireToken();

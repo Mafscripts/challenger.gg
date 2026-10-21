@@ -5,6 +5,7 @@ import { trophyCountsFor, recentTrophiesFor } from "../lib/trophyCounts.js";
 import { getProfileArena } from "../profile-arena.js";
 import { friendStatus, changeFriendship, listFriendRequests } from "../friends.js";
 import { playerAvatarFor } from "../lib/playerAvatars.js";
+import { getXPTeamsSummary } from "../xp-format-standings.js";
 import { xpTeamMatchWhere } from "../lib/xpTeamMatches.js";
 import { isExpiredOpenMatch } from "../matchfinder-expiry.js";
 import { getTeamPage, getTeamPageActivity, getTeamPagePlayers, teamPageIds } from "../team-page.js";
@@ -52,12 +53,17 @@ router.get("/team-xp-matches", requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: "Provide up to 100 team IDs" });
     }
     const teamIds = [...new Set(ids)];
-    if (!teamIds.length) return res.json([]);
-    const rows = await prisma.xPMatch.findMany({ where: xpTeamMatchWhere(teamIds), orderBy: { created_date: "desc" }, take: 300 });
-    res.json(rows.map((row) => {
+    const includeSummary = req.query.summary === "1";
+    if (!teamIds.length) return res.json(includeSummary ? { matches: [], standings: {} } : []);
+    const [rows, standings] = await Promise.all([
+      prisma.xPMatch.findMany({ where: xpTeamMatchWhere(teamIds), orderBy: { created_date: "desc" }, take: 300 }),
+      includeSummary ? getXPTeamsSummary(prisma, teamIds) : null,
+    ]);
+    const matches = rows.map((row) => {
       const match = { ...row.metadata, id: row.id, created_date: row.created_date };
       return isExpiredOpenMatch(match) ? { ...match, status: "expired" } : match;
-    }));
+    });
+    res.json(includeSummary ? { matches, standings } : matches);
   } catch (error) {
     if (error instanceof SyntaxError) return res.status(400).json({ error: "Invalid team IDs" });
     next(error);
