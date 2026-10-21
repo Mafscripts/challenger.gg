@@ -714,7 +714,7 @@ function XPMatchRoomView() {
         ...visibleBravoPlayers.map((player) => ({ ...player, user_id: player.id, user_name: player.name, team: "challenger" })),
       ]} userId={user?.id} submitting={disputing} onSubmit={handleCreateDispute} />
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <MatchRoomShell summary={<MatchResultSummary match={match} mode="xp" complete={isComplete} userId={user?.id} alphaName={alphaName} bravoName={bravoName} alphaPlayers={visibleAlphaPlayers} bravoPlayers={visibleBravoPlayers} />} header={(
+        <MatchRoomShell summary={<MatchResultSummary match={match} mode="xp" complete={isComplete} userId={user?.id} alphaPlayers={visibleAlphaPlayers} bravoPlayers={visibleBravoPlayers} actions={personalResult && <button type="button" onClick={() => setResultDismissed(false)} className="site-hover rounded-lg border border-cyan/20 bg-cyan/10 px-4 py-2 text-xs font-bold text-cyan">View XP result</button>} />} header={(
           <MatchRoomHeader
             label="XP match room"
             title={<MatchRoomTitle alpha={alphaName} bravo={bravoName} />}
@@ -755,17 +755,6 @@ function XPMatchRoomView() {
                 )}
               />
           </>)} />
-
-        {match.status === "completed" && (
-          <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex flex-wrap items-center gap-3">
-            <Trophy className="w-5 h-5 text-green" />
-            <div>
-              <p className="font-bold text-green">Winner: {match.winner_name}</p>
-              <p className="text-xs text-vapor">Final score {match.winner_score}-{match.loser_score}</p>
-            </div>
-            {personalResult && <button type="button" onClick={() => setResultDismissed(false)} className="ml-auto rounded-lg border border-cyan/20 bg-cyan/10 px-4 py-2 text-xs font-bold text-cyan transition-colors hover:bg-cyan/20">View XP result</button>}
-          </div>
-        )}
 
         <div className="mb-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
           <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-card">

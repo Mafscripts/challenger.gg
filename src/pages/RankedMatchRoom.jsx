@@ -819,7 +819,7 @@ function RankedMatchRoomView() {
   return (
     <div className="match-room-theme matchroom-refresh min-h-screen py-6" data-room-mode="ranked">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
-        <MatchRoomShell summary={<MatchResultSummary match={match} mode="ranked" complete={isComplete} userId={user?.id} alphaName={alphaName} bravoName={bravoName} alphaPlayers={visibleAlphaPlayers} bravoPlayers={visibleBravoPlayers} />} header={(
+        <MatchRoomShell summary={<MatchResultSummary match={match} mode="ranked" complete={isComplete} userId={user?.id} alphaPlayers={visibleAlphaPlayers} bravoPlayers={visibleBravoPlayers} />} header={(
           <MatchRoomHeader
             label="Ranked match room"
             title={<MatchRoomTitle alpha={alphaName} bravo={bravoName} />}
@@ -882,16 +882,6 @@ function RankedMatchRoomView() {
                 )}
               />
           </>)} />
-
-        {match.status === "completed" && (
-          <div className="glass rounded-xl border border-green/20 bg-green/5 p-5 mb-6 flex items-center gap-3">
-            <Trophy className="w-5 h-5 text-green" />
-            <div>
-              <p className="font-bold text-green">Winner: {match.winner_name}</p>
-              <p className="text-xs text-vapor">Final score {match.winner_score}-{match.loser_score}</p>
-            </div>
-          </div>
-        )}
 
         <div className="mb-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.8fr)]">
           <MapVetoVertical wager={match} ranked compact />

@@ -699,7 +699,7 @@ function WagersMatchRoomView() {
           startSecondsRemaining={startSecondsRemaining}
         />}
 
-        <MatchRoomShell summary={<MatchResultSummary match={wager} mode="wagers" complete={isComplete} userId={user?.id} alphaName={hostDisplayName} bravoName={challengerDisplayName} alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers} />} header={(
+        <MatchRoomShell summary={<MatchResultSummary match={wager} mode="wagers" complete={isComplete} userId={user?.id} alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers} />} header={(
           <MatchRoomHeader
             label="Cash match room" icon={DollarSign}
             title={<MatchRoomTitle alpha={hostDisplayName} bravo={challengerDisplayName} />}
@@ -727,10 +727,6 @@ function WagersMatchRoomView() {
               <MatchRoomChat conversationId={wager.id} matchType="wager" teamAPlayers={teamAPlayers} teamBPlayers={teamBPlayers} inputActions={wagerChatActions} />
               <MatchMapSeries maps={Array.isArray(wager.series_maps) && wager.series_maps.length ? wager.series_maps : (wager.final_map_name ? [wager.final_map_name] : [])} mode={wager.game_mode_display || wager.game_mode} host={wager.host_name || hostDisplayName} bestOf={bestOf} compact stacked />
           </>)} />
-
-        {isComplete && (
-          <div className="glass mb-6 flex items-center gap-3 rounded-xl border border-green/20 bg-green/5 p-5"><Trophy className="h-5 w-5 text-green" /><div><p className="font-bold text-green">Winner: {wager.winner_name || "Match completed"}</p><p className="text-xs text-vapor">Final score {wager.winner_score ?? scoreA}-{wager.loser_score ?? scoreB}</p></div></div>
-        )}
 
         <div>
           <div className="min-w-0 space-y-6">

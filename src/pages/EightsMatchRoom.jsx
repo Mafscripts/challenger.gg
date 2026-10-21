@@ -774,7 +774,7 @@ function EightsMatchRoomView() {
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{displayStatus(match.status)}</span><button onClick={() => loadRoom()} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
 
-        <MatchRoomShell summary={<MatchResultSummary match={match} mode={isMoneyEights ? "money8s" : "eights"} complete={isComplete} userId={user?.id} alphaName="Team Alpha" bravoName="Team Bravo" alphaPlayers={displayedAlpha} bravoPlayers={displayedBravo} maps={seriesMaps} />} header={isMoneyEights ? (
+        <MatchRoomShell summary={<MatchResultSummary match={match} mode={isMoneyEights ? "money8s" : "eights"} complete={isComplete} userId={user?.id} alphaPlayers={displayedAlpha} bravoPlayers={displayedBravo} maps={seriesMaps} />} header={isMoneyEights ? (
           <MatchRoomHeader label="Money 8s match room" icon={Shield}
             title={<MatchRoomTitle alpha="Team Alpha" bravo="Team Bravo" />}
             status={displayStatus(match.status)} complete={isComplete}

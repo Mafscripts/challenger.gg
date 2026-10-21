@@ -1366,7 +1366,7 @@ function TournamentMatchRoomView() {
           <Link to="/tournaments" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-vapor hover:text-cyan"><ArrowLeft className="h-4 w-4" /> Tournaments</Link>
           <div className="flex items-center gap-2"><span className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-wider ${isComplete ? "border-green/25 bg-green/10 text-green" : "border-cyan/20 bg-cyan/10 text-cyan"}`}>{statusLabel(match.status)}</span><button onClick={loadRoom} className="rounded-lg border border-white/[0.08] p-2 text-vapor hover:text-cyan" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
         </div>
-        <MatchRoomShell summary={<MatchResultSummary match={match} mode="tournaments" complete={isComplete} userId={user?.id} alphaName={match.team_a_name} bravoName={match.team_b_name} alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers} maps={tournamentMapPicks} />} className={`tournament-room-shell ${canChat ? "" : "tournament-room-no-chat"}`} header={(
+        <MatchRoomShell summary={<MatchResultSummary match={match} mode="tournaments" complete={isComplete} userId={user?.id} alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers} maps={tournamentMapPicks} />} className={`tournament-room-shell ${canChat ? "" : "tournament-room-no-chat"}`} header={(
           <MatchRoomHeader
             label="Tournament match room" icon={Trophy}
             title={tournament?.name || "Tournament"}
