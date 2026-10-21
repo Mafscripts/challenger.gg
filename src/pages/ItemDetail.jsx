@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Coins, Lock, RefreshCw, ShoppingBag } from "lucide-react";
 import RarityBadge from "@/components/ui/RarityBadge";
 import BuyWithCreditsButton from "@/components/marketplace/BuyWithCreditsButton";
 import { base44 } from "@/api/base44Client";
+import { useMarketplaceAccount, useMarketplaceCatalog } from "@/hooks/useMarketplace";
 import { MarketplaceImage, dedupeById, getItemAccess, toMarketItem } from "@/pages/Marketplace";
 import PageLoader from "@/components/ui/PageLoader";
 
@@ -21,46 +23,30 @@ const categoryLabel = (value) => String(value || "cosmetic").replace(/_/g, " ");
 
 export default function ItemDetail() {
   const { id } = useParams();
-  const [item, setItem] = useState(null);
-  const [items, setItems] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [ownedItemIds, setOwnedItemIds] = useState(new Set());
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadItem();
-  }, [id]);
-
-  const loadItem = async () => {
-    try {
-      setLoading(true);
-      const user = await base44.auth.me().catch(() => null);
-      if (user) {
-        await base44.functions.invoke("syncMarketplaceUnlocks", {}).catch((error) => {
-          console.warn("Marketplace unlock sync failed:", error);
-        });
-      }
-      const syncedUser = user ? await base44.auth.me({ force: true }).catch(() => user) : null;
-      const [itemRow, rows, inventory] = await Promise.all([
-        base44.entities.MarketplaceItem.get(id),
-        base44.entities.MarketplaceItem.filter({}, "-created_date", 12),
-        syncedUser ? base44.entities.UserInventory.filter({ user_id: syncedUser.id }, "-acquired_date", 500).catch(() => []) : Promise.resolve([]),
-      ]);
-      setCurrentUser(syncedUser);
-      setOwnedItemIds(new Set((inventory || []).map((entry) => entry.item_id).filter(Boolean)));
-      setItem(toMarketItem(itemRow));
-      setItems(dedupeById((rows || []).map(toMarketItem).filter((candidate) => candidate.active && candidate.showInMarketplace)));
-    } catch (error) {
-      console.error("Failed to load item:", error);
-      setItem(null);
-    } finally {
-      setLoading(false);
-    }
+  const { user: currentUser, isLoadingAuth, ownedItemIds, ownershipPending, ownershipError, refreshOwnership } = useMarketplaceAccount();
+  const catalog = useMarketplaceCatalog();
+  const detail = useQuery({
+    queryKey: ["marketplace-item", currentUser?.id, id],
+    queryFn: () => base44.entities.MarketplaceItem.getFresh(id, { timeoutMs: 15000 }),
+    initialData: () => catalog.data?.find((row) => row.id === id),
+    initialDataUpdatedAt: () => catalog.dataUpdatedAt,
+    enabled: Boolean(currentUser?.id && id),
+    staleTime: 60000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const item = detail.data ? toMarketItem(detail.data) : null;
+  const loading = isLoadingAuth || Boolean(currentUser && detail.isPending);
+  const loadItem = () => {
+    if (!currentUser || detail.isFetching) return;
+    void detail.refetch();
+    void catalog.refetch();
+    void refreshOwnership();
   };
 
   const relatedItems = useMemo(() => (
-    items.filter((candidate) => candidate.id !== item?.id).slice(0, 3)
-  ), [items, item?.id]);
+    dedupeById((catalog.data || []).map(toMarketItem).filter((candidate) => candidate.active && candidate.showInMarketplace && candidate.id !== id)).slice(0, 3)
+  ), [catalog.data, id]);
 
   if (loading) {
     return <PageLoader label="Loading item" />;
@@ -71,14 +57,15 @@ export default function ItemDetail() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <ShoppingBag className="w-12 h-12 text-vapor/30 mx-auto mb-3" />
-          <h1 className="text-xl font-bold mb-2">Item Not Found</h1>
+          <h1 className="text-xl font-bold mb-2">{detail.isError ? "Could not load this item" : "Item Not Found"}</h1>
+          {detail.isError && <button type="button" onClick={loadItem} disabled={detail.isFetching} className="block mx-auto mb-3 text-cyan">Try again</button>}
           <Link to="/marketplace" className="text-cyan hover:underline">Back to Marketplace</Link>
         </div>
       </div>
     );
   }
 
-  const access = getItemAccess(item, currentUser, ownedItemIds);
+  const access = getItemAccess(item, currentUser, ownedItemIds, { pending: ownershipPending, error: ownershipError });
 
   return (
     <div className="min-h-screen py-8">
@@ -111,7 +98,7 @@ export default function ItemDetail() {
               {item.description || rarityDescriptions[item.rarity] || rarityDescriptions.common}
             </p>
 
-            {access.owned ? (
+            {access.pending ? <div className="glass rounded-xl border border-white/5 p-5 mb-6 text-sm text-vapor" role="status">{access.label}{ownershipError && <button type="button" onClick={() => refreshOwnership()} className="block mt-2 text-cyan">Try again</button>}</div> : access.owned ? (
               <>
                 <div className="glass rounded-xl border border-green/20 p-5 mb-6 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-green/10 flex items-center justify-center shrink-0">
@@ -152,7 +139,7 @@ export default function ItemDetail() {
                 </div>
                 <div className="flex gap-3 mb-8">
                   <div className="flex-1">
-                    <BuyWithCreditsButton item={item} onPurchased={() => setOwnedItemIds((prev) => new Set([...prev, item.id]))} />
+                    <BuyWithCreditsButton item={item} onPurchased={refreshOwnership} />
                   </div>
                   <button onClick={loadItem} className="px-6 py-4 border border-white/10 font-bold text-sm rounded-lg hover:bg-white/5 transition-all uppercase tracking-wider">
                     <RefreshCw className="w-4 h-4" />
