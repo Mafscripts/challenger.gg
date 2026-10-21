@@ -10821,6 +10821,7 @@ router.post("/:name", requireAuth, async (req, res, next) => {
     const name = req.params.name;
     const snapshotKey = name === "getXPStandings" || name === "getMoneyEightsStandings" ? name
       : name === "getFreeEightsStandings" ? `${name}:${eightsGameId(req.body.game_id)}`
+        : name === "getChallengeStandings" ? `${name}:${String(req.body.kind || "team")}`
         : name === "getLeaderboardPlayers" ? `${name}:${String(req.body.order || "-created_date")}` : null;
     const result = snapshotKey ? await readLeaderboardSnapshot(snapshotKey, () => handler(req)) : await handler(req);
     if (!snapshotKey && result?.success !== false && !/^(get|list|search|check|find|validate|preview)/i.test(name)) invalidateLeaderboardSnapshots();

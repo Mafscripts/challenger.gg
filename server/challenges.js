@@ -101,6 +101,25 @@ function visible(match, viewer, voice) {
   return { ...publicMatch, messages: access ? messages || [] : [], reports: access ? reports || {} : {}, voice: access ? voice : null, can_manage: hasRole(viewer, "moderator"), can_admin: hasRole(viewer, "admin"), is_member: access && member(match, viewer.id) };
 }
 
+// The leaderboard only needs public standings, not rooms, rosters or voice state.
+export async function getChallengeStandings(db, kind = "team") {
+  if (!["team", "solo"].includes(kind)) fail("Select the team or solo challenge ladder");
+  const rows = await db.challengeStanding.findMany({ where: { kind },
+    orderBy: [{ xp: "desc" }, { wins: "desc" }, { subject_id: "asc" }], take: 500 });
+  if (!rows.length) return { success: true, rows: [] };
+  const ids = rows.map((row) => row.subject_id);
+  const subjects = kind === "team"
+    ? await db.team.findMany({ where: { id: { in: ids } }, select: { id: true, metadata: true } })
+    : await db.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, display_name: true, region: true } });
+  const byId = new Map(subjects.map((row) => [row.id, row]));
+  return { success: true, rows: rows.map((row) => {
+    const subject = byId.get(row.subject_id);
+    return { ...row, region: kind === "team" ? subject?.metadata?.region || "" : subject?.region || "",
+      ...(kind === "team" ? { name: subject?.metadata?.name || row.name, logo_url: subject?.metadata?.logo_url || "", captain_id: subject?.metadata?.captain_id || "" }
+        : { username: subject?.username || "", name: subject?.display_name || subject?.username || row.name }) };
+  }) };
+}
+
 export function createChallengeHandlers({ db = prisma, checkMembership = async (user) => {
   const error = await freeEightsDiscordMembershipJoinError("8s", user);
   if (error) fail(error.error, 403);
@@ -302,6 +321,6 @@ export function createChallengeHandlers({ db = prisma, checkMembership = async (
         team_alpha_score: match.score?.alpha, team_bravo_score: match.score?.bravo };
     }) };
   }
-  return { getChallengeOverview: overview, getChallengeRoom: room, getChallengeActivity: activity, challengeAction: mutate };
+  return { getChallengeStandings: (req) => getChallengeStandings(db, req.body.kind || "team"), getChallengeOverview: overview, getChallengeRoom: room, getChallengeActivity: activity, challengeAction: mutate };
 }
 export const challengeHandlers = createChallengeHandlers();

@@ -186,7 +186,7 @@ test("real API requires authentication and blocks generic ladder/roster writes; 
   const request = (path, body, who = 12, method = "POST") => fetch(`http://127.0.0.1:${server.address().port}${path}`, {
     method, headers: { "Content-Type": "application/json", ...(who === null ? {} : { Authorization: `Bearer ${signUser(f.users[who])}` }) }, ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  for (const name of ["getChallengeOverview", "getChallengeRoom", "getChallengeActivity", "challengeAction"]) assert.equal((await request(`/functions/${name}`, {}, null)).status, 401);
+  for (const name of ["getChallengeStandings", "getChallengeOverview", "getChallengeRoom", "getChallengeActivity", "challengeAction"]) assert.equal((await request(`/functions/${name}`, {}, null)).status, 401);
   for (const entity of ["ChallengeMatch", "ChallengeStanding", "Team", "TeamMember", "TeamInvite"]) assert.equal((await request(`/entities/${entity}`, { xp: 999999, captain_id: "p12" })).status, 403);
   const view = await (await request("/functions/getChallengeRoom", { match_id: match.id })).json();
   assert.equal(view.match.can_manage, false); assert.equal(view.match.voice, null);
