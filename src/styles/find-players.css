@@ -1,0 +1,120 @@
+/* Recruitment uses the competition palette, with static surfaces and shared hover sweeps. */
+.find-players-page { --comp-accent: 20 216 255; }
+.find-players-page .account-page-hero {
+  background: radial-gradient(ellipse at 95% 10%, #b495ff20, transparent 50%), radial-gradient(ellipse at 25% 100%, #34ef9f0c, transparent 60%), linear-gradient(115deg, #112635, #0b1625 70%);
+}
+.find-players-page .account-page-hero::after { background: linear-gradient(90deg, #14d8ff, #b495ff 65%, #34ef9f); }
+.find-players-page .account-page-hero .competition-hero-main { min-height: 250px; }
+.find-players-page .account-page-hero .competition-hero-copy { grid-template-rows: auto auto auto auto; gap: 16px; }
+.find-players-page .account-page-hero .competition-hero-copy h1 { min-block-size: auto; font-size: clamp(32px, 3.2vw, 48px); }
+.find-players-page .account-page-hero .competition-hero-description { min-block-size: auto; max-width: 64ch; }
+.find-players-page .account-page-hero .competition-hero-facts { min-block-size: auto; }
+.find-players-page .competition-hero-facts > span:nth-child(2) { color: #cdb8ff; border-color: #b495ff40; background: #b495ff0d; }
+.find-players-page .competition-hero-facts > span:nth-child(3) { color: #7cefc3; border-color: #34ef9f40; background: #34ef9f0a; }
+.find-players-page .competition-mode-emblem { animation: none; transform: rotate(-8deg); background: linear-gradient(135deg, #14d8ff19, #b495ff19); border-color: #b495ff66; }
+.find-players-page .competition-emblem-spark { color: #d5bfff; border-color: #b495ff66; background: #24203a; }
+.find-players-page .competition-emblem-medal { color: #6fffc1; border-color: #34ef9f55; background: #102e2e; }
+.find-players-page .competition-orbit-outer { border-color: #b495ff40; }
+.find-players-page .competition-hero-footer { min-height: 70px; }
+.find-players-page .competition-action-pill { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding-inline: 16px; border: 1px solid; }
+.find-players-page .recruitment-team-action { color: #d2bfff; border-color: #b495ff50; background: #b495ff0d; --site-hover-color: #b495ff; }
+.recruitment-hero-note { display: inline-flex; align-items: center; gap: 8px; color: #afc8d5; }
+.recruitment-hero-note > span, .recruitment-ready > span { width: 6px; height: 6px; border-radius: 50%; background: #34ef9f; flex-shrink: 0; }
+
+.recruitment-sections { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-block: 20px 28px; }
+.recruitment-section { --section-accent: 20 216 255; --site-hover-color: rgb(var(--section-accent)); display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 80px; padding: 16px; text-align: left; border: 1px solid rgb(var(--section-accent) / .2); border-radius: 12px; background: linear-gradient(115deg, rgb(var(--section-accent) / .06), #101b27 85%); color: #dce8f2; transition: border-color .2s; }
+.recruitment-section[data-section="mine"] { --section-accent: 180 149 255; }
+.recruitment-section[data-section="chat"] { --section-accent: 52 239 159; }
+.recruitment-section[aria-current="page"] { border-color: rgb(var(--section-accent) / .6); box-shadow: inset 0 -2px rgb(var(--section-accent)); background: linear-gradient(115deg, rgb(var(--section-accent) / .14), #101b27 85%); }
+.recruitment-section-icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border: 1px solid rgb(var(--section-accent) / .25); border-radius: 11px; background: rgb(var(--section-accent) / .08); color: rgb(var(--section-accent)); }
+.recruitment-section > span:nth-child(2) { min-width: 0; }
+.recruitment-section strong { display: block; font-size: 13px; }
+.recruitment-section small { display: block; margin-top: 4px; color: #99aebb; font-size: 11px; line-height: 1.5; }
+.recruitment-section-arrow { margin-left: auto; flex-shrink: 0; color: rgb(var(--section-accent)); }
+.recruitment-section:is(:hover, :focus-visible) { border-color: rgb(var(--section-accent) / .65); }
+
+.recruitment-board-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.recruitment-eyebrow { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: #bda6ff; font-size: 9px; font-weight: 850; letter-spacing: .13em; line-height: 1.6; text-transform: uppercase; }
+.recruitment-board-heading h2 { color: #f0f7fc; font-size: 22px; font-weight: 900; line-height: 1.3; letter-spacing: -.025em; }
+.find-players-page .recruitment-primary, .recruitment-dialog .recruitment-primary { color: #06202b; border-color: #22dcf3; background: linear-gradient(105deg, #17d6f5, #50efc4); --site-hover-color: #c1fff0; --site-hover-wash: linear-gradient(90deg, #ffffff0d, #ffffff30); }
+.recruitment-button { min-height: 40px; }
+.recruitment-dialog { border-color: #b495ff45; background: linear-gradient(135deg, #b495ff0b, transparent 65%), #101b28; }
+.recruitment-dialog h2 { color: #f0f7ff; }
+.recruitment-field { color: #afc2d0; }
+.recruitment-control { min-height: 40px; color: #ddebf6; border-color: #7a9dbf30; background: #0a1622; transition: border-color .2s; }
+.recruitment-control:focus-visible { outline: 2px solid #14d8ff; outline-offset: 2px; }
+.recruitment-control option { color: #ddebf6; background: #0a1622; }
+
+.recruitment-modes { display: flex; flex-wrap: wrap; gap: 8px; }
+.recruitment-mode, .recruitment-card { --recruitment-accent: 20 216 255; --site-hover-color: rgb(var(--recruitment-accent)); }
+[data-recruitment-mode="xp"] { --recruitment-accent: 180 149 255; }
+[data-recruitment-mode="ranked"] { --recruitment-accent: 20 216 255; }
+[data-recruitment-mode="eights"] { --recruitment-accent: 106 179 255; }
+[data-recruitment-mode="money8s"], [data-recruitment-mode="wagers"] { --recruitment-accent: 52 239 159; }
+[data-recruitment-mode="challenge"] { --recruitment-accent: 223 151 255; }
+[data-recruitment-mode="tournaments"] { --recruitment-accent: 255 200 82; }
+.recruitment-mode { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 10px 13px; border: 1px solid rgb(var(--recruitment-accent) / .25); border-radius: 9px; background: rgb(var(--recruitment-accent) / .045); color: #c4d3df; font-size: 11px; font-weight: 750; transition: border-color .2s; }
+.recruitment-mode svg { color: rgb(var(--recruitment-accent)); }
+.recruitment-mode[aria-pressed="true"] { color: rgb(var(--recruitment-accent)); border-color: rgb(var(--recruitment-accent) / .6); background: rgb(var(--recruitment-accent) / .13); }
+.recruitment-mode:is(:hover, :focus-visible) { border-color: rgb(var(--recruitment-accent) / .7); }
+.recruitment-filters { overflow: hidden; padding: 18px; border: 1px solid #b495ff30; border-radius: 14px; background: linear-gradient(120deg, #b495ff07, transparent 65%), #101c28; }
+.recruitment-filter-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #b495ff1a; }
+.recruitment-filter-heading > span { display: flex; align-items: center; gap: 8px; color: #d4c3ff; font-size: 12px; font-weight: 800; }
+.recruitment-filter-heading small { color: #91a8bb; font-size: 10px; }
+
+.recruitment-empty { display: flex; align-items: center; gap: 26px; min-width: 0; padding: 32px; border: 1px solid #b495ff35; border-radius: 16px; background: radial-gradient(ellipse at 0 80%, #14d8ff0d, transparent 55%), linear-gradient(110deg, #122331, #181d30 75%, #11222c); }
+.recruitment-empty-art { display: flex; align-items: center; flex-shrink: 0; padding-inline: 5px; }
+.recruitment-empty-art > span { display: grid; place-items: center; width: 48px; height: 56px; border: 1px solid #b495ff66; border-radius: 12px; color: #cbb4ff; background: #23233b; transform: rotate(-12deg); }
+.recruitment-empty-art > span:nth-child(2) { z-index: 1; width: 72px; height: 80px; margin-inline: -6px; border-color: #14d8ff70; color: #34e3ff; background: #123344; transform: none; }
+.recruitment-empty-art > span:nth-child(3) { border-color: #34ef9f55; color: #71edba; background: #15332f; transform: rotate(12deg); }
+.recruitment-empty-copy { min-width: 0; max-width: 64ch; }
+.recruitment-empty-copy h3 { color: #f0f7fc; font-size: 20px; font-weight: 850; line-height: 1.3; letter-spacing: -.02em; }
+.recruitment-empty-copy > p:last-child { margin-top: 10px; color: #a7bdcc; font-size: 12px; line-height: 1.8; }
+.recruitment-empty-actions { display: flex; flex-direction: column; flex-shrink: 0; gap: 8px; margin-left: auto; }
+.recruitment-empty-actions > button { min-height: 44px; }
+
+.recruitment-card { position: relative; isolation: isolate; border: 1px solid rgb(var(--recruitment-accent) / .3); background: linear-gradient(125deg, rgb(var(--recruitment-accent) / .07), transparent 65%), #101d29; box-shadow: inset 0 2px rgb(var(--recruitment-accent) / .65); transition: border-color .2s; }
+.recruitment-card:is(:hover, :focus-within) { border-color: rgb(var(--recruitment-accent) / .65); }
+.recruitment-card-flags { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.recruitment-mode-badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgb(var(--recruitment-accent) / .28); border-radius: 7px; padding: 5px 8px; color: rgb(var(--recruitment-accent)); background: rgb(var(--recruitment-accent) / .08); font-size: 10px; font-weight: 800; }
+.recruitment-ready { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 10px; color: #71edba; font-weight: 700; }
+.recruitment-avatar { border-color: rgb(var(--recruitment-accent) / .35); }
+.recruitment-card-kind { color: #69dffa; font-size: 9px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+.recruitment-card-kind[data-kind="team"] { color: #c9aeff; }
+.recruitment-card-tags > span { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 6px 8px; border-width: 1px; border-radius: 7px; overflow-wrap: anywhere; }
+.recruitment-card-tags > span:nth-child(-n+2) { border-color: #7a9dbf25; background: #07131e50; }
+.recruitment-card-tags svg { flex-shrink: 0; color: rgb(var(--recruitment-accent)); }
+.recruitment-team-link { border: 1px solid #b495ff30; background: #b495ff08; color: #cbb4ff; --site-hover-color: #b495ff; }
+.recruitment-card-actions { margin-top: auto; border-top: 1px solid rgb(var(--recruitment-accent) / .14); }
+.recruitment-card-actions .recruitment-button { border-color: rgb(var(--recruitment-accent) / .3); background: rgb(var(--recruitment-accent) / .08); color: rgb(var(--recruitment-accent)); --site-hover-color: rgb(var(--recruitment-accent)); }
+.recruitment-card-actions > span { width: 100%; text-align: right; line-height: 1.6; overflow-wrap: anywhere; }
+
+@media (max-width: 1100px) {
+  .recruitment-section { gap: 10px; padding: 12px; }
+  .recruitment-section-arrow { display: none; }
+  .recruitment-empty { flex-wrap: wrap; gap: 22px; }
+  .recruitment-empty-copy { flex: 1 1 260px; }
+  .recruitment-empty-actions { flex-direction: row; flex-wrap: wrap; margin-left: 0; }
+}
+@media (max-width: 640px) {
+  .find-players-page .account-page-hero .competition-hero-main { min-height: 0; padding: 22px 20px; }
+  .find-players-page .account-page-hero .competition-hero-copy { gap: 14px; }
+  .find-players-page .competition-hero-footer { padding: 16px 20px; }
+  .recruitment-sections { gap: 6px; margin-block: 16px 24px; }
+  .recruitment-section { flex-direction: column; justify-content: center; gap: 8px; min-height: 92px; padding: 12px 5px; text-align: center; }
+  .recruitment-section strong { font-size: 10px; }
+  .recruitment-section small { display: none; }
+  .recruitment-section-icon { width: 34px; height: 34px; border-radius: 9px; }
+  .recruitment-board-heading h2 { font-size: 20px; }
+  .recruitment-modes { gap: 6px; }
+  .recruitment-mode { flex: 1 1 125px; font-size: 10px; }
+  .recruitment-filters { padding: 14px; }
+  .recruitment-empty { flex-direction: column; align-items: flex-start; gap: 24px; padding: 26px 20px; }
+  .recruitment-empty-copy { flex: none; }
+  .recruitment-empty-actions { width: 100%; }
+  .recruitment-empty-actions > button { flex: 1 1 150px; }
+  .recruitment-card-tags > span { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recruitment-section, .recruitment-mode, .recruitment-card, .recruitment-control { transition: none; }
+}

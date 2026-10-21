@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AccountPageHero from "@/components/ui/AccountPageHero";
 import RecruitmentBoard from "@/components/competition/RecruitmentBoard";
+import "@/styles/find-players.css";
 import {
+  ArrowUpRight,
   Ban,
   Clock3,
   EllipsisVertical,
@@ -482,10 +484,27 @@ export default function FindPlayersChat() {
   const [params, setParams] = useSearchParams();
   const view = ["mine", "chat"].includes(params.get("view")) ? params.get("view") : "posts";
   const change = (value) => setParams((current) => { const next = new URLSearchParams(current); if (value === "posts") next.delete("view"); else next.set("view", value); return next; });
-  return <div className="competition-surface page-shell min-h-screen" data-competition="teams"><div className="page-container">
-    <AccountPageHero mode="teams" title="Find teammates." eyebrow="Build your next squad" description="Find players who match your game, competition and schedule. Recruit for your roster or meet your next teammates." />
-    <nav className="my-5 flex flex-wrap gap-2 rounded-xl border border-cyan/20 bg-card p-2" aria-label="Find Players sections">
-      {[{ id: "posts", name: "Players & teams" }, { id: "mine", name: "My posts" }, { id: "chat", name: "Community chat" }].map((item) => <button key={item.id} type="button" aria-current={view === item.id ? "page" : undefined} onClick={() => change(item.id)} className={`site-hover rounded-lg border px-4 py-3 text-xs font-bold ${view === item.id ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-transparent text-vapor"}`}>{item.name}</button>)}
+  const browse = (kind) => setParams((current) => {
+    const next = new URLSearchParams(current);
+    next.delete("view"); next.set("kind", kind);
+    return next;
+  });
+  return <div className="find-players-page competition-surface page-shell min-h-screen" data-competition="recruitment"><div className="page-container">
+    <AccountPageHero mode="recruitment" title="Find teammates" eyebrow="Your people. Your next win."
+      description="The right teammates change the game. Find players on your wavelength, fill your roster and build a squad worth coming back for."
+      metadata={<span className="recruitment-hero-note"><span />One community. Every competition.</span>}
+      action={<>
+        <button type="button" onClick={() => browse("player")} className="site-hover competition-action-pill recruitment-primary"><Users className="h-4 w-4" />Find players<ArrowUpRight className="h-4 w-4" /></button>
+        <button type="button" onClick={() => browse("team")} className="site-hover competition-action-pill recruitment-team-action"><ShieldCheck className="h-4 w-4" />Find a team<ArrowUpRight className="h-4 w-4" /></button>
+      </>}
+    />
+    <nav className="recruitment-sections" aria-label="Find Players sections">
+      {[{ id: "posts", name: "Players & teams", detail: "Discover your next squad", icon: Users }, { id: "mine", name: "My posts", detail: "Your calls. Your next connection.", icon: ShieldCheck }, { id: "chat", name: "Community chat", detail: "Meet, talk and team up", icon: MessageCircle }].map(({ id, name, detail, icon: Icon }) => (
+        <button key={id} type="button" aria-current={view === id ? "page" : undefined} data-section={id} onClick={() => change(id)} className="site-hover recruitment-section">
+          <span className="recruitment-section-icon"><Icon className="h-5 w-5" /></span>
+          <span><strong>{name}</strong><small>{detail}</small></span><ArrowUpRight className="recruitment-section-arrow h-4 w-4" />
+        </button>
+      ))}
     </nav>
     {view === "chat" ? <CommunityChat /> : <RecruitmentBoard key={view} mine={view === "mine"} />}
   </div></div>;
