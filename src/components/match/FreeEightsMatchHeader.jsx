@@ -23,7 +23,7 @@ export default function FreeEightsMatchHeader({ match, actions, status, complete
       progress={progress}
       extra={eightsGameId(match) === "bo7" && (
         <div className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-yellow-300/20 bg-yellow-300/[0.04] px-3 py-2 text-[10px] text-vapor">
-          <Trophy className="h-3.5 w-3.5 text-yellow-300" aria-hidden="true" /> Monthly ladder prize
+          <Trophy className="h-3.5 w-3.5 text-yellow-300" aria-hidden="true" /> #1 Champion ELO
           <strong className="font-mono text-sm text-yellow-300">{monthlyEightsPrizeLabel}</strong>
         </div>
       )}

@@ -7165,7 +7165,7 @@ async function settleEightsMonthlyPrize() {
   });
   await notifyUser(winner.id, {
     title: "You won the Ranked 8s monthly race",
-    message: publicCommerceEnabled ? `$100 has been added to your wallet for finishing #1 in ${month}.` : `100 virtual test credits, with no cash value, have been added to your wallet for finishing #1 in ${month}.`,
+    message: `$100 has been added to your wallet for finishing #1 in ${month}.`,
     type: "reward",
     action_url: "/wallet",
     related_entity_id: referenceId,

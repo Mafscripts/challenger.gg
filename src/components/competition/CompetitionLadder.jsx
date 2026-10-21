@@ -306,7 +306,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     { label: "Ladder winnings", value: `$${totalScore.toLocaleString()}`, detail: `${standings.length} ranked players`, icon: Trophy, tone: "text-green" },
     { label: "Next tournament", value: formatDate(nextTournament?.start_date), detail: nextTournament?.name || "No event announced", icon: CalendarDays, tone: "text-orange" },
   ] : mode === "eights" ? [
-    gameId === "bo7" ? { label: "Monthly prize", value: monthlyEightsPrizeLabel, detail: publicCommerceEnabled ? "Winner takes the prize" : "Virtual reward · No cash value", icon: Trophy, tone: "text-green" } : { label: "Formats", value: "2v2 / 3v3 / 4v4", detail: "Free entry", icon: Trophy, tone: "text-green" },
+    gameId === "bo7" ? { label: "Monthly prize", value: monthlyEightsPrizeLabel, detail: "#1 Champion ELO", icon: Trophy, tone: "text-green" } : { label: "Formats", value: "2v2 / 3v3 / 4v4", detail: "Free entry", icon: Trophy, tone: "text-green" },
     { label: "Open lobbies", value: openCount, detail: "2v2 / 3v3 / 4v4", icon: Gamepad2, tone: "text-cyan" },
     { label: "Players", value: standings.length, detail: "On the 8s ELO ladder", icon: Users, tone: "text-purple-300" },
     { label: gameId === "bo7" ? "Prize month" : "Season", value: monthLabel(), detail: gameId === "bo7" ? "Monthly prize period" : "Separate game standings", icon: Clock3, tone: "text-orange" },

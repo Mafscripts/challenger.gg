@@ -52,5 +52,5 @@ test("the public iPhone build keeps purchases and cash payouts unavailable", asy
   const module = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
   assert.equal(module.publicCommerceEnabled, false);
   for (const name of ["create-checkout", "depositToWallet", "withdrawFromWallet", "buyWithCredits", "subscribePremium", "forgeMoneyToCredits"]) assert(module.blockedPublicCommerceFunctions.has(name));
-  assert.equal(module.monthlyEightsPrizeLabel, "100 test credits");
+  assert.equal(module.monthlyEightsPrizeLabel, "$100");
 });
