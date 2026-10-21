@@ -14,7 +14,7 @@ export function MatchRoomTitle({ alpha, bravo }) {
   return <><span>{alpha}</span><span className="room-title-versus">vs</span><span>{bravo}</span></>;
 }
 
-export default function MatchRoomHeader({ label, title, subtitle, status, complete = false, icon: Icon = Swords, metadata = [], actions, extra, children }) {
+export default function MatchRoomHeader({ label, title, subtitle, status, complete = false, icon: Icon = Swords, metadata = [], actions, extra, progress, children }) {
   return (
     <div className="room-hero">
       <div className="room-hero-main">
@@ -28,6 +28,7 @@ export default function MatchRoomHeader({ label, title, subtitle, status, comple
           {extra}
         </div>
       </div>
+      {progress}
       {metadata.length > 0 && <dl className="room-hero-facts">{metadata.map(({ label: fact, value }) => <div key={fact}><dt>{fact}</dt><dd>{value || "Pending"}</dd></div>)}</dl>}
       {children && <div className="room-hero-detail">{children}</div>}
     </div>

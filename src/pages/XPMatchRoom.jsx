@@ -6,7 +6,6 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   AlertCircle,
   Check,
-  Clock,
   Flame,
   Flag,
   Percent,
@@ -24,6 +23,7 @@ import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import MatchResultSummary from "@/components/match/MatchResultSummary";
+import MatchRoomProgress from "@/components/match/MatchRoomProgress";
 import MatchRoomHeader, { MatchRoomTitle, matchRoomTeamName } from "@/components/match/MatchRoomHeader";
 import MatchDisputeDialog from "@/components/match/MatchDisputeDialog";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
@@ -726,9 +726,14 @@ function XPMatchRoomView() {
               { label: "Map", value: match.final_map_name },
               { label: "Match ID", value: `#${String(match.id).slice(-8).toUpperCase()}` },
             ]}
+            progress={<MatchRoomProgress mode="xp" match={match} complete={isComplete} userId={user?.id}
+              participant={isParticipant} rosterFull={roomRosterFull(match)} capacity={slotsPerRankedTeam(match) * 2}
+              alphaPlayers={visibleAlphaPlayers} bravoPlayers={visibleBravoPlayers} alphaName={alphaName} bravoName={bravoName}
+              hasMaps={Boolean(match.final_map_name || match.series_maps?.length)} canReport={canSubmitScore} ownReported={ownScoreSubmitted}
+              deadline={timeRemaining} actions={{
+                report: canSubmitScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null,
+              }} />}
             actions={<>
-              {canSubmitScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
-              {timeRemaining ? <div className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 font-mono text-xs font-black ${timeRemaining === "EXPIRED" ? "border-orange/25 bg-orange/10 text-orange" : "border-cyan/20 bg-cyan/10 text-cyan"}`}><Clock className="h-4 w-4" /> {timeRemaining}</div> : null}
               <Link to="/xp" className="rounded-lg border border-white/[0.08] bg-secondary/60 px-4 py-2.5 text-[10px] font-bold text-vapor hover:text-white">XP</Link>
               <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
             </>}
@@ -811,10 +816,6 @@ function XPMatchRoomView() {
 
           </div>
         </div>
-
-        {match.reported_score_by && !["completed", "score_conflict"].includes(match.status) && (
-          <p className="mb-6 rounded-lg border border-yellow-400/15 bg-yellow-400/[0.05] px-4 py-3 text-center text-xs text-yellow-300">A score has been submitted. The opponent must submit the same score to complete the match.</p>
-        )}
       </div>
 
       {scoreModalOpen && canSubmitScore && (

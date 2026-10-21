@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Headphones, LockKeyhole, RefreshCw, ShieldCheck, Swords, X } from "lucide-react";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import MatchResultSummary from "@/components/match/MatchResultSummary";
+import MatchRoomProgress from "@/components/match/MatchRoomProgress";
 import MatchRoomHeader, { MatchRoomTitle } from "@/components/match/MatchRoomHeader";
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
@@ -82,9 +83,18 @@ export default function ChallengeRoom({ match, user, busy, action, onJoin, onRef
           { label: "Series", value: `Best of ${match.best_of}` },
           { label: "Match ID", value: `#${match.id.slice(-8).toUpperCase()}` },
         ]}
+        progress={<MatchRoomProgress mode="challenge" match={match} complete={complete} userId={user?.id} participant={Boolean(me)}
+          rosterFull={full} capacity={match.size * 2} alphaPlayers={alphaPlayers} bravoPlayers={bravoPlayers}
+          alphaName={names.alpha} bravoName={names.bravo} hasMaps={Boolean(match.series_maps?.length)} voice={voice}
+          canStart={canStart} canReport={Boolean(me?.captain && reportable)} ownReported={Boolean(me && match.reports?.[me.side])}
+          actions={{
+            join: !me && match.status === "open" ? <button type="button" className="room-primary-action" onClick={() => onJoin(match)} disabled={busy}>Accept this challenge<ArrowRight /></button> : null,
+            report: me?.captain && reportable ? <button type="button" className="room-primary-action" onClick={() => setScoreOpen(true)} disabled={busy}><Check />Submit score</button> : null,
+            voice: me && voice?.waiting_room_url ? <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="room-primary-action"><Headphones />Join Discord waiting room</a> : null,
+            start: (me?.captain || match.can_manage) && match.status === "ready_check" ? <button type="button" className="room-primary-action" disabled={busy || !canStart} onClick={() => action("start")}><Check />Start match</button> : null,
+          }} />}
         actions={<>
-            {!me && match.status === "open" && <button className={`room-primary-action ${primaryButton}`} onClick={() => onJoin(match)}>Accept this challenge<ArrowRight className="h-4 w-4" /></button>}
-            {me?.captain && reportable && <button className={`room-primary-action ${primaryButton}`} onClick={() => setScoreOpen(true)}><Check className="h-4 w-4" />Submit score</button>}
+            {me?.captain && reportable && match.reports?.[me.side] && <button type="button" className={secondaryButton} onClick={() => setScoreOpen(true)} disabled={busy}>Edit your score report</button>}
             {me && !me.team_id && ["open", "ready_check"].includes(match.status) && <button className={secondaryButton} disabled={busy} onClick={() => action("leave")}>Leave solo slot</button>}
             <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" />Match rules</Link>
 </>}
@@ -93,11 +103,10 @@ export default function ChallengeRoom({ match, user, busy, action, onJoin, onRef
       {voice && !voice.closed && !closed && <section className="relative m-3 overflow-hidden rounded-2xl border border-purple-400/20 bg-card sm:m-4" aria-label="Challenge Discord voice readiness">
         <div className="flex flex-col gap-4 bg-gradient-to-r from-[#5865F2]/[0.09] via-transparent to-transparent p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-start gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#5865F2]/30 bg-[#5865F2]/15 text-purple-200"><Headphones className="h-5 w-5" /></span><div><h2 className="text-sm font-black">Discord team voice</h2><p className="mt-1.5 max-w-2xl text-xs leading-5 text-vapor">{match.started_at ? "Team voices are separate. Join the lobby if you reconnect; the bot moves you to your team." : "Join this room’s private lobby voice. Once every player is present, a captain can start the match."}</p><p className="mt-2 text-[10px] font-bold text-vapor">{voice.fresh ? `${voice.players?.filter((player) => ["in_team_voice", "in_waiting_room"].includes(player.status)).length || 0}/${match.size * 2} voice ready` : "Checking Discord voice…"}</p>{voice.error && <p className="mt-2 text-xs text-red-300">{voice.error}</p>}</div></div>
-          <div className="flex shrink-0 flex-wrap gap-2">{voice.waiting_room_url ? <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#5865F2] px-4 py-3 text-[11px] font-black text-white hover:bg-[#4752C4]"><Headphones className="h-4 w-4" />Join Discord lobby</a> : <button disabled className={secondaryButton}>{voice.enabled ? "Preparing lobby…" : "Discord not enabled"}</button>}{me && (me.side === "alpha" ? voice.alpha_url : voice.bravo_url) && <a className={secondaryButton} href={me.side === "alpha" ? voice.alpha_url : voice.bravo_url} target="_blank" rel="noreferrer">Your team voice</a>}{(me?.captain || match.can_manage) && match.status === "ready_check" && <button className={primaryButton} disabled={busy || !canStart} onClick={() => action("start")}><Check className="h-4 w-4" />Start match</button>}</div>
+          <div className="flex shrink-0 flex-wrap gap-2">{match.status === "ready_check" ? null : voice.waiting_room_url ? <a href={voice.waiting_room_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#5865F2] px-4 py-3 text-[11px] font-black text-white hover:bg-[#4752C4]"><Headphones className="h-4 w-4" />Join Discord lobby</a> : <button disabled className={secondaryButton}>{voice.enabled ? "Preparing lobby…" : "Discord not enabled"}</button>}{me && (me.side === "alpha" ? voice.alpha_url : voice.bravo_url) && <a className={secondaryButton} href={me.side === "alpha" ? voice.alpha_url : voice.bravo_url} target="_blank" rel="noreferrer">Your team voice</a>}</div>
         </div>
       </section>}
       {match.cancel_reason && <p className="m-4 rounded-xl border border-orange/20 bg-orange/5 p-4 text-xs text-orange">Cancelled: {match.cancel_reason}</p>}
-      {match.status === "disputed" && <p className="m-4 rounded-xl border border-orange/20 bg-orange/5 p-4 text-xs text-orange">This result needs staff review. XP remains pending until staff resolves the score.</p>}
     </>} teams={<>
       <MatchTeamTable label="Defending roster" name={names.alpha} color="orange" players={alphaPlayers} captainId={alphaPlayers.find((player) => player.captain)?.user_id} challenge voiceStates={voice?.players} waitingRoomUrl={voice?.waiting_room_url} teamDetails={teamDetails("alpha")} isComplete={complete} isWinner={complete && match.winner === "alpha"} finalScore={match.score?.alpha} emptySlots={Math.max(0, match.size - alphaPlayers.length)} />
       <div className="flex items-center gap-4 px-2" aria-hidden="true"><span className="h-px flex-1 bg-gradient-to-r from-transparent via-orange/55 to-white/15" /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.09] bg-black/25 text-[8px] font-black uppercase tracking-wider text-vapor">VS</span><span className="h-px flex-1 bg-gradient-to-r from-white/15 via-cyan/55 to-transparent" /></div>

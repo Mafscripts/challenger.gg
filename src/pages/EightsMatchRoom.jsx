@@ -12,6 +12,7 @@ import MatchMapSeries from "@/components/match/MatchMapSeries";
 import { eightsGameId, eightsMatchGameName } from "@/lib/freeEightsGames";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import MatchResultSummary from "@/components/match/MatchResultSummary";
+import MatchRoomProgress, { openMatchRoomSection } from "@/components/match/MatchRoomProgress";
 import MatchRoomHeader, { MatchRoomTitle } from "@/components/match/MatchRoomHeader";
 import FreeEightsMatchHeader from "@/components/match/FreeEightsMatchHeader";
 import FreeEightsCaptainDraft, { CaptainDraftDropZone } from "@/components/match/FreeEightsCaptainDraft";
@@ -751,9 +752,20 @@ function EightsMatchRoomView() {
 
   const headerActions = <div className="flex flex-wrap gap-2">
     {!locked && isParticipant && !closedStatuses.has(match.status) && <button onClick={leave} disabled={busy} className="room-danger-action inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><LogOut className="h-4 w-4" /> Leave lobby</button>}
-    {isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved" && <button onClick={() => setScoreOpen(true)} className="room-primary-action inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit Score</button>}
     <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
   </div>;
+  const canReportScore = isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved";
+  const progress = <MatchRoomProgress mode={isMoneyEights ? "money8s" : "eights"} match={match} complete={isComplete}
+    userId={user?.id} participant={isParticipant} rosterFull={joined >= playerCapacity} capacity={playerCapacity}
+    alphaPlayers={displayedAlpha} bravoPlayers={displayedBravo} hasMaps={seriesMaps.length > 0} voice={voiceView}
+    locked={locked} hasScoreProposal={hasScoreProposal} currentUserAgreed={currentUserAgreed}
+    scoreVoteCount={scoreVoteCount} requiredScoreVotes={requiredScoreVotes} canReport={canReportScore} ownReported={currentUserAgreed}
+    deadline={!drafting && !locked && joined === playerCapacity && countdown !== null ? formatCountdown(countdown) : null}
+    actions={{
+      report: canReportScore && !currentUserAgreed ? <button type="button" onClick={() => setScoreOpen(true)} className="room-primary-action"><Check />{hasScoreProposal ? "Review submitted score" : "Submit score"}</button> : null,
+      voice: isParticipant && voiceView.voice?.waiting_room_url ? <a href={voiceView.voice.waiting_room_url} target="_blank" rel="noopener noreferrer" className="room-primary-action">Join Discord waiting room</a> : null,
+      draft: isParticipant ? <button type="button" onClick={() => openMatchRoomSection("room-captain-draft")} className="room-primary-action"><Users />Choose a player</button> : null,
+    }} />;
   const prizeCard = <LobbyOverviewCard match={match} isMoneyEights={isMoneyEights} joined={joined} openSpots={openSpots} entryFee={entryFee} livePrizePool={livePrizePool} fullPrizePool={fullPrizePool} isComplete={isComplete} />;
 
   return (
@@ -786,8 +798,9 @@ function EightsMatchRoomView() {
               { label: "Match ID", value: `#${String(match.id).slice(-8).toUpperCase()}` },
             ]}
             actions={headerActions}
+            progress={progress}
           >{prizeCard}</MatchRoomHeader>
-        ) : <FreeEightsMatchHeader match={match} actions={headerActions} status={displayStatus(match.status)} complete={isComplete} />} beforeTeams={(
+        ) : <FreeEightsMatchHeader match={match} progress={progress} actions={headerActions} status={displayStatus(match.status)} complete={isComplete} />} beforeTeams={(
           <>
           {isMoneyEights && !isComplete && <div className="m-3 sm:m-4"><StreamRequirementNotice user={user} /></div>}
         {match.match_type === "8s" && <FreeEightsVoiceStatus matchId={match.id} playerCapacity={playerCapacity} user={user} waitingForMaps={match.free_eights_waiting_for_voice} captainDraft={drafting} voiceView={voiceView} />}
@@ -799,7 +812,6 @@ function EightsMatchRoomView() {
               <Users className="h-4 w-4 text-cyan" aria-hidden="true" />
               <span className="font-mono text-sm font-black text-white">{joined}/{playerCapacity} <span className="font-sans text-xs font-bold text-vapor">players</span></span>
               <span className="flex-1 text-xs text-vapor">{openSpots > 0 ? `${openSpots} more ${openSpots === 1 ? "player" : "players"} needed` : "Lobby full"}</span>
-              {!drafting && countdown !== null && joined === playerCapacity && <span className="inline-flex items-center gap-2 text-xs text-yellow-300"><Clock3 className="h-3.5 w-3.5" /><span className="font-mono font-black">{formatCountdown(countdown)}</span></span>}
             </div>
             {reshuffleOpen && (
               <div className="mt-4 flex flex-col gap-3 border-t border-purple-300/15 pt-4 sm:flex-row sm:items-center sm:justify-between">

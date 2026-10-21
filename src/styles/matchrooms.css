@@ -32,6 +32,31 @@
 .room-hero-facts dt { color: #859cad; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .room-hero-facts dd { margin: 5px 0 0; color: #dceaf3; font-size: 12px; font-weight: 750; line-height: 1.5; overflow-wrap: anywhere; }
 .room-hero-detail { padding: 20px 28px; border-top: 1px solid #9ab7ca15; }
+.room-progress { margin: 0 28px 22px; overflow: hidden; border: 1px solid rgb(var(--room-accent) / .25); border-radius: 10px; background: var(--room-inset); }
+.room-progress-steps { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0; padding: 12px 16px; border-bottom: 1px solid #9ab7ca18; list-style: none; }
+.room-progress-steps li { display: flex; align-items: center; gap: 7px; color: #91a4b3; font-size: 10px; font-weight: 750; }
+.room-progress-steps li[data-state="current"] { color: rgb(var(--room-accent)); }
+.room-progress-steps li[data-state="done"] { color: #a9c9bb; }
+.room-progress-marker { display: inline-flex; align-items: center; justify-content: center; width: 21px; height: 21px; flex: 0 0 auto; border: 1px solid #9ab7ca35; border-radius: 50%; font: 750 10px ui-monospace, monospace; }
+.room-progress-marker svg { width: 12px; height: 12px; }
+.room-progress-steps li[data-state="current"] .room-progress-marker { border-color: rgb(var(--room-accent) / .55); background: rgb(var(--room-accent) / .12); }
+.room-progress-steps li[data-state="done"] .room-progress-marker { border-color: #25e69b45; color: #25e69b; }
+.room-progress-next { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px; }
+.room-progress-copy { flex: 1; min-width: 0; }
+.room-progress-label { color: rgb(var(--room-accent)); font-size: 9px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.room-progress-copy h2 { margin-top: 5px; color: #f3f8fc; font-size: 16px; font-weight: 850; line-height: 1.4; }
+.room-progress-description { max-width: 760px; margin-top: 5px; color: #a7bac8; font-size: 12px; line-height: 1.7; }
+.room-progress-waiting { margin-top: 8px; color: #d5e4ee; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.room-progress-waiting > span { margin-right: 5px; color: #91a4b3; }
+.room-progress-controls { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-end; gap: 10px; max-width: 38%; }
+.room-progress-timer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; color: #a7bac8; font-size: 10px; }
+.room-progress-timer svg { width: 13px; height: 13px; }
+.room-progress-timer strong { color: #dceaf3; font: 800 13px ui-monospace, monospace; }
+.room-progress-action :is(button, a) { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; max-width: 100%; padding: 12px 16px; border: 1px solid transparent; border-radius: 8px; background: rgb(var(--room-accent)); color: #06131b; font-size: 11px; font-weight: 850; line-height: 1.4; text-align: center; text-decoration: none; box-shadow: none; --site-hover-wash: linear-gradient(90deg, #ffffff10, #ffffff38); }
+.room-progress-action svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.room-progress-action :disabled { cursor: default; opacity: .55; }
+.room-progress[data-review="true"] { border-color: #fb923c50; }
+.room-progress[data-review="true"] .room-progress-label { color: #fdba74; }
 .matchroom-refresh .match-room-body { align-items: start; background: #09151e; }
 .matchroom-refresh .match-room-sidebar { gap: 18px; }
 .matchroom-refresh .match-team-card { --team-accent: 20 216 255; border-color: rgb(var(--team-accent) / .2); border-radius: 12px; background: var(--room-inset); box-shadow: none; }
@@ -64,6 +89,12 @@
   .room-hero-actions { justify-content: flex-start; }
 }
 @media (max-width: 639px) {
+  .room-progress { margin: 0 16px 16px; }
+  .room-progress-steps { gap: 10px 14px; padding: 12px; }
+  .room-progress-next { flex-direction: column; align-items: stretch; padding: 14px 12px; }
+  .room-progress-controls { align-items: stretch; max-width: none; }
+  .room-progress-timer { justify-content: flex-start; }
+  .room-progress-action :is(button, a) { width: 100%; }
   .room-hero-main { padding: 20px 16px; }
   .room-hero-title { margin-top: 12px; font-size: 24px; }
   .room-hero-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }

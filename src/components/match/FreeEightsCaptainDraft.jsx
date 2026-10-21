@@ -43,7 +43,7 @@ export default function FreeEightsCaptainDraft({ match, players, userId, isParti
     ? players.length < size * 2 ? "Approved · waiting for a full lobby" : "Approved · join the Discord Waiting Room"
     : "Want captains to choose the teams?";
 
-  return <details open={active} className="group/draft m-3 overflow-hidden rounded-xl border border-cyan/25 bg-card sm:m-4" aria-label="Captain draft">
+  return <details id="room-captain-draft" open={active} className="group/draft m-3 overflow-hidden rounded-xl border border-cyan/25 bg-card sm:m-4" aria-label="Captain draft">
     <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan sm:px-5 [&::-webkit-details-marker]:hidden">
       <Crown className="h-4 w-4 shrink-0 text-cyan" aria-hidden="true" />
       <div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan">Captain draft · {size}v{size}</p><h2 className="mt-1 text-xs font-black text-white" role="status" aria-live="polite">{status}</h2></div>

@@ -12,7 +12,6 @@ import {
   Award,
   Check,
   ChevronDown,
-  Clock3,
   Crown,
   Flag,
   Gavel,
@@ -26,7 +25,6 @@ import {
   Swords,
   Trophy,
   Twitch,
-  Unlock,
   X,
   Youtube,
 } from "lucide-react";
@@ -39,6 +37,7 @@ import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import MatchResultSummary from "@/components/match/MatchResultSummary";
+import MatchRoomProgress from "@/components/match/MatchRoomProgress";
 import MatchRoomHeader from "@/components/match/MatchRoomHeader";
 import UserBadges from "@/components/ui/UserBadges";
 import ActivisionIdLabel from "@/components/competition/ActivisionIdLabel";
@@ -1351,6 +1350,10 @@ function TournamentMatchRoomView() {
   const canAdminResolve = isStaff && canSubmit && !canAdminCorrect;
   const isStreamerMatch = isStreamerTournament(tournament);
   const tournamentMapPicks = tournamentMapPicksForMatch(match);
+  const reportSide = teamAPlayers.some((player) => rosterPlayerMatchesUser(player, user)) ? "team_a"
+    : teamBPlayers.some((player) => rosterPlayerMatchesUser(player, user)) ? "team_b" : null;
+  const ownReportSaved = Boolean(reportSide && ((match[`${reportSide}_reported_score_alpha`] != null && match[`${reportSide}_reported_score_bravo`] != null)
+    || match.reported_score_team === reportSide));
   const isTeamAWinner = isComplete && (
     String(match.winner_id || "") === String(match.team_a_id || "")
     || cleanKey(match.winner_name) === cleanKey(match.team_a_name)
@@ -1377,8 +1380,14 @@ function TournamentMatchRoomView() {
               { label: "Round", value: match.round || "–" },
               { label: "Match ID", value: `#${String(match.id).slice(-8).toUpperCase()}` },
             ]}
+            progress={<MatchRoomProgress mode="tournaments" match={match} complete={isComplete} userId={user?.id} participant={isMatchParticipant}
+              rosterFull={Boolean(match.team_a_id && match.team_b_id)} alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers}
+              alphaName={match.team_a_name || "Team Alpha"} bravoName={match.team_b_name || "Team Bravo"} hasMaps={tournamentMapPicks.length > 0}
+              canReport={canSubmit} canReview={canStaffSubmitResult && canSubmit} ownReported={ownReportSaved}
+              deadline={hasStartDeadline ? startWindowExpired ? "EXPIRED" : formatCountdown(startSecondsRemaining) : null}
+              notice="Enter the game lobby within the start window. Support options remain in the room chat."
+              actions={{ report: canSubmit ? <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit score</button> : null }} />}
             actions={<>
-                {canSubmit && <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center gap-2 rounded-xl bg-cyan px-5 py-3 text-[10px] font-black uppercase tracking-wider text-background"><Check className="h-4 w-4" /> Submit score</button>}
                 <button type="button" onClick={handleOpenBracket} className="inline-flex items-center gap-2 rounded-xl border border-orange/25 bg-orange/10 px-4 py-3 text-[10px] font-black uppercase tracking-wider text-orange hover:bg-orange/20"><LayoutGrid className="h-4 w-4" /> Bracket</button>
                 <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
             </>}
@@ -1389,56 +1398,6 @@ function TournamentMatchRoomView() {
         )} beforeTeams={(
           <>
         {!isComplete && <div className="m-3 sm:m-4"><StreamRequirementNotice user={user} /></div>}
-        {!isComplete && match.team_a_id && match.team_b_id && (
-          <div className={`relative m-3 overflow-hidden sm:m-4 rounded-xl border ${startWindowExpired ? "border-orange/35" : "border-border"}`}>
-            <div className="relative overflow-hidden bg-card px-5 py-5 sm:px-6">
-              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-4">
-                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-                    startWindowExpired ? "bg-orange/12 text-orange" : "bg-cyan/12 text-cyan"
-                  }`}>
-                    {startWindowExpired ? <Unlock className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
-                  </span>
-                  <div>
-                    {!startWindowExpired && (
-                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Match start window</p>
-                    )}
-                    <h2 className="mt-1 text-lg font-black text-foreground">
-                      {startWindowExpired
-                        ? "Admin support is now available"
-                        : "Your match is ready — start now"}
-                    </h2>
-                    {!startWindowExpired && (
-                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-vapor">
-                        You have 15 minutes to enter the lobby and begin. Admin support and disputes unlock only when this timer reaches 00:00.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="shrink-0 rounded-xl border border-border bg-secondary px-6 py-4 text-center">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">
-                    {hasStartDeadline ? "Time remaining" : "Waiting for schedule"}
-                  </p>
-                  <p className={`mt-1 font-mono text-3xl font-black tabular-nums ${
-                    startWindowExpired ? "text-orange" : "text-cyan"
-                  }`}>
-                    {hasStartDeadline ? formatCountdown(startSecondsRemaining) : "--:--"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!isComplete && ["awaiting_team_a_report", "awaiting_team_b_report"].includes(match.status) && (
-          <div className="mx-3 mb-3 rounded-lg border border-orange/20 bg-orange/5 px-4 py-3 text-xs text-vapor">
-            <span className="font-black uppercase tracking-wider text-orange">Waiting on confirmation</span>
-            <span className="ml-2">
-              {match.status === "awaiting_team_a_report" ? "Team A" : "Team B"} still needs to report the matching score.
-            </span>
-          </div>
-        )}
-
           </>
         )} teams={(
           <>

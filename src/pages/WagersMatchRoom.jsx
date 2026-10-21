@@ -2,7 +2,7 @@ import StreamRequirementNotice from "@/components/competition/StreamRequirementN
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
-  AlertTriangle, Check, ChevronDown, Clock3, Gavel, Unlock,
+  AlertTriangle, Check, ChevronDown, Gavel,
   AlertCircle, Award, Crown, DollarSign, Medal, RefreshCw, Shield, ShieldCheck, Trophy, X
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/use-toast";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import MatchResultSummary from "@/components/match/MatchResultSummary";
+import MatchRoomProgress from "@/components/match/MatchRoomProgress";
 import MatchRoomHeader, { MatchRoomTitle } from "@/components/match/MatchRoomHeader";
 import CancelledMatchRedirect from "@/components/match/CancelledMatchRedirect";
 import { useRoomRecord } from "@/components/match/useRoomRecord";
@@ -162,31 +163,6 @@ function WagerAdminTools({ wager, resolving, onResetDispute, onResolve, onCancel
         </button>
       </div>
     </details>
-  );
-}
-
-function WagerStartWindow({ startWindowExpired, hasStartDeadline, startSecondsRemaining }) {
-  return (
-    <div className={`relative mb-6 overflow-hidden rounded-xl border ${startWindowExpired ? "border-orange/35" : "border-border"}`}>
-      <div className="relative overflow-hidden bg-card px-5 py-5 sm:px-6">
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${startWindowExpired ? "bg-orange/12 text-orange" : "bg-cyan/12 text-cyan"}`}>
-              {startWindowExpired ? <Unlock className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
-            </span>
-            <div>
-              {!startWindowExpired && <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan">Match start window</p>}
-              <h2 className="mt-1 text-lg font-black text-foreground">{startWindowExpired ? "Admin support is now available" : "Your wager is ready — start now"}</h2>
-              {!startWindowExpired && <p className="mt-1 max-w-2xl text-sm leading-relaxed text-vapor">You have 15 minutes to enter the lobby and begin. Admin support and disputes unlock only when this timer reaches 00:00.</p>}
-            </div>
-          </div>
-          <div className="shrink-0 rounded-xl border border-border bg-secondary px-6 py-4 text-center">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">{hasStartDeadline ? "Time remaining" : "Waiting for schedule"}</p>
-            <p className={`mt-1 font-mono text-3xl font-black tabular-nums ${startWindowExpired ? "text-orange" : "text-cyan"}`}>{hasStartDeadline ? formatCountdown(startSecondsRemaining) : "--:--"}</p>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -656,6 +632,8 @@ function WagersMatchRoomView() {
                   { label: "Entry", value: formatMoney(wager.entry_fee || wager.amount || 0) },
                   { label: "Match ID", value: `#${String(wager.id).slice(-8).toUpperCase()}` },
                 ]}
+                progress={<MatchRoomProgress mode="wagers" match={wager} userId={user?.id} participant={Boolean(currentParticipant)} rosterFull={false}
+                  alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers} capacity={(Number.parseInt(wager.team_size, 10) || 1) * 2} />}
                 actions={<Link to="/wagers">Back to cash matches</Link>}
               />
             </header>
@@ -693,11 +671,6 @@ function WagersMatchRoomView() {
     <div className="match-room-theme matchroom-refresh min-h-screen py-6" data-room-mode="wager">
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         {isComplete && personalMoneyResult && !resultDismissed && <WagerMoneyResultOverlay result={{ ...personalMoneyResult, score: `${wager.confirmed_score_alpha ?? (wager.winner_id === wager.host_id ? wager.winner_score : wager.loser_score) ?? 0} - ${wager.confirmed_score_bravo ?? (wager.winner_id === wager.challenger_id ? wager.winner_score : wager.loser_score) ?? 0}` }} onContinue={dismissResult} />}
-        {!isComplete && canUseMatchRoom && <WagerStartWindow
-          startWindowExpired={startWindowExpired}
-          hasStartDeadline={hasStartDeadline}
-          startSecondsRemaining={startSecondsRemaining}
-        />}
 
         <MatchRoomShell summary={<MatchResultSummary match={wager} mode="wagers" complete={isComplete} userId={user?.id} alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers} />} header={(
           <MatchRoomHeader
@@ -711,8 +684,17 @@ function WagersMatchRoomView() {
               { label: "Entry", value: formatMoney(wager.entry_fee || wager.amount || 0) },
               { label: "Match ID", value: `#${String(wager.id).slice(-8).toUpperCase()}` },
             ]}
+            progress={<MatchRoomProgress mode="wagers" match={wager} complete={isComplete} userId={user?.id}
+              participant={Boolean(currentParticipant)} rosterFull={Boolean(wager.challenger_id)} alphaPlayers={teamAPlayers} bravoPlayers={teamBPlayers}
+              alphaName={hostDisplayName} bravoName={challengerDisplayName} hasMaps={Boolean(wager.final_map_name || wager.series_maps?.length)}
+              canReport={canReportScore} ownReported={currentTeamHasReported} needsPayment={needsPayment}
+              deadline={hasStartDeadline ? startWindowExpired ? "EXPIRED" : formatCountdown(startSecondsRemaining) : null}
+              notice="Enter the game lobby within the start window. Support options remain in the room chat."
+              actions={{
+                report: canReportScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null,
+                payment: needsPayment ? <button type="button" onClick={handlePayEntry} disabled={payingEntry} className="room-primary-action">{payingEntry ? "Paying..." : `Pay Entry ${formatMoney(wager.entry_fee || wager.amount || 0)}`}</button> : null,
+              }} />}
             actions={<>
-              {canReportScore ? <button type="button" onClick={() => setScoreModalOpen(true)} className="room-primary-action inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-primary-foreground hover:bg-primary/90"><Check className="h-4 w-4" /> Submit score</button> : null}
               <Link to="/wagers" className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-bold text-vapor transition-all hover:border-primary/30 hover:text-primary">Back to wagers</Link>
               <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
             </>}
@@ -745,19 +727,10 @@ function WagersMatchRoomView() {
                 ) : null}
               />
             </div>
-        {(needsPayment || wager.admin_request_status || wager.requested_admin) && (
+        {(wager.admin_request_status || wager.requested_admin) && (
           <div className="dark-focus dark-media rounded-xl border border-white/10 p-5 sm:p-6">
-            {needsPayment && (
-              <button
-                onClick={handlePayEntry}
-                disabled={payingEntry}
-                className="flex items-center justify-center gap-2 rounded-lg border border-cyan/20 bg-cyan/10 px-5 py-3 text-xs font-bold uppercase tracking-wider text-cyan transition-all hover:bg-cyan/20 disabled:opacity-50"
-              >
-                {payingEntry ? "Paying..." : `Pay Entry ${formatMoney(wager.entry_fee || wager.amount || 0)}`}
-              </button>
-            )}
             {(wager.admin_request_status || wager.requested_admin) && (
-              <p className={`${needsPayment ? "mt-3" : ""} text-xs text-vapor`}>
+              <p className="text-xs text-vapor">
                 Admin request: {{
                   waiting_for_admin: "Waiting for admin",
                   admin_joined: wager.assigned_admin_name ? `${wager.assigned_admin_name} joined` : "Admin joined",
