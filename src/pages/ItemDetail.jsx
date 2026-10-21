@@ -97,7 +97,7 @@ export default function ItemDetail() {
                 : "border-white/5"
             }`}
           >
-            <MarketplaceImage item={item} className={`w-full h-full object-contain ${item.unlockType === "competition_reward" ? "" : "group-hover:scale-105 transition-transform duration-700"}`} />
+            <MarketplaceImage priority={3} item={item} className={`w-full h-full object-contain ${item.unlockType === "competition_reward" ? "" : "group-hover:scale-105 transition-transform duration-700"}`} />
             <div className="absolute top-4 left-4">
               <RarityBadge rarity={item.rarity} />
             </div>

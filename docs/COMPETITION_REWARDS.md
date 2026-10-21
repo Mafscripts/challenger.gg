@@ -8,7 +8,7 @@ The migration creates settings and empty reward tables. It does not seed cards, 
 
 ## First deployment artwork
 
-The later `20261021080000_first_drop_collection` migration adds the First Drop collection: seven animated designs and 22 reward variants. See [the artwork and deployment notes](artwork/FIRST_DROP.md). This does not grant inventory copies or enable rewards.
+The later `20261021080000_first_drop_collection` migration adds the First Drop collection: seven animated designs and 22 reward variants. See [the artwork and deployment notes](artwork/FIRST_DROP.md). This does not grant inventory copies or enable rewards. The follow-up `20261021090000_unique_reward_artwork` migration replaces shared images with 22 unique images and richer material animations; see [First Drop v2](artwork/FIRST_DROP_V2.md).
 
 ## Admin setup
 

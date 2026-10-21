@@ -80,7 +80,7 @@ export const getItemAccess = (item, user, ownedItemIds = new Set()) => {
 const categoryIcon = (category) => /trophy/.test(category) ? Trophy : /badge/.test(category) ? Medal
   : /frame|card|banner/.test(category) ? ImageIcon : /knife|weapon|blade/.test(category) ? Swords : Package;
 
-export function MarketplaceImage({ item, className = "" }) {
+export function MarketplaceImage({ item, className = "", priority = 0 }) {
   const [failed, setFailed] = useState(false);
   if (!item.img || failed) {
     return (
@@ -89,7 +89,7 @@ export function MarketplaceImage({ item, className = "" }) {
       </div>
     );
   }
-  return <RewardArtwork src={item.img} alt={item.name} loading="lazy" decoding="async" onError={() => setFailed(true)} className={className} />;
+  return <RewardArtwork priority={priority} src={item.img} alt={item.name} loading="lazy" decoding="async" onError={() => setFailed(true)} className={className} />;
 }
 
 export default function Marketplace() {

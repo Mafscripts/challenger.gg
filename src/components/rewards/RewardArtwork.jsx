@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useSyncExternalStore } from "react"
 
 // The animation is inside the SVG image: only its luminous material moves.
 // Shared observers avoid one page/visibility listener per inventory card.
-const firstDrop = /^\/assets\/rewards\/first-drop\/(ion-rift|frost-crown|venom-edge|emerald-vault|crimson-ghost|sovereign-aegis|prism-champion)\.svg$/;
+const firstDrop = /^\/assets\/rewards\/(?:first-drop\/(ion-rift|frost-crown|venom-edge|emerald-vault|crimson-ghost|sovereign-aegis|prism-champion)|first-drop-v2\/first-drop-[a-z0-9-]+)\.svg$/;
 let observer;
 const observers = new Map(), listeners = new Set();
 let media;
@@ -15,20 +15,37 @@ const subscribe = (listener) => {
 };
 const inactive = () => false;
 const noopSubscribe = () => () => {};
-function observe(node, listener) {
-  if (!("IntersectionObserver" in window)) { listener(true); return () => {}; }
-  observer ||= new IntersectionObserver((entries) => entries.forEach((entry) => observers.get(entry.target)?.(entry.isIntersecting)), { threshold: .05 });
-  observers.set(node, listener); observer.observe(node);
-  return () => { observers.delete(node); observer.unobserve(node); if (!observers.size) { observer.disconnect(); observer = null; } };
+// Keep a large catalog from running every material animation at once.
+function allocateMotion() {
+  const visible = [...observers.values()].filter((entry) => entry.intersecting).sort((a,b) => b.priority - a.priority);
+  const playing = new Set(visible.slice(0,6));
+  observers.forEach((entry) => { const next = playing.has(entry); if (entry.running !== next) { entry.running = next; entry.listener(next); } });
 }
-export default function RewardArtwork({ src, alt = "", animate = true, onError, ...props }) {
+function prioritize(node, hovered) {
+  const entry = observers.get(node);
+  if (entry) { entry.priority = entry.basePriority + (hovered ? 10 : 0); allocateMotion(); }
+}
+function observe(node, listener, priority) {
+  const entry = { listener, priority, basePriority: priority, intersecting: false, running: false };
+  observers.set(node, entry);
+  if (!("IntersectionObserver" in window)) { entry.intersecting = true; allocateMotion(); }
+  else {
+    observer ||= new IntersectionObserver((entries) => {
+      entries.forEach((item) => { const record = observers.get(item.target); if (record) record.intersecting = item.isIntersecting && item.intersectionRatio >= .05; });
+      allocateMotion();
+    }, { threshold: .05 });
+    observer.observe(node);
+  }
+  return () => { observers.delete(node); observer?.unobserve(node); allocateMotion(); if (!observers.size) { observer?.disconnect(); observer = null; } };
+}
+export default function RewardArtwork({ src, alt = "", animate = true, priority = 0, onError, onPointerEnter, onPointerLeave, ...props }) {
   const ref = useRef(null), [visible, setVisible] = useState(false), [brokenAnimation, setBrokenAnimation] = useState(false);
   const ownsAnimation = typeof src === "string" && firstDrop.test(src);
   const enabled = ownsAnimation && animate && !brokenAnimation;
   const motion = useSyncExternalStore(enabled ? subscribe : noopSubscribe, enabled ? active : inactive, inactive);
   useEffect(() => { setBrokenAnimation(false); }, [src]);
-  useEffect(() => { setVisible(false); if (enabled && ref.current) return observe(ref.current, setVisible); }, [src, enabled]);
+  useEffect(() => { setVisible(false); if (enabled && ref.current) return observe(ref.current, setVisible, priority); }, [src, enabled, priority]);
   const poster = ownsAnimation ? src.replace(/\.svg$/, ".webp") : src;
   const playing = enabled && visible && motion;
-  return <img ref={ref} src={playing ? src : poster} alt={alt} loading="lazy" decoding="async" onError={(event) => { if (playing) setBrokenAnimation(true); else onError?.(event); }} {...props} />;
+  return <img ref={ref} src={playing ? src : poster} alt={alt} loading="lazy" decoding="async" onPointerEnter={(event) => { prioritize(ref.current, true); onPointerEnter?.(event); }} onPointerLeave={(event) => { prioritize(ref.current, false); onPointerLeave?.(event); }} onError={(event) => { if (playing) setBrokenAnimation(true); else onError?.(event); }} {...props} />;
 }

@@ -1,5 +1,7 @@
 # First Drop artwork and deployment
 
+**Superseded by [First Drop v2](FIRST_DROP_V2.md): all 22 items now have distinct artwork and upgraded material animations. This document records the initial shared-family version.**
+
 Seven original AI-generated designs make 22 earnable reward variants for the first deployment. The existing random reward system selects them from the relevant mode's pool. Artwork is a collectible representation; bonus rules are explicit in each item's description.
 
 | Design | Type | Individual bonus | Variants |

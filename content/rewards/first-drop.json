@@ -5,13 +5,13 @@
       "name": "Ion Rift / Spark",
       "description": "First Drop collection. Violet and cyan plasma travels through a black ceramic energy rifle. +5 personal XP on XP Match wins. The strongest owned bonus of this type applies.",
       "category": "weapon_skin",
-      "image_url": "/assets/rewards/first-drop/ion-rift.svg",
-      "poster_url": "/assets/rewards/first-drop/ion-rift.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-ion-rift-5.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-ion-rift-5.webp",
       "rarity": "epic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "arc_cascade",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "xp",
@@ -30,22 +30,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-ion-rift-10",
     "metadata": {
       "name": "Ion Rift / Surge",
-      "description": "First Drop collection. Violet and cyan plasma travels through a black ceramic energy rifle. +10 personal XP on XP Match wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. A compact cyan pulse-SMG with a charged reactor, floating heat fins and crawling electric veins. +10 personal XP on XP Match wins. The strongest owned bonus of this type applies.",
       "category": "weapon_skin",
-      "image_url": "/assets/rewards/first-drop/ion-rift.svg",
-      "poster_url": "/assets/rewards/first-drop/ion-rift.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-ion-rift-10.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-ion-rift-10.webp",
       "rarity": "legendary",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "reactor_orbit",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "xp",
@@ -64,22 +65,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-ion-rift-15",
     "metadata": {
       "name": "Ion Rift / Overload",
-      "description": "First Drop collection. Violet and cyan plasma travels through a black ceramic energy rifle. +15 personal XP on XP Match wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. A long precision sniper with a suspended reactor and flowing violet-magenta dark matter across its skeletal frame. +15 personal XP on XP Match wins. The strongest owned bonus of this type applies.",
       "category": "weapon_skin",
-      "image_url": "/assets/rewards/first-drop/ion-rift.svg",
-      "poster_url": "/assets/rewards/first-drop/ion-rift.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-ion-rift-15.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-ion-rift-15.webp",
       "rarity": "mythic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "void_tide",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "xp",
@@ -98,7 +100,8 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
@@ -107,13 +110,13 @@
       "name": "Frost Crown / Shard",
       "description": "First Drop collection. An ice-blue diamond crown with platinum wings and flowing crystalline light. +5 personal ELO on Ranked wins. The strongest owned bonus of this type applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/frost-crown.svg",
-      "poster_url": "/assets/rewards/first-drop/frost-crown.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-frost-crown-5.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-frost-crown-5.webp",
       "rarity": "epic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "frost_runes",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "ranked_elo",
@@ -132,22 +135,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-frost-crown-10",
     "metadata": {
       "name": "Frost Crown / Ascendant",
-      "description": "First Drop collection. An ice-blue diamond crown with platinum wings and flowing crystalline light. +10 personal ELO on Ranked wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. A platinum falcon crest with crystalline blue wings and a violet storm diamond. +10 personal ELO on Ranked wins. The strongest owned bonus of this type applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/frost-crown.svg",
-      "poster_url": "/assets/rewards/first-drop/frost-crown.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-frost-crown-10.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-frost-crown-10.webp",
       "rarity": "legendary",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "prism_fracture",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "ranked_elo",
@@ -166,22 +170,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-frost-crown-15",
     "metadata": {
       "name": "Frost Crown / Sovereign",
-      "description": "First Drop collection. An ice-blue diamond crown with platinum wings and flowing crystalline light. +15 personal ELO on Ranked wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. An obsidian royal crown surrounding a white-blue singularity sphere and a fractured halo. +15 personal ELO on Ranked wins. The strongest owned bonus of this type applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/frost-crown.svg",
-      "poster_url": "/assets/rewards/first-drop/frost-crown.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-frost-crown-15.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-frost-crown-15.webp",
       "rarity": "mythic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "singularity",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "ranked_elo",
@@ -200,7 +205,8 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
@@ -209,13 +215,13 @@
       "name": "Venom Edge / Pulse",
       "description": "First Drop collection. Emerald energy travels along the core of a polished platinum blade. +5 personal ELO on Free 8s wins. The strongest owned bonus of this type applies.",
       "category": "knife",
-      "image_url": "/assets/rewards/first-drop/venom-edge.svg",
-      "poster_url": "/assets/rewards/first-drop/venom-edge.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-venom-edge-5.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-venom-edge-5.webp",
       "rarity": "epic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "venom_flow",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "free8s_elo",
@@ -234,22 +240,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-venom-edge-10",
     "metadata": {
       "name": "Venom Edge / Venom",
-      "description": "First Drop collection. Emerald energy travels along the core of a polished platinum blade. +10 personal ELO on Free 8s wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. A crescent karambit with a crystal ring handle and liquid green-turquoise energy. +10 personal ELO on Free 8s wins. The strongest owned bonus of this type applies.",
       "category": "knife",
-      "image_url": "/assets/rewards/first-drop/venom-edge.svg",
-      "poster_url": "/assets/rewards/first-drop/venom-edge.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-venom-edge-10.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-venom-edge-10.webp",
       "rarity": "legendary",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "serpent_current",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "free8s_elo",
@@ -268,22 +275,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-venom-edge-15",
     "metadata": {
       "name": "Venom Edge / Apex",
-      "description": "First Drop collection. Emerald energy travels along the core of a polished platinum blade. +15 personal ELO on Free 8s wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. A long obsidian plasma katana with violet-blue cosmic matter and electric fractures in its blade. +15 personal ELO on Free 8s wins. The strongest owned bonus of this type applies.",
       "category": "knife",
-      "image_url": "/assets/rewards/first-drop/venom-edge.svg",
-      "poster_url": "/assets/rewards/first-drop/venom-edge.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-venom-edge-15.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-venom-edge-15.webp",
       "rarity": "mythic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "void_tide",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "free8s_elo",
@@ -302,7 +310,8 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
@@ -311,13 +320,13 @@
       "name": "Emerald Vault / Core",
       "description": "First Drop collection. A suspended emerald power crystal inside a black titanium vault medallion. +$0.05 personal winnings on Money 8s wins. The strongest owned bonus of this type applies.",
       "category": "cosmetic",
-      "image_url": "/assets/rewards/first-drop/emerald-vault.svg",
-      "poster_url": "/assets/rewards/first-drop/emerald-vault.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-emerald-vault-5.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-emerald-vault-5.webp",
       "rarity": "epic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "reactor_orbit",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "money8s_cash",
@@ -336,22 +345,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-emerald-vault-10",
     "metadata": {
       "name": "Emerald Vault / Prism",
-      "description": "First Drop collection. A suspended emerald power crystal inside a black titanium vault medallion. +$0.10 personal winnings on Money 8s wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. A fractured aquamarine geode suspended between platinum crescents, with moving prismatic light. +$0.10 personal winnings on Money 8s wins. The strongest owned bonus of this type applies.",
       "category": "cosmetic",
-      "image_url": "/assets/rewards/first-drop/emerald-vault.svg",
-      "poster_url": "/assets/rewards/first-drop/emerald-vault.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-emerald-vault-10.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-emerald-vault-10.webp",
       "rarity": "legendary",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "prism_fracture",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "money8s_cash",
@@ -370,22 +380,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-emerald-vault-15",
     "metadata": {
       "name": "Emerald Vault / Sovereign",
-      "description": "First Drop collection. A suspended emerald power crystal inside a black titanium vault medallion. +$0.15 personal winnings on Money 8s wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. An octagonal vault sigil containing a levitating emerald star and a revolving cosmic core. +$0.15 personal winnings on Money 8s wins. The strongest owned bonus of this type applies.",
       "category": "cosmetic",
-      "image_url": "/assets/rewards/first-drop/emerald-vault.svg",
-      "poster_url": "/assets/rewards/first-drop/emerald-vault.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-emerald-vault-15.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-emerald-vault-15.webp",
       "rarity": "mythic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "singularity",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "money8s_cash",
@@ -404,7 +415,8 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
@@ -413,13 +425,13 @@
       "name": "Crimson Ghost / Ember",
       "description": "First Drop collection. Crimson plasma streams through the chamber of an obsidian competition sidearm. +$0.05 personal winnings on Cash Match wins. The strongest owned bonus of this type applies.",
       "category": "weapon_skin",
-      "image_url": "/assets/rewards/first-drop/crimson-ghost.svg",
-      "poster_url": "/assets/rewards/first-drop/crimson-ghost.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-crimson-ghost-5.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-crimson-ghost-5.webp",
       "rarity": "epic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "arc_cascade",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "wagers_cash",
@@ -438,22 +450,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-crimson-ghost-10",
     "metadata": {
       "name": "Crimson Ghost / Inferno",
-      "description": "First Drop collection. Crimson plasma streams through the chamber of an obsidian competition sidearm. +$0.10 personal winnings on Cash Match wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. A ruby energy revolver with six charged plasma capsules and red-violet molten surfaces. +$0.10 personal winnings on Cash Match wins. The strongest owned bonus of this type applies.",
       "category": "weapon_skin",
-      "image_url": "/assets/rewards/first-drop/crimson-ghost.svg",
-      "poster_url": "/assets/rewards/first-drop/crimson-ghost.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-crimson-ghost-10.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-crimson-ghost-10.webp",
       "rarity": "legendary",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "inferno_surge",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "wagers_cash",
@@ -472,22 +485,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-crimson-ghost-15",
     "metadata": {
       "name": "Crimson Ghost / Overdrive",
-      "description": "First Drop collection. Crimson plasma streams through the chamber of an obsidian competition sidearm. +$0.15 personal winnings on Cash Match wins. The strongest owned bonus of this type applies.",
+      "description": "First Drop collection. A twin-barrel obsidian hand cannon containing an indigo-magenta dark matter reactor. +$0.15 personal winnings on Cash Match wins. The strongest owned bonus of this type applies.",
       "category": "weapon_skin",
-      "image_url": "/assets/rewards/first-drop/crimson-ghost.svg",
-      "poster_url": "/assets/rewards/first-drop/crimson-ghost.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-crimson-ghost-15.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-crimson-ghost-15.webp",
       "rarity": "mythic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "void_tide",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "wagers_cash",
@@ -506,7 +520,8 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
@@ -515,13 +530,13 @@
       "name": "Sovereign Aegis / 01",
       "description": "First Drop collection. Amethyst light moves through a pearl-silver winged shield. Reduces your own Cash Match platform fee by 1 percentage point, down to the configured minimum. The strongest owned fee reduction applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/sovereign-aegis.svg",
-      "poster_url": "/assets/rewards/first-drop/sovereign-aegis.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-1.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-1.webp",
       "rarity": "epic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "prism_fracture",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "cash_fee",
@@ -541,22 +556,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-sovereign-aegis-2",
     "metadata": {
       "name": "Sovereign Aegis / 02",
-      "description": "First Drop collection. Amethyst light moves through a pearl-silver winged shield. Reduces your own Cash Match platform fee by 2 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
+      "description": "First Drop collection. A cyber cobra crest with crystal eyes and a rippling green lightning hood. Reduces your own Cash Match platform fee by 2 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/sovereign-aegis.svg",
-      "poster_url": "/assets/rewards/first-drop/sovereign-aegis.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-2.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-2.webp",
       "rarity": "epic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "serpent_current",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "cash_fee",
@@ -576,22 +592,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-sovereign-aegis-3",
     "metadata": {
       "name": "Sovereign Aegis / 03",
-      "description": "First Drop collection. Amethyst light moves through a pearl-silver winged shield. Reduces your own Cash Match platform fee by 3 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
+      "description": "First Drop collection. A dragon-eye relic with an awakening violet iris and cobalt-magenta electric fissures. Reduces your own Cash Match platform fee by 3 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/sovereign-aegis.svg",
-      "poster_url": "/assets/rewards/first-drop/sovereign-aegis.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-3.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-3.webp",
       "rarity": "legendary",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "iris_awakening",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "cash_fee",
@@ -611,22 +628,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-sovereign-aegis-4",
     "metadata": {
       "name": "Sovereign Aegis / 04",
-      "description": "First Drop collection. Amethyst light moves through a pearl-silver winged shield. Reduces your own Cash Match platform fee by 4 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
+      "description": "First Drop collection. A pearl-platinum wolf crest with icy eyes and flowing cyan frost runes. Reduces your own Cash Match platform fee by 4 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/sovereign-aegis.svg",
-      "poster_url": "/assets/rewards/first-drop/sovereign-aegis.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-4.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-4.webp",
       "rarity": "legendary",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "frost_runes",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "cash_fee",
@@ -646,22 +664,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-sovereign-aegis-5",
     "metadata": {
       "name": "Sovereign Aegis / 05",
-      "description": "First Drop collection. Amethyst light moves through a pearl-silver winged shield. Reduces your own Cash Match platform fee by 5 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
+      "description": "First Drop collection. A black eclipse medallion with a shifting crimson-violet corona and orbiting plasma. Reduces your own Cash Match platform fee by 5 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/sovereign-aegis.svg",
-      "poster_url": "/assets/rewards/first-drop/sovereign-aegis.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-5.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-5.webp",
       "rarity": "mythic",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "solar_eclipse",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "cash_fee",
@@ -681,22 +700,23 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
     "id": "first-drop-sovereign-aegis-6",
     "metadata": {
       "name": "Sovereign Aegis / 06",
-      "description": "First Drop collection. Amethyst light moves through a pearl-silver winged shield. Reduces your own Cash Match platform fee by 6 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
+      "description": "First Drop collection. A celestial black-hole halo with pearl-silver orbital rings and a blue-white singularity. Reduces your own Cash Match platform fee by 6 percentage points, down to the configured minimum. The strongest owned fee reduction applies.",
       "category": "badge",
-      "image_url": "/assets/rewards/first-drop/sovereign-aegis.svg",
-      "poster_url": "/assets/rewards/first-drop/sovereign-aegis.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-6.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-sovereign-aegis-6.webp",
       "rarity": "exclusive",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "singularity",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "cash_fee",
@@ -716,7 +736,8 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   },
   {
@@ -725,13 +746,13 @@
       "name": "Prism Champion / Founders Star",
       "description": "First Drop collection. An iridescent crystal star with flowing blue-violet light and sculpted platinum handles. Grants one extra credit when you win a tournament championship. The bonus belongs only to this item's owner.",
       "category": "trophy",
-      "image_url": "/assets/rewards/first-drop/prism-champion.svg",
-      "poster_url": "/assets/rewards/first-drop/prism-champion.webp",
+      "image_url": "/assets/rewards/first-drop-v2/first-drop-prism-champion-1.svg",
+      "poster_url": "/assets/rewards/first-drop-v2/first-drop-prism-champion-1.webp",
       "rarity": "exclusive",
       "collection_key": "first_drop_2026",
       "collection_name": "First Drop",
       "is_animated": true,
-      "animation_type": "internal_energy_flow",
+      "animation_type": "prism_fracture",
       "unlock_type": "competition_reward",
       "reward": {
         "effect": "tournament_credit",
@@ -750,7 +771,8 @@
       "is_tradeable": false,
       "is_tradable": false,
       "price_cash": 0,
-      "price_credits": 0
+      "price_credits": 0,
+      "artwork_version": 2
     }
   }
 ]

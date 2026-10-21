@@ -22,10 +22,10 @@ const rarities = ["common", "uncommon", "rare", "epic", "legendary", "mythic", "
 const buttonClass = "site-hover inventory-button";
 const acquisitionDate = (value) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "Not recorded";
 
-function ItemImage({ item }) {
+function ItemImage({ item, priority = 0 }) {
   const [failed, setFailed] = useState(false);
   return item.item_image && !failed
-    ? <RewardArtwork src={item.item_image} alt={item.item_name} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+    ? <RewardArtwork priority={priority} src={item.item_image} alt={item.item_name} loading="lazy" decoding="async" onError={() => setFailed(true)} />
     : <span className="inventory-image-fallback"><Package size={40} aria-hidden="true" /></span>;
 }
 
@@ -97,7 +97,7 @@ export default function Inventory() {
 
     <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null); }}>
       <DialogContent className="inventory-detail" data-rarity={selected?.item_rarity} onCloseAutoFocus={(event) => { event.preventDefault(); opener.current?.focus(); }}>
-        {selected && <><div className="inventory-detail-artwork"><ItemImage key={`${selected.inventory_id}:${selected.item_image}`} item={selected} /><RarityBadge rarity={selected.item_rarity} /></div><div className="inventory-detail-copy"><p className="inventory-detail-eyebrow"><Package size={13} />In your collection</p><DialogTitle>{selected.item_name}</DialogTitle><p className="inventory-detail-category">{categoryLabel(selected.item_category)}</p><DialogDescription className="inventory-detail-description">{selected.collection?.description || "No description has been added for this item yet."}</DialogDescription>
+        {selected && <><div className="inventory-detail-artwork"><ItemImage priority={3} key={`${selected.inventory_id}:${selected.item_image}`} item={selected} /><RarityBadge rarity={selected.item_rarity} /></div><div className="inventory-detail-copy"><p className="inventory-detail-eyebrow"><Package size={13} />In your collection</p><DialogTitle>{selected.item_name}</DialogTitle><p className="inventory-detail-category">{categoryLabel(selected.item_category)}</p><DialogDescription className="inventory-detail-description">{selected.collection?.description || "No description has been added for this item yet."}</DialogDescription>
           {selected.collection?.reward && <p className="mb-4 rounded-lg border border-purple-400/25 bg-purple-400/10 p-3 text-sm font-bold text-purple-200">{rewardLabel(selected.collection.reward)}{selected.collection.reward_expires_at && <small className="mt-2 block text-xs font-normal">Active until {new Date(selected.collection.reward_expires_at).toLocaleDateString()}</small>}</p>}
           <dl><div><dt>Rarity</dt><dd className="inventory-detail-rarity">{selected.item_rarity || "Common"}</dd></div><div><dt>Status</dt><dd>{selected.collection?.equipped ? "Equipped" : "In inventory"}</dd></div><div><dt>Collected on</dt><dd>{acquisitionDate(selected.collection?.acquired_date)}</dd></div>{selected.collection?.premium_only && <div><dt>Membership</dt><dd><Crown size={12} />Premium item</dd></div>}</dl>
           <div className="inventory-detail-trading" data-tradable={selected.tradable}><p>{selected.tradable ? <Shuffle size={15} /> : <Lock size={15} />}<strong>{selected.tradable ? "Available for trading" : "Not tradable"}</strong></p><span>{selected.tradable ? "You can offer this copy in an item trade. Items exchange when the other player accepts." : selected.restriction || "This item stays with your account."}</span></div>

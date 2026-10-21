@@ -1,0 +1,288 @@
+[
+  {
+    "id": "first-drop-ion-rift-5",
+    "master": "ion-rift",
+    "source_collection": "first-drop",
+    "effect": "arc_cascade",
+    "colors": [
+      "#59dcff",
+      "#b66dff",
+      "#f3f7ff"
+    ],
+    "channel": "blue",
+    "seed": 1
+  },
+  {
+    "id": "first-drop-ion-rift-10",
+    "master": "ion-rift-surge",
+    "source_collection": "first-drop-v2",
+    "effect": "reactor_orbit",
+    "colors": [
+      "#18ffdd",
+      "#4675ff",
+      "#efffff"
+    ],
+    "channel": "blue",
+    "seed": 2
+  },
+  {
+    "id": "first-drop-ion-rift-15",
+    "master": "ion-rift-overload",
+    "source_collection": "first-drop-v2",
+    "effect": "void_tide",
+    "colors": [
+      "#7e39ff",
+      "#ff48df",
+      "#38d7ff"
+    ],
+    "channel": "blue",
+    "seed": 3
+  },
+  {
+    "id": "first-drop-frost-crown-5",
+    "master": "frost-crown",
+    "source_collection": "first-drop",
+    "effect": "frost_runes",
+    "colors": [
+      "#75deff",
+      "#aaa9ff",
+      "#ffffff"
+    ],
+    "channel": "blue",
+    "seed": 4
+  },
+  {
+    "id": "first-drop-frost-crown-10",
+    "master": "frost-crown-ascendant",
+    "source_collection": "first-drop-v2",
+    "effect": "prism_fracture",
+    "colors": [
+      "#29d5ff",
+      "#9569ff",
+      "#e9ffff"
+    ],
+    "channel": "blue",
+    "seed": 5
+  },
+  {
+    "id": "first-drop-frost-crown-15",
+    "master": "frost-crown-sovereign",
+    "source_collection": "first-drop-v2",
+    "effect": "singularity",
+    "colors": [
+      "#bda6ff",
+      "#f9faff",
+      "#64bcff"
+    ],
+    "channel": "blue",
+    "seed": 6
+  },
+  {
+    "id": "first-drop-venom-edge-5",
+    "master": "venom-edge",
+    "source_collection": "first-drop",
+    "effect": "venom_flow",
+    "colors": [
+      "#27ff75",
+      "#b1ff58",
+      "#6bffff"
+    ],
+    "channel": "green",
+    "seed": 7
+  },
+  {
+    "id": "first-drop-venom-edge-10",
+    "master": "venom-edge-venom",
+    "source_collection": "first-drop-v2",
+    "effect": "serpent_current",
+    "colors": [
+      "#73ff29",
+      "#13e5b8",
+      "#b0fcff"
+    ],
+    "channel": "green",
+    "seed": 8
+  },
+  {
+    "id": "first-drop-venom-edge-15",
+    "master": "venom-edge-apex",
+    "source_collection": "first-drop-v2",
+    "effect": "void_tide",
+    "colors": [
+      "#762eff",
+      "#f352ff",
+      "#1ecbff"
+    ],
+    "channel": "blue",
+    "seed": 9
+  },
+  {
+    "id": "first-drop-emerald-vault-5",
+    "master": "emerald-vault",
+    "source_collection": "first-drop",
+    "effect": "reactor_orbit",
+    "colors": [
+      "#19e5a1",
+      "#bcffdf",
+      "#21b7ff"
+    ],
+    "channel": "green",
+    "seed": 10
+  },
+  {
+    "id": "first-drop-emerald-vault-10",
+    "master": "emerald-vault-prism",
+    "source_collection": "first-drop-v2",
+    "effect": "prism_fracture",
+    "colors": [
+      "#28ffd3",
+      "#3f80ff",
+      "#d2ffff"
+    ],
+    "channel": "green",
+    "seed": 11
+  },
+  {
+    "id": "first-drop-emerald-vault-15",
+    "master": "emerald-vault-sovereign",
+    "source_collection": "first-drop-v2",
+    "effect": "singularity",
+    "colors": [
+      "#94ff68",
+      "#4bdfff",
+      "#f8ffdf"
+    ],
+    "channel": "green",
+    "seed": 12
+  },
+  {
+    "id": "first-drop-crimson-ghost-5",
+    "master": "crimson-ghost",
+    "source_collection": "first-drop",
+    "effect": "arc_cascade",
+    "colors": [
+      "#ff234f",
+      "#fc67d4",
+      "#ffdee8"
+    ],
+    "channel": "red",
+    "seed": 13
+  },
+  {
+    "id": "first-drop-crimson-ghost-10",
+    "master": "crimson-ghost-inferno",
+    "source_collection": "first-drop-v2",
+    "effect": "inferno_surge",
+    "colors": [
+      "#ff4439",
+      "#e621fa",
+      "#ffb385"
+    ],
+    "channel": "red",
+    "seed": 14
+  },
+  {
+    "id": "first-drop-crimson-ghost-15",
+    "master": "crimson-ghost-overdrive",
+    "source_collection": "first-drop-v2",
+    "effect": "void_tide",
+    "colors": [
+      "#bd32ff",
+      "#fe278d",
+      "#4cc7ff"
+    ],
+    "channel": "blue",
+    "seed": 15
+  },
+  {
+    "id": "first-drop-sovereign-aegis-1",
+    "master": "sovereign-aegis",
+    "source_collection": "first-drop",
+    "effect": "prism_fracture",
+    "colors": [
+      "#ae70ff",
+      "#fdcaff",
+      "#67d8ff"
+    ],
+    "channel": "blue",
+    "seed": 16
+  },
+  {
+    "id": "first-drop-sovereign-aegis-2",
+    "master": "sovereign-aegis-02",
+    "source_collection": "first-drop-v2",
+    "effect": "serpent_current",
+    "colors": [
+      "#9dff54",
+      "#21e3a8",
+      "#e5ffbb"
+    ],
+    "channel": "green",
+    "seed": 17
+  },
+  {
+    "id": "first-drop-sovereign-aegis-3",
+    "master": "sovereign-aegis-03",
+    "source_collection": "first-drop-v2",
+    "effect": "iris_awakening",
+    "colors": [
+      "#6c55ff",
+      "#46cfff",
+      "#f5a2ff"
+    ],
+    "channel": "blue",
+    "seed": 18
+  },
+  {
+    "id": "first-drop-sovereign-aegis-4",
+    "master": "sovereign-aegis-04",
+    "source_collection": "first-drop-v2",
+    "effect": "frost_runes",
+    "colors": [
+      "#7edcff",
+      "#a9ffe1",
+      "#fafcff"
+    ],
+    "channel": "blue",
+    "seed": 19
+  },
+  {
+    "id": "first-drop-sovereign-aegis-5",
+    "master": "sovereign-aegis-05",
+    "source_collection": "first-drop-v2",
+    "effect": "solar_eclipse",
+    "colors": [
+      "#ff456b",
+      "#9a2dff",
+      "#398eff"
+    ],
+    "channel": "red",
+    "seed": 20
+  },
+  {
+    "id": "first-drop-sovereign-aegis-6",
+    "master": "sovereign-aegis-06",
+    "source_collection": "first-drop-v2",
+    "effect": "singularity",
+    "colors": [
+      "#5ae9ff",
+      "#b18aff",
+      "#ffffff"
+    ],
+    "channel": "blue",
+    "seed": 21
+  },
+  {
+    "id": "first-drop-prism-champion-1",
+    "master": "prism-champion",
+    "source_collection": "first-drop",
+    "effect": "prism_fracture",
+    "colors": [
+      "#7fbaff",
+      "#ff8ceb",
+      "#85ffe1"
+    ],
+    "channel": "blue",
+    "seed": 22
+  }
+]
