@@ -82,16 +82,20 @@
 .trading-picker h3 { color: #dfeaf7; font-size: 13px; font-weight: 850; }
 .trading-picker header p { margin-top: 5px; color: #8aa4b9; font-size: 10px; }
 .trading-picker header > strong { color: #c5b0ff; font-size: 11px; white-space: nowrap; }
-.trading-picker-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-height: 340px; overflow-y: auto; padding: 3px; }
-.trading-pick-item { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; padding: 8px; border: 1px solid #b495ff20; border-radius: 9px; background: #111f2c; cursor: pointer; }
-.trading-pick-item[data-selected] { border-color: #14d8ff; background: #14d8ff09; }
-.trading-pick-item[data-disabled] { opacity: .5; cursor: not-allowed; }
-.trading-pick-item input { position: absolute; right: 8px; top: 8px; z-index: 1; width: 16px; height: 16px; accent-color: #14d8ff; }
+.trading-picker-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: 12px; max-height: min(480px, 50dvh); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 4px; }
+.trading-picker-columns .trading-picker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.trading-pick-item { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; padding: 10px; border: 1px solid #b495ff30; border-radius: 10px; background: #111f2c; cursor: pointer; }
+.trading-pick-item[data-selected] { border-color: #b495ff; background: #b495ff12; }
+.trading-pick-item[data-disabled] { cursor: not-allowed; }
+.trading-pick-item input { position: absolute; right: 16px; top: 16px; z-index: 2; width: 24px; height: 24px; margin: 0; opacity: 0; cursor: inherit; }
+.trading-pick-toggle { position: absolute; right: 16px; top: 16px; z-index: 1; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #b495ff80; border-radius: 6px; color: #cbb7f3; background: #09131ff2; pointer-events: none; }
+.trading-pick-item[data-selected] .trading-pick-toggle { border-color: #d1beff; background: #b495ff; color: #140c26; }
+.trading-pick-item[data-disabled] .trading-pick-toggle { border-color: #8fa2b350; color: #a3b3c2; }
 .trading-pick-item:focus-within { outline: 2px solid #b495ff; outline-offset: 1px; }
-.trading-pick-image { display: grid; place-items: center; width: 100%; height: 90px; overflow: hidden; border-radius: 6px; background: #08121d; color: #607f98; }
-.trading-pick-image img { width: 100%; height: 100%; object-fit: contain; }
-.trading-pick-item > strong { max-width: 100%; color: #dcebf5; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
-.trading-pick-item > small { display: flex; align-items: flex-start; gap: 3px; color: #c5ac88; font-size: 9px; line-height: 1.5; }
+.trading-pick-image { position: relative; display: grid; place-items: center; flex-shrink: 0; width: 100%; aspect-ratio: 4 / 3; min-height: 0; overflow: hidden; border-radius: 7px; background: #08121d; color: #607f98; }
+.trading-pick-image img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; min-height: 0; max-height: 100%; object-fit: contain; object-position: center; }
+.trading-pick-item > strong { max-width: 100%; color: #e5eff7; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.trading-pick-item > small { display: flex; align-items: flex-start; gap: 5px; margin-top: auto; padding-top: 3px; color: #d5ba97; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 .trading-pick-item > small svg { flex-shrink: 0; margin-top: 2px; }
 .trading-pick-item > span:last-of-type { max-width: 100%; font-size: 8px; }
 .trading-picker-message, .trading-choose-partner { padding: 28px 14px; color: #9ab1c5; text-align: center; font-size: 12px; line-height: 1.8; }
@@ -116,7 +120,8 @@
   .trading-offer { padding: 16px; }
   .trading-item-panel { padding: 12px; }
   .trading-composer { padding: 20px 16px; }
-  .trading-picker-grid { max-height: 260px; }
+  .trading-picker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; max-height: min(380px, 45dvh); }
+  .trading-pick-item > strong { font-size: 11px; }
   .trading-empty { padding: 32px 18px; }
   .trading-review-partner span { width: 100%; margin: 0; }
 }
