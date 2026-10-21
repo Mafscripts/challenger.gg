@@ -5,7 +5,7 @@ varying vec2 v_uv;
 void main() { v_uv=a_position*.5+.5; gl_Position=vec4(a_position,0.,1.); }
 `;
 const fragmentSource = `
-precision mediump float;
+precision highp float;
 varying vec2 v_uv;
 uniform sampler2D u_art;
 uniform sampler2D u_mask;
@@ -16,14 +16,15 @@ uniform float u_zoom;
 void main() {
   vec2 uv=(v_uv-.5)*u_resolution/min(u_resolution.x,u_resolution.y)+.5;
   if(uv.x<0. || uv.y<0. || uv.x>1. || uv.y>1.) { gl_FragColor=vec4(0.); return; }
-  float silhouette=texture2D(u_art,uv).a;
-  float material=texture2D(u_mask,uv).r;
-  float coverage=smoothstep(.08,.62,material)*silhouette;
-  if(coverage<.01) { gl_FragColor=vec4(0.); return; }
+  vec4 art=texture2D(u_art,uv);
+  float coverage=texture2D(u_mask,uv).r;
+  if(coverage<.001) { gl_FragColor=art; return; }
   vec2 materialUV=clamp((uv-.5)/u_zoom+.5+u_pointer*.018,vec2(.002),vec2(.998));
   vec3 movingMaterial=texture2D(u_loop,materialUV).rgb;
   // Preserve the supplied loop's colors and dark areas. No shine or white wash.
-  gl_FragColor=vec4(movingMaterial,coverage*.98);
+  // Render the complete frame. The opaque inlay fully replaces the old texture;
+  // no second illustration is left showing underneath partially masked patches.
+  gl_FragColor=vec4(mix(art.rgb,movingMaterial,coverage),art.a);
 }
 `;
 
@@ -62,7 +63,7 @@ const loadImage=(url,signal)=>new Promise((resolve,reject)=>{
   signal.addEventListener('abort',abort,{once:true});image.src=url;
 });
 
-export function createDarkMatterRenderer(canvas,{source,mask,video:motionSource,zoom=1,priority=0,onReady=()=>{},onPause=()=>{},onFailure=()=>{}}) {
+export function createDarkMatterRenderer(canvas,{source,mask,video:motionSource,zoom=1,playbackRate=.75,priority=0,onReady=()=>{},onPause=()=>{},onFailure=()=>{}}) {
   const abort=new AbortController();
   let disposed=false,gl,program,buffer,resizeObserver,removeScheduler,registration,loopTexture;
   let width=1,height=1,lastReady=false,active=false,needsUpload=true,frameCallback=null,lastVideoTime=-1;
@@ -70,6 +71,7 @@ export function createDarkMatterRenderer(canvas,{source,mask,video:motionSource,
   const pointerSurface=canvas.parentElement||canvas;
   const player=document.createElement('video');
   player.muted=true;player.defaultMuted=true;player.playsInline=true;player.loop=true;player.preload='none';
+  player.defaultPlaybackRate=Math.max(.25,Math.min(1,playbackRate));player.playbackRate=player.defaultPlaybackRate;
   player.setAttribute('muted','');player.setAttribute('playsinline','');player.disablePictureInPicture=true;
   const fail=()=>{if(!disposed){onFailure();dispose();}};
   const lost=event=>{event.preventDefault();fail();};
@@ -86,6 +88,7 @@ export function createDarkMatterRenderer(canvas,{source,mask,video:motionSource,
     if(!active){player.pause();cancelFrame();lastReady=false;onPause();return;}
     // Only budget-selected surfaces assign a video URL or start a decoder.
     if(!player.getAttribute('src')) player.src=motionSource;
+    player.playbackRate=player.defaultPlaybackRate;
     needsUpload=true;
     player.play().then(()=>{if(!disposed && active) watchFrame();}).catch(error=>{if(!disposed && active && error.name!=='AbortError') fail();});
   }
@@ -106,7 +109,9 @@ export function createDarkMatterRenderer(canvas,{source,mask,video:motionSource,
     if(!gl)throw new Error('WebGL unavailable');
     const compile=(type,source)=>{const shader=gl.createShader(type);if(!shader)throw new Error('Shader unavailable');shaders.push(shader);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error('Material shader unavailable');return shader;};
     program=gl.createProgram();if(!program)throw new Error('Material program unavailable');
-    gl.attachShader(program,compile(gl.VERTEX_SHADER,vertexSource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fragmentSource));gl.linkProgram(program);
+    gl.attachShader(program,compile(gl.VERTEX_SHADER,vertexSource));
+    const precision=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT)?.precision?'highp':'mediump';
+    gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fragmentSource.replace('precision highp float;',`precision ${precision} float;`)));gl.linkProgram(program);
     if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error('Material linking unavailable');
     gl.useProgram(program);buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
@@ -121,7 +126,7 @@ export function createDarkMatterRenderer(canvas,{source,mask,video:motionSource,
     });
     gl.uniform1f(gl.getUniformLocation(program,'u_zoom'),Math.max(1,zoom));
     const resolution=gl.getUniformLocation(program,'u_resolution'),mouse=gl.getUniformLocation(program,'u_pointer');
-    const resize=()=>{const rect=canvas.getBoundingClientRect(),cap=matchMedia('(pointer: coarse)').matches?384:640,ratio=Math.min(devicePixelRatio||1,1.25,cap/Math.max(rect.width,rect.height,1));width=Math.max(1,Math.round(rect.width*ratio));height=Math.max(1,Math.round(rect.height*ratio));};
+    const resize=()=>{const rect=canvas.getBoundingClientRect(),cap=matchMedia('(pointer: coarse)').matches?768:1536,ratio=Math.min(devicePixelRatio||1,2,cap/Math.max(rect.width,rect.height,1));width=Math.max(1,Math.round(rect.width*ratio));height=Math.max(1,Math.round(rect.height*ratio));};
     resize();resizeObserver=new ResizeObserver(resize);resizeObserver.observe(canvas);
     registration={priority,order:++order,setActive,draw(){
       if(disposed || !active || player.readyState<2)return;

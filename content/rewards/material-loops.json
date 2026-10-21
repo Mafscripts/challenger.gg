@@ -5,7 +5,8 @@
     "source_file": "Loop 3D GIF by Pi-Slices (1).gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.65
   },
   {
     "id": "first-drop-ion-rift-10",
@@ -13,7 +14,8 @@
     "source_file": "Art Loop GIF by Pi-Slices (5).gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.65
   },
   {
     "id": "first-drop-ion-rift-15",
@@ -21,7 +23,8 @@
     "source_file": "Carl Sagan Space GIF by Feliks Tomasz Konczakowski.gif",
     "creator": "Feliks Tomasz Konczakowski",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.45
   },
   {
     "id": "first-drop-frost-crown-5",
@@ -29,7 +32,8 @@
     "source_file": "Glow Black And White GIF by Pi-Slices.gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.55
   },
   {
     "id": "first-drop-frost-crown-10",
@@ -37,7 +41,8 @@
     "source_file": "Art Loop GIF by Pi-Slices (3).gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.55
   },
   {
     "id": "first-drop-frost-crown-15",
@@ -45,7 +50,8 @@
     "source_file": "Star Wars Space GIF by Feliks Tomasz Konczakowski.gif",
     "creator": "Feliks Tomasz Konczakowski",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.4
   },
   {
     "id": "first-drop-venom-edge-5",
@@ -53,7 +59,8 @@
     "source_file": "Art Loop GIF by xponentialdesign (1).gif",
     "creator": "xponentialdesign",
     "zoom": 1.28,
-    "channel": "green"
+    "channel": "green",
+    "playback_rate": 0.85
   },
   {
     "id": "first-drop-venom-edge-10",
@@ -61,7 +68,8 @@
     "source_file": "Art Loop GIF by Pi-Slices (7).gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "green"
+    "channel": "green",
+    "playback_rate": 0.65
   },
   {
     "id": "first-drop-venom-edge-15",
@@ -69,7 +77,8 @@
     "source_file": "Space Waving GIF by Psyklon.gif",
     "creator": "Psyklon",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.5
   },
   {
     "id": "first-drop-emerald-vault-5",
@@ -77,7 +86,8 @@
     "source_file": "Loop Neon GIF by xponentialdesign.gif",
     "creator": "xponentialdesign",
     "zoom": 1.0,
-    "channel": "green"
+    "channel": "green",
+    "playback_rate": 0.8
   },
   {
     "id": "first-drop-emerald-vault-10",
@@ -85,7 +95,8 @@
     "source_file": "Art Loop GIF by xponentialdesign.gif",
     "creator": "xponentialdesign",
     "zoom": 1.28,
-    "channel": "green"
+    "channel": "green",
+    "playback_rate": 0.85
   },
   {
     "id": "first-drop-emerald-vault-15",
@@ -93,7 +104,8 @@
     "source_file": "universe GIF.gif",
     "creator": "as supplied (no creator in filename)",
     "zoom": 1.0,
-    "channel": "green"
+    "channel": "green",
+    "playback_rate": 0.65
   },
   {
     "id": "first-drop-crimson-ghost-5",
@@ -101,7 +113,8 @@
     "source_file": "Art Loop GIF by Pi-Slices (4).gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "red"
+    "channel": "red",
+    "playback_rate": 0.55
   },
   {
     "id": "first-drop-crimson-ghost-10",
@@ -109,7 +122,8 @@
     "source_file": "Art Loop GIF by Pi-Slices (8).gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "red"
+    "channel": "red",
+    "playback_rate": 0.65
   },
   {
     "id": "first-drop-crimson-ghost-15",
@@ -117,7 +131,8 @@
     "source_file": "dark after effects GIF by xponentialdesign.gif",
     "creator": "xponentialdesign",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.85
   },
   {
     "id": "first-drop-sovereign-aegis-1",
@@ -125,7 +140,8 @@
     "source_file": "Upside Down Art GIF by Pi-Slices.gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.65
   },
   {
     "id": "first-drop-sovereign-aegis-2",
@@ -133,7 +149,8 @@
     "source_file": "GIF by Steve Konklin.gif",
     "creator": "Steve Konklin",
     "zoom": 1.0,
-    "channel": "green"
+    "channel": "green",
+    "playback_rate": 0.6
   },
   {
     "id": "first-drop-sovereign-aegis-3",
@@ -141,7 +158,8 @@
     "source_file": "Art Loop GIF by Pi-Slices (6).gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.65
   },
   {
     "id": "first-drop-sovereign-aegis-4",
@@ -149,7 +167,8 @@
     "source_file": "loop 3d GIF by Pi-Slices.gif",
     "creator": "Pi-Slices",
     "zoom": 2,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.65
   },
   {
     "id": "first-drop-sovereign-aegis-5",
@@ -157,7 +176,8 @@
     "source_file": "Loop Glow GIF by xponentialdesign.gif",
     "creator": "xponentialdesign",
     "zoom": 1.65,
-    "channel": "red"
+    "channel": "red",
+    "playback_rate": 0.85
   },
   {
     "id": "first-drop-sovereign-aegis-6",
@@ -165,7 +185,8 @@
     "source_file": "Middle Aged Loop GIF by xponentialdesign.gif",
     "creator": "xponentialdesign",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.75
   },
   {
     "id": "first-drop-prism-champion-1",
@@ -173,6 +194,7 @@
     "source_file": "Art Loop GIF by Pi-Slices (2).gif",
     "creator": "Pi-Slices",
     "zoom": 1.0,
-    "channel": "blue"
+    "channel": "blue",
+    "playback_rate": 0.55
   }
 ]

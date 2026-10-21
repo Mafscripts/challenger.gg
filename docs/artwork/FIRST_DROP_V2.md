@@ -48,3 +48,7 @@ This composition-only revision keeps all catalog paths, owners and bonuses uncha
 ## Current material rendering
 
 All 22 current items now use different actual loops supplied by the user, converted to compact video textures and masked into their inlays. This replaces the earlier procedural Ion Rift pilot and the current items' SVG effects in the application. The original SVG files remain usable as standalone artwork and legacy images retain their existing effects. `/dark-matter-preview.html` compares any current item with its original; `/first-drop-v2-preview.html` uses the same video-material renderer as the application. See [the material notes](DARK_MATTER_PILOT.md) for resource limits, authoring, source credits and deployment. No new database migration is needed for this runtime composition change.
+
+## Quality and pacing revision
+
+All current materials now have lossless 1152px source/still artwork, native-resolution higher-fidelity video, complete material-region masks and per-item slower playback. The still used when paused also contains the new material. The previous partially transparent overlay has been replaced by a complete-frame material merge. See [the material notes](DARK_MATTER_PILOT.md) for authoring, media-size tradeoffs and verification limits.

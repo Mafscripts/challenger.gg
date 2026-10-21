@@ -18,14 +18,14 @@ for(const item of items) {
  const source=path.join(sourceFolder,item.source_file), target=path.join(output,`${item.slug}.mp4`);
  const meta=await sharp(source,{animated:true}).metadata();
  const duration=(meta.delay||[]).reduce((sum,delay)=>sum+delay,0)/1000;
- const args=['-hide_banner','-loglevel','error','-y','-ignore_loop','1','-i',source,'-t',String(duration),'-vf','fps=30,scale=480:480:flags=lanczos,format=yuv420p','-an','-c:v','libx264','-preset','medium','-crf','24','-profile:v','main','-level:v','3.0','-threads','2','-movflags','+faststart','-metadata',`artist=${item.creator}`,'-metadata',`title=${item.source_file}`,target];
+ const args=['-hide_banner','-loglevel','error','-y','-ignore_loop','1','-i',source,'-t',String(duration),'-vf','fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2:flags=lanczos,format=yuv420p','-an','-c:v','libx264','-preset','slow','-crf','17','-profile:v','main','-level:v','3.0','-threads','2','-movflags','+faststart','-metadata',`artist=${item.creator}`,'-metadata',`title=${item.source_file}`,target];
  await new Promise((resolve,reject)=>{
   const child=spawn(ffmpeg,args,{windowsHide:true,stdio:['ignore','ignore','pipe']});let error='';
   child.stderr.on('data',chunk=>{error+=chunk;});child.on('error',reject);
   child.on('close',code=>code===0?resolve():reject(new Error(`${item.slug}: ${error}`)));
  });
  const inputSize=(await fs.stat(source)).size, outputSize=(await fs.stat(target)).size;
- entries.push({...item,name:metadata.get(item.id)?.name || item.id,description:metadata.get(item.id)?.description || "",rarity:metadata.get(item.id)?.rarity || "",video:`/assets/rewards/material-loops/${item.slug}.mp4`,poster:`/assets/rewards/first-drop-v2/${item.id}.webp`,mask:`/assets/rewards/first-drop-v2/${item.id}.material.webp?v=2`,duration_seconds:duration,source_bytes:inputSize,video_bytes:outputSize});
+ entries.push({...item,name:metadata.get(item.id)?.name || item.id,description:metadata.get(item.id)?.description || "",rarity:metadata.get(item.id)?.rarity || "",video:`/assets/rewards/material-loops/${item.slug}.mp4?v=3`,base:`/assets/rewards/first-drop-v2/${item.id}.material-base.webp`,original:`/assets/rewards/first-drop-v2/${item.id}.webp`,poster:`/assets/rewards/first-drop-v2/${item.id}.material-poster.webp`,mask:`/assets/rewards/first-drop-v2/${item.id}.material.webp?v=3`,duration_seconds:duration,source_bytes:inputSize,video_bytes:outputSize});
  console.log(`${item.slug}: ${(inputSize/1048576).toFixed(2)} MB GIF -> ${(outputSize/1024).toFixed(0)} KB MP4 (${duration}s)`);
 }
 await fs.writeFile(path.join(output,'items.json'),JSON.stringify(entries,null,2)+'\n');
