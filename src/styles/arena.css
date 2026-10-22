@@ -46,7 +46,7 @@ body {
 .app-style-arena .app-content :where(.premium-card, .arena-card):not([class*="bg-gradient-"]) {
   background: var(--arena-card);
   box-shadow: 0 8px 24px rgb(0 0 0 / .14);
-  transition: background-color 180ms var(--arena-ease), border-color 180ms var(--arena-ease), box-shadow 180ms var(--arena-ease), transform 180ms var(--arena-ease);
+  transition: background-color 180ms var(--arena-ease), border-color 180ms var(--arena-ease), transform 180ms var(--arena-ease);
 }
 
 /* Bring legacy cards onto the same palette without replacing rarity gradients. */
@@ -81,7 +81,9 @@ body {
 
 .arena-button,
 .app-style-arena .app-content :where(button, a)[class*="rounded-"] {
-  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
+  /* This rule outranks the shared hover utility. Keep shadows out here too,
+     otherwise rounded controls still repaint blur throughout their sweep. */
+  transition-property: background-color, border-color, color, opacity, transform;
   transition-duration: 180ms;
   transition-timing-function: var(--arena-ease);
 }
