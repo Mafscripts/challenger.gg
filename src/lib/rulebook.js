@@ -1,4 +1,5 @@
 import { competitionStreamRule } from "./competitionStreaming.js";
+import { MW4_FREE_EIGHTS_RULES_ID, mw4FreeEightsRules } from "./mw4FreeEightsRules.js";
 import { disconnectEvidenceRule, hardpointDisconnectRule, searchDestroyDisconnectRule } from "./competitiveMatchRules.js";
 
 export const ruleGroups = [
@@ -9,6 +10,12 @@ export const ruleGroups = [
 ];
 
 export const ruleSections = [
+  {
+    id: MW4_FREE_EIGHTS_RULES_ID, group: "essentials", title: "MW4 Free 8s Rules", icon: "SlidersHorizontal",
+    description: "TopFragg loadout restrictions for Modern Warfare 4 Free 8s only.",
+    summary: "Check your weapons, attachments, equipment and perks before every MW4 Free 8s match. These restrictions apply only to MW4 Free 8s.",
+    rules: mw4FreeEightsRules,
+  },
   {
     id: "general-match-rules", group: "essentials", title: "General Match Rules", icon: "Swords",
     description: "The standards every player and team must follow before entering a match.",

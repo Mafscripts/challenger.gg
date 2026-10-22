@@ -10,6 +10,7 @@ import RemoveFreeEightsPlayerDialog from "@/components/match/RemoveFreeEightsPla
 import MatchTeamTable from "@/components/match/MatchTeamTable";
 import MatchMapSeries from "@/components/match/MatchMapSeries";
 import { eightsGameId, eightsMatchGameName } from "@/lib/freeEightsGames";
+import { MW4_FREE_EIGHTS_RULES_URL, mw4FreeEightsRules, usesMw4FreeEightsRules } from "@/lib/mw4FreeEightsRules";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import MatchResultSummary from "@/components/match/MatchResultSummary";
 import MatchRoomProgress, { openMatchRoomSection } from "@/components/match/MatchRoomProgress";
@@ -729,7 +730,7 @@ function EightsMatchRoomView() {
 
   const headerActions = <div className="flex flex-wrap gap-2">
     {!locked && isParticipant && !closedStatuses.has(match.status) && <button onClick={leave} disabled={busy} className="room-danger-action inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/[0.07] px-4 py-3 text-[10px] font-black uppercase tracking-wider text-red-300"><LogOut className="h-4 w-4" /> Leave lobby</button>}
-    <Link to="/rules" className="match-rules-link"><ShieldCheck className="h-4 w-4" /> Match Rules</Link>
+    <Link to={usesMw4FreeEightsRules(match) ? MW4_FREE_EIGHTS_RULES_URL : "/rules"} className="match-rules-link"><ShieldCheck className="h-4 w-4" />{usesMw4FreeEightsRules(match) ? "MW4 Free 8s Rules" : "Match Rules"}</Link>
   </div>;
   const canReportScore = isParticipant && scoreStatuses.has(match.status) && match.eights_score_vote_status !== "approved";
   const voiceControl = !isMoneyEights && (isParticipant || isStaff) && !closedStatuses.has(match.status)
@@ -790,6 +791,11 @@ function EightsMatchRoomView() {
           >{prizeCard}</MatchRoomHeader>
         ) : <FreeEightsMatchHeader match={match} progress={progress} actions={headerActions} status={displayStatus(match.status)} complete={isComplete} />} beforeTeams={(
           <>
+          {usesMw4FreeEightsRules(match) && <section className="m-3 rounded-xl border border-cyan/25 bg-cyan/[0.06] p-4 sm:m-4" aria-labelledby="mw4-room-rules">
+            <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="mw4-room-rules" className="flex items-center gap-2 text-sm font-black"><ShieldCheck className="h-4 w-4 text-cyan" />MW4 Free 8s Rules</h2><Link to={MW4_FREE_EIGHTS_RULES_URL} className="text-xs font-bold text-cyan hover:underline">Read the full rules →</Link></div>
+            <p className="mt-2 text-xs text-vapor">Check your loadout before playing. These restrictions apply to this MW4 Free 8s match.</p>
+            <details className="mt-3 text-xs"><summary className="cursor-pointer font-bold text-cyan">View loadout restrictions</summary><dl className="mt-3 grid gap-3 sm:grid-cols-2">{mw4FreeEightsRules.map(rule => <div key={rule.label}><dt className="font-bold text-white">{rule.label}</dt><dd className="mt-1 leading-5 text-vapor">{rule.text}{rule.items && <ul className="mt-1 list-disc pl-4">{rule.items.map(item => <li key={item}>{item}</li>)}</ul>}</dd></div>)}</dl></details>
+          </section>}
           {isMoneyEights && !isComplete && <div className="m-3 sm:m-4"><StreamRequirementNotice user={user} /></div>}
         {match.match_type === "8s" && (match.status === "open" || draft?.status === "completed") && <FreeEightsCaptainDraft match={match} players={allPlayers} userId={user?.id} isParticipant={isParticipant} busy={draftBusy} votingOpen={match.status === "open" && !locked && !draft} onVote={voteCaptainDraft} onPick={pickCaptainPlayer} playerActions={removePlayerAction} />}
         {canEditTeams && <section className="m-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan/25 bg-cyan/[0.06] p-4 sm:m-4"><div><p className="text-xs font-black text-cyan">Admin team controls</p><p className="mt-1 text-xs text-vapor" role="status">{swapPlayer ? "Choose a player on the other team to swap, or select the same player to cancel." : "Drag a player onto someone on the other team to swap. You can also select two players using their swap buttons."}</p><p className="mt-1 text-[10px] text-vapor">Admin changes override automatic balancing and update Discord team assignments.</p></div><button type="button" onClick={adminReshuffleTeams} disabled={adminBusy} className="inline-flex items-center gap-2 rounded-lg border border-cyan/30 bg-cyan/10 px-4 py-2.5 text-xs font-black text-cyan disabled:opacity-50"><Shuffle className="h-4 w-4" />Random shuffle</button></section>}

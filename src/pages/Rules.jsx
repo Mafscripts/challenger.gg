@@ -64,7 +64,7 @@ export default function Rules() {
       <CompetitionHero mode="rules" description="Bring your best. Play it fair. Everything you need before, during and after your match."
         metadata={<><ShieldCheck size={13} aria-hidden="true" />Official competition standards</>}
         action={<div className="competition-actions"><button type="button" onClick={() => selectSection(active.id)} className="competition-action-pill"><BookOpen size={17} />Explore the rules<ArrowRight size={16} /></button><Link to="/support" className="competition-action-pill"><MessageCircle size={16} />Contact support</Link></div>} />
-      <div className="rules-edition"><span><ShieldCheck size={13} /> Official competition standards</span><span>PC · PlayStation · Xbox</span><time dateTime="2026-10-19">Updated October 19, 2026</time></div>
+      <div className="rules-edition"><span><ShieldCheck size={13} /> Official competition standards</span><span>PC · PlayStation · Xbox</span><time dateTime="2026-10-22">Updated October 22, 2026</time></div>
 
       {!publicCommerceEnabled && <CommercePausedNotice compact className="mb-6" />}
       <nav className="rules-essentials" aria-label="Important match requirements">
