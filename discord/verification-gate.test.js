@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { categorySpecs } from "./config.js";
 import { activateVerificationGate, verificationCard, VERIFICATION_BUTTON_ID } from "./verification-gate.js";
 
-test("only the three entry channels are public in the managed community configuration", () => {
+test("onboarding entry channels and general stay public in the managed community configuration", () => {
   const publicChannels = categorySpecs.flatMap((category) => category.channels)
     .filter((channel) => ["chat", "read-only", "voice"].includes(channel.mode));
-  assert.deepEqual(publicChannels.map((channel) => channel.key).sort(), ["rules", "verification", "welcome"]);
+  assert.deepEqual(publicChannels.map((channel) => channel.key).sort(), ["general", "rules", "verification", "welcome"]);
   const staff = categorySpecs.find((category) => category.key === "staff");
   assert.ok(staff.channels.every((channel) => channel.mode === "staff"));
   assert.equal(categorySpecs.flatMap((category) => category.channels).find((channel) => channel.key === "caster-lounge").mode, "caster-voice");
@@ -22,7 +22,7 @@ test("the branded verification card explicitly accepts rules and provides a pers
   assert.deepEqual(card.allowedMentions, { parse: [] });
 });
 
-test("activation keeps the entry open, gates extra public channels and preserves private staff access", async () => {
+test("activation keeps onboarding chat open and preserves custom and private staff access", async () => {
   const edits = [], sent = [];
   const role = { id: "verified", name: "Verified Player", editable: true };
   const everyone = { id: "everyone" };
@@ -34,7 +34,7 @@ test("activation keeps the entry open, gates extra public channels and preserves
     messages: { fetch: async () => ({ find: () => undefined }) },
     send: async (card) => sent.push({ id, card }), setTopic: async () => {},
   });
-  const channels = [channel("welcome", "👋・welcome"), channel("rules", "📜・rules"), channel("verify", "✅・verification"), channel("general", "💬・general"), channel("extra", "custom-public"), channel("staff", "staff-chat", false), channel("private", "private-team", false)];
+  const channels = [channel("welcome", "👋・welcome"), channel("rules", "📜・rules"), channel("verify", "✅・verification"), channel("general", "💬・general"), channel("extra", "custom-public"), channel("lfg", "🔎・looking-for-team"), channel("staff", "staff-chat", false), channel("private", "private-team", false)];
   const cache = new Map(channels.map((item) => [item.id, item]));
   cache.find = (predicate) => [...cache.values()].find(predicate);
   const guild = {
@@ -46,9 +46,11 @@ test("activation keeps the entry open, gates extra public channels and preserves
   assert.equal(sent.length, 1);
   assert.equal(sent[0].id, "verify");
   for (const id of ["welcome", "rules", "verify"]) assert.ok(edits.some((edit) => edit.id === id && edit.subject === "everyone" && edit.permissions.ViewChannel === true));
-  for (const id of ["general", "extra"]) {
+  assert.ok(edits.some((edit) => edit.id === "general" && edit.subject === "everyone" && edit.permissions.ViewChannel === true && edit.permissions.SendMessages === true));
+  assert.ok(!edits.some((edit) => edit.id === "general" && edit.permissions.ViewChannel === false));
+  for (const id of ["lfg"]) {
     assert.ok(edits.some((edit) => edit.id === id && edit.subject === "everyone" && edit.permissions.ViewChannel === false));
     assert.ok(edits.some((edit) => edit.id === id && edit.subject === "verified" && edit.permissions.ViewChannel === true));
   }
-  assert.ok(!edits.some((edit) => ["staff", "private"].includes(edit.id)));
+  assert.ok(!edits.some((edit) => ["extra", "staff", "private"].includes(edit.id)));
 });

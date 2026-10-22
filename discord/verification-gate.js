@@ -31,28 +31,28 @@ export async function activateVerificationGate(guild) {
     const spec = specs.find((item) => item.key === key);
     return guild.channels.cache.find((channel) => channel.name === spec.name || spec.legacyNames?.includes(channel.name));
   };
-  const verification = find("verification"), rules = find("rules"), welcome = find("welcome");
+  const verification = find("verification"), rules = find("rules"), welcome = find("welcome"), general = find("general");
   if (!verification?.isTextBased() || !rules || !welcome) throw new Error("Welcome, rules and verification channels are required.");
   const me = await guild.members.fetchMe();
   const targets = specs.filter((spec) => spec.mode.startsWith("verified-")).map((spec) => find(spec.key)).filter(Boolean);
-  const entryIds = new Set([welcome.id, rules.id, verification.id]);
-  // Include extra public channels without opening private/team/staff channels.
-  for (const channel of guild.channels.cache.values()) {
-    if (channel.type === ChannelType.GuildCategory || channel.isThread?.() || entryIds.has(channel.id)) continue;
-    if (channel.permissionsFor(guild.roles.everyone)?.has(PermissionFlagsBits.ViewChannel)
-      && !targets.some((target) => target.id === channel.id)) targets.push(channel);
-  }
+  // Only manage configured gated channels. Custom public channels (including
+  // onboarding tasks such as new-members) must retain the admin's permissions.
   const legacyVoice = guild.channels.cache.find((channel) => channel.name === "General" && channel.type === ChannelType.GuildVoice);
   if (legacyVoice && !targets.some((channel) => channel.id === legacyVoice.id)) targets.push(legacyVoice);
   const counter = guild.channels.cache.find((channel) => /^👥・members[-:]/u.test(channel.name));
   if (counter && !targets.some((channel) => channel.id === counter.id)) targets.push(counter);
-  for (const channel of [...targets, welcome, rules, verification]) {
+  for (const channel of [...targets, welcome, rules, verification, ...(general ? [general] : [])]) {
     if (!channel.permissionsFor(me)?.has(PermissionFlagsBits.ManageChannels)) throw new Error(`Cannot configure verification access in ${channel.name}`);
   }
   if (!verification.permissionsFor(me)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ReadMessageHistory])) throw new Error("The bot cannot publish the verification card.");
   // Ensure the entry path is visible before hiding any community channel.
   for (const channel of [welcome, rules, verification]) {
     await channel.permissionOverwrites.edit(guild.roles.everyone, { ViewChannel: true, ReadMessageHistory: true, SendMessages: false }, { reason: "Topfragg verification entry" });
+  }
+  if (general) {
+    await general.permissionOverwrites.edit(guild.roles.everyone, {
+      ViewChannel: true, ReadMessageHistory: true, SendMessages: true,
+    }, { reason: "Keep general available for Discord Community Onboarding" });
   }
   const card = verificationCard({ rulesChannel: `${rules}`, logoUrl: guild.iconURL({ extension: "png", size: 256 }) });
   const messages = await verification.messages.fetch({ limit: 50 });
