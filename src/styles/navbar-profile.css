@@ -29,7 +29,6 @@
 .profile-menu-compact .profile-menu-section > p { margin: 0 8px 8px; color: hsl(var(--vapor) / .65); font-size: 8px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
 .profile-menu-compact .profile-menu-account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 .profile-menu-compact .profile-menu-link { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 40px; padding: 7px 8px; border-radius: 7px; color: hsl(var(--foreground)); text-decoration: none; transition: color var(--navigation-motion-duration) var(--navigation-motion-easing), border-color var(--navigation-motion-duration) var(--navigation-motion-easing), background-color var(--navigation-motion-duration) var(--navigation-motion-easing); }
-.profile-menu-compact .profile-menu-link:hover { color: hsl(var(--cyan)); }
 .profile-menu-compact .profile-menu-item-icon { display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; color: hsl(var(--cyan) / .85); }
 .profile-menu-compact .profile-menu-link-label { min-width: 0; flex: 1; font-size: 11px; font-weight: 650; line-height: 1.4; }
 .profile-menu-compact .profile-menu-link-arrow { flex-shrink: 0; color: hsl(var(--vapor) / .4); }
@@ -42,9 +41,7 @@
 .profile-menu-compact .profile-menu-footer { display: flex; flex-shrink: 0; align-items: center; gap: 6px; padding: 8px 10px; border-top: 1px solid rgb(255 255 255 / .06); }
 .profile-menu-compact .profile-menu-footer[data-layout-switch="true"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
 .profile-menu-compact .profile-menu-footer .navigation-layout-toggle { justify-content: flex-start; gap: 7px; min-width: 0; height: 36px; padding: 7px 8px; border: 0; border-radius: 7px; background: transparent; font-size: 10px; font-weight: 650; color: hsl(var(--vapor)); }
-.profile-menu-compact .profile-menu-footer .navigation-layout-toggle:hover { color: hsl(var(--cyan)); }
 .profile-menu-compact .profile-menu-logout { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 10px; border-radius: 7px; color: #f87171; font-size: 10px; font-weight: 650; }
-.profile-menu-compact .profile-menu-logout:hover { color: #fca5a5; }
 .profile-menu-compact :is(a, button):focus-visible { outline: 2px solid hsl(var(--cyan)); outline-offset: -2px; }
 @media (max-width: 639px) {
   .app-topbar-v2 .nav-popover.nav-profile-popover.profile-menu-compact { position: fixed; top: var(--nav-popover-top, 72px); left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; max-height: calc(var(--app-viewport-height, 100dvh) - var(--nav-popover-top, 72px) - var(--nav-popover-bottom-space, 16px)); }

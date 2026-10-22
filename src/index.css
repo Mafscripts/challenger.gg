@@ -683,18 +683,18 @@
     width: 1.45rem;
   }
 
-  .nav-popover :where(a, button):not(:where(.navigation-hover, .site-hover, .profile-menu-header)):hover,
+  .nav-popover:not(.profile-menu-compact) :where(a, button):not(:where(.navigation-hover, .site-hover, .profile-menu-header)):hover,
   .mobile-menu-enter a:hover {
     color: hsl(var(--cyan)) !important;
   }
 
-  .topbar-primary-nav .nav-dropdown-anchor[data-tone] .nav-popover :where(a, button):not(:where(.navigation-hover, .site-hover, .profile-menu-header)):hover {
+  .topbar-primary-nav .nav-dropdown-anchor[data-tone] .nav-popover:not(.profile-menu-compact) :where(a, button):not(:where(.navigation-hover, .site-hover, .profile-menu-header)):hover {
     color: var(--nav-accent) !important;
     border-color: var(--nav-accent-border) !important;
     background-color: var(--nav-accent-soft) !important;
   }
 
-  .nav-popover :where(a, button):not(.navigation-hover):hover,
+  .nav-popover:not(.profile-menu-compact) :where(a, button):not(.navigation-hover):hover,
   .mobile-menu-enter a:hover {
     border-color: hsl(var(--cyan) / 0.22) !important;
     background-color: hsl(var(--cyan) / 0.055) !important;
