@@ -74,7 +74,7 @@
 .competition-stat-detail { margin-top: 4px; color: #7997aa; font-size: 10px; line-height: 1.5; }
 .competition-ladder-panel { border-color: rgb(var(--comp-accent) / .22); box-shadow: 0 12px 35px #0002; }
 .competition-ladder-panel > div:first-child { background: linear-gradient(100deg, rgb(var(--comp-accent) / .055), transparent); }
-.competition-standing-row { position: relative; isolation: isolate; transition: box-shadow .22s; }
+.competition-standing-row { position: relative; isolation: isolate; transition: none; }
 .competition-ladder .competition-standing-row[data-podium="1"] { background: linear-gradient(90deg, #ffc8520d, transparent 60%); box-shadow: inset 3px 0 #ffc85266; }
 .competition-standing-row[data-podium="2"] { box-shadow: inset 3px 0 #b5d4e44d; }
 .competition-standing-row[data-podium="3"] { box-shadow: inset 3px 0 #d99d6355; }
@@ -84,13 +84,13 @@
 .competition-ladder .competition-standing-row:is(:hover, :focus-within)::before { transform: scaleX(1); }
 .competition-ladder .competition-standing-row:is(:hover, :focus-within) { box-shadow: inset 4px 0 rgb(var(--comp-accent)), inset 0 1px rgb(var(--comp-accent) / .25), inset 0 -1px rgb(var(--comp-accent) / .25); }
 .competition-ladder .competition-standing-row:is(:hover, :focus-within) .leaderboard-avatar { border-color: rgb(var(--comp-accent) / .7); }
-.competition-match-row { transition: background .2s, box-shadow .2s; }
+.competition-match-row { transition: background-color .2s; }
 .competition-match-row:is(:hover, :focus-within) { background: rgb(var(--comp-accent, 20 216 255) / .16); box-shadow: inset 4px 0 rgb(var(--comp-accent, 20 216 255)); }
-.competition-section-tabs > :is(button, a) { transition: color .22s, box-shadow .22s; }
+.competition-section-tabs > :is(button, a) { transition: color .22s; }
 .competition-section-tabs > [aria-pressed="true"] { color: rgb(var(--comp-accent)); background: rgb(var(--comp-accent) / .13); box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .3); }
 .competition-section-tabs > :is(button, a):is(:hover, :focus-visible) { color: #f4faff; box-shadow: inset 0 0 0 1px rgb(var(--comp-accent) / .65); }
 /* Action buttons keep their background; only the non-interactive fill moves. */
-:is(.competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill) { position: relative; isolation: isolate; overflow: hidden; transition: color .22s, border-color .22s, box-shadow .22s; }
+:is(.competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill) { position: relative; isolation: isolate; overflow: hidden; transition: color .22s, border-color .22s; }
 :is(.competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)::before { position: absolute; inset: 0; z-index: -1; background: var(--action-hover-fill, linear-gradient(90deg, rgb(var(--comp-accent) / .12), rgb(var(--comp-accent) / .24))); transform: scaleX(0); transform-origin: left; transition: transform .38s cubic-bezier(.22, .61, .36, 1); pointer-events: none; content: ""; }
 :is(.competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)::after { position: absolute; inset: auto 0 0; height: 3px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform .38s cubic-bezier(.22, .61, .36, 1); pointer-events: none; content: ""; }
 :is(.competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill):not(:disabled):not([aria-disabled="true"]):is(:hover, :focus-visible) { color: #f4faff; border-color: rgb(var(--comp-accent) / .85); }

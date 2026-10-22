@@ -3,7 +3,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  transition: color var(--navigation-motion-duration) var(--navigation-motion-easing), border-color var(--navigation-motion-duration) var(--navigation-motion-easing), box-shadow var(--navigation-motion-duration) var(--navigation-motion-easing);
+  transition: color var(--navigation-motion-duration) var(--navigation-motion-easing), border-color var(--navigation-motion-duration) var(--navigation-motion-easing);
 }
 .navigation-hover > .navigation-hover-fill {
   position: absolute;

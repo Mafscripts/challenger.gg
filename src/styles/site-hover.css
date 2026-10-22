@@ -124,7 +124,8 @@
   .matchroom-refresh a:not(.player-name-wrap),
   .sidebar-profile-button
 ):is(a, button):not(:where(.navigation-hover, .competition-mode-link, .competition-section-tabs > *, .competition-hero:not(.account-page-hero) .competition-action-pill:not(.overview-leave), .competition-surface .competition-filter-pill)) {
-  transition-property: color, border-color, background-color, box-shadow, opacity;
+  /* Keep the moving fill; apply shadows once instead of repainting their blur every frame. */
+  transition-property: color, border-color, background-color, opacity;
   transition-duration: var(--navigation-motion-duration);
   transition-timing-function: var(--navigation-motion-easing);
 }
