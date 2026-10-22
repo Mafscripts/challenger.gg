@@ -3,7 +3,7 @@ export const MW4_FREE_EIGHTS_RULES_URL = `/rules#${MW4_FREE_EIGHTS_RULES_ID}`;
 
 export const mw4FreeEightsRules = [
   { label: "Weapons", text: "Use the following weapon restrictions:", items: [
-    "Assault rifles: all allowed except M4, which is banned.",
+    "Assault rifles: only HAN 86 is allowed. All other assault rifles are banned.",
     "Pistols: .50 GS and Mojave .357 are banned.",
     "Marksman rifles: all banned.",
     "Shotguns: all banned.",
