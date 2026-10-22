@@ -6,7 +6,7 @@ import { activateVerificationGate, verificationCard, VERIFICATION_BUTTON_ID } fr
 test("onboarding entry channels and general stay public in the managed community configuration", () => {
   const publicChannels = categorySpecs.flatMap((category) => category.channels)
     .filter((channel) => ["chat", "read-only", "voice"].includes(channel.mode));
-  assert.deepEqual(publicChannels.map((channel) => channel.key).sort(), ["general", "rules", "verification", "welcome"]);
+  assert.deepEqual(publicChannels.map((channel) => channel.key).sort(), ["announcements", "faq", "general", "rules", "verification", "welcome"]);
   const staff = categorySpecs.find((category) => category.key === "staff");
   assert.ok(staff.channels.every((channel) => channel.mode === "staff"));
   assert.equal(categorySpecs.flatMap((category) => category.channels).find((channel) => channel.key === "caster-lounge").mode, "caster-voice");
@@ -35,6 +35,7 @@ test("activation keeps onboarding chat open and preserves custom and private sta
     send: async (card) => sent.push({ id, card }), setTopic: async () => {},
   });
   const channels = [channel("welcome", "👋・welcome"), channel("rules", "📜・rules"), channel("verify", "✅・verification"), channel("general", "💬・general"), channel("extra", "custom-public"), channel("lfg", "🔎・looking-for-team"), channel("staff", "staff-chat", false), channel("private", "private-team", false)];
+  channels.push(channel("announcements", "📢・announcements", false), channel("faq", "❓・faq", false));
   const cache = new Map(channels.map((item) => [item.id, item]));
   cache.find = (predicate) => [...cache.values()].find(predicate);
   const guild = {
@@ -48,6 +49,10 @@ test("activation keeps onboarding chat open and preserves custom and private sta
   for (const id of ["welcome", "rules", "verify"]) assert.ok(edits.some((edit) => edit.id === id && edit.subject === "everyone" && edit.permissions.ViewChannel === true));
   assert.ok(edits.some((edit) => edit.id === "general" && edit.subject === "everyone" && edit.permissions.ViewChannel === true && edit.permissions.SendMessages === true));
   assert.ok(!edits.some((edit) => edit.id === "general" && edit.permissions.ViewChannel === false));
+  for (const id of ["announcements", "faq"]) {
+    assert.ok(edits.some((edit) => edit.id === id && edit.subject === "everyone" && edit.permissions.ViewChannel === true && edit.permissions.SendMessages === false));
+    assert.ok(!edits.some((edit) => edit.id === id && edit.permissions.ViewChannel === false));
+  }
   for (const id of ["lfg"]) {
     assert.ok(edits.some((edit) => edit.id === id && edit.subject === "everyone" && edit.permissions.ViewChannel === false));
     assert.ok(edits.some((edit) => edit.id === id && edit.subject === "verified" && edit.permissions.ViewChannel === true));

@@ -32,6 +32,7 @@ export async function activateVerificationGate(guild) {
     return guild.channels.cache.find((channel) => channel.name === spec.name || spec.legacyNames?.includes(channel.name));
   };
   const verification = find("verification"), rules = find("rules"), welcome = find("welcome"), general = find("general");
+  const publicReadOnly = [welcome, rules, verification, find("announcements"), find("faq")].filter(Boolean);
   if (!verification?.isTextBased() || !rules || !welcome) throw new Error("Welcome, rules and verification channels are required.");
   const me = await guild.members.fetchMe();
   const targets = specs.filter((spec) => spec.mode.startsWith("verified-")).map((spec) => find(spec.key)).filter(Boolean);
@@ -41,12 +42,12 @@ export async function activateVerificationGate(guild) {
   if (legacyVoice && !targets.some((channel) => channel.id === legacyVoice.id)) targets.push(legacyVoice);
   const counter = guild.channels.cache.find((channel) => /^👥・members[-:]/u.test(channel.name));
   if (counter && !targets.some((channel) => channel.id === counter.id)) targets.push(counter);
-  for (const channel of [...targets, welcome, rules, verification, ...(general ? [general] : [])]) {
+  for (const channel of [...targets, ...publicReadOnly, ...(general ? [general] : [])]) {
     if (!channel.permissionsFor(me)?.has(PermissionFlagsBits.ManageChannels)) throw new Error(`Cannot configure verification access in ${channel.name}`);
   }
   if (!verification.permissionsFor(me)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ReadMessageHistory])) throw new Error("The bot cannot publish the verification card.");
   // Ensure the entry path is visible before hiding any community channel.
-  for (const channel of [welcome, rules, verification]) {
+  for (const channel of publicReadOnly) {
     await channel.permissionOverwrites.edit(guild.roles.everyone, { ViewChannel: true, ReadMessageHistory: true, SendMessages: false }, { reason: "Topfragg verification entry" });
   }
   if (general) {

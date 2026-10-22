@@ -159,7 +159,7 @@ export const categorySpecs = [
   ...category,
   channels: category.channels.map((channel) => ({
     ...channel,
-    mode: !["welcome", "rules", "verification", "general"].includes(channel.key)
+    mode: !["welcome", "rules", "verification", "general", "announcements", "faq"].includes(channel.key)
       && ["chat", "read-only", "voice"].includes(channel.mode)
       ? `verified-${channel.mode}` : channel.mode,
   })),
