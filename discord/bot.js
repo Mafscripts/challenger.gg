@@ -29,7 +29,7 @@ import {
 import { prisma } from "../server/prisma.js";
 import { syncTournamentDiscord } from "./announcements.js";
 import { syncManagedDiscordRoles } from "./managed-roles.js";
-import { assignVerifiedPlayerRole } from "./member-verification.js";
+import { handleVerificationInteraction } from "./member-verification.js";
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
@@ -638,10 +638,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.guildId !== config.guildId) return;
   try {
     if (interaction.isButton() && interaction.customId === VERIFICATION_BUTTON_ID) {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      const member = await interaction.guild.members.fetch(interaction.user.id);
-      await assignVerifiedPlayerRole(member, { acceptedRules: true, log: verificationLog });
-      await interaction.editReply("✅ Rules accepted! You now have Verified Player access. Welcome to Topfragg — find your squad in general!");
+      await handleVerificationInteraction(interaction, { log: verificationLog });
       return;
     }
     if (await handleCommunityInteraction(interaction)) return;
@@ -934,7 +931,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   } catch (error) {
     console.error("[Topfragg Discord] Command failed:", error);
     const response = ephemeral("Something went wrong. The incident has been logged for staff.");
-    if (interaction.replied || interaction.deferred) await interaction.followUp(response).catch(() => null);
+    if (interaction.deferred && !interaction.replied) await interaction.editReply(response).catch(() => null);
+    else if (interaction.replied) await interaction.followUp(response).catch(() => null);
     else await interaction.reply(response).catch(() => null);
     await botLog(interaction.guild, `Command /${interaction.commandName} failed for ${interaction.user.tag}.`);
   }

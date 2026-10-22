@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assignVerifiedPlayerRole, syncVerifiedPlayerRoles } from "./member-verification.js";
+import { assignVerifiedPlayerRole, handleVerificationInteraction, syncVerifiedPlayerRoles } from "./member-verification.js";
 
 function fixture() {
   const role = { id: "verified-role", name: "Verified Player", editable: true, managed: false };
@@ -44,4 +44,56 @@ test("missing or unmanageable roles fail explicitly without changing member role
   f.role.managed = true;
   await assert.rejects(assignVerifiedPlayerRole(f.member("1"), { acceptedRules: true }), /role is missing/);
   assert.deepEqual(f.writes, []);
+});
+
+function interactionFixture(fetchMember) {
+  const replies = [], deferrals = [];
+  return {
+    replies, deferrals, user: { id: "member" },
+    guild: { members: { fetch: fetchMember } },
+    deferReply: async (options) => deferrals.push(options),
+    editReply: async (message) => replies.push(message),
+  };
+}
+
+test("verification confirms access only after role assignment and edits the thinking response", async () => {
+  const f = fixture(), member = f.member("member");
+  const interaction = interactionFixture(async (options) => {
+    assert.deepEqual(options, { user: "member", force: true });
+    return member;
+  });
+  await handleVerificationInteraction(interaction);
+  assert.equal(f.writes.length, 1);
+  assert.equal(interaction.deferrals.length, 1);
+  assert.equal(interaction.replies.length, 1);
+  assert.match(interaction.replies[0], /Rules accepted/);
+});
+
+test("permission failures finish the original response with an actionable message", async () => {
+  const interaction = interactionFixture(async () => ({}));
+  await handleVerificationInteraction(interaction, {
+    assign: async () => { throw Object.assign(new Error("Missing Permissions"), { code: 50013 }); },
+  });
+  assert.equal(interaction.replies.length, 1);
+  assert.match(interaction.replies[0], /Manage Roles/);
+  assert.doesNotMatch(interaction.replies[0], /Rules accepted/);
+});
+
+test("a stalled member lookup or role assignment cannot leave verification thinking forever", async () => {
+  for (const phase of ["fetch", "assign"]) {
+    const never = new Promise(() => {});
+    const interaction = interactionFixture(async () => phase === "fetch" ? never : {});
+    await handleVerificationInteraction(interaction, { timeoutMs: 5, assign: async () => never });
+    assert.equal(interaction.replies.length, 1);
+    assert.match(interaction.replies[0], /taking too long/);
+    assert.doesNotMatch(interaction.replies[0], /Rules accepted/);
+  }
+});
+
+test("pending Discord screening explains the remaining step without granting access", async () => {
+  const f = fixture();
+  const interaction = interactionFixture(async () => f.member("member", { pending: true }));
+  await handleVerificationInteraction(interaction);
+  assert.equal(f.writes.length, 0);
+  assert.match(interaction.replies[0], /screening first/);
 });
