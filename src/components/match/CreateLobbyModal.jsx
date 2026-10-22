@@ -1,4 +1,4 @@
-import { PRIMARY_GAME_ID, MW4_MODES } from "@/lib/mw4";
+import { PRIMARY_GAME_ID, MW4_MODES, MW4_GAME } from "@/lib/mw4";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -80,7 +80,7 @@ function PlayRulePicker({ selectedPlayRule, onSelect, matchLabel }) {
 
 
 
-export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig, initialSettings, xpFormat }) {
+export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig = MW4_GAME, initialSettings, xpFormat }) {
   const appliedInitial = useRef(null);
   const [selectedGameMode, setSelectedGameMode] = useState(null);
   const [selectedTeamSize, setSelectedTeamSize] = useState(null);
@@ -489,6 +489,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           {/* Content */}
           <div className="overflow-y-auto p-6">
             <ActivisionIdNotice user={user} className="mb-5" />
+            {(gameConfig?.id || PRIMARY_GAME_ID) === "mw4" && <div className="mb-5 rounded-xl border border-cyan/20 bg-cyan/[0.06] px-4 py-3"><p className="text-sm font-black text-cyan">Modern Warfare 4</p><p className="mt-1 text-xs text-vapor">Choose Hardpoint, Hijacked or Search &amp; Destroy.{isEightsLobby ? " You can also play the MW4 CDL mixed series." : " Your selected mode determines the match's map pool."}</p></div>}
             {(isWager || isMoneyEights) && <StreamRequirementNotice user={user} className="mb-5" />}
             {(gameConfig?.id || PRIMARY_GAME_ID) !== "mw4" && <MatchPresetPicker
               key={`${user?.id}:${mode}:${gameConfig?.id || PRIMARY_GAME_ID}`}
@@ -529,6 +530,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     const tone = choiceTones[mode.tone];
                     return (
                       <button
+                        type="button"
+                        aria-pressed={isSelected}
                         key={mode.id}
                         onClick={() => setSelectedGameMode(mode.id)}
                         className={`group relative transform-gpu p-4 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${

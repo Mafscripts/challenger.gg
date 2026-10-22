@@ -1,4 +1,4 @@
-import { MW4_MAP_NAMES } from "./mw4.js";
+import { MW4_MAP_NAMES, MW4_MODES } from "./mw4.js";
 import { DEFAULT_EIGHTS_GAMES, eightsGameName, withMw4Preview } from "./freeEightsGames.js";
 import { getMapImage } from "./cdlMaps.js";
 
@@ -9,6 +9,8 @@ export const TOURNAMENT_MODES = [
   { id: "control", name: "Control" },
   { id: "overload", name: "Overload" },
 ];
+
+export const tournamentModesForGame = (gameId) => gameId === "mw4" ? MW4_MODES : TOURNAMENT_MODES;
 
 export const TOURNAMENT_GAMES = [
   ...withMw4Preview(DEFAULT_EIGHTS_GAMES).map((game) => ({

@@ -140,7 +140,7 @@ export function CompetitionHeaderView({ mode = "xp", playerCount, action, classN
   const withinPlay = ["/ranked", "/xp", "/wagers", "/ranked/8s"].includes(pathname);
   const isMw4 = mode === "eights" && gameId === "mw4";
   const copy = isMw4 ? { ...modeCopy.eights, accent: "text-yellow-400", line: "bg-yellow-400" } : modeCopy[mode] || competitionTheme(mode);
-  const headerImage = isMw4 ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png";
+  const headerImage = (gameId || "mw4") === "mw4" ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png";
 
   return (
     <div className={`space-y-6 ${className}`}>

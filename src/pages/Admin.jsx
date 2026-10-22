@@ -62,7 +62,7 @@ import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
 import { useAdminConsoleData } from "@/hooks/useAdminConsoleData";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
-import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm } from "@/lib/tournamentGames";
+import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm, tournamentModesForGame } from "@/lib/tournamentGames";
 import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
@@ -2635,7 +2635,7 @@ export default function Admin() {
                             <fieldset className="space-y-2 md:col-span-2">
                               <legend className="text-[10px] font-black uppercase tracking-wider text-vapor">Select game modes</legend>
                               <div className="flex flex-wrap gap-4">
-                                {TOURNAMENT_MODES.map((mode) => <label key={mode.id} className="flex items-center gap-2 text-xs text-vapor"><input type="checkbox" checked={tournamentForm.custom_game_modes.includes(mode.id)} onChange={(event) => { const checked = event.target.checked; setTournamentForm((prev) => ({ ...prev, custom_game_modes: checked ? [...prev.custom_game_modes, mode.id] : prev.custom_game_modes.filter((id) => id !== mode.id) })); }} />{mode.name}</label>)}
+                                {tournamentModesForGame(tournamentForm.game_id).map((mode) => <label key={mode.id} className="flex items-center gap-2 text-xs text-vapor"><input type="checkbox" checked={tournamentForm.custom_game_modes.includes(mode.id)} onChange={(event) => { const checked = event.target.checked; setTournamentForm((prev) => ({ ...prev, custom_game_modes: checked ? [...prev.custom_game_modes, mode.id] : prev.custom_game_modes.filter((id) => id !== mode.id) })); }} />{mode.name}</label>)}
                               </div>
                               <p className="text-[10px] text-vapor">Selected modes repeat in the order you select them until the series is complete.</p>
                             </fieldset>
@@ -2643,7 +2643,7 @@ export default function Admin() {
                           <label className="space-y-1.5">
                             <span className="text-[10px] font-black uppercase tracking-wider text-vapor">Game modes</span>
                             <select value={tournamentForm.game_mode_set} onChange={(event) => { const gameModeSet = event.target.value; const preset = tournamentModeSetOptions.find((option) => option.value === gameModeSet); setTournamentForm((prev) => ({ ...prev, game_mode_set: gameModeSet, ...(preset?.gameMode ? { game_mode: preset.gameMode } : {}) })); }} className="w-full rounded-xl border border-white/[0.08] bg-secondary/60 px-4 py-3 text-sm outline-none transition focus:border-cyan/35">
-                              {tournamentModeSetOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                              {tournamentModeSetOptions.filter(option => !option.gameModes || option.gameModes.every(id => tournamentModesForGame(tournamentForm.game_id).some(mode => mode.id === id))).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                             </select>
                           </label>
                           <label className="space-y-1.5">
@@ -2753,7 +2753,7 @@ export default function Admin() {
                     <div className="border-t border-white/[0.06] p-4">
                       <p className="mb-4 text-xs text-vapor">Add your own map names, one per line or separated by commas. You can save without maps and add them later, before generating the bracket. Only the modes selected above need maps.</p>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        {TOURNAMENT_MODES.map((mode) => <label key={mode.id} className="space-y-1">
+                        {tournamentModesForGame(tournamentForm.game_id).map((mode) => <label key={mode.id} className="space-y-1">
                           <span className="text-[10px] uppercase text-vapor">{mode.name} maps</span>
                           <textarea value={tournamentForm[`${mode.id}_maps`]} onChange={(event) => setTournamentForm((prev) => ({ ...prev, [`${mode.id}_maps`]: event.target.value }))} rows={5} placeholder="Enter map names, one per line" className="w-full resize-y rounded-lg border border-white/5 bg-secondary px-3 py-2 text-sm focus:border-cyan/30 focus:outline-none" />
                         </label>)}
