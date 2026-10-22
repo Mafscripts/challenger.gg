@@ -490,14 +490,14 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           <div className="overflow-y-auto p-6">
             <ActivisionIdNotice user={user} className="mb-5" />
             {(isWager || isMoneyEights) && <StreamRequirementNotice user={user} className="mb-5" />}
-            <MatchPresetPicker
+            {(gameConfig?.id || PRIMARY_GAME_ID) !== "mw4" && <MatchPresetPicker
               key={`${user?.id}:${mode}:${gameConfig?.id || PRIMARY_GAME_ID}`}
               userId={user?.id}
               settings={{ mode, game_id: gameConfig?.id || PRIMARY_GAME_ID, game_mode: selectedGameMode,
                 team_size: selectedTeamSize, best_of: bestOf, play_rule: selectedPlayRule }}
               choices={modeChoices}
               onApply={applyPreset}
-            />
+            />}
             {/* Step 1: Game Mode */}
             {step === 1 && (
               <div>

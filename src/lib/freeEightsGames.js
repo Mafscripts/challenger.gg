@@ -7,7 +7,7 @@ export const MW4_EIGHTS_PREVIEW = MW4_GAME;
 export const withMw4Preview = (games) => {
   const stored = games.find((row) => row.id === "mw4");
   const mw4 = !hasMw4LaunchPools(stored)
-    ? structuredClone(MW4_GAME) : stored;
+    ? structuredClone(MW4_GAME) : { ...stored, formats: stored.formats.map(format => format.id === "cdl_bo3" ? { ...format, name: "MW4 CDL · TopFragg Rules" } : format) };
   return [mw4, ...games.filter((row) => row.id !== "mw4")];
 };
 

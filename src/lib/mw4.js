@@ -10,7 +10,7 @@ export const MW4_GAME = {
   id: PRIMARY_GAME_ID, name: "Modern Warfare", number: "4", color: "yellow", enabled: true,
   modes: MW4_MODES.map((mode) => ({ ...mode, maps: MW4_MAP_NAMES.map((name) => ({ name, image: mw4MapImage(name) })) })),
   formats: [
-    { id: "cdl_bo3", name: "MW4 Best of 3", modes: ["hp", "hijacked", "snd"] },
+    { id: "cdl_bo3", name: "MW4 CDL · TopFragg Rules", modes: ["hp", "hijacked", "snd"] },
     ...MW4_MODES.flatMap(({ id, name }) => [
       { id: `${id}_bo3`, name: `${name} Best of 3`, modes: [id, id, id] },
       { id: `${id}_bo1`, name: `${name} Best of 1`, modes: [id] },
