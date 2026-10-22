@@ -4,7 +4,7 @@ import { ArrowRight, Gamepad2, TrendingUp, Trophy, Users } from "lucide-react";
 
 const destinations = [
   { title: "Matchfinder", detail: "Find your next match", href: "/matchfinder", icon: Gamepad2 },
-  { title: "Black Ops 7 Free 8s", detail: "Play 2v2, 3v3 or 4v4", href: "/ranked/8s?game=bo7", icon: Users },
+  { title: "Modern Warfare 4 Free 8s", detail: "Play 2v2, 3v3 or 4v4", href: "/ranked/8s?game=mw4", icon: Users },
   { title: "Tournaments", detail: "Compete with your team", href: "/tournaments", icon: Trophy },
   { title: "Leaderboards", detail: "See where you stand", href: "/leaderboards", icon: TrendingUp },
 ];

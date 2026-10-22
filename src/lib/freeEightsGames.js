@@ -1,16 +1,17 @@
+import { MW4_GAME, PRIMARY_GAME_ID, LEGACY_GAME_ID, hasMw4LaunchPools } from "./mw4.js";
 import { getMapImage } from "./cdlMaps.js";
 
-export const DEFAULT_EIGHTS_GAME = "bo7";
-// Visible before launch, but cannot create rooms until staff configure real pools.
-export const MW4_EIGHTS_PREVIEW = {
-  id: "mw4", name: "Modern Warfare", number: "4", color: "yellow",
-  enabled: false, modes: [], formats: [],
-};
+export const DEFAULT_EIGHTS_GAME = PRIMARY_GAME_ID;
+// Upgrade pre-launch or stale pools; MW4 uses only the twelve selected maps.
+export const MW4_EIGHTS_PREVIEW = MW4_GAME;
 export const withMw4Preview = (games) => {
-  const mw4 = games.find((row) => row.id === "mw4") || structuredClone(MW4_EIGHTS_PREVIEW);
+  const stored = games.find((row) => row.id === "mw4");
+  const mw4 = !hasMw4LaunchPools(stored)
+    ? structuredClone(MW4_GAME) : stored;
   return [mw4, ...games.filter((row) => row.id !== "mw4")];
 };
-export const eightsGameId = (value) => String((typeof value === "object" ? value?.game_id : value) || DEFAULT_EIGHTS_GAME).toLowerCase();
+
+export const eightsGameId = (value) => String((typeof value === "object" ? value?.game_id : value) || LEGACY_GAME_ID).toLowerCase();
 export const eightsSlug = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 const maps = (names, game) => names.map((name) => ({ name, image: game === "bo7" ? getMapImage(name) : `/assets/maps/${game}/${eightsSlug(name)}.webp` }));
 const formats = [
@@ -29,10 +30,11 @@ export const DEFAULT_EIGHTS_GAMES = [
   game("bo7", "Black Ops", "7", "orange", ["Sake", "Colossus", "Den", "Scar", "Gridlock", "Hacienda"], ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Fringe"], [{ id: "overload", name: "Overload", maps: maps(["Scar", "Gridlock", "Den", "Exposure"], "bo7") }]),
   game("bo6", "Black Ops", "6", "orange", ["Hacienda", "Red Card", "Rewind", "Skyline", "Vault"], ["Dealership", "Hacienda", "Protocol", "Red Card", "Rewind"]),
   game("mw3", "Modern Warfare", "3", "green", ["Invasion", "Karachi", "Sub Base", "Rio", "6 Star", "Vista"], ["Highrise", "Invasion", "Karachi", "Terminal", "Rio", "6 Star"]),
+  structuredClone(MW4_GAME),
 ];
 export const eightsGameName = (game) => `${game?.name || "Black Ops"}${game?.number ? ` ${game.number}` : ""}`;
 export const eightsMatchGameName = (match) => match?.game_name || eightsGameName(DEFAULT_EIGHTS_GAMES.find((game) => game.id === eightsGameId(match)) || DEFAULT_EIGHTS_GAMES[0]);
-export const eightsModeName = (match, mode) => match?.game_config?.modes?.find((row) => row.id === mode)?.name || ({ hp: "Hardpoint", snd: "Search & Destroy", overload: "Overload" }[mode] || mode);
+export const eightsModeName = (match, mode) => match?.game_config?.modes?.find((row) => row.id === mode)?.name || ({ hp: "Hardpoint", snd: "Search & Destroy", overload: "Overload", hijacked: "Hijacked" }[mode] || mode);
 
 // Old rooms have no game snapshot and remain BO7 with their original formats.
 export function eightsSeriesForMatch(match) {
@@ -40,7 +42,7 @@ export function eightsSeriesForMatch(match) {
   return match?.series_format === "hp_bo3" ? ["hp", "hp", "hp"] : ["hp", "snd", "hp"];
 }
 export function generateEightsSeries(match, random = Math.random) {
-  const config = match.game_config || DEFAULT_EIGHTS_GAMES[0];
+  const config = match.game_config || DEFAULT_EIGHTS_GAMES.find((game) => game.id === eightsGameId(match)) || DEFAULT_EIGHTS_GAMES.find((game) => game.id === LEGACY_GAME_ID);
   const used = new Map();
   return eightsSeriesForMatch(match).map((id) => {
     const mode = config.modes.find((row) => row.id === id);

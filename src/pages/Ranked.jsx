@@ -21,6 +21,7 @@ import {
 const modeLabels = {
   snd: "Search & Destroy",
   overload: "Overload",
+  hijacked: "Hijacked",
   hp: "Hardpoint",
 };
 
@@ -114,9 +115,9 @@ export default function Ranked() {
       refreshing = true;
       try {
         const [matches, playerMatches, playerStats] = await Promise.all([
-          base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 20),
+          base44.entities.RankedMatch.filterFresh({ game_id: "mw4", status: "open", matchfinder_visible: true }, "-created_date", 20),
           base44.entities.RankedMatch.filterFresh({}, "-created_date", 100),
-          base44.entities.RankedStats.filterFresh({ user_id: user.id }, "-elo", 1),
+          base44.entities.RankedStats.filterFresh({ user_id: user.id, game_id: "mw4" }, "-elo", 1),
         ]);
         if (active) {
           setRankedMatches((matches || []).filter((match) => match.match_type !== "xp"));
@@ -127,7 +128,7 @@ export default function Ranked() {
         leaderboardRefreshTick += 1;
         if (leaderboardRefreshTick >= 5) {
           leaderboardRefreshTick = 0;
-          const leaderboard = await base44.entities.RankedStats.filterFresh({}, "-elo", 500);
+          const leaderboard = await base44.functions.invoke("getRankedStandings", { game_id: "mw4" }).then((response) => response.data?.rows || []);
           if (active) {
             const position = (leaderboard || []).findIndex((stats) => stats.user_id === user.id);
             setLeaderboardPosition(position >= 0 ? position + 1 : null);
@@ -163,8 +164,8 @@ export default function Ranked() {
       setUser(currentUser);
 
       const [matches, statsRows, captainTeams] = await Promise.all([
-        base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 20),
-        base44.entities.RankedStats.filterFresh({}, "-elo", 500),
+        base44.entities.RankedMatch.filterFresh({ game_id: "mw4", status: "open", matchfinder_visible: true }, "-created_date", 20),
+        base44.functions.invoke("getRankedStandings", { game_id: "mw4" }).then((response) => response.data?.rows || []),
         loadCaptainRankedTeams(currentUser?.id),
       ]);
 

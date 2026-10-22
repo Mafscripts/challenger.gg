@@ -25,6 +25,7 @@ import {
 const modeLabels = {
   snd: "Search & Destroy",
   overload: "Overload",
+  hijacked: "Hijacked",
   hp: "Hardpoint",
 };
 
@@ -107,7 +108,7 @@ export default function XP() {
         const [matches, playerMatches, playerStats] = await Promise.all([
           loadOpenXPMatches(),
           base44.functions.invoke("getMyActiveXPMatch", {}).then((response) => response.data?.match || null),
-          base44.entities.XPStats.filterFresh({ user_id: user.id }, "-total_xp", 1),
+          base44.entities.XPStats.filterFresh({ user_id: user.id, game_id: "mw4" }, "-total_xp", 1),
         ]);
         if (active) {
           setRankedMatches(matches || []);
@@ -118,7 +119,7 @@ export default function XP() {
         leaderboardRefreshTick += 1;
         if (leaderboardRefreshTick >= 5) {
           leaderboardRefreshTick = 0;
-          const leaderboard = await base44.functions.invoke("getXPStandings", {}).then(response => response.data?.rows || []);
+          const leaderboard = await base44.functions.invoke("getXPStandings", { game_id: "mw4" }).then(response => response.data?.rows || []);
           if (active) {
             const position = (leaderboard || []).findIndex((stats) => stats.user_id === user.id);
             setLeaderboardPosition(position >= 0 ? position + 1 : null);
@@ -156,7 +157,7 @@ export default function XP() {
 
       const [matches, statsRows, captainTeams, activeMatch] = await Promise.all([
         loadOpenXPMatches(),
-        base44.functions.invoke("getXPStandings", {}).then(response => response.data?.rows || []),
+        base44.functions.invoke("getXPStandings", { game_id: "mw4" }).then(response => response.data?.rows || []),
         loadCaptainXPTeams(currentUser?.id),
         currentUser?.id ? base44.functions.invoke("getMyActiveXPMatch", {}).then((response) => response.data?.match || null) : null,
       ]);

@@ -1,3 +1,4 @@
+import { storedGameId } from "../src/lib/mw4.js";
 import { prisma } from "./prisma.js";
 import { notificationCutoff } from "../src/lib/notificationRetention.js";
 import { normalizeFreeEightsCancellationNotifications } from "./wager-cancellation-notifications.js";
@@ -55,10 +56,12 @@ async function isolatedXPStats(rows) {
     where: { AND: [{ metadata: { path: ["status"], equals: "completed" } }, ...(playerFilter ? [playerFilter] : [])] },
     select: { id: true, metadata: true, created_date: true },
   });
-  const records = buildXPMatchRecords([...rows].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
-    .map(row => ({ metadata: row })), matches);
+  const byGame = new Map([...new Set(rows.map(storedGameId))].map((gameId) => [gameId, buildXPMatchRecords(
+    rows.filter((row) => storedGameId(row) === gameId).map((row) => ({ metadata: row })),
+    matches.filter((row) => storedGameId(row) === gameId),
+  )]));
   return rows.map(row => {
-    const record = records.get(row.user_id) || emptyXPMatchRecord();
+    const record = byGame.get(storedGameId(row)).get(row.user_id) || emptyXPMatchRecord();
     return { ...row, ...record, xp_source: "xp_matches", level: Math.floor(record.total_xp / 1000) + 1,
       current_xp: record.total_xp % 1000, xp_to_next_level: 1000 };
   });

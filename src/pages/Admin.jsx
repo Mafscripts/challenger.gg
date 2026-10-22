@@ -63,7 +63,7 @@ import PageLoader from "@/components/ui/PageLoader";
 import { useAdminConsoleData } from "@/hooks/useAdminConsoleData";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm } from "@/lib/tournamentGames";
-import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, getRoleConfig, hasRolePower } from "@/lib/roles";
+import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 
@@ -87,6 +87,8 @@ const tournamentGameModeOptions = [
   { value: "Best of 7", label: "Best of 7" },
 ];
 const tournamentModeSetOptions = [
+  { value: "mw4", label: "MW4 — Best of 3 · Hardpoint / Hijacked / Search & Destroy", gameModes: ["hp", "hijacked", "snd"], gameMode: "Best of 3" },
+  { value: "hijacked_only", label: "Hijacked only", gameModes: ["hijacked"], gameMode: "Best of 3" },
   { value: "bo1_snd", label: "Search & Destroy — Best of 1", gameModes: ["snd"], gameMode: "Best of 1" },
   { value: "hp_snd_hp", label: "Hardpoint / Search & Destroy / Hardpoint — Best of 3", gameModes: ["hp", "snd", "hp"], gameMode: "Best of 3" },
   { value: "hp_only", label: "Hardpoint — Best of 1", gameModes: ["hp"], gameMode: "Best of 1" },
@@ -125,6 +127,8 @@ const tournamentModeSetFor = (tournament) => {
     ? tournament.game_modes.map((mode) => String(mode || "").toLowerCase()).filter(Boolean)
     : [];
   const legacyMode = String(tournament?.game_mode || "").toLowerCase();
+  if (gameModes.join(",") === "hp,hijacked,snd") return "mw4";
+  if (gameModes.length === 1 && gameModes[0] === "hijacked") return "hijacked_only";
   if (gameModes.includes("control")) return gameModes.length === 1 ? "control_only" : (gameModes.join(",") === "hp,snd,control" ? "cdl_control" : "custom");
   if (gameModes.length === 1 && gameModes[0] === "overload") return "overload_only";
   if (gameModes.length > 0 && !tournamentModeSetOptions.some((option) => option.gameModes && [...new Set(option.gameModes)].join(",") === gameModes.join(","))) return "custom";
@@ -189,18 +193,18 @@ const defaultTournamentForm = {
   name: "",
   image_url: "",
   banner_url: "",
-  game_id: "bo7",
+  game_id: "mw4",
   game_map_drafts: {},
-  custom_game_modes: ["hp", "snd"],
+  custom_game_modes: ["hp", "hijacked", "snd"],
   game_mode: "Best of 3",
-  game_mode_set: "cdl_var",
+  game_mode_set: "mw4",
   team_size: "2v2",
   entry_fee: "0",
   entry_type: "free",
   prize_pool: "0",
   first_place_prize: "0",
   second_place_prize: "0",
-  ...tournamentMapForm({ game_id: "bo7" }),
+  ...tournamentMapForm({ game_id: "mw4" }),
   max_teams: "8",
   bracket_type: "single_elimination",
   status: "open",

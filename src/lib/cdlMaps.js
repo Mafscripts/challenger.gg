@@ -1,6 +1,8 @@
+import { MW4_MAP_NAMES, mw4MapImage } from "./mw4.js";
 // Shared map artwork used by every match room. Keep this name-based so maps
 // stored in older matches automatically receive the current artwork.
 export const MAP_IMAGES = {
+  ...Object.fromEntries(MW4_MAP_NAMES.map((name) => [name.toLowerCase().replace(/[^a-z0-9]/g, ""), mw4MapImage(name)])),
   hacienda: "/assets/maps/hacienda.jpg",
   gridlock: "/assets/maps/gridlock.jpg",
   raid: "/assets/maps/raid.jpg",

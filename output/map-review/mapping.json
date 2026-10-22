@@ -1,0 +1,101 @@
+{
+  "maps": [
+    {
+      "number": 1,
+      "name": "Cachette",
+      "file": "01-cachette.png",
+      "source": "c559f876-28a3-402b-b692-3e91fae977f2",
+      "sha256": "3f277a9d2605333c3537df6d40e806bac05682ec55c4b04ad62099784ab2a9dd"
+    },
+    {
+      "number": 2,
+      "name": "Café",
+      "file": "02-cafe.png",
+      "source": "8ee48f76-6f5f-4abf-b7e7-d0891e9fcc30",
+      "sha256": "980549dc5dafcb104f69e929a1a1ae61999706a4748f0e40fb0d519f77e91d17"
+    },
+    {
+      "number": 3,
+      "name": "Coal",
+      "file": "03-coal.png",
+      "source": "626c98b2-8ff4-4297-9751-3a3e9252064f",
+      "sha256": "2b0f9d25f906b6f4836b4320fcfbbdb18c5135617ddad04d1d1bb117021abc05"
+    },
+    {
+      "number": 4,
+      "name": "Forest",
+      "file": "04-forest.png",
+      "source": "fe35ab3a-6ee3-487f-87e0-83e809ff1eb9",
+      "sha256": "36bd5e19a7395f4d05e56156349e04c83ab77f414cf0bc4eb0fda6105ffd1cb6"
+    },
+    {
+      "number": 5,
+      "name": "Farmland / Imjin — naam controleren",
+      "file": "05-farmland-imjin-check.png",
+      "source": "53959abc-9cbf-42b6-8201-386537401d75",
+      "sha256": "3c1b107b66d37bb3f0a24a30ecc40ac23c9615f3f642a47dcd8dfb70ac24daab"
+    },
+    {
+      "number": 6,
+      "name": "Kill Block",
+      "file": "06-kill-block.png",
+      "source": "60a2069b-e810-43d9-97d7-546e44051edd",
+      "sha256": "73f872f3971279b5c7e728ba74a7c4f47f013bbf8c9d4949ea7a8091b6c0692f"
+    },
+    {
+      "number": 7,
+      "name": "Library",
+      "file": "07-library.png",
+      "source": "047b3681-2375-439f-95d2-2f67ef6a162b",
+      "sha256": "8e212c7c7a745c54dfb21ee71281c5ef83f4bd6c7909f39f8b3040df707c876b"
+    },
+    {
+      "number": 8,
+      "name": "Lithium",
+      "file": "08-lithium.png",
+      "source": "e0ccd69b-55db-49ea-a00e-23aa6e6d7c00",
+      "sha256": "c0812dfbaf6444bb171ae1bc51d350a4b536a6cf13a14e51f35974cfd0b02173"
+    },
+    {
+      "number": 9,
+      "name": "Lotus",
+      "file": "09-lotus.png",
+      "source": "a0497a68-0c8e-4a91-8a62-a3e9d7d7e7ea",
+      "sha256": "bd27541a2e49d4492f208e9661e472e09236372ef8f5ff7a9121bffd4fba43c8"
+    },
+    {
+      "number": 10,
+      "name": "Mumbai",
+      "file": "10-mumbai.png",
+      "source": "6c716f2f-90da-4295-a3b1-89f10a479f7a",
+      "sha256": "d351d5dc33c7fa26c63f372bf4c4e4260ce9ac853df0fe58c3a3e2a7ba1d60b0"
+    },
+    {
+      "number": 11,
+      "name": "Munition",
+      "file": "11-munition.png",
+      "source": "620bb924-f99d-43c4-a1fe-122bf2b82b6c",
+      "sha256": "6e03907cf2a62ef83cbbc23c058ae14c82c05a69ede44ef1901b78d86f7c49b4"
+    },
+    {
+      "number": 12,
+      "name": "Nautical",
+      "file": "12-nautical.png",
+      "source": "149e5504-0fe4-40d6-8dc1-f4ca93a6dd59",
+      "sha256": "b70265bb4417576ef3c7050b5ac73b71a02eec6e645a8d2b2c087a137765dfbb"
+    }
+  ],
+  "duplicates": [
+    {
+      "a": "047b3681-2375-439f-95d2-2f67ef6a162b",
+      "b": "93c92ba0-9f7f-4ac3-a94d-6622d4eed907",
+      "identical": true
+    },
+    {
+      "a": "53959abc-9cbf-42b6-8201-386537401d75",
+      "b": "8b93a8ae-6222-4c43-a02c-5117d259538d",
+      "identical": true
+    }
+  ],
+  "note": "13 names supplied, 12 distinct images. Confirm Imjin versus Farmland for silo image before publishing."
+}

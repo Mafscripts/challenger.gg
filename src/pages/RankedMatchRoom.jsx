@@ -1,3 +1,4 @@
+import { storedGameId } from "@/lib/mw4";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -451,7 +452,7 @@ function RankedMatchRoomView() {
 
     const [userRows, statsRows, profileRows] = await Promise.all([
       base44.entities.User.getFresh(userId).then((row) => row).catch(() => null),
-      base44.entities.RankedStats.filterFresh({ user_id: userId }).catch(() => []),
+      base44.entities.RankedStats.filterFresh({ user_id: userId, game_id: storedGameId(match) }).catch(() => []),
       base44.entities.PlayerProfile.filterFresh({ user_id: userId }, "-created_date", 1).catch(() => []),
     ]);
     const stats = statsRows?.[0] || {};

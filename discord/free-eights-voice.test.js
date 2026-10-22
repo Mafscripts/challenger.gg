@@ -198,8 +198,8 @@ test("BO7, BO6 and MW3 retain isolated waiting/team voices and cancellation clea
   for (const state of [states[0], states[2]]) for (const id of Object.values(state.channels)) assert.equal(f.channels.has(id), true);
 });
 
-test("terminal BO7, BO6 and MW3 updates return both teams before slow channel deletion without scanning unrelated matches", async () => {
-  for (const game_id of ["bo7", "bo6", "mw3"]) for (const status of ["cancelled", "completed"]) {
+test("terminal MW4 and legacy game updates return both teams before slow channel deletion without scanning unrelated matches", async () => {
+  for (const game_id of ["mw4", "bo7", "bo6", "mw3"]) for (const status of ["cancelled", "completed"]) {
     const f = fixture(2);
     f.match.metadata.game_id = game_id;
     await f.sync();

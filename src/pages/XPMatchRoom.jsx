@@ -1,3 +1,4 @@
+import { storedGameId } from "@/lib/mw4";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -7,9 +8,7 @@ import {
   AlertCircle,
   Check,
   Flame,
-  Flag,
   Percent,
-  RefreshCw,
   Swords,
   ShieldCheck,
   Ticket,
@@ -447,7 +446,7 @@ function XPMatchRoomView() {
 
     const [userRows, statsRows, profileRows] = await Promise.all([
       base44.entities.User.getFresh(userId).then((row) => row).catch(() => null),
-      base44.entities.XPStats.filterFresh({ user_id: userId }, "-created_date", 1).catch(() => []),
+      base44.entities.XPStats.filterFresh({ user_id: userId, game_id: storedGameId(match) }, "-created_date", 1).catch(() => []),
       base44.entities.PlayerProfile.filterFresh({ user_id: userId }, "-created_date", 1).catch(() => []),
     ]);
     const stats = statsRows?.[0] || {};

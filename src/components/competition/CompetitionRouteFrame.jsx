@@ -19,7 +19,7 @@ export default function CompetitionRouteFrame({ children }) {
     setRegistered(current => current?.key === key && Object.keys(props).every(field => current.props[field] === props[field])
       ? current : { key, props });
   }, []);
-  const header = registered?.key === routeKey ? registered.props : { mode, gameId: params.get("game") || "bo7", playerCount: null };
+  const header = registered?.key === routeKey ? registered.props : { mode, gameId: params.get("game") || "mw4", playerCount: null };
   const shownHeader = upcoming ? {
     ...header, titleOverride: undefined, eyebrowOverride: undefined, descriptionOverride: "Browse upcoming events, compare entry requirements and find your next tournament.",
     playerCount: events.data?.length ?? null,

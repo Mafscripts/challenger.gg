@@ -127,15 +127,15 @@ export default function PublicHomeOverview() {
             ))}
           </div>
           <div className="home-hero-copy relative z-10 flex max-w-2xl flex-col justify-center px-6 sm:px-10 lg:px-14">
-            <span className="landing-copy-reveal landing-copy-delay-1 inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> MW4 // Next deployment</span>
+            <span className="landing-copy-reveal landing-copy-delay-1 inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> MW4 // Live now</span>
             <h1 className="mt-5 font-heading text-4xl font-black uppercase leading-[.95] text-white sm:text-5xl">
               <span className="landing-title-reveal landing-copy-delay-2 block">Modern Warfare</span>
               <span className="landing-title-reveal landing-copy-delay-3 block text-orange">4 // The next chapter</span>
             </h1>
-            <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">A new battlefield. The same competitive edge. Your Modern Warfare 4 Free 8s leaderboard is ready for the next chapter. Keep your squad sharp in Black Ops 7 while MW4 gets ready.</p>
+            <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">A new battlefield. The same competitive edge. Your Modern Warfare 4 Free 8s leaderboard is ready for the next chapter. MW4 is live. Play Hardpoint, Hijacked and Search & Destroy across twelve maps.</p>
             <Mw4SeasonSignal className="landing-copy-reveal landing-copy-delay-5 mt-5" />
             <div className="landing-copy-reveal landing-copy-delay-5 mt-5 flex flex-wrap gap-3">
-              <Link to={protectedHref("/ranked/8s?game=mw4")} className="mw4-primary-cta inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> Explore MW4 Free 8s <ArrowRight className="h-4 w-4" /></Link>
+              <Link to={protectedHref("/ranked/8s?game=mw4")} className="mw4-primary-cta inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> Play MW4 Free 8s <ArrowRight className="h-4 w-4" /></Link>
               {!isAuthenticated && <Link to="/register" className="home-primary-cta">Sign up free</Link>}
             </div>
           </div>

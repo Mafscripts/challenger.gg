@@ -1,3 +1,4 @@
+import { hasMw4LaunchPools } from "../src/lib/mw4.js";
 import crypto from "node:crypto";
 import sharp from "sharp";
 import { DEFAULT_EIGHTS_GAMES, DEFAULT_EIGHTS_GAME, eightsGameId, eightsGameName, withMw4Preview } from "../src/lib/freeEightsGames.js";
@@ -44,7 +45,8 @@ export function validateEightsGames(input) {
     return { id: id(game.id, "Game"), name: label(game.name, "Game name"), number: game.number ? label(game.number, "Game number", 8) : "", color: ["green", "yellow"].includes(game.color) ? game.color : "orange", enabled: game.enabled !== false, modes, formats };
   });
   unique(games, "game");
-  if (!games.some((game) => game.id === DEFAULT_EIGHTS_GAME)) fail("Keep Black Ops 7 for existing rooms");
+  if (games.some((game) => game.id === "mw4" && game.enabled && !hasMw4LaunchPools(game))) fail("MW4 requires exactly the twelve selected maps for Hardpoint, Hijacked and Search & Destroy");
+  if (!games.some((game) => game.id === "bo7")) fail("Keep Black Ops 7 for existing rooms");
   if (!games.some((game) => game.enabled)) fail("Enable at least one game");
   return games;
 }
@@ -64,7 +66,7 @@ export async function saveEightsGames(db, input, adminId, version) {
   });
 }
 export function eightsLobbySettings(games, body) {
-  const game = games.find((row) => row.id === eightsGameId(body.game_id) && row.enabled);
+  const game = games.find((row) => row.id === eightsGameId(body.game_id || DEFAULT_EIGHTS_GAME) && row.enabled);
   if (!game) fail("This Free 8s game is unavailable");
   const format = game.formats.find((row) => row.id === (body.series_format || "cdl_bo3"));
   if (!format) fail("Select a configured series format");

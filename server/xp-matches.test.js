@@ -13,7 +13,11 @@ function fixture() {
   const copy = (value) => structuredClone(value);
   const tx = {
     $executeRaw: async () => 1,
-    xPMatch: { findUnique: async () => copy(state.match), update: async ({ data }) => {
+    xPMatch: { findMany: async () => state.stats.map((row) => ({ id: `historic-${row.id}`, metadata: {
+      game_id: row.metadata.game_id, status: "completed", match_type: "xp", team_size: "1v1", host_id: row.metadata.user_id,
+      challenger_id: "historic-opponent", winner_id: row.metadata.user_id,
+      xp_changes: { [row.metadata.user_id]: { won: true, delta: row.metadata.total_xp } },
+    } })), findUnique: async () => copy(state.match), update: async ({ data }) => {
       state.match.metadata = copy(data.metadata); return copy(state.match);
     } },
     xPStats: { findMany: async () => copy(state.stats), update: async ({ where, data }) => {
@@ -95,7 +99,7 @@ test("matching captain reports award every roster member exactly once", async ()
 
 test("a result uses frozen strength and never reduces XP below zero", async () => {
   const f = fixture();
-  f.state().match.metadata.xp_strength_snapshot = xpMatchStrength(roster(), { a: 4000, b: 4000, c: 0, d: 0 });
+  f.state().match.metadata.xp_strength_snapshot = { ...xpMatchStrength(roster(), { a: 4000, b: 4000, c: 0, d: 0 }), rating_source: "xp_matches" };
   f.state().stats[0].metadata.total_xp = 5;
   f.state().stats[1].metadata.total_xp = 5000;
   const input = { xp_match_id: "match", team_alpha_score: 1, team_bravo_score: 2 };

@@ -168,7 +168,7 @@ export function CompetitionHeaderView({ mode = "xp", playerCount, action, classN
   );
 }
 
-export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription, gameId = "bo7", competitionTitle, headerIntro, standingsContent }) {
+export default function CompetitionLadder({ mode = "xp", currentUser, openCount = 0, action, matchfinder, headerTitle, headerEyebrow, headerDescription, gameId = "mw4", competitionTitle, headerIntro, standingsContent }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user: authenticatedUser } = useAuth();

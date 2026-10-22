@@ -13,22 +13,18 @@ import publicRoutes from "./routes/public.js";
 import { prisma } from "./prisma.js";
 import { signUser } from "./auth.js";
 
-test("MW4 preview preserves stored games and cannot create lobbies without configured pools", async () => {
-  const stored = structuredClone(DEFAULT_EIGHTS_GAMES);
-  const games = await loadEightsGames({ mapPool: { findUnique: async () => ({ metadata: { games: stored } }) } });
+test("MW4 launch upgrades the empty preview, preserves other games and enables complete map pools", async () => {
+  const stored = structuredClone(DEFAULT_EIGHTS_GAMES.filter((game) => game.id !== "mw4"));
+  const preview = { id: "mw4", name: "Modern Warfare", number: "4", color: "yellow", enabled: false, modes: [], formats: [] };
+  const games = await loadEightsGames({ mapPool: { findUnique: async () => ({ metadata: { games: [preview, ...stored] } }) } });
   assert.equal(games[0].id, "mw4");
-  assert.equal(games[0].color, "yellow");
-  assert.equal(games[0].enabled, false);
+  assert.equal(games[0].enabled, true);
   assert.deepEqual(games.slice(1), stored);
-  assert.deepEqual(stored, DEFAULT_EIGHTS_GAMES);
   assert.deepEqual(validateEightsGames(games), games);
-  assert.equal(withMw4Preview(games).filter(row => row.id === "mw4").length, 1);
-  assert.throws(() => eightsLobbySettings(games, { game_id: "mw4" }), /unavailable/);
-  assert.throws(() => validateEightsGames(games.map(row => row.id === "mw4" ? { ...row, enabled: true } : row)), /modes/);
-  const configured = { ...structuredClone(DEFAULT_EIGHTS_GAMES[0]), id: "mw4", name: "Modern Warfare", number: "4", color: "yellow" };
-  const ready = withMw4Preview([...stored, configured]);
-  assert.equal(validateEightsGames(ready)[0].color, "yellow");
-  assert.equal(eightsLobbySettings(ready, { game_id: "mw4" }).game_id, "mw4");
+  assert.equal(withMw4Preview(games).filter((row) => row.id === "mw4").length, 1);
+  assert.equal(eightsLobbySettings(games, {}).game_id, "mw4");
+  assert.deepEqual(games[0].modes.map((mode) => mode.id), ["hp", "hijacked", "snd"]);
+  for (const mode of games[0].modes) assert.equal(mode.maps.length, 12);
 });
 
 test("defaults preserve BO7 and contain the exact supplied BO6/MW3 pools with artwork", async () => {
@@ -43,7 +39,7 @@ test("defaults preserve BO7 and contain the exact supplied BO6/MW3 pools with ar
 });
 test("server settings override forged best-of, team size, map pools and names for all games", () => {
   for (const game of DEFAULT_EIGHTS_GAMES) for (const format of game.formats) {
-    const settings = eightsLobbySettings(DEFAULT_EIGHTS_GAMES, { game_id: game.id, series_format: format.id, best_of: 99, team_size: "1v1", game_config: { modes: [] }, series_mode_ids: ["fake"] });
+    const settings = eightsLobbySettings(DEFAULT_EIGHTS_GAMES, { game_id: game.id, series_format: format.id, best_of: 99, team_size: "4v4", game_config: { modes: [] }, series_mode_ids: ["fake"] });
     assert.equal(settings.team_size, "4v4"); assert.equal(settings.max_players, 8);
     assert.equal(settings.best_of, format.modes.length); assert.deepEqual(settings.series_mode_ids, format.modes);
     assert.deepEqual(settings.game_config, game);
@@ -61,7 +57,7 @@ test("custom game modes support mixed BO3 and BO1; stored room snapshot survives
   games.push({ id: "custom", name: "New game", number: "", color: "green", enabled: true, modes: [{ id: "capture", name: "Capture The Flag", maps: [{ name: "Arena", image: "https://example.com/arena.webp" }] }], formats: [{ id: "ctf_1", name: "CTF BO1", modes: ["capture"] }, { id: "ctf_3", name: "CTF BO3", modes: ["capture", "capture", "capture"] }] });
   validateEightsGames(games);
   const match = eightsLobbySettings(games, { game_id: "custom", series_format: "ctf_3" });
-  games[3].modes[0].maps[0].name = "Replacement";
+  games.find((game) => game.id === "custom").modes[0].maps[0].name = "Replacement";
   assert.deepEqual(generateEightsSeries(match).map((map) => map.name), ["Arena", "Arena", "Arena"]);
   assert.equal(generateEightsSeries(eightsLobbySettings(games, { game_id: "custom", series_format: "ctf_1" })).length, 1);
 });
@@ -109,4 +105,14 @@ test("admin configuration is versioned, audited and protected; normalized image 
   assert.equal((await fetch(`${base}/public/free-eights-games`).then(r=>r.json())).version,result.version);
   assert.equal((await post('user','createWager',{match_type:'8s',game_id:'unknown'})).status,200); // Activision gate remains first.
   await assert.rejects(uploadEightsMapImage(prisma, 'data:image/svg+xml;base64,PHN2Zz4='), /PNG/);
+});
+
+
+test("stale MW4 Library pools are replaced and cannot be saved as launch settings", async () => {
+  const games = structuredClone(DEFAULT_EIGHTS_GAMES);
+  const mw4 = games.find((game) => game.id === "mw4");
+  mw4.modes[0].maps.push({ name: "Library", image: "" });
+  assert.throws(() => validateEightsGames(games), /exactly the twelve/);
+  const loaded = await loadEightsGames({ mapPool: { findUnique: async () => ({ metadata: { games } }) } });
+  assert.ok(loaded[0].modes.every((mode) => mode.maps.length === 12 && !mode.maps.some((map) => map.name === "Library")));
 });

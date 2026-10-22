@@ -1,3 +1,4 @@
+import { storedGameId } from "../src/lib/mw4.js";
 import { loadRewardBonuses } from "./competition-rewards.js";
 import { serializeRow } from "./entity.js";
 import { readXPParty } from "./xp-teams.js";
@@ -15,16 +16,16 @@ const error = (message) => ({ success: false, error: message });
 const nameFor = (user) => user?.display_name || user?.full_name || user?.username || "Player";
 const stamp = () => new Date().toISOString();
 
-export async function readXPLedger(db) {
+export async function readXPLedger(db, gameId = null) {
   const [rows, completed] = await Promise.all([
     db.xPStats.findMany({ orderBy: { created_date: "desc" }, select: { id: true, metadata: true } }),
     db.xPMatch.findMany({ where: field("status", "completed"), select: { id: true, metadata: true, created_date: true } }),
   ]);
-  return { rows, completed };
+  return { rows: gameId ? rows.filter((row) => storedGameId(row) === gameId) : rows, completed: gameId ? completed.filter((row) => storedGameId(row) === gameId) : completed };
 }
 
-export async function getXPStandings(db, ledger) {
-  const { rows, completed } = ledger || await readXPLedger(db);
+export async function getXPStandings(db, ledger, gameId = null) {
+  const { rows, completed } = ledger || await readXPLedger(db, gameId);
   const records = buildXPMatchRecords(rows, completed);
   const latest = new Map();
   for (const row of rows) {
@@ -44,7 +45,7 @@ export async function getXPMatchPlayerRanks(db, matchId) {
   const row = await db.xPMatch.findUnique({ where: { id: matchId }, select: { metadata: true } });
   if (!row) return error("XP match not found");
   const roster = new Set([...xpMatchRoster(row.metadata, "alpha"), ...xpMatchRoster(row.metadata, "bravo")]);
-  const standings = await getXPStandings(db);
+  const standings = await getXPStandings(db, null, storedGameId(row));
   const ranks = Object.fromEntries([...roster].map((id) => [id, null]));
   const tpRanks = Object.fromEntries([...roster].map((id) => [id, tpRank()]));
   standings.forEach((player, index) => {
@@ -75,8 +76,8 @@ async function partyConflict(tx, ids, excludeId) {
   return null;
 }
 
-async function loadStats(tx, ids) {
-  const rows = await tx.xPStats.findMany({ where: { OR: ids.map((id) => field("user_id", id)) }, orderBy: { created_date: "desc" } });
+async function loadStats(tx, ids, gameId = "bo7") {
+  const rows = (await tx.xPStats.findMany({ where: { OR: ids.map((id) => field("user_id", id)) }, orderBy: { created_date: "desc" } })).filter((row) => storedGameId(row) === gameId);
   const byUser = new Map();
   for (const row of rows) if (!byUser.has(row.metadata.user_id)) byUser.set(row.metadata.user_id, row);
   const completed = await tx.xPMatch.findMany({ where: { AND: [field("status", "completed"), { OR: ids.flatMap(id => [
@@ -84,7 +85,7 @@ async function loadStats(tx, ids) {
     { metadata: { path: ["team_alpha_player_ids"], array_contains: [id] } },
     { metadata: { path: ["team_bravo_player_ids"], array_contains: [id] } },
   ]) }] }, select: { id: true, metadata: true, created_date: true } });
-  const records = buildXPMatchRecords(rows, completed);
+  const records = buildXPMatchRecords(rows, completed.filter((row) => storedGameId(row) === gameId));
   for (const id of ids) {
     const stored = byUser.get(id), record = records.get(id) || emptyXPMatchRecord();
     byUser.set(id, { ...stored, metadata: { ...stored?.metadata, ...record, xp_source: "xp_matches",
@@ -95,7 +96,7 @@ async function loadStats(tx, ids) {
 
 async function captureStrength(tx, match) {
   const ids = [...xpMatchRoster(match, "alpha"), ...xpMatchRoster(match, "bravo")];
-  const stats = await loadStats(tx, ids);
+  const stats = await loadStats(tx, ids, storedGameId(match));
   return { ...xpMatchStrength(match, Object.fromEntries(ids.map((id) => [id, stats.get(id)?.metadata?.total_xp]))), rating_source: "xp_matches" };
 }
 
@@ -303,12 +304,12 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
       return { success: true, status: saved.status, match: saved };
     }
     const ids = [...xpMatchRoster(match, "alpha"), ...xpMatchRoster(match, "bravo")];
-    let stats = await loadStats(tx, ids);
+    let stats = await loadStats(tx, ids, storedGameId(match));
     // Lock existing progression rows before reading balances used for the update.
     for (const statsId of [...stats.values()].map((entry) => entry.id).filter(Boolean).sort()) {
       await tx.$executeRaw`SELECT id FROM "XPStats" WHERE id = ${statsId} FOR UPDATE`;
     }
-    stats = await loadStats(tx, ids);
+    stats = await loadStats(tx, ids, storedGameId(match));
     const users = await tx.user.findMany({ where: { id: { in: ids } } });
     const usersById = new Map(users.map((user) => [user.id, user]));
     if (users.length !== ids.length) return error("An XP match player no longer exists");
@@ -331,7 +332,7 @@ export async function submitXPMatchResult(db, actor, input, staffOverride = fals
       const after = Math.max(0, before + (won ? outcome.change + itemBonus : -outcome.change));
       const delta = after - before;
       const level = Math.floor(after / 1000) + 1;
-      const metadata = { ...current, user_id: userId, username: nameFor(usersById.get(userId)),
+      const metadata = { ...current, game_id: storedGameId(match), user_id: userId, username: nameFor(usersById.get(userId)),
         total_xp: after, current_xp: after % 1000, level, xp_to_next_level: 1000,
         weekly_xp: Math.max(0, Number(current.weekly_xp || 0) + delta),
         wins: Number(current.wins || 0) + (won ? 1 : 0), losses: Number(current.losses || 0) + (won ? 0 : 1),

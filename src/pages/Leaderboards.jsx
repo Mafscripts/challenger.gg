@@ -65,7 +65,7 @@ export default function Leaderboards() {
   const [xpFormat, setXPFormat] = useRouteSection("xp_format", "global", ["global", "solo", "duos", "teams"]);
   const seasonView = searchParams.get("view") === "season";
   const formatXP = activeTab === "xp" && xpFormat !== "global";
-  const [eightsGame, setEightsGame] = useState("bo7");
+  const [eightsGame, setEightsGame] = useState("mw4");
   const [challengeKind, setChallengeKind] = useState("team");
   const gamesQuery = useFreeEightsGames(activeTab === "eights");
   const games = gamesQuery.data?.games?.length ? gamesQuery.data.games : DEFAULT_EIGHTS_GAMES;
@@ -81,14 +81,14 @@ export default function Leaderboards() {
     queryFn: () => loadLeaderboardPlayers(userOrder),
     enabled: Boolean(user?.id) && !seasonView,
   });
-  const hasStandaloneStats = !seasonView && !formatXP && !["tournaments", "wagers"].includes(activeTab);
+  const hasStandaloneStats = !seasonView && !formatXP && activeTab !== "wagers";
   const standingsQuery = useQuery({
     ...leaderboardQueryOptions,
     queryKey: ["competition-standings", user?.id, selectedTab.mode, activeTab === "eights" ? eightsGame : activeTab === "challenge" ? challengeKind : "all"],
     queryFn: async () => {
-      if (activeTab === "elo") return base44.entities.RankedStats.filterFresh({}, "-elo", 500);
-      const name = { xp: "getXPStandings", eights: "getFreeEightsStandings", money8s: "getMoneyEightsStandings", challenge: "getChallengeStandings" }[activeTab];
-      const response = await base44.functions.invoke(name, activeTab === "eights" ? { game_id: eightsGame } : activeTab === "challenge" ? { kind: challengeKind } : {});
+      if (activeTab === "elo") return (await base44.functions.invoke("getRankedStandings", { game_id: "mw4" })).data?.rows || [];
+      const name = { xp: "getXPStandings", eights: "getFreeEightsStandings", money8s: "getMoneyEightsStandings", challenge: "getChallengeStandings", tournaments: "getTournamentStandings" }[activeTab];
+      const response = await base44.functions.invoke(name, activeTab === "eights" ? { game_id: eightsGame } : activeTab === "challenge" ? { kind: challengeKind } : { game_id: "mw4" });
       if (!response.data?.success) throw new Error(response.data?.error || "Standings could not be loaded.");
       return response.data.rows || [];
     },
@@ -132,7 +132,7 @@ export default function Leaderboards() {
         .sort((a, b) => b.value - a.value);
     } else {
       const tournaments = activeTab === "tournaments";
-      entries = users.map((row) => {
+      entries = (tournaments ? stats.map((row) => ({ ...usersById.get(String(row.user_id)), ...row, id: row.user_id })) : users).map((row) => {
         const value = Number((tournaments ? row.tournament_wins : row.total_wager_earnings) || 0);
         return { ...player(row), value, display: `${tournaments ? "" : "$"}${value.toLocaleString()}`, tier: row.rank || "Unranked", streak: Number(row.current_win_streak || 0) };
       }).sort((a, b) => b.value - a.value);

@@ -10,7 +10,7 @@ import LeaderboardPagination from "@/components/ui/LeaderboardPagination";
 import XPFormatSelect from "./XPFormatSelect";
 import useRouteSection from "@/hooks/useRouteSection";
 const labels = { xp: "XP Matches", "xp:solo": "XP Solo", "xp:duos": "XP Duos", "xp:teams": "XP Teams", ranked: "Ranked", money8s: "Money 8s", wagers: "Cash Matches", challenge: "Challenge a Team" };
-export default function RewardSeasonBoard({ mode, gameId = "bo7", region = "Global", category = "global" }) {
+export default function RewardSeasonBoard({ mode, gameId = "mw4", region = "Global", category = "global" }) {
   const { user } = useAuth();
   const [xpFormat, setXPFormat] = useRouteSection("season_format", category, ["global", "solo", "duos", "teams"]);
   const ladder = mode === "eights" ? `free8s:${gameId}` : mode === "xp" && xpFormat !== "global" ? `xp:${xpFormat}` : mode;

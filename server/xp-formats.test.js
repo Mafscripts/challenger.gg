@@ -120,6 +120,6 @@ test("team-page XP and the format ladder use the same score ledger", async () =>
   const matches = [completed("five", 5, 20)];
   const teams = [{ id: "five-a", metadata: { team_type: "xp", is_active: true, roster_size: 5 } }];
   const db = { xPMatch: { findMany: async () => matches }, team: { findMany: async () => teams } };
-  const summary = await getXPTeamsSummary(db, ["five-a"]);
+  const summary = await getXPTeamsSummary(db, ["five-a"], "bo7");
   assert.deepEqual(summary["five-a"], buildXPTeamStandings(matches, teams, "teams")[0]);
 });

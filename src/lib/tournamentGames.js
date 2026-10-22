@@ -1,25 +1,26 @@
-import { DEFAULT_EIGHTS_GAMES, eightsGameName } from "./freeEightsGames.js";
+import { MW4_MAP_NAMES } from "./mw4.js";
+import { DEFAULT_EIGHTS_GAMES, eightsGameName, withMw4Preview } from "./freeEightsGames.js";
 import { getMapImage } from "./cdlMaps.js";
 
 export const TOURNAMENT_MODES = [
   { id: "snd", name: "Search & Destroy" },
   { id: "hp", name: "Hardpoint" },
+  { id: "hijacked", name: "Hijacked" },
   { id: "control", name: "Control" },
   { id: "overload", name: "Overload" },
 ];
 
 export const TOURNAMENT_GAMES = [
-  ...DEFAULT_EIGHTS_GAMES.map((game) => ({
+  ...withMw4Preview(DEFAULT_EIGHTS_GAMES).map((game) => ({
     id: game.id,
     name: eightsGameName(game),
     pools: Object.fromEntries(TOURNAMENT_MODES.map(({ id }) => [id,
       game.modes.find((mode) => mode.id === id)?.maps.map((map) => map.name) || [],
     ])),
   })),
-  { id: "mw4", name: "Modern Warfare 4", pools: { snd: [], hp: [], control: [], overload: [] } },
 ];
 // Preserve the existing tournament pool for older BO7 events.
-TOURNAMENT_GAMES[0].pools.snd = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
+TOURNAMENT_GAMES.find((game) => game.id === "bo7").pools.snd = ["Hacienda", "Gridlock", "Raid", "Scar", "Den", "Sake", "Colossus"];
 
 export function tournamentGameId(tournament = {}) {
   if (tournament.game_id) return String(tournament.game_id).toLowerCase();
@@ -44,6 +45,7 @@ export function parseTournamentMapList(value, fallback = []) {
 }
 
 export function tournamentMapPools(tournament = {}) {
+  if (tournamentGameId(tournament) === "mw4") return { hp: [...MW4_MAP_NAMES], hijacked: [...MW4_MAP_NAMES], snd: [...MW4_MAP_NAMES], control: [], overload: [] };
   const defaults = TOURNAMENT_GAMES.find((game) => game.id === tournamentGameId(tournament))?.pools || {};
   return Object.fromEntries(TOURNAMENT_MODES.map(({ id }) => [id, parseTournamentMapList(
     tournament.map_pools?.[id] ?? tournament[`${id}_map_pool`] ?? tournament[`${id}_maps`]
@@ -66,7 +68,7 @@ export function switchTournamentGame(form, gameId) {
   const drafts = { ...form.game_map_drafts, [form.game_id || "bo7"]: mapFields };
   return {
     ...form, game_id: gameId, game_map_drafts: drafts,
-    game_mode_set: ["bo6", "mw3", "mw4"].includes(gameId) ? "cdl_control" : "cdl_var",
+    game_mode_set: gameId === "mw4" ? "mw4" : ["bo6", "mw3"].includes(gameId) ? "cdl_control" : "cdl_var",
     ...(drafts[gameId] || tournamentMapForm({ game_id: gameId })),
   };
 }

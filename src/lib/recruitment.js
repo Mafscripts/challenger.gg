@@ -1,4 +1,5 @@
-export const recruitmentGames = [{ id: "bo7", name: "Black Ops 7" }, { id: "bo6", name: "Black Ops 6" }, { id: "mw3", name: "Modern Warfare 3" }, { id: "mw4", name: "Modern Warfare 4" }];
+const legacyRecruitmentGames = [{ id: "bo7", name: "Black Ops 7" }, { id: "bo6", name: "Black Ops 6" }, { id: "mw3", name: "Modern Warfare 3" }, { id: "mw4", name: "Modern Warfare 4" }];
+export const recruitmentGames = [legacyRecruitmentGames.find((game) => game.id === "mw4"), ...legacyRecruitmentGames.filter((game) => game.id !== "mw4")];
 export const recruitmentModes = [
   { id: "xp", name: "XP Matches", team: "xp" }, { id: "ranked", name: "Ranked", team: "ranked" },
   { id: "eights", name: "Free 8s", team: null }, { id: "money8s", name: "Money 8s", team: null },
@@ -15,4 +16,4 @@ export function recruitmentTeamFits(team, competition) {
   return Boolean(type && (team.team_type === type || (type === "xp" && team.team_type === "ranked")));
 }
 
-export const recruitmentGamesFor = (competition) => ["eights", "challenge", "tournaments"].includes(competition) ? recruitmentGames : recruitmentGames.filter((game) => game.id === "bo7");
+export const recruitmentGamesFor = (competition) => ["eights", "challenge", "tournaments"].includes(competition) ? recruitmentGames : recruitmentGames.filter((game) => game.id === "mw4");

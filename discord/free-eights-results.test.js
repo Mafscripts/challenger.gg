@@ -10,8 +10,8 @@ const completed = () => ({ match_type: "8s", status: "completed", host_id: "a", 
 const roster = (id) => Array.from({ length: 8 }, (_, i) => ({ wager_id: id, user_id: `${id}-player${i}`,
   user_name: `Player ${i + 1}`, team: i < 4 ? "host" : "challenger" }));
 
-test("Discord result names identify BO7, BO6, MW3 and configured custom games", () => {
-  for (const [game_id, name] of [[undefined, "Black Ops 7"], ["bo6", "Black Ops 6"], ["mw3", "Modern Warfare 3"], ["custom", "Custom Game"]]) {
+test("Discord result names identify MW4, legacy games and configured custom games", () => {
+  for (const [game_id, name] of [["mw4", "Modern Warfare 4"], [undefined, "Black Ops 7"], ["bo6", "Black Ops 6"], ["mw3", "Modern Warfare 3"], ["custom", "Custom Game"]]) {
     const match = { ...completed(), id: "game-result", game_id, ...(game_id === "custom" ? { game_name: name } : {}) };
     assert(freeEightsResultPayload(match, roster(match.id), "https://topfragg.gg").embeds[0].toJSON().title.includes(name));
   }

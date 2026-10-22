@@ -1,0 +1,141 @@
+{
+  "maps": [
+    {
+      "name": "Cachette",
+      "slug": "cachette",
+      "file": "images/cachette.png",
+      "source": "User supplied original image"
+    },
+    {
+      "name": "Coal",
+      "slug": "coal",
+      "file": "images/coal.png",
+      "source": "User supplied original image"
+    },
+    {
+      "name": "Kill Block",
+      "slug": "kill-block",
+      "file": "images/kill-block.png",
+      "source": "User supplied original image"
+    },
+    {
+      "name": "Lithium",
+      "slug": "lithium",
+      "file": "images/lithium.png",
+      "source": "User supplied original image"
+    },
+    {
+      "name": "Lotus",
+      "slug": "lotus",
+      "file": "images/lotus.png",
+      "source": "User supplied original image"
+    },
+    {
+      "name": "Mumbai",
+      "slug": "mumbai",
+      "file": "images/mumbai.png",
+      "source": "User supplied original image"
+    },
+    {
+      "name": "Munition",
+      "slug": "munition",
+      "file": "images/munition.png",
+      "source": "User supplied original image"
+    },
+    {
+      "name": "Nautical",
+      "slug": "nautical",
+      "file": "images/nautical.png",
+      "source": "User supplied original image"
+    },
+    {
+      "name": "Reactor U92",
+      "slug": "reactor-u92",
+      "file": "images/reactor-u92.png",
+      "source": "https://imgs.callofduty.com/content/dam/atvi/callofduty/cod-touchui/blog/body/mw4/rfl-maps-modes/MW4-RFLMAPSMODES-008.webp",
+      "extraction": {
+        "left": 600,
+        "top": 0,
+        "width": 1320,
+        "height": 775,
+        "note": "Main photo only; excludes all information panels."
+      }
+    },
+    {
+      "name": "Rooftops",
+      "slug": "rooftops",
+      "file": "images/rooftops.png",
+      "source": "https://imgs.callofduty.com/content/dam/atvi/callofduty/cod-touchui/blog/body/mw4/rfl-maps-modes/MW4-RFLMAPSMODES-009.webp",
+      "extraction": {
+        "left": 600,
+        "top": 0,
+        "width": 1320,
+        "height": 775,
+        "note": "Main photo only; excludes all information panels."
+      }
+    },
+    {
+      "name": "Sentry",
+      "slug": "sentry",
+      "file": "images/sentry.png",
+      "source": "https://imgs.callofduty.com/content/dam/atvi/callofduty/cod-touchui/blog/body/mw4/rfl-maps-modes/MW4-RFLMAPSMODES-010.webp",
+      "extraction": {
+        "left": 600,
+        "top": 0,
+        "width": 1320,
+        "height": 775,
+        "note": "Main photo only; excludes all information panels."
+      }
+    },
+    {
+      "name": "Silkworm",
+      "slug": "silkworm",
+      "file": "images/silkworm.png",
+      "source": "https://imgs.callofduty.com/content/dam/atvi/callofduty/cod-touchui/blog/body/mw4/rfl-maps-modes/MW4-RFLMAPSMODES-011.webp",
+      "extraction": {
+        "left": 600,
+        "top": 0,
+        "width": 1320,
+        "height": 775,
+        "note": "Main photo only; excludes all information panels."
+      }
+    },
+    {
+      "name": "Transit 213",
+      "slug": "transit-213",
+      "file": "images/transit-213.png",
+      "source": "https://imgs.callofduty.com/content/dam/atvi/callofduty/cod-touchui/blog/body/mw4/rfl-maps-modes/MW4-RFLMAPSMODES-012.webp",
+      "extraction": {
+        "left": 600,
+        "top": 0,
+        "width": 1320,
+        "height": 775,
+        "note": "Main photo only; excludes all information panels."
+      }
+    },
+    {
+      "name": "Shipment",
+      "slug": "shipment",
+      "file": "images/shipment.png",
+      "source": "https://imgs.callofduty.com/content/dam/atvi/callofduty/cod-touchui/blog/body/mw4/rfl-maps-modes/MW4-RFLMAPSMODES-013.webp",
+      "extraction": {
+        "left": 600,
+        "top": 0,
+        "width": 1320,
+        "height": 775,
+        "note": "Main photo only; excludes all information panels."
+      }
+    }
+  ],
+  "excluded": [
+    "Café",
+    "Forest",
+    "Imjin Farmland",
+    "Library",
+    "NYC",
+    "Smuggler",
+    "Wolves Stadium"
+  ],
+  "selection": "Keep all Core entries from user screenshots, including dual-mode Kill Block and Shipment. Do not use as an official ranked/CDL pool.",
+  "sourcePage": "https://www.callofduty.com/blog/2026/10/call-of-duty-modern-warfare-4-ready-for-launch-maps-modes"
+}

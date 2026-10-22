@@ -88,7 +88,7 @@ export default function RankedEights() {
     try {
       const currentUser = await base44.auth.me();
       const [openRows, memberships] = await Promise.all([
-        base44.entities.Wager.filterFresh({ match_type: lobbyMatchType, status: "open", matchfinder_visible: true }, "-created_date", 30),
+        base44.entities.Wager.filterFresh({ match_type: lobbyMatchType, game_id: gameId, status: "open", matchfinder_visible: true }, "-created_date", 30),
         base44.entities.WagerParticipant.filterFresh({ user_id: currentUser.id }, "-joined_date", 50),
       ]);
       const activeMemberships = (memberships || []).filter(Boolean);
@@ -106,7 +106,7 @@ export default function RankedEights() {
       moneyLoadsInFlight.current -= 1;
       setLoading(false);
     }
-  }, [isMoney, lobbyMatchType, refreshFreeOverview]);
+  }, [isMoney, lobbyMatchType, refreshFreeOverview, gameId]);
 
   useEffect(() => {
     if (!isMoney && monthKey() > EIGHTS_PRIZE_START_MONTH) {
@@ -283,7 +283,7 @@ export default function RankedEights() {
         {!isMoney && !comingSoon && <FreeEightsDiscordNotice user={user} />}
         {!isMoney && !comingSoon && <FreeEightsRankNotice user={user} />}
 
-        {(isMoney || gameId === DEFAULT_EIGHTS_GAME) && <section className={`mb-6 overflow-hidden rounded-2xl border bg-gradient-to-r via-card to-card ${isMoney ? "border-green/25 from-green/[0.11]" : "border-yellow-400/25 from-yellow-400/[0.11]"}`}>
+        {(isMoney || gameId === "bo7") && <section className={`mb-6 overflow-hidden rounded-2xl border bg-gradient-to-r via-card to-card ${isMoney ? "border-green/25 from-green/[0.11]" : "border-yellow-400/25 from-yellow-400/[0.11]"}`}>
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="flex items-start gap-4">
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${isMoney ? "border-green/25 bg-green/10 text-green" : "border-yellow-400/25 bg-yellow-400/10 text-yellow-300"}`}><Crown className="h-6 w-6" /></div>

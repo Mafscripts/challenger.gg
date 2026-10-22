@@ -1,3 +1,4 @@
+import { PRIMARY_GAME_ID, MW4_MODES } from "@/lib/mw4";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -20,11 +21,8 @@ import { xpCategoryForSize } from "@/lib/xpCategories";
 import { FreeEightsRankDialog, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
-const gameModes = [
-  { id: "snd", name: "Search & Destroy", icon: Target, description: "Best of 11 rounds", tone: "yellow" },
-  { id: "overload", name: "Overload", icon: Zap, description: "Capture and hold zones", tone: "purple" },
-  { id: "hp", name: "Hardpoint", icon: Swords, description: "First to 250 score", tone: "red" },
-];
+const gameModes = MW4_MODES.map((mode) => ({ ...mode, icon: mode.id === "snd" ? Target : mode.id === "hijacked" ? Zap : Swords,
+  description: mode.id === "hp" ? "First to 250 score" : mode.id === "snd" ? "Best of 11 rounds" : "Hijacked", tone: mode.id === "hp" ? "red" : mode.id === "snd" ? "yellow" : "purple" }));
 
 const eightsSeriesFormats = [
   { id: "cdl_bo3", name: "CDL Best of 3", gameMode: "hp", modes: ["hp", "snd", "hp"], icon: Swords, description: "Hardpoint · Search & Destroy · Hardpoint", tone: "cyan" },
@@ -80,31 +78,7 @@ function PlayRulePicker({ selectedPlayRule, onSelect, matchLabel }) {
   );
 }
 
-const mapsByMode = {
-  snd: [
-    { id: "raid", name: "Raid" },
-    { id: "shoot_house", name: "Shoot House" },
-    { id: "shoothouse", name: "Shoothouse" },
-    { id: "vacant", name: "Vacant" },
-    { id: "nuketown", name: "Nuketown" },
-    { id: "hackney_yard", name: "Hackney Yard" },
-    { id: "gun_runner", name: "Gun Runner" },
-  ],
-  overload: [
-    { id: "gaza", name: "Gaza" },
-    { id: "airstrip", name: "Airstrip" },
-    { id: "tipperary", name: "Tipperary" },
-    { id: "rivet", name: "Rivet" },
-    { id: "khandor", name: "Khandor" },
-  ],
-  hp: [
-    { id: "terminal", name: "Terminal" },
-    { id: "rust", name: "Rust" },
-    { id: "shipment", name: "Shipment" },
-    { id: "crash", name: "Crash" },
-    { id: "backlot", name: "Backlot" },
-  ],
-};
+
 
 export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig, initialSettings, xpFormat }) {
   const appliedInitial = useRef(null);
@@ -129,7 +103,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const isEights = mode === "eights";
   const isMoneyEights = mode === "money8s";
   const isEightsLobby = isEights || isMoneyEights;
-  const modeChoices = isEights && gameConfig ? gameConfig.formats.map((format) => {
+  const modeChoices = isEightsLobby && gameConfig ? gameConfig.formats.map((format) => {
     const modeNames = format.modes.map((id) => gameConfig.modes.find((mode) => mode.id === id)?.name || id);
     const repeatedMode = format.modes.length > 1 && format.modes.every((id) => id === format.modes[0]);
     return { ...format, name: format.name.replace(/\bBO(\d+)\b/gi, "Best of $1"), gameMode: format.modes[0], icon: Swords, tone: "cyan",
@@ -244,6 +218,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         
         if (isWager) {
           const response = await base44.functions.invoke('createWager', {
+            game_id: PRIMARY_GAME_ID,
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
@@ -278,6 +253,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           };
         } else if (mode === "xp") {
           const response = await base44.functions.invoke('createXPMatch', {
+            game_id: PRIMARY_GAME_ID,
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
@@ -321,6 +297,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           return;
         } else if (mode === "ranked") {
           const response = await base44.functions.invoke('createRankedMatch', {
+            game_id: PRIMARY_GAME_ID,
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
@@ -345,7 +322,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             amount: isMoneyEights ? enteredAmount : 0,
             max_players: isMoneyEights ? 8 : teamSizeObj.players,
             best_of: isEightsLobby ? selectedMode.modes.length : 1,
-            game_id: isEights ? gameConfig?.id || "bo7" : undefined,
+            game_id: gameConfig?.id || PRIMARY_GAME_ID,
             team_id: selectedTeamId || undefined,
             host_banned_map: null,
             host_banned_map_name: "",
@@ -514,9 +491,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
             <ActivisionIdNotice user={user} className="mb-5" />
             {(isWager || isMoneyEights) && <StreamRequirementNotice user={user} className="mb-5" />}
             <MatchPresetPicker
-              key={`${user?.id}:${mode}:${gameConfig?.id || "bo7"}`}
+              key={`${user?.id}:${mode}:${gameConfig?.id || PRIMARY_GAME_ID}`}
               userId={user?.id}
-              settings={{ mode, game_id: isEights ? gameConfig?.id || "bo7" : "bo7", game_mode: selectedGameMode,
+              settings={{ mode, game_id: gameConfig?.id || PRIMARY_GAME_ID, game_mode: selectedGameMode,
                 team_size: selectedTeamSize, best_of: bestOf, play_rule: selectedPlayRule }}
               choices={modeChoices}
               onApply={applyPreset}

@@ -1,3 +1,4 @@
+import { PRIMARY_GAME_ID } from "@/lib/mw4";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -31,7 +32,7 @@ export function useLeaderboardAvatars(userIds, enabled = true) {
   }).data || {};
 }
 
-export default function useCompetitionLeaderboard(mode, gameId) {
+export default function useCompetitionLeaderboard(mode, gameId = PRIMARY_GAME_ID) {
   const { user } = useAuth();
   const enabled = Boolean(user?.id);
   const userOrder = mode === "wagers" ? "-total_wager_earnings" : "-created_date";
@@ -43,11 +44,11 @@ export default function useCompetitionLeaderboard(mode, gameId) {
   });
   const standings = useQuery({
     ...leaderboardQueryOptions,
-    queryKey: ["competition-standings", user?.id, mode, mode === "eights" ? gameId : "all"],
+    queryKey: ["competition-standings", user?.id, mode, gameId],
     queryFn: async () => {
-      if (mode === "ranked") return base44.entities.RankedStats.filterFresh({}, "-elo", 500);
+      if (mode === "ranked") return (await base44.functions.invoke("getRankedStandings", { game_id: gameId })).data?.rows || [];
       const name = mode === "eights" ? "getFreeEightsStandings" : mode === "money8s" ? "getMoneyEightsStandings" : "getXPStandings";
-      const response = await base44.functions.invoke(name, mode === "eights" ? { game_id: gameId } : {});
+      const response = await base44.functions.invoke(name, { game_id: gameId });
       if (response.data?.success === false) throw new Error(response.data.error || "Standings could not be loaded.");
       return response.data?.rows || [];
     },
@@ -56,8 +57,8 @@ export default function useCompetitionLeaderboard(mode, gameId) {
   // These decorate rows and summary cards; they must not block the standings.
   const extraXP = useQuery({
     ...leaderboardQueryOptions,
-    queryKey: ["competition-standings", user?.id, "xp", "all"],
-    queryFn: async () => (await base44.functions.invoke("getXPStandings", {})).data?.rows || [],
+    queryKey: ["competition-standings", user?.id, "xp", gameId],
+    queryFn: async () => (await base44.functions.invoke("getXPStandings", { game_id: gameId })).data?.rows || [],
     enabled: enabled && ["money8s", "wagers"].includes(mode),
   });
   const tournaments = useQuery({

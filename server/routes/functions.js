@@ -1,3 +1,5 @@
+import { buildTournamentStandings } from "../tournament-standings.js";
+import { PRIMARY_GAME_ID, MW4_MAP_POOLS, storedGameId } from "../../src/lib/mw4.js";
 import { settleWagerPayout } from "../wager-payout.js";
 import { commerceAllowed } from "../commerce.js";
 import { readEightsRoster, saveEightsTeams } from "../eights-roster.js";
@@ -18,7 +20,7 @@ import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../ad
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { playerAvatarFor } from "../lib/playerAvatars.js";
-import { getLeaderboardPlayers, getLeaderboardAvatars, getFreeEightsLeaderboard } from "../leaderboard-players.js";
+import { getLeaderboardPlayers, getLeaderboardAvatars, getFreeEightsLeaderboard, getRankedLeaderboard } from "../leaderboard-players.js";
 import { readLeaderboardSnapshot, invalidateLeaderboardSnapshots } from "../leaderboard-cache.js";
 import { manageXPTeam, readXPParty, assertSingleXPTeam } from "../xp-teams.js";
 import { getXPFormatStandings } from "../xp-format-standings.js";
@@ -40,7 +42,7 @@ import { completeFreeEightsWithElo } from "../free-eights-elo.js";
 import { captureFreeEightsRewards, revertFreeEightsResult } from "../free-eights-revert.js";
 import { getFreeEightsOverview, getFreeEightsPlayerStats } from "../free-eights-reads.js";
 import { loadEightsGames, saveEightsGames, eightsLobbySettings, uploadEightsMapImage, EIGHTS_CONFIG_ID } from "../free-eights-games.js";
-import { eightsGameId, generateEightsSeries } from "../../src/lib/freeEightsGames.js";
+import { DEFAULT_EIGHTS_GAMES, eightsGameId, generateEightsSeries } from "../../src/lib/freeEightsGames.js";
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, tournamentGameId, tournamentGameName, tournamentMapImage, tournamentMapPools } from "../../src/lib/tournamentGames.js";
 import { generateBalancedFreeEightsTeams } from "../free-eights-teams.js";
 import { editEightsTeamsAsAdmin } from "../eights-admin-teams.js";
@@ -159,6 +161,8 @@ const tournamentBo1SndModes = [{ game_mode: "snd", mode: "Search and Destroy" }]
 const defaultTournamentBestOf = 3;
 const tournamentStartWindowMinutes = 15;
 const tournamentSeriesDefinitions = {
+  mw4: { label: "Hardpoint / Hijacked / Search & Destroy", games: [{ game_mode: "hp", mode: "Hardpoint" }, { game_mode: "hijacked", mode: "Hijacked" }, { game_mode: "snd", mode: "Search & Destroy" }] },
+  hijacked: { label: "Hijacked", games: Array.from({ length: 3 }, () => ({ game_mode: "hijacked", mode: "Hijacked" })) },
   bo1_snd: { label: "Search and Destroy", games: tournamentBo1SndModes },
   snd: { label: "Search and Destroy", games: tournamentSndModes },
   hp: { label: "Hardpoint", games: tournamentHpModes },
@@ -171,6 +175,7 @@ const validTournamentGameModes = new Set(TOURNAMENT_MODES.map((mode) => mode.id)
 const tournamentGameModeDetails = {
   snd: { game_mode: "snd", mode: "Search and Destroy" },
   hp: { game_mode: "hp", mode: "Hardpoint" },
+  hijacked: { game_mode: "hijacked", mode: "Hijacked" },
   overload: { game_mode: "overload", mode: "Overload" },
   control: { game_mode: "control", mode: "Control" },
 };
@@ -1148,15 +1153,15 @@ async function ensurePlayerProfile(userId) {
   });
 }
 
-async function ensureRankedStats(userId) {
+async function ensureRankedStats(userId, gameId = "bo7") {
   const user = await userFor(userId);
   if (!user) return null;
-  const existing = await firstEntity("RankedStats", { user_id: userId });
+  const existing = (await listEntities("RankedStats", { user_id: userId }, "-created_date", 500)).find((row) => storedGameId(row) === gameId);
   if (existing) return existing;
   const identity = identityFor(user);
   const season = await activeProgressionSeason(prisma, "ranked");
   return createEntity("RankedStats", {
-    user_id: userId,
+    user_id: userId, game_id: gameId,
     username: identity.username,
     elo: 0,
     wins: 0,
@@ -1189,8 +1194,8 @@ async function updateProfileOutcome(userId, didWin, eloDelta = 0) {
   });
 }
 
-async function updateRankedOutcome(userId, didWin, requestedEloDelta = null) {
-  const stats = await ensureRankedStats(userId);
+async function updateRankedOutcome(userId, didWin, requestedEloDelta = null, gameId = "bo7") {
+  const stats = await ensureRankedStats(userId, gameId);
   if (!stats) return null;
   const eloDelta = Number.isFinite(requestedEloDelta)
     ? Number(requestedEloDelta)
@@ -1207,12 +1212,12 @@ async function updateRankedOutcome(userId, didWin, requestedEloDelta = null) {
   });
 }
 
-async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
+async function applyRankedRosterRewards(winnerIds = [], loserIds = [], gameId = "bo7") {
   const changes = {};
   const winners = [...new Set(winnerIds.filter(Boolean))];
   const losers = [...new Set(loserIds.filter(Boolean))].filter((id) => !winners.includes(id));
   const allIds = [...winners, ...losers];
-  const statsEntries = await Promise.all(allIds.map(async (userId) => [userId, await ensureRankedStats(userId)]));
+  const statsEntries = await Promise.all(allIds.map(async (userId) => [userId, await ensureRankedStats(userId, gameId)]));
   const statsByUser = Object.fromEntries(statsEntries);
   const averageElo = (ids) => ids.length
     ? ids.reduce((total, userId) => total + Number(statsByUser[userId]?.elo || 0), 0) / ids.length
@@ -1231,7 +1236,7 @@ async function applyRankedRosterRewards(winnerIds = [], loserIds = []) {
     const itemBonus = didWin ? itemBonuses[userId]?.ranked_elo || 0 : 0;
     const requestedDelta = didWin ? winnerEloGain + itemBonus : -loserEloLoss;
     await updateProfileOutcome(userId, didWin, requestedDelta);
-    const after = await updateRankedOutcome(userId, didWin, requestedDelta);
+    const after = await updateRankedOutcome(userId, didWin, requestedDelta, gameId);
     await prisma.user.update({
       where: { id: userId },
       data: { current_win_streak: didWin ? { increment: 1 } : 0 },
@@ -1508,6 +1513,7 @@ function streamerMapPoolsForBody(body = {}, tournament = {}) {
     snd: normalizeMapPool(source.snd || body.snd_maps || existing.snd, tournamentSndMapPool).slice(0, 40),
     hp: normalizeMapPool(source.hp || body.hp_maps || existing.hp, tournamentHpMapPool).slice(0, 40),
     overload: normalizeMapPool(source.overload || body.overload_maps || existing.overload, tournamentOverloadMapPool).slice(0, 40),
+    hijacked: normalizeMapPool(source.hijacked || body.hijacked_maps || existing.hijacked, []).slice(0, 40),
   };
 }
 
@@ -1527,6 +1533,7 @@ function normalizeTournamentGameModes(value, fallbackGameMode = "") {
   const legacyMode = String(fallbackGameMode || "").trim().toLowerCase();
   if (["bo1_snd", "snd"].includes(legacyMode)) return ["snd"];
   if (legacyMode === "hp") return ["hp"];
+  if (["mw4", "hijacked", "hijack"].includes(legacyMode)) return legacyMode === "mw4" ? ["hp", "hijacked", "snd"] : ["hijacked"];
   if (legacyMode === "overload") return ["overload"];
   if (legacyMode === "control") return ["control"];
   if (legacyMode) return ["hp", "snd", "overload"];
@@ -1549,6 +1556,7 @@ function tournamentMapSeriesFor(gameMode, mapPools = {}, configuredGameModes = [
     .map((token) => token.trim())
     .map((token) => {
       if (["hp", "hardpoint"].includes(token)) return { game_mode: "hp", mode: "Hardpoint" };
+      if (["hijack", "hijacked"].includes(token)) return { game_mode: "hijacked", mode: "Hijacked" };
       if (token === "overload") return { game_mode: "overload", mode: "Overload" };
       if (token === "control") return { game_mode: "control", mode: "Control" };
       if (["snd", "search and destroy", "search & destroy"].includes(token)) return { game_mode: "snd", mode: "Search and Destroy" };
@@ -1910,7 +1918,7 @@ async function completeTournament(tournamentId, winnerId, winnerName, runnerUpId
     tournament_name: tournament.name,
     winner_id: winnerId,
     winner_name: winnerName,
-    user_ids: winnerUserIds,
+    user_ids: winnerUserIds, game_id: tournamentGameId(tournament),
     reward_item_ids: tournamentRewardItemIds(tournament),
     created_date: nowIso(),
   }).catch(() => null);
@@ -3467,7 +3475,7 @@ async function createStreamerTournament(req) {
   const validTeamSize = tournamentTeamSizeOptions.has(teamSize) ? teamSize : switchFormat;
   const requestedMaxTeams = Number(req.body.max_teams || 8);
   const maxTeams = Math.max(2, Math.min(64, Number.isFinite(requestedMaxTeams) ? requestedMaxTeams : 8));
-  const gameMode = String(req.body.game_mode || "snd_hp_snd");
+  const gameMode = String(req.body.game_mode || "mw4");
   const startDate = req.body.start_date ? new Date(req.body.start_date) : null;
   const description = String(req.body.description || "").trim().slice(0, 500);
 
@@ -3476,7 +3484,7 @@ async function createStreamerTournament(req) {
     title: name,
     description,
     game_mode: tournamentSeriesDefinitions[gameMode] ? gameMode : "snd_hp_snd",
-    game: "Call of Duty",
+    game: "Modern Warfare 4", game_id: PRIMARY_GAME_ID, game_modes: ["hp", "hijacked", "snd"],
     region: req.body.region || req.user.region || "global",
     team_size: validTeamSize,
     entry_fee: 0,
@@ -3488,18 +3496,14 @@ async function createStreamerTournament(req) {
     bracket_type: "single_elimination",
     status: "open",
     rules: "Streamer-hosted lobby. The streamer host moderates lobby chat. No tickets or disputes are created from this lobby.",
-    maps: streamerDefaultMapPool(),
-    map_pools: {
-      snd: tournamentSndMapPool,
-      hp: tournamentHpMapPool,
-      overload: tournamentOverloadMapPool,
-    },
+    maps: [...new Set(Object.values(MW4_MAP_POOLS).flat())],
+    map_pools: structuredClone(MW4_MAP_POOLS),
     switcheroo_enabled: true,
     switch_format: switchFormat,
     switch_entries: [],
     switch_teams: [],
     switch_bracket_generated: false,
-    streamer_maps: streamerDefaultMapPool(),
+    streamer_maps: [...new Set(Object.values(MW4_MAP_POOLS).flat())],
     start_date: startDate && Number.isFinite(startDate.getTime()) ? startDate.toISOString() : undefined,
     created_by: req.user.id,
     created_by_name: nameFor(req.user),
@@ -4466,7 +4470,8 @@ async function createTournament(req) {
   assertStaff(req, "admin");
   const tournamentBody = await normalizeTournamentPlacementTrophyFields(req.body || {});
   if (tournamentBody.game_id && !TOURNAMENT_GAMES.some((game) => game.id === tournamentBody.game_id)) return { success: false, error: "Choose a supported tournament game" };
-  tournamentBody.game_id = tournamentGameId(tournamentBody);
+  tournamentBody.game_id = tournamentBody.game_id || PRIMARY_GAME_ID;
+  if (tournamentBody.game_id === "mw4" && !tournamentBody.custom_game_modes?.length) { tournamentBody.custom_game_modes = ["hp", "hijacked", "snd"]; tournamentBody.game_mode_set = "mw4"; }
   tournamentBody.game_name = tournamentGameName(tournamentBody);
   tournamentBody.game = tournamentBody.game_name;
   tournamentBody.map_pools = tournamentMapPoolsFor(tournamentBody);
@@ -6260,7 +6265,11 @@ async function createWager(req) {
   const matchType = isEightsMatchType(requestedMatchType) ? requestedMatchType : requestedMatchType === "xp" ? "xp" : "wagers";
   const twitchError = await competitionStreamError(prisma, matchType, [req.user.id]);
   if (twitchError) return twitchError;
-  const gameSettings = matchType === "8s" ? eightsLobbySettings(await loadEightsGames(prisma), req.body) : {};
+  const gameId = String(req.body.game_id || PRIMARY_GAME_ID).toLowerCase();
+  if (!DEFAULT_EIGHTS_GAMES.some((game) => game.id === gameId)) return { success: false, error: "Unsupported game" };
+  if (!isEightsMatchType(matchType) && !matchPools(gameId)[req.body.game_mode]) return { success: false, error: "Invalid game mode" };
+  const gameSettings = isEightsMatchType(matchType) ? eightsLobbySettings(await loadEightsGames(prisma), { ...req.body, game_id: gameId, ...(matchType === "money8s" ? { team_size: "4v4" } : {}) })
+    : { game_id: gameId, game_name: gameId === "mw4" ? "Modern Warfare 4" : gameId, maps: matchPools(gameId)[req.body.game_mode] };
   const entryFee = matchType === "8s" ? 0 : money(req.body.entry_fee ?? req.body.amount);
   const discordError = freeEightsDiscordJoinError(matchType, req.userRow);
   if (discordError) return discordError;
@@ -6601,7 +6610,7 @@ async function acceptWagerUnlocked(req) {
     ? new Date(Date.now() + eightsReshuffleWindowMs(wager.match_type)).toISOString()
     : "";
   const selectedMaps = rosterFull && wager.match_type !== "8s"
-    ? (isIndividualEights ? randomEightsSeriesMaps(wager) : randomWagerMaps(wager.game_mode, wager.best_of))
+    ? (isIndividualEights ? randomEightsSeriesMaps(wager) : randomWagerMaps(wager.game_mode, wager.best_of, storedGameId(wager)))
     : [];
   const challengerIdentity = challengerIdentityAfterAccept(wager, {
     isTeamMatch,
@@ -6616,7 +6625,7 @@ async function acceptWagerUnlocked(req) {
     challenger_payment_mode: paymentMode,
     challenger_banned_map_id: "",
     challenger_banned_map_name: "",
-    maps: RANKED_MAPS_BY_MODE[wager.game_mode] || RANKED_MAPS_BY_MODE.snd,
+    maps: wager.game_config ? wager.maps : matchPools(storedGameId(wager))[wager.game_mode] || matchPools(storedGameId(wager)).snd,
     series_maps: selectedMaps.map((map) => map.name),
     series_modes: isIndividualEights ? selectedMaps.map((map) => map.mode) : wager.series_modes,
     final_map_id: selectedMaps[0]?.id || "",
@@ -7041,8 +7050,9 @@ async function leaveEightsLobby(req) {
   );
 }
 
-async function getMoneyEightsStandings() {
-  const wagers = await listEntities("Wager", { match_type: "money8s", status: "completed" }, "-match_completed_date", 500).catch(() => []);
+async function getMoneyEightsStandings(req) {
+  const gameId = req?.body?.game_id || PRIMARY_GAME_ID;
+  const wagers = (await listEntities("Wager", { match_type: "money8s", status: "completed" }, "-match_completed_date", 500).catch(() => [])).filter((row) => storedGameId(row) === gameId);
   // Fetch only rosters that can contribute to this ladder, not other lobbies.
   const participants = wagers.length ? (await prisma.wagerParticipant.findMany({
     where: { OR: wagers.map(wager => ({ metadata: { path: ["wager_id"], equals: wager.id } })) },
@@ -7665,8 +7675,15 @@ const RANKED_MAPS_BY_MODE = {
   overload: ["Scar", "Gridlock", "Den", "Exposure"],
 };
 
-function randomRankedMap(gameMode, excludedNames = []) {
-  const pool = RANKED_MAPS_BY_MODE[gameMode] || RANKED_MAPS_BY_MODE.snd;
+function matchPools(gameId) {
+  if (gameId === "mw4") return MW4_MAP_POOLS;
+  const game = DEFAULT_EIGHTS_GAMES.find((row) => row.id === gameId);
+  return game ? Object.fromEntries(game.modes.map((mode) => [mode.id, mode.maps.map((map) => map.name)])) : RANKED_MAPS_BY_MODE;
+}
+
+function randomRankedMap(gameMode, excludedNames = [], gameId = "bo7") {
+  const pools = matchPools(gameId);
+  const pool = pools[gameMode] || pools.snd;
   const excluded = new Set(excludedNames.filter(Boolean).map((name) => String(name).toLowerCase()));
   const available = pool.filter((name) => !excluded.has(name.toLowerCase()));
   const candidates = available.length > 0 ? available : pool;
@@ -7674,8 +7691,9 @@ function randomRankedMap(gameMode, excludedNames = []) {
   return { pool, name, id: name.toLowerCase().replace(/\s+/g, "_") };
 }
 
-function randomWagerMaps(gameMode, bestOf = 1) {
-  const sourcePool = [...(RANKED_MAPS_BY_MODE[gameMode] || RANKED_MAPS_BY_MODE.snd)];
+function randomWagerMaps(gameMode, bestOf = 1, gameId = "bo7") {
+  const pools = matchPools(gameId);
+  const sourcePool = [...(pools[gameMode] || pools.snd)];
   const requestedCount = Math.max(1, Number(bestOf) || 1);
   const selected = [];
 
@@ -7698,14 +7716,14 @@ function randomWagerMaps(gameMode, bestOf = 1) {
 
 function eightsSeriesModes(wager = {}) {
   const requested = Array.isArray(wager.series_modes)
-    ? wager.series_modes.map((mode) => String(mode || "").toLowerCase()).filter((mode) => ["hp", "snd"].includes(mode)).slice(0, 3)
+    ? wager.series_modes.map((mode) => String(mode || "").toLowerCase()).filter((mode) => ["hp", "snd", "hijacked"].includes(mode)).slice(0, 3)
     : [];
   if (requested.length === 3) return requested;
   return wager.series_format === "hp_bo3" ? ["hp", "hp", "hp"] : ["hp", "snd", "hp"];
 }
 
 function randomEightsSeriesMaps(wager = {}) {
-  if (wager.match_type === "8s") return generateEightsSeries(wager);
+  if (wager.game_config || wager.match_type === "8s") return generateEightsSeries(wager);
   const usedByMode = new Map();
   return eightsSeriesModes(wager).map((mode) => {
     const pool = [...(RANKED_MAPS_BY_MODE[mode] || RANKED_MAPS_BY_MODE.hp)];
@@ -7887,9 +7905,12 @@ const rankedJoinSide = (match, partySize, slotsPerTeam) => {
 };
 
 async function createRankedMatch(req) {
+  const gameId = String(req.body.game_id || PRIMARY_GAME_ID).toLowerCase();
+  if (!DEFAULT_EIGHTS_GAMES.some((game) => game.id === gameId)) return { success: false, error: "Unsupported game" };
+  const pools = matchPools(gameId);
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
-  if (!Object.prototype.hasOwnProperty.call(RANKED_MAPS_BY_MODE, req.body.game_mode)) {
+  if (!Object.prototype.hasOwnProperty.call(pools, req.body.game_mode)) {
     return { success: false, error: "Invalid ranked game mode" };
   }
   const slotsPerTeam = Math.max(1, Number.parseInt(String(req.body.team_size || "1v1").split("v")[0], 10) || 1);
@@ -7909,7 +7930,7 @@ async function createRankedMatch(req) {
     host_party_size: party.size,
     play_rule: playRule,
     best_of: 1,
-    maps: RANKED_MAPS_BY_MODE[req.body.game_mode],
+    game_id: gameId, game_name: gameId === "mw4" ? "Modern Warfare 4" : gameId, maps: pools[req.body.game_mode],
     final_map_id: "",
     final_map_name: "",
     team_alpha_player_ids: party.ids,
@@ -7988,7 +8009,7 @@ async function acceptRankedMatchUnlocked(req) {
     .filter(Boolean)
     .some((name) => name.toLowerCase() === String(match.final_map_name).toLowerCase()));
   const selected = shouldReroll
-    ? randomRankedMap(match.game_mode, [hostPreviousMap, challengerPreviousMap])
+    ? randomRankedMap(match.game_mode, [hostPreviousMap, challengerPreviousMap], storedGameId(match))
     : null;
   const deadline = match.match_start_deadline || new Date(Date.now() + 15 * 60 * 1000).toISOString();
   const updated = await updateEntity("RankedMatch", id, {
@@ -8032,9 +8053,12 @@ async function xpPartyFor(req, slotsPerTeam) {
 }
 
 async function createXPMatch(req) {
+  const gameId = String(req.body.game_id || PRIMARY_GAME_ID).toLowerCase();
+  if (!DEFAULT_EIGHTS_GAMES.some((game) => game.id === gameId)) return { success: false, error: "Unsupported game" };
+  const pools = matchPools(gameId);
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
-  if (!Object.prototype.hasOwnProperty.call(RANKED_MAPS_BY_MODE, req.body.game_mode)) {
+  if (!Object.prototype.hasOwnProperty.call(pools, req.body.game_mode)) {
     return { success: false, error: "Invalid XP game mode" };
   }
   const slotsPerTeam = Number.parseInt(String(req.body.team_size || ""), 10);
@@ -8051,7 +8075,7 @@ async function createXPMatch(req) {
     host_id: req.user.id, host_name: nameFor(req.user), challenger_id: "", challenger_name: "",
     game_mode: req.body.game_mode, game_mode_display: req.body.game_mode_display || req.body.game_mode,
     team_size: req.body.team_size, play_rule: playRule, best_of: bestOf,
-    maps: RANKED_MAPS_BY_MODE[req.body.game_mode], final_map_id: "", final_map_name: "",
+    game_id: gameId, game_name: gameId === "mw4" ? "Modern Warfare 4" : gameId, maps: pools[req.body.game_mode], final_map_id: "", final_map_name: "",
     team_bravo_player_ids: [], team_bravo_player_names: [], total_players: slotsPerTeam * 2,
     status: "open", posted_to_matchfinder: true,
     match_start_deadline: new Date(Date.now() + 15 * 60000).toISOString(), created_date: nowIso(),
@@ -8068,7 +8092,7 @@ async function acceptXPMatch(req) {
   let party;
   try { party = await xpPartyFor(req, rankedTeamSize(match)); }
   catch (error) { return { success: false, error: error.message || "Could not join with this XP party" }; }
-  const result = await joinXPMatchLobby(prisma, id, party, (mode) => randomRankedMap(mode, []));
+  const result = await joinXPMatchLobby(prisma, id, party, (mode) => randomRankedMap(mode, [], storedGameId(match)));
   if (result.success && result.room_ready) {
     const joinedMatch = result.match;
     const notifyAll = result.opponent_accepted || result.roster_full;
@@ -8182,7 +8206,7 @@ async function ensureRankedMatchMap(req) {
     previousRankedMapFor(match.host_id, match.id),
     previousRankedMapFor(match.challenger_id, match.id),
   ]);
-  const selected = randomRankedMap(match.game_mode, [hostPreviousMap, challengerPreviousMap]);
+  const selected = randomRankedMap(match.game_mode, [hostPreviousMap, challengerPreviousMap], storedGameId(match));
   const updated = await updateEntity("RankedMatch", id, {
     best_of: 1,
     maps: selected.pool,
@@ -8334,7 +8358,7 @@ async function completeRankedMatchUnlocked(req) {
     confirmed_score_date: nowIso(),
     match_completed_date: new Date().toISOString(),
   });
-  const eloChanges = await applyRankedRosterRewards(winnerIds, loserIds);
+  const eloChanges = await applyRankedRosterRewards(winnerIds, loserIds, storedGameId(match));
   const completedMatch = await updateEntity("RankedMatch", match.id, { elo_changes: eloChanges });
   await resolveOpenMatchDisputes(match.id, "Ranked match result resolved", req.user);
   await notifyUsers([...winnerIds, ...loserIds], {
@@ -8550,7 +8574,7 @@ async function adminAdjustRankedElo(req) {
   const reason = String(req.body.reason || "").trim();
   if (reason.length < 3) return { success: false, error: "A clear reason is required" };
 
-  const stats = await ensureRankedStats(target.id);
+  const stats = await ensureRankedStats(target.id, req.body.game_id || PRIMARY_GAME_ID);
   const profile = await ensurePlayerProfile(target.id);
   const beforeElo = Math.max(0, Number(stats?.elo || 0));
   const afterElo = operation === "set"
@@ -8614,7 +8638,7 @@ async function adminUpdateRankedStats(req) {
     return { success: false, error: "Season matches cannot be lower than wins plus losses" };
   }
 
-  const stats = await ensureRankedStats(target.id);
+  const stats = await ensureRankedStats(target.id, req.body.game_id || PRIMARY_GAME_ID);
   const before = Object.fromEntries(fields.map((field) => [field, Number(stats?.[field] || 0)]));
   const timestamp = nowIso();
   const updatedStats = await updateEntity("RankedStats", stats.id, { ...updates, last_admin_adjustment_date: timestamp });
@@ -10525,9 +10549,9 @@ const handlers = {
   createWager,
   acceptWager,
   getEightsLiveUpdatesToken,
-  getFreeEightsOverview: async (req) => ({ ...await getFreeEightsOverview(prisma, req.user.id, req.body.all_games === true ? null : eightsGameId(req.body.game_id)), current_user: req.user }),
+  getFreeEightsOverview: async (req) => ({ ...await getFreeEightsOverview(prisma, req.user.id, req.body.all_games === true ? null : eightsGameId(req.body.game_id || PRIMARY_GAME_ID)), current_user: req.user }),
   getFreeEightsStandings: async (req) => {
-    const gameId = eightsGameId(req.body.game_id);
+    const gameId = eightsGameId(req.body.game_id || PRIMARY_GAME_ID);
     return { success: true, rows: await getFreeEightsLeaderboard(prisma, gameId) };
   },
   getLeaderboardPlayers: async (req) => ({ success: true, rows: await getLeaderboardPlayers(prisma, req.body.order) }),
@@ -10561,18 +10585,21 @@ const handlers = {
   submitScore,
   completeWager,
   refundWager,
+  getTournamentStandings: async (req) => ({ success: true, rows: buildTournamentStandings(await listEntities("Tournament", { status: "completed" }, "-created_date", 500), await listEntities("TournamentWin", {}, "-created_date", 500), req.body.game_id || PRIMARY_GAME_ID) }),
+  getRankedStandings: async (req) => ({ success: true, rows: await getRankedLeaderboard(prisma, req.body.game_id || PRIMARY_GAME_ID) }),
   createRankedMatch,
   acceptRankedMatch,
   getMyActiveXPMatch: async (req) => ({ success: true, match: await activeXPMatchFor(prisma, req.user.id) }),
   getXPMatchfinder: async (req) => {
     const sizes = xpCategory(req.body.category).sizes;
     const rows = await prisma.$queryRaw`SELECT id, created_date, metadata FROM "XPMatch"
-      WHERE metadata->>'status' = 'open' AND metadata->>'team_size' IN (${Prisma.join(sizes.map((size) => `${size}v${size}`))})
+      WHERE LOWER(COALESCE(NULLIF(metadata->>'game_id', ''), 'bo7')) = ${req.body.game_id || PRIMARY_GAME_ID}
+      AND metadata->>'status' = 'open' AND metadata->>'team_size' IN (${Prisma.join(sizes.map((size) => `${size}v${size}`))})
       ORDER BY created_date DESC LIMIT 100`;
     return { success: true, rows: rows.map(serializeRow).filter((match) => !isExpiredOpenMatch(match) && (match.host_id === req.user.id || xpMatchRoster(match, "alpha").includes(req.user.id) || xpMatchRoster(match, "bravo").includes(req.user.id) || (!match.challenger_id && match.host_party_team_id && xpMatchRoster(match, "alpha").length === xpMatchTeamSize(match)))).slice(0, 20) };
   },
-  getXPFormatStandings: (req) => getXPFormatStandings(prisma, req.body),
-  getXPStandings: async () => ({ success: true, rows: await getXPStandings(prisma) }),
+  getXPFormatStandings: (req) => getXPFormatStandings(prisma, { ...req.body, game_id: req.body.game_id || PRIMARY_GAME_ID }),
+  getXPStandings: async (req) => ({ success: true, rows: await getXPStandings(prisma, null, req.body.game_id || PRIMARY_GAME_ID) }),
   getXPMatchPlayerRanks: (req) => getXPMatchPlayerRanks(prisma, req.body.xp_match_id),
   createXPMatch,
   acceptXPMatch,
@@ -10708,8 +10735,8 @@ router.post("/:name", requireAuth, async (req, res, next) => {
       return res.status(503).json({ error: "This payment service is coming soon. Contact support for assistance.", code: "PAYMENTS_COMING_SOON" });
     }
     const name = req.params.name;
-    const snapshotKey = name === "getXPFormatStandings" ? `${name}:${xpCategory(req.body.category).id}` : name === "getXPStandings" || name === "getMoneyEightsStandings" ? name
-      : name === "getFreeEightsStandings" ? `${name}:${eightsGameId(req.body.game_id)}`
+    const snapshotKey = name === "getXPFormatStandings" ? `${name}:${req.body.game_id || PRIMARY_GAME_ID}:${xpCategory(req.body.category).id}` : ["getXPStandings", "getMoneyEightsStandings", "getRankedStandings", "getTournamentStandings"].includes(name) ? `${name}:${req.body.game_id || PRIMARY_GAME_ID}`
+      : name === "getFreeEightsStandings" ? `${name}:${eightsGameId(req.body.game_id || PRIMARY_GAME_ID)}`
         : name === "getChallengeStandings" ? `${name}:${String(req.body.kind || "team")}`
         : name === "getLeaderboardPlayers" ? `${name}:${String(req.body.order || "-created_date")}` : null;
     const result = snapshotKey ? await readLeaderboardSnapshot(snapshotKey, () => handler(req)) : await handler(req);
@@ -10720,4 +10747,5 @@ router.post("/:name", requireAuth, async (req, res, next) => {
   }
 });
 
+export { matchPools, randomRankedMap, randomWagerMaps, randomEightsSeriesMaps };
 export default router;

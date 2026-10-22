@@ -61,3 +61,10 @@ export async function getFreeEightsLeaderboard(db, gameId) {
     ORDER BY free_eights_elo DESC, id DESC LIMIT 500`;
   return rows.map(serializeRow);
 }
+
+export async function getRankedLeaderboard(db, gameId) {
+  const rows = await db.$queryRaw`SELECT id, metadata FROM "RankedStats"
+    WHERE LOWER(COALESCE(NULLIF(metadata ->> 'game_id', ''), 'bo7')) = ${gameId}
+    ORDER BY COALESCE((metadata ->> 'elo')::numeric, 0) DESC, id DESC LIMIT 500`;
+  return rows.map(serializeRow);
+}
