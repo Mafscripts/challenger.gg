@@ -13,6 +13,7 @@ import { eightsGameId, eightsMatchGameName } from "@/lib/freeEightsGames";
 import MatchRoomShell from "@/components/match/MatchRoomShell";
 import MatchResultSummary from "@/components/match/MatchResultSummary";
 import MatchRoomProgress, { openMatchRoomSection } from "@/components/match/MatchRoomProgress";
+import MatchRoomCountdown, { useRoomDeadlineExpired } from "@/components/match/MatchRoomCountdown";
 import MatchRoomHeader, { MatchRoomTitle } from "@/components/match/MatchRoomHeader";
 import FreeEightsMatchHeader from "@/components/match/FreeEightsMatchHeader";
 import FreeEightsCaptainDraft, { CaptainDraftDropZone } from "@/components/match/FreeEightsCaptainDraft";
@@ -37,7 +38,7 @@ const scoreStatuses = new Set(["in_progress", "awaiting_team_alpha_report", "awa
 const displayStatus = (value) => ({ open: "Lobby open", in_progress: "Match live", awaiting_team_alpha_report: "Score confirmation", awaiting_team_bravo_report: "Score confirmation", awaiting_completion: "Completing", score_conflict: "Under review", disputed: "Under review", completed: "Complete", cancelled: "Cancelled" }[value] || String(value || "open").replaceAll("_", " "));
 const playerName = (player) => player?.full_name || player?.user_name || player?.username || "Open slot";
 const seriesModeName = (mode) => ({ hp: "Hardpoint", snd: "Search & Destroy" }[mode] || mode || "Mode pending");
-const formatCountdown = (seconds) => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.max(0, seconds) % 60).padStart(2, "0")}`;
+const RoomMapSeries = React.memo(MatchMapSeries);
 const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
 const lobbyMatchSnapshot = (value) => JSON.stringify([
   value?.id,
@@ -204,7 +205,6 @@ function EightsMatchRoomView() {
   const [scoreOpen, setScoreOpen] = useState(false);
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
-  const [now, setNow] = useState(Date.now());
   const [resultDismissed, setResultDismissed] = useState(false);
   const joinedAdminRooms = useRef(new Set());
   const currentUserRef = useRef(null);
@@ -317,8 +317,7 @@ function EightsMatchRoomView() {
     const poll = window.setInterval(() => {
       if (document.visibilityState === "visible") void loadRoom(true);
     }, match?.match_type === "8s" ? 1500 : 3500);
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => { window.clearInterval(poll); window.clearInterval(timer); };
+    return () => window.clearInterval(poll);
   }, [loadRoom, match?.match_type]);
 
   useEffect(() => {
@@ -412,8 +411,9 @@ function EightsMatchRoomView() {
   const playersPerTeam = freeEightsTeamSize(match);
   const playerCapacity = playersPerTeam * 2;
   const openSpots = Math.max(0, playerCapacity - joined);
-  const countdown = match?.roster_lock_deadline ? Math.max(0, Math.ceil((new Date(match.roster_lock_deadline).getTime() - now) / 1000)) : null;
-  const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || (!drafting && countdown === 0));
+  const hasDeadline = Number.isFinite(Date.parse(match?.roster_lock_deadline));
+  const deadlineExpired = useRoomDeadlineExpired(match?.roster_lock_deadline);
+  const locked = Boolean(match?.roster_locked || match?.status === "in_progress" || (!drafting && deadlineExpired));
   const canRemovePlayers = isAdmin && match?.match_type === "8s" && ["open", "in_progress"].includes(match?.status)
     && !match?.scores_confirmed && !["pending", "approved"].includes(match?.eights_score_vote_status) && !match?.dispute_id;
   useEffect(() => {
@@ -438,14 +438,14 @@ function EightsMatchRoomView() {
   const reshuffleVoteCount = reshuffleVoteIds.length || Number(match?.eights_reshuffle_vote_count || 0);
   const requiredReshuffleVotes = Number(match?.eights_reshuffle_vote_required || eightsMajorityVotes(match));
   const hasReshuffleVote = Boolean(user?.id && reshuffleVoteIds.includes(user.id));
-  const reshuffleOpen = !drafting && joined === playerCapacity && !locked && countdown !== null && countdown > 0 && !closedStatuses.has(match?.status);
+  const reshuffleOpen = !drafting && joined === playerCapacity && !locked && hasDeadline && !deadlineExpired && !closedStatuses.has(match?.status);
   const canEditTeams = isAdmin && reshuffleOpen && match?.status === "open" && Boolean(match?.teams_generated_at) && !match?.free_eights_waiting_for_voice;
   useEffect(() => { setSwapPlayer(null); }, [match?.teams_generated_at]);
-  const seriesMaps = (Array.isArray(match?.series_maps) ? match.series_maps : []).map((map, index) => (
+  const seriesMaps = useMemo(() => (Array.isArray(match?.series_maps) ? match.series_maps : []).map((map, index) => (
     typeof map === "string"
       ? { name: map, mode: match?.series_mode_labels?.[index] || seriesModeName(match?.series_modes?.[index]), image: match?.series_images?.[index] || "" }
       : map
-  ));
+  )), [match?.series_maps, match?.series_mode_labels, match?.series_modes, match?.series_images]);
   const dismissResult = () => {
     setResultDismissed(true);
     navigate(returnToLadder, { replace: true });
@@ -748,7 +748,7 @@ function EightsMatchRoomView() {
     alphaPlayers={displayedAlpha} bravoPlayers={displayedBravo} hasMaps={seriesMaps.length > 0} voice={voiceView}
     locked={locked} hasScoreProposal={hasScoreProposal} currentUserAgreed={currentUserAgreed}
     scoreVoteCount={scoreVoteCount} requiredScoreVotes={requiredScoreVotes} canReport={canReportScore} ownReported={currentUserAgreed}
-    deadline={!drafting && !locked && joined === playerCapacity && countdown !== null ? formatCountdown(countdown) : null}
+    deadline={!drafting && !locked && joined === playerCapacity && hasDeadline ? <MatchRoomCountdown key={match.roster_lock_deadline} deadline={match.roster_lock_deadline} /> : null}
     actions={{
       report: canReportScore && !currentUserAgreed ? <button type="button" onClick={() => setScoreOpen(true)} className="room-primary-action"><Check />{hasScoreProposal ? "Review submitted score" : "Submit score"}</button> : null,
       voice: voiceControl,
@@ -841,7 +841,7 @@ function EightsMatchRoomView() {
                 </div>
               )}
             />
-            <MatchMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} emptyText={match.match_type === "8s" ? "Maps will be generated once every player in this lobby has joined the Discord Waiting Room." : undefined} compact stacked />
+            <RoomMapSeries maps={seriesMaps} mode={match.game_mode_display || match.game_mode} host="System generated" bestOf={match.best_of || 3} emptyText={match.match_type === "8s" ? "Maps will be generated once every player in this lobby has joined the Discord Waiting Room." : undefined} compact stacked />
           </>
         )} />
 
