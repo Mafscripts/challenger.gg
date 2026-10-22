@@ -29,7 +29,6 @@ import {
 import { prisma } from "../server/prisma.js";
 import { syncTournamentDiscord } from "./announcements.js";
 import { syncManagedDiscordRoles } from "./managed-roles.js";
-import { handleVerificationInteraction } from "./member-verification.js";
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
@@ -52,7 +51,6 @@ const client = new Client({
   ],
 });
 let tournamentSyncRunning = false;
-const verificationLog = (message) => process.stdout.write(`[Topfragg Verification] ${message}\n`);
 let freeEightsVoiceSyncRunning = false;
 let freeEightsVoiceUpdates = null;
 let freeEightsLiveUpdates = null;
@@ -462,9 +460,8 @@ function isPublicHttpsUrl(value) {
 }
 
 async function publishHighlight(interaction) {
-  const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
-  if (!verifiedRole || !interaction.member.roles.cache.has(verifiedRole.id)) {
-    await interaction.reply(ephemeral("Verify your Topfragg identity before posting highlights."));
+  if (interaction.member.pending !== false) {
+    await interaction.reply(ephemeral("Complete Discord’s server rules screening before posting highlights."));
     return;
   }
   const title = interaction.fields.getTextInputValue("clip_title").trim();
@@ -498,9 +495,8 @@ async function publishHighlight(interaction) {
 
 async function toggleSelfRole(interaction, roleName) {
   if (!selfAssignableRoleNames.includes(roleName)) return;
-  const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
-  if (!verifiedRole || !interaction.member.roles.cache.has(verifiedRole.id)) {
-    await interaction.reply(ephemeral("Verify your Topfragg identity before choosing player roles."));
+  if (interaction.member.pending !== false) {
+    await interaction.reply(ephemeral("Complete Discord’s server rules screening before choosing player roles."));
     return;
   }
   const role = interaction.guild.roles.cache.find((item) => item.name === roleName);
@@ -518,9 +514,8 @@ async function toggleSelfRole(interaction, roleName) {
 }
 
 async function publishLookingForTeamPost(interaction) {
-  const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
-  if (!verifiedRole || !interaction.member.roles.cache.has(verifiedRole.id)) {
-    await interaction.reply(ephemeral("Verify your Topfragg identity before creating a team-finder post."));
+  if (interaction.member.pending !== false) {
+    await interaction.reply(ephemeral("Complete Discord’s server rules screening before creating a team-finder post."));
     return;
   }
   const channel = findConfiguredChannel(interaction.guild, "looking-for-team");
@@ -638,7 +633,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.guildId !== config.guildId) return;
   try {
     if (interaction.isButton() && interaction.customId === VERIFICATION_BUTTON_ID) {
-      await handleVerificationInteraction(interaction, { log: verificationLog });
+      await interaction.reply(ephemeral("Discord Onboarding is now the only entry flow. No separate bot verification is required. Complete Discord’s rules screening if it is shown."));
       return;
     }
     if (await handleCommunityInteraction(interaction)) return;
@@ -888,8 +883,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.commandName === "verify") {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      const channel = findConfiguredChannel(interaction.guild, "verification");
-      await interaction.editReply(`Read the server rules, then click **Accept Rules & Verify** in ${channel || "the verification channel"}.`);
+      await interaction.editReply("Complete Discord Onboarding and any server rules screening shown by Discord. No separate bot verification or Verified Player role is required.");
       return;
     }
     if (interaction.commandName === "tournaments") {

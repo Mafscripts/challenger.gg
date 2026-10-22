@@ -1188,7 +1188,7 @@ test("a failed cosmetic rename preserves voice readiness and retries later", asy
   assert.equal(channel.name, freeEightsVoiceChannelName(f.match.id, "waiting"));
 });
 
-test("started team voices are visible only to verified spectators without Connect; Waiting Rooms remain hidden", async () => {
+test("started team voices are visible to community spectators without a legacy role or Connect; Waiting Rooms remain hidden", async () => {
   const f = fixture();
   f.match.metadata.status = "in_progress";
   await f.sync();
@@ -1201,7 +1201,7 @@ test("started team voices are visible only to verified spectators without Connec
   assert.equal(effectivePermissions(waiting, outsider).has(PermissionFlagsBits.ViewChannel), false);
   assert.equal(effectivePermissions(waiting, outsider).has(PermissionFlagsBits.Connect), false);
   for (const channel of [alpha, bravo]) {
-    assert.equal(effectivePermissions(channel, outsider, { verified: false }).has(PermissionFlagsBits.ViewChannel), false);
+    assert.equal(effectivePermissions(channel, outsider, { verified: false }).has(PermissionFlagsBits.ViewChannel), true);
     assert.equal(effectivePermissions(channel, outsider).has(PermissionFlagsBits.ViewChannel), true);
     assert.equal(effectivePermissions(channel, outsider).has(PermissionFlagsBits.Connect), false);
     assert.equal(effectivePermissions(channel, outsider, { admin: true }).has(PermissionFlagsBits.Connect), true);

@@ -154,7 +154,7 @@ test("authenticated role sync refreshes only the still-linked Discord profile an
       const result = await (await sync()).json();
       assert.equal(result.roleAssigned, expected);
       assert.equal(result.profileRefreshed, true);
-      if (!expected) assert.equal(result.verificationRequired, true);
+      if (!expected) assert.equal(result.verificationRequired, pending);
       assert.equal(roleWrites, 0);
     }
     memberPending = false;

@@ -47,12 +47,6 @@ async function verifiedRole() {
   if (!guildId) throw configurationError();
   const roles = await discordBotRequest(`/guilds/${encodeURIComponent(guildId)}/roles`);
   const role = roles.find((item) => item.name === VERIFIED_ROLE_NAME);
-  if (!role) {
-    const error = new Error(`Discord role "${VERIFIED_ROLE_NAME}" was not found`);
-    error.status = 503;
-    error.code = "DISCORD_ROLE_NOT_FOUND";
-    throw error;
-  }
   return role;
 }
 
@@ -104,8 +98,8 @@ export const syncDiscordVerifiedRole = async (discordUserId) => {
     const role = await verifiedRole();
     // Linking a website account is not community rules acceptance.
     const member = await discordBotRequest(`/guilds/${encodedGuildId}/members/${encodedUserId}`);
-    const roleAssigned = !member.pending && Array.isArray(member.roles) && member.roles.includes(role.id);
-    return { connected: true, inGuild: true, roleAssigned, ...(roleAssigned ? { roleId: role.id } : { verificationRequired: true }) };
+    const roleAssigned = !member.pending && Array.isArray(member.roles) && member.roles.includes(role?.id);
+    return { connected: true, inGuild: true, roleAssigned, ...(roleAssigned ? { roleId: role.id } : { verificationRequired: member.pending !== false }) };
   } catch (error) {
     error.discordRoleSyncPhase = phase;
     throw error;

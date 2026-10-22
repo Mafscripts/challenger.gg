@@ -369,3 +369,12 @@ Free 8s questions accept `8s`, `8's`, `8’s`, `8 s` and `eights`. Questions abo
 creating/hosting a lobby get the creation flow, including **Create 8s lobby** and
 **Open 8s Lobby**; play/join questions get the joining steps and waiting-room
 requirement. Both include the Activision ID, rank and linked Discord prerequisites.
+
+
+## Discord Onboarding entry flow (current)
+
+Discord Onboarding replaces the bot verification gate. No separate button or Verified Player role is required for public community channels. The updated bot opens configured public chat/read-only/voice channels, preserves staff and caster restrictions, retires the old verification card and redirects legacy buttons and `/verify` to Onboarding. It does not create another verification card when one has been removed. Existing roles are preserved. Player-role selection, highlights, team-finder and giveaways reject members still pending Discord rules screening rather than checking the legacy role.
+
+Enable native Rules Screening separately if explicit rule acceptance is required: Onboarding alone is not proof of acceptance. Do not automatically assign a role to pending members, because that can bypass screening. In Server Guide replace any old verification task with “Read the rules” and remove “Head to verification” from the welcome sign. Website signup and Discord account linking remain necessary for website 8s features.
+
+Deploy the updated bot and API together, then restart the existing processes. The bot needs access to each formerly gated public channel to migrate its permissions. If Discord returns Missing Access, an admin must restore the bot’s channel access first; do not expose staff/team channels as a workaround.

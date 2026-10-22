@@ -68,9 +68,8 @@ export async function startGiveaway(interaction, giveawaysChannel) {
 }
 
 export async function enterGiveaway(interaction, giveawayId) {
-  const verifiedRole = interaction.guild.roles.cache.find((role) => role.name === "Verified Player");
-  if (!verifiedRole || !interaction.member.roles.cache.has(verifiedRole.id)) {
-    await interaction.reply({ content: "Verify your Topfragg identity before entering giveaways.", flags: MessageFlags.Ephemeral });
+  if (interaction.member.pending !== false) {
+    await interaction.reply({ content: "Complete Discord’s server rules screening before entering giveaways.", flags: MessageFlags.Ephemeral });
     return;
   }
   const giveaway = await prisma.discordGiveaway.findUnique({ where: { id: giveawayId } });

@@ -85,7 +85,7 @@ export const categorySpecs = [
       { key: "welcome", name: "👋・welcome", legacyNames: ["welcome"], type: ChannelType.GuildText, mode: "read-only", topic: "Welcome to the official Topfragg.gg competitive community." },
       { key: "rules", name: "📜・rules", legacyNames: ["rules"], type: ChannelType.GuildText, mode: "read-only", topic: "The rules that keep Topfragg competitive, fair and fun." },
       { key: "announcements", name: "📢・announcements", legacyNames: ["announcements"], type: ChannelType.GuildText, mode: "read-only", topic: "Official Topfragg news, events and tournament announcements." },
-      { key: "verification", name: "✅・verification", legacyNames: ["verification"], type: ChannelType.GuildText, mode: "read-only", topic: "Read the rules and click Accept Rules & Verify to unlock the community." },
+      { key: "verification", name: "✅・verification", legacyNames: ["verification"], type: ChannelType.GuildText, mode: "read-only", topic: "Complete Discord Onboarding. No separate bot verification is required." },
       { key: "faq", name: "❓・faq", legacyNames: ["faq"], type: ChannelType.GuildText, mode: "read-only", topic: "Quick answers about accounts, teams and competitions." },
     ],
   },
@@ -155,15 +155,7 @@ export const categorySpecs = [
       { key: "bot-log", name: "🤖・bot-log", legacyNames: ["bot-log"], type: ChannelType.GuildText, mode: "staff", topic: "Topfragg Bot status and automation logs." },
     ],
   },
-].map((category) => ({
-  ...category,
-  channels: category.channels.map((channel) => ({
-    ...channel,
-    mode: !["welcome", "rules", "verification", "general", "announcements", "faq"].includes(channel.key)
-      && ["chat", "read-only", "voice"].includes(channel.mode)
-      ? `verified-${channel.mode}` : channel.mode,
-  })),
-}));
+];
 
 export const memberCountSpec = {
   key: "member-count",
@@ -176,7 +168,7 @@ export const memberCountSpec = {
 export const commandSpecs = [
   ...communityCommandSpecs,
   { name: "ping", description: "Check whether Topfragg Bot is online." },
-  { name: "verify", description: "Find the rules acceptance button to unlock community access." },
+  { name: "verify", description: "Information about Discord Onboarding." },
   { name: "tournaments", description: "Open the current Topfragg tournaments." },
   {
     name: "support",

@@ -494,7 +494,7 @@ async function seedInformation(guild) {
       .setDescription("Your competitive arena starts here. Enter tournaments, build your roster, climb the leaderboards and prove who owns the lobby.")
       .addFields(
         { name: "📜 1. Know the rules", value: `Start in ${rulesChannel} and keep every match fair.`, inline: true },
-        { name: "✅ 2. Accept & verify", value: `Read the rules, then click **Accept Rules & Verify** in ${verificationChannel} to unlock the community.`, inline: true },
+        { name: "✅ 2. Complete Onboarding", value: "Follow Discord’s welcome guide and accept the server rules if prompted. No separate verification button is required.", inline: true },
         { name: "🏆 3. Enter the arena", value: `Find your next event in ${tournamentsChannel}.`, inline: true },
         { name: "🔥 Ready to compete?", value: "Bring your squad, play for prizes and build your reputation in the Topfragg community." },
       ),
@@ -613,7 +613,7 @@ async function seedInformation(guild) {
       .setDescription("Hit a clutch? Won a match? Share your Twitch, YouTube or TikTok highlight with the community. Keep it competitive, respectful and relevant to Topfragg.")
       .addFields(
         { name: "How it works", value: "Press **Post a highlight**, add a title and link, then the bot creates a clean clip card for you." },
-        { name: "Who can post?", value: "Verified Players only. No self-promo spam, account selling or unrelated links." },
+        { name: "Who can post?", value: "Members who have completed Discord’s rules screening. No self-promo spam, account selling or unrelated links." },
       ),
     [
       new ActionRowBuilder().addComponents(
