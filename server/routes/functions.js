@@ -1,5 +1,6 @@
 import { settleWagerPayout } from "../wager-payout.js";
 import { commerceAllowed } from "../commerce.js";
+import { readEightsRoster, saveEightsTeams } from "../eights-roster.js";
 import { setRewardCampaignActive, getAdminRewardOverview, saveRewardTemplate, saveRewardSettings, saveRewardCampaign, getMyRewardGrants, getRewardReveal, acknowledgeReward, getRewardSeasonStandings, processCompetitionRewards, loadRewardBonuses, awardTournamentCreditBonus } from "../competition-rewards.js";
 import { Prisma } from "@prisma/client";
 import { competitionStreamError } from "../competition-streaming.js";
@@ -6411,22 +6412,9 @@ async function randomizeEightsTeams(wager, participantRows, { preserveSeries = f
   const { alpha, bravo, balance } = wager.match_type === "8s"
     ? await generateBalancedFreeEightsTeams(prisma, shuffled, Math.random, { avoidCurrentTeams: preserveSeries, gameId: eightsGameId(wager.game_id) })
     : { alpha: shuffled.slice(0, requiredSize), bravo: shuffled.slice(requiredSize, requiredSize * 2) };
-  const skillsByParticipant = new Map([...alpha, ...bravo].map((row) => [row.id, row]));
   if (wager.match_type === "8s") freeEightsVoiceLog("roster-full", { match_id: wager.id, players: shuffled.length });
-  await Promise.all(shuffled.map((participant) => {
-    const team = alpha.some((row) => row.id === participant.id) ? "host" : "challenger";
-    return updateEntity("WagerParticipant", participant.id, {
-      team,
-      team_name: team === "host" ? "Team Alpha" : "Team Bravo",
-      is_captain: participant.id === alpha[0]?.id || participant.id === bravo[0]?.id,
-      ...(wager.match_type === "8s" ? {
-        free_eights_elo: skillsByParticipant.get(participant.id).free_eights_elo,
-        screenshot_rank: skillsByParticipant.get(participant.id).screenshot_rank,
-      } : {}),
-    });
-  }));
   const selectedMaps = preserveSeries ? null : randomEightsSeriesMaps(wager);
-  const updated = await updateEntity("Wager", wager.id, {
+  const updated = await saveEightsTeams(prisma, wager, participantRows, alpha, bravo, {
     host_id: alpha[0]?.user_id || "",
     host_name: alpha[0]?.user_name || "Team Alpha Captain",
     host_team_name: "Team Alpha",
@@ -6685,7 +6673,7 @@ async function getEightsLiveUpdatesToken(req) {
   return { success: true, ...await issueEightsLiveToken(req.user.id, wager.id, isStaff) };
 }
 
-async function syncEightsLobby(req) {
+async function syncEightsLobbyState(req) {
   const wagerId = req.body.wager_id || req.body.id;
   // Every player in the room polls this endpoint.  Serializing this transition
   // prevents two polls from independently generating different teams or
@@ -6770,6 +6758,17 @@ async function syncEightsLobby(req) {
     });
     return { success: true, wager: locked, locked: true, full: true };
   });
+}
+
+async function syncEightsLobby(req) {
+  const result = await syncEightsLobbyState(req);
+  if (!result.success || !result.wager) return result;
+  const snapshot = await readEightsRoster(prisma, result.wager.id);
+  if (!snapshot.wager) return { success: false, error: "8s lobby not found" };
+  if (!hasRole(req.user, "moderator") && !snapshot.participants.some((player) => player.user_id === req.user.id)) {
+    return { success: false, error: "Only lobby players can sync this room" };
+  }
+  return { ...result, wager: snapshot.wager, participants: snapshot.participants };
 }
 
 async function voteEightsReshuffle(req) {

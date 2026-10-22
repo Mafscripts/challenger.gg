@@ -211,7 +211,6 @@ function EightsMatchRoomView() {
   const rosterSignatureRef = useRef("");
   const hydratingRosterRef = useRef("");
   const hydratedRosterRef = useRef("");
-  const syncInFlightRef = useRef(null);
   const roomLoadInFlightRef = useRef(null);
   const hydrationTimerRef = useRef(null);
 
@@ -230,48 +229,23 @@ function EightsMatchRoomView() {
     const load = async () => {
       if (!quiet) setLoading(true);
       try {
-        const syncLobby = () => {
-          if (syncInFlightRef.current) return syncInFlightRef.current;
-          const request = base44.functions.invoke("syncEightsLobby", { wager_id: id })
-            .then((response) => response?.data?.wager || null)
-            .catch(() => null)
-            .finally(() => {
-              syncInFlightRef.current = null;
-            });
-          syncInFlightRef.current = request;
-          return request;
-        };
         const currentUserPromise = currentUserRef.current
           ? Promise.resolve(currentUserRef.current)
           : base44.auth.me().catch(() => null);
-        const [directLatest, rows] = await Promise.all([
-          base44.entities.Wager.getFresh(id).catch(() => null),
-          base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 8).catch(() => []),
-        ]);
+        // The sync response contains the match and roster from the same team
+        // revision. Never pair a pre-generation roster with the new captains.
+        const { data } = await base44.functions.invoke("syncEightsLobby", { wager_id: id });
+        if (!data?.success || !data.wager || !Array.isArray(data.participants)) throw new Error(data?.error || "Could not load the lobby teams");
+        const latest = data.wager, rows = data.participants;
         const currentUser = currentUserRef.current;
         void currentUserPromise.then((resolvedUser) => {
           if (!resolvedUser || currentUserRef.current) return;
           currentUserRef.current = resolvedUser;
           setUser(resolvedUser);
         });
-        let latest = directLatest;
         if (latest?.status === "cancelled") {
           setMatch(latest);
           return;
-        }
-        const syncPromise = syncLobby();
-        if (!latest || !["8s", "money8s"].includes(latest.match_type)) {
-          latest = await syncPromise;
-        } else {
-          void syncPromise.then((synced) => {
-            if (synced?.id && String(synced.id) === String(id)) {
-              setMatch((previous) => {
-                if (previous?.status === "cancelled") return previous;
-                const merged = previous ? { ...previous, ...synced } : synced;
-                return lobbyMatchSnapshot(previous) === lobbyMatchSnapshot(merged) ? previous : merged;
-              });
-            }
-          });
         }
         if (!['8s', 'money8s'].includes(latest?.match_type)) throw new Error("This is not an 8s match");
         const rosterSignature = `${latest.match_type === "8s" ? latest.free_eights_elo_applied_at || "" : ""}|` + (rows || [])
@@ -392,7 +366,7 @@ function EightsMatchRoomView() {
   const drafting = match?.match_type === "8s" && captainDraftPending(match);
   const draftActive = captainDraftActive(match);
   const draft = match?.free_eights_captain_draft;
-  const draftTeam = (side, fallback) => draftActive || draft?.status === "completed"
+  const draftTeam = (side, fallback) => draftActive
     ? captainDraftPlayerIds(draft, side).map((id) => allPlayers.find((player) => player.user_id === id)).filter(Boolean)
       .map((player) => ({ ...player, team: side, role: player.user_id === draft.captains[side] ? "captain" : "member" }))
     : fallback;

@@ -4,6 +4,7 @@ import { prisma } from "../server/prisma.js";
 import { freeEightsVoiceChannelName } from "../src/lib/freeEightsRoomIdentity.js";
 import { freeEightsTeamSize } from "../src/lib/freeEightsFormat.js";
 import { captainDraftPending } from "../src/lib/freeEightsCaptainDraft.js";
+import { readEightsRoster } from "../server/eights-roster.js";
 import {
   freeEightsChannelKey, freeEightsDiscordConfig, freeEightsVoiceClosed, freeEightsVoiceKey,
   freeEightsVoiceCategoryIds, freeEightsVoiceLog, hasDiscordLink, validDiscordId, voiceRosterSignature,
@@ -207,13 +208,13 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory,
     try { onState?.(matchId, state); }
     catch (error) { log("presence-signal-failed", { match_id: matchId, error: error.message }); }
   };
-  const row = await db.wager.findUnique({ where: { id: matchId } });
-  const match = row?.metadata;
+  const snapshot = await readEightsRoster(db, matchId);
+  const match = snapshot.match;
   const currentSides = config.channelSides?.(match) || channelSides;
   const knownSides = [...new Set([...currentSides, ...Object.keys(state.channels), ...Object.keys(state.provisions)])];
   const teamSides = currentSides.filter((side) => side !== "waiting");
   const canAssign = (match, roster) => config.canAssign ? config.canAssign(match, roster) : canAssignFreeEightsVoice(match, roster, config.teamSize?.(match) || freeEightsTeamSize(match));
-  const participants = row ? await rosterFor(db, matchId) : [];
+  const participants = snapshot.participants;
   const signature = voiceRosterSignature(match, participants);
   const closed = !match || match.match_type !== "8s" || freeEightsVoiceClosed.has(match.status);
   const assign = config.enabled && canAssign(match, participants);
@@ -474,16 +475,18 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory,
       const managedSide = knownSides.find((side) => state.channels[side] === source && source);
       if (target && source && source !== target && managedSide) {
         await guard();
-        const latest = await db.wager.findUnique({ where: { id: matchId } });
-        const roster = await rosterFor(db, matchId);
-        if (!canAssign(latest?.metadata, roster) || voiceRosterSignature(latest.metadata, roster) !== signature) {
+        await channelOwner(db, guild, state, player.team, target);
+        await channelOwner(db, guild, state, managedSide, source);
+        await guard();
+        // Permission/ownership requests can take time. Read the final saved
+        // assignment after them, immediately before sending the Discord move.
+        const latest = await readEightsRoster(db, matchId);
+        if (!canAssign(latest.match, latest.participants) || voiceRosterSignature(latest.match, latest.participants) !== signature) {
           log("roster-changed-during-assignment", { match_id: matchId });
           state.roster_signature = "";
           await save();
-          return;
+          return { retry: true };
         }
-        await channelOwner(db, guild, state, player.team, target);
-        await channelOwner(db, guild, state, managedSide, source);
         log("move-attempt", { match_id: matchId, user_id: player.user_id, from: source, to: target });
         try {
           if (voice.channelId !== source) throw new Error("Voice presence changed during assignment");
@@ -494,6 +497,14 @@ async function reconcileMatch(guild, db, matchId, config, guard, log, inventory,
           log("move-failed", { match_id: matchId, user_id: player.user_id, code: error.code, error: error.message });
         }
       }
+    }
+  }
+  if (assign) {
+    const latest = await readEightsRoster(db, matchId);
+    if (!canAssign(latest.match, latest.participants) || voiceRosterSignature(latest.match, latest.participants) !== signature) {
+      state.roster_signature = "";
+      await save();
+      return { retry: true };
     }
   }
   // Publish a complete post-move observation from the gateway, without

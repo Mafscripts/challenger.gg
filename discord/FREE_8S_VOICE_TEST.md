@@ -184,6 +184,18 @@ join voice or transmit audio.
    Offline players and people in unrelated voice channels are not moved. Late
    waiting-room arrivals are retried. Existing reshuffles preserve maps, update
    permissions and move players between this match's team voices.
+   Team generation now commits all participant sides, captains and the team
+   revision together. The website receives its match and roster in the same
+   `syncEightsLobby` response, and the bot rejects reads crossing a team revision.
+   It rechecks the saved assignment after channel ownership checks and retries
+   immediately if teams change before or during Discord moves. Completed captain
+   drafts use the saved participant roster on the website; only an active draft
+   previews its pending picks. The atomic save and website snapshot also apply
+   to Money 8s. Money 8s has no automatic Discord voice routing in the current bot.
+   Deploy the API before the website and restart the Discord bot for this fix.
+   No schema migration is needed. Regression cases were added for roster reads
+   spanning a commit, failed/stale team saves and reshuffles during Discord calls;
+   tests, application builds and live Discord checks were not run for this revision.
 8. The bot polls the database every five seconds and reacts to voice events. On
    completed/cancelled/expired/closed/deleted matches or disabling the test, it
    removes all three owned voices. Known occupants move to the optional public

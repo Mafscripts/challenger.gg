@@ -468,6 +468,53 @@ test("reshuffle changes private access and moves only this match's teams", async
   assert.equal(f.voices.get(f.users[0].discord_user_id).channelId, f.state().channels.challenger);
 });
 
+test("a team change during channel ownership checks stops stale moves and retries the saved teams", async () => {
+  const f = fixture(); await f.sync();
+  const oldChannels = { ...f.state().channels };
+  for (const user of f.users) f.voices.get(user.discord_user_id).channelId = oldChannels.waiting;
+  const find = f.db.discordEventDispatch.findUnique;
+  let hostChecks = 0, changed = false;
+  f.db.discordEventDispatch.findUnique = async (input) => {
+    const row = await find(input);
+    // Validation, existing-channel preparation, then the ownership check
+    // immediately before the first player's move.
+    if (input.where.event_key === freeEightsChannelKey(oldChannels.host) && ++hostChecks === 3) {
+      f.participants[0].team = "challenger"; f.participants[4].team = "host";
+      f.match.metadata.teams_generated_at = "2026-10-21T00:00:01.000Z";
+      changed = true;
+    }
+    return row;
+  };
+  const result = await f.sync();
+  assert.equal(changed, true);
+  assert.ok(result.deferredMatchIds.includes(f.match.id));
+  assert.equal(f.moves.length, 8, "no player is moved according to the outdated roster");
+  await f.sync();
+  assert.equal(f.voices.get(f.users[0].discord_user_id).channelId, oldChannels.challenger);
+  assert.equal(f.voices.get(f.users[4].discord_user_id).channelId, oldChannels.host);
+});
+
+test("a reshuffle during an in-flight Discord move triggers an immediate correction pass", async () => {
+  const f = fixture(); await f.sync();
+  const channels = { ...f.state().channels };
+  const voice = f.voices.get(f.users[0].discord_user_id), move = voice.setChannel.bind(voice);
+  voice.channelId = channels.waiting;
+  let changed = false;
+  voice.setChannel = async (target) => {
+    await move(target);
+    if (!changed) {
+      changed = true;
+      f.participants[0].team = "challenger"; f.participants[4].team = "host";
+      f.match.metadata.teams_generated_at = "2026-10-21T00:00:02.000Z";
+    }
+  };
+  const result = await f.sync();
+  assert.ok(result.deferredMatchIds.includes(f.match.id));
+  await f.sync();
+  assert.equal(voice.channelId, channels.challenger);
+  assert.equal(f.voices.get(f.users[4].discord_user_id).channelId, channels.host);
+});
+
 test("a persisted admin swap invalidates old voice status and moves both players into their new private teams", async () => {
   const f = fixture();
   Object.assign(f.match.metadata, { host_id: "player0", challenger_id: "player4", roster_lock_deadline: new Date(Date.now() + 60000).toISOString() });
