@@ -19,42 +19,29 @@ function fixture() {
   return { role, guild, writes, member };
 }
 
-test("joining grants the community role without a linked website account or rules acceptance", async () => {
+test("joining and background sync cannot grant access without explicit rules acceptance", async () => {
   const f = fixture();
-  const newcomer = f.member("1", { pending: true });
-  assert.equal(await assignVerifiedPlayerRole(newcomer), true);
-  assert.deepEqual(f.writes, [{ id: "1", roleId: f.role.id }]);
-  assert.equal(await assignVerifiedPlayerRole(newcomer), false);
-  assert.equal(await assignVerifiedPlayerRole(f.member("2", { bot: true })), false);
-  assert.equal(f.writes.length, 1);
+  await assert.rejects(assignVerifiedPlayerRole(f.member("1")), /Accept the community rules/);
+  assert.deepEqual(await syncVerifiedPlayerRoles(f.guild), { assigned: 0, failed: 0 });
+  assert.deepEqual(f.writes, []);
 });
 
-test("startup recovery paginates all members, continues after failures and retries on the next sync", async () => {
+test("accepting rules grants access once, excludes bots and respects Discord screening", async () => {
   const f = fixture();
-  const first = new Map(Array.from({ length: 1000 }, (_, index) => {
-    const id = String(index + 1);
-    return [id, f.member(id, { verified: index > 1, fail: index === 0 })];
-  }));
-  const second = new Map([["1001", f.member("1001")], ["1002", f.member("1002", { bot: true })]]);
-  const requests = [], logs = [];
-  f.guild.members = { list: async (options) => {
-    requests.push(options); return options.after ? second : first;
-  } };
-  assert.deepEqual(await syncVerifiedPlayerRoles(f.guild, { log: (message) => logs.push(message) }), { assigned: 2, failed: 1 });
-  assert.deepEqual(requests, [{ limit: 1000 }, { limit: 1000, after: "1000" }]);
-  assert.deepEqual(f.writes.map((write) => write.id), ["2", "1001"]);
-  assert.ok(logs.some((message) => message.includes("failed for 1")));
-  first.set("1", f.member("1"));
-  assert.deepEqual(await syncVerifiedPlayerRoles(f.guild), { assigned: 1, failed: 0 });
-  assert.deepEqual(f.writes.map((write) => write.id), ["2", "1001", "1"]);
+  const newcomer = f.member("1");
+  assert.equal(await assignVerifiedPlayerRole(newcomer, { acceptedRules: true }), true);
+  assert.equal(await assignVerifiedPlayerRole(newcomer, { acceptedRules: true }), false);
+  assert.equal(await assignVerifiedPlayerRole(f.member("2", { bot: true }), { acceptedRules: true }), false);
+  await assert.rejects(assignVerifiedPlayerRole(f.member("3", { pending: true }), { acceptedRules: true }), /membership screening/);
+  assert.deepEqual(f.writes, [{ id: "1", roleId: f.role.id }]);
 });
 
 test("missing or unmanageable roles fail explicitly without changing member roles", async () => {
   const f = fixture();
   f.role.editable = false;
-  await assert.rejects(assignVerifiedPlayerRole(f.member("1")), /Manage Roles.*above Verified Player/);
+  await assert.rejects(assignVerifiedPlayerRole(f.member("1"), { acceptedRules: true }), /Manage Roles.*above Verified Player/);
   f.role.editable = true;
   f.role.managed = true;
-  await assert.rejects(assignVerifiedPlayerRole(f.member("1")), /role is missing/);
+  await assert.rejects(assignVerifiedPlayerRole(f.member("1"), { acceptedRules: true }), /role is missing/);
   assert.deepEqual(f.writes, []);
 });

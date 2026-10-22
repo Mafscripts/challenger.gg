@@ -102,12 +102,10 @@ export const syncDiscordVerifiedRole = async (discordUserId) => {
     if (!(await discordGuildMembership(discordUserId)).inGuild) return { connected: true, inGuild: false, roleAssigned: false };
     phase = "roles";
     const role = await verifiedRole();
-    phase = "assignment";
-    await discordBotRequest(
-      `/guilds/${encodedGuildId}/members/${encodedUserId}/roles/${encodeURIComponent(role.id)}`,
-      { method: "PUT" },
-    );
-    return { connected: true, inGuild: true, roleAssigned: true, roleId: role.id };
+    // Linking a website account is not community rules acceptance.
+    const member = await discordBotRequest(`/guilds/${encodedGuildId}/members/${encodedUserId}`);
+    const roleAssigned = !member.pending && Array.isArray(member.roles) && member.roles.includes(role.id);
+    return { connected: true, inGuild: true, roleAssigned, ...(roleAssigned ? { roleId: role.id } : { verificationRequired: true }) };
   } catch (error) {
     error.discordRoleSyncPhase = phase;
     throw error;

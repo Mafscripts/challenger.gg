@@ -58,6 +58,7 @@ test("authenticated role sync refreshes only the still-linked Discord profile an
   let profileStatus = 200, inGuild = true, unlinkDuringLookup = false;
   let membershipStatus = 200, rolesStatus = 200, assignmentStatus = 204, discordErrorCode = 50013;
   let roleWrites = 0, profileCalls = 0;
+  let memberRoles = ["300000000000000001"], memberPending = false;
   const writes = [];
   const override = (target, name, implementation) => {
     const previous = target[name]; target[name] = implementation;
@@ -82,7 +83,7 @@ test("authenticated role sync refreshes only the still-linked Discord profile an
     }
     if (path.includes("/members/") && options.method === "GET") {
       if (membershipStatus !== 200) return Response.json({ code: discordErrorCode }, { status: membershipStatus });
-      return inGuild ? Response.json({ user: { id } }) : Response.json({ code: 10007 }, { status: 404 });
+      return inGuild ? Response.json({ user: { id }, roles: memberRoles, pending: memberPending }) : Response.json({ code: 10007 }, { status: 404 });
     }
     if (path.endsWith("/roles") && options.method === "GET") return rolesStatus === 200
       ? Response.json([{ id: "300000000000000001", name: "Verified Player" }])
@@ -144,55 +145,33 @@ test("authenticated role sync refreshes only the still-linked Discord profile an
   assert.equal(notInServer.roleAssigned, false);
   assert.equal(notInServer.profileRefreshed, true);
   assert.equal(user.discord_username, "latest");
-  assert.equal(roleWrites, 4);
+  assert.equal(roleWrites, 0);
 
   inGuild = true;
-  await t.test("role permission errors still refresh the linked avatar and explain the Discord fix", async () => {
-    assignmentStatus = 403;
-    profile = { id, username: "permission-test", avatar: "refreshed_despite_403" };
-    const response = await sync();
-    assert.equal(response.status, 200);
-    const result = await response.json();
-    assert.equal(result.connected, true);
-    assert.equal(result.roleAssigned, false);
-    assert.equal(result.profileRefreshed, true);
-    assert.equal(result.roleSyncError.code, "DISCORD_ROLE_PERMISSIONS_REQUIRED");
-    assert.match(result.roleSyncError.message, /Manage Roles/);
-    assert.match(result.roleSyncError.message, /above Verified Player/);
-    assert.equal(user.discord_avatar_url, `https://cdn.discordapp.com/avatars/${id}/refreshed_despite_403.png?size=256`);
-    assert.equal(user.discord_user_id, id);
-    assert.equal(user.discord_connected_at, connectedAt);
+  await t.test("website linking cannot grant verification or bypass pending screening", async () => {
+    for (const [roles, pending, expected] of [[[], false, false], [["300000000000000001"], true, false], [["300000000000000001"], false, true]]) {
+      memberRoles = roles; memberPending = pending;
+      const result = await (await sync()).json();
+      assert.equal(result.roleAssigned, expected);
+      assert.equal(result.profileRefreshed, true);
+      if (!expected) assert.equal(result.verificationRequired, true);
+      assert.equal(roleWrites, 0);
+    }
+    memberPending = false;
   });
 
-  await t.test("server access errors are distinguished from role hierarchy errors", async () => {
-    for (const phase of ["membership", "roles", "assignment"]) {
+  await t.test("server access failures still refresh profiles and never write roles", async () => {
+    for (const phase of ["membership", "roles"]) {
       membershipStatus = phase === "membership" ? 403 : 200;
       rolesStatus = phase === "roles" ? 403 : 200;
-      assignmentStatus = phase === "assignment" ? 403 : 204;
       discordErrorCode = 50001;
-      const roleWritesBefore = roleWrites;
       const result = await (await sync()).json();
       assert.equal(result.profileRefreshed, true);
       assert.equal(result.roleAssigned, false);
-      assert.equal(result.inGuild, undefined);
       assert.equal(result.roleSyncError.code, "DISCORD_SERVER_ACCESS_REQUIRED");
-      assert.match(result.roleSyncError.message, /server membership/);
-      assert.equal(roleWrites, roleWritesBefore + (phase === "assignment" ? 1 : 0));
+      assert.equal(roleWrites, 0);
     }
-  });
-
-  await t.test("simultaneous role and profile failures do not modify the linked account or claim success", async () => {
-    profileStatus = 503;
-    discordErrorCode = 50013;
-    const before = structuredClone(user), count = writes.length;
-    const result = await (await sync()).json();
-    assert.equal(result.profileRefreshed, false);
-    assert.equal(result.roleAssigned, false);
-    assert.equal(result.roleSyncError.code, "DISCORD_ROLE_PERMISSIONS_REQUIRED");
-    assert.deepEqual(user, before);
-    assert.equal(writes.length, count);
-    profileStatus = 200;
-    assignmentStatus = 204;
+    membershipStatus = rolesStatus = 200;
   });
 
   unlinkDuringLookup = true;

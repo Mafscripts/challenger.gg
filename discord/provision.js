@@ -1,4 +1,6 @@
+import { verificationCard } from "./verification-gate.js";
 import "dotenv/config";
+import { communityRulesDescription } from "./community-rules.js";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -492,7 +494,7 @@ async function seedInformation(guild) {
       .setDescription("Your competitive arena starts here. Enter tournaments, build your roster, climb the leaderboards and prove who owns the lobby.")
       .addFields(
         { name: "📜 1. Know the rules", value: `Start in ${rulesChannel} and keep every match fair.`, inline: true },
-        { name: "✅ 2. Automatically verified", value: "You receive **Verified Player** when you join. No extra step is required.", inline: true },
+        { name: "✅ 2. Accept & verify", value: `Read the rules, then click **Accept Rules & Verify** in ${verificationChannel} to unlock the community.`, inline: true },
         { name: "🏆 3. Enter the arena", value: `Find your next event in ${tournamentsChannel}.`, inline: true },
         { name: "🔥 Ready to compete?", value: "Bring your squad, play for prizes and build your reputation in the Topfragg community." },
       ),
@@ -517,38 +519,15 @@ async function seedInformation(guild) {
     new EmbedBuilder()
       .setColor(TOPFRAGG_COLORS.cyan)
       .setTitle("📜 Topfragg Community Rules")
-      .setDescription([
-        "🤝 **Respect competitors.** No harassment, discrimination or threats.",
-        "🎯 **Compete fairly.** Cheating, exploiting or falsifying results is prohibited.",
-        `🔒 **Keep disputes private.** Use ${createTicketChannel} instead of public accusations.`,
-        "🛡️ **Protect personal information.** Never share passwords, tokens or payment details.",
-        "⚖️ **Follow staff instructions.** Use the official appeal process when you disagree with a decision.",
-      ].join("\n\n")),
+      .setDescription(communityRulesDescription(createTicketChannel)),
     [],
     ["Topfragg Community Rules"],
   );
   await sendSeedEmbed(
     verificationChannel,
     "Topfragg setup:v1:verification",
-    new EmbedBuilder()
-      .setColor(TOPFRAGG_COLORS.green)
-      .setTitle("✅ Automatic verification · Optional account connection")
-      .setDescription("Every new player receives **Verified Player** automatically on joining. No button, rules acceptance or Topfragg account is required for this community role. You can optionally connect Discord to your Topfragg account for competition features.")
-      .addFields(
-        { name: "1. Connect", value: "Open Topfragg Settings and press **Connect Discord**." },
-        { name: "2. Approve", value: "Authorize basic identity access on Discord. Topfragg never receives your password." },
-        { name: "Already verified", value: "Your **Verified Player** role does not depend on a website connection. Use `/verify` if you need to restore it." },
-        { name: "Automatic roles", value: "**Premium**, **Team Captain** and **Tournament Participant** update automatically from your Topfragg account." },
-      ),
-    [
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setLabel("Connect Discord securely")
-          .setEmoji("🔗")
-          .setStyle(ButtonStyle.Link)
-          .setURL(`${config.publicUrl}/settings?connect=discord`),
-      ),
-    ],
+    verificationCard({ rulesChannel: `${rulesChannel}`, logoUrl: guild.iconURL({ extension: "png", size: 256 }) }).embeds[0],
+    verificationCard().components,
     ["Verify your Topfragg identity", "Automatic verification · Optional account connection"],
   );
   await sendSeedEmbed(

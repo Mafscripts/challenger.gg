@@ -32,10 +32,11 @@ test("captain selection returns existing teams to the private waiting room and m
 
 // Use discord.js's effective member-permission calculation, including guild
 // role grants, channel overwrites and the Administrator bypass.
-function effectivePermissions(channel, id, { admin = false } = {}) {
+function effectivePermissions(channel, id, { admin = false, verified = true } = {}) {
   const roles = new Collection([[config.guildId, { permissions: new PermissionsBitField([
     PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak,
   ]) }]]);
+  if (verified) roles.set("100000000000000099", { permissions: new PermissionsBitField() });
   if (admin) roles.set("admin-role", { permissions: new PermissionsBitField(PermissionFlagsBits.Administrator) });
   const context = {
     guild: { id: config.guildId, ownerId: "guild-owner" },
@@ -86,7 +87,7 @@ function fixture(count = 1, { autoJoinWaiting = true } = {}) {
   channels.set(config.waitingRoomId, channel(config.waitingRoomId, ChannelType.GuildVoice, "8s Waiting Room", null));
   channels.set(config.categoryId, channel(config.categoryId, ChannelType.GuildCategory, "Free 8s Test", null));
   for (const id of config.overflowCategoryIds) channels.set(id, channel(id, ChannelType.GuildCategory, "Free 8s overflow", null));
-  const guild = { id: config.guildId, client: { user: { id: "100000000000000004" } }, voiceStates: { cache: voices },
+  const guild = { roles: { cache: new Collection([["100000000000000099", { id: "100000000000000099", name: "Verified Player" }]]) }, id: config.guildId, client: { user: { id: "100000000000000004" } }, voiceStates: { cache: voices },
     async fetchAuditLogs({ before } = {}) {
       const entries = new Collection([...audits].reverse().filter(([id]) => !before || Number(id) < Number(before)).slice(0, 100));
       return { entries };
@@ -1187,7 +1188,7 @@ test("a failed cosmetic rename preserves voice readiness and retries later", asy
   assert.equal(channel.name, freeEightsVoiceChannelName(f.match.id, "waiting"));
 });
 
-test("started team voices are visible to outsiders without Connect; Waiting Rooms remain hidden", async () => {
+test("started team voices are visible only to verified spectators without Connect; Waiting Rooms remain hidden", async () => {
   const f = fixture();
   f.match.metadata.status = "in_progress";
   await f.sync();
@@ -1200,6 +1201,7 @@ test("started team voices are visible to outsiders without Connect; Waiting Room
   assert.equal(effectivePermissions(waiting, outsider).has(PermissionFlagsBits.ViewChannel), false);
   assert.equal(effectivePermissions(waiting, outsider).has(PermissionFlagsBits.Connect), false);
   for (const channel of [alpha, bravo]) {
+    assert.equal(effectivePermissions(channel, outsider, { verified: false }).has(PermissionFlagsBits.ViewChannel), false);
     assert.equal(effectivePermissions(channel, outsider).has(PermissionFlagsBits.ViewChannel), true);
     assert.equal(effectivePermissions(channel, outsider).has(PermissionFlagsBits.Connect), false);
     assert.equal(effectivePermissions(channel, outsider, { admin: true }).has(PermissionFlagsBits.Connect), true);

@@ -1,3 +1,4 @@
+import { activateVerificationGate, VERIFICATION_BUTTON_ID } from "./verification-gate.js";
 import "dotenv/config";
 import { groqChatEnvironment } from "./groq-chat.js";
 import {
@@ -28,7 +29,7 @@ import {
 import { prisma } from "../server/prisma.js";
 import { syncTournamentDiscord } from "./announcements.js";
 import { syncManagedDiscordRoles } from "./managed-roles.js";
-import { assignVerifiedPlayerRole, syncVerifiedPlayerRoles } from "./member-verification.js";
+import { assignVerifiedPlayerRole } from "./member-verification.js";
 import { closeExpiredGiveaways, endGiveaway, enterGiveaway, startGiveaway } from "./giveaways.js";
 import { syncTwitchLiveStreams } from "./streams.js";
 import { syncFreeEightsVoice } from "./free-eights-voice.js";
@@ -51,19 +52,7 @@ const client = new Client({
   ],
 });
 let tournamentSyncRunning = false;
-let memberVerificationSyncRunning = false;
 const verificationLog = (message) => process.stdout.write(`[Topfragg Verification] ${message}\n`);
-async function runMemberVerificationSync(guild) {
-  if (memberVerificationSyncRunning) return;
-  memberVerificationSyncRunning = true;
-  try {
-    await syncVerifiedPlayerRoles(guild, { log: verificationLog });
-  } catch (error) {
-    console.error("[Topfragg Verification] Sync failed:", error.message);
-  } finally {
-    memberVerificationSyncRunning = false;
-  }
-}
 let freeEightsVoiceSyncRunning = false;
 let freeEightsVoiceUpdates = null;
 let freeEightsLiveUpdates = null;
@@ -575,8 +564,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     process.stderr.write(`[Topfragg Discord] Server ${config.guildId} is unavailable.\n`);
     return;
   }
-  void runMemberVerificationSync(guild);
-  setInterval(() => runMemberVerificationSync(guild), 60_000);
+  await activateVerificationGate(guild);
   freeEightsVoiceUpdates = createFreeEightsVoiceUpdater((id) => syncFreeEightsVoice(guild, { matchIds: [id], refreshInventory: false, onState: observeFreeEightsState }), { retryMs: 500 });
   void runFreeEightsVoiceSync(guild, { refreshInventory: true });
   void runChallengeVoiceSync(guild);
@@ -604,12 +592,6 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 client.on(Events.GuildMemberAdd, syncMemberCountFromEvent);
-client.on(Events.GuildMemberAdd, (member) => {
-  if (member.guild.id !== config.guildId) return;
-  assignVerifiedPlayerRole(member, { log: verificationLog }).catch((error) => {
-    console.error(`[Topfragg Verification] Join assignment failed for ${member.id}:`, error.message);
-  });
-});
 client.on(Events.GuildMemberRemove, syncMemberCountFromEvent);
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   if (newState.guild.id === config.guildId && oldState.channelId !== newState.channelId) {
@@ -655,6 +637,13 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.guildId !== config.guildId) return;
   try {
+    if (interaction.isButton() && interaction.customId === VERIFICATION_BUTTON_ID) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      await assignVerifiedPlayerRole(member, { acceptedRules: true, log: verificationLog });
+      await interaction.editReply("✅ Rules accepted! You now have Verified Player access. Welcome to Topfragg — find your squad in general!");
+      return;
+    }
     if (await handleCommunityInteraction(interaction)) return;
     if (interaction.isButton() && interaction.customId === "topfragg:support:open") {
       await interaction.showModal(supportModal());
@@ -902,8 +891,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.commandName === "verify") {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      await assignVerifiedPlayerRole(interaction.member, { log: verificationLog });
-      await interaction.editReply("You have the Verified Player role. This role is assigned automatically when you join; no website connection is required.");
+      const channel = findConfiguredChannel(interaction.guild, "verification");
+      await interaction.editReply(`Read the server rules, then click **Accept Rules & Verify** in ${channel || "the verification channel"}.`);
       return;
     }
     if (interaction.commandName === "tournaments") {

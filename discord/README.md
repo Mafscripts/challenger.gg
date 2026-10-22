@@ -132,8 +132,8 @@ After a successful connection:
 
 - the immutable Discord user ID is linked to exactly one Topfragg account;
 - the website shows the connected Discord account;
-- the bot assigns the **Verified Player** role when the member is in the Topfragg server;
-- `/verify` restores the community role without requiring a website account;
+- community access requires clicking **Accept Rules & Verify** in Discord;
+- `/verify` points to the rules acceptance button; website linking never grants community access;
 - disconnecting removes the website link and leaves the community role in place.
 
 Modern Discord usernames normally do not include a `#1234` discriminator. Players do not type a username manually; OAuth identifies the correct account.
@@ -213,7 +213,7 @@ For anti-spam, enable **Message Content Intent** in Discord Developer Portal →
 Discord roles now have a clear purpose:
 
 - **CEO, Admin, Tournament Admin, Moderator, Support, Caster, Streamer**: staff-managed roles. Assign these manually in Discord.
-- **Verified Player**: assigned automatically to every human member on joining, without a website account, button or rules acceptance. `/verify` can restore it. Public community and competition channels are visible to everyone; this community role also permits actions such as giveaway entries. Account-linked competition features still use the separate website connection.
+- **Verified Player**: granted immediately after the member clicks **Accept Rules & Verify**. New members see welcome, rules and verification; managed community and voice channels require this role. Existing verified members retain access. Website linking and `/verify` cannot bypass rules acceptance.
 - **Premium**: assigned while the linked Topfragg account has active Premium access.
 - **Team Captain**: assigned while the linked player is captain of an active Topfragg team.
 - **Tournament Participant**: assigned while the linked player is registered in an active tournament.
@@ -221,13 +221,9 @@ Discord roles now have a clear purpose:
 
 The visible member list is grouped by these roles. Automatic roles synchronize while **topfragg-discord** is running; staff roles remain under your direct control.
 
-The bot grants **Verified Player** immediately on `GuildMemberAdd`. At startup
-and once per minute it also checks all server members, including joins missed
-while offline, and retries failed assignments. Bot accounts are excluded. Enable
-**Server Members Intent** in the Developer Portal and give the existing bot
-**Manage Roles**, with its highest role above **Verified Player**. The role must
-already exist; automatic verification does not create or change server roles.
-Disconnecting a website account does not revoke this community role.
+The updated bot activates the access gate at startup and updates the branded verification card using the server logo. It never assigns roles on join or during background sync. Discord membership screening, if enabled, must be completed first.
+
+Deploy `discord/bot.js`, `discord/config.js`, `discord/member-verification.js`, `discord/verification-gate.js`, `discord/free-eights-voice.js`, `discord/community-commands.js`, `discord/community-rules.js`, `discord/provision.js` and `server/discord.js` together; restart both the API and the existing Discord bot. The API change prevents website linking from bypassing verification. Do not change live channel visibility while the old automatic-role bot is running. Startup activation edits only community access and onboarding cards; it preserves existing member roles, staff areas and announcement contents. Review any additional role or member View Channel overrides, because Discord explicit allows can bypass the everyone deny.
 
 Deploy the bot and API changes and restart the existing `topfragg-discord` and
 API processes. Existing human members receive the role on the first sync. The

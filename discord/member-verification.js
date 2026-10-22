@@ -7,40 +7,22 @@ function findVerifiedRole(guild) {
   return role;
 }
 
-// Server membership grants this community role; website linking is optional.
-export async function assignVerifiedPlayerRole(member, { role, log = () => {} } = {}) {
+// Only an explicit rules-acceptance interaction may grant community access.
+export async function assignVerifiedPlayerRole(member, { role, acceptedRules = false, log = () => {} } = {}) {
+  if (!acceptedRules) throw new Error("Accept the community rules using the verification button first.");
+  if (member.pending) throw new Error("Complete Discord's membership screening before verifying.");
   if (member.user.bot) return false;
   if (!role) {
     await member.guild.roles.fetch();
     role = findVerifiedRole(member.guild);
   }
   if (member.roles.cache.has(role.id)) return false;
-  await member.roles.add(role, "Topfragg automatic verification on server membership");
+  await member.roles.add(role, "Topfragg community rules accepted via verification button");
   log(`Assigned Verified Player: ${member.id}`);
   return true;
 }
 
-// Recover joins missed while offline and retry unsuccessful assignments.
-export async function syncVerifiedPlayerRoles(guild, { log = () => {} } = {}) {
-  await guild.roles.fetch();
-  const role = findVerifiedRole(guild);
-  let after;
-  let assigned = 0;
-  let failed = 0;
-  do {
-    const members = await guild.members.list({ limit: 1000, ...(after ? { after } : {}) });
-    for (const member of members.values()) {
-      try {
-        if (await assignVerifiedPlayerRole(member, { role, log })) assigned++;
-      } catch (error) {
-        failed++;
-        log(`Verified Player assignment failed for ${member.id}: ${error.message}`);
-      }
-    }
-    if (members.size < 1000) break;
-    const next = [...members.keys()].reduce((max, id) => BigInt(id) > BigInt(max) ? id : max);
-    if (after && BigInt(next) <= BigInt(after)) throw new Error("Discord member pagination did not advance.");
-    after = next;
-  } while (after);
-  return { assigned, failed };
+// Retained for compatibility: never infer verification from server membership.
+export async function syncVerifiedPlayerRoles() {
+  return { assigned: 0, failed: 0 };
 }
