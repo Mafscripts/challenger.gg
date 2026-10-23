@@ -17,6 +17,7 @@ const readOnlyFunctions = new Set([
   "getLiveSupportState",
   "getSupportInboxSummary",
   "getSupportCaseChat",
+  "getSupportCaseMatch",
   "getPremiumMembershipStatus",
   "getLiveSupportRecords",
   "getAdminRewardOverview", "getMyRewardGrants", "getRewardReveal", "getRewardSeasonStandings",

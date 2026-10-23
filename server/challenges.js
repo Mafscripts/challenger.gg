@@ -298,13 +298,30 @@ export function createChallengeHandlers({ db = prisma, checkMembership = async (
         const side = match.players.filter((player) => player.side === "bravo"); if (side[0] && !side.some((player) => player.captain)) side[0].captain = true;
         match.status = "open"; await update(tx, match);
         await tx.adminAction.create({ data: { metadata: { action_type: "challenge_kick", match_id: match.id, actor: req.user.id, target_user_id: target.user_id } } });
+      } else if (action === "support") {
+        if (!me && !staff(req)) fail("Only players and staff can request room support", 403);
+        if (["completed", "cancelled"].includes(match.status)) fail("This room is closed", 409);
+        const existing = match.support_ticket_id ? await tx.ticket.findUnique({ where: { id: match.support_ticket_id } }) : null;
+        if (existing && !["closed", "resolved", "rejected"].includes(existing.metadata.status)) return { success: true, match, ticket_id: existing.id };
+        const ticket = await tx.ticket.create({ data: { metadata: {
+          user_id: req.user.id, username: nameFor(req.user), subject: "Challenge a Team · admin requested", description: `${nameFor(req.user)} requested help in the challenge room.`,
+          status: "waiting_for_admin", priority: "high", requested_admin: true, request_type: "admin_request", match_type: "challenge", match_id: match.id,
+          related_entity_type: "ChallengeMatch", related_entity_id: match.id, action_url: challengeRoomPath(match.id), participant_user_ids: match.players.map(player => player.user_id),
+          team_a_name: match.alpha_team.name, team_b_name: match.bravo_team?.name || "Solo challengers", match_details: match,
+          match_roster: match.players.map(player => ({ user_id: player.user_id, user_name: player.user_name, activision_id: player.activision_id, team: player.side })), messages: [],
+        } } });
+        match.support_ticket_id = ticket.id; match.admin_request_ticket_id = ticket.id; match.requested_admin = true; await update(tx, match);
+        const targets = await tx.user.findMany({ where: { OR: [{ role: { in: ["moderator", "admin", "super_admin", "ceo", "developer"] } }, { admin_role: { in: ["moderator", "admin", "super_admin", "ceo", "developer"] } }] } });
+        await notify(tx, targets.filter(user => !user.is_banned).map(user => user.id), { type: "admin_request", title: "Challenge room needs support", message: `${nameFor(req.user)} requested an admin.`, action_url: `/?support_case=ticket:${ticket.id}`, related_entity_type: "Ticket", related_entity_id: ticket.id, ticket_id: ticket.id });
       } else if (action === "chat") {
         if (!me && !staff(req)) fail("Only players and staff can use room chat", 403);
         if (["completed", "cancelled"].includes(match.status)) fail("Room chat is closed", 409);
         const text = String(req.body.message || "").trim(); if (!text || text.length > 1000 || containsBlockedLanguage(text)) fail("Enter an appropriate message (up to 1000 characters)");
+        const clientId = typeof req.body.client_message_id === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(req.body.client_message_id) ? req.body.client_message_id : undefined;
+        if (clientId && (match.messages || []).some(message => message.user_id === req.user.id && message.client_message_id === clientId)) return { success: true, match };
         const last = (match.messages || []).findLast((message) => message.user_id === req.user.id);
         if (last && Date.now() - Date.parse(last.at) < 1500) fail("Please slow down", 429);
-        match.messages = [...(match.messages || []), { id: crypto.randomUUID(), user_id: req.user.id, user_name: nameFor(req.user), staff: staff(req), sender_role: ["ceo", "super_admin", "admin", "moderator"].find((role) => hasRole(req.user, role)) || "user", sender_avatar_url: req.user.avatar_url || "", text, at: new Date().toISOString() }].slice(-100); await update(tx, match);
+        match.messages = [...(match.messages || []), { id: crypto.randomUUID(), user_id: req.user.id, user_name: nameFor(req.user), staff: staff(req), ...(clientId ? { client_message_id: clientId } : {}), sender_role: ["ceo", "super_admin", "admin", "moderator"].find((role) => hasRole(req.user, role)) || "user", sender_avatar_url: req.user.avatar_url || "", text, at: new Date().toISOString() }].slice(-100); await update(tx, match);
       } else fail("Unknown Challenge a Team action");
       return { success: true, match };
     }, { timeout: 20000, maxWait: 10000 });

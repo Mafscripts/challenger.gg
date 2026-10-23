@@ -31,6 +31,8 @@ test("confirmed cancellations update My Matches for each room type; failed reque
   notifyCancelledMatchResponse({ success: true, tournament: { id: "parent", status: "cancelled" } }, "cancelTournament");
   assert.deepEqual(events.at(-1), { entityType: "tournament-parent", id: "parent" });
   assert.deepEqual(events.slice(0, 3), ["8s", "money8s", "wager"].map((id) => ({ entityType: "wager", id })));
+  notifyCancelledMatchResponse({ success: true, dispute: { match_type: "xp" }, result: { success: true, match: { id: "support-cancel", status: "cancelled" } } }, "moderateDispute");
+  assert.deepEqual(events.at(-1), { entityType: "xp", id: "support-cancel" });
   const count = events.length;
   notifyCancelledMatchResponse({ success: false, wager: { id: "failed", status: "cancelled" } }, "refundWager");
   notifyCancelledMatchResponse({ success: true, cancelled: false, match: { id: "vote", status: "in_progress" } }, "voteRankedCancellation");

@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { isStaffSupportMessage } from "@/lib/liveSupport";
+import { supportMatchMaps, supportModeLabel } from "@/lib/supportMatchDetails";
 import { disputeReasonLabel } from "@/lib/matchDisputes";
 import { closedTicket, isMatchTicket, shortTicketId, ticketDate, ticketDescription, ticketIssue, ticketReporter, ticketRoomPath, ticketState, ticketTitle } from "@/lib/adminTickets";
 
@@ -25,6 +26,9 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const setReply = (reply) => onDraftChange({ reply });
   const setNote = (note) => onDraftChange({ note });
   const setReason = (reason) => onDraftChange({ reason });
+  const roomDraft = draft.roomReply || "";
+  const setRoomDraft = value => onDraftChange({ roomReply: value });
+  const roomPending = React.useRef(null);
   const [decision, setDecision] = useState("close");
   const [caseId, setCaseId] = useState("");
   const [target, setTarget] = useState("");
@@ -42,8 +46,14 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const canReply = ticket && !closedTicket(ticket) && !handledByOther;
   const proof = linksFrom(row);
   const path = ticketRoomPath(row);
-  const match = ticket?.match_details || row.disputes[0]?.wager_details || {};
-  const roster = activeCase?.match_roster || ticket?.match_roster || row.disputes[0]?.match_roster || [];
+  const matchQuery = useQuery({
+    queryKey: ["support-case-match", user.id, row.kind, row.record_id], enabled: tab === "match",
+    queryFn: async () => { const { data } = await base44.functions.invoke("getSupportCaseMatch", { kind: row.kind, id: row.record_id }); if (!data?.success) throw new Error(data?.error || "Could not load match details."); return data; },
+    refetchInterval: tab === "match" ? 10000 : false,
+  });
+  const match = matchQuery.data?.match || ticket?.match_details || row.disputes[0]?.wager_details || {};
+  const mapRows = supportMatchMaps(match);
+  const roster = matchQuery.data?.roster || activeCase?.match_roster || ticket?.match_roster || row.disputes[0]?.match_roster || [];
   const chatQuery = useQuery({
     queryKey: ["support-case-chat", user.id, row.kind, row.record_id],
     enabled: tab === "chat",
@@ -59,11 +69,11 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const chat = [...new Map([...savedChat, ...(chatQuery.data?.messages || [])].filter(message => !message.internal).map(message => [message.id || `${message.created_date}:${message.sender_id}:${message.content || message.message}`, message])).values()]
     .sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
   const history = row.disputes[0]?.match_history || ticket?.match_history || [];
-  const report = ticket?.result_report || match;
-  const scoreA = report.confirmed_score_alpha ?? report.team_a_score ?? report.reported_score_alpha ?? report.host_reported_score_alpha;
-  const scoreB = report.confirmed_score_bravo ?? report.team_b_score ?? report.reported_score_bravo ?? report.host_reported_score_bravo;
-  const teamA = ticket?.team_a_name || match.host_name || "Team Alpha";
-  const teamB = ticket?.team_b_name || match.challenger_name || "Team Bravo";
+  const report = matchQuery.data?.source === "current" ? match : ticket?.result_report || match;
+  const scoreA = report.confirmed_score_alpha ?? report.team_a_score ?? report.reported_score_alpha ?? report.host_reported_score_alpha ?? report.score?.alpha;
+  const scoreB = report.confirmed_score_bravo ?? report.team_b_score ?? report.reported_score_bravo ?? report.host_reported_score_bravo ?? report.score?.bravo;
+  const teamA = match.alpha_team?.name || match.team_a_name || match.host_name || ticket?.team_a_name || "Team Alpha";
+  const teamB = match.bravo_team?.name || match.team_b_name || match.challenger_name || ticket?.team_b_name || "Team Bravo";
   const messages = (ticket?.messages || []).filter((message) => !message.internal);
   const notes = [...(ticket?.internal_notes || []), ...(ticket?.support_record_notes || []).map(note => ({ ...note, sender_name: note.author_name }))];
   const submissions = row.disputes.flatMap((record) => record.submissions?.length ? record.submissions : [record])
@@ -86,7 +96,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
     : invoke("claimSupportDispute", { dispute_id: row.disputes[0].id, take_over: takeOver }, "Assigned to you.");
   const openRoom = async () => {
     if (busy || !path) return;
-    if (handledByOther) { onRoomOpen?.(); navigate(`${path}?support_view=1`); return; }
+    if (handledByOther) { onRoomOpen?.(); navigate(`${path}${path.includes("?") ? "&" : "?"}support_view=1`); return; }
     if (!row.closed && (!ticket || !closedTicket(ticket)) && owner?.assigned_admin_id !== user.id && !await claim()) return;
     onRoomOpen?.();
     navigate(row.closed ? path : `${path}${path.includes("?") ? "&" : "?"}admin=1`);
@@ -96,6 +106,13 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
     if (!content) return;
     if (await invoke("replyTicket", { ticket_id: ticket.id, message: content, internal }, internal ? "Staff note saved." : "Reply sent to the players.")) {
       if (internal) setNote(""); else setReply("");
+    }
+  };
+  const sendRoomReply = async () => {
+    if (busy || !roomDraft.trim()) return;
+    if (!roomPending.current || roomPending.current.content !== roomDraft.trim()) roomPending.current = { content: roomDraft.trim(), client_message_id: crypto.randomUUID() };
+    if (await invoke("sendSupportCaseMatchMessage", { kind: row.kind, id: row.record_id, ...roomPending.current }, "Message sent to the match room.")) {
+      setRoomDraft(""); roomPending.current = null; await chatQuery.refetch();
     }
   };
   const decide = async () => {
@@ -155,17 +172,19 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
         {row.disputes.map((record) => <div key={record.id} className="at-evidence-review">{record.proof_reviewed_date ? <p className="at-help"><FileCheck2 size={14} /> Reviewed by {record.proof_reviewed_by_name || "Staff"} on {ticketDate(record.proof_reviewed_date)}</p>
           : !closedTicket(record) && <button className="at-button" disabled={!!busy || !proof.length} onClick={() => invoke("moderateDispute", { dispute_id: record.id, action: "review_proof", notes: "Evidence reviewed by staff." }, "Evidence marked as reviewed.")}><FileCheck2 size={14} /> Mark evidence reviewed</button>}</div>)}
       </>}
-      {tab === "chat" && <><div className="at-section-heading"><h4>Match chat logs</h4><span>{chat.length} messages · Latest 100 room messages</span></div><p className="at-help">Player messages from the linked match room. New messages refresh automatically.</p>{chatQuery.isPending && <p role="status" className="at-help">Loading match chat…</p>}{chatQuery.isError && <div role="alert" className="at-list-error"><p>{chatQuery.error.message}</p><button className="at-button" onClick={() => chatQuery.refetch()} disabled={chatQuery.isFetching}>Retry</button></div>}<div className="at-thread">{chat.map((message, index) => <article key={message.id || index} className="at-message"><div className="at-message-heading"><strong>{message.sender_name || "Player"}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content || message.message}</p></article>)}</div>{!chat.length && !chatQuery.isPending && !chatQuery.isError && <div className="at-empty-section"><MessageSquare size={24} /><h4>No match messages yet</h4><p>No messages have been saved for this match room.</p></div>}</>}
+      {tab === "chat" && <><div className="at-section-heading"><h4>Match chat logs</h4><span>{chat.length} messages · Latest 100 room messages</span></div><p className="at-help">Player messages from the linked match room. New messages refresh automatically.</p>{chatQuery.isPending && <p role="status" className="at-help">Loading match chat…</p>}{chatQuery.isError && <div role="alert" className="at-list-error"><p>{chatQuery.error.message}</p><button className="at-button" onClick={() => chatQuery.refetch()} disabled={chatQuery.isFetching}>Retry</button></div>}<div className="at-thread">{chat.map((message, index) => <article key={message.id || index} className="at-message"><div className="at-message-heading"><strong className={message.sender_staff || ["admin", "ceo", "super_admin", "moderator", "developer"].includes(message.sender_role) ? "support-staff-name" : undefined}>{message.sender_name || "Player"}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content || message.message}</p></article>)}</div>{!chat.length && !chatQuery.isPending && !chatQuery.isError && <div className="at-empty-section"><MessageSquare size={24} /><h4>No match messages yet</h4><p>No messages have been saved for this match room.</p></div>}<div className="at-composer"><label htmlFor="at-room-reply">Reply directly to the match room</label><textarea id="at-room-reply" value={roomDraft} maxLength={500} rows={3} disabled={!!busy} onChange={event => setRoomDraft(event.target.value)} placeholder="Message all players in the match…" /><div><span>Visible to match players. Sending does not join or take over this case.</span><button className="at-button at-button-primary" disabled={!!busy || !roomDraft.trim()} onClick={sendRoomReply}><Send size={14} /> Send to match chat</button></div></div></>}
       {tab === "match" && <>
-        <div className="at-section-heading"><h4>Match information</h4><span>Saved with this ticket</span></div>
+        <div className="at-section-heading"><h4>Match information</h4><span>{matchQuery.isFetching ? "Refreshing…" : matchQuery.data?.source === "current" ? "Current match data" : "Saved match snapshot"}</span></div>
+        {matchQuery.isError && <div className="at-list-error" role="alert"><p>{matchQuery.error.message}</p><button className="at-button" onClick={() => matchQuery.refetch()}>Retry</button></div>}
         <div className="at-match-summary"><strong>{teamA}</strong><span>{scoreA !== undefined && scoreB !== undefined ? `${scoreA} : ${scoreB}` : "vs"}</span><strong>{teamB}</strong></div>
         <dl className="at-facts">{[
-          ["Game mode", match.game_mode_display || match.game_mode], ["Format", match.team_size],
+          ["Status", match.status?.replaceAll("_", " ")], ["Game", match.game_name || match.game_id], ["Game mode", supportModeLabel(match.game_mode_display || match.game_mode)], ["Format", match.team_size],
           ["Series", match.best_of ? `Best of ${match.best_of}` : null], ["Match reference", ticket?.match_id || row.disputes[0]?.match_id || row.disputes[0]?.wager_id],
           ["Tournament", ticket?.tournament_name], ["Reported winner", report.winner_name],
           ["Entry", ticket?.wager_amount !== undefined ? `$${Number(ticket.wager_amount).toFixed(2)}` : null],
-          ["Maps", (match.series_maps || []).map((map) => typeof map === "string" ? map : map.map_name || map.name).filter(Boolean).join(" / ") || match.final_map_name],
+          ["Map veto", match.map_veto ? Object.keys(match.map_veto.bans || {}).length < 2 ? "Waiting for captain bans" : "Both teams have vetoed" : null],
         ].filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+        <section className="at-subsection"><h4>Maps &amp; series order</h4>{mapRows.length ? <div className="at-map-cards">{mapRows.map((map, index) => <div key={`${index}:${map.name}`} className="at-map-card" data-vetoed={map.vetoed || undefined}><span className="at-map-number">{map.vetoed ? "Vetoed" : `Map ${mapRows.slice(0, index + 1).filter(row => !row.vetoed).length}`}{map.selected && !map.vetoed ? " · Selected" : ""}</span><strong>{map.name}</strong><span>{map.mode}</span>{map.vetoBy && <small>Removed by {map.vetoBy}</small>}{map.scoreA !== undefined && map.scoreB !== undefined && <b>{map.scoreA} : {map.scoreB}</b>}</div>)}</div> : <p className="at-help">Maps have not been selected yet. They will appear here once the series is set.</p>}</section>
         {!!roster.length && <section className="at-subsection"><h4>Players &amp; Activision IDs</h4><div className="at-roster">{roster.map((player) => <div key={player.user_id}><span><strong>{player.user_name || "Player"}</strong><small>{player.activision_id || "Activision ID not set"}</small></span><small>{["host", "alpha", "team_a"].includes(player.team) ? teamA : teamB}</small></div>)}</div></section>}
         <button className="at-button" onClick={() => setTab("chat")}><MessageSquare size={14} /> View match chat logs</button>
         {!!history.length && <details className="at-disclosure"><summary>Match history</summary><div className="at-log">{history.map((entry, index) => <p key={entry.id || index}>{entry.summary || entry.result || entry.status || "Match record"}</p>)}</div></details>}
@@ -185,11 +204,12 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
           <label>Outcome<select value={decision} onChange={(event) => setDecision(event.target.value)}>
             <option value="close">{activeCase ? "Resolve report / resume match" : "Close ticket"}</option>
             {(activeCase || ticket?.match_id && !row.disputes.length) && <><option value="approve_team_a">Award win to {teamA}</option><option value="approve_team_b">Award win to {teamB}</option><option value="force_replay">Order a replay</option></>}
+            {(ticket?.match_type || row.disputes[0]?.match_type) === "xp" && <option value="cancel_match">Cancel match · no XP awarded</option>}
             {activeCase && <option value="reject_dispute">Reject the report</option>}
           </select></label>
           <label>Decision reason<textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={4} placeholder="Explain what you reviewed and why this is the outcome..." /></label>
-          <p className="at-help">{["approve_team_a", "approve_team_b"].includes(decision) ? "Awarding a win updates the match result and the rewards for this mode." : decision === "force_replay" ? "The match will be reopened for a replay." : activeCase && decision === "close" ? "The report will be resolved and an interrupted match can continue." : "The resolution will be saved on this ticket."}</p>
-          <button className="at-button at-button-primary" disabled={!!busy || !reason.trim()} onClick={decide}><Check size={14} /> Save decision</button>
+          <p className="at-help">{decision === "cancel_match" ? "The XP match will be cancelled without awarding a win or XP. The linked report and ticket will be resolved." : ["approve_team_a", "approve_team_b"].includes(decision) ? "Awarding a win updates the match result and the rewards for this mode." : decision === "force_replay" ? "The match will be reopened for a replay." : activeCase && decision === "close" ? "The report will be resolved and an interrupted match can continue." : "The resolution will be saved on this ticket."}</p>
+          <button className={`at-button ${decision === "cancel_match" ? "at-button-danger" : "at-button-primary"}`} disabled={!!busy || !reason.trim()} onClick={decide}><Check size={14} /> {decision === "cancel_match" ? "Cancel XP match" : "Save decision"}</button>
           {activeCase && !!roster.length && <details className="at-disclosure at-moderation"><summary><ShieldAlert size={14} /> Player moderation</summary><p className="at-help">A player ban is separate from the match decision. Review the evidence before applying it.</p>
             <label>Player<select value={target} onChange={(event) => { setTarget(event.target.value); setConfirmBan(false); }}><option value="">Choose a player</option>{roster.map((player) => <option key={player.user_id} value={player.user_id}>{player.user_name}</option>)}</select></label>
             <label>Ban duration<select value={duration} onChange={(event) => { setDuration(event.target.value); setConfirmBan(false); }}>{[["24h", "24 hours"], ["3d", "3 days"], ["7d", "7 days"], ["14d", "14 days"], ["30d", "30 days"], ["permanent", "Permanent"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

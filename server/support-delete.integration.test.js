@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { deleteAdminTicket, getAdminTickets, closeSupportCaseForCleanup, getSupportCaseChat } from "./admin-tickets.js";
+import { deleteAdminTicket, getAdminTickets, closeSupportCaseForCleanup, getSupportCaseChat, getSupportCaseMatch } from "./admin-tickets.js";
 
 // Opt in explicitly: all test data and audit rows are rolled back, even on success.
 test("database deletion removes linked records and messages, preserves results, and tolerates absent optional match tables", { skip: process.env.SUPPORT_DB_TEST !== "1" }, async () => {
@@ -112,6 +112,27 @@ test("support chat logs load later XP and tournament room messages even when the
         await assert.rejects(() => getSupportCaseChat(tx, { id: "player", role: "user" }, payload), error => error.status === 403);
       }
       await assert.rejects(() => getSupportCaseChat(tx, { role: "admin" }, { kind: "ticket", id: "missing-fixture" }), error => error.status === 404);
+      throw rollback;
+    }, { timeout: 20000 }), error => error === rollback);
+  } finally { await db.$disconnect(); }
+});
+
+test("support details read current maps and scores instead of the ticket snapshot, with staff-only access", { skip: process.env.SUPPORT_DB_TEST !== "1" }, async () => {
+  const db = new PrismaClient(), rollback = new Error("ROLLBACK_MATCH_DETAILS_TEST");
+  try {
+    await assert.rejects(db.$transaction(async tx => {
+      for (const [type, model] of [["tournament", "tournamentMatch"], ["money8s", "wager"]]) {
+        const match = await tx[model].create({ data: { metadata: { status: "in_progress", series_maps: ["Raid", "Express"], series_modes: ["hp", "snd"], confirmed_score_alpha: 1, confirmed_score_bravo: 0 } } });
+        const ticket = await tx.ticket.create({ data: { metadata: { match_type: type, match_id: match.id, match_details: { series_maps: ["Old snapshot"] } } } });
+        const payload = { id: ticket.id, kind: "ticket", match_id: "untrusted-ignored" };
+        const details = await getSupportCaseMatch(tx, { role: "admin" }, payload);
+        assert.equal(details.source, "current"); assert.deepEqual(details.match.series_maps, ["Raid", "Express"]);
+        assert.equal(details.match.confirmed_score_alpha, 1);
+        await assert.rejects(() => getSupportCaseMatch(tx, { role: "user" }, payload), error => error.status === 403);
+        await tx[model].delete({ where: { id: match.id } });
+        const saved = await getSupportCaseMatch(tx, { role: "developer" }, payload);
+        assert.equal(saved.source, "snapshot"); assert.deepEqual(saved.match.series_maps, ["Old snapshot"]);
+      }
       throw rollback;
     }, { timeout: 20000 }), error => error === rollback);
   } finally { await db.$disconnect(); }

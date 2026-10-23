@@ -164,3 +164,28 @@ test("simultaneous submissions share one dispute and conversation", async (t) =>
   assert.equal(table.ticket.length, 1);
   assert.equal(table.dispute[0].metadata.submissions.length, 2);
 });
+
+for (const type of ["wager", "money8s", "tournament"]) test(`support center sends ${type} room messages without joining or changing the case owner`, async t => {
+  const { table, request } = await fixture(t, type);
+  if (type === "tournament") {
+    const replacements = [["tournamentMatch", "findUnique", async () => ({ id: "match", metadata: { tournament_id: "tour", status: "in_progress", team_a_id: "alpha", team_b_id: "bravo" } })], ["tournament", "findUnique", async () => ({ id: "tour", metadata: { status: "open" } })], ["tournamentParticipant", "findMany", async () => []]];
+    for (const [model, method, action] of replacements) { const previous = prisma[model][method]; prisma[model][method] = action; t.after(() => { prisma[model][method] = previous; }); }
+  }
+  table.ticket.push({ id: "support-chat-case", created_date: new Date(), metadata: { status: "open", match_type: type, match_id: "match", assigned_admin_id: "another-staff" } });
+  const originalQuery = prisma.$queryRaw;
+  prisma.$queryRaw = async strings => String(Array.isArray(strings) ? strings.join("") : strings.sql).includes('FROM "Ticket"') ? table.ticket : [];
+  t.after(() => { prisma.$queryRaw = originalQuery; });
+  const payload = { kind: "ticket", id: "support-chat-case", match_id: "forged", content: "Staff is reviewing the report", client_message_id: crypto.randomUUID(), sender_name: "Forged name" };
+  const beforeMatch = structuredClone(table.wager[0]);
+  const sent = await request("sendSupportCaseMatchMessage", payload, "admin");
+  assert.equal(sent.data.success, true);
+  assert.equal(sent.data.message.conversation_id, "match");
+  assert.equal(sent.data.message.sender_name, "Staff");
+  assert.equal(sent.data.message.sender_staff, true);
+  assert.deepEqual(table.wager[0], beforeMatch);
+  assert.equal(table.ticket[0].metadata.assigned_admin_id, "another-staff");
+  const count = table.chatMessage.length;
+  assert.equal((await request("sendSupportCaseMatchMessage", payload, "admin")).data.success, true);
+  assert.equal(table.chatMessage.length, count);
+  assert.equal((await request("sendSupportCaseMatchMessage", { ...payload, client_message_id: crypto.randomUUID() }, "outsider")).status, 403);
+});

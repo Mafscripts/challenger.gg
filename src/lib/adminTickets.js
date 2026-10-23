@@ -1,3 +1,4 @@
+import { challengeRoomPath } from "./challengeRanks";
 import { disputeReasonLabel } from "./matchDisputes";
 
 export const closedTicket = (record) => ["resolved", "closed", "rejected"].includes(record?.status);
@@ -41,6 +42,7 @@ export const ticketRoomPath = (row) => {
   if (!id) return null;
   const routes = { "8s": "8s-match", eights: "8s-match", free8s: "8s-match", free_8s: "8s-match", money8s: "8s-match", money_8s: "8s-match", "money-8s": "8s-match", xp: "xp-match", xpmatch: "xp-match", ranked: "ranked-match", rankedmatch: "ranked-match", tournament: "tournament-match", tournamentmatch: "tournament-match", wager: "wagers-match", wagers: "wagers-match" };
   const types = [ticket?.match_details?.match_type, ticket?.match_type, dispute?.match_type, row.mode, ticket?.related_entity_type].map(value => String(value || "").toLowerCase());
+  if (types.some(type => ["challenge", "challengematch", "challenge_team", "challenge_money"].includes(type))) return challengeRoomPath(id);
   let prefix = types.map(type => routes[type]).find(Boolean);
   // Historic tickets may have stored only a local room URL. Accept a known room
   // route only when its ID matches the case, never an external or arbitrary URL.

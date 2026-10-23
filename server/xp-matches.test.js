@@ -174,3 +174,26 @@ test("cancelXPMatch endpoint permits admin roles and rejects a forged staff over
   assert.equal((await invoke({ id: "a", role: "user" })).success, false);
   assert.equal(f.state().match.metadata.status, "accepted");
 });
+
+test("the support Decision action cancels an XP dispute and resolves its case without awarding XP", async t => {
+  const [{ default: routes }, { prisma }] = await Promise.all([import("./routes/functions.js"), import("./prisma.js")]);
+  const handler = routes.stack.find(layer => layer.route?.path === "/:name" && layer.route.methods.post).route.stack.at(-1).handle;
+  const f = fixture(); f.state().match.metadata.status = "disputed";
+  const ticket = { id: "case", metadata: { status: "admin_joined", assigned_admin_id: "staff", joined_staff_ids: ["staff"], match_type: "xp", match_id: "match", dispute_id: "report" } };
+  const dispute = { id: "report", metadata: { status: "pending", match_type: "xp", match_id: "match", ticket_id: "case" } };
+  const delegates = {};
+  for (const [model, record] of [["ticket", ticket], ["dispute", dispute]]) {
+    delegates[model] = { findUnique: async () => structuredClone(record), update: async ({ data }) => { record.metadata = structuredClone(data.metadata); return structuredClone(record); } };
+    Object.assign(f.tx, { [model]: delegates[model] });
+  }
+  const replacements = [["ticket", "findUnique", delegates.ticket.findUnique], ["ticket", "update", delegates.ticket.update], ["dispute", "findUnique", delegates.dispute.findUnique], ["dispute", "update", delegates.dispute.update], ["xPMatch", "findUnique", f.tx.xPMatch.findUnique], ["adminAlert", "findMany", async () => []], ["notification", "findMany", async () => []], ["notification", "create", async ({ data }) => ({ id: crypto.randomUUID(), ...data })]];
+  for (const [model, method, action] of replacements) { const original = prisma[model][method]; prisma[model][method] = action; t.after(() => { prisma[model][method] = original; }); }
+  const originalTransaction = prisma.$transaction; prisma.$transaction = f.db.$transaction; t.after(() => { prisma.$transaction = originalTransaction; });
+  const beforeStats = structuredClone(f.state().stats);
+  const result = await new Promise((resolve, reject) => handler({ params: { name: "moderateDispute" }, body: { dispute_id: "report", action: "cancel_match", notes: "Match cancelled after review" }, user: { id: "staff", role: "admin", username: "Staff" } }, { status() { return this; }, json: resolve }, reject));
+  assert.equal(result.success, true);
+  assert.equal(f.state().match.metadata.status, "cancelled");
+  assert.equal(ticket.metadata.status, "resolved"); assert.equal(dispute.metadata.status, "resolved");
+  assert.equal(dispute.metadata.decision, "cancel_match");
+  assert.deepEqual(f.state().stats, beforeStats);
+});

@@ -39,6 +39,15 @@ export function notifyCancelledMatchResponse(data, functionName) {
     : /xp/i.test(functionName) ? "XPMatch"
       : /tournament/i.test(functionName) ? "TournamentMatch" : null;
   notifyCancelledMatch(data?.match, entity);
+  let result = data?.result;
+  for (let depth = 0; result && depth < 3; depth++, result = result.result) {
+    const match = result.match;
+    if (!match || match.id === data?.match?.id) continue;
+    const type = data?.dispute?.match_type || data?.ticket?.match_type || result.dispute?.match_type || match.match_type;
+    const resultEntity = { xp: "XPMatch", ranked: "RankedMatch", tournament: "TournamentMatch", wager: "Wager", wagers: "Wager", "8s": "Wager", money8s: "Wager" }[type];
+    notifyCancelledMatch(match, resultEntity);
+    if (match.status === "cancelled") break;
+  }
 }
 
 // Keep a confirmed cancellation excluded even when an older request finishes later.

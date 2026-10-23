@@ -273,3 +273,12 @@
 .support-delete-dialog .support-cleanup-delete{display:flex;align-items:flex-start;gap:9px;font-size:12px;color:#ffb5bd;line-height:1.6}
 .support-delete-dialog .support-cleanup-delete input{margin-top:4px;accent-color:#ed657e}
 .support-delete-dialog .at-button-close{color:#ffca8b;border-color:#ca8b4666;background:#6d4b2522}
+
+.admin-tickets .at-map-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin-top:12px}
+.admin-tickets .at-map-card{display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid #26637c66;border-radius:9px;background:linear-gradient(140deg,#123446,#0c1c29);font-size:11px;color:#93b6c8}
+.admin-tickets .at-map-card strong{font-size:15px;color:#e4f4ff}
+.admin-tickets .at-map-number{font-size:9px;color:#49d9f5;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.admin-tickets .at-map-card b{color:#6ce3b4;margin-top:4px;font-size:15px}
+.admin-tickets .at-map-card[data-vetoed="true"]{border-color:#7f475e66;background:#42253233}
+.admin-tickets .at-map-card[data-vetoed="true"] strong{text-decoration:line-through;color:#be8f9f}
+.admin-tickets .at-map-card[data-vetoed="true"] .at-map-number{color:#ff9cae}

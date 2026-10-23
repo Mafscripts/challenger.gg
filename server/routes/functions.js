@@ -19,7 +19,7 @@ import { activeProgressionSeason, progressionResetOverview, resetProgression } f
 import { matchAfterProgressionReset } from "../../src/lib/progressionResets.js";
 import { Router } from "express";
 import { prisma } from "../prisma.js";
-import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket, getSupportInboxSummary, saveSupportCase, markSupportCaseRead, closeSupportCaseForCleanup, getSupportCaseChat } from "../admin-tickets.js";
+import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket, getSupportInboxSummary, saveSupportCase, markSupportCaseRead, closeSupportCaseForCleanup, getSupportCaseChat, getSupportCaseMatch, supportCaseRoom } from "../admin-tickets.js";
 import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount, setAdminUserVpnAccess } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
 import { getAdminDashboard } from "../admin-dashboard.js";
@@ -5181,6 +5181,12 @@ async function resolveTicket(req) {
     }
   }
 
+  if (action === "cancel_match" && ticket.match_type === "xp" && ticket.match_id) {
+    actionResult = ticket.dispute_id
+      ? await moderateDispute({ ...req, body: { dispute_id: ticket.dispute_id, action, notes: req.body.resolution || req.body.notes } })
+      : await cancelXPMatch({ ...req, body: { xp_match_id: ticket.match_id, staff_override: true } });
+    if (actionResult?.success === false) return actionResult;
+  }
   if (action && ["approve_team_a", "approve_team_b", "force_replay"].includes(action) && ticket.match_id) {
     if (ticket.dispute_id) {
       actionResult = await moderateDispute({ ...req, body: { dispute_id: ticket.dispute_id, action, notes: req.body.resolution || req.body.notes || action } });
@@ -6158,6 +6164,23 @@ async function markDirectConversationRead(req) {
   return { success: true, read_count: unread.length, read_message_ids: selected.map((message) => message.id) };
 }
 
+async function sendSupportCaseMatchMessage(req) {
+  assertStaff(req, "moderator");
+  const room = await supportCaseRoom(prisma, req.user, req.body);
+  const content = String(req.body.content || "").trim();
+  if (!content || content.length > 500) return { success: false, error: "Write a room message of 1–500 characters." };
+  const clientMessageId = String(req.body.client_message_id || "");
+  if (!/^[a-zA-Z0-9_-]{1,80}$/.test(clientMessageId)) return { success: false, error: "A message reference is required." };
+  if (room.match_type === "challenge") {
+    const result = await challengeHandlers.challengeAction({ ...req, body: { action: "chat", match_id: room.match_id, message: content, client_message_id: clientMessageId } });
+    const saved = result.match?.messages?.find(message => message.client_message_id === clientMessageId) || result.match?.messages?.at(-1);
+    return { success: result.success, message: saved ? { id: saved.id, sender_id: saved.user_id, sender_name: saved.user_name, sender_staff: saved.staff, sender_role: saved.sender_role, content: saved.text, created_date: saved.at } : null };
+  }
+  const previous = await firstEntity("ChatMessage", { conversation_id: room.match_id, sender_id: req.user.id, client_message_id: clientMessageId });
+  if (previous) return { success: true, message: previous };
+  return sendMatchRoomMessage({ ...req, body: { ...room, content, client_message_id: clientMessageId } });
+}
+
 async function sendMatchRoomMessage(req) {
   const matchType = normalizeMatchType(req.body.match_type);
   const matchId = req.body.match_id || req.body.conversation_id;
@@ -6194,6 +6217,7 @@ async function sendMatchRoomMessage(req) {
       display_name_color: req.user.display_name_color || "",
       sender_avatar_url: playerAvatarFor(req.user, senderProfile),
       sender_role: effectiveChatRole(req.user),
+      sender_staff: hasRole(req.user, "moderator"),
       recipient_id: tournament.id,
       recipient_name: "Streamer tournament lobby",
       content,
@@ -6257,6 +6281,7 @@ async function sendMatchRoomMessage(req) {
     display_name_color: req.user.display_name_color || "",
     sender_avatar_url: playerAvatarFor(req.user, senderProfile),
     sender_role: effectiveChatRole(req.user),
+      sender_staff: hasRole(req.user, "moderator"),
     recipient_id: match.id,
     recipient_name: "Match room",
     content,
@@ -9854,7 +9879,11 @@ async function moderateDispute(req) {
     return { success: true, dispute: updated, result };
   }
 
-  if (action === "approve_team_a" || action === "approve_team_b") {
+  if (action === "cancel_match") {
+    if (matchType !== "xp") return { success: false, error: "This cancellation action is for XP matches." };
+    if (!String(req.body.notes || "").trim()) return { success: false, error: "Give a cancellation reason." };
+    result = await cancelXPMatch({ ...req, body: { xp_match_id: match.id, staff_override: true } });
+  } else if (action === "approve_team_a" || action === "approve_team_b") {
     if (matchType === "ranked") {
       const winnerId = action === "approve_team_a" ? match.host_id : match.challenger_id;
       const teamAlphaScore = action === "approve_team_a" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0;
@@ -10598,6 +10627,8 @@ const handlers = {
   claimSupportDispute: async req => ({ success: true, dispute: (await claimSupportTicket(prisma, req.user, { dispute_id: req.body.dispute_id, take_over: req.body.take_over })).ticket }),
   getSupportInboxSummary: req => getSupportInboxSummary(prisma, req.user),
   getAdminTicketCounts: (req) => getAdminTicketCounts(prisma, req.user),
+  sendSupportCaseMatchMessage,
+  getSupportCaseMatch: (req) => getSupportCaseMatch(prisma, req.user, req.body),
   getSupportCaseChat: (req) => getSupportCaseChat(prisma, req.user, req.body),
   closeSupportCaseForCleanup: (req) => closeSupportCaseForCleanup(prisma, req.user, req.body),
   deleteAdminTicket: (req) => deleteAdminTicket(prisma, req.user, req.body),

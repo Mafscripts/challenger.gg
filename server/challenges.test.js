@@ -30,7 +30,7 @@ function fixture(t, size = 4) {
   const previous = Object.fromEntries(["DISCORD_FREE_8S_VOICE_ENABLED", "DISCORD_CHALLENGE_VOICE_ENABLED", "DISCORD_GUILD_ID", "DISCORD_FREE_8S_VOICE_CATEGORY_ID"].map((key) => [key, process.env[key]]));
   Object.assign(process.env, { DISCORD_FREE_8S_VOICE_ENABLED: "true", DISCORD_CHALLENGE_VOICE_ENABLED: "true", DISCORD_GUILD_ID: "100000000000000001", DISCORD_FREE_8S_VOICE_CATEGORY_ID: "100000000000000002" });
   t.after(() => Object.entries(previous).forEach(([key, value]) => value === undefined ? delete process.env[key] : process.env[key] = value));
-  let tables = Object.fromEntries(["challengeMatch", "challengeStanding", "team", "teamMember", "user", "wager", "wagerParticipant", "notification", "adminAction", "discordEventDispatch"].map((name) => [name, []]));
+  let tables = Object.fromEntries(["challengeMatch", "challengeStanding", "team", "teamMember", "user", "wager", "wagerParticipant", "notification", "adminAction", "discordEventDispatch", "ticket"].map((name) => [name, []]));
   let serial = 0, queue = Promise.resolve();
   const locks = [];
   const db = { mapPool: { findUnique: async () => null }, $executeRaw: async (_sql, ...values) => { locks.push(values); } };
@@ -253,4 +253,44 @@ test("Free 8s players cannot also post challenges, and public profile history ne
   assert.equal(publicHistory.matches[0].id, match.id);
   assert.equal(publicHistory.matches[0].profile_side, "alpha");
   assert.equal(publicHistory.matches[0].messages, undefined);
+});
+
+test("challenge support requests reach the inbox once, and staff can reply without joining the roster", async t => {
+  const f = fixture(t), match = await f.create();
+  const beforeRoster = structuredClone(match.players);
+  const requested = await f.action(0, "support", { match_id: match.id });
+  assert.ok(requested.match.support_ticket_id);
+  assert.equal(f.rows("ticket").length, 1);
+  assert.equal(f.rows("ticket")[0].metadata.match_type, "challenge");
+  assert.ok(f.rows("notification").some(row => row.metadata.type === "admin_request"));
+  await f.action(0, "support", { match_id: match.id });
+  assert.equal(f.rows("ticket").length, 1);
+  const clientId = crypto.randomUUID();
+  const replied = await f.action(f.staff, "chat", { match_id: match.id, message: "Staff reply from support center", client_message_id: clientId });
+  assert.deepEqual(replied.match.players, beforeRoster);
+  assert.equal(replied.match.messages.at(-1).staff, true);
+  const retry = await f.action(f.staff, "chat", { match_id: match.id, message: "Staff reply from support center", client_message_id: clientId });
+  assert.equal(retry.match.messages.length, replied.match.messages.length);
+});
+
+test("support center staff messages reach Challenge a Team chat without roster or ownership changes", async t => {
+  const f = fixture(t), match = await f.create();
+  const requested = await f.action(0, "support", { match_id: match.id });
+  const ticket = f.rows("ticket")[0]; ticket.metadata.assigned_admin_id = "another-staff";
+  const methods = [["ticket", "findUnique", f.db.ticket.findUnique], ["challengeMatch", "findUnique", f.db.challengeMatch.findUnique], ["challengeMatch", "update", f.db.challengeMatch.update]];
+  for (const [model, method, action] of methods) { const previous = prisma[model][method]; prisma[model][method] = action; t.after(() => { prisma[model][method] = previous; }); }
+  const previousTransaction = prisma.$transaction, previousQuery = prisma.$queryRaw;
+  prisma.$transaction = f.db.$transaction;
+  prisma.$queryRaw = async strings => String(Array.isArray(strings) ? strings.join("") : strings.sql).includes('FROM "Ticket"') ? f.rows("ticket") : [];
+  t.after(() => { prisma.$transaction = previousTransaction; prisma.$queryRaw = previousQuery; });
+  const handler = functionRoutes.stack.find(layer => layer.route?.path === "/:name" && layer.route.methods.post).route.stack.at(-1).handle;
+  const body = { kind: "ticket", id: requested.match.support_ticket_id, content: "Reviewing the evidence now", client_message_id: crypto.randomUUID(), match_id: "untrusted" };
+  const invoke = () => new Promise((resolve, reject) => handler({ params: { name: "sendSupportCaseMatchMessage" }, body, user: f.staff }, { status() { return this; }, json: resolve }, reject));
+  const before = structuredClone(f.rows("challengeMatch")[0].metadata.players);
+  const result = await invoke();
+  assert.equal(result.success, true); assert.equal(result.message.sender_staff, true);
+  assert.equal(result.message.content, body.content);
+  assert.deepEqual(f.rows("challengeMatch")[0].metadata.players, before);
+  assert.equal(f.rows("ticket")[0].metadata.assigned_admin_id, "another-staff");
+  assert.equal((await invoke()).message.id, result.message.id);
 });

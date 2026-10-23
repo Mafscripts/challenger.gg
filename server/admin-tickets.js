@@ -203,9 +203,9 @@ export async function deleteAdminTicket(db, user, payload = {}) {
     // Older deployments may not have every match module installed. Referencing
     // an absent optional table aborts the entire transaction, including the delete.
     const installed = await tx.$queryRaw`SELECT tablename FROM pg_tables
-      WHERE schemaname = current_schema() AND tablename IN ('Wager', 'XPMatch', 'RankedMatch', 'TournamentMatch')`;
+      WHERE schemaname = current_schema() AND tablename IN ('Wager', 'XPMatch', 'RankedMatch', 'TournamentMatch', 'ChallengeMatch')`;
     const matchTables = new Set(installed.map(row => row.tablename));
-    for (const table of ["Wager", "XPMatch", "RankedMatch", "TournamentMatch"].filter(table => matchTables.has(table))) {
+    for (const table of ["Wager", "XPMatch", "RankedMatch", "TournamentMatch", "ChallengeMatch"].filter(table => matchTables.has(table))) {
       await tx.$executeRaw(Prisma.sql`UPDATE ${Prisma.raw(`"${table}"`)} SET metadata = metadata - ARRAY(
           SELECT key FROM (VALUES
             ('admin_request_ticket_id', metadata->>'admin_request_ticket_id' IN (${idsSql(ticketIds)})),
@@ -305,8 +305,8 @@ export async function closeSupportCaseForCleanup(db, user, payload = {}) {
       }
     }
     const ticketIds = [...group.tickets.keys()], disputeIds = [...group.disputes.keys()];
-    const installed = await tx.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = current_schema() AND tablename IN ('Wager', 'XPMatch', 'RankedMatch', 'TournamentMatch')`;
-    for (const table of installed.map(row => row.tablename).filter(table => ["Wager", "XPMatch", "RankedMatch", "TournamentMatch"].includes(table))) {
+    const installed = await tx.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = current_schema() AND tablename IN ('Wager', 'XPMatch', 'RankedMatch', 'TournamentMatch', 'ChallengeMatch')`;
+    for (const table of installed.map(row => row.tablename).filter(table => ["Wager", "XPMatch", "RankedMatch", "TournamentMatch", "ChallengeMatch"].includes(table))) {
       await tx.$executeRaw(Prisma.sql`UPDATE ${Prisma.raw(`"${table}"`)} SET metadata = metadata || jsonb_build_object('admin_request_status', 'resolved', 'requested_admin', false, 'admin_request_resolved_date', ${timestamp}::text)
         WHERE metadata->>'admin_request_ticket_id' IN (${idsSql(ticketIds)}) OR metadata->>'support_ticket_id' IN (${idsSql(ticketIds)})`);
     }
@@ -323,6 +323,12 @@ export async function getSupportCaseChat(db, user, payload = {}) {
   if (!["ticket", "dispute"].includes(payload.kind) || typeof payload.id !== "string" || !payload.id || payload.id.length > 200) throw Object.assign(new Error("Choose a support case."), { status: 400 });
   const group = await supportCaseGroup(db, payload.kind, payload.id);
   if (!group) throw Object.assign(new Error("Support case no longer exists."), { status: 404 });
+  const room = await supportCaseRoom(db, user, payload);
+  if (room.match_type === "challenge") {
+    const match = await db.challengeMatch.findUnique({ where: { id: room.match_id } });
+    if (!match) throw Object.assign(new Error("Challenge room no longer exists."), { status: 404 });
+    return { success: true, has_match: true, limit: 100, messages: (match.metadata.messages || []).slice(-100).map(message => ({ id: message.id, sender_id: message.user_id, sender_name: message.user_name, sender_staff: message.staff, sender_role: message.sender_role, content: message.text, created_date: message.at })) };
+  }
   const records = [...group.tickets.values(), ...group.disputes.values()];
   const matchIds = [...new Set(records.map(row => row.metadata?.match_id || row.metadata?.wager_id || (row.metadata?.related_entity_type !== "Ticket" ? row.metadata?.related_entity_id : null)).filter(Boolean))];
   if (!matchIds.length) return { success: true, messages: [], has_match: false };
@@ -330,4 +336,50 @@ export async function getSupportCaseChat(db, user, payload = {}) {
     AND COALESCE(metadata->>'internal', 'false') <> 'true'
     ORDER BY created_date DESC, id DESC LIMIT 100`;
   return { success: true, messages: rows.reverse().map(serializeRow), has_match: true, limit: 100 };
+}
+
+export async function getSupportCaseMatch(db, user, payload = {}) {
+  requireStaff(user);
+  if (!["ticket", "dispute"].includes(payload.kind) || typeof payload.id !== "string" || !payload.id || payload.id.length > 200) throw Object.assign(new Error("Choose a support case."), { status: 400 });
+  const group = await supportCaseGroup(db, payload.kind, payload.id);
+  if (!group) throw Object.assign(new Error("Support case no longer exists."), { status: 404 });
+  const records = [...group.tickets.values(), ...group.disputes.values()].map(serializeRow);
+  const record = records.find(row => row.match_id || row.wager_id || row.related_entity_id) || records[0];
+  const snapshot = record.match_details || record.wager_details || {};
+  const id = record.match_id || record.wager_id || record.related_entity_id;
+  const type = String(record.match_type || snapshot.match_type || record.related_entity_type || "wager").toLowerCase();
+  const table = { challenge: "ChallengeMatch", challengematch: "ChallengeMatch", challenge_team: "ChallengeMatch", challenge_money: "ChallengeMatch", xp: "XPMatch", xpmatch: "XPMatch", ranked: "RankedMatch", rankedmatch: "RankedMatch", tournament: "TournamentMatch", tournamentmatch: "TournamentMatch" }[type] || "Wager";
+  let match = null;
+  if (id) {
+    const installed = await db.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = current_schema() AND tablename = ${table}`;
+    if (installed.length) {
+      const rows = await db.$queryRaw(Prisma.sql`SELECT * FROM ${Prisma.raw(`"${table}"`)} WHERE id = ${id} LIMIT 1`);
+      match = serializeRow(rows[0]);
+    }
+  }
+  let roster = records.find(row => row.match_roster?.length)?.match_roster || [];
+  if (match) {
+    const sides = [["alpha", match.team_alpha_player_ids || match.team_a_player_ids], ["bravo", match.team_bravo_player_ids || match.team_b_player_ids]];
+    const current = sides.flatMap(([team, ids]) => Array.isArray(ids) ? ids.map(id => ({ user_id: typeof id === "string" ? id : id.user_id || id.id, team })).filter(row => row.user_id) : []);
+    if (current.length) {
+      const users = await db.user.findMany({ where: { id: { in: [...new Set(current.map(row => row.user_id))].slice(0, 50) } }, select: { id: true, username: true, display_name: true, metadata: true } });
+      roster = current.slice(0, 50).map(row => {
+        const player = users.find(user => user.id === row.user_id), saved = roster.find(player => player.user_id === row.user_id);
+        return { ...saved, ...row, user_name: player?.display_name || player?.username || saved?.user_name || "Player", activision_id: player?.metadata?.activision_id || saved?.activision_id || "" };
+      });
+    }
+  }
+  return { success: true, match: match || snapshot, source: match ? "current" : "snapshot", roster };
+}
+
+export async function supportCaseRoom(db, user, payload = {}) {
+  requireStaff(user);
+  if (!["ticket", "dispute"].includes(payload.kind) || typeof payload.id !== "string" || !payload.id || payload.id.length > 200) throw Object.assign(new Error("Choose a support case."), { status: 400 });
+  const group = await supportCaseGroup(db, payload.kind, payload.id);
+  if (!group) throw Object.assign(new Error("Support case no longer exists."), { status: 404 });
+  const records = [...group.tickets.values(), ...group.disputes.values()].map(serializeRow);
+  const record = records.find(row => row.match_id || row.wager_id || row.related_entity_id);
+  if (!record) throw Object.assign(new Error("No match room is linked to this case."), { status: 400 });
+  const type = String(record.match_type || record.match_details?.match_type || record.related_entity_type || "wager").toLowerCase();
+  return { match_id: record.match_id || record.wager_id || record.related_entity_id, match_type: ["challenge", "challengematch", "challenge_team", "challenge_money"].includes(type) ? "challenge" : type };
 }

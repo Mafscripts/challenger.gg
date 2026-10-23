@@ -183,3 +183,14 @@ test("bulk cleanup failures are grouped without repeating the same error for eve
   const summary = supportCleanupFailureSummary(0, Array.from({ length: 10 }, (_, index) => ({ id: String(index), message: "Close this case first." })));
   assert.equal(summary, "0 cases processed. 10 cases: Close this case first.");
 });
+
+test("support map details preserve series order, per-map modes and scores, and both veto formats", async () => {
+  const { supportMatchMaps } = await import("../src/lib/supportMatchDetails.js");
+  const maps = supportMatchMaps({ series_maps: ["Raid", { name: "Express", mode: "snd", team_a_score: 6, team_b_score: 4 }], series_modes: ["hp", "snd"], map_veto: { bans: { team_a: { map: "Nuketown" } } }, team_a_name: "Alpha" });
+  assert.deepEqual(maps.map(row => row.name), ["Raid", "Express", "Nuketown"]);
+  assert.equal(maps[0].mode, "Hardpoint"); assert.equal(maps[1].mode, "Search & Destroy"); assert.equal(maps[1].scoreA, 6);
+  assert.equal(maps[2].vetoed, true); assert.equal(maps[2].vetoBy, "Alpha");
+  const legacy = supportMatchMaps({ final_map_name: "Raid", host_banned_map_name: "Express", host_name: "Host" });
+  assert.equal(legacy[0].selected, true); assert.equal(legacy[1].vetoed, true); assert.equal(legacy[1].vetoBy, "Host");
+  assert.deepEqual(supportMatchMaps({}), []);
+});
