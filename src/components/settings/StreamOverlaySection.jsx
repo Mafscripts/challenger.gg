@@ -4,6 +4,7 @@ import { PLAYER_OVERLAY_HEIGHT, PLAYER_OVERLAY_WIDTH, PLAYER_OVERLAY_THEMES, pla
 import "@/styles/stream-overlay-settings.css";
 import StreamAdOverlaySection from "./StreamAdOverlaySection";
 import WebcamOverlaySection from "./WebcamOverlaySection";
+import OverlayPreview from "@/components/stream/OverlayPreview";
 
 export default function StreamOverlaySection({ user }) {
   const [copied, setCopied] = useState(false);
@@ -46,7 +47,7 @@ export default function StreamOverlaySection({ user }) {
       <div className="stream-overlay-theme-picker" role="group" aria-label="Overlay theme"><span>Choose your overlay · {PLAYER_OVERLAY_THEMES.length} styles</span>{PLAYER_OVERLAY_THEMES.map(option => <button type="button" key={option.key} data-theme={option.key} aria-pressed={theme === option.key} onClick={() => setTheme(option.key)}><span className="stream-overlay-theme-swatch" aria-hidden="true" /><span className="stream-overlay-theme-copy"><strong>{option.label}</strong><small>{option.caption}</small></span>{theme === option.key && <Check size={14} aria-hidden="true" />}</button>)}</div>
       {selectedDesign?.description && <p className="stream-overlay-theme-description" role="status">{selectedDesign.description}</p>}
       <div className="stream-overlay-preview" ref={previewRef} style={{ height: previewWidth ? PLAYER_OVERLAY_HEIGHT * previewScale + 16 : 80 }}>
-        {previewWidth > 0 && <iframe src={url} title="Live Topfragg player overlay preview" width={PLAYER_OVERLAY_WIDTH} height={PLAYER_OVERLAY_HEIGHT} tabIndex={-1} style={{ transform: `scale(${previewScale})` }} />}
+        {previewWidth > 0 && <OverlayPreview label="player bar preview"><iframe src={url} title="Live Topfragg player overlay preview" width={PLAYER_OVERLAY_WIDTH} height={PLAYER_OVERLAY_HEIGHT} tabIndex={-1} style={{ transform: `scale(${previewScale})` }} /></OverlayPreview>}
       </div>
       <p className="stream-overlay-preview-caption">Original Topfragg logo, TOPFRAGG.GG, player name and live stats. The animated center-stage designs feature a centered player name, XP + level, Ranked ELO, Free 8s ELO + SR, earnings, record and trophy counters. Every bar is 80 pixels high. Stats refresh every 15 seconds.</p>
       <label className="stream-overlay-url-label" htmlFor="stream-overlay-url">Your browser source URL</label>

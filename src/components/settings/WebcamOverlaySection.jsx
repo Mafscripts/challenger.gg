@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Camera, Check, Copy, ExternalLink } from "lucide-react";
 import { WEBCAM_THEMES, webcamDimensions, webcamOverlayUrl } from "@/components/stream/WebcamFrame";
+import OverlayPreview from "@/components/stream/OverlayPreview";
 
 export default function WebcamOverlaySection({ user }) {
   const [theme, setTheme] = useState("cyan");
@@ -19,7 +20,7 @@ export default function WebcamOverlaySection({ user }) {
     <div className="stream-overlay-settings-body">
       <div className="webcam-frame-controls"><label>Frame style<select value={theme} onChange={event => setTheme(event.target.value)}>{WEBCAM_THEMES.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label><label>Camera shape<select value={ratio} onChange={event => setRatio(event.target.value)}><option value="16:9">16:9 · widescreen</option><option value="4:3">4:3 · classic</option></select></label></div>
       <div className="stream-overlay-preview-heading"><strong>Your webcam frame</strong><a href={url} target="_blank" rel="noopener noreferrer">Open preview<ExternalLink size={14} /></a></div>
-      <div className="webcam-frame-preview" style={{ aspectRatio: `${dimensions.width} / ${dimensions.height}` }}><iframe src={url} title="Animated Topfragg webcam frame preview" tabIndex={-1} /></div>
+      <div className="webcam-frame-preview" style={{ aspectRatio: `${dimensions.width} / ${dimensions.height}` }}><OverlayPreview label="webcam frame preview"><iframe src={url} title="Animated Topfragg webcam frame preview" tabIndex={-1} /></OverlayPreview></div>
       <p className="stream-overlay-preview-caption">The checkerboard shows transparency. Your camera stays visible through the center. Animated light travels around the edge; the frame never accesses your webcam.</p>
       <label className="stream-overlay-url-label" htmlFor="webcam-overlay-url">Your webcam browser source URL</label>
       <div className="stream-overlay-url"><input ref={input} id="webcam-overlay-url" readOnly value={url} onFocus={event => event.target.select()} /><button type="button" onClick={copy}>{status === "Copied" ? <Check size={16} /> : <Copy size={16} />}{status === "Copied" ? "Copied" : "Copy URL"}</button></div>

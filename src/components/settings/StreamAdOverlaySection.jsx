@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Check, Copy, Download, ExternalLink, MonitorPlay } from "lucide-react";
 import { websiteOrigin } from "@/lib/appEnvironment";
+import OverlayPreview from "@/components/stream/OverlayPreview";
 
 export default function StreamAdOverlaySection() {
   const url = `${websiteOrigin}/stream/topfragg-ad.html`;
@@ -29,7 +30,7 @@ export default function StreamAdOverlaySection() {
     <div className="stream-overlay-settings-body">
       <div className="stream-overlay-preview-heading"><strong>Live advert preview</strong><a href={url} target="_blank" rel="noopener noreferrer">Open full preview<ExternalLink size={14} /></a></div>
       <div ref={previewRef} className="stream-ad-preview" style={{ height: width ? 140 * scale + 16 : 156 }}>
-        {width > 0 && <iframe src={url} title="Animated TopFragg stream advert preview" width="480" height="140" tabIndex={-1} style={{ transform: `scale(${scale})` }} />}
+        {width > 0 && <OverlayPreview label="stream advert preview"><iframe src={url} title="Animated TopFragg stream advert preview" width="480" height="140" tabIndex={-1} style={{ transform: `scale(${scale})` }} /></OverlayPreview>}
       </div>
       <p className="stream-overlay-preview-caption">Your TopFragg logo turns smoothly every 24 seconds. The advert cycles through free-entry tournaments, 5 free credits for the first 250 sign-ups, XP ladders, cash prizes and topfragg.gg.</p>
       <label className="stream-overlay-url-label" htmlFor="stream-ad-url">Advert browser source URL</label>
