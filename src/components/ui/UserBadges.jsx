@@ -4,7 +4,17 @@ import { AlertTriangle, BadgeCheck, Crown, Gamepad2, Monitor } from "lucide-reac
 import BadgeTooltip from "@/components/ui/BadgeTooltip";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 
+import PremiumMemberBadge from "./PremiumMemberBadge";
+import { MEMBER_TIERS } from "@/lib/premiumMembership";
+
+const memberBadgeConfig = Object.fromEntries(MEMBER_TIERS.map(tier => [tier.id, {
+  label: `${tier.label} member`, description: `${tier.name} · Earned after ${tier.days} days of Premium membership.`,
+  className: "border-cyan/30 bg-cyan/10 text-cyan",
+  icon: function MemberIcon(props) { return <PremiumMemberBadge tier={tier.id} {...props} />; },
+}]));
+
 const specialBadgeConfig = {
+  ...memberBadgeConfig,
   verified_player: {
     label: "Verified Player",
     description: "This player is verified.",
@@ -47,7 +57,8 @@ export function userSpecialBadges(user) {
   if (hasActivePremium(user)) types.add("premium");
   else types.delete("premium");
 
-  return [...types].map((type) => ({
+  const highestMemberTier = MEMBER_TIERS.filter(tier => types.has(tier.id)).at(-1)?.id;
+  return [...types].filter(type => !memberBadgeConfig[type] || type === highestMemberTier).map((type) => ({
     type,
     name: badges.find((badge) => badge?.type === type)?.name || specialBadgeConfig[type].label,
   }));

@@ -1,3 +1,5 @@
+import { MEMBER_TIERS } from "../../src/lib/premiumMembership.js";
+import { getPremiumMembershipStatus } from "../premium-membership.js";
 import { randomUUID } from "node:crypto";
 import { supportTicketForViewer } from "../../src/lib/liveSupport.js";
 import { readLiveSupport, sendLiveSupport, updateLiveSupport, readLiveSupportRecords, manageLiveSupportRecord } from "../live-support.js";
@@ -181,6 +183,7 @@ const tournamentGameModeDetails = {
   control: { game_mode: "control", mode: "Control" },
 };
 const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const memberUserBadgeTypes = new Set(MEMBER_TIERS.map(tier => tier.id));
 const specialUserBadgeTypes = new Set(["verified_player", "streamer"]);
 const specialUserBadgeLabels = {
   verified_player: "Verified Player",
@@ -9961,7 +9964,7 @@ async function updateUserRole(req) {
     return { success: false, error: "Role hierarchy prevents assigning this role" };
   }
   const currentBadges = Array.isArray(target.metadata?.badges) ? target.metadata.badges : [];
-  const specialBadges = currentBadges.filter((badge) => specialUserBadgeTypes.has(badge?.type));
+  const specialBadges = currentBadges.filter((badge) => specialUserBadgeTypes.has(badge?.type) || memberUserBadgeTypes.has(badge?.type));
   const badgeRole = nextRole === "ceo" ? "admin" : nextRole;
   const roleBadges = nextRole !== "user"
     ? [{ name: badgeRole.replaceAll("_", " "), type: badgeRole }]
@@ -10022,7 +10025,7 @@ async function updateUserBadges(req) {
       .filter(Boolean);
   if (requestedTypes.some((type) => !specialUserBadgeTypes.has(type))) return { success: false, error: "Unknown badge type" };
   const currentBadges = Array.isArray(target.metadata?.badges) ? target.metadata.badges : [];
-  const roleBadges = currentBadges.filter((badge) => roleBadgeTypes.has(badge?.type));
+  const roleBadges = currentBadges.filter((badge) => roleBadgeTypes.has(badge?.type) || memberUserBadgeTypes.has(badge?.type));
   const specialBadges = normalizedSpecialBadges(requestedTypes);
   const verified = specialBadges.some((badge) => badge.type === "verified_player");
   const streamer = specialBadges.some((badge) => badge.type === "streamer");
@@ -10576,6 +10579,7 @@ const handlers = {
   setAdminUserVpnAccess: (req) => setAdminUserVpnAccess(prisma, req.user, req.body),
   getAdminUserSecurity: (req) => getAdminUserSecurity(prisma, req),
   deleteAdminUser: (req) => deleteAdminUser(prisma, req.user, req.body),
+  getPremiumMembershipStatus: req => getPremiumMembershipStatus(prisma, req.user),
   getLiveSupportState: req => readLiveSupport(prisma, req.user, req.body),
   getLiveSupportRecords: req => readLiveSupportRecords(prisma, req.user, req.body),
   manageLiveSupportRecord: req => manageLiveSupportRecord(prisma, req.user, req.body),

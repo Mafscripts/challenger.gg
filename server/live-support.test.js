@@ -46,6 +46,16 @@ test("messages use trusted identity, notify staff, and retries are idempotent", 
   assert.ok(s.locks.some(value => value.includes("FOR UPDATE")));
 });
 
+test("active Premium requests receive real priority; expired or forged Premium requests do not", async () => {
+  for (const active of [true, false]) {
+    const s = store(), actor = { ...player, is_premium: true, premium_expires: active ? "2099-01-01" : "2000-01-01" };
+    const { ticket } = await sendLiveSupport(s.db, actor, { ...request(), priority: "critical", support_premium: true });
+    assert.equal(ticket.support_premium, active);
+    assert.equal(s.tickets.get(ticket.id).metadata.priority, active ? "high" : "medium");
+    assert.equal(s.notifications[0].title, active ? "Premium live support request" : "Live support request");
+  }
+});
+
 test("owners and scoped support staff can read; other users cannot read, send or close", async () => {
   const s = store(), result = await sendLiveSupport(s.db, player, request());
   const body = { ticket_id: result.ticket.id };

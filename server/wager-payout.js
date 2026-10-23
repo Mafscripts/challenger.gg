@@ -1,5 +1,5 @@
-import { rewardSettings, loadRewardBonuses } from "./competition-rewards.js";
-import { effectiveCashFee } from "../src/lib/competitionRewards.js";
+import { loadRewardBonuses } from "./competition-rewards.js";
+import { cashMatchMembershipFee } from "../src/lib/premiumMembership.js";
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
 const cents = (value) => Math.max(0, Math.round((Number(value) || 0) * 100));
 const premium = (user) => user.is_premium && (!user.premium_expires || +new Date(user.premium_expires) > Date.now());
@@ -24,7 +24,7 @@ export async function settleWagerPayout(db, wager, winnerId, completion = null) 
     const usersIds = [...new Set([...participants.map((row) => row.metadata.user_id), winnerId].filter(Boolean))].sort();
     for (const id of usersIds) await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${id} FOR UPDATE`;
     const users = await tx.user.findMany({ where: { id: { in: usersIds } } }), byId = new Map(users.map((row) => [row.id, row]));
-    const settings = await rewardSettings(tx), mode = wager.match_type === "money8s" ? "money8s" : "wagers";
+    const mode = wager.match_type === "money8s" ? "money8s" : "wagers";
     const bonuses = await loadRewardBonuses(tx, [...winners], mode, new Date(stored.metadata.match_completed_date || Date.now()));
     const total = legacy ? cents(wager.entry_fee ?? wager.amount) : paid.reduce((sum, row) => sum + cents(row.metadata.entry_fee_paid), 0);
     const winning = paid.filter((row) => row.metadata.team === side).sort((a, b) => a.id.localeCompare(b.id));
@@ -42,7 +42,7 @@ export async function settleWagerPayout(db, wager, winnerId, completion = null) 
       const user = byId.get(id); if (!user) throw new Error("Payout player no longer exists");
       const won = winners.has(id), stake = stakes.get(id) || 0, payoutBeforeFee = gross.get(id) || 0;
       const bonus = won && total > 0 ? Number(bonuses[id]?.[mode === "money8s" ? "money8s_cash" : "wagers_cash"] || 0) : 0;
-      const feeRate = won && mode === "wagers" && settings.enabled ? effectiveCashFee(premium(user), bonuses[id]?.cash_fee || 0, settings) : 0;
+      const feeRate = won && mode === "wagers" ? cashMatchMembershipFee(premium(user), wager.entry_fee ?? wager.amount, bonuses[id]?.cash_fee || 0) : 0;
       // Tax the profit, never the player's returned stake. Each player's item
       // changes only their share; cents and the total pot stay deterministic.
       const fee = Math.round(Math.max(0, payoutBeforeFee - stake) * feeRate / 100), payout = payoutBeforeFee - fee + bonus;

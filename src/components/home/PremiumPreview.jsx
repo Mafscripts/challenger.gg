@@ -4,11 +4,11 @@ import { motion } from "framer-motion";
 import { Crown, Check, ArrowRight } from "lucide-react";
 
 const perks = [
-  "Exclusive Premium cosmetics monthly",
-  "Priority matchmaking queue",
-  "Custom profile frames & badges",
-  "Reduced marketplace fees",
-  "Access to Premium-only tournaments",
+  "Animated name effects and colors",
+  "Priority in the live-support inbox",
+  "Five member milestone badges",
+  "1% Cash Match fee only from $50",
+  "Access to Premium-entry tournaments",
 ];
 
 export default function PremiumPreview() {
@@ -32,7 +32,7 @@ export default function PremiumPreview() {
                 <span className="text-orange text-glow-orange">Full Potential</span>
               </h2>
               <p className="text-vapor leading-relaxed mb-8 max-w-md">
-                Premium members gain access to exclusive benefits, cosmetics, and competitive advantages that elevate every aspect of the platform.
+                Animated name effects, member milestone badges and priority live support. Make your Topfragg identity your own.
               </p>
               <div className="flex items-baseline gap-2 mb-8">
                 <span className="text-5xl font-black font-mono text-orange">$9.99</span>

@@ -37,7 +37,7 @@ test("legacy Challengers accounts cannot access removed Tryouts actions or gener
 test("badge management rejects the retired badge and removes legacy entries on normal updates while preserving supported badges and metadata", async (t) => {
   const staff = { id: "staff", role: "ceo", email_verified: true, metadata: {} };
   let target = { id: "target", username: "Target", role: "moderator", email_verified: true, metadata: {
-    activision_id: "Target#123", badges: [{ type: "moderator", name: "Moderator" }, { type: "challengers", name: "Challengers" }, { type: "verified_player", name: "Verified Player" }],
+    activision_id: "Target#123", badges: [{ type: "moderator", name: "Moderator" }, { type: "challengers", name: "Challengers" }, { type: "verified_player", name: "Verified Player" }, { type: "member_1_month", name: "1 month member" }],
   } };
   let writes = 0;
   const override = (object, name, fn) => { const original = object[name]; object[name] = fn; t.after(() => { object[name] = original; }); };
@@ -54,11 +54,12 @@ test("badge management rejects the retired badge and removes legacy entries on n
     body: JSON.stringify({ user_id: target.id, badge_types, monitor_cam_required: true }),
   })).json();
   assert.equal((await update(["challengers"])).success, false);
+  assert.equal((await update(["member_2_years"])).success, false);
   assert.equal(writes, 0);
   const result = await update(["verified_player", "streamer"]);
   assert.equal(result.success, true);
   assert.equal(writes, 1);
-  assert.deepEqual(target.metadata.badges.map((badge) => badge.type), ["moderator", "verified_player", "streamer"]);
+  assert.deepEqual(target.metadata.badges.map((badge) => badge.type), ["moderator", "member_1_month", "verified_player", "streamer"]);
   assert.equal(target.metadata.activision_id, "Target#123");
   assert.equal(target.metadata.monitor_cam_required, true);
 });

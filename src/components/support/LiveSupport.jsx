@@ -22,6 +22,11 @@ export default function LiveSupport() {
   const [selected, setSelected] = useState(null), [ticket, setTicket] = useState(null), [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState(""), [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState("");
   const [sound, setSound] = useState(savedSound);
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener("topfragg:open-support", show);
+    return () => window.removeEventListener("topfragg:open-support", show);
+  }, []);
   const audio = useRef(null), seen = useRef(new Map()), mounted = useRef(true), active = useRef(null), pending = useRef(null), end = useRef(null), reading = useRef(false), initialized = useRef(false), snapshot = useRef(null);
   active.current = selected;
   const chime = useCallback(() => {
@@ -129,7 +134,7 @@ export default function LiveSupport() {
         {staff && <div className="support-toolbar">{selected ? <button onClick={() => choose(null)}><ArrowLeft size={15} /> Inbox</button> : <span>{threads.length} open conversations</span>}<Link to="/admin?tab=tickets" onClick={() => setOpen(false)}>Ticket center ↗</Link></div>}
         {staff && <div className="support-toolbar"><Suspense fallback={null}><SupportRecords /></Suspense><span>Saved conversations</span></div>}
         {error && <div className="support-error" role="alert">{error} <button onClick={() => { setError(""); refresh(); }}>Retry</button></div>}
-        {staff && !selected ? <div className="support-inbox">{loading && !threads.length ? <p>Loading conversations…</p> : !threads.length ? <div className="support-welcome"><CheckCheck size={32} /><h3>All caught up</h3><p>New player requests will appear here.</p></div> : threads.map(thread => <button key={thread.id} className="support-thread" onClick={() => choose(thread.id)}><span className="support-avatar">{(thread.username || "P").slice(0, 1).toUpperCase()}</span><span><strong>{thread.username || "Player"}</strong><small>{thread.support_last_message || "New support request"}</small><em>{thread.assigned_admin_name ? `Helping: ${thread.assigned_admin_name}` : "Unassigned · Reply to pick up"}</em></span>{liveSupportUnread(thread, true) && <i className="support-dot" />}</button>)}</div> : <>
+        {staff && !selected ? <div className="support-inbox">{loading && !threads.length ? <p>Loading conversations…</p> : !threads.length ? <div className="support-welcome"><CheckCheck size={32} /><h3>All caught up</h3><p>New player requests will appear here.</p></div> : threads.map(thread => <button key={thread.id} className="support-thread" onClick={() => choose(thread.id)}><span className="support-avatar">{(thread.username || "P").slice(0, 1).toUpperCase()}</span><span><strong>{thread.username || "Player"}</strong><small>{thread.support_last_message || "New support request"}</small><em>{thread.support_premium && <span className="support-premium-priority">Premium priority · </span>}{thread.assigned_admin_name ? `Helping: ${thread.assigned_admin_name}` : "Unassigned · Reply to pick up"}</em></span>{liveSupportUnread(thread, true) && <i className="support-dot" />}</button>)}</div> : <>
           {staff && ticket && <div className="support-conversation-label">{ticket.username} <span>{ticket.assigned_admin_name ? `Helping: ${ticket.assigned_admin_name}` : "Reply to pick up this chat"}</span></div>}
           <div className="support-messages" role="log" aria-label="Support conversation" aria-live="polite" aria-relevant="additions text">
             {!messages.length && <div className="support-welcome"><MessageCircle size={32} /><h3>{loading ? "Loading your chat…" : "What's on your mind?"}</h3><p>Matches, your account, or something else? Leave a message. Replies appear here; you can continue browsing.</p><small>Never share passwords or payment details.</small></div>}

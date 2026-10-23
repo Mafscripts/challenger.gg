@@ -1,3 +1,4 @@
+import { activePremium } from "../src/lib/premiumMembership.js";
 import { isLiveSupportStaff, LIVE_SUPPORT_ROLES, liveSupportClosed } from "../src/lib/liveSupport.js";
 import { serializeRow } from "./entity.js";
 import { randomUUID } from "node:crypto";
@@ -12,7 +13,7 @@ const scoped = (row, user) => {
 };
 const publicMessage = message => ({ id: message.id, content: message.content, sender_id: message.sender_id, sender_name: message.sender_name,
   sender_staff: message.sender_staff === true, created_date: message.created_date, support_sequence: message.support_sequence });
-const publicTicket = ticket => ({ id: ticket.id, user_id: ticket.user_id, username: ticket.username, status: ticket.status,
+const publicTicket = ticket => ({ support_premium: ticket.support_premium === true, id: ticket.id, user_id: ticket.user_id, username: ticket.username, status: ticket.status,
   assigned_admin_id: ticket.assigned_admin_id, assigned_admin_name: ticket.assigned_admin_name,
   support_sequence: ticket.support_sequence, support_user_read: ticket.support_user_read, support_staff_read: ticket.support_staff_read,
   support_customer_sequence: ticket.support_customer_sequence, support_staff_sequence: ticket.support_staff_sequence,
@@ -25,14 +26,14 @@ export async function readLiveSupport(db, user, body = {}) {
   const rows = await db.$queryRaw`SELECT id, created_date, updated_date,
     jsonb_build_object('user_id', metadata->'user_id', 'username', metadata->'username', 'status', metadata->'status',
       'assigned_admin_id', metadata->'assigned_admin_id', 'assigned_admin_name', metadata->'assigned_admin_name',
-      'support_sequence', metadata->'support_sequence', 'support_customer_sequence', metadata->'support_customer_sequence',
+      'support_premium', metadata->'support_premium', 'support_sequence', metadata->'support_sequence', 'support_customer_sequence', metadata->'support_customer_sequence',
       'support_staff_sequence', metadata->'support_staff_sequence', 'support_user_read', metadata->'support_user_read',
       'support_staff_read', metadata->'support_staff_read', 'support_last_message', metadata->'support_last_message',
       'support_last_message_date', metadata->'support_last_message_date', 'context_path', metadata->'context_path') AS metadata
     FROM "Ticket" WHERE metadata->>'request_type' = 'live_support'
       AND (${staff} OR metadata->>'user_id' = ${user.id})
       AND (NOT ${staff} OR COALESCE(metadata->>'status', 'open') NOT IN ('closed', 'resolved', 'rejected'))
-    ORDER BY updated_date DESC, id DESC LIMIT 25`;
+    ORDER BY CASE WHEN ${staff} AND metadata->>'support_premium' = 'true' THEN 0 ELSE 1 END, updated_date DESC, id DESC LIMIT 25`;
   const threads = rows.map(serializeRow).map(publicTicket);
   let ticket = null, messages = [];
   if (body.ticket_id) {
@@ -54,7 +55,7 @@ async function notify(tx, ticket, actor, staff, content, closed = false) {
   for (const target of targets) {
     if (target.id === actor.id) continue;
     await tx.notification.create({ data: { metadata: {
-      user_id: target.id, type: "live_support", title: closed ? "Support conversation closed" : staff ? "Support replied" : "Live support request",
+      user_id: target.id, type: "live_support", title: closed ? "Support conversation closed" : staff ? "Support replied" : ticket.support_premium ? "Premium live support request" : "Live support request",
       message: `${label(actor)}: ${content.slice(0, 140)}`, is_read: false,
       related_entity_id: ticket.id, related_entity_type: "Ticket", action_url: `/?support=${encodeURIComponent(ticket.id)}`,
     } } });
@@ -82,7 +83,7 @@ export async function sendLiveSupport(db, user, body = {}, { now = () => new Dat
       if (!id) {
         const created = await tx.ticket.create({ data: { metadata: {
           user_id: user.id, username: label(user), subject: "Live support", description: content, category: "support", request_type: "live_support",
-          status: "open", priority: "medium", participant_user_ids: [user.id], messages: [], internal_notes: [],
+          status: "open", support_premium: activePremium(user), priority: activePremium(user) ? "high" : "medium", participant_user_ids: [user.id], messages: [], internal_notes: [],
           support_sequence: 0, support_user_read: 0, support_staff_read: 0,
           context_path: typeof body.context_path === "string" && /^\/(?!\/)/.test(body.context_path) ? body.context_path.slice(0, 300) : "/",
         } } });
@@ -109,7 +110,7 @@ export async function sendLiveSupport(db, user, body = {}, { now = () => new Dat
       status: staff ? "waiting_for_user" : ticket.assigned_admin_id ? "in_progress" : "open",
       ...(staff ? { support_staff_sequence: sequence, support_staff_read: sequence,
         assigned_admin_id: ticket.assigned_admin_id || user.id, assigned_admin_name: ticket.assigned_admin_name || label(user) }
-        : { support_customer_sequence: sequence, support_user_read: sequence, support_last_customer_at: timestamp }),
+        : { support_premium: activePremium(user), priority: activePremium(user) && ticket.priority !== "critical" ? "high" : ticket.priority, support_customer_sequence: sequence, support_user_read: sequence, support_last_customer_at: timestamp }),
     };
     const saved = serializeRow(await tx.ticket.update({ where: { id }, data: { metadata } }));
     await notify(tx, saved, user, staff, content);

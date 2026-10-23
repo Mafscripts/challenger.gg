@@ -10,7 +10,7 @@ const admin = (actor) => { if (!hasRole(actor, "admin")) fail("Admin access requ
 const activeUser = (user) => user && !user.is_banned && !(Date.parse(user.metadata?.suspended_until || "") > Date.now());
 const effectDetails = (reward) => reward && Object.fromEntries(["effect", "value", "sources", "duration_days", "active"].map((key) => [key, reward[key] ?? (key === "sources" ? [] : key === "active" ? true : key === "duration_days" ? 0 : null)]));
 const publicItem = (row) => ({ id: row.id, name: row.metadata.name, category: row.metadata.category || "reward_item", image_url: row.metadata.image_url || "", description: row.metadata.description || "", rarity: row.metadata.rarity, reward: effectDetails(row.metadata.reward) });
-export const defaultRewardSettings = { enabled: false, standard_fee: 10, premium_fee: 5, minimum_fee: 0, tournament_drop_chance: 0 };
+export const defaultRewardSettings = { enabled: false, standard_fee: 1, premium_fee: 1, minimum_fee: 0, tournament_drop_chance: 0 };
 export async function rewardSettings(db) {
   if (!db.competitionRewardSettings) return { ...defaultRewardSettings };
   return { ...defaultRewardSettings, ...(await db.competitionRewardSettings.findUnique({ where: { id: "default" } }))?.metadata };

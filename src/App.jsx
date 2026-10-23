@@ -129,6 +129,7 @@ const AuthenticatedApp = () => {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/support" element={<SupportEntry />} />
         <Route path="/rules" element={<Rules />} />
+        <Route path="/premium" element={<Premium />} />
         <Route path="/league" element={<League />} />
         <Route path="/league/division/:divisionId" element={<League />} />
         <Route path="/league/division/:divisionId/demo-match/:matchId" element={<LeagueMatchDemo />} />
@@ -164,7 +165,6 @@ const AuthenticatedApp = () => {
           <Route path="/item/:id" element={<ItemDetail />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/trading" element={<Trading />} />
-          <Route path="/premium" element={<Premium />} />
           <Route path="/cdl" element={<CDL />} />
           <Route path="/news" element={<News />} />
           <Route path="/my-tickets" element={<Support ticketCenter />} />

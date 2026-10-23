@@ -38,23 +38,23 @@ test("cash payouts allocate exact cents and apply a coupon and cash bonus only t
   const f = fixture(), result = await f.settle();
   assert.equal(result.totalPot, 3);
   assert.equal(result.walletChanges.a.gross_payout, 1.5);
-  assert.equal(result.walletChanges.a.platform_fee, .04);
-  assert.equal(result.walletChanges.a.fee_percent, 8);
+  assert.equal(result.walletChanges.a.platform_fee, 0);
+  assert.equal(result.walletChanges.a.fee_percent, 0);
   assert.equal(result.walletChanges.a.reward_bonus, .1);
-  assert.equal(result.walletChanges.a.payout, 1.56);
-  assert.equal(result.walletChanges.c.fee_percent, 5);
-  assert.equal(result.walletChanges.c.platform_fee, .03);
+  assert.equal(result.walletChanges.a.payout, 1.6);
+  assert.equal(result.walletChanges.c.fee_percent, 0);
+  assert.equal(result.walletChanges.c.platform_fee, 0);
   assert.equal(result.walletChanges.c.reward_bonus, 0);
   assert.equal(result.walletChanges.b.payout, 0);
   assert.equal(result.walletChanges.b.match_delta, -1);
-  assert.equal(result.winnerProfit, 1.03);
+  assert.equal(result.winnerProfit, 1.1);
   assert.ok(f.state().wallets.every((row) => row.metadata.pending_balance === 0 && row.metadata.escrow_balance === 0));
 });
 
 test("repeating payout does not transfer money, bonuses, or earnings a second time", async () => {
   const f = fixture(); await f.settle(); const before = structuredClone(f.state());
   const repeated = await f.settle();
-  assert.equal(repeated.walletChanges.a.payout, 1.56);
+  assert.equal(repeated.walletChanges.a.payout, 1.6);
   assert.deepEqual(f.state(), before);
 });
 
@@ -71,6 +71,18 @@ test("disabled reward settings preserve full-pot payout without fees or item bon
   assert.equal(result.walletChanges.c.payout, 1.5);
   assert.equal(result.walletChanges.a.reward_bonus, 0);
   assert.equal(result.walletChanges.a.platform_fee, 0);
+});
+
+test("membership fees apply at the listed entry threshold even when reward drops are disabled", async () => {
+  for (const [entry, freeFee, premiumFee] of [[19.99, 0, 0], [20, 1, 0], [49.99, 1, 0], [50, 1, 1]]) {
+    const f = fixture({ enabled: false }); f.state().wager.metadata.entry_fee = entry;
+    const result = await f.settle();
+    assert.equal(result.walletChanges.a.fee_percent, freeFee);
+    assert.equal(result.walletChanges.c.fee_percent, premiumFee);
+    assert.equal(result.walletChanges.a.platform_fee, freeFee ? .01 : 0);
+    assert.equal(result.walletChanges.c.platform_fee, premiumFee ? .01 : 0);
+    assert.equal(result.walletChanges.b.platform_fee, 0);
+  }
 });
 
 
