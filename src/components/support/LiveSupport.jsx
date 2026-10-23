@@ -1,12 +1,11 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Headphones, X, Send, Volume2, VolumeX, ArrowLeft, CheckCheck, MessageCircle } from "lucide-react";
+import { Headphones, X, Send, Volume2, VolumeX, ArrowLeft, CheckCheck, MessageCircle, Maximize2 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { isStaffSupportMessage, isLiveSupportStaff, liveSupportClosed, liveSupportUnread } from "@/lib/liveSupport";
 import "./live-support.css";
-const SupportRecords = lazy(() => import("./SupportRecords"));
 const StaffSupportCenter = lazy(() => import("./StaffSupportCenter"));
 
 const call = async (name, body) => {
@@ -20,6 +19,7 @@ export default function LiveSupport() {
   const { user } = useAuth(), staff = isLiveSupportStaff(user);
   const location = useLocation(), navigate = useNavigate();
   const [open, setOpen] = useState(false), [threads, setThreads] = useState([]);
+  const [centerOpen, setCenterOpen] = useState(false);
   const [inboxCount, setInboxCount] = useState(0), [selectedCase, setSelectedCase] = useState(null);
   const [selected, setSelected] = useState(null), [ticket, setTicket] = useState(null), [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState(""), [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState("");
@@ -56,7 +56,7 @@ export default function LiveSupport() {
   useEffect(() => {
     const params = new URLSearchParams(location.search), id = params.get("support"), caseId = params.get("support_case");
     if ((!id && !(staff && caseId)) || !user) return;
-    if (staff) setSelectedCase(caseId || `ticket:${id}`);
+    if (staff) { setSelectedCase(caseId || `ticket:${id}`); setCenterOpen(true); }
     else setSelected(id);
     setOpen(true); params.delete("support"); params.delete("support_case");
     navigate({ pathname: location.pathname, search: params.toString(), hash: location.hash }, { replace: true });
@@ -65,7 +65,7 @@ export default function LiveSupport() {
   const refresh = useCallback(async () => {
     if (!user || (document.hidden && !staff) || reading.current) return;
     reading.current = true;
-    const id = open && !document.hidden ? active.current : null;
+    const id = open && !centerOpen && !document.hidden ? active.current : null;
     try {
       if (staff) {
         const data = await call("getSupportInboxSummary", {});
@@ -74,7 +74,7 @@ export default function LiveSupport() {
         let alert = false;
         for (const alertId of data.alerts || []) { if (!seen.current.has(alertId)) alert = true; seen.current.set(alertId, 1); }
         if (alert) chime();
-        return;
+        if (!open || centerOpen || document.hidden) return;
       }
       const data = await call("getLiveSupportState", { ticket_id: id, ...(snapshot.current?.id === id ? { known_sequence: snapshot.current.sequence } : {}) });
       if (!mounted.current) return;
@@ -103,18 +103,18 @@ export default function LiveSupport() {
       } else if (mounted.current && open) setError(err.message || "Could not load support. Please retry.");
     }
     finally { reading.current = false; if (mounted.current) setLoading(false); }
-  }, [user, open, staff, chime]);
+  }, [user, open, centerOpen, staff, chime]);
 
   useEffect(() => {
     setLoading(open && Boolean(user));
     let stopped = false, timer;
-    const poll = async () => { await refresh(); if (!stopped) timer = setTimeout(poll, document.hidden ? 30000 : staff ? 15000 : open ? 4000 : 30000); };
+    const poll = async () => { await refresh(); if (!stopped) timer = setTimeout(poll, document.hidden ? 30000 : staff ? open && !centerOpen ? 4000 : 15000 : open ? 4000 : 30000); };
     poll();
     const visible = () => { if (!document.hidden) refresh(); };
     document.addEventListener("visibilitychange", visible);
     window.addEventListener("topfragg:support-updated", visible);
     return () => { stopped = true; clearTimeout(timer); document.removeEventListener("visibilitychange", visible); window.removeEventListener("topfragg:support-updated", visible); };
-  }, [refresh, open, staff, user, selected]);
+  }, [refresh, open, centerOpen, staff, user, selected]);
   useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [messages.length, open]);
 
   const choose = id => { setSelected(id); setTicket(null); setMessages([]); setDraft(""); pending.current = null; snapshot.current = null; setError(""); };
@@ -139,27 +139,28 @@ export default function LiveSupport() {
   };
   const unread = threads.filter(thread => liveSupportUnread(thread, staff)).length;
   const closed = liveSupportClosed(ticket);
-  if (staff) return <>
-    <button className="support-launcher" onClick={() => { setSelectedCase(null); setOpen(true); }} aria-label={`Support inbox, ${inboxCount} open requests`}><Headphones size={23} /><span className="support-launcher-label">Support inbox</span>{inboxCount > 0 && <b className="support-badge">{inboxCount}</b>}</button>
-    {open && <Suspense fallback={<div className="support-panel" role="status"><p className="support-welcome">Opening support inbox…</p><button onClick={() => setOpen(false)}>Close</button></div>}><StaffSupportCenter user={user} open={open} selectedCase={selectedCase} onOpenChange={setOpen} /></Suspense>}
-  </>;
-  return <Dialog.Root open={open} onOpenChange={setOpen} modal={false}>
-    <Dialog.Trigger asChild><button className="support-launcher" aria-label={`${staff ? "Support inbox" : "Live support"}${unread ? `, ${unread} unread conversations` : ""}`}><Headphones size={23} /><span className="support-launcher-label">{staff ? "Support inbox" : "Support"}</span>{unread > 0 && <b className="support-badge">{unread}</b>}</button></Dialog.Trigger>
+  const handledByOther = staff && ticket?.assigned_admin_id && ticket.assigned_admin_id !== user?.id;
+  const expandCenter = () => { setSelectedCase(selected ? `ticket:${selected}` : null); setCenterOpen(true); };
+  return <>
+    {staff && centerOpen && <Suspense fallback={<div className="support-panel" role="status"><p className="support-welcome">Opening support center…</p><button onClick={() => setCenterOpen(false)}>Back to quick support</button></div>}><StaffSupportCenter user={user} open={centerOpen} selectedCase={selectedCase} onOpenChange={setCenterOpen} onRoomOpen={() => setOpen(false)} /></Suspense>}
+    <Dialog.Root open={open && !(staff && centerOpen)} onOpenChange={setOpen} modal={false}>
+    <Dialog.Trigger asChild><button className="support-launcher" aria-label={`${staff ? `Support inbox, ${inboxCount} open requests` : "Live support"}${unread ? `, ${unread} unread conversations` : ""}`}><Headphones size={23} /><span className="support-launcher-label">{staff ? "Support inbox" : "Support"}</span>{(staff ? inboxCount : unread) > 0 && <b className="support-badge">{staff ? inboxCount : unread}</b>}</button></Dialog.Trigger>
     <Dialog.Portal><Dialog.Content className="support-panel" onInteractOutside={event => event.preventDefault()}>
-      <header className="support-header"><span className="support-mark"><Headphones size={23} /></span><div><Dialog.Title>{staff ? "Support desk" : "Topfragg support"}</Dialog.Title><Dialog.Description className={staff ? undefined : "sr-only"}>{staff ? "Help players. Keep them in the game." : "Support conversation"}</Dialog.Description></div><button className="support-icon" aria-label={sound ? "Mute support sounds" : "Enable support sounds"} title={sound ? "Mute support sounds" : "Enable support sounds"} onClick={() => { setSound(!sound); try { localStorage.setItem("topfragg:support-sound", sound ? "off" : "on"); } catch { /* Storage is optional. */ } }}>{sound ? <Volume2 size={17} /> : <VolumeX size={17} />}</button><Dialog.Close className="support-icon" aria-label="Close support"><X size={19} /></Dialog.Close></header>
+      <header className="support-header"><span className="support-mark"><Headphones size={23} /></span><div><Dialog.Title>{staff ? "Support desk" : "Topfragg support"}</Dialog.Title><Dialog.Description className={staff ? undefined : "sr-only"}>{staff ? "Quick replies. Everything saved." : "Support conversation"}</Dialog.Description></div><button className="support-icon" aria-label={sound ? "Mute support sounds" : "Enable support sounds"} title={sound ? "Mute support sounds" : "Enable support sounds"} onClick={() => { setSound(!sound); try { localStorage.setItem("topfragg:support-sound", sound ? "off" : "on"); } catch { /* Storage is optional. */ } }}>{sound ? <Volume2 size={17} /> : <VolumeX size={17} />}</button><Dialog.Close className="support-icon" aria-label="Close support"><X size={19} /></Dialog.Close></header>
       {!user ? <div className="support-welcome"><MessageCircle size={34} /><h3>How can we help?</h3><p>Sign in to chat with our team and keep your conversation saved.</p><Link className="support-primary" to="/login" onClick={() => setOpen(false)}>Sign in to chat</Link></div> : <>
-        {staff && <div className="support-toolbar">{selected ? <button onClick={() => choose(null)}><ArrowLeft size={15} /> Inbox</button> : <span>{threads.length} open conversations</span>}<Link to="/admin?tab=tickets" onClick={() => setOpen(false)}>Ticket center ↗</Link></div>}
-        {staff && <div className="support-toolbar"><Suspense fallback={null}><SupportRecords /></Suspense><span>Saved conversations</span></div>}
+        {staff && <div className="support-toolbar support-quick-toolbar">{selected ? <button onClick={() => choose(null)}><ArrowLeft size={15} /> Live chats</button> : <span><i className="support-dot" /> {threads.length} active live chats</span>}<button className="support-expand" onClick={expandCenter}><Maximize2 size={14} /> Open support center</button></div>}
+        {staff && !selected && <div className="support-center-summary"><span><strong>{inboxCount}</strong> open requests across all categories</span><button onClick={expandCenter}>View all →</button></div>}
         {error && <div className="support-error" role="alert">{error} <button onClick={() => { setError(""); refresh(); }}>Retry</button></div>}
-        {staff && !selected ? <div className="support-inbox">{loading && !threads.length ? <p>Loading conversations…</p> : !threads.length ? <div className="support-welcome"><CheckCheck size={32} /><h3>All caught up</h3><p>New player requests will appear here.</p></div> : threads.map(thread => <button key={thread.id} className="support-thread" onClick={() => choose(thread.id)}><span className="support-avatar">{(thread.username || "P").slice(0, 1).toUpperCase()}</span><span><strong>{thread.username || "Player"}</strong><small>{thread.support_last_message || "New support request"}</small><em>{thread.support_premium && <span className="support-premium-priority">Premium priority · </span>}{thread.assigned_admin_name ? `Helping: ${thread.assigned_admin_name}` : "Unassigned · Reply to pick up"}</em></span>{liveSupportUnread(thread, true) && <i className="support-dot" />}</button>)}</div> : <>
+        {staff && !selected ? <div className="support-inbox">{loading && !threads.length ? <p>Loading conversations…</p> : !threads.length ? <div className="support-welcome"><CheckCheck size={32} /><h3>All caught up</h3><p>New player requests will appear here.</p></div> : threads.map(thread => <button key={thread.id} className="support-thread" data-unread={liveSupportUnread(thread, true) || undefined} onClick={() => choose(thread.id)}><span className="support-avatar">{(thread.username || "P").slice(0, 1).toUpperCase()}</span><span><strong>{thread.username || "Player"}</strong><small>{thread.support_last_message || "New support request"}</small><em>{thread.support_premium && <span className="support-premium-priority">Premium priority · </span>}{thread.assigned_admin_name ? `Helping: ${thread.assigned_admin_name}` : "Unassigned · Reply to pick up"}</em></span>{liveSupportUnread(thread, true) && <i className="support-dot" />}</button>)}</div> : <>
           {staff && ticket && <div className="support-conversation-label">{ticket.username} <span>{ticket.assigned_admin_name ? `Helping: ${ticket.assigned_admin_name}` : "Reply to pick up this chat"}</span></div>}
           <div className="support-messages" role="log" aria-label="Support conversation" aria-live="polite" aria-relevant="additions text">
             {!messages.length && <div className="support-welcome"><MessageCircle size={32} /><h3>{loading ? "Loading your chat…" : "What's on your mind?"}</h3><p>Matches, your account, or something else? Leave a message. Replies appear here; you can continue browsing.</p><small>Never share passwords or payment details.</small></div>}
             {messages.map(message => <article key={message.id} className={`support-message ${message.sender_id === user.id ? "support-message-own" : ""}`}><div><strong className={isStaffSupportMessage(message) ? "support-staff-name" : undefined}>{message.sender_staff ? `${message.sender_name} · Support` : message.sender_name}</strong><time>{message.created_date ? new Date(message.created_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</time></div><p>{message.content}</p></article>)}<div ref={end} />
           </div>
-          {closed ? <div className="support-ended"><CheckCheck size={17} /> Conversation closed.{!staff && <button onClick={() => { choose(null); setThreads([]); }}>Start a new chat</button>}</div> : <form className="support-composer" onSubmit={send}><label className="sr-only" htmlFor="support-message">Your message</label><textarea id="support-message" placeholder="Write your message…" value={draft} maxLength={2000} rows={2} disabled={busy} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(event); } }} /><button className="support-send" disabled={busy || !draft.trim() || (staff && !ticket)} aria-label="Send message"><Send size={19} /></button><div className="support-composer-meta"><span>{busy ? "Sending…" : "Replies are saved to your account"}</span>{ticket && <button type="button" disabled={busy} onClick={closeConversation}>End chat</button>}</div></form>}
+          {handledByOther && !closed && <div className="support-owner-notice">{ticket.assigned_admin_name || "Another staff member"} is helping this player. Open the support center to review the case.</div>}
+          {closed ? <div className="support-ended"><CheckCheck size={17} /> Conversation closed.{!staff && <button onClick={() => { choose(null); setThreads([]); }}>Start a new chat</button>}</div> : <form className="support-composer" onSubmit={send}><label className="sr-only" htmlFor="support-message">Your message</label><textarea id="support-message" placeholder="Write your message…" value={draft} maxLength={2000} rows={2} disabled={busy || handledByOther} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(event); } }} /><button className="support-send" disabled={busy || !draft.trim() || (staff && !ticket) || handledByOther} aria-label="Send message"><Send size={19} /></button><div className="support-composer-meta"><span>{busy ? "Sending…" : "Replies are saved to your account"}</span>{ticket && <button type="button" disabled={busy || handledByOther} onClick={closeConversation}>End chat</button>}</div></form>}
         </>}
       </>}
     </Dialog.Content></Dialog.Portal>
-  </Dialog.Root>;
+  </Dialog.Root></>;
 }

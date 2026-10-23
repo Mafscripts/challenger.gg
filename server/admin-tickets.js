@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { hasRole } from "./roles.js";
 import { serializeRow } from "./entity.js";
@@ -140,7 +141,11 @@ export async function getAdminTickets(db, user, payload = {}) {
       serialized.messages = [...conversation.values()].filter((message) => !message.internal)
         .sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
     }
-    return [{ id: `${row.kind}:${row.id}`, kind: row.kind, record_id: row.id,
+    const record = serialized || serializeRow(linked[0]);
+    const incomingToken = supportIncomingToken(record);
+    const unread = Boolean(incomingToken && record?.support_inbox_reads?.[user.id] !== incomingToken);
+    if (serialized) delete serialized.support_inbox_reads;
+    return [{ incoming_token: incomingToken, unread, id: `${row.kind}:${row.id}`, kind: row.kind, record_id: row.id,
       closed: row.closed, channel: row.channel, mode: row.mode, ticket: serialized, disputes: linked.map(serializeRow) }];
   });
   const last = page.at(-1);
@@ -232,5 +237,23 @@ export async function saveSupportCase(db, user, payload = {}) {
   const table = Prisma.raw(payload.kind === "ticket" ? '"Ticket"' : '"Dispute"');
   const changed = await db.$executeRaw`UPDATE ${table} SET metadata = jsonb_set(metadata, '{support_favorite}', ${JSON.stringify(payload.saved)}::jsonb) WHERE id = ${payload.id}`;
   if (!changed) throw Object.assign(new Error("Support case no longer exists."), { status: 404 });
+  return { success: true };
+}
+
+export function supportIncomingToken(record) {
+  const messages = (record?.messages || []).filter(message => !message.internal && !message.is_system && !message.sender_staff && !["staff", "admin", "moderator", "developer", "ceo", "super_admin", "system"].includes(message.sender_role) && message.sender_id !== "system" && message.type !== "system");
+  const latest = messages.at(-1);
+  if (!latest) return record?.description ? createHash("sha256").update(JSON.stringify([record.created_date, record.description])).digest("hex") : null;
+  return createHash("sha256").update(JSON.stringify([messages.length, latest.id, latest.support_sequence, latest.created_date, latest.sender_id, latest.content])).digest("hex");
+}
+
+export async function markSupportCaseRead(db, user, payload = {}) {
+  requireStaff(user);
+  if (!["ticket", "dispute"].includes(payload.kind) || typeof payload.id !== "string" || !payload.id || payload.id.length > 200 || !/^[a-f0-9]{64}$/.test(payload.token || "")) {
+    throw Object.assign(new Error("Choose a valid conversation."), { status: 400 });
+  }
+  const table = Prisma.raw(payload.kind === "ticket" ? '"Ticket"' : '"Dispute"');
+  const updated = await db.$executeRaw`UPDATE ${table} SET metadata = jsonb_set(metadata, '{support_inbox_reads}', COALESCE(metadata->'support_inbox_reads', '{}'::jsonb) || jsonb_build_object(${user.id}::text, ${payload.token}::text)) WHERE id = ${payload.id}`;
+  if (!updated) throw Object.assign(new Error("Conversation no longer exists."), { status: 404 });
   return { success: true };
 }

@@ -2,6 +2,7 @@ import { activePremium } from "../src/lib/premiumMembership.js";
 import { isLiveSupportStaff, LIVE_SUPPORT_ROLES, liveSupportClosed } from "../src/lib/liveSupport.js";
 import { serializeRow } from "./entity.js";
 import { randomUUID } from "node:crypto";
+import { supportIncomingToken } from "./admin-tickets.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
@@ -128,9 +129,11 @@ export async function updateLiveSupport(db, user, body = {}, close = false) {
     if (close && staff && ticket.assigned_admin_id && ticket.assigned_admin_id !== user.id) fail(`${ticket.assigned_admin_name || "Another staff member"} is already handling this conversation. Take over the case before closing it.`, 409);
     const sequence = Math.max(0, Math.min(Number(ticket.support_sequence || 0), Number.isSafeInteger(body.sequence) ? body.sequence : 0));
     const key = staff ? "support_staff_read" : "support_user_read";
+    const readToken = staff && sequence >= Number(ticket.support_customer_sequence || 0) ? supportIncomingToken(ticket) : null;
     const metadata = { ...raw.metadata, [key]: Math.max(Number(ticket[key] || 0), sequence),
+      ...(readToken ? { support_inbox_reads: { ...raw.metadata.support_inbox_reads, [user.id]: readToken } } : {}),
       ...(close ? { status: "closed", resolved_by: user.id, resolved_date: new Date().toISOString(), resolution: "Live support conversation ended." } : {}) };
-    if (!close && metadata[key] === Number(ticket[key] || 0)) return { success: true, ticket: publicTicket(ticket) };
+    if (!close && metadata[key] === Number(ticket[key] || 0) && (!readToken || raw.metadata.support_inbox_reads?.[user.id] === readToken)) return { success: true, ticket: publicTicket(ticket) };
     const saved = serializeRow(await tx.ticket.update({ where: { id: ticket.id }, data: { metadata } }));
     if (close && !liveSupportClosed(ticket)) await notify(tx, saved, user, staff, "Support conversation closed.", true);
     return { success: true, ticket: publicTicket(saved) };

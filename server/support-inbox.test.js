@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Prisma } from "@prisma/client";
 import { build } from "esbuild";
-import { getAdminTickets, getSupportInboxSummary, saveSupportCase } from "./admin-tickets.js";
+import { getAdminTickets, getSupportInboxSummary, saveSupportCase, supportIncomingToken, markSupportCaseRead } from "./admin-tickets.js";
 import { claimSupportTicket } from "./support-claims.js";
 import { hasRole } from "./roles.js";
 
@@ -119,4 +119,24 @@ test("queue filters search safely and promote admin calls before premium and liv
   assert.match(query.sql, /request_type' = 'live_support' THEN 1/);
   await getAdminTickets(s.db, { id: "staff", role: "moderator" }, { view: "mine" });
   assert.ok(s.queries.some(query => query.sql.includes('AND owner =') && query.values.includes('staff')));
+});
+
+test("unread tokens track new player replies, ignoring staff replies and private notes", () => {
+  const player = { id: "m1", sender_id: "player", sender_role: "user", content: "Help", created_date: "2026-10-23T12:00:00Z" };
+  const first = supportIncomingToken({ messages: [player] });
+  assert.equal(first.length, 64);
+  assert.equal(supportIncomingToken({ messages: [player, { content: "Reply", sender_staff: true }, { content: "Note", internal: true }, { content: "Joined", sender_role: "system" }] }), first);
+  assert.notEqual(supportIncomingToken({ messages: [player, { ...player, id: "m2", content: "Are you there?" }] }), first);
+  assert.equal(supportIncomingToken({ messages: [{ sender_staff: true }] }), null);
+});
+test("read acknowledgements belong to the current staff member and preserve other metadata", async () => {
+  const queries = [];
+  const db = { $executeRaw: async (strings, ...values) => { queries.push(Prisma.sql(strings, ...values)); return 1; } };
+  const payload = { id: "case", kind: "ticket", token: "a".repeat(64), user_id: "forged" };
+  await markSupportCaseRead(db, { id: "helper", role: "moderator" }, payload);
+  assert.match(queries[0].sql, /jsonb_build_object/);
+  assert.ok(queries[0].values.includes("helper"));
+  assert.ok(!queries[0].values.includes("forged"));
+  await assert.rejects(() => markSupportCaseRead(db, { id: "player", role: "user" }, payload), error => error.status === 403);
+  await assert.rejects(() => markSupportCaseRead(db, { id: "helper", role: "admin" }, { ...payload, token: "bad" }), error => error.status === 400);
 });

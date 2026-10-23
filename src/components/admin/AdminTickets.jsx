@@ -37,7 +37,7 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
     enabled: Boolean(user?.id),
     staleTime: 30000,
     refetchOnWindowFocus: false,
-    refetchInterval: embedded ? 10000 : false,
+    refetchInterval: embedded ? 5000 : 7000,
   });
   const summary = useQuery({
     queryKey: ["support-inbox-counts", user?.id],
@@ -55,9 +55,19 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
       if (!data?.success) throw new Error(data?.error || "Could not open support case.");
       return data.rows[0] || null;
     },
-    refetchInterval: embedded ? 10000 : false,
+    refetchInterval: embedded ? 5000 : 7000,
   });
   const selected = rows.find(row => row.id === selectedId) || (selectedId ? direct.data : rows[0]);
+  const markRead = async (row) => {
+    if (!row?.unread || !row.incoming_token) return;
+    try {
+      const { data } = await base44.functions.invoke("markSupportCaseRead", { kind: row.kind, id: row.record_id, token: row.incoming_token });
+      if (!data?.success) throw new Error(data?.error || "Could not mark conversation as read.");
+      const acknowledge = item => item?.id === row.id && item.incoming_token === row.incoming_token ? { ...item, unread: false } : item;
+      queryClient.setQueriesData({ queryKey: ["admin-console", user?.id, role, "ticketQueue"] }, current => current?.pages
+        ? { ...current, pages: current.pages.map(page => ({ ...page, rows: page.rows.map(acknowledge) })) } : acknowledge(current));
+    } catch (error) { setSaveError(error.message); }
+  };
   const refreshTickets = async () => {
     await queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role, "ticketQueue"] });
     await queryClient.invalidateQueries({ queryKey: ["support-inbox-counts", user?.id] });
@@ -91,22 +101,23 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
       <div><span className="at-eyebrow">PLAYER SUPPORT</span><h2><Ticket size={20} /> Support inbox</h2><p>Live chats, tickets, disputes and admin calls. Review, reply and open the match room.</p></div>
       <div className="at-header-tools"><Suspense fallback={null}><SupportRecords className="at-button" /></Suspense><button className="at-button" onClick={refreshTickets} disabled={query.isFetching} aria-label="Refresh inbox"><RefreshCw size={14} /></button></div>
     </header>
-    <nav className="at-categories" aria-label="Support categories">{categories.map(([value, label]) => <button key={value} aria-pressed={category === value} onClick={() => { setCategory(value); setSelectedId(null); }}><span>{label}</span><b>{summary.data?.categories?.[value] ?? "—"}</b></button>)}</nav>
+    <nav className="at-categories" aria-label="Support categories">{categories.map(([value, label]) => <button key={value} aria-pressed={category === value} onClick={() => { setCategory(value); setSelectedId(null); }}><span>{label}{rows.some(row => row.unread && (value === "all" || row.channel === value || (value === "disputes" && row.disputes.length > 0) || row.mode === value || (value === "money8s" && ["8s", "eights"].includes(row.mode)) || (value === "wagers" && row.mode === "wager"))) && <i className="at-unread-dot" aria-label="Unread messages in loaded conversations" />}</span><b>{summary.data?.categories?.[value] ?? "—"}</b></button>)}</nav>
     <div className="at-organize">
       <div className="at-filters" aria-label="Inbox view">{[["all", "Needs attention"], ["waiting", "Unassigned"], ["mine", "Assigned to me"], ["saved", "Saved"]].map(([value, label]) => <button key={value} aria-pressed={view === value} onClick={() => { setView(value); setFilter(value === "saved" ? "all" : "open"); setSelectedId(null); }}>{label}{value !== "all" && <span> {summary.data?.[value] ?? ""}</span>}</button>)}</div>
       <label className="at-search"><Search size={15} /><input aria-label="Search support cases" placeholder="Search name, reference or request…" value={searchInput} onChange={event => { setSearchInput(event.target.value); setSelectedId(null); }} /></label>
       <select aria-label="Case status" value={filter} onChange={event => { setFilter(event.target.value); setSelectedId(null); }}><option value="open">Open</option><option value="closed">Closed</option><option value="all">All statuses</option></select>
     </div>
     <p className="at-queue-hint">Admin calls first · Premium priority · Live chats · Other requests. Category counts show open cases. Conversations are saved automatically.</p>
+    {saveError && <p role="alert" className="at-list-error">{saveError}</p>}
     {direct.isError && <p role="alert" className="at-list-error">{direct.error.message}</p>}
     <div className="at-workspace">
       <aside className="at-inbox" aria-label="Ticket list">
         <div className="at-list-heading"><strong>{view === "saved" ? "Saved conversations" : categories.find(([value]) => value === category)?.[1]}</strong><span>{rows.length} loaded</span></div>
         {query.isPending && <p role="status" className="at-list-feedback"><Loader2 size={15} className="animate-spin" /> Loading tickets...</p>}
         {!query.isPending && !query.isError && !rows.length && <div className="at-list-empty"><Inbox size={26} /><strong>{filter === "open" ? "No open tickets" : "No tickets here"}</strong><p>{filter === "open" ? "You're up to date. Previous requests are under Closed." : "Tickets will appear here when available."}</p></div>}
-        <div className="at-ticket-list">{rows.map((row) => <button key={row.id} className="at-ticket-row"
-          aria-current={selected?.id === row.id ? "true" : undefined} onClick={() => setSelectedId(row.id)}>
-          <div className="at-row-top"><span>#{shortTicketId(row.record_id)} · {row.channel === "live" ? "LIVE CHAT" : row.channel === "calls" ? "ADMIN CALL" : row.channel === "disputes" ? "DISPUTE" : "TICKET"}</span><TicketStatus row={row} /></div>
+        <div className="at-ticket-list">{rows.map((row) => <button key={row.id} className="at-ticket-row" data-unread={row.unread || undefined}
+          aria-current={selected?.id === row.id ? "true" : undefined} onClick={() => { setSelectedId(row.id); void markRead(row); }}>
+          <div className="at-row-top"><span>#{shortTicketId(row.record_id)} · {row.channel === "live" ? "LIVE CHAT" : row.channel === "calls" ? "ADMIN CALL" : row.channel === "disputes" ? "DISPUTE" : "TICKET"}</span><TicketStatus row={row} /></div>{row.unread && <span className="at-unread-badge">● New message</span>}
           <span className="at-case-owner" data-assigned={Boolean(row.ticket?.assigned_admin_id || row.disputes[0]?.assigned_admin_id)}>{(row.ticket?.assigned_admin_name || row.disputes[0]?.assigned_admin_name) ? `Helping: ${row.ticket?.assigned_admin_name || row.disputes[0]?.assigned_admin_name}` : "Unassigned"}</span>
           <strong className="at-row-title">{row.mode === "tournament" ? "Tournament · " : row.mode === "wagers" || row.mode === "wager" ? "Wager · " : ""}{row.channel === "live" ? ticketReporter(row) : ticketTitle(row)}</strong><p>{row.ticket?.messages?.at(-1)?.content || ticketIssue(row)}</p>{(row.ticket || row.disputes[0])?.support_favorite && <span className="at-saved-label"><Bookmark size={11} /> Saved</span>}
           <div className="at-row-bottom"><span className="at-row-avatar">{ticketReporter(row).slice(0, 1).toUpperCase()}</span><strong>{ticketReporter(row)}</strong><time>{ticketDate(row.ticket?.created_date || row.disputes[0]?.created_date)}</time><ChevronRight size={14} /></div>
@@ -117,7 +128,7 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
       </aside>
       <div className="at-reading-pane">{selected ? <AdminTicketDetail key={selected.id} row={selected} user={user} onRefresh={refreshTickets} onRoomOpen={onRoomOpen} onBack={() => setSelectedId(null)}
         draft={drafts[selected.id] || {}} onDraftChange={(update) => setDrafts((current) => ({ ...current, [selected.id]: { ...current[selected.id], ...update } }))}
-        deleteButton={<><button className="at-button" disabled={busy} aria-pressed={Boolean((selected.ticket || selected.disputes[0])?.support_favorite)} onClick={async () => {
+        deleteButton={<>{selected.unread && <button className="at-button at-button-primary" onClick={() => markRead(selected)}>New message · Mark as read</button>}<button className="at-button" disabled={busy} aria-pressed={Boolean((selected.ticket || selected.disputes[0])?.support_favorite)} onClick={async () => {
           setBusy(true); setSaveError("");
           try { const { data } = await base44.functions.invoke("saveSupportCase", { kind: selected.kind, id: selected.record_id, saved: !(selected.ticket || selected.disputes[0])?.support_favorite }); if (!data?.success) throw new Error(data?.error || "Could not save conversation."); await refreshTickets(); } catch (error) { setSaveError(error.message); } finally { setBusy(false); }
         }}><Bookmark size={14} />{(selected.ticket || selected.disputes[0])?.support_favorite ? "Unsave" : "Save conversation"}</button>{saveError && <span role="alert">{saveError}</span>}{selected.closed && hasRolePower(role, "admin") ? <button className="at-button at-delete" onClick={() => { setDeleteError(""); setDeleting(selected); }}><Trash2 size={14} /> Delete</button> : null}</>} />
