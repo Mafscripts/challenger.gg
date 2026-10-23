@@ -198,3 +198,34 @@
 .admin-tickets .at-button.at-button-save:hover:not(:disabled) { color:#ffe4ac;border-color:#e6bc64;background:#ac7a2033; }
 .admin-tickets .at-button.at-button-close { color:#ffba7b;border-color:#ce864766;background:#b575261c; }
 .admin-tickets .at-status[data-tone="open"] { color:#7ae7af;border-color:#37c58355;background:#1a9c5d14; }
+
+.admin-tickets .at-ticket-row{--case-accent:#89a7bf}
+.admin-tickets .at-ticket-row[data-case-type="live"]{--case-accent:#38dbef}
+.admin-tickets .at-ticket-row[data-case-type="calls"]{--case-accent:#ffbd69}
+.admin-tickets .at-ticket-row[data-case-type="disputes"]{--case-accent:#c19bff}
+.admin-tickets .at-ticket-row .at-kind{display:inline-flex;align-items:center;gap:5px;color:var(--case-accent);font-size:10px;font-weight:800;letter-spacing:0}
+.admin-tickets .at-ticket-row[aria-current]::before{background:var(--case-accent)}
+.admin-tickets .at-player-heading{display:flex;align-items:center;gap:9px;margin:10px 0}
+.admin-tickets .at-player-heading>span:nth-child(2){min-width:0;flex:1}
+.admin-tickets .at-player-heading small{display:block;color:#7798aa;font-size:8px;letter-spacing:.1em;font-weight:800}
+.admin-tickets .at-player-heading strong{display:block;color:#effaff;font-size:16px;font-weight:850;overflow-wrap:anywhere;line-height:1.5}
+.admin-tickets .at-player-heading>svg{color:var(--case-accent)}
+.admin-tickets .at-player-avatar{display:grid;place-items:center;flex-shrink:0;width:36px;height:36px;border-radius:10px;background:#ffffff09;border:1px solid #ffffff18;color:var(--case-accent);font-size:14px;font-weight:800}
+.admin-tickets .at-request-context{display:flex;align-items:flex-start;gap:6px;color:#c9deeb;font-size:11px;font-weight:700;line-height:1.5}
+.admin-tickets .at-request-context svg{flex-shrink:0;color:var(--case-accent);margin-top:2px}
+.admin-tickets .at-ticket-row>.at-request-reason{white-space:normal;font-size:10px;margin:4px 0 10px 19px;color:#88a5b7}
+.admin-tickets .at-owner-line{display:flex;align-items:center;gap:6px;color:#eabd75;font-size:10px}
+.admin-tickets .at-owner-line[data-assigned="true"]{color:#78d8af}
+.admin-tickets .at-owner-line strong{margin-left:5px;color:#d1f2e3;font-weight:800}
+.admin-tickets .at-last-reply{margin-top:10px;padding:8px 9px;border-radius:6px;background:#050e1755}
+.admin-tickets .at-last-reply small{display:block;color:#6c91a5;font-size:8px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-tickets .at-last-reply p{margin-top:3px;color:#bfd1df;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-tickets .at-case-reference{color:#66889a;font-size:8px}
+.admin-tickets .at-saved-icon{color:#eec76d}
+.admin-tickets .at-category-label{display:flex;align-items:center;gap:7px}
+.admin-tickets .at-categories [data-category="live"] .at-category-label svg{color:#38dbef}
+.admin-tickets .at-categories [data-category="calls"] .at-category-label svg{color:#ffbd69}
+.admin-tickets .at-categories [data-category="disputes"] .at-category-label svg{color:#c19bff}
+.admin-tickets .at-categories [data-category="tournament"] .at-category-label svg{color:#eaca69}
+.admin-tickets .at-categories [data-category="wagers"] .at-category-label svg{color:#67dbaa}
+.admin-tickets .at-categories [data-category="money8s"] .at-category-label svg{color:#80b6ff}

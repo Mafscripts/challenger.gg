@@ -28,12 +28,12 @@ export const ticketDescription = (row) => {
 };
 export const ticketState = (row) => {
   if (row.closed) return { label: "Closed", tone: "closed" };
-  if (closedTicket(row.ticket)) return { label: "Needs review", tone: "open" };
+  if (closedTicket(row.ticket)) return { label: "Needs staff", tone: "open" };
   const status = row.ticket?.status || row.disputes[0]?.status;
   if (status === "waiting_for_user") return { label: "Awaiting player", tone: "waiting" };
   if (status === "escalated") return { label: "Escalated", tone: "urgent" };
-  if (["admin_joined", "in_progress", "under_review"].includes(status)) return { label: "In review", tone: "review" };
-  return { label: "Needs review", tone: "open" };
+  if (["admin_joined", "in_progress", "under_review"].includes(status)) return { label: "In progress", tone: "review" };
+  return { label: "Needs staff", tone: "open" };
 };
 export const ticketRoomPath = (row) => {
   const ticket = row.ticket;
