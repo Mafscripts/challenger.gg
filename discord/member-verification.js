@@ -9,9 +9,8 @@ function findVerifiedRole(guild) {
   return role;
 }
 
-// Only an explicit rules-acceptance interaction may grant community access.
-export async function assignVerifiedPlayerRole(member, { role, acceptedRules = false, log = () => {} } = {}) {
-  if (!acceptedRules) throw new Error("Accept the community rules using the verification button first.");
+// Discord handles rules screening; the community role follows completed membership.
+export async function assignVerifiedPlayerRole(member, { role, log = () => {} } = {}) {
   if (member.pending) throw new Error("Complete Discord's membership screening before verifying.");
   if (member.user.bot) return false;
   if (!role) {
@@ -19,14 +18,26 @@ export async function assignVerifiedPlayerRole(member, { role, acceptedRules = f
     role = findVerifiedRole(member.guild);
   }
   if (member.roles.cache.has(role.id)) return false;
-  await member.roles.add(role, "Topfragg community rules accepted via verification button");
+  await member.roles.add(role, "Topfragg automatic community member role");
   log(`Assigned Verified Player: ${member.id}`);
   return true;
 }
 
-// Retained for compatibility: never infer verification from server membership.
-export async function syncVerifiedPlayerRoles() {
-  return { assigned: 0, failed: 0 };
+export async function syncVerifiedPlayerRoles(guild, { log = () => {} } = {}) {
+  await guild.roles.fetch();
+  const role = findVerifiedRole(guild);
+  const members = await guild.members.fetch();
+  const result = { assigned: 0, failed: 0 };
+  for (const member of members.values()) {
+    if (member.user.bot || member.pending) continue;
+    try {
+      if (await assignVerifiedPlayerRole(member, { role, log })) result.assigned++;
+    } catch (error) {
+      result.failed++;
+      log(`Verified Player assignment failed for ${member.id}: ${error.message}`);
+    }
+  }
+  return result;
 }
 
 export async function handleVerificationInteraction(interaction, {

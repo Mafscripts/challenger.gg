@@ -1,4 +1,5 @@
 import { activateVerificationGate, VERIFICATION_BUTTON_ID } from "./verification-gate.js";
+import { assignVerifiedPlayerRole, syncVerifiedPlayerRoles, handleVerificationInteraction } from "./member-verification.js";
 import "dotenv/config";
 import { groqChatEnvironment } from "./groq-chat.js";
 import {
@@ -560,6 +561,9 @@ client.once(Events.ClientReady, async (readyClient) => {
     return;
   }
   await activateVerificationGate(guild);
+  void syncVerifiedPlayerRoles(guild, { log: console.log })
+    .then((result) => console.log("[Topfragg Discord] Verified Player sync:", result))
+    .catch((error) => console.error("[Topfragg Discord] Verified Player sync failed:", error.message));
   freeEightsVoiceUpdates = createFreeEightsVoiceUpdater((id) => syncFreeEightsVoice(guild, { matchIds: [id], refreshInventory: false, onState: observeFreeEightsState }), { retryMs: 500 });
   void runFreeEightsVoiceSync(guild, { refreshInventory: true });
   void runChallengeVoiceSync(guild);
@@ -587,6 +591,18 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 client.on(Events.GuildMemberAdd, syncMemberCountFromEvent);
+async function assignMemberCommunityRole(member) {
+  if (member.guild.id !== config.guildId || member.user.bot || member.pending) return;
+  try {
+    await assignVerifiedPlayerRole(member);
+  } catch (error) {
+    console.error(`[Topfragg Discord] Verified Player assignment failed for ${member.id}:`, error.message);
+  }
+}
+client.on(Events.GuildMemberAdd, assignMemberCommunityRole);
+client.on(Events.GuildMemberUpdate, (previous, member) => {
+  if (previous.pending && !member.pending) void assignMemberCommunityRole(member);
+});
 client.on(Events.GuildMemberRemove, syncMemberCountFromEvent);
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   if (newState.guild.id === config.guildId && oldState.channelId !== newState.channelId) {
@@ -882,8 +898,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
     if (interaction.commandName === "verify") {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      await interaction.editReply("Complete Discord Onboarding and any server rules screening shown by Discord. No separate bot verification or Verified Player role is required.");
+      await handleVerificationInteraction(interaction, { log: console.log });
       return;
     }
     if (interaction.commandName === "tournaments") {

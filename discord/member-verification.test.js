@@ -19,11 +19,21 @@ function fixture() {
   return { role, guild, writes, member };
 }
 
-test("joining and background sync cannot grant access without explicit rules acceptance", async () => {
+test("joining automatically grants the member role without a separate verification button", async () => {
   const f = fixture();
-  await assert.rejects(assignVerifiedPlayerRole(f.member("1")), /Accept the community rules/);
-  assert.deepEqual(await syncVerifiedPlayerRoles(f.guild), { assigned: 0, failed: 0 });
-  assert.deepEqual(f.writes, []);
+  assert.equal(await assignVerifiedPlayerRole(f.member("1")), true);
+  assert.deepEqual(f.writes, [{ id: "1", roleId: f.role.id }]);
+});
+
+test("startup catches up missed members, skips screening and bots, and continues after a failure", async () => {
+  const f = fixture();
+  const members = [f.member("new"), f.member("existing", { verified: true }),
+    f.member("pending", { pending: true }), f.member("bot", { bot: true }),
+    f.member("failed", { fail: true }), f.member("last")];
+  f.guild.members = { fetch: async () => new Map(members.map(member => [member.id, member])) };
+  assert.deepEqual(await syncVerifiedPlayerRoles(f.guild), { assigned: 2, failed: 1 });
+  assert.deepEqual(f.writes.map(write => write.id), ["new", "last"]);
+  assert.deepEqual(await syncVerifiedPlayerRoles(f.guild), { assigned: 0, failed: 1 });
 });
 
 test("accepting rules grants access once, excludes bots and respects Discord screening", async () => {
