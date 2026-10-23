@@ -3,8 +3,13 @@ import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import "@/styles/center-stage-overlays.css";
 import "@/styles/vivid-player-overlays.css";
 import "@/styles/tokyo-midnight-overlay.css";
+import AfterHoursDecorations from "./AfterHoursDecorations";
 
 export const CENTER_STAGE_THEMES = [
+  { key: "miami-vice", label: "Miami Vice", vivid: true, caption: "Hot pink / turquoise skyline", description: "A rolling neon perspective grid, striped sunset and turquoise horizon beneath a centered pink signature." },
+  { key: "venom-core", label: "Venom Core", vivid: true, caption: "Emerald / living energy", description: "Emerald energy filaments breathe and weave through dark glass while luminous motes rise around your name." },
+  { key: "ember-forge", label: "Ember Forge", vivid: true, caption: "Copper / molten orange", description: "Brushed copper, molten seams, rising embers and a forged-metal player signature." },
+  { key: "astral-gate", label: "Astral Gate", vivid: true, caption: "Violet / ice-blue starlight", description: "Counter-rotating portal rings, drifting stars and ice-blue orbital accents around your centered signature." },
   { key: "crimson-overdrive", label: "Crimson Overdrive", vivid: true, caption: "Scarlet / racing afterburners", description: "The original red afterburner design: rushing light trails, angular armor and a luminous centered player signature." },
   { key: "volt-rush", label: "Tokyo Midnight", vivid: true, caption: "Yellow neon / after-hours broadcast", description: "Tokyo after dark: animated Japanese neon signs, rain streaks, a yellow station-style nameplate and brief signal glitches. Your existing yellow overlay URL still works." },
   { key: "cobalt-strike", label: "Cobalt Strike", vivid: true, caption: "Royal blue / plasma ribbons", description: "Layered blue plasma ribbons flow behind a sharp ice-blue player frame." },
@@ -21,6 +26,7 @@ function Metric({ label, value }) {
   return <div className="centerbar-metric"><span>{label}</span><strong key={String(value)} title={String(value)}>{value}</strong></div>;
 }
 function VividAnimation({ theme }) {
+  if (["miami-vice", "venom-core", "ember-forge", "astral-gate"].includes(theme)) return <AfterHoursDecorations theme={theme} />;
   if (theme === "volt-rush") return <div className="tokyo-atmosphere" aria-hidden="true"><div className="tokyo-city"><span>東京</span><span>深夜</span><span>電光</span><span>東京</span><span>深夜</span><span>電光</span></div><div className="tokyo-rain">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ "--n": index }} />)}</div><span className="tokyo-signal" /><span className="tokyo-track" /><span className="tokyo-track tokyo-track-bottom" /></div>;
   const family = { "crimson-overdrive": "turbine", "volt-rush": "circuit", "cobalt-strike": "radar", "gilded-reign": "theatre", "silver-spectre": "chrome" }[theme];
   return <div className={`unique-engine unique-${family}`} aria-hidden="true"><span className="broadcast-energy broadcast-energy-left" /><span className="broadcast-energy broadcast-energy-right" /><span className="broadcast-edge" /><span className="broadcast-edge broadcast-edge-bottom" />{Array.from({ length: family === "circuit" ? 8 : 20 }, (_, index) => <i key={index} style={{ "--n": index }} />)}</div>;

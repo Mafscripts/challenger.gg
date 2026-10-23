@@ -1,0 +1,48 @@
+.centerbar[data-design="miami-vice"] { --cb: #ff71c9; --cb2: #4ff8ed; background: #150e27; }
+.centerbar[data-design="venom-core"] { --cb: #62ffae; --cb2: #15b88b; background: #061c16; }
+.centerbar[data-design="ember-forge"] { --cb: #ffb16a; --cb2: #ff561e; background: #23120d; }
+.centerbar[data-design="astral-gate"] { --cb: #c4a1ff; --cb2: #92e8ff; background: #150d2d; }
+.afterhours-fx { position: absolute; z-index: -1; inset: 0; overflow: hidden; contain: paint; pointer-events: none; }
+.afterhours-fx > span, .afterhours-particles, .venom-filaments { position: absolute; display: block; }
+.afterhours-particles { inset: 0; }
+.afterhours-particles > i { position: absolute; display: block; left: var(--x); top: var(--y); width: 2px; height: 2px; background: var(--cb); }
+.centerbar:is([data-design="miami-vice"],[data-design="venom-core"],[data-design="ember-forge"],[data-design="astral-gate"]) .centerbar-identity { height: 68px; margin: 5px 12px; padding-inline: 24px; border: 1px solid color-mix(in srgb,var(--cb) 55%,transparent); background: #070b18eb; clip-path: none; }
+.centerbar:is([data-design="miami-vice"],[data-design="venom-core"],[data-design="ember-forge"],[data-design="astral-gate"]) .centerbar-identity::after { border: 0; }
+/* MIAMI: sunset behind a moving perspective floor, with a turquoise horizon. */
+.miami-sunset { width: 150px; height: 150px; top: -65px; left: 14%; border-radius: 50%; background: linear-gradient(#ffbf75,#ff409f 70%,#a52bf3); mask-image: repeating-linear-gradient(0deg,#000 0 8px,transparent 8px 12px); opacity: .6; }
+.miami-road { inset: 20px -20% -100px; background: linear-gradient(#ff65c93d 1px,transparent 1px),linear-gradient(90deg,#4ff8ed44 1px,transparent 1px); background-size: 45px 22px; transform: perspective(130px) rotateX(55deg); transform-origin: top; animation: miami-road 2.5s linear infinite; }
+.miami-horizon { inset: auto 0 22px; height: 1px; background: #4ff8ed; box-shadow: 0 0 12px #4ff8ed; }
+.afterhours-miami-vice .afterhours-particles > i { width: 50px; height: 1px; background: linear-gradient(90deg,transparent,#ff9edf); animation: miami-trail 6s var(--delay) linear infinite; }
+.centerbar[data-design="miami-vice"] .centerbar-identity { border-radius: 2px 14px; border-top-color: #4ff8ed; box-shadow: 0 3px 18px #ff409f20; }
+.centerbar[data-design="miami-vice"] .centerbar-identity::after { content: ""; position: absolute; inset: auto 20% 3px; height: 2px; background: linear-gradient(90deg,transparent,#4ff8ed,transparent); }
+/* VENOM: fluid filaments rise and fall, with tiny drifting bioluminescent motes. */
+.venom-filaments { inset: 0; background: radial-gradient(ellipse at 20% 50%,#0dd38222,transparent 40%),radial-gradient(ellipse at 80% 50%,#62ffae18,transparent 35%); }
+.venom-filaments > span { position: absolute; width: 65%; height: 95px; left: calc(var(--n) * 12% - 15%); top: -55px; border: 1px solid transparent; border-bottom-color: #62ffae; border-radius: 50%; opacity: .35; box-shadow: 0 7px 14px #21e49515; animation: venom-flow 7s calc(var(--n) * -1.1s) ease-in-out infinite alternate; }
+.afterhours-venom-core .afterhours-particles > i { border-radius: 50%; box-shadow: 0 0 6px #62ffae; animation: venom-mote 8s var(--delay) ease-in-out infinite; }
+.centerbar[data-design="venom-core"] .centerbar-identity { border-radius: 20px 4px; background: linear-gradient(110deg,#0d2a22eb,#061610f5); }
+.centerbar[data-design="venom-core"] .centerbar-identity::after { content: ""; position: absolute; inset: 4px; border-left: 2px solid #62ffae; border-right: 2px solid #62ffae; border-radius: inherit; animation: venom-frame 7s ease-in-out infinite; }
+/* FORGE: textured metal with travelling molten seams and tumbling sparks. */
+.forge-metal { inset: 0; background: repeating-linear-gradient(0deg,#ffffff04 0 1px,transparent 1px 4px),linear-gradient(115deg,#c45a1730,transparent 40% 60%,#ff8c3620); }
+.forge-seam { inset: 2px 0 auto; height: 3px; background: linear-gradient(90deg,#7c2915,#ff5c25,#ffe9a0,#ff5c25,#7c2915); background-size: 250% 100%; box-shadow: 0 0 12px #ff561e60; animation: forge-heat 5s ease-in-out infinite alternate; }
+.forge-seam-bottom { top: auto; bottom: 2px; animation-delay: -2.5s; }
+.afterhours-ember-forge .afterhours-particles > i { top: auto; bottom: -5px; width: 2px; height: 5px; background: #ffc58a; box-shadow: 0 0 5px #ff661e; animation: forge-spark 3s var(--delay) cubic-bezier(.15,.3,.55,1) infinite; }
+.centerbar[data-design="ember-forge"] .centerbar-identity { border-radius: 2px; background: linear-gradient(120deg,#3b2118,#160f0c 60%,#322019); border-color: #ac6c43; }
+.centerbar[data-design="ember-forge"] .centerbar-identity::after { content: ""; position: absolute; inset: 4px; border: 1px solid #e9985733; box-shadow: inset 0 -2px 10px #ff561e12; }
+/* ASTRAL: two clipped orbital portals, counter-rotating rings and quiet stars. */
+.astral-portal { top: -90px; left: 15%; width: 260px; height: 260px; border-radius: 50%; border: 1px solid #b888ff88; background: repeating-conic-gradient(from 0deg,#c4a1ff66 0 2deg,transparent 2deg 30deg); mask-image: radial-gradient(circle,transparent 54%,#000 55% 60%,transparent 61% 65%,#000 66% 70%,transparent 71%); animation: astral-orbit 22s linear infinite; }
+.astral-portal-right { left: auto; right: 15%; animation-direction: reverse; border-color: #92e8ff; }
+.astral-nebula { inset: -40px; background: radial-gradient(ellipse at 30% 50%,#ad56ff25,transparent 30%),radial-gradient(ellipse at 70% 50%,#42c6ff22,transparent 30%); animation: astral-drift 12s ease-in-out infinite alternate; }
+.afterhours-astral-gate .afterhours-particles > i { box-shadow: 0 0 4px #b9dcff; animation: astral-star 6s var(--delay) ease-in-out infinite; }
+.centerbar[data-design="astral-gate"] .centerbar-identity { border-radius: 32px; border-color: #ba95ff66; background: linear-gradient(110deg,#211438,#0e1027,#172e43); }
+.centerbar[data-design="astral-gate"] .centerbar-identity::after { content: ""; position: absolute; inset: 3px; border: 1px solid #c4a1ff22; border-radius: inherit; }
+@keyframes miami-road { to { background-position: 0 22px; } }
+@keyframes miami-trail { 0% { transform: translateX(-60px); opacity: 0; } 40% { opacity: .5; } 100% { transform: translateX(190px); opacity: 0; } }
+@keyframes venom-flow { to { transform: translate(35px,24px) rotate(-4deg); opacity: .65; } }
+@keyframes venom-mote { 0%,100% { transform: translate(0,22px); opacity: 0; } 45% { opacity: .7; } 90% { transform: translate(22px,-38px); opacity: 0; } }
+@keyframes venom-frame { 50% { opacity: .35; box-shadow: 0 0 20px #62ffae12; } }
+@keyframes forge-heat { to { background-position: 100% 0; } }
+@keyframes forge-spark { 0% { transform: translate(0,0) rotate(-20deg); opacity: 0; } 20% { opacity: .9; } 100% { transform: translate(50px,-100px) rotate(70deg); opacity: 0; } }
+@keyframes astral-orbit { to { rotate: 360deg; } }
+@keyframes astral-drift { to { transform: translateX(35px); opacity: .5; } }
+@keyframes astral-star { 50% { opacity: .2; transform: scale(.6); } }
+@media (prefers-reduced-motion: reduce) { .afterhours-fx *, .afterhours-fx *::before, .afterhours-fx *::after, .centerbar[data-design="venom-core"] .centerbar-identity::after { animation: none !important; } }

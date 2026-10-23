@@ -30,6 +30,10 @@
 .stream-overlay-theme-picker button[data-theme="terminal"] { --overlay-accent: #87f5a3; --overlay-swatch: repeating-linear-gradient(0deg, #0c1e14 0 6px, #87f5a3 6px 7px, #0c1e14 7px 12px); }
 .stream-overlay-theme-picker button[data-theme="editorial"] { --overlay-accent: #e6be97; --overlay-swatch: linear-gradient(90deg, #c94932 0 22%, #25352e 22% 50%, #f1eee5 50% 100%); }
 .stream-overlay-theme-picker button[data-theme="hyperdrive"] { --overlay-accent: #83eaff; --overlay-swatch: linear-gradient(135deg, #55efff, #15234b 40%, #27143d 60%, #ff80d6); }
+.stream-overlay-theme-picker button[data-theme="miami-vice"] { --overlay-accent: #ff71c9; --overlay-swatch: linear-gradient(135deg,#ff71c9,#150e27 45%,#4ff8ed); }
+.stream-overlay-theme-picker button[data-theme="venom-core"] { --overlay-accent: #62ffae; --overlay-swatch: radial-gradient(ellipse,#62ffae,#061c16 75%); }
+.stream-overlay-theme-picker button[data-theme="ember-forge"] { --overlay-accent: #ffb16a; --overlay-swatch: linear-gradient(0deg,#ff561e,#23120d 35% 65%,#ffb16a); }
+.stream-overlay-theme-picker button[data-theme="astral-gate"] { --overlay-accent: #c4a1ff; --overlay-swatch: repeating-radial-gradient(circle,#c4a1ff 0 1px,#150d2d 2px 6px,#92e8ff 7px 8px,#150d2d 9px 13px); }
 .stream-overlay-theme-picker button[data-theme="crimson-overdrive"] { --overlay-accent: #ff4646; --overlay-swatch: repeating-linear-gradient(120deg, #64091b 0 8px, #ff4646 9px 12px, #ff920e 13px 14px); }
 .stream-overlay-theme-picker button[data-theme="volt-rush"] { --overlay-accent: #ffe333; --overlay-swatch: linear-gradient(90deg,#08090d 0 20%,#ffe333 20% 25%,#171508 25% 70%,#ffe333 70% 85%,#08090d 85%); }
 .stream-overlay-theme-picker button[data-theme="cobalt-strike"] { --overlay-accent: #72caff; --overlay-swatch: repeating-radial-gradient(circle, #72caff 0 1px, #0732a0 2px 8px); }
