@@ -28,7 +28,7 @@ export default function AccountMenu({ user, name, role, avatar, profilePath, sta
       </div>
     </div>
     <footer className="profile-menu-footer" data-layout-switch={!sidebar}>
-      {!sidebar && <NavigationLayoutToggle showLabel />}
+      {!sidebar && <NavigationLayoutToggle showLabel textOnly />}
       <Link to="/logout" onClick={onClose} className="profile-menu-logout"><LogOut size={14} aria-hidden="true" /><span>Log out</span></Link>
     </footer>
   </div>;

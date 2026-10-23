@@ -3,7 +3,7 @@ import { Loader2, PanelLeft, PanelTop } from "lucide-react";
 import { useNavigationLayout } from "./NavigationLayoutProvider";
 import NavigationHoverFill from "./NavigationHoverFill";
 
-export default function NavigationLayoutToggle({ showLabel = false }) {
+export default function NavigationLayoutToggle({ showLabel = false, textOnly = false }) {
   const preference = useNavigationLayout();
   if (!preference) return null;
   const { layout, saving, chooseLayout } = preference;
@@ -12,8 +12,8 @@ export default function NavigationLayoutToggle({ showLabel = false }) {
   const Icon = saving ? Loader2 : nextLayout === "sidebar" ? PanelLeft : PanelTop;
   return <button type="button" onClick={() => chooseLayout(nextLayout)} disabled={saving}
     aria-label={label} title={label} aria-pressed={layout === "sidebar"}
-    className={`navigation-layout-toggle navigation-hover ${showLabel ? "navigation-layout-toggle-labeled" : "topbar-icon-button"}`}>
-    <NavigationHoverFill />
+    className={`navigation-layout-toggle ${textOnly ? "" : "navigation-hover"} ${showLabel ? "navigation-layout-toggle-labeled" : "topbar-icon-button"}`}>
+    {!textOnly && <NavigationHoverFill />}
     <Icon size={17} aria-hidden="true" className={saving ? "animate-spin" : undefined} />
     {showLabel && <span>{nextLayout === "sidebar" ? "Switch to sidebar" : "Switch to topbar"}</span>}
   </button>;
