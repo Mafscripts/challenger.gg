@@ -131,3 +131,46 @@ test("a player's first XP match joins the current XP season rather than Season 1
   assert.equal(f.state().stats.length, 4);
   assert.ok(f.state().stats.every((row) => row.metadata.season === 7 && row.metadata.progression_reset_at === "2026-10-19T12:00:00Z"));
 });
+
+test("staff can cancel joined or disputed XP matches without captain approval and without changing player XP", async () => {
+  for (const status of ["accepted", "in_progress", "score_conflict", "disputed"]) {
+    const f = fixture(); f.state().match.metadata.status = status;
+    f.state().match.metadata.xp_cancel_request = { id: "pending", status: "pending" };
+    const beforeStats = structuredClone(f.state().stats), beforeUsers = structuredClone(f.state().users);
+    assert.equal((await cancelXPMatchLobby(f.db, "match", "admin", false)).success, false);
+    const result = await cancelXPMatchLobby(f.db, "match", "admin", true);
+    assert.equal(result.success, true); assert.equal(result.match.status, "cancelled");
+    assert.equal(result.match.cancelled_by, "admin"); assert.equal(result.match.cancelled_by_staff, true);
+    assert.equal(result.match.xp_cancel_request.status, "superseded");
+    assert.equal(result.match.posted_to_matchfinder, false);
+    assert.deepEqual(f.state().stats, beforeStats); assert.deepEqual(f.state().users, beforeUsers);
+    assert.equal(result.match.winner_id, undefined);
+  }
+});
+test("staff cancellation cannot replace completed XP results or reopen a terminal match", async () => {
+  for (const status of ["completed", "cancelled", "closed", "expired"]) {
+    const f = fixture(); f.state().match.metadata.status = status;
+    const before = structuredClone(f.state());
+    assert.equal((await cancelXPMatchLobby(f.db, "match", "admin", true)).success, false);
+    assert.deepEqual(f.state(), before);
+  }
+});
+
+test("cancelXPMatch endpoint permits admin roles and rejects a forged staff override from a normal player", async t => {
+  const [{ default: routes }, { prisma }] = await Promise.all([import("./routes/functions.js"), import("./prisma.js")]);
+  const handler = routes.stack.find(layer => layer.route?.path === "/:name" && layer.route.methods.post).route.stack.at(-1).handle;
+  const original = prisma.$transaction;
+  t.after(() => { prisma.$transaction = original; });
+  const invoke = user => new Promise((resolve, reject) => {
+    const response = { status() { return this; }, json: resolve };
+    handler({ params: { name: "cancelXPMatch" }, body: { xp_match_id: "match", staff_override: true }, user }, response, reject);
+  });
+  for (const user of [{ id: "staff", role: "admin" }, { id: "staff", role: "user", admin_role: "admin" }, { id: "staff", role: "ceo" }, { id: "staff", role: "developer" }]) {
+    const f = fixture(); prisma.$transaction = f.db.$transaction;
+    assert.equal((await invoke(user)).success, true);
+    assert.equal(f.state().match.metadata.cancelled_by_staff, true);
+  }
+  const f = fixture(); prisma.$transaction = f.db.$transaction;
+  assert.equal((await invoke({ id: "a", role: "user" })).success, false);
+  assert.equal(f.state().match.metadata.status, "accepted");
+});

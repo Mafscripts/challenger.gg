@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import MapVetoVertical from "@/components/match/MapVetoVertical";
 import MatchRoomChat from "@/components/match/MatchRoomChat";
@@ -311,6 +312,7 @@ function XPMatchRoomView() {
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [disputing, setDisputing] = useState(false);
   const [cancelVoting, setCancelVoting] = useState(false);
+  const [staffCancelOpen, setStaffCancelOpen] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -670,12 +672,15 @@ function XPMatchRoomView() {
   };
 
   const handleCancel = async (staffOverride = false) => {
+    if (cancelVoting) return;
+    setCancelVoting(true);
     try {
       const response = await base44.functions.invoke("cancelXPMatch", {
         xp_match_id: match.id, staff_override: staffOverride === true,
       });
 
       if (response.data?.success) {
+        setStaffCancelOpen(false);
         toast({ title: "XP match cancelled" });
         navigate("/xp", { replace: true });
       } else {
@@ -683,7 +688,7 @@ function XPMatchRoomView() {
       }
     } catch (error) {
       toast({ title: "Cancel failed", description: error.message || "Could not cancel match.", variant: "destructive" });
-    }
+    } finally { setCancelVoting(false); }
   };
 
   const handleCancellation = async (decision) => {
@@ -813,6 +818,7 @@ function XPMatchRoomView() {
                 <p className="mt-3 text-xs leading-5 text-vapor">Based on both teams’ average XP when the rosters filled. Beat a stronger team to earn more; losing to a weaker team costs more. XP stays at or above 0.</p>
               </section>
             )}
+            {isStaffUser(user) && !["completed", "cancelled", "expired", "closed"].includes(match.status) && <section className="rounded-xl border border-red-400/20 bg-red-400/[0.04] p-4"><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-red-200"><ShieldCheck className="h-4 w-4" /> Staff controls</p><p className="mt-2 text-xs leading-5 text-vapor">Cancel this XP match without captain approval. No XP or match rewards are awarded.</p><button type="button" disabled={cancelVoting || submitting} onClick={() => setStaffCancelOpen(true)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/15 disabled:opacity-40"><X className="h-4 w-4" /> Cancel XP match</button></section>}
             {isParticipant && !["completed", "cancelled"].includes(match.status) && (
               <section className="rounded-xl border border-white/10 bg-card p-4">
                 <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white"><Users className="h-4 w-4 text-orange" /> Match cancellation</p>
@@ -852,6 +858,7 @@ function XPMatchRoomView() {
         </div>
       )}
 
+      <Dialog open={staffCancelOpen && isStaffUser(user)} onOpenChange={value => { if (!cancelVoting) setStaffCancelOpen(value); }}><DialogContent className="border-white/10 bg-card"><DialogTitle>Cancel this XP match?</DialogTitle><DialogDescription>The match will end without captain approval. No winner is declared and no XP or match rewards are awarded.</DialogDescription><div className="flex justify-end gap-2"><button type="button" disabled={cancelVoting} onClick={() => setStaffCancelOpen(false)} className="rounded-lg border border-white/10 px-4 py-2 text-xs font-bold text-vapor">Keep match</button><button type="button" disabled={cancelVoting} onClick={() => handleCancel(true)} className="rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-2 text-xs font-bold text-red-300 disabled:opacity-40">{cancelVoting ? "Cancelling…" : "Cancel XP match"}</button></div></DialogContent></Dialog>
       {match.status === "completed" && personalResult && !resultDismissed && (
         <RankedResultOverlay match={match} result={personalResult} onDismiss={() => setResultDismissed(true)} onContinue={() => navigate("/xp", { replace: true })} />
       )}

@@ -225,6 +225,8 @@ export async function cancelXPMatchLobby(db, id, actorId, staffOverride) {
     if (!staffOverride && match.status !== "open") return error("Only an unmatched open XP post can be removed directly");
     const saved = await tx.xPMatch.update({ where: { id }, data: { metadata: {
       ...match, status: "cancelled", posted_to_matchfinder: false, cancelled_date: stamp(),
+      cancelled_by: actorId, cancelled_by_staff: staffOverride === true,
+      ...(match.xp_cancel_request?.status === "pending" ? { xp_cancel_request: { ...match.xp_cancel_request, status: "superseded", responded_by: actorId, responded_at: stamp() } } : {}),
     } } });
     return { success: true, match: serializeRow(saved) };
   }, { timeout: 15000, maxWait: 15000 });
