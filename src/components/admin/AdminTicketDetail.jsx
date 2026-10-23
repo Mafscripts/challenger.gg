@@ -23,9 +23,14 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const navigate = useNavigate();
   const [tab, setTab] = useState("conversation");
   const chatViewport = useRef(null);
+  const replyInput = useRef(null);
   const followChat = useRef(true);
   const { reply = "", note = "", reason = "" } = draft;
   const setReply = (reply) => onDraftChange({ reply });
+  useEffect(() => {
+    const input = replyInput.current;
+    if (input) { input.style.height = "44px"; input.style.height = `${Math.min(88, Math.max(44, input.scrollHeight + 2))}px`; }
+  }, [reply, tab]);
   const setNote = (note) => onDraftChange({ note });
   const setReason = (reason) => onDraftChange({ reason });
   const roomDraft = draft.roomReply || "";
@@ -167,13 +172,13 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
             <div className="at-message-heading"><strong>{submission.reported_by_name || "Player"}</strong><span>{disputeReasonLabel(submission.reason)}</span></div><p>{submission.description}</p>{submission.reported_against_name && <small>Reported player: {submission.reported_against_name}</small>}</div>)}
           {messages.map((message, index) => <div key={message.id || index} className="at-message" data-staff={isStaffSupportMessage(message) || undefined}><div className="at-message-heading"><strong className={isStaffSupportMessage(message) ? "support-staff-name" : undefined}>{message.sender_name || "Player"}{isStaffSupportMessage(message) ? " · Support" : ""}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content}</p></div>)}
         </div>
-        {canReply ? <div className="at-composer"><label htmlFor="at-reply">Reply to the players</label>
-          <textarea id="at-reply" onKeyDown={event => {
+        {canReply ? <div className="at-inline-reply"><label className="sr-only" htmlFor="at-reply">Reply to the players</label>
+          <textarea ref={replyInput} id="at-reply" onKeyDown={event => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && !event.repeat) {
               event.preventDefault(); if (!busy && reply.trim()) void send(false);
             }
-          }} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write a reply…" rows={2} disabled={!!busy} />
-          <div><span>Enter to send · Shift+Enter for a new line. Visible to ticket participants.</span><button className="at-button at-button-primary" disabled={!!busy || !reply.trim()} onClick={() => send(false)}><Send size={14} /> Send reply</button></div>
+          }} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Message the player…" aria-describedby="at-reply-hint" rows={1} disabled={!!busy} />
+          <button type="button" className="at-inline-send" aria-label="Send reply" title="Send reply (Enter)" disabled={!!busy || !reply.trim()} onClick={() => send(false)}><Send size={18} /></button><span id="at-reply-hint" className="sr-only">Enter to send. Shift+Enter for a new line. Visible to ticket participants.</span>
         </div> : <p className="at-help">{ticket ? handledByOther ? `${owner.assigned_admin_name || "Another staff member"} is already helping. Replies are reserved for the assigned staff member.` : "This conversation is closed. Reopen the ticket to reply." : "This older match ticket has no player conversation. Review the match and record your decision."}</p>}
         </div>
         {!row.closed && <button className="at-next" onClick={() => setTab(proof.length ? "evidence" : "decision")}>Next: {proof.length ? "review evidence" : "record a decision"} <ExternalLink size={13} /></button>}

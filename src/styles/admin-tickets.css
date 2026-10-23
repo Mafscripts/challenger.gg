@@ -294,3 +294,10 @@
 .admin-tickets .at-conversation-box>.at-composer textarea{min-height:58px!important;max-height:90px;resize:none}
 .admin-tickets .at-conversation-box>.at-help{flex-shrink:0;padding:12px 14px;border-top:1px solid #285269;margin:0}
 @media(max-width:600px){.admin-tickets .at-conversation-box{height:55dvh;min-height:280px}.admin-tickets .at-conversation-box>.at-thread{padding:12px}.admin-tickets .at-conversation-box .at-message{max-width:95%}}
+
+.admin-tickets .at-conversation-box>.at-inline-reply{position:relative;display:flex;align-items:center;gap:10px;flex-shrink:0;margin:0;padding:12px 14px;background:transparent}
+.admin-tickets .at-inline-reply textarea{display:block;flex:1;width:100%;min-width:0;min-height:44px!important;height:44px;max-height:88px;padding:12px 52px 10px 13px;resize:none;border:1px solid #285269;border-radius:11px;background:#102735;color:#e7f5ff;outline:none;font-size:12px;line-height:20px;scrollbar-width:thin}
+.admin-tickets .at-inline-reply textarea:focus{border-color:#24b8d6;box-shadow:0 0 0 2px #19c9ec0a}
+.admin-tickets .at-inline-send{position:absolute;right:21px;bottom:18px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid #24c8e94d;border-radius:8px;background:#08aeca;color:#041f2a;transition:background .15s}
+.admin-tickets .at-inline-send:hover:not(:disabled){background:#36d9ed}
+.admin-tickets .at-inline-send:disabled{opacity:.35;cursor:default}
