@@ -1,0 +1,15 @@
+TOPFRAGG STREAM AD — OBS SETUP
+
+1. Extract the ZIP.
+2. In OBS, add a Browser Source.
+3. Enable Local File and select topfragg-ad.html.
+4. Width: 480. Height: 140. FPS: 30.
+5. Place the source in a corner of your stream. Scale it down in OBS if desired.
+
+The background is transparent. No chroma key, login, external fonts or image downloads are needed.
+The logo turns smoothly once every 24 seconds. Four messages rotate every 8 seconds.
+
+Once the website update is deployed, you may instead use this URL:
+https://www.topfragg.gg/stream/topfragg-ad.html
+
+This file displays promotional copy; it does not issue credits or track sign-ups.
