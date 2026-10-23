@@ -88,7 +88,7 @@ export default function TPRankBadge({ xp = 0, matchesPlayed = 0, position = null
 
 export function TPRankGuide() {
   return <details className="tp-rank-guide">
-    <summary>TP RANK <span>How stars work</span></summary>
+    <summary>XP ranks · How it works <span>View all stars, rank names & XP requirements</span></summary>
     <div className="tp-rank-guide-content">
       <p>Complete your first XP Match to earn a star, win or lose. Until then, you are Unranked with no symbol. Higher XP unlocks more detailed stars.</p>
       <div className="tp-rank-guide-tiers">

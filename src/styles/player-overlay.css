@@ -1,5 +1,5 @@
-html.stream-overlay-document, html.stream-overlay-document body { min-width: 0; min-height: 0; margin: 0; background: transparent; background-image: none; overflow: hidden; scrollbar-gutter: auto; }
-html.stream-overlay-document #root { min-height: 0; }
+html.stream-overlay-document, html.stream-overlay-document body { width: 100%; height: 100%; min-width: 0; min-height: 0; margin: 0; background: transparent; background-image: none; overflow: hidden; scrollbar-gutter: auto; }
+html.stream-overlay-document #root { width: 100%; height: 100%; min-height: 0; }
 .stream-overlay-page { width: 100%; padding: 0; }
 .stream-overlay-canvas { transform-origin: top left; }
 .stream-player-bar.app-content { min-height: 0; }
