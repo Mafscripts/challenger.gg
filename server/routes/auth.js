@@ -22,7 +22,7 @@ import { evaluateAccess, requestIpAddress, restrictionDetails } from "../ban-enf
 import { recordUserIp } from "../user-ip-history.js";
 import { applyReferralReward, normalizeReferralCode } from "../referrals.js";
 import { getAnimatedNameFreeTrial } from "../freeTrial.js";
-import { registrationSecurityConfig, verifyRegistrationTurnstile } from "../turnstile.js";
+import { registrationSecurityConfig, verifyRegistrationTurnstile, verifyLoginTurnstile } from "../turnstile.js";
 import { assertNetworkAccess, isNetworkAccessError, networkProtectionEnabled } from "../network-access.js";
 import { deleteOwnAccount } from "../admin-users.js";
 
@@ -263,7 +263,7 @@ router.get("/network-status", async (req, res, next) => {
   }
 });
 
-router.get("/registration-config", (_req, res, next) => {
+router.get(["/registration-config", "/login-config"], (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   try {
     res.json(registrationSecurityConfig());
@@ -278,6 +278,7 @@ router.post("/login", async (req, res, next) => {
     const password = String(req.body?.password || "");
     const ip = requestIpAddress(req) || "unknown";
     assertLoginAllowed(ip, identifier);
+    await verifyLoginTurnstile(req, ip === "unknown" ? undefined : ip);
     const user = identifier
       ? await prisma.user.findFirst({
         where: {

@@ -208,8 +208,8 @@ const auth = {
     return meCache.promise;
   },
 
-  async loginViaEmailPassword(identifier, password) {
-    const result = await apiFetch("/auth/login", { method: "POST", body: { identifier, password }, dedupe: false });
+  async loginViaEmailPassword(identifier, password, turnstileToken) {
+    const result = await apiFetch("/auth/login", { method: "POST", body: { identifier, password, ...(turnstileToken ? { turnstile_token: turnstileToken } : {}) }, dedupe: false });
     setToken(result.access_token);
     meCache = { value: result.user, expiresAt: now() + ME_CACHE_MS, promise: null };
     return result;
@@ -221,6 +221,9 @@ const auth = {
 
   getRegistrationConfig() {
     return apiFetch("/auth/registration-config");
+  },
+  getLoginConfig() {
+    return apiFetch("/auth/login-config");
   },
 
   getNetworkStatus() {

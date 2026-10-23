@@ -44,7 +44,7 @@ const loadTurnstile = () => {
   return scriptPromise;
 };
 
-export default function TurnstileCheck({ siteKey, onTokenChange, resetKey }) {
+export default function TurnstileCheck({ siteKey, onTokenChange, resetKey, action = "register" }) {
   const container = useRef(null);
   const [status, setStatus] = useState("loading");
   const [retry, setRetry] = useState(0);
@@ -66,7 +66,7 @@ export default function TurnstileCheck({ siteKey, onTokenChange, resetKey }) {
       setStatus("ready");
       widgetId = api.render(container.current, {
         sitekey: siteKey,
-        action: "register",
+        action,
         theme: "dark",
         size: container.current.clientWidth < 300 ? "compact" : "flexible",
         "response-field": false,
@@ -91,7 +91,7 @@ export default function TurnstileCheck({ siteKey, onTokenChange, resetKey }) {
       disposed = true;
       if (widgetId !== undefined) api.remove(widgetId);
     };
-  }, [siteKey, onTokenChange, resetKey, retry]);
+  }, [siteKey, onTokenChange, resetKey, retry, action]);
 
   return (
     <div className="space-y-2 rounded-xl border border-white/10 bg-background/40 p-3">
@@ -100,7 +100,7 @@ export default function TurnstileCheck({ siteKey, onTokenChange, resetKey }) {
         {status === "error" ? "The security check could not finish. Please retry."
           : status === "verified" ? "Security check complete."
           : status === "loading" ? "Loading security check..."
-          : "Complete the security check to create your account."}
+          : action === "login" ? "Complete the security check to log in." : "Complete the security check to create your account."}
       </p>
       {status === "error" && (
         <button type="button" onClick={() => setRetry((value) => value + 1)} className="text-xs font-bold text-cyan hover:underline">

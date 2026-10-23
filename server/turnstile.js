@@ -5,7 +5,7 @@ export const registrationSecurityConfig = () => {
   const secretKey = String(process.env.TURNSTILE_SECRET_KEY || "").trim();
   const required = Boolean(siteKey || secretKey);
   if (required && (!siteKey || !secretKey)) {
-    throw verificationError("Registration security is temporarily unavailable. Please try again later.", 503);
+    throw verificationError("Account security is temporarily unavailable. Please try again later.", 503);
   }
   return { turnstile_required: required, turnstile_site_key: siteKey };
 };
@@ -22,15 +22,15 @@ const allowedHostnames = () => {
   }
 };
 
-export const verifyRegistrationTurnstile = async (req, remoteIp) => {
+const verifyTurnstile = async (req, remoteIp, action) => {
   if (!registrationSecurityConfig().turnstile_required) return;
   const hostnames = allowedHostnames();
   if (!hostnames.length) {
-    throw verificationError("Registration security is temporarily unavailable. Please try again later.", 503);
+    throw verificationError("Account security is temporarily unavailable. Please try again later.", 503);
   }
   const token = req.body?.turnstile_token;
   if (typeof token !== "string" || !token.trim() || token.length > 2048) {
-    throw verificationError("Please complete the security check before creating your account.");
+    throw verificationError(action === "login" ? "Please complete the security check before logging in." : "Please complete the security check before creating your account.");
   }
 
   let result;
@@ -54,7 +54,9 @@ export const verifyRegistrationTurnstile = async (req, remoteIp) => {
   if (result["error-codes"]?.some((code) => ["internal-error", "missing-input-secret", "invalid-input-secret", "bad-request"].includes(code))) {
     throw verificationError("The security check is temporarily unavailable. Please try again.", 503);
   }
-  if (!result.success || result.action !== "register" || !hostnames.includes(String(result.hostname || "").toLowerCase())) {
+  if (!result.success || result.action !== action || !hostnames.includes(String(result.hostname || "").toLowerCase())) {
     throw verificationError("The security check expired or failed. Please try again.");
   }
 };
+export const verifyRegistrationTurnstile = (req, remoteIp) => verifyTurnstile(req, remoteIp, "register");
+export const verifyLoginTurnstile = (req, remoteIp) => verifyTurnstile(req, remoteIp, "login");
