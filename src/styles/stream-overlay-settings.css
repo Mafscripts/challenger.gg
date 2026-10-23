@@ -57,6 +57,8 @@
 @media (prefers-reduced-motion: reduce) { .stream-overlay-theme-picker button:is([data-theme="solar"], [data-theme="hologram"], [data-theme="quantum"]) .stream-overlay-theme-swatch::after { animation: none; } }
 .stream-overlay-theme-picker button[data-theme="hyperdrive"] .stream-overlay-theme-swatch { position: relative; overflow: hidden; }
 .stream-overlay-theme-picker button[data-theme="hyperdrive"] .stream-overlay-theme-swatch::after { content: ""; position: absolute; inset: -50%; background: linear-gradient(110deg, transparent 40%, rgb(255 255 255 / .5) 50%, transparent 60%); animation: overlay-hyperdrive-preview 4s ease-in-out infinite; }
+.stream-overlay-theme-picker button .stream-overlay-theme-swatch::after { animation-play-state: paused; }
+.stream-overlay-theme-picker button:is(:hover, :focus-visible) .stream-overlay-theme-swatch::after { animation-play-state: running; }
 @keyframes overlay-hyperdrive-preview { 0%, 15% { transform: translateX(-65%); } 85%, 100% { transform: translateX(65%); } }
 @media (prefers-reduced-motion: reduce) { .stream-overlay-theme-picker button[data-theme="hyperdrive"] .stream-overlay-theme-swatch::after { animation: none; } }
 .stream-overlay-theme-picker button[aria-pressed="true"] { border-color: var(--overlay-accent); background: #1a2935; box-shadow: inset 2px 0 var(--overlay-accent); }

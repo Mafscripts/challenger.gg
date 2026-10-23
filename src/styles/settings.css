@@ -77,6 +77,7 @@
 .settings-page .settings-panel { display: grid; gap: 22px; }
 .settings-page .stream-connections-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 265px), 1fr)); }
 .settings-page .settings-block, .settings-page #settings-password { scroll-margin-top: 105px; min-width: 0; }
+.settings-page .settings-block { content-visibility: auto; contain-intrinsic-block-size: auto 360px; }
 .settings-page .settings-block > :is(.glass, section) { margin-bottom: 0; border-radius: 13px; border-color: rgb(var(--setting-accent) / .18); background: linear-gradient(125deg, rgb(var(--setting-accent) / .035), transparent 60%), linear-gradient(125deg, #14232f, #101c26 65%); box-shadow: 0 8px 24px #0002, inset 0 1px #ffffff06; }
 .settings-page .settings-panel .text-xs { font-size: 13px; line-height: 1.6; }
 .settings-page .settings-panel :is([class~="text-[8px]"], [class~="text-[9px]"], [class~="text-[10px]"], [class~="text-[11px]"]) { font-size: 12px; line-height: 1.6; }
@@ -123,7 +124,7 @@
   .settings-page .settings-category-top { margin-bottom: 10px; }
   .settings-page .settings-category-bottom { margin-top: 12px; }
   .settings-page .settings-workspace { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .settings-page .settings-sidebar { top: 72px; z-index: 10; padding: 11px; background: #0e1d27f5; backdrop-filter: blur(16px); }
+  .settings-page .settings-sidebar { top: 72px; z-index: 10; padding: 11px; background: #0e1d27; backdrop-filter: none; }
   .settings-page .settings-group-switch { margin: 0; }
   .settings-page .settings-group-switch .settings-nav-label { display: none; }
   .settings-page .settings-group-switch select { min-height: 40px; padding: 7px 10px; }
