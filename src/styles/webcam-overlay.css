@@ -14,10 +14,10 @@
 .webcam-frame-sparks > i[data-star] { width: 7px; height: 7px; margin: -3px; border-radius: 0; background: var(--cam); clip-path: polygon(50% 0,60% 39%,100% 50%,60% 61%,50% 100%,40% 61%,0 50%,40% 39%); }
 .webcam-frame-flare { position: absolute; width: 30px; height: 30px; margin: -15px; background: radial-gradient(circle,#ffffffcc,transparent 20%),radial-gradient(ellipse 50% 5% at center,var(--cam),transparent),radial-gradient(ellipse 5% 50% at center,var(--cam),transparent); opacity: 0; animation: webcam-flare 10s ease-in-out infinite; }
 .webcam-frame-corners { stroke: var(--cam); stroke-width: 3; stroke-linejoin: round; }
-.webcam-frame-brand { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; height: 30px; padding: 2px 17px; border: 1px solid color-mix(in srgb,var(--cam) 45%,transparent); border-radius: 4px; background: #08111b; }
+.webcam-frame-brand { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; height: 33px; padding: 2px 19px; border: 1px solid color-mix(in srgb,var(--cam) 45%,transparent); border-radius: 4px; background: #08111b; }
 .webcam-frame-brand > span { perspective: 300px; }
-.webcam-frame .webcam-frame-logo { width: 24px; height: 24px; transform-style: preserve-3d; filter: drop-shadow(0 0 3px #14d8ff55); animation: webcam-logo-turn 13s cubic-bezier(.4,0,.2,1) infinite; }
-.webcam-frame-brand strong { color: #fff; font-size: 13px; font-weight: 900; letter-spacing: -.04em; white-space: nowrap; }
+.webcam-frame .webcam-frame-logo { width: 27px; height: 27px; transform-style: preserve-3d; filter: drop-shadow(0 0 3px #14d8ff55); animation: webcam-logo-turn 13s cubic-bezier(.4,0,.2,1) infinite; }
+.webcam-frame-brand strong { color: #fff; font-size: 14px; font-weight: 900; letter-spacing: -.04em; white-space: nowrap; }
 .webcam-frame-brand strong span { color: #14d8ff; }
 .webcam-frame-signature { position: absolute; top: calc(var(--camera-height) + 7px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; width: fit-content; max-width: 490px; height: 46px; padding: 0 8px; perspective: 650px; background: none; border: 0; box-shadow: none; filter: drop-shadow(0 0 7px color-mix(in srgb,var(--cam) 45%,transparent)); }
 .webcam-frame-kicker { position: relative; z-index: 1; color: var(--cam); font-size: 7px; font-weight: 800; letter-spacing: .18em; }
