@@ -5,7 +5,6 @@ import PageLoader from "@/components/ui/PageLoader";
 import Navbar from "./Navbar";
 import { NavigationLayoutProvider, useNavigationLayout } from "./NavigationLayoutProvider";
 import "@/styles/navigation-layout.css";
-import CompetitionRouteFrame from "@/components/competition/CompetitionRouteFrame";
 import NativeTabBar from "./NativeTabBar";
 import { isNativeApp } from "@/lib/nativeApp";
 import { publicCommerceEnabled } from "@/lib/commerce";
@@ -13,6 +12,13 @@ import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 
 const RewardReveal = lazy(() => import("@/components/rewards/RewardReveal"));
 const Footer = lazy(() => import("./Footer"));
+const CompetitionRouteFrame = lazy(() => import("@/components/competition/CompetitionRouteFrame"));
+
+function CompetitionFrame({ children }) {
+  const { pathname } = useLocation();
+  if (!["/ranked", "/xp", "/wagers", "/ranked/8s"].includes(pathname)) return children;
+  return <Suspense fallback={<RouteFallback />}><CompetitionRouteFrame>{children}</CompetitionRouteFrame></Suspense>;
+}
 
 function DeferredFooter() {
   const [ready, setReady] = useState(false);
@@ -57,7 +63,7 @@ function PageLayoutShell() {
         <Suspense fallback={<RouteFallback />}>
           <div className="route-stage">
             {!publicCommerceEnabled && isCurrencyRoom && <CommercePausedNotice compact className="mx-4 mb-3 mt-5" />}
-            <CompetitionRouteFrame><Outlet /></CompetitionRouteFrame>
+            <CompetitionFrame><Outlet /></CompetitionFrame>
           </div>
         </Suspense>
       </main>
