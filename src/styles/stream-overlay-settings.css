@@ -1,4 +1,7 @@
 .settings-page .stream-overlay-settings { overflow: hidden; border: 1px solid rgb(20 216 255 / .18); border-radius: 13px; }
+.stream-overlay-settings + .stream-overlay-settings { margin-top: 24px; }
+.stream-ad-preview { position: relative; width: min(496px, 100%); margin-inline: auto; overflow: hidden; border: 1px solid #ffffff10; border-radius: 10px; background: repeating-conic-gradient(#0a1621 0% 25%, #12212d 0% 50%) 0 / 16px 16px; }
+.stream-ad-preview iframe { position: absolute; top: 8px; left: 8px; max-width: none; border: 0; transform-origin: top left; pointer-events: none; }
 .stream-overlay-settings > header { display: flex; align-items: center; gap: 12px; padding: 22px 24px; border-bottom: 1px solid rgb(255 255 255 / .07); }
 .stream-overlay-settings > header > div { min-width: 0; flex: 1; }
 .stream-overlay-settings-mark { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; border: 1px solid rgb(20 216 255 / .2); border-radius: 11px; background: rgb(20 216 255 / .06); color: #14d8ff; }

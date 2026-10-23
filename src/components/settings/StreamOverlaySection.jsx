@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, MonitorPlay } from "lucide-react";
 import { PLAYER_OVERLAY_HEIGHT, PLAYER_OVERLAY_WIDTH, PLAYER_OVERLAY_THEMES, playerOverlayUrl } from "@/components/stream/PlayerStatsBar";
 import "@/styles/stream-overlay-settings.css";
+import StreamAdOverlaySection from "./StreamAdOverlaySection";
 
 export default function StreamOverlaySection({ user }) {
   const [copied, setCopied] = useState(false);
@@ -37,7 +38,7 @@ export default function StreamOverlaySection({ user }) {
     }
   };
   const previewScale = previewWidth / PLAYER_OVERLAY_WIDTH;
-  return <section className="glass stream-overlay-settings">
+  return <><StreamAdOverlaySection /><section className="glass stream-overlay-settings">
     <header><span className="stream-overlay-settings-mark"><MonitorPlay size={22} /></span><div><h3>Twitch player overlay</h3><p>Your live Topfragg stats, ready for your stream.</p></div><span className="stream-overlay-settings-status">Auto updates</span></header>
     <div className="stream-overlay-settings-body">
       <div className="stream-overlay-preview-heading"><strong>Your player bar</strong><a href={url} target="_blank" rel="noopener noreferrer">Open full preview<ExternalLink size={14} /></a></div>
@@ -52,5 +53,5 @@ export default function StreamOverlaySection({ user }) {
       <p className="stream-overlay-copy-status" role="status">{copyError || (copied ? "Overlay URL copied." : "")}</p>
       <div className="stream-overlay-setup"><h4>Set it up in OBS or Streamlabs</h4><ol><li>Add a <strong>Browser Source</strong> to your scene and paste this URL.</li><li>Match the source width to your stream canvas: <strong>1920</strong> for 1080p or <strong>2560</strong> for 1440p. Set the height to <strong>{PLAYER_OVERLAY_HEIGHT}</strong>.</li><li>Align the source to the top-left of your canvas, at <strong>X: 0, Y: 0</strong>. The bar fills its width automatically.</li></ol><p>No login or Twitch connection is needed in OBS. The area around the bar is transparent, and the URL shows your public player stats.</p><a href="https://obsproject.com/kb/browser-source" target="_blank" rel="noopener noreferrer">OBS browser source guide<ExternalLink size={12} /></a></div>
     </div>
-  </section>;
+  </section></>;
 }

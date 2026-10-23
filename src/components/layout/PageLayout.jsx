@@ -37,7 +37,8 @@ function RouteFallback() {
 }
 
 export default function PageLayout() {
-  const { user } = useAuth();
+  const { user, authChecked, isLoadingAuth } = useAuth();
+  if (!authChecked || (isLoadingAuth && !user)) return <PageLoader fullscreen label="Checking your session" />;
   return <NavigationLayoutProvider key={user?.id || "guest"}><PageLayoutShell /></NavigationLayoutProvider>;
 }
 
