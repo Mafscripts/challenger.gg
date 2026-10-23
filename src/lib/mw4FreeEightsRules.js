@@ -2,6 +2,8 @@ export const MW4_FREE_EIGHTS_RULES_ID = "mw4-free-8s";
 export const MW4_FREE_EIGHTS_RULES_URL = `/rules#${MW4_FREE_EIGHTS_RULES_ID}`;
 
 export const mw4FreeEightsRules = [
+  { label: "Hardpoint settings", text: "Respawn delay: 3 seconds. Friendly fire: On." },
+  { label: "Hijacked settings", text: "Respawn delay: 3 seconds. Friendly fire: On." },
   { label: "Weapons", text: "Use the following weapon restrictions:", items: [
     "Assault rifles: only HAN 86 is allowed. All other assault rifles are banned.",
     "SMGs: only ISO and VEL are allowed. All other SMGs are banned.",
