@@ -46,9 +46,10 @@ test("hover then click opens notifications once, and leaving the trigger keeps t
     assert.equal(children(menu).find((node) => node.type === "button").props["aria-expanded"], true);
     menu.props.onMouseLeave?.();
     assert.equal(open, true);
-    assert.equal(children(menu).filter((node) => node.type === Preview).length, 1);
+    assert.equal(children(menu).filter((node) => node.type?.$$typeof === Symbol.for("react.lazy")).length, 1);
     children(menu).find((node) => node.type === "button").props.onClick();
     assert.equal(open, false);
+    assert.equal(children(render()).filter((node) => node.type?.$$typeof === Symbol.for("react.lazy")).length, 0);
   }
 });
 

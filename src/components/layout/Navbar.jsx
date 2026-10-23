@@ -22,6 +22,7 @@ import SidebarBalances from "./SidebarBalances";
 import "@/styles/navbar-profile.css";
 import "@/styles/topbar.css";
 import { base44 } from "@/api/base44Client";
+import { retainHeaderSnapshot } from "@/lib/headerSnapshot";
 import { useAuth } from "@/lib/AuthContext";
 import { effectiveRoleForUser, getPublicRoleConfig } from "@/lib/roles";
 import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
@@ -263,6 +264,8 @@ export default function Navbar() {
   const pendingAdminRequestSoundId = useRef(null);
   const activeMatchesLoadedAt = useRef(0);
   const activeMatchesRequestId = useRef(0);
+  const pendingActiveMatchesRequestId = useRef(0);
+  const pendingMessagesRequestId = useRef(0);
   const cancelledHeaderMatches = useRef(new Set());
   const activeAdminDisputeId = useRef(null);
   const dismissedAdminDisputes = useRef(new Set());
@@ -658,7 +661,7 @@ export default function Navbar() {
   useEffect(() => {
     const handleMessagesUpdated = () => {
       messagesLoadedAt.current = 0;
-      loadMessages({ fresh: true });
+      loadMessages({ fresh: true, force: true });
     };
     window.addEventListener("topfragg:messages-updated", handleMessagesUpdated);
     return () => window.removeEventListener("topfragg:messages-updated", handleMessagesUpdated);
@@ -833,7 +836,7 @@ export default function Navbar() {
       setWalletBalance(Number(wallets[0]?.available_balance ?? 0));
       setCreditBalance(Number(userData.credits ?? playerProfile?.credits ?? 0));
       setProfileAvatar(playerProfile?.avatar_url || userData.avatar_url || "");
-      setUser({ ...userData, wallet: wallets[0] || null, player_profile: playerProfile });
+      setUser(current => retainHeaderSnapshot(current, { ...userData, wallet: wallets[0] || null, player_profile: playerProfile }));
     } catch (error) {
       console.error('Failed to load user:', error);
       setUser(null);
@@ -853,13 +856,13 @@ export default function Navbar() {
       && pendingNotificationsRequestId.current === notificationsRequestId.current) return;
     const requestId = ++notificationsRequestId.current;
     pendingNotificationsRequestId.current = requestId;
-    setNotificationsLoading(true);
+    if (!notificationsLoadedAt.current) setNotificationsLoading(true);
     setNotificationsError("");
     try {
       const data = await base44.entities.Notification.filterFresh({ user_id: ownerId }, '-created_date', 50);
       if (requestId !== notificationsRequestId.current || ownerId !== notificationOwner.current) return;
       const rows = (data || []).filter((notification) => isCurrentNotification(notification));
-      setNotifications(rows);
+      setNotifications(current => retainHeaderSnapshot(current, rows));
       setNotificationsHydrated(true);
       notificationsLoadedAt.current = Date.now();
     } catch (error) {
@@ -873,9 +876,11 @@ export default function Navbar() {
   };
 
   const loadMessages = async ({ fresh = false, userId = null, force = false } = {}) => {
+    if (!force && pendingMessagesRequestId.current > 0 && pendingMessagesRequestId.current === messagesRequestId.current) return;
+    if (!force && fresh && Date.now() - messagesLoadedAt.current < 10000) return;
+    const requestId = ++messagesRequestId.current;
+    pendingMessagesRequestId.current = requestId;
     try {
-      if (!force && fresh && Date.now() - messagesLoadedAt.current < 10000) return;
-      const requestId = ++messagesRequestId.current;
       const resolvedUserId = userId || user?.id || authUser?.id || (await base44.auth.me())?.id;
       if (!resolvedUserId) return;
       const messageQuery = fresh
@@ -884,18 +889,22 @@ export default function Navbar() {
       const data = await messageQuery({ recipient_id: resolvedUserId }, '-created_date', 25);
       if (requestId !== messagesRequestId.current) return;
       const rows = data || [];
-      setMessages(rows);
+      setMessages(current => retainHeaderSnapshot(current, rows));
       setUnreadMessagesCount(rows.filter(m => !m.is_read).length);
       messagesLoadedAt.current = Date.now();
     } catch (error) {
       console.error('Failed to load messages:', error);
+    } finally {
+      if (pendingMessagesRequestId.current === requestId) pendingMessagesRequestId.current = 0;
     }
   };
 
   const loadActiveMatches = async ({ fresh = false, force = false } = {}) => {
+    if (!force && pendingActiveMatchesRequestId.current > 0 && pendingActiveMatchesRequestId.current === activeMatchesRequestId.current) return;
     if (!force && Date.now() - activeMatchesLoadedAt.current < 12000) return;
     activeMatchesLoadedAt.current = Date.now();
     const requestId = ++activeMatchesRequestId.current;
+    pendingActiveMatchesRequestId.current = requestId;
     try {
       const user = await base44.auth.me();
       if (!user) return;
@@ -979,10 +988,12 @@ export default function Navbar() {
         ))
         .slice(0, 5);
       
-      if (requestId === activeMatchesRequestId.current) setActiveMatches(active);
+      if (requestId === activeMatchesRequestId.current) setActiveMatches(current => retainHeaderSnapshot(current, active));
     } catch (error) {
       if (requestId === activeMatchesRequestId.current) activeMatchesLoadedAt.current = 0;
       console.error('Failed to load active matches:', error);
+    } finally {
+      if (pendingActiveMatchesRequestId.current === requestId) pendingActiveMatchesRequestId.current = 0;
     }
   };
 
@@ -1022,7 +1033,7 @@ export default function Navbar() {
       } else await base44.entities.Message.update(id, { is_read: true });
       setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: true } : m));
       messagesLoadedAt.current = 0;
-      await loadMessages({ fresh: true });
+      await loadMessages({ fresh: true, force: true });
     } catch (error) {
       console.error('Failed to mark message as read:', error);
     }

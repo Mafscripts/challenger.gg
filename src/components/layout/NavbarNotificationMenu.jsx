@@ -1,6 +1,6 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Bell } from "lucide-react";
-import NavbarNotifications from "./NavbarNotifications";
+const NavbarNotifications = lazy(() => import("./NavbarNotifications"));
 import NavigationUnreadBadge from "./NavigationUnreadBadge";
 
 // Keep this menu click-controlled: hover followed by click used to close it
@@ -19,6 +19,6 @@ export default function NavbarNotificationMenu({ sidebar, open, unreadCount, onT
       {sidebar && <span>Updates</span>}
       <NavigationUnreadBadge count={unreadCount} label="unread notifications" inline={sidebar} />
     </button>
-    {open && <NavbarNotifications unreadCount={unreadCount} {...previewProps} />}
+    {open && <Suspense fallback={<div role="status" className="nav-popover absolute right-0 top-12 z-50 rounded-xl bg-card p-4 text-xs text-vapor">Loading notifications…</div>}><NavbarNotifications unreadCount={unreadCount} {...previewProps} /></Suspense>}
   </div>;
 }
