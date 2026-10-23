@@ -3,7 +3,7 @@ import { Archive, ArchiveRestore, Bookmark, CheckCheck, Download, FolderArchive,
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { base44 } from "@/api/base44Client";
-import { isDevSupportMessage, liveSupportClosed } from "@/lib/liveSupport";
+import { isStaffSupportMessage, liveSupportClosed } from "@/lib/liveSupport";
 import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { useAuth } from "@/lib/AuthContext";
 import "./support-records.css";
@@ -132,7 +132,7 @@ function RecordsContent({ onClose }) {
           {!liveSupportClosed(record) && <p className="sr-hint">Finished helping? Use End conversation here to enable Archive and Delete.</p>}
           {record.support_archived && <p className="sr-hint">Archived by {record.support_archived_by || "staff"} · {date(record.support_archived_at)}. All messages remain saved.</p>}
           <h4>Conversation <span>{messages.length} messages</span></h4>
-          <div className="sr-transcript">{messages.map(message => <article key={message.id} data-staff={message.sender_staff}><div><strong className={isDevSupportMessage(message) ? "support-dev-name" : undefined}>{message.sender_name}{message.sender_staff ? " · Support" : ""}</strong><time>{date(message.created_date)}</time></div><p>{message.content}</p></article>)}{!messages.length && <p className="sr-hint">No messages recorded.</p>}</div>
+          <div className="sr-transcript">{messages.map(message => <article key={message.id} data-staff={message.sender_staff}><div><strong className={isStaffSupportMessage(message) ? "support-staff-name" : undefined}>{message.sender_name}{message.sender_staff ? " · Support" : ""}</strong><time>{date(message.created_date)}</time></div><p>{message.content}</p></article>)}{!messages.length && <p className="sr-hint">No messages recorded.</p>}</div>
           <h4>Internal notes <span>Staff only</span></h4>
           <div className="sr-notes">{(record.notes || []).map(item => <article key={item.id}><div><strong>{item.author_name}</strong><time>{date(item.created_date)}</time></div><p>{item.content}</p></article>)}</div>
           <form className="sr-note-form" onSubmit={event => { event.preventDefault(); manage("note"); }}><label htmlFor="support-record-note">Add a private follow-up note</label><textarea id="support-record-note" rows={3} maxLength={4000} disabled={busy} value={note} onChange={event => setNote(event.target.value)} placeholder="Outcome, next steps or details for the team…" /><button disabled={busy || !note.trim()} type="submit">{busy ? "Saving…" : "Save internal note"}</button></form>

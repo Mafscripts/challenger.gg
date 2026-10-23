@@ -4,7 +4,7 @@ import { Headphones, X, Send, Volume2, VolumeX, ArrowLeft, CheckCheck, MessageCi
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { isDevSupportMessage, isLiveSupportStaff, liveSupportClosed, liveSupportUnread } from "@/lib/liveSupport";
+import { isStaffSupportMessage, isLiveSupportStaff, liveSupportClosed, liveSupportUnread } from "@/lib/liveSupport";
 import "./live-support.css";
 const SupportRecords = lazy(() => import("./SupportRecords"));
 
@@ -138,7 +138,7 @@ export default function LiveSupport() {
           {staff && ticket && <div className="support-conversation-label">{ticket.username} <span>{ticket.assigned_admin_name ? `Helping: ${ticket.assigned_admin_name}` : "Reply to pick up this chat"}</span></div>}
           <div className="support-messages" role="log" aria-label="Support conversation" aria-live="polite" aria-relevant="additions text">
             {!messages.length && <div className="support-welcome"><MessageCircle size={32} /><h3>{loading ? "Loading your chat…" : "What's on your mind?"}</h3><p>Matches, your account, or something else? Leave a message. Replies appear here; you can continue browsing.</p><small>Never share passwords or payment details.</small></div>}
-            {messages.map(message => <article key={message.id} className={`support-message ${message.sender_id === user.id ? "support-message-own" : ""}`}><div><strong className={isDevSupportMessage(message) ? "support-dev-name" : undefined}>{message.sender_staff ? `${message.sender_name} · Support` : message.sender_name}</strong><time>{message.created_date ? new Date(message.created_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</time></div><p>{message.content}</p></article>)}<div ref={end} />
+            {messages.map(message => <article key={message.id} className={`support-message ${message.sender_id === user.id ? "support-message-own" : ""}`}><div><strong className={isStaffSupportMessage(message) ? "support-staff-name" : undefined}>{message.sender_staff ? `${message.sender_name} · Support` : message.sender_name}</strong><time>{message.created_date ? new Date(message.created_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</time></div><p>{message.content}</p></article>)}<div ref={end} />
           </div>
           {closed ? <div className="support-ended"><CheckCheck size={17} /> Conversation closed.{!staff && <button onClick={() => { choose(null); setThreads([]); }}>Start a new chat</button>}</div> : <form className="support-composer" onSubmit={send}><label className="sr-only" htmlFor="support-message">Your message</label><textarea id="support-message" placeholder="Write your message…" value={draft} maxLength={2000} rows={2} disabled={busy} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(event); } }} /><button className="support-send" disabled={busy || !draft.trim() || (staff && !ticket)} aria-label="Send message"><Send size={19} /></button><div className="support-composer-meta"><span>{busy ? "Sending…" : "Replies are saved to your account"}</span>{ticket && <button type="button" disabled={busy} onClick={closeConversation}>End chat</button>}</div></form>}
         </>}

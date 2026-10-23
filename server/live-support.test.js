@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readLiveSupport, sendLiveSupport, updateLiveSupport, readLiveSupportRecords, manageLiveSupportRecord } from "./live-support.js";
-import { isDevSupportMessage, isLiveSupportStaff, supportTicketForViewer } from "../src/lib/liveSupport.js";
+import { isStaffSupportMessage, isLiveSupportStaff, supportTicketForViewer } from "../src/lib/liveSupport.js";
 import { deleteAdminTicket } from "./admin-tickets.js";
 import entityRoutes from "./routes/entities.js";
 import { prisma } from "./prisma.js";
@@ -207,10 +207,10 @@ test("only admins delete completed support conversations, including favorites an
   }
 });
 
-test("only the dev support label gets the red name treatment", () => {
-  assert.equal(isDevSupportMessage({ sender_name: "dev", sender_staff: true }), true);
-  assert.equal(isDevSupportMessage({ sender_name: "dev", sender_staff: false }), false);
-  assert.equal(isDevSupportMessage({ sender_name: "Helper", sender_staff: true }), false);
+test("all verified staff labels get the red name treatment, independent of their display name", () => {
+  assert.equal(isStaffSupportMessage({ sender_name: "dev", sender_staff: true }), true);
+  assert.equal(isStaffSupportMessage({ sender_name: "dev", sender_staff: false }), false);
+  assert.equal(isStaffSupportMessage({ sender_name: "Helper", sender_staff: true }), true);
 });
 
 test("legacy Ticket GET routes hide staff notes in both list and detail responses", async t => {
