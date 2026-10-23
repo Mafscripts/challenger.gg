@@ -27,6 +27,7 @@ import { useLeaderboardPagination } from "@/hooks/useLeaderboardPagination";
 import { buildFreeEightsStandings } from "@/lib/freeEightsStandings";
 import { CompetitionHeaderContext } from "./CompetitionHeaderContext";
 import CompetitionHero from "./CompetitionHero";
+import XPSquadSeason from "./XPSquadSeason";
 import PlayPreparation from "./PlayPreparation";
 import { competitionTheme } from "@/lib/competitionPresentation";
 import { monthlyEightsPrizeLabel, publicCommerceEnabled } from "@/lib/commerce";
@@ -326,6 +327,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
     <div className="competition-ladder mb-7 space-y-5" data-competition={mode} data-game={gameId}>
       <CompetitionHeader mode={mode} gameId={gameId} playerCount={loading ? null : standings.length} action={action} titleOverride={headerTitle} eyebrowOverride={headerEyebrow} descriptionOverride={headerDescription} headerIntro={headerIntro} />
       {!publicCommerceEnabled && ["wagers", "money8s", "tournaments", "eights"].includes(mode) && <CommercePausedNotice compact />}
+      {mode === "xp" && publicCommerceEnabled && <XPSquadSeason />}
 
       <div className={`grid gap-3 sm:grid-cols-2 ${mode === "wagers" ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {summary.map(({ label, value, detail, icon: Icon, tone }) => (
@@ -345,7 +347,7 @@ export default function CompetitionLadder({ mode = "xp", currentUser, openCount 
             <Link to="/rules" className="rounded-md px-3 py-2 text-vapor hover:text-white"><ShieldCheck className="mr-1.5 inline h-3 w-3" /> Rules</Link>
           </div>
         </div>
-        <div className="flex justify-end border-b border-white/5 px-5 py-2"><Link to={`/leaderboards?tab=${mode === "ranked" ? "elo" : mode === "eights" ? "eights" : mode}&view=season`} className="site-hover rounded px-3 py-2 text-[11px] font-bold text-purple-300">Season standings · Random prizes</Link></div>
+        {mode !== "xp" && <div className="flex justify-end border-b border-white/5 px-5 py-2"><Link to={`/leaderboards?tab=${mode === "ranked" ? "elo" : mode === "eights" ? "eights" : mode}&view=season`} className="site-hover rounded px-3 py-2 text-[11px] font-bold text-purple-300">Season standings · Random prizes</Link></div>}
         {error && <div role="alert" className="flex items-center justify-between gap-3 border-b border-red-400/20 bg-red-500/5 px-5 py-3 text-xs text-red-200"><span>The latest standings could not be loaded.</span><button type="button" onClick={retry} className="font-bold text-cyan">Try again</button></div>}
         {mode === "xp" && activeTab === "standings" && !standingsContent && <TPRankGuide />}
         {activeTab === "standings" && !standingsContent && !loading && standings.length > 0 && <LeaderboardPagination {...paginationProps} compact />}

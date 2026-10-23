@@ -1,0 +1,17 @@
+.xp-squad-season { display: grid; grid-template-columns: minmax(260px,.8fr) minmax(0,1.8fr); overflow: hidden; border: 1px solid #d8b76a55; border-radius: 16px; background: linear-gradient(115deg,#30271955,transparent 40%),#101923; box-shadow: inset 0 1px #fff7dc0a; }
+.xp-squad-season-prize { display: flex; align-items: center; gap: 18px; padding: 30px; border-right: 1px solid #d8b76a25; }
+.xp-squad-season-trophy { display: grid; place-items: center; flex-shrink: 0; width: 64px; height: 72px; border: 1px solid #e7c87a40; border-radius: 14px; color: #f8d680; background: linear-gradient(140deg,#e7b94c20,#b17d1605); }
+.xp-squad-season-prize p { margin: 0 0 8px; color: #ddc994; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+.xp-squad-season-prize h2 { margin: 0; color: #ffe2a0; font-size: clamp(36px,3.5vw,52px); line-height: 1; font-weight: 950; letter-spacing: -.05em; }
+.xp-squad-season-prize h2 > span { display: block; margin-top: 9px; color: #f4f6fa; font-size: 16px; font-weight: 750; letter-spacing: -.01em; }
+.xp-squad-season-restriction { display: inline-flex; align-items: center; gap: 5px; margin-top: 15px; color: #e8cf92; font-size: 10px; font-weight: 750; }
+.xp-squad-season-format { min-width: 0; padding: 26px 30px; }
+.xp-squad-season-heading { margin: 0 0 18px; color: #f1f3f8; font-size: 15px; font-weight: 800; letter-spacing: -.02em; }
+.xp-squad-season-format ol { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; list-style: none; margin: 0; padding: 0; }
+.xp-squad-season-format li { display: flex; align-items: start; gap: 9px; min-width: 0; }
+.xp-squad-season-step { display: grid; place-items: center; width: 31px; height: 31px; flex-shrink: 0; border-radius: 8px; background: #c3a06512; color: #e5c88b; border: 1px solid #c3a06525; }
+.xp-squad-season-format li strong { display: block; margin: 1px 0 5px; color: #f0edf5; font-size: 12px; font-weight: 800; }
+.xp-squad-season-format li div > span { display: block; color: #91a3b8; font-size: 11px; line-height: 1.65; }
+.xp-squad-season-note { margin: 18px 0 0; padding-top: 13px; border-top: 1px solid #ffffff0a; color: #a3aec0; font-size: 10px; line-height: 1.7; }
+@media(max-width:1100px) { .xp-squad-season { grid-template-columns: minmax(220px,.85fr) minmax(0,1.5fr); } .xp-squad-season-prize,.xp-squad-season-format { padding: 22px; } .xp-squad-season-trophy { display: none; } .xp-squad-season-format ol { gap: 12px; } .xp-squad-season-format li { flex-direction: column; } }
+@media(max-width:700px) { .xp-squad-season { grid-template-columns: minmax(0,1fr); } .xp-squad-season-prize { border-right: 0; border-bottom: 1px solid #d8b76a25; } .xp-squad-season-trophy { display: grid; } .xp-squad-season-prize h2 { font-size: 42px; } .xp-squad-season-format ol { grid-template-columns: minmax(0,1fr); gap: 16px; } .xp-squad-season-format li { flex-direction: row; align-items: center; } }
