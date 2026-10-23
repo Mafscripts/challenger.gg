@@ -14,11 +14,11 @@ import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import useRematchSettings from "@/hooks/useRematchSettings";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
-import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordNotice, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
+import { FreeEightsDiscordDialog, FreeEightsDiscordNotice, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
 import { isFreeEightsDiscordServerRequired } from "@/lib/discordCommunity";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { toast } from "@/components/ui/use-toast";
-import { FreeEightsRankDialog, FreeEightsRankNotice, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
+import { FreeEightsRankDialog, FreeEightsRankNotice } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
 import { useFreeEightsGames } from "@/hooks/useFreeEightsGames";
@@ -259,7 +259,7 @@ export default function RankedEights() {
             <Link to={`/8s-match/${activeLobby.id}`} className="competition-action-pill">
               Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
             </Link>
-          ) : !isMoney && !hasFreeEightsRank(user) ? <UploadFreeEightsRank className="competition-action-pill" /> : !isMoney && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord className="competition-action-pill" /> : (
+          ) : (
             <button onClick={() => setCreateOpen(true)} className="competition-action-pill">
               <Plus className="h-4 w-4" /> Create a Match
             </button>
