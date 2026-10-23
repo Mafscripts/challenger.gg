@@ -1,0 +1,41 @@
+.create-lobby-dialog .create-match-select.arena-field,
+.create-lobby-dialog .xp-team-select-trigger.arena-field {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 10px 14px;
+  border: 1px solid rgb(255 255 255 / .12);
+  border-radius: 10px;
+  background: #101923;
+  color: #f3f7fc;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: none;
+}
+.create-lobby-dialog .create-match-select > span { flex: 1; min-width: 0; text-align: left; }
+.create-lobby-dialog .create-match-select > svg:last-child { margin-left: auto; flex-shrink: 0; }
+.create-lobby-dialog :is(.create-match-select, .xp-team-select-trigger):is(:hover, :focus-visible, [data-state="open"]) {
+  border-color: #14d8ff80;
+  box-shadow: 0 0 0 2px #14d8ff0d;
+  outline: none;
+}
+.create-lobby-dialog .create-match-roster { margin-top: 0; }
+.create-lobby-dialog .create-match-roster > label { font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.create-lobby-dialog .xp-team-select-trigger > small { display: none; }
+.create-match-menu.arena-select-menu {
+  z-index: 160;
+  min-width: var(--radix-select-trigger-width);
+  max-width: calc(100vw - 32px);
+  max-height: min(320px, var(--radix-select-content-available-height));
+  border: 1px solid rgb(255 255 255 / .12);
+  border-radius: 10px;
+  background: #111b27;
+  color: #f3f7fc;
+}
+.create-match-menu [role="option"] { min-height: 40px; padding-block: 10px; cursor: pointer; }
+.create-match-menu.arena-select-menu [role="option"]:is(:hover, :focus, [data-highlighted]) { background: #14d8ff0a; color: #14d8ff; }

@@ -1,3 +1,4 @@
+import "@/styles/match-creation.css";
 import { PRIMARY_GAME_ID, MW4_GAME } from "@/lib/mw4";
 import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
 import { DEFAULT_EIGHTS_GAMES, withMw4Preview } from "@/lib/freeEightsGames";
@@ -7,7 +8,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { X, Swords, Target, Zap, Users, Check, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
+import { X, Swords, Target, Zap, ChevronRight, DollarSign, Gamepad2, Monitor, Keyboard } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConnectFreeEightsDiscord, FreeEightsDiscordDialog, FreeEightsDiscordServerDialog, hasFreeEightsDiscordLink, isFreeEightsDiscordRequired } from "@/components/competition/FreeEightsDiscord";
@@ -39,48 +40,22 @@ const teamSizes = [
   { id: "5v5", name: "5v5", players: 10, tone: "purple" },
 ];
 
-const choiceTones = {
-  yellow: { card: "hover:border-yellow-400/45 hover:bg-yellow-400/[0.07]", selected: "border-yellow-400/55 bg-yellow-400/10 ring-2 ring-yellow-400/15", icon: "bg-yellow-400/15 text-yellow-400", text: "text-yellow-400", hoverText: "group-hover:text-yellow-400" },
-  red: { card: "hover:border-red-500/45 hover:bg-red-500/[0.07]", selected: "border-red-500/55 bg-red-500/10 ring-2 ring-red-500/15", icon: "bg-red-500/15 text-red-400", text: "text-red-400", hoverText: "group-hover:text-red-400" },
-  purple: { card: "hover:border-purple-400/45 hover:bg-purple-400/[0.07]", selected: "border-purple-400/55 bg-purple-400/10 ring-2 ring-purple-400/15", icon: "bg-purple-400/15 text-purple-400", text: "text-purple-400", hoverText: "group-hover:text-purple-400" },
-  cyan: { card: "hover:border-cyan/45 hover:bg-cyan/[0.07]", selected: "border-cyan/55 bg-cyan/10 ring-2 ring-cyan/15", icon: "bg-cyan/15 text-cyan", text: "text-cyan", hoverText: "group-hover:text-cyan" },
-  green: { card: "hover:border-green/45 hover:bg-green/[0.07]", selected: "border-green/55 bg-green/10 ring-2 ring-green/15", icon: "bg-green/15 text-green", text: "text-green", hoverText: "group-hover:text-green" },
-  orange: { card: "hover:border-orange/45 hover:bg-orange/[0.07]", selected: "border-orange/55 bg-orange/10 ring-2 ring-orange/15", icon: "bg-orange/15 text-orange", text: "text-orange", hoverText: "group-hover:text-orange" },
-};
-
 const wagerAmounts = [5, 10, 25, 50, 100];
 const playRuleIcons = { controller_only: Gamepad2, mixed_pc_allowed: Keyboard, console_only: Monitor };
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 
 function PlayRulePicker({ selectedPlayRule, onSelect, matchLabel }) {
-  return (
-    <div className="border-t border-white/5 pt-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold">Input & Platform Rule</p>
-          <p className="mt-0.5 text-xs text-vapor">Players see this rule before accepting your {matchLabel}.</p>
-        </div>
-        <span className="rounded-md border border-orange/20 bg-orange/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-orange">Required</span>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {WAGER_PLAY_RULES.map((rule) => {
-          const Icon = playRuleIcons[rule.value];
-          const selected = selectedPlayRule === rule.value;
-          return (
-            <button key={rule.value} type="button" onClick={() => onSelect(rule.value)} className={`rounded-xl border p-3 text-left transition-colors ${selected ? "border-green/35 bg-green/10" : "border-white/[0.07] bg-secondary/70 hover:border-white/15 hover:bg-white/[0.04]"}`}>
-              <div className="flex items-start justify-between gap-2"><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${selected ? "bg-green/15 text-green" : "bg-background/40 text-vapor"}`}><Icon className="h-4 w-4" /></span>{selected && <Check className="h-4 w-4 text-green" />}</div>
-              <p className="mt-2 text-[8px] font-black uppercase tracking-[0.14em] text-vapor">Allowed input</p>
-              <p className={`mt-0.5 text-xs font-black ${selected ? "text-green" : "text-foreground"}`}>{rule.inputLabel}</p>
-              <p className={`mt-1 text-[10px] font-bold ${rule.pcAllowed ? "text-cyan" : "text-orange"}`}>PC players {rule.pcAllowed ? "allowed" : "not allowed"}</p>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+  return <div className="create-match-field border-t border-white/5 pt-5">
+    <label className="mb-2 block text-xs font-bold text-vapor" htmlFor="create-input-rule">Input &amp; platform</label>
+    <Select value={selectedPlayRule} onValueChange={onSelect}>
+      <SelectTrigger id="create-input-rule" className="create-match-select"><SelectValue /></SelectTrigger>
+      <SelectContent className="create-match-menu">
+        {WAGER_PLAY_RULES.map(rule => { const Icon = playRuleIcons[rule.value]; return <SelectItem key={rule.value} value={rule.value}><span className="inline-flex items-center gap-2"><Icon className="h-4 w-4" />{rule.inputLabel} · {rule.pcAllowed ? "PC allowed" : "Console only"}</span></SelectItem>; })}
+      </SelectContent>
+    </Select>
+    <p className="mt-2 text-xs text-vapor">Shown to players before they accept your {matchLabel}.</p>
+  </div>;
 }
-
-
 
 export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig = MW4_GAME, initialSettings, xpFormat, games = withMw4Preview(DEFAULT_EIGHTS_GAMES), onGameChange }) {
   const appliedInitial = useRef(null);
@@ -105,6 +80,9 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const isEights = mode === "eights";
   const isMoneyEights = mode === "money8s";
   const isEightsLobby = isEights || isMoneyEights;
+  const availableTeamSizes = teamSizes.filter(size => (mode === "xp" ? !xpFormat || xpCategoryForSize(size.id) === xpFormat : size.id !== "5v5") && (!isEights || size.id !== "1v1"));
+  const fixedTeamSize = availableTeamSizes.length === 1 ? availableTeamSizes[0].id : null;
+  useEffect(() => { if (isOpen && fixedTeamSize) setSelectedTeamSize(fixedTeamSize); }, [isOpen, fixedTeamSize]);
   const modeChoices = isEightsLobby && gameConfig ? gameConfig.formats.map((format) => {
     const modeNames = format.modes.map((id) => gameConfig.modes.find((mode) => mode.id === id)?.name || id);
     const repeatedMode = format.modes.length > 1 && format.modes.every((id) => id === format.modes[0]);
@@ -483,8 +461,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
             <div>
-              <h2 className="text-xl font-black">{isMoneyEights ? "Create Money 8s Lobby" : isEights ? "Create 8s Lobby" : mode === "xp" ? "Create XP Match" : isRanked ? "Create Ranked Match" : "Create Wager"}</h2>
-              <p className="text-xs text-vapor mt-0.5">{isEights ? "Choose 2v2, 3v3 or 4v4; all formats share the same leaderboard" : isMoneyEights ? "Pick a series; teams are generated at 8 players" : mode === "xp" ? "Configure your XP match settings" : isRanked ? "Configure your Ranked match settings" : "Configure your wager settings"}</p>
+              <h2 className="text-xl font-black">{isMoneyEights ? "Create Money 8s Lobby" : isEights ? "Create 8s Lobby" : mode === "xp" ? "Create a Match" : isRanked ? "Create Ranked Match" : "Create Wager"}</h2>
+              <p className="text-xs text-vapor mt-0.5">{isEights ? "Choose 2v2, 3v3 or 4v4; all formats share the same leaderboard" : isMoneyEights ? "Pick a series; teams are generated at 8 players" : mode === "xp" ? `${xpFormat === "solo" ? "Solos" : xpFormat === "duos" ? "Duos" : "Squads"} · XP match` : isRanked ? "Configure your Ranked match settings" : "Configure your wager settings"}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-vapor" />
@@ -493,9 +471,8 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
           {/* Content */}
           <div className="overflow-y-auto p-6">
-            {onGameChange && <div className="mb-5"><p className="mb-2 text-xs font-bold text-vapor">Game</p><CompetitionGameSelect games={games} value={gameConfig.id} onChange={id => { setSelectedGameMode(null); setStep(1); onGameChange(id); }} /></div>}
+            {step === 1 && onGameChange && <div className="mb-5"><p className="mb-2 text-xs font-bold text-vapor">Game</p><CompetitionGameSelect variant="field" games={games} value={gameConfig.id} onChange={id => { setSelectedGameMode(null); setStep(1); onGameChange(id); }} /></div>}
             <ActivisionIdNotice user={user} className="mb-5" />
-            {(gameConfig?.id || PRIMARY_GAME_ID) === "mw4" && <div className="mb-5 rounded-xl border border-cyan/20 bg-cyan/[0.06] px-4 py-3"><p className="text-sm font-black text-cyan">Modern Warfare 4</p><p className="mt-1 text-xs text-vapor">Choose Hardpoint, Hijacked or Search &amp; Destroy.{isEightsLobby ? " You can also play the MW4 CDL mixed series." : " Your selected mode determines the match's map pool."}</p></div>}
             {(isWager || isMoneyEights) && <StreamRequirementNotice user={user} className="mb-5" />}
             {(gameConfig?.id || PRIMARY_GAME_ID) !== "mw4" && <MatchPresetPicker
               key={`${user?.id}:${mode}:${gameConfig?.id || PRIMARY_GAME_ID}`}
@@ -514,10 +491,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                 </h3>
                 {isEightsLobby ? <div className="space-y-3">
                   <Select value={selectedGameMode || ""} onValueChange={setSelectedGameMode}>
-                    <SelectTrigger aria-label="Choose mode" className="h-12 rounded-xl border-white/10 bg-secondary px-4 text-left font-semibold focus:ring-cyan/30">
+                    <SelectTrigger aria-label="Choose mode" className="create-match-select">
                       <SelectValue placeholder="Choose a mode and series format" />
                     </SelectTrigger>
-                    <SelectContent className="z-[150] rounded-xl border-white/10 bg-card text-white shadow-xl">
+                    <SelectContent className="create-match-menu">
                       {seriesCategories.map((category, index) => <React.Fragment key={category.label}>
                         {index > 0 && <SelectSeparator className="my-2 bg-white/[0.08]" />}
                         <SelectGroup>
@@ -529,37 +506,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   </Select>
                   <p className="min-h-5 text-xs leading-5 text-vapor" aria-live="polite">{modeChoices.find((mode) => mode.id === selectedGameMode)?.description || "Select a format to see which maps you will play."}</p>
                 </div> : (
-                <div className={`grid gap-4 ${isEightsLobby ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-                  {modeChoices.map((mode) => {
-                    const Icon = mode.icon;
-                    const isSelected = selectedGameMode === mode.id;
-                    const tone = choiceTones[mode.tone];
-                    return (
-                      <button
-                        type="button"
-                        aria-pressed={isSelected}
-                        key={mode.id}
-                        onClick={() => setSelectedGameMode(mode.id)}
-                        className={`group relative transform-gpu p-4 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
-                          isSelected
-                            ? tone.selected
-                            : `bg-secondary border-white/5 ${tone.card}`
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-lg mb-3 flex items-center justify-center transition-colors duration-150 ${isSelected ? tone.icon : "bg-background/40 text-vapor"}`}>
-                          <Icon className={`w-5 h-5 transition-colors duration-150 ${isSelected ? tone.text : `text-vapor ${tone.hoverText}`}`} />
-                        </div>
-                        <p className={`font-semibold text-sm mb-1 transition-colors duration-150 ${isSelected ? tone.text : tone.hoverText}`}>{mode.name}</p>
-                        <p className="text-xs text-vapor">{mode.description}</p>
-                        {isSelected && (
-                          <div className="absolute top-3 right-3">
-                            <Check className={`w-4 h-4 ${tone.text}`} />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                <Select value={selectedGameMode || ""} onValueChange={setSelectedGameMode}>
+                  <SelectTrigger aria-label="Game mode" className="create-match-select"><SelectValue placeholder="Choose a game mode" /></SelectTrigger>
+                  <SelectContent className="create-match-menu">{modeChoices.map(choice => <SelectItem key={choice.id} value={choice.id}>{choice.name}</SelectItem>)}</SelectContent>
+                </Select>
                 )}
                 <div className="mt-6 flex justify-end">
                   <button
@@ -585,62 +535,30 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
               <div>
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">2</span>
-                  Select Team Size
+                  {mode === "xp" ? "Choose your roster" : "Team setup"}
                 </h3>
                 {isEights && <p className="mb-4 text-xs text-vapor">Join as solo players. Teams are balanced automatically unless the lobby votes for a captain draft: 3 votes in 2v2, 4 in 3v3 or 5 in 4v4. Every format counts towards the same Free 8s leaderboard.</p>}
-                <div className={`grid gap-4 ${isEights ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-                  {teamSizes.filter((size) => (mode === "xp" ? !xpFormat || xpCategoryForSize(size.id) === xpFormat : size.id !== "5v5") && (!isEights || size.id !== "1v1")).map((size) => {
-                    const isSelected = selectedTeamSize === size.id;
-                    const tone = choiceTones[size.tone];
-                    return (
-                      <button
-                        key={size.id}
-                        onClick={() => { setSelectedTeamSize(size.id); setSelectedTeamId(""); }}
-                        className={`group relative transform-gpu p-5 rounded-xl border text-left transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
-                          isSelected
-                            ? tone.selected
-                            : `bg-secondary border-white/5 ${tone.card}`
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                            isSelected ? tone.icon : "bg-background/40"
-                          }`}>
-                            <Users className={`w-6 h-6 transition-colors duration-150 ${isSelected ? tone.text : `text-vapor ${tone.hoverText}`}`} />
-                          </div>
-                          <div>
-                            <p className={`font-bold text-lg transition-colors duration-150 ${isSelected ? tone.text : tone.hoverText}`}>{size.name}</p>
-                            <p className="text-xs text-vapor">{size.players} players total</p>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <div className="absolute top-3 right-3">
-                            <Check className={`w-4 h-4 ${tone.text}`} />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                {!fixedTeamSize && <div className="mb-5">
+                  <label className="mb-2 block text-xs font-bold text-vapor" htmlFor="create-team-size">Team size</label>
+                  <Select value={selectedTeamSize || ""} onValueChange={value => { setSelectedTeamSize(value); setSelectedTeamId(""); }}>
+                    <SelectTrigger id="create-team-size" className="create-match-select"><SelectValue placeholder="Choose team size" /></SelectTrigger>
+                    <SelectContent className="create-match-menu">{availableTeamSizes.map(size => <SelectItem key={size.id} value={size.id}>{size.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>}
                 {(requiresTeam || supportsRankedParty) && (
-                  <div className="mt-5 rounded-xl border border-white/5 bg-secondary/40 p-4">
+                  <div className="create-match-roster">
                     <label className="text-xs text-vapor mb-2 block uppercase tracking-wider">
-                      {mode === "xp" ? "XP match team" : isRanked ? "Ranked match team (optional)" : "Select wager team"}
+                      {mode === "xp" ? "Your XP team" : isRanked ? "Ranked match team (optional)" : "Select wager team"}
                     </label>
-                    {mode === "xp" ? <XPTeamSelect teams={compatibleTeams} value={selectedTeamId} onValueChange={setSelectedTeamId} loading={teamsQuery.isPending} /> : (
-                    <select
-                      value={selectedTeamId}
-                      required={requiresTeam}
-                      onChange={(event) => setSelectedTeamId(event.target.value)}
-                      className="w-full px-4 py-3 bg-background/60 rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
-                    >
-                      <option value="" disabled={requiresTeam}>{mode === "xp" ? "Select XP team" : isRanked ? "Join as a solo player" : "Select team"}</option>
-                      {compatibleTeams.map((team) => (
-                        <option key={team.id} value={team.id}>
-                          {team.name} ({team.members.length}-player {mode === "xp" ? "team" : "party"})
-                        </option>
-                      ))}
-                    </select>
+                    {mode === "xp" ? <XPTeamSelect variant="creation" teams={compatibleTeams} value={selectedTeamId} onValueChange={setSelectedTeamId} loading={teamsQuery.isPending} /> : (
+                    <Select value={selectedTeamId || "solo"} onValueChange={value => setSelectedTeamId(value === "solo" ? "" : value)}>
+                      <SelectTrigger aria-label="Match team" className="create-match-select"><SelectValue placeholder="Choose your team" /></SelectTrigger>
+                      <SelectContent className="create-match-menu">
+                        {!requiresTeam && <SelectItem value="solo">Join as a solo player</SelectItem>}
+                        {requiresTeam && !selectedTeamId && <SelectItem value="solo" disabled>Choose your team</SelectItem>}
+                        {compatibleTeams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                     )}
                     {teamsQuery.isPending && <p className="mt-2 text-xs text-vapor">Loading your teams…</p>}
                     {teamsQuery.isError && <button type="button" onClick={() => teamsQuery.refetch()} className="site-hover mt-2 rounded px-2 py-1 text-xs text-cyan">Could not load teams. Retry</button>}
@@ -689,26 +607,11 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   <span className="w-6 h-6 rounded bg-cyan/10 text-cyan flex items-center justify-center text-xs font-mono">3</span>
                   Choose Series Format
                 </h3>
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  {[1, 3, 5].map(bo => (
-                    <button
-                      key={bo}
-                      onClick={() => setBestOf(bo)}
-                      className={`relative transform-gpu p-4 rounded-xl border text-center transition-[transform,border-color,background-color] duration-150 hover:-translate-y-0.5 ${
-                        bestOf === bo
-                          ? "bg-cyan/10 border-cyan/30 ring-2 ring-cyan/20"
-                          : "bg-secondary border-white/5 hover:border-white/10"
-                      }`}
-                    >
-                      <p className={`font-bold text-lg ${bestOf === bo ? "text-cyan" : ""}`}>BO{bo}</p>
-                      <p className="text-xs text-vapor">{bo === 1 ? "Single Map" : `First to ${Math.ceil(bo/2)}`}</p>
-                      {bestOf === bo && (
-                        <div className="absolute top-3 right-3">
-                          <Check className="w-4 h-4 text-cyan" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
+                <div className="mb-6">
+                  <Select value={String(bestOf)} onValueChange={value => setBestOf(Number(value))}>
+                    <SelectTrigger aria-label="Series format" className="create-match-select"><SelectValue /></SelectTrigger>
+                    <SelectContent className="create-match-menu">{[1, 3, 5].map(value => <SelectItem key={value} value={String(value)}>Best of {value} · {value === 1 ? "Single map" : `First to ${Math.ceil(value / 2)}`}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div className="mb-6">
                   <PlayRulePicker selectedPlayRule={selectedPlayRule} onSelect={setSelectedPlayRule} matchLabel={mode === "xp" ? "XP match" : "wager"} />
@@ -725,7 +628,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     disabled={mode === "xp" && isCreating}
                     className={`${mode === "xp" ? "site-hover xp-match-primary" : "bg-cyan text-background hover:shadow-lg hover:shadow-cyan/25"} px-6 py-2.5 font-bold text-xs rounded-lg transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-50`}
                   >
-                    {mode === "xp" ? (isCreating ? "Posting..." : "Post XP Match") : <>Next <ChevronRight className="w-4 h-4" /></>}
+                    {mode === "xp" ? (isCreating ? "Posting..." : "Create Match") : <>Next <ChevronRight className="w-4 h-4" /></>}
                   </button>
                 </div>
               </div>
