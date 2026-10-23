@@ -1,4 +1,6 @@
-import { PRIMARY_GAME_ID, MW4_MODES, MW4_GAME } from "@/lib/mw4";
+import { PRIMARY_GAME_ID, MW4_GAME } from "@/lib/mw4";
+import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
+import { DEFAULT_EIGHTS_GAMES, withMw4Preview } from "@/lib/freeEightsGames";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -21,8 +23,8 @@ import { xpCategoryForSize } from "@/lib/xpCategories";
 import { FreeEightsRankDialog, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
-const gameModes = MW4_MODES.map((mode) => ({ ...mode, icon: mode.id === "snd" ? Target : mode.id === "hijacked" ? Zap : Swords,
-  description: mode.id === "hp" ? "First to 250 score" : mode.id === "snd" ? "Best of 11 rounds" : "Hijacked", tone: mode.id === "hp" ? "red" : mode.id === "snd" ? "yellow" : "purple" }));
+const gameModesFor = (game) => game.modes.filter(mode => mode.maps?.length).map((mode) => ({ ...mode, icon: mode.id === "snd" ? Target : mode.id === "hijacked" ? Zap : Swords,
+  description: mode.id === "hp" ? "First to 250 score" : mode.id === "snd" ? "Best of 11 rounds" : mode.name, tone: mode.id === "hp" ? "red" : mode.id === "snd" ? "yellow" : "purple" }));
 
 const eightsSeriesFormats = [
   { id: "cdl_bo3", name: "CDL Best of 3", gameMode: "hp", modes: ["hp", "snd", "hp"], icon: Swords, description: "Hardpoint · Search & Destroy · Hardpoint", tone: "cyan" },
@@ -80,7 +82,7 @@ function PlayRulePicker({ selectedPlayRule, onSelect, matchLabel }) {
 
 
 
-export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig = MW4_GAME, initialSettings, xpFormat }) {
+export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode = "wager", gameConfig = MW4_GAME, initialSettings, xpFormat, games = withMw4Preview(DEFAULT_EIGHTS_GAMES), onGameChange }) {
   const appliedInitial = useRef(null);
   const [selectedGameMode, setSelectedGameMode] = useState(null);
   const [selectedTeamSize, setSelectedTeamSize] = useState(null);
@@ -109,7 +111,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     return { ...format, name: format.name.replace(/\bBO(\d+)\b/gi, "Best of $1"), gameMode: format.modes[0], icon: Swords, tone: "cyan",
       description: repeatedMode ? `${format.modes.length} ${modeNames[0]} maps` : modeNames.join(" · "),
     };
-  }) : isEightsLobby ? eightsSeriesFormats : gameModes;
+  }) : isEightsLobby ? eightsSeriesFormats : gameModesFor(gameConfig);
   const seriesCategories = isEightsLobby ? modeChoices.reduce((groups, format) => {
     const mixed = new Set(format.modes).size > 1;
     const category = format.id.startsWith("cdl_") ? "Call of Duty League (CDL)"
@@ -154,9 +156,12 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     };
   }, [isOpen]);
 
+  useEffect(() => { setSelectedGameMode(null); setSelectedTeamId(""); setStep(1); }, [gameConfig.id]);
+
   useEffect(() => {
     if (!isOpen) { appliedInitial.current = null; return; }
     if (!initialSettings || initialSettings.mode !== mode || appliedInitial.current === initialSettings) return;
+    if (initialSettings.game_id && initialSettings.game_id !== gameConfig.id) return;
     if (isEights && !gameConfig) return;
     appliedInitial.current = initialSettings;
     setSelectedGameMode(modeChoices.some((choice) => choice.id === initialSettings.game_mode) ? initialSettings.game_mode : null);
@@ -218,7 +223,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
         
         if (isWager) {
           const response = await base44.functions.invoke('createWager', {
-            game_id: PRIMARY_GAME_ID,
+            game_id: gameConfig.id,
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
@@ -253,7 +258,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           };
         } else if (mode === "xp") {
           const response = await base44.functions.invoke('createXPMatch', {
-            game_id: PRIMARY_GAME_ID,
+            game_id: gameConfig.id,
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
@@ -297,7 +302,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           return;
         } else if (mode === "ranked") {
           const response = await base44.functions.invoke('createRankedMatch', {
-            game_id: PRIMARY_GAME_ID,
+            game_id: gameConfig.id,
             game_mode: selectedGameMode,
             game_mode_display: gameModeObj.name,
             team_size: selectedTeamSize,
@@ -488,6 +493,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
 
           {/* Content */}
           <div className="overflow-y-auto p-6">
+            {onGameChange && <div className="mb-5"><p className="mb-2 text-xs font-bold text-vapor">Game</p><CompetitionGameSelect games={games} value={gameConfig.id} onChange={id => { setSelectedGameMode(null); setStep(1); onGameChange(id); }} /></div>}
             <ActivisionIdNotice user={user} className="mb-5" />
             {(gameConfig?.id || PRIMARY_GAME_ID) === "mw4" && <div className="mb-5 rounded-xl border border-cyan/20 bg-cyan/[0.06] px-4 py-3"><p className="text-sm font-black text-cyan">Modern Warfare 4</p><p className="mt-1 text-xs text-vapor">Choose Hardpoint, Hijacked or Search &amp; Destroy.{isEightsLobby ? " You can also play the MW4 CDL mixed series." : " Your selected mode determines the match's map pool."}</p></div>}
             {(isWager || isMoneyEights) && <StreamRequirementNotice user={user} className="mb-5" />}

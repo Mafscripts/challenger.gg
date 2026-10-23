@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { access, readdir } from "node:fs/promises";
 import { MW4_GAME, MW4_MAP_NAMES, MW4_MODES, storedGameId } from "../src/lib/mw4.js";
-import { DEFAULT_EIGHTS_GAME, DEFAULT_EIGHTS_GAMES, generateEightsSeries } from "../src/lib/freeEightsGames.js";
+import { DEFAULT_EIGHTS_GAME, DEFAULT_EIGHTS_GAMES, generateEightsSeries, withMw4Preview } from "../src/lib/freeEightsGames.js";
 import { eightsLobbySettings } from "./free-eights-games.js";
 import { tournamentMapPools } from "../src/lib/tournamentGames.js";
 import { matchPools, randomRankedMap, randomWagerMaps, randomEightsSeriesMaps } from "./routes/functions.js";
@@ -11,6 +11,29 @@ import { getXPFormatStandings, getXPTeamsSummary } from "./xp-format-standings.j
 import { buildTournamentStandings } from "./tournament-standings.js";
 
 const expected = ["Silkworm", "Reactor U92", "Rooftops", "Mumbai", "Lithium", "Munition", "Cachette", "Nautical", "Lotus", "Sentry", "Coal", "Transit 213"];
+
+test("all four playable games generate their own selected modes and map pools", () => {
+  const games = withMw4Preview(DEFAULT_EIGHTS_GAMES).filter(game => game.enabled);
+  assert.deepEqual(games.map(game => game.id), ["mw4", "bo7", "bo6", "mw3"]);
+  for (const game of games) {
+    for (const mode of game.modes) {
+      const selected = randomRankedMap(mode.id, [], game.id);
+      assert.deepEqual(selected.pool, mode.maps.map(map => map.name));
+      assert.ok(mode.maps.some(map => map.name === selected.name));
+      const wager = randomWagerMaps(mode.id, 3, game.id);
+      assert.ok(wager.every(map => mode.maps.some(candidate => candidate.name === map.name)));
+    }
+    for (const format of game.formats) {
+      const settings = eightsLobbySettings(games, { game_id: game.id, series_format: format.id });
+      for (const match_type of ["8s", "money8s"]) {
+        const series = randomEightsSeriesMaps({ ...settings, match_type });
+        assert.equal(settings.game_id, game.id);
+        assert.deepEqual(series.map(map => map.mode), format.modes);
+        assert.ok(series.every(map => game.modes.find(mode => mode.id === map.mode).maps.some(candidate => candidate.name === map.name)));
+      }
+    }
+  }
+});
 
 test("MW4 is the new default with only the twelve selected maps and local images", async () => {
   assert.equal(DEFAULT_EIGHTS_GAME, "mw4");

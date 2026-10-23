@@ -46,7 +46,7 @@ export default function RankedEights() {
   const games = withMw4Preview(gameQuery.data?.games || DEFAULT_EIGHTS_GAMES).filter((game) => game.enabled || game.id === "mw4");
   const selectedGame = games.find((game) => game.id === (searchParams.get("game") || DEFAULT_EIGHTS_GAME)) || games[0];
   const gameId = selectedGame.id;
-  const switchGame = (value) => { const params = new URLSearchParams(searchParams); params.set("game", value); navigate(`${location.pathname}?${params}${location.hash}`); setCreateOpen(false); };
+  const switchGame = (value, closeModal = true) => { const params = new URLSearchParams(searchParams); params.set("game", value); navigate(`${location.pathname}?${params}${location.hash}`); if (closeModal) setCreateOpen(false); };
   const { user: authenticatedUser } = useAuth();
   const [moneyUser, setUser] = useState(null);
   const [moneyLobbies, setLobbies] = useState([]);
@@ -262,7 +262,7 @@ export default function RankedEights() {
             <button onClick={() => setCreateOpen(true)} className="competition-action-pill">
               <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
-          )}{!isMoney && (
+          )}{(
             <Select value={gameId} onValueChange={switchGame}>
               <SelectTrigger aria-label="Switch game" title="Switch game" className="competition-action-pill competition-game-switch">
                 <Gamepad2 className="h-4 w-4 shrink-0 text-vapor" aria-hidden="true" /><span className="min-w-0"><SelectValue /></span>
@@ -302,7 +302,7 @@ export default function RankedEights() {
         </section>}
 
       </div>
-      {!comingSoon && <CreateLobbyModal key={`${isMoney}:${gameId}`} initialSettings={rematchSettings} isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} gameConfig={selectedGame} />}
+      {!comingSoon && <CreateLobbyModal key={`${isMoney}:${gameId}`} initialSettings={rematchSettings} isOpen={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreated} user={user} mode={isMoney ? "money8s" : "eights"} gameConfig={selectedGame} games={games} onGameChange={value => switchGame(value, false)} />}
       {!isMoney && <FreeEightsDiscordDialog open={discordPromptOpen} onOpenChange={setDiscordPromptOpen} returnFocusTo={discordPromptTrigger} />}
       {!isMoney && <FreeEightsRankDialog open={rankPromptOpen} onOpenChange={setRankPromptOpen} returnFocusTo={discordPromptTrigger} />}
       {!isMoney && <FreeEightsDiscordServerDialog result={discordServerPrompt} onOpenChange={() => setDiscordServerPrompt(null)} returnFocusTo={discordPromptTrigger} />}

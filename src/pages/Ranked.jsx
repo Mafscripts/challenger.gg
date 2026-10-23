@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from "react";
+import useCompetitionGame from "@/hooks/useCompetitionGame";
+import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
+import { storedGameId } from "@/lib/mw4";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -87,21 +90,25 @@ const rankCardTones = {
 
 export default function Ranked() {
   const navigate = useNavigate();
+  const { games, game, gameId, setGameId } = useCompetitionGame();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const rematchSettings = useRematchSettings("ranked", setIsCreateModalOpen, isCreateModalOpen);
+  useEffect(() => { if (rematchSettings?.game_id) setGameId(rematchSettings.game_id); }, [rematchSettings?.game_id, setGameId]);
   const [user, setUser] = useState(null);
   const [currentStats, setCurrentStats] = useState(null);
   const [openPosts, setRankedMatches] = useState([]);
-  const rankedMatches = useMatchfinderPosts(openPosts);
+  const rankedMatches = useMatchfinderPosts(openPosts).filter(match => storedGameId(match) === gameId);
   const [activeRankedMatch, setActiveRankedMatch] = useState(null);
   const [leaderboardPosition, setLeaderboardPosition] = useState(null);
   const [loadingMatches, setLoadingMatches] = useState(true);
+  const loadRequest = useRef(0);
   const [rankedTeams, setRankedTeams] = useState([]);
   const [selectedPartyByMatch, setSelectedPartyByMatch] = useState({});
 
   useEffect(() => {
     loadRankedData();
-  }, []);
+    return () => { loadRequest.current++; };
+  }, [gameId]);
 
   useEffect(() => {
     let active = true;
@@ -115,9 +122,9 @@ export default function Ranked() {
       refreshing = true;
       try {
         const [matches, playerMatches, playerStats] = await Promise.all([
-          base44.entities.RankedMatch.filterFresh({ game_id: "mw4", status: "open", matchfinder_visible: true }, "-created_date", 20),
+          base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100),
           base44.entities.RankedMatch.filterFresh({}, "-created_date", 100),
-          base44.entities.RankedStats.filterFresh({ user_id: user.id, game_id: "mw4" }, "-elo", 1),
+          base44.functions.invoke("getRankedStandings", { game_id: gameId }).then(response => (response.data?.rows || []).filter(row => row.user_id === user.id)),
         ]);
         if (active) {
           setRankedMatches((matches || []).filter((match) => match.match_type !== "xp"));
@@ -128,7 +135,7 @@ export default function Ranked() {
         leaderboardRefreshTick += 1;
         if (leaderboardRefreshTick >= 5) {
           leaderboardRefreshTick = 0;
-          const leaderboard = await base44.functions.invoke("getRankedStandings", { game_id: "mw4" }).then((response) => response.data?.rows || []);
+          const leaderboard = await base44.functions.invoke("getRankedStandings", { game_id: gameId }).then((response) => response.data?.rows || []);
           if (active) {
             const position = (leaderboard || []).findIndex((stats) => stats.user_id === user.id);
             setLeaderboardPosition(position >= 0 ? position + 1 : null);
@@ -155,20 +162,22 @@ export default function Ranked() {
       window.removeEventListener("focus", refreshOpenMatches);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [user?.id]);
+  }, [user?.id, gameId]);
 
   const loadRankedData = async () => {
+    const requestId = ++loadRequest.current;
     try {
       setLoadingMatches(true);
       const currentUser = await base44.auth.me().catch(() => null);
       setUser(currentUser);
 
       const [matches, statsRows, captainTeams] = await Promise.all([
-        base44.entities.RankedMatch.filterFresh({ game_id: "mw4", status: "open", matchfinder_visible: true }, "-created_date", 20),
-        base44.functions.invoke("getRankedStandings", { game_id: "mw4" }).then((response) => response.data?.rows || []),
+        base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100),
+        base44.functions.invoke("getRankedStandings", { game_id: gameId }).then((response) => response.data?.rows || []),
         loadCaptainRankedTeams(currentUser?.id),
       ]);
 
+      if (requestId !== loadRequest.current) return;
       setRankedMatches((matches || []).filter((match) => match.match_type !== "xp"));
       setCurrentStats((statsRows || []).find((stats) => stats.user_id === currentUser?.id) || null);
       setRankedTeams(captainTeams || []);
@@ -178,7 +187,7 @@ export default function Ranked() {
       console.error("Failed to load ranked data:", error);
       toast({ title: "XP Matches unavailable", description: "Could not load XP match data.", variant: "destructive" });
     } finally {
-      setLoadingMatches(false);
+      if (requestId === loadRequest.current) setLoadingMatches(false);
     }
   };
 
@@ -229,6 +238,7 @@ export default function Ranked() {
     <div className="competition-page min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <CompetitionLadder
+          gameId={gameId}
           mode="ranked"
           currentUser={user}
           openCount={rankedMatches.length}
@@ -273,6 +283,7 @@ export default function Ranked() {
           )}
           action={
             <div className="competition-actions">
+              <CompetitionGameSelect games={games} value={gameId} onChange={setGameId} />
               <Link to="/rules" title="Competitive ranked ruleset — required" className="competition-action-pill">
                 <Trophy className="h-4 w-4" /> CDL Rules
                 <span className="text-[10px] text-vapor">Required</span>
@@ -411,6 +422,9 @@ export default function Ranked() {
 
         <CreateLobbyModal
           initialSettings={rematchSettings}
+          gameConfig={game}
+          games={games}
+          onGameChange={setGameId}
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           user={user}

@@ -1,3 +1,6 @@
+import useCompetitionGame from "@/hooks/useCompetitionGame";
+import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
+import { PRIMARY_GAME_ID, storedGameId } from "@/lib/mw4";
 import React, { useEffect, useState } from "react";
 import useRouteSection from "@/hooks/useRouteSection";
 import useRematchSettings from "@/hooks/useRematchSettings";
@@ -43,12 +46,12 @@ export default function ChallengeTeam() {
   const [joining, setJoining] = useState(null);
   const [busy, setBusy] = useState(false);
   const [teamId, setTeamId] = useState("");
-  const [gameId, setGameId] = useState("bo7");
+  const { games, game, gameId, setGameId } = useCompetitionGame();
   const [formatId, setFormatId] = useState("cdl_bo3");
   useEffect(() => {
     if (!rematchSettings) return;
     setTeamId("");
-    setGameId(rematchSettings.game_id || "bo7");
+    setGameId(rematchSettings.game_id || PRIMARY_GAME_ID);
     setFormatId(rematchSettings.game_mode || "cdl_bo3");
   }, [rematchSettings]);
   const overview = useQuery({ queryKey: ["challenge-overview", user?.id], queryFn: () => invoke("getChallengeOverview"), enabled: Boolean(user?.id), refetchInterval: id ? 30000 : 15000, refetchIntervalInBackground: false });
@@ -56,8 +59,6 @@ export default function ChallengeTeam() {
   const data = overview.data;
   const teams = data?.teams || [];
   const captained = teams.filter((team) => team.captain_id === user?.id);
-  const games = (data?.games || []).filter((game) => game.enabled);
-  const game = games.find((entry) => entry.id === gameId) || games[0];
   const formats = game?.formats || [];
   const selectedFormat = formats.find((entry) => entry.id === formatId) || formats[0];
   const match = room.data?.match;
@@ -84,9 +85,9 @@ export default function ChallengeTeam() {
   };
   const openJoin = (entry) => { setTeamId(""); setJoining(entry); };
   const ladderRows = data?.standings?.[ladder] || [];
-  const active = (data?.matches || []).filter((entry) => !["completed", "cancelled"].includes(entry.status));
+  const active = (data?.matches || []).filter((entry) => !["completed", "cancelled"].includes(entry.status) && storedGameId(entry) === gameId);
   return <div className={id ? "match-room-theme matchroom-refresh min-h-screen py-6" : "competition-page competition-surface page-shell min-h-screen"} data-competition="challenge" data-room-mode={id ? "challenge" : undefined}><div className="page-container">
-    {!id && <CompetitionHeader mode="challenge" titleOverride="Challenge a Team" eyebrowOverride="Your squad. Your challenge." descriptionOverride="Your squad against a complete team or a side of solo challengers. Play 1v1, 2v2, 3v3 or 4v4 and climb your own XP ladder." action={<div className="competition-actions"><button className={primaryButton} onClick={() => { setTeamId(""); setPosting(true); }}><Plus className="h-4 w-4" />Post a challenge</button><button className={secondaryButton} onClick={() => setCreateTeam(true)}><Users className="h-4 w-4" />Create a roster</button></div>} />}
+    {!id && <CompetitionHeader gameId={gameId} mode="challenge" titleOverride="Challenge a Team" eyebrowOverride="Your squad. Your challenge." descriptionOverride="Your squad against a complete team or a side of solo challengers. Play 1v1, 2v2, 3v3 or 4v4 and climb your own XP ladder." action={<div className="competition-actions"><CompetitionGameSelect games={games} value={gameId} onChange={id => { setGameId(id); setFormatId(""); }} /><button className={primaryButton} onClick={() => { setTeamId(""); setPosting(true); }}><Plus className="h-4 w-4" />Post a challenge</button><button className={secondaryButton} onClick={() => setCreateTeam(true)}><Users className="h-4 w-4" />Create a roster</button></div>} />}
     {!id && <div className="my-5 grid gap-3 sm:grid-cols-3">{[
       { label: "Active challenges", value: overview.isPending ? "—" : active.length, detail: "In this competition", icon: Swords, tone: "purple" },
       { label: "Your rosters", value: overview.isPending ? "—" : teams.length, detail: "Build your next lineup", icon: Users, tone: "cyan" },
@@ -124,7 +125,7 @@ export default function ChallengeTeam() {
       <div className="mt-6"><StakesNotice /></div>
     </>}
     <CreateTeamModal isOpen={createTeam} onClose={() => setCreateTeam(false)} user={user} defaultTeamType="challenge" defaultRosterSize={4} lockTeamType title="Create a Challenge a Team roster" description="Solo, duo, trio or squad. This roster has its own team XP." onCreated={(team) => { cache.invalidateQueries({ queryKey: ["challenge-overview"] }); navigate(`/teams?team=${encodeURIComponent(team.id)}`); }} />
-    {posting && <Dialog title="Post a challenge" onClose={() => !busy && setPosting(false)}><form onSubmit={post} className="mt-3 space-y-5"><p className={noteClass}>Only the captain of a complete roster can post. Everyone needs an Activision ID and connected Discord.</p><label className={labelClass}>Your roster<select className={fieldClass} value={teamId || captained[0]?.id || ""} onChange={(event) => setTeamId(event.target.value)} required><option value="" disabled>Choose your team</option>{captained.map((team) => <option key={team.id} value={team.id}>{team.name} · {team.roster_size}v{team.roster_size}</option>)}</select></label>{!captained.length && <button type="button" className={secondaryButton} onClick={() => { setPosting(false); setCreateTeam(true); }}>Create your roster first</button>}<label className={labelClass}>Game<select className={fieldClass} value={game?.id || ""} onChange={(event) => { setGameId(event.target.value); setFormatId(""); }} required>{games.map((entry) => <option key={entry.id} value={entry.id}>{entry.name} {entry.number}</option>)}</select></label><label className={labelClass}>Series<select className={fieldClass} value={selectedFormat?.id || ""} onChange={(event) => setFormatId(event.target.value)} required>{formats.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label><p className={noteClass}>Team size follows your roster: 1v1, 2v2, 3v3 or 4v4. Free entry. Maps are revealed once both sides are in Discord.</p><button className={`w-full ${primaryButton}`} disabled={busy || !captained.length || !game}>{busy ? "Posting…" : "Post challenge"}<ArrowRight className="h-4 w-4" /></button></form></Dialog>}
+    {posting && <Dialog title="Post a challenge" onClose={() => !busy && setPosting(false)}><form onSubmit={post} className="mt-3 space-y-5"><p className={noteClass}>Only the captain of a complete roster can post. Everyone needs an Activision ID and connected Discord.</p><label className={labelClass}>Your roster<select className={fieldClass} value={teamId || captained[0]?.id || ""} onChange={(event) => setTeamId(event.target.value)} required><option value="" disabled>Choose your team</option>{captained.map((team) => <option key={team.id} value={team.id}>{team.name} · {team.roster_size}v{team.roster_size}</option>)}</select></label>{!captained.length && <button type="button" className={secondaryButton} onClick={() => { setPosting(false); setCreateTeam(true); }}>Create your roster first</button>}<label className={labelClass}>Game<CompetitionGameSelect games={games} value={gameId} onChange={id => { setGameId(id); setFormatId(""); }} /></label><label className={labelClass}>Series<select className={fieldClass} value={selectedFormat?.id || ""} onChange={(event) => setFormatId(event.target.value)} required>{formats.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label><p className={noteClass}>Team size follows your roster: 1v1, 2v2, 3v3 or 4v4. Free entry. Maps are revealed once both sides are in Discord.</p><button className={`w-full ${primaryButton}`} disabled={busy || !captained.length || !game}>{busy ? "Posting…" : "Post challenge"}<ArrowRight className="h-4 w-4" /></button></form></Dialog>}
     {joining && <Dialog title={`Accept ${joining.size}v${joining.size} challenge`} onClose={() => !busy && setJoining(null)}><div className="mt-3 space-y-4"><p className={noteClass}>Take on <strong>{joining.alpha_team.name}</strong>. Join individually or enter your complete {joining.size}-player roster.</p><button className={`w-full ${primaryButton}`} disabled={busy} onClick={() => join("solo")}><User className="h-4 w-4" />Join as solo</button><p className={noteClass}>Solo entries fill the opposing side together and earn solo XP. The first solo becomes captain.</p><p className="border-t border-white/10 pt-4 text-[9px] font-black uppercase tracking-wider text-vapor">Or bring your team</p><label className={labelClass}>Your team<select className={fieldClass} value={teamId || captained.filter((team) => Number(team.roster_size) === joining.size)[0]?.id || ""} onChange={(event) => setTeamId(event.target.value)}><option value="" disabled>Choose a matching roster</option>{captained.filter((team) => Number(team.roster_size) === joining.size).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label><button className={`w-full ${secondaryButton}`} disabled={busy || !captained.some((team) => Number(team.roster_size) === joining.size)} onClick={() => join("team")}><Users className="h-4 w-4" />Join as team</button><p className={noteClass}>A team needs the entire opposing side empty. Team entries earn team XP.</p></div></Dialog>}
   </div></div>;
 }

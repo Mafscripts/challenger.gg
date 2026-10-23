@@ -1,3 +1,6 @@
+import useCompetitionGame from "@/hooks/useCompetitionGame";
+import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
+import { storedGameId } from "@/lib/mw4";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Award, ArrowRight, Flame, Medal, Plus, Swords, Trophy } from "lucide-react";
@@ -68,19 +71,21 @@ const rankCardTones = {
 
 export default function XP() {
   const navigate = useNavigate();
+  const { games, game, gameId, setGameId } = useCompetitionGame();
   const [category, setCategory] = useRouteSection("category", "solo", ["solo", "duos", "teams"]);
   const categoryInfo = xpCategory(category);
   const loadOpenXPMatches = async () => {
-    const { data } = await base44.functions.invoke("getXPMatchfinder", { category });
+    const { data } = await base44.functions.invoke("getXPMatchfinder", { category, game_id: gameId });
     if (!data?.success) throw new Error(data?.error || "XP matches could not be loaded");
     return data.rows || [];
   };
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const rematchSettings = useRematchSettings("xp", setIsCreateModalOpen, isCreateModalOpen);
+  useEffect(() => { if (rematchSettings?.game_id) setGameId(rematchSettings.game_id); }, [rematchSettings?.game_id, setGameId]);
   const [user, setUser] = useState(null);
   const [currentStats, setCurrentStats] = useState(null);
   const [openPosts, setRankedMatches] = useState([]);
-  const rankedMatches = useMatchfinderPosts(openPosts).filter((match) => xpCategoryForSize(match.team_size) === category);
+  const rankedMatches = useMatchfinderPosts(openPosts).filter((match) => storedGameId(match) === gameId && xpCategoryForSize(match.team_size) === category);
   const loadRequest = useRef(0);
   const [activeRankedMatch, setActiveRankedMatch] = useState(null);
   const [leaderboardPosition, setLeaderboardPosition] = useState(null);
@@ -92,7 +97,7 @@ export default function XP() {
   useEffect(() => {
     loadRankedData();
     return () => { loadRequest.current++; };
-  }, [category]);
+  }, [category, gameId]);
 
   useEffect(() => {
     let active = true;
@@ -108,7 +113,7 @@ export default function XP() {
         const [matches, playerMatches, playerStats] = await Promise.all([
           loadOpenXPMatches(),
           base44.functions.invoke("getMyActiveXPMatch", {}).then((response) => response.data?.match || null),
-          base44.entities.XPStats.filterFresh({ user_id: user.id, game_id: "mw4" }, "-total_xp", 1),
+          base44.functions.invoke("getXPStandings", { game_id: gameId }).then(response => (response.data?.rows || []).filter(row => row.user_id === user.id)),
         ]);
         if (active) {
           setRankedMatches(matches || []);
@@ -119,7 +124,7 @@ export default function XP() {
         leaderboardRefreshTick += 1;
         if (leaderboardRefreshTick >= 5) {
           leaderboardRefreshTick = 0;
-          const leaderboard = await base44.functions.invoke("getXPStandings", { game_id: "mw4" }).then(response => response.data?.rows || []);
+          const leaderboard = await base44.functions.invoke("getXPStandings", { game_id: gameId }).then(response => response.data?.rows || []);
           if (active) {
             const position = (leaderboard || []).findIndex((stats) => stats.user_id === user.id);
             setLeaderboardPosition(position >= 0 ? position + 1 : null);
@@ -146,7 +151,7 @@ export default function XP() {
       window.removeEventListener("focus", refreshOpenMatches);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [user?.id, category]);
+  }, [user?.id, category, gameId]);
 
   const loadRankedData = async () => {
     const requestId = ++loadRequest.current;
@@ -157,7 +162,7 @@ export default function XP() {
 
       const [matches, statsRows, captainTeams, activeMatch] = await Promise.all([
         loadOpenXPMatches(),
-        base44.functions.invoke("getXPStandings", { game_id: "mw4" }).then(response => response.data?.rows || []),
+        base44.functions.invoke("getXPStandings", { game_id: gameId }).then(response => response.data?.rows || []),
         loadCaptainXPTeams(currentUser?.id),
         currentUser?.id ? base44.functions.invoke("getMyActiveXPMatch", {}).then((response) => response.data?.match || null) : null,
       ]);
@@ -235,10 +240,11 @@ export default function XP() {
     <div className="competition-page min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <CompetitionLadder
+          gameId={gameId}
           mode="xp"
           headerDescription="Choose Solo, Duos or Teams. Every format advances the same global personal XP rank."
           competitionTitle={`XP ${categoryInfo.label}`}
-          standingsContent={<XPFormatStandings category={category} />}
+          standingsContent={<XPFormatStandings category={category} gameId={gameId} />}
           currentUser={user}
           openCount={rankedMatches.length}
           matchfinder={(
@@ -276,6 +282,7 @@ export default function XP() {
           )}
           action={
             <div className="competition-actions">
+              <CompetitionGameSelect games={games} value={gameId} onChange={setGameId} />
               <Link to="/rules" title="Competitive XP match ruleset — required" className="competition-action-pill">
                 <Trophy className="h-4 w-4" /> CDL Rules
                 <span className="text-[10px] text-vapor">Required</span>
@@ -351,6 +358,9 @@ export default function XP() {
         </div>
         <CreateLobbyModal
           initialSettings={rematchSettings}
+          gameConfig={game}
+          games={games}
+          onGameChange={setGameId}
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           user={user}

@@ -1,3 +1,6 @@
+import useCompetitionGame from "@/hooks/useCompetitionGame";
+import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
+import { storedGameId } from "@/lib/mw4";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useState, useEffect } from "react";
@@ -27,15 +30,17 @@ const isWagerMatch = (wager) => (
 
 export default function Wagers() {
   const navigate = useNavigate();
+  const { games, game, gameId, setGameId } = useCompetitionGame();
   const [searchParams] = useSearchParams();
   const requestedWagerId = searchParams.get("accept");
   const requestedTeamId = searchParams.get("team");
   const [amountFilter, setAmountFilter] = useState("All");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const rematchSettings = useRematchSettings("wager", setIsCreateModalOpen, isCreateModalOpen);
+  useEffect(() => { if (rematchSettings?.game_id) setGameId(rematchSettings.game_id); }, [rematchSettings?.game_id, setGameId]);
   const [teamCreator, setTeamCreator] = useState({ open: false, wagerId: null, rosterSize: 4 });
   const [openPosts, setWagers] = useState([]);
-  const wagers = useMatchfinderPosts(openPosts);
+  const wagers = useMatchfinderPosts(openPosts).filter(match => storedGameId(match) === gameId);
   const [historyWagers, setHistoryWagers] = useState([]);
   const [user, setUser] = useState(null);
   const [userTeams, setUserTeams] = useState([]);
@@ -322,6 +327,7 @@ export default function Wagers() {
     <div className="competition-page min-h-screen py-8">
       <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
         <CompetitionLadder
+          gameId={gameId}
           mode="wagers"
           currentUser={user}
           openCount={wagers.length}
@@ -373,6 +379,7 @@ export default function Wagers() {
           )}
           action={
             <div className="competition-actions">
+              <CompetitionGameSelect games={games} value={gameId} onChange={setGameId} />
               <button type="button" onClick={() => openWagerTeamCreator()} className="competition-action-pill">
                 <Users className="h-[18px] w-[18px]" /> Create Wager Team
               </button>
@@ -426,6 +433,9 @@ export default function Wagers() {
         {/* Create Lobby Modal */}
         <CreateLobbyModal
           initialSettings={rematchSettings}
+          gameConfig={game}
+          games={games}
+          onGameChange={setGameId}
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           user={user}

@@ -76,6 +76,17 @@ function fixture(t, size = 4) {
   return { db, users, staff, handlers, action, create, request, voiceReady, verified, locks, rows: (name) => tables[name] };
 }
 
+test("challenge creation keeps the selected game and its map configuration for all four games", async (t) => {
+  for (const game_id of ["mw4", "mw3", "bo6", "bo7"]) await t.test(game_id, async (t) => {
+    const f = fixture(t);
+    const { match } = await f.action(0, "create", { team_id: "alpha", game_id, format_id: "cdl_bo3" });
+    assert.equal(match.game_id, game_id);
+    assert.equal(match.game_config.id, game_id);
+    assert.deepEqual(match.series_mode_ids, game_id === "mw4" ? ["hp", "hijacked", "snd"] : ["hp", "snd", "hp"]);
+    assert.ok(match.game_config.modes.every(mode => mode.maps.length > 0));
+  });
+});
+
 test("XP decreases with own rating, rewards upsets, penalizes lower-rated losses and never goes negative", () => {
   assert.ok(challengeXpChange(8000, 8000, true) < challengeXpChange(1000, 1000, true));
   assert.ok(challengeXpChange(1000, 3000, true) > challengeXpChange(1000, 0, true));
