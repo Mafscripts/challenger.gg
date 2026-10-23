@@ -180,3 +180,21 @@
 .admin-tickets .at-ticket-row[data-unread="true"] .at-row-title { color:#8aeeff;font-weight:900; }
 .admin-tickets .at-unread-badge { display:inline-flex;margin:0 0 9px;padding:4px 8px;border:1px solid #21d9f866;border-radius:5px;background:#0dc9ef1a;color:#63e9ff;font-size:10px;font-weight:800; }
 .admin-tickets .at-unread-dot { display:inline-block;width:7px;height:7px;margin-left:7px;border-radius:50%;background:#35e2ff;box-shadow:0 0 8px #35e2ff80; }
+
+.admin-tickets .at-row-shell{position:relative;display:flex;align-items:stretch}
+.admin-tickets .at-row-shell>.at-ticket-row{min-width:0;flex:1}
+.admin-tickets .at-row-select{display:flex;align-items:flex-start;padding:19px 0 0 10px;background:var(--arena-inset);border-bottom:1px solid var(--at-line)}
+.admin-tickets input[type="checkbox"]{accent-color:#12c8e7;width:14px;height:14px;cursor:pointer}
+.admin-tickets .at-bulk-tools{padding:10px 14px;border-bottom:1px solid var(--at-line);display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:#0c202d}
+.admin-tickets .at-bulk-tools label{display:flex;align-items:center;gap:7px;font-size:10px;color:#bdd6e3;flex:1}
+.admin-tickets .at-bulk-tools .at-button{min-height:28px;padding:5px 8px;font-size:10px}
+.admin-tickets .at-bulk-tools small{width:100%;color:#7f9eaf;font-size:9px;line-height:1.5}
+
+.admin-tickets .at-button.at-delete,.admin-tickets .at-button.at-button-danger { color:#ff8792;border-color:#f4546566;background:#c731451c; }
+.admin-tickets .at-button.at-button-danger:hover:not(:disabled),.admin-tickets .at-button.at-delete:hover:not(:disabled) { color:#ffc1c7;border-color:#ff7181;background:#c7314533; }
+.admin-tickets .at-button.at-button-open { color:#70e6ad;border-color:#37c58366;background:#1a9c5d1c; }
+.admin-tickets .at-button.at-button-open:hover:not(:disabled) { color:#a2ffd0;border-color:#5aeaa0;background:#1a9c5d33; }
+.admin-tickets .at-button.at-button-save { color:#f3cc79;border-color:#d4a34266;background:#ac7a201c; }
+.admin-tickets .at-button.at-button-save:hover:not(:disabled) { color:#ffe4ac;border-color:#e6bc64;background:#ac7a2033; }
+.admin-tickets .at-button.at-button-close { color:#ffba7b;border-color:#ce864766;background:#b575261c; }
+.admin-tickets .at-status[data-tone="open"] { color:#7ae7af;border-color:#37c58355;background:#1a9c5d14; }

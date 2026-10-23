@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Inbox, Loader2, Ticket, Trash2, Bookmark, Search, RefreshCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -20,6 +20,11 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
   const [saveError, setSaveError] = useState("");
   useEffect(() => { const timer = setTimeout(() => setSearch(searchInput), 300); return () => clearTimeout(timer); }, [searchInput]);
   const [drafts, setDrafts] = useState({});
+  const [checked, setChecked] = useState([]);
+  const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [bulkError, setBulkError] = useState("");
+  const reader = useRef(null);
+  const inbox = useRef(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -68,6 +73,38 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
         ? { ...current, pages: current.pages.map(page => ({ ...page, rows: page.rows.map(acknowledge) })) } : acknowledge(current));
     } catch (error) { setSaveError(error.message); }
   };
+  const displayRows = selected && !rows.some(row => row.id === selected.id) ? [selected, ...rows] : rows;
+  const canDelete = hasRolePower(role, "admin");
+  const deletableRows = displayRows.filter(row => row.closed);
+  useEffect(() => { if (reader.current) reader.current.scrollTop = 0; }, [selected?.id]);
+  useEffect(() => { setChecked([]); }, [filter, category, view, search]);
+  useEffect(() => {
+    if (!selectedId || !inbox.current) return;
+    const selectedButton = inbox.current.querySelector('[aria-current="true"]');
+    if (!selectedButton) return;
+    const bounds = selectedButton.getBoundingClientRect(), viewport = inbox.current.getBoundingClientRect();
+    if (bounds.top < viewport.top || bounds.bottom > viewport.bottom) inbox.current.scrollTop += bounds.top - viewport.top - 50;
+  }, [selectedId, displayRows.length]);
+  const bulkRemove = async () => {
+    setBusy(true); setBulkError("");
+    const failed = [], removed = [];
+    for (const id of checked) {
+      const row = displayRows.find(row => row.id === id);
+      if (!row?.closed) { failed.push(id); continue; }
+      try {
+        const { data } = await base44.functions.invoke("deleteAdminTicket", { id: row.record_id, kind: row.kind });
+        if (!data?.success) throw new Error(data?.error || "Could not delete case.");
+        removed.push(id);
+      } catch { failed.push(id); }
+    }
+    setChecked(failed);
+    if (removed.includes(selectedId)) setSelectedId(null);
+    try { await refreshTickets(); }
+    catch { setBulkError("The list could not refresh. Refresh before deleting any more cases."); setBusy(false); return; }
+    setBusy(false);
+    if (failed.length) setBulkError(`${removed.length} deleted. ${failed.length} could not be deleted; they may have reopened or changed. Refresh and review them.`);
+    else setBulkConfirm(false);
+  };
   const refreshTickets = async () => {
     await queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role, "ticketQueue"] });
     await queryClient.invalidateQueries({ queryKey: ["support-inbox-counts", user?.id] });
@@ -98,7 +135,7 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
   };
   return <section className="admin-tickets" data-detail-open={Boolean(selectedId)}>
     <header className="at-heading">
-      <div><span className="at-eyebrow">PLAYER SUPPORT</span><h2><Ticket size={20} /> Support inbox</h2><p>Live chats, tickets, disputes and admin calls. Review, reply and open the match room.</p></div>
+      <div><span className="at-eyebrow">PLAYER SUPPORT</span><h2><Ticket size={20} /> Support inbox</h2><p>One place for every player request.</p></div>
       <div className="at-header-tools"><Suspense fallback={null}><SupportRecords className="at-button" /></Suspense><button className="at-button" onClick={refreshTickets} disabled={query.isFetching} aria-label="Refresh inbox"><RefreshCw size={14} /></button></div>
     </header>
     <nav className="at-categories" aria-label="Support categories">{categories.map(([value, label]) => <button key={value} aria-pressed={category === value} onClick={() => { setCategory(value); setSelectedId(null); }}><span>{label}{rows.some(row => row.unread && (value === "all" || row.channel === value || (value === "disputes" && row.disputes.length > 0) || row.mode === value || (value === "money8s" && ["8s", "eights"].includes(row.mode)) || (value === "wagers" && row.mode === "wager"))) && <i className="at-unread-dot" aria-label="Unread messages in loaded conversations" />}</span><b>{summary.data?.categories?.[value] ?? "—"}</b></button>)}</nav>
@@ -111,30 +148,32 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
     {saveError && <p role="alert" className="at-list-error">{saveError}</p>}
     {direct.isError && <p role="alert" className="at-list-error">{direct.error.message}</p>}
     <div className="at-workspace">
-      <aside className="at-inbox" aria-label="Ticket list">
+      <aside className="at-inbox" aria-label="Ticket list" ref={inbox}>
         <div className="at-list-heading"><strong>{view === "saved" ? "Saved conversations" : categories.find(([value]) => value === category)?.[1]}</strong><span>{rows.length} loaded</span></div>
         {query.isPending && <p role="status" className="at-list-feedback"><Loader2 size={15} className="animate-spin" /> Loading tickets...</p>}
         {!query.isPending && !query.isError && !rows.length && <div className="at-list-empty"><Inbox size={26} /><strong>{filter === "open" ? "No open tickets" : "No tickets here"}</strong><p>{filter === "open" ? "You're up to date. Previous requests are under Closed." : "Tickets will appear here when available."}</p></div>}
-        <div className="at-ticket-list">{rows.map((row) => <button key={row.id} className="at-ticket-row" data-unread={row.unread || undefined}
+        {canDelete && <div className="at-bulk-tools"><label><input type="checkbox" aria-label="Select all loaded closed cases" checked={deletableRows.length > 0 && deletableRows.every(row => checked.includes(row.id))} disabled={!deletableRows.length || busy} onChange={event => setChecked(event.target.checked ? deletableRows.map(row => row.id) : [])} /> Select all closed</label><button className="at-button at-button-danger" disabled={!checked.length || busy} onClick={() => { setBulkError(""); setBulkConfirm(true); }}><Trash2 size={12} /> Delete {checked.length || ""}</button><small>Close active cases before deleting. Select Closed to manage past requests.</small></div>}
+        <div className="at-ticket-list">{displayRows.map((row) => <div key={row.id} className="at-row-shell">{canDelete && row.closed && <label className="at-row-select"><input type="checkbox" aria-label={`Select case ${shortTicketId(row.record_id)}`} disabled={busy} checked={checked.includes(row.id)} onChange={event => setChecked(current => event.target.checked ? [...new Set([...current, row.id])] : current.filter(id => id !== row.id))} /></label>}<button key={row.id} className="at-ticket-row" data-unread={row.unread || undefined}
           aria-current={selected?.id === row.id ? "true" : undefined} onClick={() => { setSelectedId(row.id); void markRead(row); }}>
           <div className="at-row-top"><span>#{shortTicketId(row.record_id)} · {row.channel === "live" ? "LIVE CHAT" : row.channel === "calls" ? "ADMIN CALL" : row.channel === "disputes" ? "DISPUTE" : "TICKET"}</span><TicketStatus row={row} /></div>{row.unread && <span className="at-unread-badge">● New message</span>}
           <span className="at-case-owner" data-assigned={Boolean(row.ticket?.assigned_admin_id || row.disputes[0]?.assigned_admin_id)}>{(row.ticket?.assigned_admin_name || row.disputes[0]?.assigned_admin_name) ? `Helping: ${row.ticket?.assigned_admin_name || row.disputes[0]?.assigned_admin_name}` : "Unassigned"}</span>
           <strong className="at-row-title">{row.mode === "tournament" ? "Tournament · " : row.mode === "wagers" || row.mode === "wager" ? "Wager · " : ""}{row.channel === "live" ? ticketReporter(row) : ticketTitle(row)}</strong><p>{row.ticket?.messages?.at(-1)?.content || ticketIssue(row)}</p>{(row.ticket || row.disputes[0])?.support_favorite && <span className="at-saved-label"><Bookmark size={11} /> Saved</span>}
           <div className="at-row-bottom"><span className="at-row-avatar">{ticketReporter(row).slice(0, 1).toUpperCase()}</span><strong>{ticketReporter(row)}</strong><time>{ticketDate(row.ticket?.created_date || row.disputes[0]?.created_date)}</time><ChevronRight size={14} /></div>
-        </button>)}</div>
+        </button></div>)}</div>
         {query.isError && <div role="alert" className="at-list-error"><p>{query.error?.message || "Could not load tickets."}</p><button className="at-button" disabled={query.isFetching} onClick={() => query.isFetchNextPageError ? query.fetchNextPage() : query.refetch()}>Try again</button></div>}
         {query.hasNextPage && <footer className="at-list-footer"><button className="at-button" disabled={query.isFetching} onClick={() => query.fetchNextPage()}>
           {query.isFetchingNextPage ? <Loader2 size={14} className="animate-spin" /> : <ChevronDown size={14} />} Load more</button><span>10 tickets at a time</span></footer>}
       </aside>
-      <div className="at-reading-pane">{selected ? <AdminTicketDetail key={selected.id} row={selected} user={user} onRefresh={refreshTickets} onRoomOpen={onRoomOpen} onBack={() => setSelectedId(null)}
+      <div className="at-reading-pane" ref={reader}>{selected ? <AdminTicketDetail key={selected.id} row={selected} user={user} onRefresh={refreshTickets} onRoomOpen={onRoomOpen} onBack={() => setSelectedId(null)}
         draft={drafts[selected.id] || {}} onDraftChange={(update) => setDrafts((current) => ({ ...current, [selected.id]: { ...current[selected.id], ...update } }))}
-        deleteButton={<>{selected.unread && <button className="at-button at-button-primary" onClick={() => markRead(selected)}>New message · Mark as read</button>}<button className="at-button" disabled={busy} aria-pressed={Boolean((selected.ticket || selected.disputes[0])?.support_favorite)} onClick={async () => {
+        deleteButton={<>{selected.unread && <button className="at-button at-button-primary" onClick={() => markRead(selected)}>New message · Mark as read</button>}<button className="at-button at-button-save" disabled={busy} aria-pressed={Boolean((selected.ticket || selected.disputes[0])?.support_favorite)} onClick={async () => {
           setBusy(true); setSaveError("");
           try { const { data } = await base44.functions.invoke("saveSupportCase", { kind: selected.kind, id: selected.record_id, saved: !(selected.ticket || selected.disputes[0])?.support_favorite }); if (!data?.success) throw new Error(data?.error || "Could not save conversation."); await refreshTickets(); } catch (error) { setSaveError(error.message); } finally { setBusy(false); }
         }}><Bookmark size={14} />{(selected.ticket || selected.disputes[0])?.support_favorite ? "Unsave" : "Save conversation"}</button>{saveError && <span role="alert">{saveError}</span>}{selected.closed && hasRolePower(role, "admin") ? <button className="at-button at-delete" onClick={() => { setDeleteError(""); setDeleting(selected); }}><Trash2 size={14} /> Delete</button> : null}</>} />
         : <div className="at-no-selection"><Ticket size={30} /><h3>{filter === "open" && !query.isPending ? "No requests waiting" : "Your ticket workspace"}</h3><p>Select a ticket to see the request, conversation and staff actions.</p></div>}
       </div>
     </div>
+    <Dialog open={bulkConfirm} onOpenChange={value => { if (!busy) setBulkConfirm(value); }}><DialogContent className="admin-action-dialog max-w-md border-white/10 bg-card"><DialogTitle>Delete {checked.length} closed cases?</DialogTitle><DialogDescription>Selected closed cases and their conversations will be permanently removed for staff and players. This cannot be undone. Match results and XP stay unchanged.</DialogDescription>{bulkError && <p role="alert" className="text-sm text-red-300">{bulkError}</p>}<div className="flex justify-end gap-2"><button className="at-button" disabled={busy} onClick={() => setBulkConfirm(false)}>Keep cases</button><button className="at-button at-button-danger" disabled={busy || !checked.length} onClick={bulkRemove}>{busy ? "Deleting…" : "Delete permanently"}</button></div></DialogContent></Dialog>
     <Dialog open={Boolean(deleting)} onOpenChange={(open) => { if (!open && !busy) setDeleting(null); }}>
       <DialogContent className="admin-action-dialog max-w-md border-white/10 bg-card">
         <DialogTitle>Delete closed ticket?</DialogTitle>

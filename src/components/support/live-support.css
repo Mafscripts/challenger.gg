@@ -14,3 +14,7 @@
 .support-thread[data-unread="true"] strong { color:#78ebff; }
 .support-owner-notice { padding:10px 18px;color:#ffd28a;background:#70502022;font-size:11px;line-height:1.6;border-top:1px solid #a7772822; }
 .support-composer textarea:disabled { opacity:.55; }
+
+.support-quick-toolbar .support-expand,.support-center-summary button { color:#70e6ad; }
+.support-quick-toolbar .support-expand { border-color:#37c58355;background:#1a9c5d18; }
+.support-composer-meta button { color:#ffba7b; }

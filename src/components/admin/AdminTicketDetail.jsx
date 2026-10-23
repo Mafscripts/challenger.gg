@@ -108,9 +108,9 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
         {!row.closed && owner?.assigned_admin_id !== user.id && !handledByOther && <button className="at-button at-button-primary" disabled={!!busy} onClick={() => claim()}><UserCheck size={14} />Take case</button>}
         {owner?.assigned_admin_name && <span className="at-assigned"><UserCheck size={14} />{owner.assigned_admin_id === user.id ? "You are helping" : `Being helped by ${owner.assigned_admin_name}`}</span>}
         {handledByOther && canTakeOver && <button className="at-button" disabled={!!busy} onClick={() => claim(true)}>Take over from {owner.assigned_admin_name || "staff"}</button>}
-        {path && <button disabled={!!busy || Boolean(handledByOther)} onClick={openRoom} className="at-button at-button-primary"><ExternalLink size={14} /> Open match room</button>}
-        {ticket?.request_type === "live_support" && canReply && <button className="at-button" disabled={!!busy} onClick={() => invoke("resolveTicket", { ticket_id: ticket.id, resolution: "Live support conversation completed." }, "Conversation ended.")}><Check size={14} /> End conversation</button>}
-        {row.closed && ticket && <button className="at-button" disabled={!!busy} onClick={() => invoke("reopenTicket", { ticket_id: ticket.id }, "Ticket reopened.")}>Reopen ticket</button>}
+        {path && <button disabled={!!busy || Boolean(handledByOther)} onClick={openRoom} className="at-button at-button-open"><ExternalLink size={14} /> Open match room</button>}
+        {ticket?.request_type === "live_support" && canReply && <button className="at-button at-button-close" disabled={!!busy} onClick={() => invoke("resolveTicket", { ticket_id: ticket.id, resolution: "Live support conversation completed." }, "Conversation ended.")}><Check size={14} /> End conversation</button>}
+        {row.closed && ticket && <button className="at-button at-button-open" disabled={!!busy} onClick={() => invoke("reopenTicket", { ticket_id: ticket.id }, "Ticket reopened.")}>Reopen ticket</button>}
         {deleteButton}
       </div>
     </header>
@@ -157,7 +157,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
         <div className="at-section-heading"><h4>Internal staff notes</h4><span><LockKeyhole size={12} /> Only visible to staff</span></div>
         {notes.length ? <div className="at-thread">{notes.map((entry, index) => <div className="at-message" key={entry.id || index}><div className="at-message-heading"><strong>{entry.sender_name || "Staff"}</strong><time>{ticketDate(entry.created_date)}</time></div><p>{entry.content}</p></div>)}</div> : <p className="at-help">Use this space to leave context for other staff members.</p>}
         {canReply && <div className="at-composer"><label htmlFor="at-note">Add a private note</label><textarea id="at-note" value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="What should other staff know?" />
-          <div><span>Players cannot see staff notes.</span><button className="at-button" disabled={!!busy || !note.trim()} onClick={() => send(true)}><LockKeyhole size={14} /> Save note</button></div></div>}
+          <div><span>Players cannot see staff notes.</span><button className="at-button at-button-save" disabled={!!busy || !note.trim()} onClick={() => send(true)}><LockKeyhole size={14} /> Save note</button></div></div>}
       </>}
       {tab === "decision" && handledByOther && <p className="at-help">{owner.assigned_admin_name || "Another staff member"} is already handling this case. Takeover is required before recording a decision.</p>}
       {tab === "decision" && !handledByOther && <>
