@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Prisma } from "@prisma/client";
 import { build } from "esbuild";
-import { getAdminTickets, getSupportInboxSummary, saveSupportCase, supportIncomingToken, markSupportCaseRead } from "./admin-tickets.js";
+import { getAdminTickets, getSupportInboxSummary, saveSupportCase, supportIncomingToken, markSupportCaseRead, deleteAdminTicket } from "./admin-tickets.js";
 import { claimSupportTicket } from "./support-claims.js";
 import { hasRole } from "./roles.js";
 
@@ -139,4 +139,41 @@ test("read acknowledgements belong to the current staff member and preserve othe
   assert.ok(!queries[0].values.includes("forged"));
   await assert.rejects(() => markSupportCaseRead(db, { id: "player", role: "user" }, payload), error => error.status === 403);
   await assert.rejects(() => markSupportCaseRead(db, { id: "helper", role: "admin" }, { ...payload, token: "bad" }), error => error.status === 400);
+});
+
+test("confirmed deletion removes both paginated rows and direct detail cache without mutating previous data", async () => {
+  const { deletedSupportCaseIds, removeDeletedSupportCases } = await import("../src/lib/supportDeletion.js");
+  const ticket = { id: "ticket:a" }, dispute = { id: "dispute:b" }, keep = { id: "ticket:c" };
+  const deleted = deletedSupportCaseIds({ deleted_ticket_ids: ["a"], deleted_dispute_ids: ["b"] });
+  const original = { pages: [{ rows: [ticket, dispute, keep], next_cursor: "next" }], pageParams: [null] };
+  const updated = removeDeletedSupportCases(original, deleted);
+  assert.deepEqual(updated.pages[0].rows, [keep]);
+  assert.equal(updated.pages[0].next_cursor, "next");
+  assert.equal(original.pages[0].rows.length, 3);
+  assert.equal(removeDeletedSupportCases(ticket, deleted), null);
+  assert.equal(removeDeletedSupportCases(keep, deleted), keep);
+  assert.equal(removeDeletedSupportCases(null, deleted), null);
+});
+test("legacy room references and match type aliases resolve to their own rooms", async () => {
+  const compiled = await build({ entryPoints: ["src/lib/adminTickets.js"], bundle: true, write: false, platform: "node", format: "cjs" });
+  const module = { exports: {} }; new Function("module", "exports", compiled.outputFiles[0].text)(module, module.exports);
+  const route = ticket => module.exports.ticketRoomPath({ ticket, disputes: [] });
+  for (const type of ["money_8s", "money-8s", "free8s"]) assert.equal(route({ match_type: type, match_id: "room" }), "/8s-match/room");
+  assert.equal(route({ related_entity_type: "TournamentMatch", related_entity_id: "old" }), "/tournament-match/old");
+  assert.equal(route({ related_entity_id: "old", action_url: "/8s-match/old?admin=1" }), "/8s-match/old");
+  assert.equal(route({ related_entity_id: "old", action_url: "/8s-match/someone-else" }), "/wagers-match/old");
+  assert.equal(route({ related_entity_id: "old", action_url: "https://evil.example/8s-match/old" }), "/wagers-match/old");
+});
+
+test("deletion retries serialization conflicts and handles a case already deleted by another staff member", async () => {
+  let attempts = 0;
+  const db = { $transaction: async fn => {
+    if (++attempts < 3) throw Object.assign(new Error("Concurrent change"), { code: "P2034" });
+    return fn({ ticket: { findUnique: async () => null } });
+  } };
+  const result = await deleteAdminTicket(db, { role: "admin", id: "staff" }, { id: "gone", kind: "ticket" });
+  assert.equal(attempts, 3);
+  assert.equal(result.success, true);
+  assert.deepEqual(result.deleted_ticket_ids, ["gone"]);
+  await assert.rejects(() => deleteAdminTicket(db, { role: "admin" }, { id: {}, kind: "ticket" }), error => error.status === 400);
 });

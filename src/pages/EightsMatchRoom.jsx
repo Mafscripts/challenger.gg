@@ -385,6 +385,7 @@ function EightsMatchRoomView() {
 
   useEffect(() => {
     if (!match?.id || !user?.id || !isStaff) return;
+    if (new URLSearchParams(window.location.search).get("support_view") === "1") return;
     if (joinedAdminRooms.current.has(match.id)) return;
     const hasOpenRequest = Boolean(match.requested_admin && match.admin_request_ticket_id)
       && !["admin_joined", "resolved", "closed"].includes(match.admin_request_status);

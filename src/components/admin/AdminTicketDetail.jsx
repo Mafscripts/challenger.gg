@@ -62,7 +62,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
       if (!response.data?.success) throw new Error(response.data?.error || "Could not update ticket.");
       setNotice(label);
       toast({ title: label });
-      await onRefresh();
+      try { await onRefresh(); } catch { setError("Action completed. Refresh the inbox to update its status."); }
       return true;
     } catch (failure) { setError(failure.message || "Could not update ticket."); return false; }
     finally { setBusy(""); }
@@ -71,7 +71,8 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
     ? invoke("joinTicket", { ticket_id: ticket.id, take_over: takeOver }, "Assigned to you.")
     : invoke("claimSupportDispute", { dispute_id: row.disputes[0].id, take_over: takeOver }, "Assigned to you.");
   const openRoom = async () => {
-    if (handledByOther || busy || !path) return;
+    if (busy || !path) return;
+    if (handledByOther) { onRoomOpen?.(); navigate(`${path}?support_view=1`); return; }
     if (!row.closed && (!ticket || !closedTicket(ticket)) && owner?.assigned_admin_id !== user.id && !await claim()) return;
     onRoomOpen?.();
     navigate(row.closed ? path : `${path}${path.includes("?") ? "&" : "?"}admin=1`);
@@ -108,7 +109,8 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
         {!row.closed && owner?.assigned_admin_id !== user.id && !handledByOther && <button className="at-button at-button-primary" disabled={!!busy} onClick={() => claim()}><UserCheck size={14} />Take case</button>}
         {owner?.assigned_admin_name && <span className="at-assigned"><UserCheck size={14} />{owner.assigned_admin_id === user.id ? "You are helping" : `Being helped by ${owner.assigned_admin_name}`}</span>}
         {handledByOther && canTakeOver && <button className="at-button" disabled={!!busy} onClick={() => claim(true)}>Take over from {owner.assigned_admin_name || "staff"}</button>}
-        {path && <button disabled={!!busy || Boolean(handledByOther)} onClick={openRoom} className="at-button at-button-open"><ExternalLink size={14} /> Open match room</button>}
+        {path && <button disabled={!!busy} onClick={openRoom} className="at-button at-button-open"><ExternalLink size={14} /> {handledByOther ? "View match room" : "Open match room"}</button>}
+        {isMatchTicket(row) && !path && <span className="at-help">No match room is linked to this case.</span>}
         {ticket?.request_type === "live_support" && canReply && <button className="at-button at-button-close" disabled={!!busy} onClick={() => invoke("resolveTicket", { ticket_id: ticket.id, resolution: "Live support conversation completed." }, "Conversation ended.")}><Check size={14} /> End conversation</button>}
         {row.closed && ticket && <button className="at-button at-button-open" disabled={!!busy} onClick={() => invoke("reopenTicket", { ticket_id: ticket.id }, "Ticket reopened.")}>Reopen ticket</button>}
         {deleteButton}

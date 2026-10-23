@@ -36,11 +36,17 @@ export const ticketState = (row) => {
   return { label: "Needs staff", tone: "open" };
 };
 export const ticketRoomPath = (row) => {
-  const ticket = row.ticket;
-  const dispute = row.disputes[0];
-  const id = ticket?.match_id || dispute?.match_id || dispute?.wager_id;
+  const ticket = row.ticket, dispute = row.disputes?.[0];
+  const id = ticket?.match_id || dispute?.match_id || dispute?.wager_id || ticket?.related_entity_id;
   if (!id) return null;
-  const type = ticket?.match_type || dispute?.match_type;
-  const prefix = { "8s": "8s-match", eights: "8s-match", money8s: "8s-match", xp: "xp-match", ranked: "ranked-match", tournament: "tournament-match" }[type] || "wagers-match";
-  return `/${prefix}/${encodeURIComponent(id)}`;
+  const routes = { "8s": "8s-match", eights: "8s-match", free8s: "8s-match", free_8s: "8s-match", money8s: "8s-match", money_8s: "8s-match", "money-8s": "8s-match", xp: "xp-match", xpmatch: "xp-match", ranked: "ranked-match", rankedmatch: "ranked-match", tournament: "tournament-match", tournamentmatch: "tournament-match", wager: "wagers-match", wagers: "wagers-match" };
+  const types = [ticket?.match_details?.match_type, ticket?.match_type, dispute?.match_type, row.mode, ticket?.related_entity_type].map(value => String(value || "").toLowerCase());
+  let prefix = types.map(type => routes[type]).find(Boolean);
+  // Historic tickets may have stored only a local room URL. Accept a known room
+  // route only when its ID matches the case, never an external or arbitrary URL.
+  if (!prefix) for (const value of [ticket?.action_url, ticket?.match_url]) {
+    const match = typeof value === "string" && value.match(/^\/(8s-match|wagers-match|tournament-match|ranked-match|xp-match|match-room)\/([^/?#]+)(?:[?#].*)?$/);
+    try { if (match && decodeURIComponent(match[2]) === String(id)) { prefix = match[1]; break; } } catch { /* Malformed historic URL. */ }
+  }
+  return `/${prefix || "wagers-match"}/${encodeURIComponent(id)}`;
 };

@@ -229,3 +229,37 @@
 .admin-tickets .at-categories [data-category="tournament"] .at-category-label svg{color:#eaca69}
 .admin-tickets .at-categories [data-category="wagers"] .at-category-label svg{color:#67dbaa}
 .admin-tickets .at-categories [data-category="money8s"] .at-category-label svg{color:#80b6ff}
+
+/* Keep case selection inside each card; archive rows stay quiet and compact. */
+.admin-tickets .at-ticket-list{display:grid;gap:7px;padding:8px}
+.admin-tickets .at-row-shell{display:block;border:1px solid #244354;border-radius:10px;overflow:hidden;background:#0c1b27}
+.admin-tickets .at-row-shell[data-checked="true"]{border-color:#31859b;background:#102b39}
+.admin-tickets .at-row-shell>.at-ticket-row{width:100%;padding:12px;border:0;background:transparent;box-shadow:none}
+.admin-tickets .at-row-shell>.at-ticket-row:hover{background:#ffffff04}
+.admin-tickets .at-row-shell>.at-ticket-row[aria-current]{background:#183e4b55}
+.admin-tickets .at-row-shell>.at-ticket-row[aria-current]::before{inset:12px auto 12px 0;width:2px}
+.admin-tickets .at-row-select{position:absolute;top:11px;left:11px;z-index:1;display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:5px;background:transparent;cursor:pointer}
+.admin-tickets .at-row-shell[data-selectable="true"] .at-row-top>.at-kind{padding-left:25px}
+.admin-tickets .at-row-shell .at-row-top{margin-bottom:8px;gap:5px}
+.admin-tickets .at-row-shell .at-kind{font-size:9px}
+.admin-tickets .at-player-heading{margin:6px 0 9px;gap:8px}
+.admin-tickets .at-player-heading strong{font-size:14px;line-height:1.4}
+.admin-tickets .at-player-avatar{width:29px;height:29px;border-radius:8px;font-size:12px}
+.admin-tickets .at-row-shell .at-request-context{font-size:10px;line-height:1.5}
+.admin-tickets .at-row-shell .at-owner-line{margin-top:7px;font-size:9px}
+.admin-tickets .at-row-shell .at-row-bottom{margin-top:9px;padding-top:7px;border-top:1px solid #ffffff08}
+.admin-tickets .at-row-shell .at-row-bottom time{font-size:8px}
+.admin-tickets .at-row-shell[data-closed="true"] .at-kind{color:#91a7b6}
+.admin-tickets .at-row-shell[data-closed="true"] .at-player-heading>svg{color:#6e8c9f}
+.admin-tickets .at-row-shell[data-closed="true"] .at-owner-line{color:#8aa7b8}
+.admin-tickets .at-row-shell[data-closed="true"] .at-player-avatar{color:#b2cad8;background:#ffffff05}
+.admin-tickets .at-bulk-tools{gap:9px;padding:12px;background:#0b1d29}
+.admin-tickets .at-bulk-tools label{font-size:10px;white-space:nowrap}
+.admin-tickets .at-bulk-tools small{font-size:9px;color:#8aa7b8}
+.admin-tickets .at-row-shell>.at-ticket-row[data-unread="true"]{background:#0e3444;box-shadow:inset 2px 0 #35d8f3}
+
+.support-delete-overlay{z-index:90!important}
+.support-delete-dialog{z-index:91!important;background:#102331!important;border-color:#a8506066!important;color:#e8f4fc!important}
+.support-delete-dialog .at-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #385364;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:750;background:#1b3444;color:#dceaf4}
+.support-delete-dialog .at-button-danger{border-color:#ef687d99;background:#822c3e55;color:#ffa9b7}
+.support-delete-dialog button:disabled{opacity:.5;cursor:wait}

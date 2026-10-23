@@ -4643,11 +4643,11 @@ async function completeRegistration(req) {
 function normalizeMatchType(matchType) {
   const value = String(matchType || "wager").toLowerCase();
   if (value === "streamer" || value === "streamer_tournament") return "streamer_tournament";
-  if (value === "ranked") return "ranked";
-  if (value === "xp") return "xp";
-  if (value === "tournament") return "tournament";
+  if (value === "ranked" || value === "rankedmatch") return "ranked";
+  if (value === "xp" || value === "xpmatch") return "xp";
+  if (value === "tournament" || value === "tournamentmatch") return "tournament";
   if (value === "money8s" || value === "money_8s" || value === "money-8s") return "money8s";
-  if (value === "8s" || value === "eights") return "8s";
+  if (["8s", "eights", "free8s", "free_8s"].includes(value)) return "8s";
   return "wager";
 }
 
@@ -4979,11 +4979,12 @@ async function joinTicket(req) {
   assertStaff(req, "moderator");
   const claimed = await claimSupportTicket(prisma, req.user, req.body);
   const ticket = claimed.ticket, updated = ticket, firstJoinForStaff = claimed.firstJoinForStaff;
-  const matchType = normalizeMatchType(ticket.match_type), entityName = matchEntityFor(matchType);
-  const match = ticket.match_id ? await getEntity(entityName, ticket.match_id).catch(() => null) : null;
+  const matchId = ticket.match_id || ticket.related_entity_id;
+  const matchType = normalizeMatchType(ticket.match_type || ticket.match_details?.match_type || ticket.related_entity_type), entityName = matchEntityFor(matchType);
+  const match = matchId ? await getEntity(entityName, matchId).catch(() => null) : null;
   const joinedStaffIds = new Set(ticket.joined_staff_ids || []);
-  if (ticket.match_id && matchType !== "xp") {
-    await updateEntity(entityName, ticket.match_id, {
+  if (matchId && matchType !== "xp") {
+    await updateEntity(entityName, matchId, {
       admin_request_status: "admin_joined",
       assigned_admin_id: req.user.id,
       assigned_admin_name: nameFor(req.user),

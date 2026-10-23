@@ -64,7 +64,10 @@ function RecordsContent({ onClose }) {
     if (busy || !record || !canDelete || !liveSupportClosed(record)) return;
     setBusy(true); setError("");
     try {
-      await invoke("deleteAdminTicket", { id: record.id, kind: "ticket" });
+      const deleted = await invoke("deleteAdminTicket", { id: record.id, kind: "ticket" });
+      setResult(current => ({ ...current, rows: current.rows.filter(row => !deleted.deleted_ticket_ids.includes(row.id)) }));
+      window.dispatchEvent(new CustomEvent("topfragg:support-deleted", { detail: deleted }));
+      window.dispatchEvent(new CustomEvent("topfragg:support-updated"));
       setSelected(null); setRecord(null); setMessages([]); setNote(""); pendingNote.current = null;
       setConfirmDelete(false); setPage(0); setRevision(current => current + 1);
     } catch (err) { setError(err.message || "Could not delete this conversation."); }

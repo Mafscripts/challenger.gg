@@ -118,6 +118,18 @@ export default function LiveSupport() {
   useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [messages.length, open]);
 
   const choose = id => { setSelected(id); setTicket(null); setMessages([]); setDraft(""); pending.current = null; snapshot.current = null; setError(""); };
+  useEffect(() => {
+    const removed = event => {
+      const ids = event.detail?.deleted_ticket_ids || [];
+      setThreads(current => current.filter(thread => !ids.includes(thread.id)));
+      if (ids.includes(active.current)) {
+        active.current = null; snapshot.current = null; pending.current = null;
+        setSelected(null); setTicket(null); setMessages([]); setDraft(""); setError("");
+      }
+    };
+    window.addEventListener("topfragg:support-deleted", removed);
+    return () => window.removeEventListener("topfragg:support-deleted", removed);
+  }, []);
   const send = async event => {
     event.preventDefault(); if (busy || !draft.trim()) return;
     setBusy(true); setError("");

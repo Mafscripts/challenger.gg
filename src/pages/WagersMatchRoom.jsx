@@ -287,6 +287,7 @@ function WagersMatchRoomView() {
 
   useEffect(() => {
     if (!wager?.id || !user?.id || !isStaffUser(user)) return;
+    if (new URLSearchParams(window.location.search).get("support_view") === "1") return;
     if (!wager.requested_admin || !wager.admin_request_ticket_id) return;
     if (["admin_joined", "resolved", "closed"].includes(wager.admin_request_status)) return;
     if (joinedAdminRooms.current.has(wager.id)) return;

@@ -166,14 +166,15 @@ export async function getSupportInboxSummary(db, user) {
 
 export async function deleteAdminTicket(db, user, payload = {}) {
   requireStaff(user, "admin");
-  const id = String(payload.id || "");
+  const id = typeof payload.id === "string" ? payload.id : "";
   const kind = payload.kind;
-  if (!id || !["ticket", "dispute"].includes(kind)) {
+  if (!id || id.length > 200 || !["ticket", "dispute"].includes(kind)) {
     throw Object.assign(new Error("Choose a ticket to delete."), { status: 400 });
   }
-  return db.$transaction(async (tx) => {
+  const run = () => db.$transaction(async (tx) => {
     const seed = await tx[kind].findUnique({ where: { id } });
-    if (!seed) throw Object.assign(new Error("Ticket no longer exists. Refresh the list."), { status: 404 });
+    if (!seed) return { success: true, already_deleted: true,
+      deleted_ticket_ids: kind === "ticket" ? [id] : [], deleted_dispute_ids: kind === "dispute" ? [id] : [] };
     const tickets = new Map(kind === "ticket" ? [[id, seed]] : []);
     const disputes = new Map(kind === "dispute" ? [[id, seed]] : []);
     // Follow both historical link directions, including shared legacy cases.
@@ -206,7 +207,12 @@ export async function deleteAdminTicket(db, user, payload = {}) {
         OR metadata->>'related_entity_id' IN (${idsSql([...recordIds, ...alertRows.map((row) => row.id)])})
         OR metadata->>'admin_alert_id' IN (${idsSql(alertRows.map((row) => row.id))})`;
     // Remove dead pointers only. Scores, rewards, match state and player history stay intact.
-    for (const table of ["Wager", "XPMatch", "RankedMatch", "TournamentMatch"]) {
+    // Older deployments may not have every match module installed. Referencing
+    // an absent optional table aborts the entire transaction, including the delete.
+    const installed = await tx.$queryRaw`SELECT tablename FROM pg_tables
+      WHERE schemaname = current_schema() AND tablename IN ('Wager', 'XPMatch', 'RankedMatch', 'TournamentMatch')`;
+    const matchTables = new Set(installed.map(row => row.tablename));
+    for (const table of ["Wager", "XPMatch", "RankedMatch", "TournamentMatch"].filter(table => matchTables.has(table))) {
       await tx.$executeRaw(Prisma.sql`UPDATE ${Prisma.raw(`"${table}"`)} SET metadata = metadata - ARRAY(
           SELECT key FROM (VALUES
             ('admin_request_ticket_id', metadata->>'admin_request_ticket_id' IN (${idsSql(ticketIds)})),
@@ -225,7 +231,11 @@ export async function deleteAdminTicket(db, user, payload = {}) {
       summary: `Deleted closed ticket ${id}`, details: { ticket_ids: ticketIds, dispute_ids: disputeIds },
     } } });
     return { success: true, deleted_ticket_ids: ticketIds, deleted_dispute_ids: disputeIds };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20000 });
+  for (let attempt = 0; ; attempt++) {
+    try { return await run(); }
+    catch (error) { if (error.code !== "P2034" || attempt >= 2) throw error; }
+  }
 }
 
 // Saving is staff organisation only: conversations and their existing notes remain intact.
