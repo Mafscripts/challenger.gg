@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { LogIn, UserRound, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import TurnstileCheck from "@/components/TurnstileCheck";
-import { bootstrapCurrentUser } from "@/lib/userBootstrap";
+import { bootstrapCurrentUser, rememberBootstrapSession } from "@/lib/userBootstrap";
 import { useAuth } from "@/lib/AuthContext";
 import { isRestriction } from "@/lib/accountRestriction";
 
@@ -48,8 +48,9 @@ export default function Login() {
     try {
       const normalizedIdentifier = identifier.trim().toLowerCase();
       const result = await base44.auth.loginViaEmailPassword(normalizedIdentifier, password, securityConfig.turnstile_required ? turnstileToken : undefined);
-      const currentUser = await bootstrapCurrentUser({ identifier: normalizedIdentifier, user: result?.user }).catch(() => result?.user || null);
+      const currentUser = result?.user?.id ? result.user : await bootstrapCurrentUser({ identifier: normalizedIdentifier }).catch(() => null);
       if (currentUser?.id) {
+        rememberBootstrapSession(currentUser.id);
         completeAuth(currentUser);
       } else {
         await checkUserAuth();

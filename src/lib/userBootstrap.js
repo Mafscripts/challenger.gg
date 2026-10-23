@@ -2,6 +2,13 @@ import { base44 } from "@/api/base44Client";
 
 let bootstrapPromise = null;
 
+// Password login already initializes records on the server before returning a user.
+export function rememberBootstrapSession(userId) {
+  if (!userId || typeof window === "undefined") return;
+  try { window.sessionStorage.setItem(`bootstrap:${userId}`, "1"); }
+  catch { /* Storage restrictions must not block a successful login. */ }
+}
+
 export function clearBootstrapSession(userId) {
   if (typeof window === "undefined") return;
   if (userId) {

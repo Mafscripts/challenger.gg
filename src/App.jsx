@@ -7,17 +7,17 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageLoader from '@/components/ui/PageLoader';
 import { FreeEightsLoadingProvider } from '@/components/competition/FreeEightsLoading';
 import ScrollToTop from './components/ScrollToTop';
-import Ranked from '@/pages/Ranked';
-import XP from '@/pages/XP';
-import RankedEights from '@/pages/RankedEights';
-import Wagers from '@/pages/Wagers';
-import Tournaments from '@/pages/Tournaments';
-import TournamentOverview from '@/pages/TournamentOverview';
 
 // Layout
 import PageLayout from '@/components/layout/PageLayout';
 
 // Pages are split by route so visitors only download the screen they open.
+const Ranked = lazy(() => import('@/pages/Ranked'));
+const XP = lazy(() => import('@/pages/XP'));
+const RankedEights = lazy(() => import('@/pages/RankedEights'));
+const Wagers = lazy(() => import('@/pages/Wagers'));
+const Tournaments = lazy(() => import('@/pages/Tournaments'));
+const TournamentOverview = lazy(() => import('@/pages/TournamentOverview'));
 const Home = lazy(() => import('@/pages/Home'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const StreamerTournaments = lazy(() => import('@/pages/StreamerTournaments'));
