@@ -1,4 +1,5 @@
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
+import { tournamentPayoutPolicy } from "@/lib/tournamentPayoutPolicy";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -662,7 +663,7 @@ export default function TournamentOverview() {
           </div>
         )}
         {activeTab === "rules" && (
-          <div className="overview-panel overview-rules mt-7 p-6"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Tournament rules</p><h2 className="mt-2 text-xl font-black">Format and fair play</h2><div className="mt-5 whitespace-pre-wrap text-sm leading-7 text-vapor">{tournament.rules || tournament.rules_text || tournament.description || "This event follows the Topfragg competitive rules, match reporting process, and dispute policy."}</div><Link to="/rules" className="mt-6 inline-flex rounded-lg border border-white/10 bg-secondary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:border-orange/25 hover:text-orange">View platform rules</Link></div>
+          <div className="overview-panel overview-rules mt-7 p-6"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Tournament rules</p><h2 className="mt-2 text-xl font-black">Format and fair play</h2><div className="mt-5 whitespace-pre-wrap text-sm leading-7 text-vapor">{tournament.rules || tournament.rules_text || tournament.description || "This event follows the Topfragg competitive rules, match reporting process, and dispute policy."}</div><section aria-label="Tournament prize payouts" className="mt-6 rounded-xl border border-orange/20 bg-orange/5 p-4"><h3 className="text-sm font-black text-white">Prize payouts</h3><div className="mt-3 space-y-4">{tournamentPayoutPolicy.map(policy => <div key={policy.title}><h4 className="text-xs font-bold text-orange">{policy.title}</h4><p className="mt-1 text-sm leading-6 text-vapor">{policy.text}</p></div>)}</div></section><Link to="/rules" className="mt-6 inline-flex rounded-lg border border-white/10 bg-secondary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:border-orange/25 hover:text-orange">View platform rules</Link></div>
         )}
       </div>
 
