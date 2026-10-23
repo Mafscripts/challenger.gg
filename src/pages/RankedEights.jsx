@@ -3,7 +3,7 @@ import StreamRequirementNotice from "@/components/competition/StreamRequirementN
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { freeEightsTeamSize } from "@/lib/freeEightsFormat";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, CalendarDays, Crown, Gamepad2, Plus } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, Plus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
@@ -23,7 +23,7 @@ import { useMatchfinderPosts } from "@/hooks/useMatchfinderPosts";
 import { useFreeEightsGames } from "@/hooks/useFreeEightsGames";
 import FreeEightsGameName from "@/components/competition/FreeEightsGameName";
 import { DEFAULT_EIGHTS_GAME, DEFAULT_EIGHTS_GAMES, eightsGameName, withMw4Preview } from "@/lib/freeEightsGames";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
 import FreeEightsTutorial from "@/components/competition/FreeEightsTutorial";
 import { monthlyEightsPrizeLabel, publicCommerceEnabled } from "@/lib/commerce";
 
@@ -248,7 +248,7 @@ export default function RankedEights() {
             </CompetitionMatchfinder>
             </>
           )}
-          action={<div className="competition-actions">{!isMoney && <FreeEightsTutorial />}{comingSoon ? (
+          action={<div className="competition-actions"><CompetitionGameSelect games={games} value={gameId} onChange={switchGame} />{!isMoney && <FreeEightsTutorial />}{comingSoon ? (
             <Link to="/ranked/8s?game=bo7" className="competition-action-pill">Play Black Ops <span className="text-orange">7</span><ArrowRight className="h-4 w-4" /></Link>
           ) : !isMoney && !freeOverview.data ? (
             <button type="button" disabled={!freeOverview.error || freeOverview.isFetching} onClick={() => refreshFreeOverview()} className="competition-action-pill">
@@ -262,19 +262,6 @@ export default function RankedEights() {
             <button onClick={() => setCreateOpen(true)} className="competition-action-pill">
               <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
             </button>
-          )}{(
-            <Select value={gameId} onValueChange={switchGame}>
-              <SelectTrigger aria-label="Switch game" title="Switch game" className="competition-action-pill competition-game-switch">
-                <Gamepad2 className="h-4 w-4 shrink-0 text-vapor" aria-hidden="true" /><span className="min-w-0"><SelectValue /></span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-white/10 bg-[#111821] text-white">
-                {games.map((game) => (
-                  <SelectItem key={game.id} value={game.id} className="cursor-pointer focus:!bg-transparent focus:!text-cyan data-[highlighted]:!bg-transparent data-[highlighted]:!text-cyan">
-                    <FreeEightsGameName game={game} />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           )}</div>}
         />
         {comingSoon && <div className="mw4-launch-notice"><span className="mw4-signal-status">Coming soon</span><p>MW4 has its own leaderboard. Matches open when the game and map pools are ready.</p><Link to="/ranked/8s?game=bo7">Play Black Ops 7 <ArrowRight className="h-4 w-4" /></Link></div>}
