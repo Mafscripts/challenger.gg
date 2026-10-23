@@ -22,7 +22,7 @@ export default function Sidebar({ accountActions }) {
   const { user } = useAuth();
   const profilePath = user ? `/profile/${encodeURIComponent(user.username || user.id)}` : "/profile";
   const sections = [
-    { label: "Your arena", items: [{ label: "Home", path: "/dashboard", icon: House, tone: "orange" }, { label: "My Profile", path: profilePath, icon: User, tone: "cyan" }] },
+    { label: "Your arena", items: [{ label: "Home", path: "/", icon: House, tone: "orange" }, { label: "My Profile", path: profilePath, icon: User, tone: "cyan" }] },
     ...mobileNavSections.filter((section) => section.label !== "Teams"),
     { label: "Community", items: [{ label: "Teams", path: "/teams", icon: Users, tone: "orange" }, { label: "My Tickets", path: "/my-tickets", icon: Ticket, tone: "orange" }] },
   ];
@@ -35,7 +35,7 @@ export default function Sidebar({ accountActions }) {
     </Link>;
   };
   return <aside className="layout-sidebar" aria-label="Sidebar navigation">
-    <Link to="/dashboard" className="layout-sidebar-brand" aria-label="Topfragg dashboard"><TopfraggLogo markClassName="h-9 w-9" wordmarkClassName="text-[16px]" /></Link>
+    <Link to="/" className="layout-sidebar-brand" aria-label="Topfragg home"><TopfraggLogo markClassName="h-9 w-9" wordmarkClassName="text-[16px]" /></Link>
     {accountActions && <div className="sidebar-account-controls app-topbar-v2">{accountActions}</div>}
     <nav className="layout-sidebar-nav" aria-label="Primary navigation">
       {sections.map((section) => <div key={section.label} className="layout-sidebar-section"><p>{section.label}</p>{section.items.map(navLink)}</div>)}

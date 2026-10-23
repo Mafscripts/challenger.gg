@@ -51,7 +51,7 @@ export default function VerifyEmail() {
       const result = await base44.auth.verifyOtp({ email, code });
       if (typeof window !== "undefined") window.sessionStorage.removeItem(`verification-code:${email}`);
       if (result?.user?.id) completeAuth(result.user);
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     } catch (err) {
       setError(err.message || "Verification failed");
     } finally {

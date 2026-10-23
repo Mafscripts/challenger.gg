@@ -1,3 +1,4 @@
+import { loginDestination } from "@/lib/loginDestination";
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -32,15 +33,8 @@ export default function Login() {
       } else {
         await checkUserAuth();
       }
-      let returnTo = "/dashboard";
       const requested = location.state?.returnTo || new URLSearchParams(location.search).get("returnTo");
-      if (typeof requested === "string" && requested) {
-        try {
-          const destination = new URL(requested, window.location.origin);
-          const authPage = /^\/(login|logout|register|verify-email|forgot-password|reset-password|change-password)\/?$/.test(destination.pathname);
-          if (destination.origin === window.location.origin && !destination.pathname.startsWith("//") && !authPage) returnTo = `${destination.pathname}${destination.search}${destination.hash}`;
-        } catch { /* Invalid return URLs use the dashboard. */ }
-      }
+      const returnTo = loginDestination(requested, window.location.origin);
       navigate(result?.password_change_required ? "/change-password" : returnTo, { replace: true });
     } catch (err) {
       if (isRestriction(err.data)) return;

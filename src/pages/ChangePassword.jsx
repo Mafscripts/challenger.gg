@@ -33,7 +33,7 @@ export default function ChangePassword() {
     try {
       await base44.auth.changePassword({ currentPassword, newPassword });
       await checkUserAuth({ force: true });
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     } catch (requestError) {
       setError(requestError.message || "Password could not be changed.");
     } finally {

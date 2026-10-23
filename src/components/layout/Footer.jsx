@@ -6,7 +6,7 @@ import { topfraggDiscordInviteUrl } from "@/lib/discordCommunity";
 
 const footerLinks = {
   Platform: [
-    { label: "Home", path: "/dashboard" },
+    { label: "Home", path: "/" },
     { label: "XP Matches", path: "/ranked" },
     { label: "Wagers", path: "/wagers" },
     { label: "Tournaments", path: "/tournaments" },

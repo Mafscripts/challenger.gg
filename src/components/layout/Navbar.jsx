@@ -1314,10 +1314,10 @@ export default function Navbar() {
                 </button>
               </div>
               <Link
-                to="/dashboard"
+                to="/"
                 onClick={closeMobileMenu}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
-                  isCurrentNavItemActive("/dashboard") ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
+                  isCurrentNavItemActive("/") ? "bg-orange/10 text-orange" : "text-vapor hover:bg-secondary hover:text-foreground"
                 }`}
               >
                 <House className="h-5 w-5" />
