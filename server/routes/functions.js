@@ -1,3 +1,4 @@
+import { tournamentVetoState, tournamentVetoPending, tournamentVetoMaps, tournamentVetoChoice } from "../../src/lib/tournamentMapVeto.js";
 import { buildTournamentStandings } from "../tournament-standings.js";
 import { PRIMARY_GAME_ID, MW4_MAP_POOLS, TOPFRAGG_VARIANT, storedGameId } from "../../src/lib/mw4.js";
 import { clearOwnNotifications } from "../clear-notifications.js";
@@ -1735,10 +1736,14 @@ function tournamentMatchSetupPatch(match, participants = [], tournament = null) 
   const teamASeed = match.team_a_seed || participantA?.seed || (match.team_a_id ? 1 : null);
   const teamBSeed = match.team_b_seed || participantB?.seed || (match.team_b_id ? 2 : null);
   const seededMatch = { ...match, game_id: tournamentGameId(tournament || match), team_a_seed: teamASeed, team_b_seed: teamBSeed };
-  const series = tournamentMapSeriesForMatch(seededMatch, tournament);
+  const fullSeries = tournamentMapSeriesForMatch(seededMatch, tournament);
+  const veto = tournamentVetoState(match, participants);
+  const vetoMatch = { ...match, map_veto: veto };
+  const banned = new Set(tournamentVetoMaps(vetoMatch));
+  const series = { ...fullSeries, games: fullSeries.games.map(game => ({ ...game, pool: game.pool.filter(map => !banned.has(String(map).trim().toLowerCase())) })) };
   const firstHost = firstHostForMatch(seededMatch, participantA, participantB);
   const generationKey = mapGenerationKey(seededMatch, series);
-  const maps = Array.isArray(match.maps) && match.maps.length === series.bestOf && match.map_generation_key === generationKey
+  const maps = tournamentVetoPending(vetoMatch) ? [] : Array.isArray(match.maps) && match.maps.length === series.bestOf && match.map_generation_key === generationKey
     ? match.maps
     : generatedTournamentMaps(seededMatch, participantA, participantB, series);
 
@@ -1755,7 +1760,8 @@ function tournamentMatchSetupPatch(match, participants = [], tournament = null) 
       game_mode: game.game_mode,
       mode: game.mode,
     })),
-    map_pool: [...new Set(series.games.flatMap((game) => game.pool))],
+    map_pool: [...new Set(fullSeries.games.flatMap((game) => game.pool))],
+    ...(veto ? { map_veto: veto } : {}),
     maps,
     team_a_seed: teamASeed,
     team_b_seed: teamBSeed,
@@ -1783,9 +1789,11 @@ function streamerMatchSetupPatch(match, tournament = null, participants = []) {
     base.map_pool?.length ? base.map_pool : streamerDefaultMapPool()
   );
   const roundOffset = Math.max(0, Number(match?.round || 1) - 1) * Math.max(1, base.maps.length || 1);
+  const banned = new Set(tournamentVetoMaps({ map_veto: base.map_veto }));
+  const remainingMaps = customMaps.filter(map => !banned.has(String(map).trim().toLowerCase()));
   const maps = base.maps.map((row, index) => ({
     ...row,
-    map: customMaps[(roundOffset + index) % customMaps.length] || row.map,
+    map: remainingMaps[(roundOffset + index) % remainingMaps.length] || row.map,
     selected_by: "streamer",
   }));
 
@@ -9172,8 +9180,43 @@ async function ensureTournamentMatchSetup(req) {
   ) {
     Object.assign(patch, tournamentStartWindowPatch(tournamentStartWindowBase(match, tournament)));
   }
-  const updated = await updateEntity("TournamentMatch", match.id, patch);
-  return { success: true, match: updated };
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT id FROM "TournamentMatch" WHERE id = ${match.id} FOR UPDATE`;
+    const raw = await tx.tournamentMatch.findUnique({ where: { id: match.id } });
+    const current = serializeRow(raw);
+    if (current.winner_id || (current.completed && current.status === "completed") || ["cancelled", "closed"].includes(current.status)) return { success: true, match: current };
+    const freshPatch = isStreamerTournament(tournament) ? streamerMatchSetupPatch(current, tournament, participants) : tournamentMatchSetupPatch(current, participants, tournament);
+    const updated = await tx.tournamentMatch.update({ where: { id: match.id }, data: { metadata: { ...raw.metadata, ...freshPatch, ...(patch.start_deadline && !current.start_deadline ? tournamentStartWindowPatch(tournamentStartWindowBase(current, tournament)) : {}), ...(current.completed && !current.winner_id ? { status: "ready", completed: false, completed_date: null, empty_bracket_slot: false } : {}) } } });
+    return { success: true, match: serializeRow(updated) };
+  });
+}
+
+async function vetoTournamentMap(req) {
+  const id = req.body.tournament_match_id || req.body.match_id;
+  if (typeof id !== "string" || !id) return { success: false, error: "Tournament match id is required" };
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT id FROM "TournamentMatch" WHERE id = ${id} FOR UPDATE`;
+    const raw = await tx.tournamentMatch.findUnique({ where: { id } });
+    if (!raw) return { success: false, error: "Tournament match not found" };
+    const match = serializeRow(raw);
+    const [participantRows, tournamentRow] = await Promise.all([
+      tx.tournamentParticipant.findMany({ where: { metadata: { path: ["tournament_id"], equals: match.tournament_id } } }),
+      tx.tournament.findUnique({ where: { id: match.tournament_id } }),
+    ]);
+    const tournament = serializeRow(tournamentRow);
+    if (!tournament || ["completed", "cancelled"].includes(tournament.status)) return { success: false, error: "This tournament is closed" };
+    const participants = participantRows.map(serializeRow);
+    const state = tournamentVetoState(match, participants);
+    const candidate = { ...match, map_veto: state };
+    const setup = isStreamerTournament(tournament) ? streamerMatchSetupPatch(candidate, tournament, participants) : tournamentMatchSetupPatch(candidate, participants, tournament);
+    const series = tournamentMapSeriesForMatch(candidate, tournament);
+    const pools = isStreamerTournament(tournament) && !tournament.map_pools ? [setup.map_pool] : series.games.map(game => game.pool);
+    const map_veto = tournamentVetoChoice(candidate, req.user.id, req.body.map_name, pools, nowIso());
+    const next = { ...candidate, map_veto };
+    const patch = isStreamerTournament(tournament) ? streamerMatchSetupPatch(next, tournament, participants) : tournamentMatchSetupPatch(next, participants, tournament);
+    const updated = await tx.tournamentMatch.update({ where: { id }, data: { metadata: { ...raw.metadata, ...patch, map_veto } } });
+    return { success: true, match: serializeRow(updated) };
+  });
 }
 
 async function startTournament(req) {
@@ -9377,6 +9420,8 @@ async function completeTournamentMatchUnlocked(req, matchId) {
   }
   const scoreError = tournamentScoreError(match, teamAScore, teamBScore);
   if (scoreError) return { success: false, error: scoreError };
+
+  if (tournamentVetoPending(match) && !canStaffOverride) return { success: false, error: "Both captains must veto one map before reporting a result." };
 
   if (canStaffOverride) {
     return finalizeTournamentMatch(match, teamAScore, teamBScore, {
@@ -10676,6 +10721,7 @@ const handlers = {
   generateTournamentBracket,
   resetTournamentBracket,
   ensureTournamentMatchSetup,
+  vetoTournamentMap,
   startTournament,
   syncTournamentLifecycle,
   completeTournamentMatch,

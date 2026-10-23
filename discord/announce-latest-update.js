@@ -1,3 +1,4 @@
+import { withAnimatedBrand } from "./brand-banner.js";
 import "dotenv/config";
 import { Client, EmbedBuilder, Events, GatewayIntentBits } from "discord.js";
 import { discordEnvironment, TOPFRAGG_COLORS } from "./config.js";
@@ -67,7 +68,7 @@ if (args.some((arg) => !["--preview", "--send"].includes(arg)) || args.includes(
       const channels = await guild.channels.fetch();
       const channel = channels.find((row) => row?.isTextBased() && ["📢・announcements", "announcements"].includes(row.name));
       if (!channel) throw new Error("Announcements channel was not found.");
-      await channel.send({ embeds: [embed.setTimestamp()], allowedMentions: { parse: [] } });
+      await channel.send(withAnimatedBrand({ embeds: [embed.setTimestamp()], allowedMentions: { parse: [] } }));
       console.log("[Topfragg Discord] Latest update announcement posted.");
     } catch (error) {
       console.error("[Topfragg Discord] Announcement failed:", error.message);

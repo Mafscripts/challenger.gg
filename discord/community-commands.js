@@ -1,3 +1,4 @@
+import { withAnimatedBrand } from "./brand-banner.js";
 import crypto from "node:crypto";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, MessageFlags, ModalBuilder, PermissionFlagsBits, TextInputBuilder, TextInputStyle } from "discord.js";
 import { TOPFRAGG_COLORS } from "./config.js";
@@ -33,7 +34,7 @@ export function parsePollMessage(value, guildId, channelId) {
 export function communityPayload(draft) {
   const ping = draft.everyone ? "@everyone\n\n" : "";
   const common = { allowedMentions: { parse: draft.everyone ? ["everyone"] : [] }, nonce: draft.id.replaceAll("-", "").slice(0, 24), enforceNonce: true };
-  if (draft.kind === "announce") return { ...common, content: `${ping}${draft.title ? `📢 **${draft.title}**\n\n` : ""}${draft.message}` };
+  if (draft.kind === "announce") return withAnimatedBrand({ ...common, content: `${ping}${draft.title ? `📢 **${draft.title}**\n\n` : ""}${draft.message}` });
   return { ...common, content: `${ping}📊 **Community poll**${draft.description ? `\n${draft.description}` : ""}`, poll: { question: { text: draft.question }, answers: draft.answers.map((text) => ({ text })), duration: draft.hours, allowMultiselect: draft.multiple } };
 }
 
@@ -45,7 +46,8 @@ function preview(draft) {
     .addFields({ name: "Voting", value: `${draft.hours} hours · ${draft.multiple ? "Multiple choices" : "One choice per member"}` });
   else embed.setDescription(`End **${draft.question}** early?\n[View poll](${draft.messageUrl})`);
   embed.addFields({ name: "Destination", value: `<#${draft.channelId}>`, inline: true }, { name: "Everyone ping", value: draft.everyone ? "Yes — @everyone" : "No", inline: true });
-  return { embeds: [embed], components: [controls(draft.id, draft.kind === "poll-end")], allowedMentions: { parse: [] } };
+  const payload = { embeds: [embed], components: [controls(draft.id, draft.kind === "poll-end")], allowedMentions: { parse: [] } };
+  return draft.kind === "announce" ? withAnimatedBrand(payload) : payload;
 }
 
 export function createCommunityCommandHandler({ guildId, publicUrl, findChannel, log = async () => {}, now = Date.now }) {

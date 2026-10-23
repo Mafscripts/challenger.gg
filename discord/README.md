@@ -2,6 +2,19 @@
 
 This folder contains the private Topfragg Discord bot and an idempotent server setup command. The setup only creates or updates Topfragg-managed resources; it does not delete unrelated roles or channels.
 
+## Animated announcement banner
+
+Public `/announce` posts (including their private preview), tournament announcements,
+results and live-match notices use `withAnimatedBrand` from `brand-banner.js`.
+The helper attaches `public/assets/discord/topfragg-signal.gif` in a separate image
+embed, preserving the original poster, message, links and mention permissions.
+It does not send messages itself. Direct messages and polls keep their existing layout.
+
+The checked-in GIF loops for nine seconds and uses the original `public/topfragg-mark.svg`.
+Its rendering source is `discord/render-brand-banner.py` (Pillow and numpy, with a
+rasterized copy of the original logo supplied through `--logo`). Generation is a
+local design step; the running bot only needs the finished GIF.
+
 ## 1. Configure the secret locally
 
 Open the repository's `.env` file and add:

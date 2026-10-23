@@ -1,3 +1,4 @@
+import { withAnimatedBrand } from "./brand-banner.js";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -246,13 +247,13 @@ export async function syncTournamentDiscord(guild, client, { publicUrl, findChan
 
     const announcementKey = `tournament-announcement:${tournament.id}`;
     if (tournamentChannel && !await wasDispatched(announcementKey)) {
-      await tournamentChannel.send({
+      await tournamentChannel.send(withAnimatedBrand({
         embeds: [tournamentEmbed(tournament)],
         components: [new ActionRowBuilder().addComponents(
           new ButtonBuilder().setLabel("Join on Topfragg").setEmoji("🎮").setStyle(ButtonStyle.Link).setURL(eventUrl(publicUrl, tournament)),
         )],
         allowedMentions: { parse: [] },
-      });
+      }));
       await markDispatched(announcementKey, { tournament_id: tournament.id });
       log(`Posted tournament announcement: ${tournament.name || tournament.id}`);
     }
@@ -271,13 +272,13 @@ export async function syncTournamentDiscord(guild, client, { publicUrl, findChan
     if (!tournament || !complete || !row.winner_name || !finished || finished < now - (7 * 24 * HOUR)) continue;
     const resultKey = `tournament-result:${row.id}:${new Date(row.completed_date || row.updated_date).toISOString()}`;
     if (!resultsChannel || await wasDispatched(resultKey)) continue;
-    await resultsChannel.send({
+    await resultsChannel.send(withAnimatedBrand({
       embeds: [resultEmbed(tournament, row)],
       components: [new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel("Open match").setStyle(ButtonStyle.Link).setURL(`${publicUrl}/tournament-match/${encodeURIComponent(row.id)}`),
       )],
       allowedMentions: { parse: [] },
-    });
+    }));
     await markDispatched(resultKey, { tournament_id: tournament.id, match_id: row.id });
     log(`Posted match result: ${row.team_a_name || "Team A"} vs ${row.team_b_name || "Team B"}`);
   }
@@ -288,13 +289,13 @@ export async function syncTournamentDiscord(guild, client, { publicUrl, findChan
     if (!tournament || !isLive || !liveChannel) continue;
     const liveKey = `tournament-live:${row.id}`;
     if (await wasDispatched(liveKey)) continue;
-    await liveChannel.send({
+    await liveChannel.send(withAnimatedBrand({
       embeds: [liveMatchEmbed(tournament, row)],
       components: [new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel("Follow match").setStyle(ButtonStyle.Link).setURL(`${publicUrl}/tournament-match/${encodeURIComponent(row.id)}`),
       )],
       allowedMentions: { parse: [] },
-    });
+    }));
     await markDispatched(liveKey, { tournament_id: tournament.id, match_id: row.id });
     log(`Posted live match: ${row.team_a_name || "Team A"} vs ${row.team_b_name || "Team B"}`);
   }

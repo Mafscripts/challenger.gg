@@ -1,3 +1,4 @@
+import { withAnimatedBrand } from "./brand-banner.js";
 import "dotenv/config";
 import { fileURLToPath } from "node:url";
 import {
@@ -47,11 +48,11 @@ client.once(Events.ClientReady, async () => {
       { name: imageName },
     );
 
-    await channel.send({
+    await channel.send(withAnimatedBrand({
       embeds: [buildEmbed()],
       files: [attachment],
       allowedMentions: { parse: [] },
-    });
+    }));
     console.log("[Topfragg Discord] Mobile update announcement posted.");
   } catch (error) {
     console.error("[Topfragg Discord] Mobile announcement failed:", error);

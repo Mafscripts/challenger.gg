@@ -1,3 +1,5 @@
+import TournamentMapVeto from "@/components/tournaments/TournamentMapVeto";
+import { tournamentVetoPending } from "@/lib/tournamentMapVeto";
 import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
@@ -981,10 +983,11 @@ function TournamentMatchRoomView() {
       match?.team_a_id
       && match?.team_b_id
       && !isComplete
+      && (!tournamentVetoPending(match) || canStaffSubmitResult)
       && (isMatchParticipant || canStaffSubmitResult)
       && (!["disputed", "score_conflict"].includes(match?.status) || canStaffSubmitResult)
     )
-  ), [match?.team_a_id, match?.team_b_id, match?.status, isMatchParticipant, canStaffSubmitResult, isComplete]);
+  ), [match?.team_a_id, match?.team_b_id, match?.status, match?.map_veto, isMatchParticipant, canStaffSubmitResult, isComplete]);
   const bestOf = tournamentBestOf(match);
   const winsNeeded = tournamentRequiredWins(match);
   const scoreValidationError = tournamentScoreError(match, scoreA, scoreB);
@@ -1431,6 +1434,7 @@ function TournamentMatchRoomView() {
                 isWinner={isTeamBWinner}
                 finalScore={match.team_b_score || 0}
               />
+              <TournamentMapVeto match={match} user={user} onUpdated={setMatch} />
               <MatchMapSeries
                 maps={tournamentMapPicks}
                 gameId={match.game_id || tournament?.game_id || "bo7"}
@@ -1442,7 +1446,7 @@ function TournamentMatchRoomView() {
                 compact
                 list
                 note={match.is_forfeit ? "Series ended by forfeit. Individual map results are not shown here." : ""}
-                emptyText={match.team_a_id && match.team_b_id ? "No map series is available for this match." : "Map series is awaiting team assignment."}
+                emptyText={tournamentVetoPending(match) ? "Waiting for both captains to veto a map." : match.team_a_id && match.team_b_id ? "No map series is available for this match." : "Map series is awaiting team assignment."}
               />
           </>
         )} sidebar={canChat ? (
