@@ -17,5 +17,5 @@ export default function WebcamOverlay() {
     return () => window.removeEventListener("resize", resize);
   }, []);
   const scale = Math.min(viewport.width / dimensions.width, viewport.height / dimensions.height);
-  return <main className="webcam-overlay-page">{data ? <div style={{ width: dimensions.width, height: dimensions.height, transform: `scale(${scale})`, transformOrigin: "top left" }}><WebcamFrame name={data.player.username || data.player.display_name} theme={theme} ratio={ratio} stale={stale} /></div> : <div className="stream-overlay-status" role="status">{loading ? "Loading webcam frame…" : error}</div>}</main>;
+  return <main className="webcam-overlay-page">{data ? <div style={{ width: dimensions.width, height: dimensions.height, transform: `scale(${scale})`, transformOrigin: "top left" }}><WebcamFrame name={data.player.display_name || data.player.username} theme={theme} ratio={ratio} stale={stale} /></div> : <div className="stream-overlay-status" role="status">{loading ? "Loading webcam frame…" : error}</div>}</main>;
 }
