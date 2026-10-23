@@ -266,3 +266,10 @@
 
 .admin-tickets .at-empty-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
 .admin-tickets .at-list-heading>span{line-height:1.6}
+
+.admin-tickets .at-bulk-action-row{display:flex;gap:7px;flex-wrap:wrap;width:100%}
+.support-delete-dialog .support-cleanup-reason{display:grid;gap:7px;color:#a9c5d6;font-size:12px}
+.support-delete-dialog textarea{width:100%;min-height:70px;resize:vertical;border:1px solid #385364;border-radius:8px;background:#0b1924;color:#dceaf4;padding:10px}
+.support-delete-dialog .support-cleanup-delete{display:flex;align-items:flex-start;gap:9px;font-size:12px;color:#ffb5bd;line-height:1.6}
+.support-delete-dialog .support-cleanup-delete input{margin-top:4px;accent-color:#ed657e}
+.support-delete-dialog .at-button-close{color:#ffca8b;border-color:#ca8b4666;background:#6d4b2522}

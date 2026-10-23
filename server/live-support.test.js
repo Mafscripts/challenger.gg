@@ -188,8 +188,9 @@ test("record pages are bounded and search strings stay SQL parameters", async ()
   assert.equal(result.rows[0].notes, undefined);
 });
 
-test("only admins delete completed support conversations, including favorites and archived records", async () => {
+test("only CEO and Developer delete completed support conversations, including favorites and archived records", async () => {
   for (const flag of ["support_favorite", "support_archived"]) {
+    const cleanup = { ...admin, role: "ceo" };
     const s = store(), { ticket } = await sendLiveSupport(s.db, player, request());
     const row = s.tickets.get(ticket.id); row.metadata[flag] = true;
     const audits = [];
@@ -202,13 +203,13 @@ test("only admins delete completed support conversations, including favorites an
     s.db.dispute = { deleteMany: async () => {} };
     s.db.ticket.deleteMany = async ({ where }) => where.id.in.forEach(id => s.tickets.delete(id));
     s.db.adminAction = { create: async ({ data }) => audits.push(data.metadata) };
-    for (const actor of [player, { id: "mod", role: "moderator" }, { id: "other", role: "developer" }]) {
+    for (const actor of [player, admin, { id: "mod", role: "moderator" }]) {
       await assert.rejects(() => deleteAdminTicket(s.db, actor, { id: ticket.id, kind: "ticket" }), error => error.status === 403);
     }
-    await assert.rejects(() => deleteAdminTicket(s.db, admin, { id: ticket.id, kind: "ticket" }), error => error.status === 409);
+    await assert.rejects(() => deleteAdminTicket(s.db, cleanup, { id: ticket.id, kind: "ticket" }), error => error.status === 409);
     assert.equal(s.messages.length, 1);
     row.metadata.status = "closed";
-    const result = await deleteAdminTicket(s.db, admin, { id: ticket.id, kind: "ticket" });
+    const result = await deleteAdminTicket(s.db, cleanup, { id: ticket.id, kind: "ticket" });
     assert.deepEqual(result.deleted_ticket_ids, [ticket.id]);
     assert.equal(s.tickets.has(ticket.id), false);
     assert.equal(s.messages.length, 0);

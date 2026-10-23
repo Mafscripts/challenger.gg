@@ -19,7 +19,7 @@ import { activeProgressionSeason, progressionResetOverview, resetProgression } f
 import { matchAfterProgressionReset } from "../../src/lib/progressionResets.js";
 import { Router } from "express";
 import { prisma } from "../prisma.js";
-import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket, getSupportInboxSummary, saveSupportCase, markSupportCaseRead } from "../admin-tickets.js";
+import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket, getSupportInboxSummary, saveSupportCase, markSupportCaseRead, closeSupportCaseForCleanup } from "../admin-tickets.js";
 import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount, setAdminUserVpnAccess } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
 import { getAdminDashboard } from "../admin-dashboard.js";
@@ -10598,6 +10598,7 @@ const handlers = {
   claimSupportDispute: async req => ({ success: true, dispute: (await claimSupportTicket(prisma, req.user, { dispute_id: req.body.dispute_id, take_over: req.body.take_over })).ticket }),
   getSupportInboxSummary: req => getSupportInboxSummary(prisma, req.user),
   getAdminTicketCounts: (req) => getAdminTicketCounts(prisma, req.user),
+  closeSupportCaseForCleanup: (req) => closeSupportCaseForCleanup(prisma, req.user, req.body),
   deleteAdminTicket: (req) => deleteAdminTicket(prisma, req.user, req.body),
   completeRegistration,
   createWallet: completeRegistration,

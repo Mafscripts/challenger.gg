@@ -3,8 +3,7 @@ import { Archive, ArchiveRestore, Bookmark, CheckCheck, Download, FolderArchive,
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { base44 } from "@/api/base44Client";
-import { isStaffSupportMessage, liveSupportClosed } from "@/lib/liveSupport";
-import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
+import { isStaffSupportMessage, liveSupportClosed, canManageSupportCleanup } from "@/lib/liveSupport";
 import { useAuth } from "@/lib/AuthContext";
 import "./support-records.css";
 
@@ -40,7 +39,7 @@ export default function SupportRecords({ className = "support-records-trigger" }
 function RecordsContent({ onClose }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const canDelete = hasRolePower(effectiveRoleForUser(user), "admin");
+  const canDelete = canManageSupportCleanup(user);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [filter, setFilter] = useState("all"), [search, setSearch] = useState(""), [page, setPage] = useState(0);
   const [result, setResult] = useState({ rows: [], next_page: null }), [selected, setSelected] = useState(null);

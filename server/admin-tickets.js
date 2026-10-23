@@ -9,6 +9,9 @@ const requireStaff = (user, role = "moderator") => {
   if (hasRole(user, role)) return;
   throw Object.assign(new Error(`${role} access required`), { status: 403 });
 };
+export const canManageSupportCleanup = user => [user?.role, user?.admin_role].some(role => ["ceo", "developer"].includes(String(role || "").toLowerCase()));
+const requireCleanup = user => { if (!canManageSupportCleanup(user)) throw Object.assign(new Error("Only CEO and Developer can permanently delete support cases."), { status: 403 }); };
+const requireBulkClose = user => { if (!hasRole(user, "admin") && !canManageSupportCleanup(user)) throw Object.assign(new Error("Admin access required to close cases in bulk."), { status: 403 }); };
 const idsSql = (ids) => ids.length ? Prisma.join(ids) : Prisma.sql`NULL`;
 
 // A match complaint belongs to its conversation. Older complaints without a
@@ -106,13 +109,22 @@ export async function getAdminTickets(db, user, payload = {}) {
     : payload.view === "saved" ? Prisma.sql`saved` : Prisma.sql`TRUE`;
   const search = typeof payload.search === "string" ? payload.search.trim().slice(0, 150) : "";
   const searchSql = search ? Prisma.sql`strpos(lower(search_text), lower(${search})) > 0` : Prisma.sql`TRUE`;
+  // Prisma reads timestamp-without-time-zone as UTC. Passing a Date back as a
+  // timestamptz shifts the boundary in non-UTC sessions and repeats whole pages.
   const cursorSql = cursor
-    ? Prisma.sql`(priority, created_date, kind, id) < (${cursor.priority}, ${cursor.date}, ${cursor.kind}, ${cursor.id})`
+    ? Prisma.sql`(priority, created_date, kind, id) < (${cursor.priority}, ${cursor.date.toISOString().slice(0, -1)}::timestamp, ${cursor.kind}, ${cursor.id})`
     : Prisma.sql`TRUE`;
   const candidates = await db.$queryRaw`${queueSql}
     SELECT * FROM queue WHERE ${statusSql} AND ${categorySql} AND ${selectedSql} AND ${viewSql} AND ${searchSql} AND ${cursorSql}
-    ORDER BY priority DESC, created_date DESC, kind DESC, id DESC LIMIT 11`;
-  const page = candidates.slice(0, 10);
+    ORDER BY priority DESC, created_date DESC, kind DESC, id DESC LIMIT ${payload.selection_only === true ? 101 : 11}`;
+  const limit = payload.selection_only === true ? 100 : 10;
+  const page = candidates.slice(0, limit);
+  if (payload.selection_only === true) {
+    requireBulkClose(user);
+    const last = page.at(-1);
+    return { success: true, rows: page.map(row => ({ id: `${row.kind}:${row.id}`, record_id: row.id, kind: row.kind, closed: row.closed })),
+      next_cursor: candidates.length > limit && last ? Buffer.from(JSON.stringify({ date: last.created_date.toISOString(), kind: last.kind, id: last.id, priority: last.priority || 0 })).toString("base64url") : null };
+  }
   const ticketIds = page.filter((row) => row.kind === "ticket").map((row) => row.id);
   const orphanIds = page.filter((row) => row.kind === "dispute").map((row) => row.id);
   const tickets = ticketIds.length ? await db.ticket.findMany({ where: { id: { in: ticketIds } } }) : [];
@@ -165,32 +177,16 @@ export async function getSupportInboxSummary(db, user) {
 }
 
 export async function deleteAdminTicket(db, user, payload = {}) {
-  requireStaff(user, "admin");
+  requireCleanup(user);
   const id = typeof payload.id === "string" ? payload.id : "";
   const kind = payload.kind;
   if (!id || id.length > 200 || !["ticket", "dispute"].includes(kind)) {
     throw Object.assign(new Error("Choose a ticket to delete."), { status: 400 });
   }
   const run = () => db.$transaction(async (tx) => {
-    const seed = await tx[kind].findUnique({ where: { id } });
-    if (!seed) return { success: true, already_deleted: true,
-      deleted_ticket_ids: kind === "ticket" ? [id] : [], deleted_dispute_ids: kind === "dispute" ? [id] : [] };
-    const tickets = new Map(kind === "ticket" ? [[id, seed]] : []);
-    const disputes = new Map(kind === "dispute" ? [[id, seed]] : []);
-    // Follow both historical link directions, including shared legacy cases.
-    let previousSize = -1;
-    while (previousSize !== tickets.size + disputes.size) {
-      previousSize = tickets.size + disputes.size;
-      const ticketIds = [...tickets.keys()];
-      const disputeIds = [...new Set([...disputes.keys(), ...[...tickets.values()].map((row) => row.metadata?.dispute_id).filter(Boolean)])];
-      const linkedDisputes = await tx.$queryRaw`SELECT * FROM "Dispute"
-        WHERE id IN (${idsSql(disputeIds)}) OR metadata->>'ticket_id' IN (${idsSql(ticketIds)})`;
-      linkedDisputes.forEach((row) => disputes.set(row.id, row));
-      const linkedTicketIds = [...new Set([...ticketIds, ...[...disputes.values()].map((row) => row.metadata?.ticket_id).filter(Boolean)])];
-      const linkedTickets = await tx.$queryRaw`SELECT * FROM "Ticket"
-        WHERE id IN (${idsSql(linkedTicketIds)}) OR metadata->>'dispute_id' IN (${idsSql([...disputes.keys()])})`;
-      linkedTickets.forEach((row) => tickets.set(row.id, row));
-    }
+    const group = await supportCaseGroup(tx, kind, id);
+    if (!group) return { success: true, already_deleted: true, deleted_ticket_ids: kind === "ticket" ? [id] : [], deleted_dispute_ids: kind === "dispute" ? [id] : [] };
+    const { tickets, disputes } = group;
     if ([...tickets.values(), ...disputes.values()].some((row) => !closed(row))) {
       throw Object.assign(new Error("Resolve or close this ticket and its linked match cases before deleting it."), { status: 409 });
     }
@@ -266,4 +262,59 @@ export async function markSupportCaseRead(db, user, payload = {}) {
   const updated = await db.$executeRaw`UPDATE ${table} SET metadata = jsonb_set(metadata, '{support_inbox_reads}', COALESCE(metadata->'support_inbox_reads', '{}'::jsonb) || jsonb_build_object(${user.id}::text, ${payload.token}::text)) WHERE id = ${payload.id}`;
   if (!updated) throw Object.assign(new Error("Conversation no longer exists."), { status: 404 });
   return { success: true };
+}
+
+async function supportCaseGroup(tx, kind, id) {
+    const seed = await tx[kind].findUnique({ where: { id } });
+    if (!seed) return null;
+    const tickets = new Map(kind === "ticket" ? [[id, seed]] : []);
+    const disputes = new Map(kind === "dispute" ? [[id, seed]] : []);
+    // Follow both historical link directions, including shared legacy cases.
+    let previousSize = -1;
+    while (previousSize !== tickets.size + disputes.size) {
+      previousSize = tickets.size + disputes.size;
+      const ticketIds = [...tickets.keys()];
+      const disputeIds = [...new Set([...disputes.keys(), ...[...tickets.values()].map((row) => row.metadata?.dispute_id).filter(Boolean)])];
+      const linkedDisputes = await tx.$queryRaw`SELECT * FROM "Dispute"
+        WHERE id IN (${idsSql(disputeIds)}) OR metadata->>'ticket_id' IN (${idsSql(ticketIds)})`;
+      linkedDisputes.forEach((row) => disputes.set(row.id, row));
+      const linkedTicketIds = [...new Set([...ticketIds, ...[...disputes.values()].map((row) => row.metadata?.ticket_id).filter(Boolean)])];
+      const linkedTickets = await tx.$queryRaw`SELECT * FROM "Ticket"
+        WHERE id IN (${idsSql(linkedTicketIds)}) OR metadata->>'dispute_id' IN (${idsSql([...disputes.keys()])})`;
+      linkedTickets.forEach((row) => tickets.set(row.id, row));
+    }
+    return { tickets, disputes };
+}
+
+export async function closeSupportCaseForCleanup(db, user, payload = {}) {
+  requireBulkClose(user);
+  if (!["ticket", "dispute"].includes(payload.kind) || typeof payload.id !== "string" || !payload.id || payload.id.length > 200 || typeof payload.reason !== "string" || !payload.reason.trim() || payload.reason.length > 1000) {
+    throw Object.assign(new Error("Choose a support case and give a cleanup reason."), { status: 400 });
+  }
+  const run = () => db.$transaction(async tx => {
+    const group = await supportCaseGroup(tx, payload.kind, payload.id);
+    if (!group) return { success: true, already_deleted: true, closed_ticket_ids: [], closed_dispute_ids: [] };
+    const timestamp = new Date().toISOString(), name = user.display_name || user.username || "Staff";
+    for (const [kind, records] of [["ticket", group.tickets], ["dispute", group.disputes]]) {
+      for (const record of records.values()) {
+        if (closed(record)) continue;
+        await tx[kind].update({ where: { id: record.id }, data: { metadata: { ...record.metadata,
+          status: "closed", resolution: payload.reason.trim(), resolved_by: user.id, resolved_by_name: name, resolved_date: timestamp,
+          support_cleanup: true,
+          support_record_history: [...(record.metadata?.support_record_history || []), { action: "season_cleanup", actor_id: user.id, actor_name: name, description: payload.reason.trim(), created_date: timestamp }],
+        } } });
+      }
+    }
+    const ticketIds = [...group.tickets.keys()], disputeIds = [...group.disputes.keys()];
+    const installed = await tx.$queryRaw`SELECT tablename FROM pg_tables WHERE schemaname = current_schema() AND tablename IN ('Wager', 'XPMatch', 'RankedMatch', 'TournamentMatch')`;
+    for (const table of installed.map(row => row.tablename).filter(table => ["Wager", "XPMatch", "RankedMatch", "TournamentMatch"].includes(table))) {
+      await tx.$executeRaw(Prisma.sql`UPDATE ${Prisma.raw(`"${table}"`)} SET metadata = metadata || jsonb_build_object('admin_request_status', 'resolved', 'requested_admin', false, 'admin_request_resolved_date', ${timestamp}::text)
+        WHERE metadata->>'admin_request_ticket_id' IN (${idsSql(ticketIds)}) OR metadata->>'support_ticket_id' IN (${idsSql(ticketIds)})`);
+    }
+    await tx.$executeRaw`UPDATE "AdminAlert" SET metadata = metadata || '{"status":"resolved"}'::jsonb WHERE metadata->>'ticket_id' IN (${idsSql(ticketIds)}) OR metadata->>'dispute_id' IN (${idsSql(disputeIds)})`;
+    await tx.adminAction.create({ data: { metadata: { admin_id: user.id, admin_name: name, action: "support_season_cleanup", entity_type: "Ticket", entity_id: payload.id,
+      summary: payload.reason.trim(), details: { ticket_ids: ticketIds, dispute_ids: disputeIds } } } });
+    return { success: true, closed_ticket_ids: ticketIds, closed_dispute_ids: disputeIds };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20000 });
+  for (let attempt = 0; ; attempt++) { try { return await run(); } catch (error) { if (error.code !== "P2034" || attempt >= 2) throw error; } }
 }

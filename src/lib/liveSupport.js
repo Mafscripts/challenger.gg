@@ -13,3 +13,5 @@ export function supportTicketForViewer(ticket, user) {
   if (Array.isArray(result.messages)) result.messages = result.messages.filter(message => !message.internal);
   return result;
 }
+
+export const canManageSupportCleanup = user => [user?.role, user?.admin_role].some(role => ["ceo", "developer"].includes(String(role || "").toLowerCase()));

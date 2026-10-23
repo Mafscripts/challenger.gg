@@ -171,9 +171,9 @@ test("deletion retries serialization conflicts and handles a case already delete
     if (++attempts < 3) throw Object.assign(new Error("Concurrent change"), { code: "P2034" });
     return fn({ ticket: { findUnique: async () => null } });
   } };
-  const result = await deleteAdminTicket(db, { role: "admin", id: "staff" }, { id: "gone", kind: "ticket" });
+  const result = await deleteAdminTicket(db, { role: "ceo", id: "staff" }, { id: "gone", kind: "ticket" });
   assert.equal(attempts, 3);
   assert.equal(result.success, true);
   assert.deepEqual(result.deleted_ticket_ids, ["gone"]);
-  await assert.rejects(() => deleteAdminTicket(db, { role: "admin" }, { id: {}, kind: "ticket" }), error => error.status === 400);
+  await assert.rejects(() => deleteAdminTicket(db, { role: "ceo" }, { id: {}, kind: "ticket" }), error => error.status === 400);
 });
