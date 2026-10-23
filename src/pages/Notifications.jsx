@@ -8,12 +8,15 @@ import AccountPageHero from "@/components/ui/AccountPageHero";
 import PageLoader from "@/components/ui/PageLoader";
 import { isCurrentNotification } from "@/lib/notificationRetention";
 import { applyNotificationChange } from "@/lib/notificationInbox";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [removingAll, setRemovingAll] = useState(false);
+  const [confirmRemoveAll, setConfirmRemoveAll] = useState(false);
+  const removalPending = useRef(false);
   const [loadError, setLoadError] = useState(false);
   const requestId = useRef(0);
   const pendingReads = useRef(new Set());
@@ -55,6 +58,7 @@ export default function Notifications() {
   }, []);
 
   const loadNotifications = async () => {
+    if (removalPending.current) return;
     const currentRequest = ++requestId.current;
     try {
       const user = await base44.auth.me();
@@ -78,6 +82,7 @@ export default function Notifications() {
   };
 
   const markAsRead = async (id) => {
+    if (removalPending.current) return;
     const notification = notifications.find(n => n.id === id);
     if (!notification || pendingReads.current.has(id) || (notification.is_read && notification.type !== "dispute")) return;
     pendingReads.current.add(id);
@@ -100,6 +105,7 @@ export default function Notifications() {
   };
 
   const markAllAsRead = async () => {
+    if (removalPending.current) return;
     try {
       const unread = notifications.filter(n => !n.is_read);
       await Promise.all(unread.map(n => base44.entities.Notification.update(n.id, { is_read: true })));
@@ -113,6 +119,7 @@ export default function Notifications() {
   };
 
   const deleteNotification = async (id) => {
+    if (removalPending.current) return;
     try {
       const notification = notifications.find(n => n.id === id);
       await base44.entities.Notification.delete(id);
@@ -131,49 +138,25 @@ export default function Notifications() {
   };
 
   const deleteAllNotifications = async () => {
-    if (notifications.length === 0 || removingAll) return;
-    if (!window.confirm("Remove all notifications? This cannot be undone.")) return;
-
+    if (!notifications.length || removalPending.current) return;
+    removalPending.current = true;
+    requestId.current += 1;
     setRemovingAll(true);
     try {
-      const user = await base44.auth.me();
-      let batchesRemoved = 0;
-
-      while (batchesRemoved < 20) {
-        const rows = await base44.entities.Notification.filterFresh(
-          { user_id: user.id },
-          "-created_date",
-          500
-        );
-        if (!rows?.length) break;
-
-        const disputeNotifications = rows.filter((notification) => notification.type === "dispute");
-        await Promise.all(disputeNotifications.map(acknowledgeDisputeNotification));
-
-        for (let index = 0; index < rows.length; index += 25) {
-          const batch = rows.slice(index, index + 25);
-          await Promise.all(batch.map(notification => base44.entities.Notification.delete(notification.id)));
-        }
-        batchesRemoved += 1;
-      }
-
-      const remaining = await base44.entities.Notification.filterFresh(
-        { user_id: user.id },
-        "-created_date",
-        1
-      );
-      if (remaining?.length) throw new Error("Notification cleanup did not finish");
-
+      const { data } = await base44.functions.invoke("clearNotifications", {});
+      if (!data?.success) throw new Error(data?.error || "Could not remove notifications");
       setNotifications([]);
       setFilter("all");
+      setConfirmRemoveAll(false);
       syncNotificationBell({ unreadCount: 0, clearAll: true });
-      toast({ title: "Notifications removed", description: "All notifications have been deleted" });
+      toast({ title: "Notifications removed", description: "All your notifications have been deleted" });
     } catch (error) {
-      console.error('Failed to remove all notifications:', error);
-      toast({ title: "Error", description: "Not all notifications could be removed", variant: "destructive" });
-      await loadNotifications();
+      console.error("Failed to remove all notifications:", error);
+      toast({ title: "Error", description: "Could not remove notifications. Please try again.", variant: "destructive" });
     } finally {
+      removalPending.current = false;
       setRemovingAll(false);
+      syncNotificationBell({ refresh: true });
     }
   };
 
@@ -192,6 +175,13 @@ export default function Notifications() {
   return (
     <div className="account-page notifications-page competition-surface page-shell" data-competition="notifications">
       <div className="page-container">
+        <AlertDialog open={confirmRemoveAll} onOpenChange={open => { if (!removingAll) setConfirmRemoveAll(open); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader><AlertDialogTitle>Remove all notifications?</AlertDialogTitle><AlertDialogDescription>This deletes all your notifications, including read and unread updates. This cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+            <AlertDialogFooter><AlertDialogCancel disabled={removingAll}>Cancel</AlertDialogCancel><AlertDialogAction disabled={removingAll} onClick={event => { event.preventDefault(); deleteAllNotifications(); }}>{removingAll ? "Removing…" : "Remove All"}</AlertDialogAction></AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <AccountPageHero
           mode="notifications"
           count={notifications.length} countLabel="notifications" metadata={`${unreadCount} unread`}
@@ -199,13 +189,13 @@ export default function Notifications() {
           action={<div className="flex flex-wrap items-center gap-2">
             <button
               onClick={markAllAsRead}
-              disabled={unreadCount === 0}
+              disabled={unreadCount === 0 || removingAll}
               className="competition-action-pill account-primary-action"
             >
               <CheckCheck className="w-4 h-4" /> Mark All Read
             </button>
             <button
-              onClick={deleteAllNotifications}
+              onClick={() => setConfirmRemoveAll(true)}
               disabled={notifications.length === 0 || removingAll}
               className="competition-action-pill account-danger-action"
             >

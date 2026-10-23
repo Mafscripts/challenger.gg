@@ -1,5 +1,6 @@
 import { buildTournamentStandings } from "../tournament-standings.js";
 import { PRIMARY_GAME_ID, MW4_MAP_POOLS, storedGameId } from "../../src/lib/mw4.js";
+import { clearOwnNotifications } from "../clear-notifications.js";
 import { settleWagerPayout } from "../wager-payout.js";
 import { commerceAllowed } from "../commerce.js";
 import { readEightsRoster, saveEightsTeams } from "../eights-roster.js";
@@ -10672,6 +10673,10 @@ const handlers = {
   completeTournament: async (req) => ({ success: true, tournament: await completeTournament(req.body.tournament_id, req.body.winner_id, req.body.winner_name) }),
   createDispute,
   acknowledgeDispute,
+  clearNotifications: (req) => clearOwnNotifications(prisma, req.user.id, {
+    acknowledgeDispute: hasRole(req.user, "moderator")
+      ? id => suppressDisputePopups(id, req.user).catch(() => null) : undefined,
+  }),
   escalateDispute,
   moderateDispute,
   updateUserRole,
