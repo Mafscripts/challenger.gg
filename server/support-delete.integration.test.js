@@ -19,16 +19,14 @@ test("database deletion removes linked records and messages, preserves results, 
       const scopedDb = { $transaction: fn => fn(tx) }, admin = { id: "rollback-test-admin", role: "ceo" };
       await assert.rejects(() => deleteAdminTicket(scopedDb, { id: "mod", role: "moderator" }, { kind: "ticket", id: ticket.id }), error => error.status === 403);
       await tx.dispute.update({ where: { id: dispute.id }, data: { metadata: { status: "open", ticket_id: ticket.id } } });
-      await assert.rejects(() => deleteAdminTicket(scopedDb, admin, { kind: "ticket", id: ticket.id }), error => error.status === 409);
       assert.ok(await tx.message.findUnique({ where: { id: message.id } }));
-      await tx.dispute.update({ where: { id: dispute.id }, data: { metadata: { status: "closed", ticket_id: ticket.id } } });
       const result = await deleteAdminTicket(scopedDb, admin, { kind: "ticket", id: ticket.id });
       assert.deepEqual(result.deleted_ticket_ids, [ticket.id]);
       assert.deepEqual(result.deleted_dispute_ids, [dispute.id]);
       for (const [model, id] of [["ticket", ticket.id], ["dispute", dispute.id], ["message", message.id], ["adminAlert", alert.id], ["notification", notification.id]]) {
         assert.equal(await tx[model].findUnique({ where: { id } }), null, model);
       }
-      assert.deepEqual((await tx.wager.findUnique({ where: { id: wager.id } })).metadata, { status: "completed", score: 3, credits: 987 });
+      assert.deepEqual((await tx.wager.findUnique({ where: { id: wager.id } })).metadata, { status: "completed", score: 3, credits: 987, requested_admin: false, admin_request_status: "resolved" });
       assert.ok(await tx.adminAction.findFirst({ where: { metadata: { path: ["entity_id"], equals: ticket.id } } }));
       assert.equal((await deleteAdminTicket(scopedDb, admin, { kind: "ticket", id: ticket.id })).already_deleted, true);
       throw rollback;
@@ -88,7 +86,9 @@ test("admins can close linked support cases; only CEO/Developer delete, and matc
       await assert.rejects(() => deleteAdminTicket(scopedDb, { id: "super", role: "super_admin" }, input), error => error.status === 403);
       assert.equal((await deleteAdminTicket(scopedDb, { id: marker, role: "developer" }, input)).success, true);
       assert.equal(await tx.ticket.findUnique({ where: { id: ids[0] } }), null);
-      assert.equal((await closeSupportCaseForCleanup(scopedDb, { id: marker, role: "ceo" }, { ...input, id: ids[1] })).success, true);
+      assert.equal((await deleteAdminTicket(scopedDb, { id: marker, role: "developer" }, { ...input, id: ids[1] })).success, true);
+      assert.equal(await tx.ticket.findUnique({ where: { id: ids[1] } }), null);
+      assert.equal((await closeSupportCaseForCleanup(scopedDb, { id: marker, role: "ceo" }, { ...input, id: ids[2] })).success, true);
       throw rollback;
     }, { timeout: 20000 }), error => error === rollback);
   } finally { await db.$disconnect(); }

@@ -178,11 +178,8 @@ test("deletion retries serialization conflicts and handles a case already delete
   await assert.rejects(() => deleteAdminTicket(db, { role: "ceo" }, { id: {}, kind: "ticket" }), error => error.status === 400);
 });
 
-test("deleting a mixed or open selection explicitly plans close-and-delete; failures are grouped", async () => {
-  const { supportDeletePlan, supportCleanupFailureSummary } = await import("../src/lib/supportDeletion.js");
-  assert.deepEqual(supportDeletePlan([{ closed: false }, { closed: true }]), { action: "close", deleteAfterClose: true });
-  assert.deepEqual(supportDeletePlan([{ closed: true }]), { action: "delete", deleteAfterClose: false });
-  assert.equal(supportDeletePlan([undefined]).deleteAfterClose, true);
+test("bulk cleanup failures are grouped without repeating the same error for every case", async () => {
+  const { supportCleanupFailureSummary } = await import("../src/lib/supportDeletion.js");
   const summary = supportCleanupFailureSummary(0, Array.from({ length: 10 }, (_, index) => ({ id: String(index), message: "Close this case first." })));
   assert.equal(summary, "0 cases processed. 10 cases: Close this case first.");
 });

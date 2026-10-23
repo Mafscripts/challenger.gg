@@ -60,7 +60,7 @@ function RecordsContent({ onClose }) {
     finally { setBusy(false); }
   };
   const remove = async () => {
-    if (busy || !record || !canDelete || !liveSupportClosed(record)) return;
+    if (busy || !record || !canDelete) return;
     setBusy(true); setError("");
     try {
       const deleted = await invoke("deleteAdminTicket", { id: record.id, kind: "ticket" });
@@ -129,9 +129,9 @@ function RecordsContent({ onClose }) {
             <button aria-pressed={record.support_favorite} disabled={busy} onClick={() => manage("favorite", !record.support_favorite)}><Star size={15} fill={record.support_favorite ? "currentColor" : "none"} />{record.support_favorite ? "Saved to favorites" : "Save favorite"}</button>
             <button disabled={busy || (!record.support_archived && !liveSupportClosed(record))} title={!liveSupportClosed(record) ? "End the chat before archiving" : undefined} onClick={() => manage("archive", !record.support_archived)}>{record.support_archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}{record.support_archived ? "Restore" : "Archive"}</button>
             <button onClick={() => downloadRecord(record, messages)}><Download size={15} /> Export .txt</button>
-            {canDelete && <button className="sr-delete-button" disabled={busy || !liveSupportClosed(record)} title={!liveSupportClosed(record) ? "End the chat before deleting" : undefined} onClick={() => setConfirmDelete(true)}><Trash2 size={15} /> Delete</button>}</div>
+            {canDelete && <button className="sr-delete-button" disabled={busy} title="Permanently delete for everyone" onClick={() => setConfirmDelete(true)}><Trash2 size={15} /> Delete</button>}</div>
           {confirmDelete && <div className="sr-delete-confirm" role="alert"><strong>Permanently delete this conversation?</strong><p>All messages and notes will be removed for staff and the player, including saved and archived copies. This cannot be undone.</p><div><button disabled={busy} onClick={() => setConfirmDelete(false)}>Keep conversation</button><button disabled={busy} onClick={remove}>{busy ? "Deleting…" : "Delete for everyone"}</button></div></div>}
-          {!liveSupportClosed(record) && <p className="sr-hint">Finished helping? Use End conversation here to enable Archive and Delete.</p>}
+          {!liveSupportClosed(record) && <p className="sr-hint">Finished helping? Use End conversation to close this chat and enable Archive.</p>}
           {record.support_archived && <p className="sr-hint">Archived by {record.support_archived_by || "staff"} · {date(record.support_archived_at)}. All messages remain saved.</p>}
           <h4>Conversation <span>{messages.length} messages</span></h4>
           <div className="sr-transcript">{messages.map(message => <article key={message.id} data-staff={message.sender_staff}><div><strong className={isStaffSupportMessage(message) ? "support-staff-name" : undefined}>{message.sender_name}{message.sender_staff ? " · Support" : ""}</strong><time>{date(message.created_date)}</time></div><p>{message.content}</p></article>)}{!messages.length && <p className="sr-hint">No messages recorded.</p>}</div>

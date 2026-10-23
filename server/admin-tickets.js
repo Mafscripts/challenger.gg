@@ -187,9 +187,6 @@ export async function deleteAdminTicket(db, user, payload = {}) {
     const group = await supportCaseGroup(tx, kind, id);
     if (!group) return { success: true, already_deleted: true, deleted_ticket_ids: kind === "ticket" ? [id] : [], deleted_dispute_ids: kind === "dispute" ? [id] : [] };
     const { tickets, disputes } = group;
-    if ([...tickets.values(), ...disputes.values()].some((row) => !closed(row))) {
-      throw Object.assign(new Error("Resolve or close this ticket and its linked match cases before deleting it."), { status: 409 });
-    }
     const ticketIds = [...tickets.keys()];
     const disputeIds = [...disputes.keys()];
     const recordIds = [...ticketIds, ...disputeIds];
@@ -215,8 +212,10 @@ export async function deleteAdminTicket(db, user, payload = {}) {
             ('support_ticket_id', metadata->>'support_ticket_id' IN (${idsSql(ticketIds)})),
             ('dispute_id', metadata->>'dispute_id' IN (${idsSql(disputeIds)}))
           ) AS pointers(key, matches) WHERE matches
-        )
-        WHERE metadata->>'admin_request_ticket_id' IN (${idsSql(ticketIds)})
+        ) || CASE WHEN metadata->>'admin_request_ticket_id' IN (${idsSql(ticketIds)})
+          OR (NULLIF(metadata->>'admin_request_ticket_id', '') IS NULL AND metadata->>'support_ticket_id' IN (${idsSql(ticketIds)}))
+          THEN '{"requested_admin":false,"admin_request_status":"resolved"}'::jsonb ELSE '{}'::jsonb END
+        WHERE metadata->>'admin_request_ticket_id'  IN (${idsSql(ticketIds)})
           OR metadata->>'support_ticket_id' IN (${idsSql(ticketIds)}) OR metadata->>'dispute_id' IN (${idsSql(disputeIds)})`);
     }
     await tx.dispute.deleteMany({ where: { id: { in: disputeIds } } });
@@ -224,7 +223,7 @@ export async function deleteAdminTicket(db, user, payload = {}) {
     await tx.adminAction.create({ data: { metadata: {
       admin_id: user.id, admin_name: user.display_name || user.username || user.email,
       action: "delete_ticket", entity_type: "Ticket", entity_id: id,
-      summary: `Deleted closed ticket ${id}`, details: { ticket_ids: ticketIds, dispute_ids: disputeIds },
+      summary: `Deleted support case ${id}`, details: { ticket_ids: ticketIds, dispute_ids: disputeIds },
     } } });
     return { success: true, deleted_ticket_ids: ticketIds, deleted_dispute_ids: disputeIds };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20000 });
