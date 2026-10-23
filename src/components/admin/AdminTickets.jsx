@@ -40,6 +40,12 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
   const [deleteError, setDeleteError] = useState("");
   const queryClient = useQueryClient();
   const role = effectiveRoleForUser(user);
+  const openCategory = value => {
+    setCategory(value); setFilter("open"); setView("all");
+    setSearchInput(""); setSearch(""); setSelectedId(null); setChecked([]);
+    setSelectClosedAfterLoad(false); setSaveError("");
+    if (inbox.current) inbox.current.scrollTop = 0;
+  };
   const query = useInfiniteQuery({
     queryKey: ["admin-console", user?.id, role, "ticketQueue", filter, category, view, search],
     initialPageParam: null,
@@ -99,7 +105,10 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
   const canDelete = hasRolePower(role, "admin");
   const deletableRows = displayRows.filter(row => row.closed);
   useEffect(() => { if (reader.current) reader.current.scrollTop = 0; }, [selected?.id]);
-  useEffect(() => { setChecked([]); }, [filter, category, view, search]);
+  useEffect(() => {
+    setChecked([]);
+    if (inbox.current) inbox.current.scrollTop = 0;
+  }, [filter, category, view, search]);
   useEffect(() => {
     if (!selectedId || !inbox.current) return;
     const selectedButton = inbox.current.querySelector('[aria-current="true"]');
@@ -176,20 +185,21 @@ export default function AdminTickets({ user, onRefresh, initialSelectedId = null
       <div><span className="at-eyebrow">PLAYER SUPPORT</span><h2><Ticket size={20} /> Support inbox</h2><p>One place for every player request.</p></div>
       <div className="at-header-tools"><Suspense fallback={null}><SupportRecords className="at-button" /></Suspense><button className="at-button" onClick={refreshTickets} disabled={query.isFetching} aria-label="Refresh inbox"><RefreshCw size={14} /></button></div>
     </header>
-    <nav className="at-categories" aria-label="Support categories">{categories.map(([value, label]) => { const Icon = categoryIcons[value]; return <button key={value} aria-pressed={category === value} data-category={value} onClick={() => { setCategory(value); setSelectedId(null); }}><span className="at-category-label"><Icon size={15} />{label}{rows.some(row => !row.closed && row.unread && (value === "all" || row.channel === value || (value === "disputes" && row.disputes.length > 0) || row.mode === value || (value === "money8s" && ["8s", "eights"].includes(row.mode)) || (value === "wagers" && row.mode === "wager"))) && <i className="at-unread-dot" aria-label="Unread messages in loaded conversations" />}</span><b>{summary.data?.categories?.[value] ?? "—"}</b></button>; })}</nav>
+    <nav className="at-categories" aria-label="Support categories">{categories.map(([value, label]) => { const Icon = categoryIcons[value]; return <button key={value} aria-pressed={category === value} data-category={value} onClick={() => openCategory(value)}><span className="at-category-label"><Icon size={15} />{label}{rows.some(row => !row.closed && row.unread && (value === "all" || row.channel === value || (value === "disputes" && row.disputes.length > 0) || row.mode === value || (value === "money8s" && ["8s", "eights"].includes(row.mode)) || (value === "wagers" && row.mode === "wager"))) && <i className="at-unread-dot" aria-label="Unread messages in loaded conversations" />}</span><b>{summary.data?.categories?.[value] ?? "—"}</b></button>; })}</nav>
     <div className="at-organize">
-      <div className="at-filters" aria-label="Inbox view">{[["all", "Needs attention"], ["waiting", "Unassigned"], ["mine", "Assigned to me"], ["saved", "Saved"]].map(([value, label]) => <button key={value} aria-pressed={view === value} onClick={() => { setView(value); setFilter(value === "saved" ? "all" : "open"); setSelectedId(null); }}>{label}{value !== "all" && <span> {summary.data?.[value] ?? ""}</span>}</button>)}</div>
+      <div className="at-filters" aria-label="Inbox view">{[["all", "Needs attention"], ["waiting", "Unassigned"], ["mine", "Assigned to me"], ["saved", "Saved"]].map(([value, label]) => <button key={value} aria-pressed={view === value} onClick={() => { setView(value); setFilter(value === "saved" ? "all" : "open"); setSelectedId(null); setSelectClosedAfterLoad(false); }}>{label}{value !== "all" && <span> {summary.data?.[value] ?? ""}</span>}</button>)}</div>
       <label className="at-search"><Search size={15} /><input aria-label="Search support cases" placeholder="Search name, reference or request…" value={searchInput} onChange={event => { setSearchInput(event.target.value); setSelectedId(null); }} /></label>
-      <select aria-label="Case status" value={filter} onChange={event => { setFilter(event.target.value); setSelectedId(null); }}><option value="open">Open</option><option value="closed">Closed</option><option value="all">All statuses</option></select>
+      <select aria-label="Case status" value={filter} onChange={event => { setFilter(event.target.value); setSelectedId(null); setSelectClosedAfterLoad(false); }}><option value="open">Open</option><option value="closed">Closed</option><option value="all">All statuses</option></select>
     </div>
     <p className="at-queue-hint">Admin calls first · Premium priority · Live chats · Other requests. Category counts show open cases. Conversations are saved automatically.</p>
     {saveError && <p role="alert" className="at-list-error">{saveError}</p>}
     {direct.isError && <p role="alert" className="at-list-error">{direct.error.message}</p>}
     <div className="at-workspace">
       <aside className="at-inbox" aria-label="Ticket list" ref={inbox}>
-        <div className="at-list-heading"><strong>{view === "saved" ? "Saved conversations" : categories.find(([value]) => value === category)?.[1]}</strong><span>{rows.length} loaded</span></div>
+        <div className="at-list-heading"><strong>{view === "saved" ? "Saved conversations" : categories.find(([value]) => value === category)?.[1]}</strong><span>{filter === "open" ? "Open" : filter === "closed" ? "Closed" : "All statuses"}{view === "mine" ? " · Assigned to me" : view === "waiting" ? " · Unassigned" : view === "saved" ? " · Saved" : ""} · {rows.length} loaded</span></div>
         {query.isPending && <p role="status" className="at-list-feedback"><Loader2 size={15} className="animate-spin" /> Loading tickets...</p>}
-        {!query.isPending && !query.isError && !rows.length && <div className="at-list-empty"><Inbox size={26} /><strong>{filter === "open" ? "No open tickets" : "No tickets here"}</strong><p>{filter === "open" ? "You're up to date. Previous requests are under Closed." : "Tickets will appear here when available."}</p></div>}
+        {!query.isPending && !query.isError && !rows.length && <div className="at-list-empty"><Inbox size={26} /><strong>No {filter === "closed" ? "closed" : filter === "open" ? "open" : "matching"} requests here</strong><p>{search || view !== "all" ? "Your search or assignment filter is limiting this list." : filter === "open" ? "There are no open requests in this category. Previous conversations are under Closed." : "There are no requests for this category and status."}</p><div className="at-empty-actions"><button className="at-button at-button-primary" onClick={() => openCategory(category)}>Show open requests</button>{filter !== "closed" && <button className="at-button" onClick={() => { setView("all"); setSearchInput(""); setSearch(""); setSelectedId(null); setSelectClosedAfterLoad(false); setFilter("closed"); }}>View closed cases</button>}</div></div>}
+
         {canDelete && <div className="at-bulk-tools">{filter !== "closed" ? <button className="at-button at-button-open" disabled={busy} onClick={() => { setSelectedId(null); setFilter("closed"); setSelectClosedAfterLoad(true); }}>Select closed cases</button> : <label><input type="checkbox" aria-label="Select all displayed closed cases" checked={deletableRows.length > 0 && deletableRows.every(row => checked.includes(row.id))} disabled={busy || query.isPending} onChange={event => setChecked(event.target.checked ? deletableRows.map(row => row.id) : [])} /> Select displayed cases</label>}<button className="at-button at-button-danger" disabled={!checked.length || busy} onClick={() => { setBulkError(""); setBulkConfirm(true); }}><Trash2 size={12} /> Delete selected{checked.length ? ` (${checked.length})` : ""}</button><small>{filter === "closed" ? `${checked.length} selected · ${deletableRows.length} displayed` : "Opens closed cases and selects the displayed results. Active requests must be closed first."}</small></div>}
 
         <div className="at-ticket-list">{displayRows.map((row) => { const { key, label, Icon } = caseType(row); const owner = row.ticket || row.disputes[0]; const lastMessage = row.ticket?.messages?.at(-1); return <div key={row.id} className="at-row-shell" data-checked={checked.includes(row.id) || undefined} data-closed={row.closed || undefined} data-selectable={canDelete && row.closed || undefined}>{canDelete && row.closed && <label className="at-row-select"><input type="checkbox" aria-label={`Select case ${shortTicketId(row.record_id)}`} disabled={busy} checked={checked.includes(row.id)} onChange={event => setChecked(current => event.target.checked ? [...new Set([...current, row.id])] : current.filter(id => id !== row.id))} /></label>}<button key={row.id} className="at-ticket-row" data-case-type={key} data-unread={!row.closed && row.unread || undefined}

@@ -263,3 +263,6 @@
 .support-delete-dialog .at-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #385364;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:750;background:#1b3444;color:#dceaf4}
 .support-delete-dialog .at-button-danger{border-color:#ef687d99;background:#822c3e55;color:#ffa9b7}
 .support-delete-dialog button:disabled{opacity:.5;cursor:wait}
+
+.admin-tickets .at-empty-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+.admin-tickets .at-list-heading>span{line-height:1.6}
