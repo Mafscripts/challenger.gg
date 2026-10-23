@@ -131,9 +131,6 @@ export async function deleteAdminTicket(db, user, payload = {}) {
     if ([...tickets.values(), ...disputes.values()].some((row) => !closed(row))) {
       throw Object.assign(new Error("Resolve or close this ticket and its linked match cases before deleting it."), { status: 409 });
     }
-    if ([...tickets.values()].some(row => row.metadata?.request_type === "live_support" && (row.metadata.support_archived === true || row.metadata.support_favorite === true))) {
-      throw Object.assign(new Error("This support conversation is saved. Remove it from favorites and restore it from the archive before deleting."), { status: 409 });
-    }
     const ticketIds = [...tickets.keys()];
     const disputeIds = [...disputes.keys()];
     const recordIds = [...ticketIds, ...disputeIds];

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readLiveSupport, sendLiveSupport, updateLiveSupport, readLiveSupportRecords, manageLiveSupportRecord } from "./live-support.js";
-import { isLiveSupportStaff, supportTicketForViewer } from "../src/lib/liveSupport.js";
+import { isDevSupportMessage, isLiveSupportStaff, supportTicketForViewer } from "../src/lib/liveSupport.js";
 import { deleteAdminTicket } from "./admin-tickets.js";
 import entityRoutes from "./routes/entities.js";
 import { prisma } from "./prisma.js";
@@ -166,15 +166,41 @@ test("record pages are bounded and search strings stay SQL parameters", async ()
   assert.equal(result.rows[0].notes, undefined);
 });
 
-test("saved support records cannot be permanently deleted through the ticket center", async () => {
+test("only admins delete completed support conversations, including favorites and archived records", async () => {
   for (const flag of ["support_favorite", "support_archived"]) {
     const s = store(), { ticket } = await sendLiveSupport(s.db, player, request());
-    const row = s.tickets.get(ticket.id); row.metadata.status = "closed"; row.metadata[flag] = true;
-    s.db.$queryRaw = async strings => strings.join("").includes('FROM "Ticket"') ? [row] : [];
-    await assert.rejects(() => deleteAdminTicket(s.db, admin, { id: ticket.id, kind: "ticket" }), error => error.status === 409 && /saved/.test(error.message));
-    assert.equal(s.tickets.has(ticket.id), true);
+    const row = s.tickets.get(ticket.id); row.metadata[flag] = true;
+    const audits = [];
+    s.db.$queryRaw = async strings => strings.join("").includes('FROM "Ticket"') ? [...s.tickets.values()] : [];
+    s.db.$executeRaw = async strings => {
+      const sql = Array.isArray(strings) ? strings.join("") : strings.sql;
+      if (sql.includes('DELETE FROM "Message"')) s.messages.length = 0;
+      if (sql.includes('DELETE FROM "Notification"')) s.notifications.length = 0;
+    };
+    s.db.dispute = { deleteMany: async () => {} };
+    s.db.ticket.deleteMany = async ({ where }) => where.id.in.forEach(id => s.tickets.delete(id));
+    s.db.adminAction = { create: async ({ data }) => audits.push(data.metadata) };
+    for (const actor of [player, { id: "mod", role: "moderator" }, { id: "other", role: "developer" }]) {
+      await assert.rejects(() => deleteAdminTicket(s.db, actor, { id: ticket.id, kind: "ticket" }), error => error.status === 403);
+    }
+    await assert.rejects(() => deleteAdminTicket(s.db, admin, { id: ticket.id, kind: "ticket" }), error => error.status === 409);
     assert.equal(s.messages.length, 1);
+    row.metadata.status = "closed";
+    const result = await deleteAdminTicket(s.db, admin, { id: ticket.id, kind: "ticket" });
+    assert.deepEqual(result.deleted_ticket_ids, [ticket.id]);
+    assert.equal(s.tickets.has(ticket.id), false);
+    assert.equal(s.messages.length, 0);
+    assert.equal(s.notifications.length, 0);
+    assert.equal(audits[0].admin_id, admin.id);
+    await assert.rejects(() => readLiveSupport(s.db, player, { ticket_id: ticket.id }), error => error.status === 404);
+    assert.equal((await readLiveSupport(s.db, player)).threads.length, 0);
   }
+});
+
+test("only the dev support label gets the red name treatment", () => {
+  assert.equal(isDevSupportMessage({ sender_name: "dev", sender_staff: true }), true);
+  assert.equal(isDevSupportMessage({ sender_name: "dev", sender_staff: false }), false);
+  assert.equal(isDevSupportMessage({ sender_name: "Helper", sender_staff: true }), false);
 });
 
 test("legacy Ticket GET routes hide staff notes in both list and detail responses", async t => {

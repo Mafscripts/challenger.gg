@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Archive, ArchiveRestore, Bookmark, Download, FolderArchive, Loader2, Search, Star } from "lucide-react";
+import { Archive, ArchiveRestore, Bookmark, Download, FolderArchive, Loader2, Search, Star, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { base44 } from "@/api/base44Client";
-import { liveSupportClosed } from "@/lib/liveSupport";
+import { isDevSupportMessage, liveSupportClosed } from "@/lib/liveSupport";
+import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
+import { useAuth } from "@/lib/AuthContext";
 import "./support-records.css";
 
 const invoke = async (name, body) => {
@@ -37,12 +39,26 @@ export default function SupportRecords({ className = "support-records-trigger" }
 
 function RecordsContent({ onClose }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canDelete = hasRolePower(effectiveRoleForUser(user), "admin");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [filter, setFilter] = useState("all"), [search, setSearch] = useState(""), [page, setPage] = useState(0);
   const [result, setResult] = useState({ rows: [], next_page: null }), [selected, setSelected] = useState(null);
   const [record, setRecord] = useState(null), [messages, setMessages] = useState([]), [note, setNote] = useState("");
   const [loading, setLoading] = useState(false), [detailLoading, setDetailLoading] = useState(false), [busy, setBusy] = useState(false);
   const [error, setError] = useState(""), [revision, setRevision] = useState(0);
   const pendingNote = useRef(null);
+  useEffect(() => { setConfirmDelete(false); }, [selected]);
+  const remove = async () => {
+    if (busy || !record || !canDelete || !liveSupportClosed(record)) return;
+    setBusy(true); setError("");
+    try {
+      await invoke("deleteAdminTicket", { id: record.id, kind: "ticket" });
+      setSelected(null); setRecord(null); setMessages([]); setNote(""); pendingNote.current = null;
+      setConfirmDelete(false); setPage(0); setRevision(current => current + 1);
+    } catch (err) { setError(err.message || "Could not delete this conversation."); }
+    finally { setBusy(false); }
+  };
   useEffect(() => {
     let alive = true;
     setLoading(true); setError("");
@@ -97,11 +113,13 @@ function RecordsContent({ onClose }) {
           <header className="sr-record-header"><div><span>#{record.id}</span><h3>{record.username || "Player"}</h3><p>{status(record)} · {date(record.created_date)} · {record.assigned_admin_name || "Unassigned"}</p></div><button disabled={busy} onClick={() => { onClose(); navigate(`/?support=${encodeURIComponent(record.id)}`); }}>Open chat ↗</button></header>
           <div className="sr-actions"><button aria-pressed={record.support_favorite} disabled={busy} onClick={() => manage("favorite", !record.support_favorite)}><Star size={15} fill={record.support_favorite ? "currentColor" : "none"} />{record.support_favorite ? "Saved to favorites" : "Save favorite"}</button>
             <button disabled={busy || (!record.support_archived && !liveSupportClosed(record))} title={!liveSupportClosed(record) ? "End the chat before archiving" : undefined} onClick={() => manage("archive", !record.support_archived)}>{record.support_archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}{record.support_archived ? "Restore" : "Archive"}</button>
-            <button onClick={() => downloadRecord(record, messages)}><Download size={15} /> Export .txt</button></div>
+            <button onClick={() => downloadRecord(record, messages)}><Download size={15} /> Export .txt</button>
+            {canDelete && <button className="sr-delete-button" disabled={busy || !liveSupportClosed(record)} title={!liveSupportClosed(record) ? "End the chat before deleting" : undefined} onClick={() => setConfirmDelete(true)}><Trash2 size={15} /> Delete</button>}</div>
+          {confirmDelete && <div className="sr-delete-confirm" role="alert"><strong>Permanently delete this conversation?</strong><p>All messages and notes will be removed for staff and the player, including saved and archived copies. This cannot be undone.</p><div><button disabled={busy} onClick={() => setConfirmDelete(false)}>Keep conversation</button><button disabled={busy} onClick={remove}>{busy ? "Deleting…" : "Delete for everyone"}</button></div></div>}
           {!liveSupportClosed(record) && <p className="sr-hint">Open conversations can be saved as favorites. End the chat before archiving it.</p>}
           {record.support_archived && <p className="sr-hint">Archived by {record.support_archived_by || "staff"} · {date(record.support_archived_at)}. All messages remain saved.</p>}
           <h4>Conversation <span>{messages.length} messages</span></h4>
-          <div className="sr-transcript">{messages.map(message => <article key={message.id} data-staff={message.sender_staff}><div><strong>{message.sender_name}{message.sender_staff ? " · Support" : ""}</strong><time>{date(message.created_date)}</time></div><p>{message.content}</p></article>)}{!messages.length && <p className="sr-hint">No messages recorded.</p>}</div>
+          <div className="sr-transcript">{messages.map(message => <article key={message.id} data-staff={message.sender_staff}><div><strong className={isDevSupportMessage(message) ? "support-dev-name" : undefined}>{message.sender_name}{message.sender_staff ? " · Support" : ""}</strong><time>{date(message.created_date)}</time></div><p>{message.content}</p></article>)}{!messages.length && <p className="sr-hint">No messages recorded.</p>}</div>
           <h4>Internal notes <span>Staff only</span></h4>
           <div className="sr-notes">{(record.notes || []).map(item => <article key={item.id}><div><strong>{item.author_name}</strong><time>{date(item.created_date)}</time></div><p>{item.content}</p></article>)}</div>
           <form className="sr-note-form" onSubmit={event => { event.preventDefault(); manage("note"); }}><label htmlFor="support-record-note">Add a private follow-up note</label><textarea id="support-record-note" rows={3} maxLength={4000} disabled={busy} value={note} onChange={event => setNote(event.target.value)} placeholder="Outcome, next steps or details for the team…" /><button disabled={busy || !note.trim()} type="submit">{busy ? "Saving…" : "Save internal note"}</button></form>
