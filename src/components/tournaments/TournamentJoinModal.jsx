@@ -15,6 +15,7 @@ export default function TournamentJoinModal({
   onCreateTeam,
   onJoin,
   joining = false,
+  loadingTeams = false,
   sponsoredMemberIds = [],
   onSponsoredMemberIdsChange,
   requiresCredits = false,
@@ -132,7 +133,8 @@ export default function TournamentJoinModal({
                     );
                   })}
 
-                  {teams.length === 0 && (
+                  {loadingTeams && <p role="status" className="flex items-center gap-2 p-4 text-sm text-vapor"><Loader2 className="h-4 w-4 animate-spin" />Loading your teams…</p>}
+                  {!loadingTeams && teams.length === 0 && (
                     <div className="rounded-xl border border-dashed border-white/10 bg-background/20 px-5 py-8 text-center">
                       <Users className="mx-auto h-7 w-7 text-vapor/35" />
                       <p className="mt-3 text-sm font-black text-white">No tournament team yet</p>
@@ -187,7 +189,7 @@ export default function TournamentJoinModal({
               <button
                 type="button"
                 onClick={onJoin}
-                disabled={joining || !selectedTeamReady}
+                disabled={joining || loadingTeams || !selectedTeamReady}
                 className="inline-flex min-w-36 items-center justify-center gap-2 rounded-xl bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_28px_rgba(255,130,0,.2)] transition-all hover:-translate-y-0.5 hover:bg-orange/90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
               >
                 {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}

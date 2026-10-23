@@ -1,7 +1,8 @@
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
+import { loadPlayTeams } from "@/lib/playTeams";
 import { tournamentPayoutPolicy } from "@/lib/tournamentPayoutPolicy";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useRouteSection from "@/hooks/useRouteSection";
 import {
@@ -27,8 +28,6 @@ import {
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
-import CreateTeamModal from "@/components/teams/CreateTeamModal";
-import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
 import PageLoader from "@/components/ui/PageLoader";
 import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
 import { visibleTournamentMatches } from "@/lib/tournamentBracketView";
@@ -48,6 +47,9 @@ import CompetitionHero from "@/components/competition/CompetitionHero";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 import { publicCommerceEnabled } from "@/lib/commerce";
 import "@/styles/tournament-overview.css";
+
+const CreateTeamModal = lazy(() => import("@/components/teams/CreateTeamModal"));
+const TournamentJoinModal = lazy(() => import("@/components/tournaments/TournamentJoinModal"));
 
 const BLACK_OPS_7_ART = "/assets/tournaments/black-ops-7.webp";
 
@@ -133,7 +135,16 @@ const refundForUser = (participant, userId, tournament) => {
   return Number(tournament?.entry_fee || 0);
 };
 
-function Countdown({ value, now, status, expiredLabel = "Closed" }) {
+function Countdown({ value, status, expiredLabel = "Closed" }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const target = Date.parse(value || "");
+    if (!Number.isFinite(target) || target <= Date.now()) return;
+    const refresh = () => { if (document.visibilityState !== "hidden") setNow(Date.now()); };
+    const timer = window.setInterval(() => { refresh(); if (Date.now() >= target) window.clearInterval(timer); }, 1000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
+  }, [value]);
   const target = new Date(value || "").getTime();
   const difference = target - now;
   if (!Number.isFinite(target)) return <span className="font-mono text-sm font-black text-vapor">TBA</span>;
@@ -264,7 +275,10 @@ export default function TournamentOverview() {
   const [participants, setParticipants] = useState([]);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(() => Date.now());
+  const loadGeneration = useRef(0);
+  const [teamsLoading, setTeamsLoading] = useState(false);
+  const [participantsLoading, setParticipantsLoading] = useState(true);
+  const [matchesLoading, setMatchesLoading] = useState(true);
   const [activeTab, setActiveTab] = useRouteSection("tab", "overview", ["overview", "bracket", "participants", "rules"]);
   const [joinOpen, setJoinOpen] = useState(false);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
@@ -318,60 +332,53 @@ export default function TournamentOverview() {
 
   const loadTeams = async (currentUser) => {
     if (!currentUser?.id) return [];
-    const memberships = await base44.entities.TeamMember.filter({ user_id: currentUser.id }, "-joined_date", 30).catch(() => []);
-    const loadedTeams = await Promise.all((memberships || []).filter((membership) => membership.is_active !== false).map(async (membership) => {
-      const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
-      const members = team ? await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 30).catch(() => []) : [];
-      return team ? { ...team, membership, members: members.filter((member) => member.is_active !== false) } : null;
-    }));
-    return loadedTeams.filter((team) => team && team.team_type === "tournament" && team.captain_id === currentUser.id);
+    return (await loadPlayTeams(base44)).filter(team => team.team_type === "tournament" && team.captain_id === currentUser.id);
   };
 
-  const loadPage = async () => {
-    try {
-      setLoading(true);
-      const currentUserPromise = base44.auth.me().catch(() => null);
-      const participantRowsPromise = base44.entities.TournamentParticipant.filterFresh({ tournament_id: id }, "seed", 256).catch(() => []);
-      const matchRowsPromise = base44.entities.TournamentMatch.filterFresh({ tournament_id: id }, "round", 256).catch(() => []);
-      const tournamentRow = await base44.entities.Tournament.get(id);
-      setTournament(tournamentRow);
-      // Team memberships and bracket data are useful after the first paint,
-      // but should not keep the tournament header behind a full-page loader.
-      setLoading(false);
+  useEffect(() => {
+    if (!joinOpen || !user?.id) return;
+    let cancelled = false;
+    setTeamsLoading(true);
+    loadTeams(user).then(rows => { if (!cancelled) setTeams(rows); }).catch(error => {
+      if (!cancelled) toast({ title: "Teams unavailable", description: error.message || "Please reopen registration to try again.", variant: "destructive" });
+    }).finally(() => { if (!cancelled) setTeamsLoading(false); });
+    return () => { cancelled = true; };
+  }, [joinOpen, user?.id]);
 
-      const [currentUser, participantRows, matchRows] = await Promise.all([
-        currentUserPromise,
-        participantRowsPromise,
-        matchRowsPromise,
-      ]);
-      setUser(currentUser);
-      setParticipants(participantRows || []);
-      setMatches(matchRows || []);
-      const availableTeams = await loadTeams(currentUser);
-      setTeams(availableTeams);
-      const userJoined = (participantRows || []).some((participant) => (
-        participant.captain_id === currentUser?.id
-        || participant.user_id === currentUser?.id
-        || (participant.members || []).some((member) => member.user_id === currentUser?.id)
-      ));
+  const loadPage = async () => {
+    const generation = ++loadGeneration.current;
+    const current = () => generation === loadGeneration.current;
+    try {
+      setLoading(true); setParticipantsLoading(true); setMatchesLoading(true);
+      setParticipants([]); setMatches([]); setTeams([]); setJoined(false); setSelectedParticipantId(null);
+      const currentUserPromise = base44.auth.me().catch(() => null).then(row => { if (current()) setUser(row); return row; });
+      const participantRowsPromise = base44.entities.TournamentParticipant.filterFresh({ tournament_id: id }, "seed", 256).catch(() => []).then(rows => {
+        if (current()) { setParticipants(rows || []); setParticipantsLoading(false); }
+        return rows || [];
+      });
+      void base44.entities.TournamentMatch.filterFresh({ tournament_id: id }, "round", 256).catch(() => []).then(rows => {
+        if (current()) { setMatches(rows || []); setMatchesLoading(false); }
+      });
+      const tournamentRow = await base44.entities.Tournament.get(id);
+      if (!current()) return;
+      setTournament(tournamentRow); setLoading(false);
+      const [currentUser, participantRows] = await Promise.all([currentUserPromise, participantRowsPromise]);
+      if (!current()) return;
+      const userJoined = Boolean(currentUser?.id) && participantRows.some(participant => participant.captain_id === currentUser?.id || participant.user_id === currentUser?.id
+        || (participant.members || []).some(member => member.user_id === currentUser?.id));
       setJoined(userJoined);
       if (searchParams.get("join") === "1" && canJoin(tournamentRow, userJoined, currentUser)) setJoinOpen(true);
     } catch (error) {
+      if (!current()) return;
       console.error("Failed to load tournament overview:", error);
       toast({ title: "Tournament unavailable", description: "This tournament could not be loaded.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    } finally { if (current()) setLoading(false); }
   };
 
   useEffect(() => {
-    loadPage();
+    void loadPage();
+    return () => { loadGeneration.current += 1; };
   }, [id]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   const openJoin = () => {
     if (!user?.id) {
@@ -471,7 +478,7 @@ export default function TournamentOverview() {
     }
   };
 
-  const handleTeamCreated = async (team) => {
+  const handleTeamCreated = (team) => {
     // Entity reads can briefly lag behind a successful create. Keep the new
     // team in this chooser immediately so the player is not sent back to
     // "Create team" again, including on free tournaments.
@@ -491,13 +498,7 @@ export default function TournamentOverview() {
     setCreateTeamOpen(false);
     setJoinOpen(true);
 
-    const refreshedTeams = await loadTeams(user);
-    setTeams((current) => {
-      const next = refreshedTeams.some((row) => row.id === team.id)
-        ? refreshedTeams
-        : [...refreshedTeams, createdTeam];
-      return next;
-    });
+
   };
 
   if (loading) {
@@ -551,7 +552,7 @@ export default function TournamentOverview() {
               ) : (
                 <span className="overview-registration-closed">Registration unavailable</span>
               )}
-              <div className="overview-countdown"><span>Starts in</span><Countdown value={tournament.start_date} now={now} status={tournament.status} expiredLabel="Starting" /></div>
+              <div className="overview-countdown"><span>Starts in</span><Countdown value={tournament.start_date} status={tournament.status} expiredLabel="Starting" /></div>
           </div>} />
       </div>
 
@@ -584,11 +585,11 @@ export default function TournamentOverview() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="overview-panel overview-schedule p-5">
                     <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-vapor"><span className="h-1.5 w-1.5 rounded-full bg-cyan" /> Registration closes</p>
-                    <div className="overview-schedule-timing mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(registrationDate)}</p><p className="mt-1 text-[10px] text-vapor">Secure your place before the deadline.</p></div><Countdown value={registrationDate} now={now} expiredLabel="Closed" /></div>
+                    <div className="overview-schedule-timing mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(registrationDate)}</p><p className="mt-1 text-[10px] text-vapor">Secure your place before the deadline.</p></div><Countdown value={registrationDate} expiredLabel="Closed" /></div>
                   </div>
                   <div className="overview-panel overview-schedule p-5" data-highlight="true">
                     <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-vapor"><span className="h-1.5 w-1.5 rounded-full bg-orange" /> Tournament starts</p>
-                    <div className="overview-schedule-timing mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(tournament.start_date)}</p><p className="mt-1 text-[10px] text-vapor">All teams must be match ready.</p></div><Countdown value={tournament.start_date} now={now} status={tournament.status} expiredLabel="Starting" /></div>
+                    <div className="overview-schedule-timing mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(tournament.start_date)}</p><p className="mt-1 text-[10px] text-vapor">All teams must be match ready.</p></div><Countdown value={tournament.start_date} status={tournament.status} expiredLabel="Starting" /></div>
                     {joinAvailable && <button type="button" onClick={openJoin} className="overview-join mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-xs font-black"><Users className="h-3.5 w-3.5" /> Join tournament</button>}
                   </div>
                 </div>
@@ -623,11 +624,11 @@ export default function TournamentOverview() {
           </div>
         )}
 
-        {activeTab === "bracket" && <div className="mt-7"><BracketPreview matches={matches} /></div>}
+        {activeTab === "bracket" && <div className="mt-7">{matchesLoading ? <p role="status" className="p-6 text-sm text-vapor">Loading bracket…</p> : <BracketPreview matches={matches} />}</div>}
         {activeTab === "participants" && (
           <div className="mt-7">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {participants.length ? participants.map((participant, index) => {
+              {participantsLoading ? <p role="status" className="p-6 text-sm text-vapor">Loading registered teams…</p> : participants.length ? participants.map((participant, index) => {
                 const selected = String(selectedParticipantId) === String(participant.id);
                 return (
                   <button
@@ -667,11 +668,12 @@ export default function TournamentOverview() {
         )}
       </div>
 
-      <TournamentJoinModal
+      {joinOpen && <Suspense fallback={<PageLoader label="Opening registration" />}><TournamentJoinModal
         isOpen={joinOpen}
         onClose={() => { setJoinOpen(false); if (searchParams.has("join")) setSearchParams((previous) => { const next = new URLSearchParams(previous); next.delete("join"); return next; }, { replace: true }); }}
         tournament={tournament}
         teams={teams}
+        loadingTeams={teamsLoading}
         selectedTeamId={selectedTeamId}
         onSelectTeam={(teamId) => { setSelectedTeamId(teamId); setSponsoredMemberIds([]); }}
         onCreateTeam={() => { setJoinOpen(false); setCreateTeamOpen(true); }}
@@ -680,7 +682,7 @@ export default function TournamentOverview() {
         sponsoredMemberIds={sponsoredMemberIds}
         onSponsoredMemberIdsChange={setSponsoredMemberIds}
         requiresCredits={["credits", "credits_premium"].includes(entryType(tournament)) && Number(tournament.entry_fee || 0) > 0}
-      />
+      /></Suspense>}
       <AlertDialog open={leaveDialogOpen} onOpenChange={(open) => {
         if (leaving) return;
         setLeaveDialogOpen(open);
@@ -726,7 +728,7 @@ export default function TournamentOverview() {
           )}
         </AlertDialogContent>
       </AlertDialog>
-      <CreateTeamModal
+      {createTeamOpen && <Suspense fallback={<PageLoader label="Opening team creation" />}><CreateTeamModal
         isOpen={createTeamOpen}
         onClose={() => { setCreateTeamOpen(false); setJoinOpen(true); }}
         onCreated={handleTeamCreated}
@@ -736,7 +738,7 @@ export default function TournamentOverview() {
         lockTeamType
         title="Create Tournament Team"
         description={`Create a ${teamRosterFormat(rosterSize(tournament.team_size))} tournament roster with yourself as captain.`}
-      />
+      /></Suspense>}
     </div>
   );
 }

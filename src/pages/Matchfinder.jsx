@@ -1,7 +1,7 @@
 import { competitionStreamRequiredMessage, hasCompetitionStream, requiresCompetitionStream } from "@/lib/competitionStreaming";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { CalendarDays, Clock3, DollarSign, Gamepad2, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
+import { CalendarDays, Clock3, DollarSign, Shield, Swords, Trophy, Users, X, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CompetitionHero from "@/components/competition/CompetitionHero";
 import { CompetitionMatchfinder, CompetitionMatchfinderRow } from "@/components/competition/CompetitionMatchfinder";
@@ -14,9 +14,13 @@ import { FreeEightsRankDialog, FreeEightsRankNotice } from "@/components/competi
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { freeEightsTeamSize } from "@/lib/freeEightsFormat";
-import XPMatchAcceptDialog from "@/components/match/XPMatchAcceptDialog";
+import { loadPlayTeams } from "@/lib/playTeams";
+import { loadMatchfinderSources } from "@/lib/matchfinderData";
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import XPMatchPostAction from "@/components/match/XPMatchPostAction";
 import { xpMatchDestination } from "@/lib/xpMatchAccess";
+
+const XPMatchAcceptDialog = lazy(() => import("@/components/match/XPMatchAcceptDialog"));
 
 const categories = [
   { key: "xp", label: "XP Matches", icon: Swords, tone: "cyan", dot: "bg-cyan" },
@@ -47,7 +51,7 @@ export default function Matchfinder() {
   const requestedXPMatchId = searchParams.get("acceptXP");
   const autoOpenedWagerId = useRef("");
   const autoOpenedXPMatchId = useRef("");
-  const [activeCategory, setActiveCategory] = useState(() => searchParams.get("category") === "eights" ? "eights" : "xp");
+  const [activeCategory, setActiveCategory] = useState(() => categories.some(category => category.key === searchParams.get("category")) ? searchParams.get("category") : "xp");
   const [user, setUser] = useState(null);
   const [xpMatches, setXpMatches] = useState([]);
   const [rankedMatches, setRankedMatches] = useState([]);
@@ -59,7 +63,9 @@ export default function Matchfinder() {
   const [freeMembership, setFreeMembership] = useState(null);
   const activeFreeMatch = user?.id && freeMembership?.userId === user.id ? freeMembership?.match ?? null : null;
   const [tournaments, setTournaments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const requestGeneration = useRef(0);
+  const [loadingSources, setLoadingSources] = useState(["xp", "elo", "wagers", "tournaments"]);
+  const loading = loadingSources.includes(["eights", "money8s"].includes(activeCategory) ? "wagers" : activeCategory);
   const [acceptingId, setAcceptingId] = useState("");
   const [discordPromptOpen, setDiscordPromptOpen] = useState(false);
   const [rankPromptOpen, setRankPromptOpen] = useState(false);
@@ -74,33 +80,26 @@ export default function Matchfinder() {
   const [cancellingWagerId, setCancellingWagerId] = useState("");
 
   const loadMatches = async () => {
-    try {
-      setLoading(true);
-      const [currentUser, xpRows, rankedRows, wagerRows, tournamentRows] = await Promise.all([
-        base44.auth.me().catch(() => null),
-        base44.entities.XPMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100).catch(() => []),
-        base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100).catch(() => []),
-        base44.entities.Wager.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100).catch(() => []),
-        base44.entities.Tournament.filterFresh({}, "start_date", 100).catch(() => []),
-      ]);
-      setUser(currentUser);
-      setXpMatches((xpRows || []).filter((match) => match.posted_to_matchfinder !== false));
-      setRankedMatches(rankedRows || []);
-      setWagerMatches(wagerRows || []);
-      setTournaments((tournamentRows || []).filter((tournament) => (
-        openTournamentStatuses.has(String(tournament?.status || "").toLowerCase())
-        && !tournament?.is_streamer_tournament
-      )));
-    } catch (error) {
-      console.error("Failed to load matchfinder:", error);
-      toast({ title: "Matchfinder unavailable", description: "The open matches could not be loaded.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    const generation = ++requestGeneration.current;
+    setLoadingSources(["xp", "elo", "wagers", "tournaments"]);
+    await Promise.all([
+      base44.auth.me().catch(() => null).then(currentUser => {
+        if (generation === requestGeneration.current) setUser(currentUser);
+      }),
+      loadMatchfinderSources(base44, (source, rows) => {
+        if (generation !== requestGeneration.current) return;
+        if (source === "xp") setXpMatches(previous => retainDataSnapshot(previous, rows.filter(match => match.posted_to_matchfinder !== false)));
+        if (source === "elo") setRankedMatches(previous => retainDataSnapshot(previous, rows));
+        if (source === "wagers") setWagerMatches(previous => retainDataSnapshot(previous, rows));
+        if (source === "tournaments") setTournaments(previous => retainDataSnapshot(previous, rows.filter(tournament => openTournamentStatuses.has(String(tournament.status || "").toLowerCase()) && !tournament.is_streamer_tournament)));
+        setLoadingSources(previous => previous.filter(key => key !== source));
+      }),
+    ]);
   };
 
   useEffect(() => {
-    loadMatches();
+    void loadMatches();
+    return () => { requestGeneration.current += 1; };
   }, []);
 
   useEffect(() => {
@@ -204,16 +203,7 @@ export default function Matchfinder() {
     if (!userId) return [];
     setLoadingWagerTeams(true);
     try {
-      const memberships = await base44.entities.TeamMember.filterFresh({ user_id: userId }, "-joined_date", 50).catch(() => []);
-      const teams = await Promise.all((memberships || [])
-        .filter((membership) => membership.is_active !== false)
-        .map(async (membership) => {
-          const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
-          if (!team || team.is_active === false || !["wager", "general"].includes(team.team_type) || String(team.captain_id || "") !== String(userId)) return null;
-          const members = await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 50).catch(() => []);
-          return { ...team, members: (members || []).filter((member) => member.is_active !== false) };
-        }));
-      const activeTeams = teams.filter(Boolean);
+      const activeTeams = (await loadPlayTeams(base44)).filter(team => team.is_active !== false && ["wager", "general"].includes(team.team_type) && String(team.captain_id || "") === String(userId));
       setWagerTeams(activeTeams);
       return activeTeams;
     } catch (error) {
@@ -460,13 +450,13 @@ export default function Matchfinder() {
 
         <div className="mt-4 flex items-center gap-2 text-[10px] text-vapor"><CalendarDays className="h-3.5 w-3.5 text-yellow-300" /> Scheduled tournaments show their announced start time; open matches can be accepted immediately.</div>
       </div>
-      {xpToAccept && user && <XPMatchAcceptDialog key={xpToAccept.id} match={xpToAccept} user={user} requestedTeamId={requestedTeamId}
+      {xpToAccept && user && <Suspense fallback={<div role="status" className="p-4 text-sm text-vapor">Opening match…</div>}><XPMatchAcceptDialog key={xpToAccept.id} match={xpToAccept} user={user} requestedTeamId={requestedTeamId}
         onClose={() => setXpToAccept(null)} onJoined={(matchId) => {
           setXpToAccept(null);
           toast({ title: "XP match accepted", description: "Opening match room." });
           navigate(`/xp-match/${matchId}`);
         }}
-      />}
+      /></Suspense>}
       {wagerToAccept && <WagerAcceptModal
         wager={wagerToAccept}
         teams={wagerTeams}
