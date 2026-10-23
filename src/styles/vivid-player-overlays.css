@@ -1,0 +1,44 @@
+/* All motion stays inside the shared 80px canvas. Equal wings keep the name centered. */
+.centerbar[data-design="crimson-overdrive"] { --cb: #ff4646; --cb2: #ff920e; background: linear-gradient(100deg, #64091b, #210613 42%, #210613 58%, #790d20); }
+.centerbar[data-design="volt-rush"] { --cb: #fff200; --cb2: #ffab00; background: linear-gradient(100deg, #4a4100, #171902 42%, #171902 58%, #655000); }
+.centerbar[data-design="cobalt-strike"] { --cb: #72caff; --cb2: #2464ff; background: linear-gradient(100deg, #0732a0, #061438 42%, #061438 58%, #063cbe); }
+.centerbar[data-design="gilded-reign"] { --cb: #ffdb64; --cb2: #f6a800; background: linear-gradient(100deg, #795002, #211605 42%, #211605 58%, #8b5e09); }
+.centerbar[data-design="silver-spectre"] { --cb: #f1f7ff; --cb2: #a5bce2; background: linear-gradient(100deg, #536478, #101925 42%, #101925 58%, #66768b); }
+.centerbar:is([data-design="crimson-overdrive"], [data-design="volt-rush"], [data-design="cobalt-strike"], [data-design="gilded-reign"], [data-design="silver-spectre"]) .centerbar-identity { overflow: hidden; background: #050a15d9; border-inline-width: 2px; }
+.centerbar:has(.vivid-sweep) .centerbar-identity::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, var(--cb) 22%, transparent) 50%, transparent 65%); animation: vivid-signature-shine 5s ease-in-out infinite; }
+.centerbar:has(.vivid-sweep) .centerbar-identity > * { position: relative; z-index: 1; }
+.centerbar:has(.vivid-sweep) .centerbar-metric > span { color: #e0e6ef; text-shadow: 0 1px 3px #000; }
+.centerbar:has(.vivid-sweep) .centerbar-rail { height: 3px; animation-duration: 3s; }
+.vivid-sweep { position: absolute; inset: 8px auto auto -15%; width: 25%; height: 12px; background: linear-gradient(90deg, transparent, var(--cb2), var(--cb)); opacity: .45; transform: skewX(-35deg); animation: vivid-speed 3.5s linear infinite; }
+.vivid-sweep-reverse { top: auto; bottom: 8px; animation-direction: reverse; animation-delay: -1.75s; }
+.vivid-sonar { position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; border: 2px solid var(--cb); border-radius: 50%; opacity: 0; animation: vivid-sonar 5s linear infinite; }
+.vivid-sonar-delayed { animation-delay: -2.5s; }
+.centerbar[data-design="crimson-overdrive"] .centerbar-identity { clip-path: polygon(5% 0, 95% 0, 100% 50%, 95% 100%, 5% 100%, 0 50%); border-block: 2px solid #ff4646; }
+.centerbar[data-design="crimson-overdrive"] .centerbar-fx > i { width: 100px; height: 2px; border-radius: 0; animation: cb-warp 1.7s calc(var(--i) * -.17s) linear infinite; }
+.centerbar[data-design="crimson-overdrive"] .centerbar-grid { background-size: 45px 12px; opacity: .65; animation-duration: 2s; }
+.centerbar[data-design="crimson-overdrive"] .centerbar-orbit { border-radius: 5%; border-style: double; border-width: 4px; }
+.centerbar[data-design="volt-rush"] .centerbar-ribbon { inset: 0; background: repeating-linear-gradient(120deg, transparent 0 35px, #fff20026 35px 40px, transparent 40px 65px); animation: vivid-chevron 3s linear infinite; }
+.centerbar[data-design="volt-rush"] .centerbar-identity { border-block: 3px solid #fff200; border-radius: 8px; }
+.centerbar[data-design="volt-rush"] .centerbar-fx > i { height: 4px; width: 18px; border-radius: 0; animation-duration: 2s; }
+.centerbar[data-design="volt-rush"] .vivid-sweep { height: 3px; opacity: .9; animation-duration: 2s; }
+.centerbar[data-design="volt-rush"] .centerbar-orbit { border-style: dashed; border-radius: 0; }
+.centerbar[data-design="cobalt-strike"] .centerbar-ribbon { background: conic-gradient(transparent 0 75%, #2464ff80 88%, #72caff55 94%, transparent); animation-duration: 9s; }
+.centerbar[data-design="cobalt-strike"] .vivid-sonar { border-width: 3px; animation-duration: 4s; }
+.centerbar[data-design="cobalt-strike"] .vivid-sonar-delayed { animation-delay: -2s; }
+.centerbar[data-design="cobalt-strike"] .centerbar-identity { border-radius: 22px 4px; border-block: 1px solid #72caff; }
+.centerbar[data-design="cobalt-strike"] .vivid-sweep { height: 2px; box-shadow: 0 0 14px #72caff; }
+.centerbar[data-design="gilded-reign"] .centerbar-ribbon { background: repeating-conic-gradient(from 20deg, #ffdb6410 0 25deg, #ffc12b50 35deg 40deg, transparent 55deg 90deg); animation-duration: 22s; }
+.centerbar[data-design="gilded-reign"] .centerbar-identity { border: 2px solid #ffdb64; border-radius: 5px; box-shadow: inset 0 0 16px #d39b1e30, 0 0 20px #ffce4e25; }
+.centerbar[data-design="gilded-reign"] .centerbar-fx > i { width: 2px; height: 2px; box-shadow: 0 0 6px 2px #ffdb6440; animation-duration: 6s; }
+.centerbar[data-design="gilded-reign"] .centerbar-grid { opacity: .15; }
+.centerbar[data-design="gilded-reign"] .vivid-sweep { height: 35px; opacity: .18; animation-duration: 7s; }
+.centerbar[data-design="silver-spectre"] .centerbar-grid { background: repeating-linear-gradient(0deg, #fff1 0 1px, transparent 1px 4px); animation-duration: 10s; opacity: .45; }
+.centerbar[data-design="silver-spectre"] .centerbar-identity { border-block: 2px solid #d6e6ff; border-radius: 35px 4px; background: linear-gradient(115deg, #0b111d, #35445b 50%, #0b111d); }
+.centerbar[data-design="silver-spectre"] .vivid-sweep { height: 55px; opacity: .22; background: linear-gradient(90deg, transparent, #f1f7ff, transparent); animation-duration: 6s; }
+.centerbar[data-design="silver-spectre"] .centerbar-fx > i { width: 55px; height: 1px; animation-name: cb-warp; animation-duration: 4s; }
+.centerbar[data-design="silver-spectre"] .centerbar-orbit { border-style: double; border-width: 3px; opacity: .4; }
+@keyframes vivid-speed { from { translate: -100% 0; } to { translate: 550% 0; } }
+@keyframes vivid-sonar { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; } 15% { opacity: .6; } 100% { transform: translate(-50%, -50%) scale(12); opacity: 0; } }
+@keyframes vivid-chevron { to { translate: 65px 0; } }
+@keyframes vivid-signature-shine { 0%, 15% { transform: translateX(-120%); } 70%, 100% { transform: translateX(120%); } }
+@media (prefers-reduced-motion: reduce) { .centerbar *, .centerbar *::before, .centerbar *::after { animation: none !important; } }
