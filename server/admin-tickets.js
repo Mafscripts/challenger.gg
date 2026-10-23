@@ -317,3 +317,17 @@ export async function closeSupportCaseForCleanup(db, user, payload = {}) {
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20000 });
   for (let attempt = 0; ; attempt++) { try { return await run(); } catch (error) { if (error.code !== "P2034" || attempt >= 2) throw error; } }
 }
+
+export async function getSupportCaseChat(db, user, payload = {}) {
+  requireStaff(user);
+  if (!["ticket", "dispute"].includes(payload.kind) || typeof payload.id !== "string" || !payload.id || payload.id.length > 200) throw Object.assign(new Error("Choose a support case."), { status: 400 });
+  const group = await supportCaseGroup(db, payload.kind, payload.id);
+  if (!group) throw Object.assign(new Error("Support case no longer exists."), { status: 404 });
+  const records = [...group.tickets.values(), ...group.disputes.values()];
+  const matchIds = [...new Set(records.map(row => row.metadata?.match_id || row.metadata?.wager_id || (row.metadata?.related_entity_type !== "Ticket" ? row.metadata?.related_entity_id : null)).filter(Boolean))];
+  if (!matchIds.length) return { success: true, messages: [], has_match: false };
+  const rows = await db.$queryRaw`SELECT * FROM "ChatMessage" WHERE metadata->>'conversation_id' IN (${idsSql(matchIds)})
+    AND COALESCE(metadata->>'internal', 'false') <> 'true'
+    ORDER BY created_date DESC, id DESC LIMIT 100`;
+  return { success: true, messages: rows.reverse().map(serializeRow), has_match: true, limit: 100 };
+}

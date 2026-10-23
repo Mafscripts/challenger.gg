@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, ExternalLink, FileCheck2, FileText, Gavel, Loader2, LockKeyhole, MessageSquare, Send, ShieldAlert, UserCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -43,7 +44,20 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const path = ticketRoomPath(row);
   const match = ticket?.match_details || row.disputes[0]?.wager_details || {};
   const roster = activeCase?.match_roster || ticket?.match_roster || row.disputes[0]?.match_roster || [];
-  const chat = row.disputes[0]?.chat_logs || ticket?.chat_logs || [];
+  const chatQuery = useQuery({
+    queryKey: ["support-case-chat", user.id, row.kind, row.record_id],
+    enabled: tab === "chat",
+    queryFn: async () => {
+      const { data } = await base44.functions.invoke("getSupportCaseChat", { kind: row.kind, id: row.record_id });
+      if (!data?.success) throw new Error(data?.error || "Could not load match chat.");
+      return data;
+    },
+    refetchInterval: tab === "chat" ? 5000 : false,
+    refetchOnWindowFocus: true,
+  });
+  const savedChat = [...(ticket?.chat_logs || []), ...row.disputes.flatMap(record => record.chat_logs || [])];
+  const chat = [...new Map([...savedChat, ...(chatQuery.data?.messages || [])].filter(message => !message.internal).map(message => [message.id || `${message.created_date}:${message.sender_id}:${message.content || message.message}`, message])).values()]
+    .sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
   const history = row.disputes[0]?.match_history || ticket?.match_history || [];
   const report = ticket?.result_report || match;
   const scoreA = report.confirmed_score_alpha ?? report.team_a_score ?? report.reported_score_alpha ?? report.host_reported_score_alpha;
@@ -96,7 +110,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   };
   const tabs = [
     ["conversation", "Conversation", MessageSquare], ["evidence", `Evidence${proof.length ? ` (${proof.length})` : ""}`, FileText],
-    ...(isMatchTicket(row) ? [["match", "Match details", ExternalLink]] : []),
+    ...(isMatchTicket(row) ? [["chat", "Match chat", MessageSquare], ["match", "Match details", ExternalLink]] : []),
     ...(ticket ? [["notes", "Staff notes", LockKeyhole]] : []), ["decision", row.closed ? "Resolution" : "Decision", Gavel],
   ];
   return <article className="at-detail">
@@ -141,6 +155,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
         {row.disputes.map((record) => <div key={record.id} className="at-evidence-review">{record.proof_reviewed_date ? <p className="at-help"><FileCheck2 size={14} /> Reviewed by {record.proof_reviewed_by_name || "Staff"} on {ticketDate(record.proof_reviewed_date)}</p>
           : !closedTicket(record) && <button className="at-button" disabled={!!busy || !proof.length} onClick={() => invoke("moderateDispute", { dispute_id: record.id, action: "review_proof", notes: "Evidence reviewed by staff." }, "Evidence marked as reviewed.")}><FileCheck2 size={14} /> Mark evidence reviewed</button>}</div>)}
       </>}
+      {tab === "chat" && <><div className="at-section-heading"><h4>Match chat logs</h4><span>{chat.length} messages · Latest 100 room messages</span></div><p className="at-help">Player messages from the linked match room. New messages refresh automatically.</p>{chatQuery.isPending && <p role="status" className="at-help">Loading match chat…</p>}{chatQuery.isError && <div role="alert" className="at-list-error"><p>{chatQuery.error.message}</p><button className="at-button" onClick={() => chatQuery.refetch()} disabled={chatQuery.isFetching}>Retry</button></div>}<div className="at-thread">{chat.map((message, index) => <article key={message.id || index} className="at-message"><div className="at-message-heading"><strong>{message.sender_name || "Player"}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content || message.message}</p></article>)}</div>{!chat.length && !chatQuery.isPending && !chatQuery.isError && <div className="at-empty-section"><MessageSquare size={24} /><h4>No match messages yet</h4><p>No messages have been saved for this match room.</p></div>}</>}
       {tab === "match" && <>
         <div className="at-section-heading"><h4>Match information</h4><span>Saved with this ticket</span></div>
         <div className="at-match-summary"><strong>{teamA}</strong><span>{scoreA !== undefined && scoreB !== undefined ? `${scoreA} : ${scoreB}` : "vs"}</span><strong>{teamB}</strong></div>
@@ -152,7 +167,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
           ["Maps", (match.series_maps || []).map((map) => typeof map === "string" ? map : map.map_name || map.name).filter(Boolean).join(" / ") || match.final_map_name],
         ].filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
         {!!roster.length && <section className="at-subsection"><h4>Players &amp; Activision IDs</h4><div className="at-roster">{roster.map((player) => <div key={player.user_id}><span><strong>{player.user_name || "Player"}</strong><small>{player.activision_id || "Activision ID not set"}</small></span><small>{["host", "alpha", "team_a"].includes(player.team) ? teamA : teamB}</small></div>)}</div></section>}
-        {!!chat.length && <details className="at-disclosure"><summary>Match chat <span>{chat.length} messages</span></summary><div className="at-log">{chat.map((message, index) => <p key={message.id || index}><strong>{message.sender_name || "Player"}:</strong> {message.content || message.message}</p>)}</div></details>}
+        <button className="at-button" onClick={() => setTab("chat")}><MessageSquare size={14} /> View match chat logs</button>
         {!!history.length && <details className="at-disclosure"><summary>Match history</summary><div className="at-log">{history.map((entry, index) => <p key={entry.id || index}>{entry.summary || entry.result || entry.status || "Match record"}</p>)}</div></details>}
       </>}
       {tab === "notes" && <>

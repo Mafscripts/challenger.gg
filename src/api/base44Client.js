@@ -16,6 +16,7 @@ const ME_CACHE_MS = 60_000;
 const readOnlyFunctions = new Set([
   "getLiveSupportState",
   "getSupportInboxSummary",
+  "getSupportCaseChat",
   "getPremiumMembershipStatus",
   "getLiveSupportRecords",
   "getAdminRewardOverview", "getMyRewardGrants", "getRewardReveal", "getRewardSeasonStandings",

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { deleteAdminTicket, getAdminTickets, closeSupportCaseForCleanup } from "./admin-tickets.js";
+import { deleteAdminTicket, getAdminTickets, closeSupportCaseForCleanup, getSupportCaseChat } from "./admin-tickets.js";
 
 // Opt in explicitly: all test data and audit rows are rolled back, even on success.
 test("database deletion removes linked records and messages, preserves results, and tolerates absent optional match tables", { skip: process.env.SUPPORT_DB_TEST !== "1" }, async () => {
@@ -89,6 +89,29 @@ test("admins can close linked support cases; only CEO/Developer delete, and matc
       assert.equal((await deleteAdminTicket(scopedDb, { id: marker, role: "developer" }, { ...input, id: ids[1] })).success, true);
       assert.equal(await tx.ticket.findUnique({ where: { id: ids[1] } }), null);
       assert.equal((await closeSupportCaseForCleanup(scopedDb, { id: marker, role: "ceo" }, { ...input, id: ids[2] })).success, true);
+      throw rollback;
+    }, { timeout: 20000 }), error => error === rollback);
+  } finally { await db.$disconnect(); }
+});
+
+test("support chat logs load later XP and tournament room messages even when the ticket snapshot is empty", { skip: process.env.SUPPORT_DB_TEST !== "1" }, async () => {
+  const db = new PrismaClient(), rollback = new Error("ROLLBACK_SUPPORT_CHAT_TEST");
+  try {
+    await assert.rejects(db.$transaction(async tx => {
+      for (const type of ["xp", "tournament"]) {
+        const matchId = crypto.randomUUID();
+        const ticket = await tx.ticket.create({ data: { metadata: { status: "open", match_id: matchId, match_type: type, chat_logs: [] } } });
+        const message = await tx.chatMessage.create({ data: { metadata: { conversation_id: matchId, sender_name: "Fixture player", content: "Message sent after ticket opened", match_type: type } } });
+        await tx.chatMessage.create({ data: { metadata: { conversation_id: matchId, internal: true, content: "Private fixture" } } });
+        await tx.chatMessage.create({ data: { metadata: { conversation_id: crypto.randomUUID(), content: "Unrelated fixture" } } });
+        const payload = { kind: "ticket", id: ticket.id };
+        const result = await getSupportCaseChat(tx, { id: "staff", role: "developer" }, payload);
+        assert.deepEqual(result.messages.map(row => row.id), [message.id]);
+        assert.equal(result.messages[0].content, "Message sent after ticket opened");
+        assert.equal(result.has_match, true);
+        await assert.rejects(() => getSupportCaseChat(tx, { id: "player", role: "user" }, payload), error => error.status === 403);
+      }
+      await assert.rejects(() => getSupportCaseChat(tx, { role: "admin" }, { kind: "ticket", id: "missing-fixture" }), error => error.status === 404);
       throw rollback;
     }, { timeout: 20000 }), error => error === rollback);
   } finally { await db.$disconnect(); }
