@@ -1,5 +1,6 @@
 import { isLiveSupportStaff, LIVE_SUPPORT_ROLES, liveSupportClosed } from "../src/lib/liveSupport.js";
 import { serializeRow } from "./entity.js";
+import { randomUUID } from "node:crypto";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const field = (key, value) => ({ metadata: { path: [key], equals: value } });
@@ -130,5 +131,72 @@ export async function updateLiveSupport(db, user, body = {}, close = false) {
     const saved = serializeRow(await tx.ticket.update({ where: { id: ticket.id }, data: { metadata } }));
     if (close && !liveSupportClosed(ticket)) await notify(tx, saved, user, staff, "Support conversation closed.", true);
     return { success: true, ticket: publicTicket(saved) };
+  });
+}
+
+const requireSupportStaff = user => { if (!isLiveSupportStaff(user)) fail("Staff access required.", 403); };
+const recordDetails = ticket => ({ ...publicTicket(ticket), support_favorite: ticket.support_favorite === true,
+  support_archived: ticket.support_archived === true, support_archived_by: ticket.support_archived_by,
+  support_archived_at: ticket.support_archived_at, resolved_date: ticket.resolved_date, resolved_by: ticket.resolved_by,
+  notes: ticket.support_record_notes || [], history: ticket.support_record_history || [] });
+
+export async function readLiveSupportRecords(db, user, body = {}) {
+  requireSupportStaff(user);
+  if (body.ticket_id) {
+    if (typeof body.ticket_id !== "string" || body.ticket_id.length > 200) fail("Choose a conversation.");
+    const ticket = scoped(await db.ticket.findUnique({ where: { id: body.ticket_id } }), user);
+    return { success: true, ticket: recordDetails(ticket), messages: (ticket.messages || []).filter(message => !message.internal).map(publicMessage) };
+  }
+  const view = ["all", "open", "closed", "favorites", "archived"].includes(body.view) ? body.view : "all";
+  const search = String(body.search || "").trim().slice(0, 120);
+  const page = Number.isSafeInteger(body.page) && body.page >= 0 && body.page <= 100000 ? body.page : 0;
+  const rows = await db.$queryRaw`SELECT id, created_date, updated_date,
+    jsonb_build_object('username', metadata->'username', 'user_id', metadata->'user_id', 'status', metadata->'status',
+      'assigned_admin_name', metadata->'assigned_admin_name', 'support_favorite', metadata->'support_favorite',
+      'support_archived', metadata->'support_archived', 'support_last_message', metadata->'support_last_message',
+      'support_last_message_date', metadata->'support_last_message_date') AS metadata
+    FROM "Ticket" WHERE metadata->>'request_type' = 'live_support'
+      AND (${view} = 'all'
+        OR (${view} = 'archived' AND metadata->>'support_archived' = 'true')
+        OR (${view} = 'favorites' AND metadata->>'support_favorite' = 'true')
+        OR (${view} = 'closed' AND metadata->>'status' IN ('closed', 'resolved', 'rejected') AND COALESCE(metadata->>'support_archived', 'false') <> 'true')
+        OR (${view} = 'open' AND COALESCE(metadata->>'status', 'open') NOT IN ('closed', 'resolved', 'rejected')))
+      AND (${search} = '' OR strpos(lower(concat_ws(' ', id, metadata->>'username', metadata->>'user_id', metadata->>'support_last_message')), lower(${search})) > 0)
+    ORDER BY created_date DESC, id DESC LIMIT 26 OFFSET ${page * 25}`;
+  return { success: true, rows: rows.slice(0, 25).map(serializeRow).map(ticket => {
+    const { notes, history, ...summary } = recordDetails(ticket); return summary;
+  }), page, next_page: rows.length > 25 ? page + 1 : null };
+}
+
+export async function manageLiveSupportRecord(db, user, body = {}) {
+  requireSupportStaff(user);
+  if (typeof body.ticket_id !== "string" || !body.ticket_id || body.ticket_id.length > 200) fail("Choose a conversation.");
+  if (!["favorite", "archive", "note"].includes(body.action)) fail("Choose a valid record action.");
+  if (body.action !== "note" && typeof body.value !== "boolean") fail("Choose whether to enable or disable this option.");
+  const content = typeof body.note === "string" ? body.note.trim() : "";
+  if (body.action === "note" && (!content || content.length > 4000 || typeof body.request_id !== "string" || !/^[a-zA-Z0-9-]{16,100}$/.test(body.request_id))) fail("Write a note of 1–4,000 characters and retry.");
+  return db.$transaction(async tx => {
+    await tx.$executeRaw`SELECT id FROM "Ticket" WHERE id = ${body.ticket_id} FOR UPDATE`;
+    const raw = await tx.ticket.findUnique({ where: { id: body.ticket_id } });
+    const ticket = scoped(raw, user), metadata = { ...raw.metadata };
+    if (body.action === "archive" && body.value && !liveSupportClosed(ticket)) fail("End the chat before archiving it.", 409);
+    if (body.action === "note" && (metadata.support_record_notes || []).some(note => note.request_id === body.request_id && note.author_id === user.id)) return { success: true, ticket: recordDetails(ticket) };
+    if (body.action === "note" && (metadata.support_record_notes || []).length >= 500) fail("This record has reached its limit of 500 notes.", 409);
+    const date = new Date().toISOString();
+    let description;
+    if (body.action === "note") {
+      metadata.support_record_notes = [...(metadata.support_record_notes || []), { id: randomUUID(), request_id: body.request_id,
+        author_id: user.id, author_name: label(user), content, created_date: date }];
+      description = "Added an internal note";
+    } else {
+      const key = body.action === "archive" ? "support_archived" : "support_favorite";
+      if (Boolean(metadata[key]) === body.value) return { success: true, ticket: recordDetails(ticket) };
+      metadata[key] = body.value;
+      if (body.action === "archive") { metadata.support_archived_by = body.value ? label(user) : null; metadata.support_archived_at = body.value ? date : null; }
+      description = body.action === "archive" ? body.value ? "Archived conversation" : "Restored from archive" : body.value ? "Saved to favorites" : "Removed from favorites";
+    }
+    metadata.support_record_history = [...(metadata.support_record_history || []), { id: randomUUID(), actor_id: user.id, actor_name: label(user), action: body.action, description, created_date: date }];
+    const saved = serializeRow(await tx.ticket.update({ where: { id: ticket.id }, data: { metadata } }));
+    return { success: true, ticket: recordDetails(saved) };
   });
 }

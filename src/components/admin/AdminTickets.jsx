@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Inbox, Loader2, Ticket, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import AdminTicketDetail, { TicketStatus } from "./AdminTicketDetail";
 import { shortTicketId, ticketDate, ticketIssue, ticketReporter, ticketTitle } from "@/lib/adminTickets";
 import "@/styles/admin-tickets.css";
+const SupportRecords = lazy(() => import("@/components/support/SupportRecords"));
 
 export default function AdminTickets({ user, onRefresh }) {
   const [filter, setFilter] = useState("open");
@@ -59,6 +60,7 @@ export default function AdminTickets({ user, onRefresh }) {
     <header className="at-heading">
       <div><span className="at-eyebrow">PLAYER SUPPORT</span><h2><Ticket size={20} /> Tickets</h2><p>Review a request, reply to the players and record the outcome.</p></div>
       <div className="at-filters" aria-label="Filter tickets">
+        <Suspense fallback={null}><SupportRecords className="at-button" /></Suspense>
         {[["open", "Open"], ["all", "All tickets"], ["closed", "Closed"]].map(([value, label]) => <button key={value}
           aria-pressed={filter === value} onClick={() => { setFilter(value); setSelectedId(null); }}>{label}</button>)}
       </div>

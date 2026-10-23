@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { supportTicketForViewer } from "../../src/lib/liveSupport.js";
 import { createEntity, deleteEntity, getEntity, listEntities, updateEntity } from "../entity.js";
 import { requireAuth } from "../middleware/auth.js";
 import { hasRole } from "../roles.js";
@@ -362,7 +363,7 @@ const visibleTickets = (req, rows) => {
   return rows.filter((ticket) => (
     String(ticket.user_id || "") === String(req.user.id)
     || (ticket.participant_user_ids || []).some((userId) => String(userId) === String(req.user.id))
-  ));
+  )).map(ticket => supportTicketForViewer(ticket, req.user));
 };
 
 router.get("/:entity", requireAuth, async (req, res, next) => {
@@ -465,7 +466,7 @@ router.get("/:entity/:id", requireAuth, async (req, res, next) => {
     }
     const result = req.params.entity === "User"
       ? (await withPlayerAvatars(prisma, [visibleUser(req, row)]))[0]
-      : row;
+      : req.params.entity === "Ticket" ? supportTicketForViewer(row, req.user) : row;
     res.json(protectIpVisibility(req, result));
   } catch (error) {
     next(error);

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { readLiveSupport, sendLiveSupport, updateLiveSupport } from "../live-support.js";
+import { supportTicketForViewer } from "../../src/lib/liveSupport.js";
+import { readLiveSupport, sendLiveSupport, updateLiveSupport, readLiveSupportRecords, manageLiveSupportRecord } from "../live-support.js";
 import { tournamentVetoState, tournamentVetoPending, tournamentVetoMaps, tournamentVetoChoice } from "../../src/lib/tournamentMapVeto.js";
 import { buildTournamentStandings } from "../tournament-standings.js";
 import { PRIMARY_GAME_ID, MW4_MAP_POOLS, TOPFRAGG_VARIANT, storedGameId } from "../../src/lib/mw4.js";
@@ -5684,6 +5685,7 @@ async function reopenTicket(req) {
   assertStaff(req, "moderator");
   const ticket = await getEntity("Ticket", req.body.ticket_id);
   if (!ticket) return { success: false, error: "Ticket not found" };
+  if (ticket.request_type === "live_support" && ticket.support_archived) return { success: false, error: "Restore the saved conversation from the archive before reopening it." };
   const updated = await updateEntity("Ticket", ticket.id, {
     status: normalizeMatchType(ticket.match_type) !== "xp" && ticket.requested_admin ? "waiting_for_admin" : "open",
     reopened_by: req.user.id,
@@ -5710,6 +5712,7 @@ async function reopenTicket(req) {
 async function escalateTicket(req) {
   const ticket = await getEntity("Ticket", req.body.ticket_id);
   if (!ticket) return { success: false, error: "Ticket not found" };
+  if (ticket.request_type === "live_support" && ["closed", "resolved", "rejected"].includes(ticket.status)) return { success: false, error: "This support conversation is closed. Start a new chat for further help." };
   const canEscalate = req.user.is_premium || hasRole(req.user, "moderator");
   if (!canEscalate) return { success: false, error: "Premium membership is required to escalate tickets" };
   if (ticket.premium_escalated && !hasRole(req.user, "moderator")) {
@@ -5742,7 +5745,7 @@ async function escalateTicket(req) {
     related_entity_id: ticket.id,
     related_entity_type: "Ticket",
   });
-  return { success: true, ticket: updated };
+  return { success: true, ticket: supportTicketForViewer(updated, req.user) };
 }
 
 async function createNotification(req) {
@@ -10574,6 +10577,8 @@ const handlers = {
   getAdminUserSecurity: (req) => getAdminUserSecurity(prisma, req),
   deleteAdminUser: (req) => deleteAdminUser(prisma, req.user, req.body),
   getLiveSupportState: req => readLiveSupport(prisma, req.user, req.body),
+  getLiveSupportRecords: req => readLiveSupportRecords(prisma, req.user, req.body),
+  manageLiveSupportRecord: req => manageLiveSupportRecord(prisma, req.user, req.body),
   sendLiveSupportMessage: req => sendLiveSupport(prisma, req.user, req.body),
   markLiveSupportRead: req => updateLiveSupport(prisma, req.user, req.body),
   closeLiveSupportConversation: req => updateLiveSupport(prisma, req.user, req.body, true),

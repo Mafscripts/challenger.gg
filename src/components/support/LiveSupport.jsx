@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Headphones, X, Send, Volume2, VolumeX, ArrowLeft, CheckCheck, MessageCircle } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { isLiveSupportStaff, liveSupportClosed, liveSupportUnread } from "@/lib/liveSupport";
 import "./live-support.css";
+const SupportRecords = lazy(() => import("./SupportRecords"));
 
 const call = async (name, body) => {
   const { data } = await base44.functions.invoke(name, body);
@@ -119,6 +120,7 @@ export default function LiveSupport() {
       <header className="support-header"><span className="support-mark"><Headphones size={23} /></span><div><Dialog.Title>{staff ? "Support desk" : "Topfragg support"}</Dialog.Title><Dialog.Description>{staff ? "Help players. Keep them in the game." : "Real people. Ready to help you out."}</Dialog.Description></div><button className="support-icon" aria-label={sound ? "Mute support sounds" : "Enable support sounds"} title={sound ? "Mute support sounds" : "Enable support sounds"} onClick={() => { setSound(!sound); try { localStorage.setItem("topfragg:support-sound", sound ? "off" : "on"); } catch { /* Storage is optional. */ } }}>{sound ? <Volume2 size={17} /> : <VolumeX size={17} />}</button><Dialog.Close className="support-icon" aria-label="Close support"><X size={19} /></Dialog.Close></header>
       {!user ? <div className="support-welcome"><MessageCircle size={34} /><h3>How can we help?</h3><p>Sign in to chat with our team and keep your conversation saved.</p><Link className="support-primary" to="/login" onClick={() => setOpen(false)}>Sign in to chat</Link></div> : <>
         {staff && <div className="support-toolbar">{selected ? <button onClick={() => choose(null)}><ArrowLeft size={15} /> Inbox</button> : <span>{threads.length} open conversations</span>}<Link to="/admin?tab=tickets" onClick={() => setOpen(false)}>Ticket center ↗</Link></div>}
+        {staff && <div className="support-toolbar"><Suspense fallback={null}><SupportRecords /></Suspense><span>Saved conversations</span></div>}
         {error && <div className="support-error" role="alert">{error} <button onClick={() => { setError(""); refresh(); }}>Retry</button></div>}
         {staff && !selected ? <div className="support-inbox">{loading && !threads.length ? <p>Loading conversations…</p> : !threads.length ? <div className="support-welcome"><CheckCheck size={32} /><h3>All caught up</h3><p>New player requests will appear here.</p></div> : threads.map(thread => <button key={thread.id} className="support-thread" onClick={() => choose(thread.id)}><span className="support-avatar">{(thread.username || "P").slice(0, 1).toUpperCase()}</span><span><strong>{thread.username || "Player"}</strong><small>{thread.support_last_message || "New support request"}</small><em>{thread.assigned_admin_name ? `Helping: ${thread.assigned_admin_name}` : "Unassigned · Reply to pick up"}</em></span>{liveSupportUnread(thread, true) && <i className="support-dot" />}</button>)}</div> : <>
           {staff && ticket && <div className="support-conversation-label">{ticket.username} <span>{ticket.assigned_admin_name ? `Helping: ${ticket.assigned_admin_name}` : "Reply to pick up this chat"}</span></div>}

@@ -15,6 +15,7 @@ const ENTITY_CACHE_MS = 15_000;
 const ME_CACHE_MS = 60_000;
 const readOnlyFunctions = new Set([
   "getLiveSupportState",
+  "getLiveSupportRecords",
   "getAdminRewardOverview", "getMyRewardGrants", "getRewardReveal", "getRewardSeasonStandings",
   "getTradingOverview",
   "getTradeInventory",
