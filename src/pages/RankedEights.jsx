@@ -251,10 +251,6 @@ export default function RankedEights() {
           )}
           action={<div className="competition-actions"><CompetitionGameSelect games={games} value={gameId} onChange={switchGame} />{!isMoney && <FreeEightsTutorial />}{comingSoon ? (
             <Link to="/ranked/8s?game=bo7" className="competition-action-pill">Play Black Ops <span className="text-orange">7</span><ArrowRight className="h-4 w-4" /></Link>
-          ) : !isMoney && !freeOverview.data ? (
-            <button type="button" disabled={!freeOverview.error || freeOverview.isFetching} onClick={() => refreshFreeOverview()} className="competition-action-pill">
-              {freeOverview.isFetching ? "Loading Free 8s..." : freeOverview.error ? "Retry loading Free 8s" : "Loading Free 8s..."}
-            </button>
           ) : activeLobby ? (
             <Link to={`/8s-match/${activeLobby.id}`} className="competition-action-pill">
               Return to your {isMoney ? "Money 8s" : "8s"} <ArrowRight className="h-4 w-4" />
