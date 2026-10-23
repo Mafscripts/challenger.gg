@@ -85,6 +85,18 @@ test("staff replies claim the chat and notify only its owner; read markers never
   assert.equal(read.ticket.support_user_read, 2);
 });
 
+test("another staff member cannot reply to or close a live chat that is already assigned", async () => {
+  const s = store(), first = await sendLiveSupport(s.db, player, request());
+  await sendLiveSupport(s.db, admin, request("Helping you now", first.ticket.id));
+  const second = { id: "other-staff", role: "admin", display_name: "Second" };
+  await assert.rejects(() => sendLiveSupport(s.db, second, request("Parallel reply", first.ticket.id)), error => error.status === 409);
+  await assert.rejects(() => updateLiveSupport(s.db, second, { ticket_id: first.ticket.id }, true), error => error.status === 409);
+  assert.equal(s.messages.length, 2);
+  assert.equal(s.tickets.get(first.ticket.id).metadata.assigned_admin_id, admin.id);
+  const closed = await updateLiveSupport(s.db, player, { ticket_id: first.ticket.id }, true);
+  assert.equal(closed.ticket.status, "closed");
+});
+
 test("closed conversations reject messages and permit a fresh conversation", async () => {
   const s = store(), first = await sendLiveSupport(s.db, player, request());
   await updateLiveSupport(s.db, player, { ticket_id: first.ticket.id }, true);

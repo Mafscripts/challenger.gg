@@ -40,8 +40,7 @@ export const ticketRoomPath = (row) => {
   const dispute = row.disputes[0];
   const id = ticket?.match_id || dispute?.match_id || dispute?.wager_id;
   if (!id) return null;
-  if (ticket?.match_url?.startsWith("/")) return ticket.match_url;
   const type = ticket?.match_type || dispute?.match_type;
   const prefix = { "8s": "8s-match", eights: "8s-match", money8s: "8s-match", xp: "xp-match", ranked: "ranked-match", tournament: "tournament-match" }[type] || "wagers-match";
-  return `/${prefix}/${id}`;
+  return `/${prefix}/${encodeURIComponent(id)}`;
 };

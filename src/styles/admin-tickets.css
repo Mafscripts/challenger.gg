@@ -22,6 +22,10 @@
 .admin-tickets .at-row-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 11px; }
 .admin-tickets .at-row-top > span:first-child { color: var(--at-muted); font-size: 9px; font-weight: 700; letter-spacing: .04em; }
 .admin-tickets .at-row-title { display: block; overflow: hidden; font-size: 13px; font-weight: 800; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.admin-tickets .at-case-owner { display: block; width: fit-content; margin: 0 0 9px; border: 1px solid #66859a33; border-radius: 5px; padding: 3px 6px; font-size: 9px; color: #7699ae; }
+.admin-tickets .at-case-owner[data-assigned="true"] { color: #58dfb5; background: #2dd4a80a; border-color: #2dd4a833; }
+.admin-tickets .at-button:disabled { opacity: .4; cursor: not-allowed; }
+.admin-tickets .at-message-heading .support-staff-name { color: #ff5b68; }
 .admin-tickets .at-ticket-row > p { margin-top: 4px; overflow: hidden; color: var(--at-muted); font-size: 11px; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
 .admin-tickets .at-row-bottom { display: flex; align-items: center; gap: 7px; margin-top: 14px; }
 .admin-tickets .at-row-bottom > strong { min-width: 0; max-width: 40%; overflow: hidden; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }

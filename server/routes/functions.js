@@ -1,3 +1,4 @@
+import { claimSupportTicket } from "../support-claims.js";
 import { MEMBER_TIERS } from "../../src/lib/premiumMembership.js";
 import { getPremiumMembershipStatus } from "../premium-membership.js";
 import { randomUUID } from "node:crypto";
@@ -18,7 +19,7 @@ import { activeProgressionSeason, progressionResetOverview, resetProgression } f
 import { matchAfterProgressionReset } from "../../src/lib/progressionResets.js";
 import { Router } from "express";
 import { prisma } from "../prisma.js";
-import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket } from "../admin-tickets.js";
+import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket, getSupportInboxSummary } from "../admin-tickets.js";
 import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount, setAdminUserVpnAccess } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
 import { getAdminDashboard } from "../admin-dashboard.js";
@@ -117,7 +118,7 @@ const RANKED_MIN_CHANGE = 5;
 const RANKED_MAX_CHANGE = 40;
 const adminPremiumGrantDays = 30;
 const animatedNameFreeTrialDays = 30;
-const staffRoles = ["ceo", "super_admin", "admin", "moderator"];
+const staffRoles = ["ceo", "super_admin", "admin", "moderator", "developer"];
 const findPlayersRoomId = "find-players";
 const findPlayersChatScope = "find_players_chat";
 const findPlayersRateLimits = new Map();
@@ -182,7 +183,7 @@ const tournamentGameModeDetails = {
   overload: { game_mode: "overload", mode: "Overload" },
   control: { game_mode: "control", mode: "Control" },
 };
-const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator"]);
+const roleBadgeTypes = new Set(["ceo", "super_admin", "admin", "moderator", "developer"]);
 const memberUserBadgeTypes = new Set(MEMBER_TIERS.map(tier => tier.id));
 const specialUserBadgeTypes = new Set(["verified_player", "streamer"]);
 const specialUserBadgeLabels = {
@@ -453,6 +454,11 @@ async function notifyStaff(notification) {
   const staff = await usersWithStaffRole();
   const { exclude_user_ids: excludeUserIds, ...payload } = notification;
   const excludeIds = new Set((excludeUserIds || []).filter(Boolean));
+  if (["support", "admin_request", "dispute"].includes(payload.type)) {
+    const kind = payload.related_entity_type === "Dispute" ? "dispute" : payload.related_entity_type === "Ticket" ? "ticket" : null;
+    const id = payload.ticket_id || payload.related_entity_id;
+    if (kind && id) payload.action_url = `/?support_case=${encodeURIComponent(`${kind}:${id}`)}`;
+  }
   return notifyUsers(staff.filter((user) => !excludeIds.has(user.id)).map((user) => user.id), payload);
 }
 
@@ -4805,6 +4811,7 @@ function ticketMessagePayload(ticket, content, user, internal = false) {
     sender_id: user.id,
     sender_name: nameFor(user),
     sender_role: effectiveChatRole(user),
+    sender_staff: hasRole(user, "moderator"),
     content,
     internal: Boolean(internal),
     created_date: nowIso(),
@@ -4830,7 +4837,7 @@ async function createTicket(req) {
   await notifyStaff({
     title: "New support ticket",
     message: `${nameFor(req.user)} opened: ${ticket.subject}`,
-    type: "system",
+    type: "support",
     action_url: "/admin",
     related_entity_id: ticket.id,
     related_entity_type: "Ticket",
@@ -4970,23 +4977,11 @@ async function requestAdminAlert(req) {
 
 async function joinTicket(req) {
   assertStaff(req, "moderator");
-  const ticket = await getEntity("Ticket", req.body.ticket_id);
-  if (!ticket) return { success: false, error: "Ticket not found" };
-  const matchType = normalizeMatchType(ticket.match_type);
-  const entityName = matchEntityFor(matchType);
+  const claimed = await claimSupportTicket(prisma, req.user, req.body);
+  const ticket = claimed.ticket, updated = ticket, firstJoinForStaff = claimed.firstJoinForStaff;
+  const matchType = normalizeMatchType(ticket.match_type), entityName = matchEntityFor(matchType);
   const match = ticket.match_id ? await getEntity(entityName, ticket.match_id).catch(() => null) : null;
-  const joinedStaffIds = new Set([...(ticket.joined_staff_ids || []), ticket.assigned_admin_id].filter(Boolean));
-  const firstJoinForStaff = !joinedStaffIds.has(req.user.id);
-  joinedStaffIds.add(req.user.id);
-  const updated = await updateEntity("Ticket", ticket.id, {
-    status: matchType === "xp" ? "in_progress" : "admin_joined",
-    assigned_admin_id: req.user.id,
-    assigned_admin_name: nameFor(req.user),
-    assigned_admin_role: effectiveChatRole(req.user),
-    joined_staff_ids: [...joinedStaffIds],
-    joined_date: nowIso(),
-    updated_date: nowIso(),
-  });
+  const joinedStaffIds = new Set(ticket.joined_staff_ids || []);
   if (ticket.match_id && matchType !== "xp") {
     await updateEntity(entityName, ticket.match_id, {
       admin_request_status: "admin_joined",
@@ -5003,7 +4998,7 @@ async function joinTicket(req) {
   }
   const alerts = await listEntities("AdminAlert", { ticket_id: ticket.id }, "-created_date", 20).catch(() => []);
   await Promise.all(alerts.map((alert) => updateEntity("AdminAlert", alert.id, { status: "acknowledged" }).catch(() => null)));
-  await notifyTicketUsers(updated, {
+  if (claimed.assignmentChanged) await notifyTicketUsers(updated, {
     title: matchType === "xp" ? "Staff reviewing your ticket" : "Admin joined",
     message: `${nameFor(req.user)} joined your ticket.`,
   });
@@ -5023,7 +5018,17 @@ async function joinMatchRoomAsAdmin(req) {
   if (matchType === "ranked" && req.body.silent_join === true) {
     return { success: true, match, silent_join: true };
   }
+  if (match.admin_request_ticket_id) {
+    const linked = await getEntity("Ticket", match.admin_request_ticket_id).catch(() => null);
+    if (linked && !["closed", "resolved", "rejected"].includes(linked.status)) {
+      const result = await joinTicket({ ...req, body: { ticket_id: linked.id, take_over: req.body.take_over } });
+      if (["8s", "money8s"].includes(matchType)) publishEightsLobbyUpdate(match.id, "admin-joined");
+      return { ...result, match: await getEntity(entityName, match.id) };
+    }
+  }
   if ((matchType === "8s" || matchType === "money8s") && req.body.direct_join === true) {
+    if (match.assigned_admin_id && match.assigned_admin_id !== req.user.id) return { success: false, error: `${match.assigned_admin_name || "Another staff member"} is already helping in this room.` };
+
     const joinedStaffIds = new Set([...(match.joined_staff_ids || []), match.assigned_admin_id].filter(Boolean));
     const firstJoinForStaff = !joinedStaffIds.has(req.user.id);
     joinedStaffIds.add(req.user.id);
@@ -5051,18 +5056,10 @@ async function joinMatchRoomAsAdmin(req) {
     return { success: false, error: "No open admin request found for this match" };
   }
 
-  const joinedStaffIds = new Set([...(ticket.joined_staff_ids || []), ticket.assigned_admin_id].filter(Boolean));
-  const firstJoinForStaff = !joinedStaffIds.has(req.user.id);
-  joinedStaffIds.add(req.user.id);
-  const updatedTicket = await updateEntity("Ticket", ticket.id, {
-    status: "admin_joined",
-    assigned_admin_id: req.user.id,
-    assigned_admin_name: nameFor(req.user),
-    assigned_admin_role: effectiveChatRole(req.user),
-    joined_staff_ids: [...joinedStaffIds],
-    joined_date: ticket.joined_date || nowIso(),
-    updated_date: nowIso(),
-  });
+  if (ticket.match_id && ticket.match_id !== match.id) return { success: false, error: "This support case belongs to another match." };
+  const claimed = await claimSupportTicket(prisma, req.user, { ticket_id: ticket.id, take_over: req.body.take_over });
+  const updatedTicket = claimed.ticket, firstJoinForStaff = claimed.firstJoinForStaff;
+  const joinedStaffIds = new Set(updatedTicket.joined_staff_ids || []);
   const updatedMatch = await updateEntity(entityName, match.id, {
     admin_request_status: "admin_joined",
     assigned_admin_id: req.user.id,
@@ -5090,7 +5087,7 @@ async function joinMatchRoomAsAdmin(req) {
 }
 
 async function replyTicket(req) {
-  const ticket = await getEntity("Ticket", req.body.ticket_id);
+  let ticket = await getEntity("Ticket", req.body.ticket_id);
   if (!ticket) return { success: false, error: "Ticket not found" };
   if (ticket.request_type === "live_support" && !req.body.internal) return sendLiveSupport(prisma, req.user, { ...req.body, request_id: req.body.request_id || randomUUID() });
   const isStaff = hasRole(req.user, "moderator");
@@ -5101,6 +5098,7 @@ async function replyTicket(req) {
   const internal = Boolean(req.body.internal);
   if (internal && !isStaff) return { success: false, error: "Only staff can add internal notes" };
 
+  if (isStaff && !internal) ticket = (await claimSupportTicket(prisma, req.user, { ticket_id: ticket.id })).ticket;
   const payload = ticketMessagePayload(ticket, content, req.user, internal);
   const message = await createEntity("Message", payload);
   const messages = internal ? (ticket.messages || []) : [...(ticket.messages || []), message];
@@ -5170,6 +5168,7 @@ async function resolveTicket(req) {
   assertStaff(req, "moderator");
   const ticket = await getEntity("Ticket", req.body.ticket_id);
   if (!ticket) return { success: false, error: "Ticket not found" };
+  if (!["closed", "resolved", "rejected"].includes(ticket.status)) await claimSupportTicket(prisma, req.user, { ticket_id: ticket.id });
   const action = req.body.action || req.body.decision;
   let actionResult = null;
 
@@ -9811,6 +9810,12 @@ async function moderateDispute(req) {
   assertStaff(req, "moderator");
   const dispute = await getEntity("Dispute", req.body.dispute_id);
   if (!dispute) return { success: false, error: "Dispute not found" };
+  if (!["closed", "resolved", "rejected"].includes(dispute.status)) {
+    if (dispute.ticket_id) {
+      const linked = await getEntity("Ticket", dispute.ticket_id).catch(() => null);
+      if (linked && !["closed", "resolved", "rejected"].includes(linked.status)) await claimSupportTicket(prisma, req.user, { ticket_id: linked.id });
+    } else await claimSupportTicket(prisma, req.user, { dispute_id: dispute.id });
+  }
   const action = req.body.action || req.body.decision;
   const matchType = normalizeMatchType(dispute.match_type || (dispute.wager_id ? "wager" : "wager"));
   const matchId = dispute.match_id || dispute.wager_id;
@@ -10587,6 +10592,8 @@ const handlers = {
   markLiveSupportRead: req => updateLiveSupport(prisma, req.user, req.body),
   closeLiveSupportConversation: req => updateLiveSupport(prisma, req.user, req.body, true),
   getAdminTickets: (req) => getAdminTickets(prisma, req.user, req.body),
+  claimSupportDispute: async req => ({ success: true, dispute: (await claimSupportTicket(prisma, req.user, { dispute_id: req.body.dispute_id, take_over: req.body.take_over })).ticket }),
+  getSupportInboxSummary: req => getSupportInboxSummary(prisma, req.user),
   getAdminTicketCounts: (req) => getAdminTicketCounts(prisma, req.user),
   deleteAdminTicket: (req) => deleteAdminTicket(prisma, req.user, req.body),
   completeRegistration,

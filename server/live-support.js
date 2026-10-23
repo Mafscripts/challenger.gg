@@ -95,6 +95,7 @@ export async function sendLiveSupport(db, user, body = {}, { now = () => new Dat
     const raw = await tx.ticket.findUnique({ where: { id } });
     const ticket = scoped(raw, user);
     if (liveSupportClosed(ticket)) fail("This conversation is closed. Start a new chat.", 409);
+    if (staff && ticket.assigned_admin_id && ticket.assigned_admin_id !== user.id) fail(`${ticket.assigned_admin_name || "Another staff member"} is already helping. Take over the case in the support inbox before replying.`, 409);
     const previous = ticket.messages || [];
     if (previous.length >= 500) fail("This conversation is full. Close it and start a new chat.", 409);
     if (!staff && ticket.support_last_customer_at && Date.parse(timestamp) - Date.parse(ticket.support_last_customer_at) < 1000) fail("Please wait a moment before sending another message.", 429);
@@ -124,6 +125,7 @@ export async function updateLiveSupport(db, user, body = {}, close = false) {
     await tx.$executeRaw`SELECT id FROM "Ticket" WHERE id = ${body.ticket_id} FOR UPDATE`;
     const raw = await tx.ticket.findUnique({ where: { id: body.ticket_id } });
     const ticket = scoped(raw, user), staff = isLiveSupportStaff(user);
+    if (close && staff && ticket.assigned_admin_id && ticket.assigned_admin_id !== user.id) fail(`${ticket.assigned_admin_name || "Another staff member"} is already handling this conversation. Take over the case before closing it.`, 409);
     const sequence = Math.max(0, Math.min(Number(ticket.support_sequence || 0), Number.isSafeInteger(body.sequence) ? body.sequence : 0));
     const key = staff ? "support_staff_read" : "support_user_read";
     const metadata = { ...raw.metadata, [key]: Math.max(Number(ticket[key] || 0), sequence),

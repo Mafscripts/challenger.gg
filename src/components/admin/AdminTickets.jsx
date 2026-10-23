@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Inbox, Loader2, Ticket, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
@@ -10,9 +10,10 @@ import { shortTicketId, ticketDate, ticketIssue, ticketReporter, ticketTitle } f
 import "@/styles/admin-tickets.css";
 const SupportRecords = lazy(() => import("@/components/support/SupportRecords"));
 
-export default function AdminTickets({ user, onRefresh }) {
+export default function AdminTickets({ user, onRefresh, initialSelectedId = null, embedded = false, onRoomOpen }) {
   const [filter, setFilter] = useState("open");
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(initialSelectedId);
+  const [category, setCategory] = useState("all");
   const [drafts, setDrafts] = useState({});
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -20,10 +21,10 @@ export default function AdminTickets({ user, onRefresh }) {
   const queryClient = useQueryClient();
   const role = effectiveRoleForUser(user);
   const query = useInfiniteQuery({
-    queryKey: ["admin-console", user?.id, role, "ticketQueue", filter],
+    queryKey: ["admin-console", user?.id, role, "ticketQueue", filter, category],
     initialPageParam: null,
     queryFn: async ({ pageParam }) => {
-      const response = await base44.functions.invoke("getAdminTickets", { cursor: pageParam, filter });
+      const response = await base44.functions.invoke("getAdminTickets", { cursor: pageParam, filter, category });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not load tickets.");
       return response.data;
     },
@@ -31,9 +32,26 @@ export default function AdminTickets({ user, onRefresh }) {
     enabled: Boolean(user?.id),
     staleTime: 30000,
     refetchOnWindowFocus: false,
+    refetchInterval: embedded ? 10000 : false,
   });
   const rows = [...new Map((query.data?.pages || []).flatMap((page) => page.rows).map((row) => [row.id, row])).values()];
-  const selected = rows.find((row) => row.id === selectedId) || rows[0];
+  const direct = useQuery({
+    queryKey: ["admin-console", user?.id, role, "ticketQueue", "selected", selectedId],
+    enabled: Boolean(selectedId && !rows.some(row => row.id === selectedId)),
+    queryFn: async () => {
+      const colon = selectedId.indexOf(":");
+      const { data } = await base44.functions.invoke("getAdminTickets", { record_id: selectedId.slice(colon + 1), kind: selectedId.slice(0, colon), filter: "all" });
+      if (!data?.success) throw new Error(data?.error || "Could not open support case.");
+      return data.rows[0] || null;
+    },
+    refetchInterval: embedded ? 10000 : false,
+  });
+  const selected = rows.find(row => row.id === selectedId) || (selectedId ? direct.data : rows[0]);
+  const refreshTickets = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role, "ticketQueue"] });
+    window.dispatchEvent(new CustomEvent("topfragg:support-updated"));
+    await onRefresh?.();
+  };
   const remove = async () => {
     setBusy(true);
     setDeleteError("");
@@ -49,7 +67,7 @@ export default function AdminTickets({ user, onRefresh }) {
       }));
       setDeleting(null);
       setSelectedId(null);
-      await onRefresh();
+      await refreshTickets();
     } catch (error) {
       setDeleteError(error.message || "Could not delete ticket.");
     } finally {
@@ -58,13 +76,17 @@ export default function AdminTickets({ user, onRefresh }) {
   };
   return <section className="admin-tickets" data-detail-open={Boolean(selectedId)}>
     <header className="at-heading">
-      <div><span className="at-eyebrow">PLAYER SUPPORT</span><h2><Ticket size={20} /> Tickets</h2><p>Review a request, reply to the players and record the outcome.</p></div>
+      <div><span className="at-eyebrow">PLAYER SUPPORT</span><h2><Ticket size={20} /> Support inbox</h2><p>Live chats, tickets, disputes and admin calls. Review, reply and open the match room.</p></div>
       <div className="at-filters" aria-label="Filter tickets">
         <Suspense fallback={null}><SupportRecords className="at-button" /></Suspense>
+        <label className="sr-only" htmlFor="support-category">Support category</label><select id="support-category" value={category} onChange={event => { setCategory(event.target.value); setSelectedId(null); }}>
+          {[ ["all", "All requests"], ["live", "Live chats"], ["tickets", "Tickets"], ["calls", "Call for admin"], ["disputes", "Disputes"], ["money8s", "8s"], ["wagers", "Wagers"], ["tournament", "Tournaments"] ].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
         {[["open", "Open"], ["all", "All tickets"], ["closed", "Closed"]].map(([value, label]) => <button key={value}
           aria-pressed={filter === value} onClick={() => { setFilter(value); setSelectedId(null); }}>{label}</button>)}
       </div>
     </header>
+    {direct.isError && <p role="alert" className="at-list-error">{direct.error.message}</p>}
     <div className="at-workspace">
       <aside className="at-inbox" aria-label="Ticket list">
         <div className="at-list-heading"><strong>{filter === "open" ? "Needs attention" : filter === "closed" ? "Closed tickets" : "All tickets"}</strong><span>{rows.length} loaded</span></div>
@@ -72,7 +94,8 @@ export default function AdminTickets({ user, onRefresh }) {
         {!query.isPending && !query.isError && !rows.length && <div className="at-list-empty"><Inbox size={26} /><strong>{filter === "open" ? "No open tickets" : "No tickets here"}</strong><p>{filter === "open" ? "You're up to date. Previous requests are under Closed." : "Tickets will appear here when available."}</p></div>}
         <div className="at-ticket-list">{rows.map((row) => <button key={row.id} className="at-ticket-row"
           aria-current={selected?.id === row.id ? "true" : undefined} onClick={() => setSelectedId(row.id)}>
-          <div className="at-row-top"><span>#{shortTicketId(row.record_id)}</span><TicketStatus row={row} /></div>
+          <div className="at-row-top"><span>#{shortTicketId(row.record_id)} · {row.channel === "live" ? "LIVE CHAT" : row.channel === "calls" ? "ADMIN CALL" : row.channel === "disputes" ? "DISPUTE" : "TICKET"}</span><TicketStatus row={row} /></div>
+          <span className="at-case-owner" data-assigned={Boolean(row.ticket?.assigned_admin_id || row.disputes[0]?.assigned_admin_id)}>{(row.ticket?.assigned_admin_name || row.disputes[0]?.assigned_admin_name) ? `Helping: ${row.ticket?.assigned_admin_name || row.disputes[0]?.assigned_admin_name}` : "Unassigned"}</span>
           <strong className="at-row-title">{ticketTitle(row)}</strong><p>{ticketIssue(row)}</p>
           <div className="at-row-bottom"><span className="at-row-avatar">{ticketReporter(row).slice(0, 1).toUpperCase()}</span><strong>{ticketReporter(row)}</strong><time>{ticketDate(row.ticket?.created_date || row.disputes[0]?.created_date)}</time><ChevronRight size={14} /></div>
         </button>)}</div>
@@ -80,7 +103,7 @@ export default function AdminTickets({ user, onRefresh }) {
         {query.hasNextPage && <footer className="at-list-footer"><button className="at-button" disabled={query.isFetching} onClick={() => query.fetchNextPage()}>
           {query.isFetchingNextPage ? <Loader2 size={14} className="animate-spin" /> : <ChevronDown size={14} />} Load more</button><span>10 tickets at a time</span></footer>}
       </aside>
-      <div className="at-reading-pane">{selected ? <AdminTicketDetail key={selected.id} row={selected} user={user} onRefresh={onRefresh} onBack={() => setSelectedId(null)}
+      <div className="at-reading-pane">{selected ? <AdminTicketDetail key={selected.id} row={selected} user={user} onRefresh={refreshTickets} onRoomOpen={onRoomOpen} onBack={() => setSelectedId(null)}
         draft={drafts[selected.id] || {}} onDraftChange={(update) => setDrafts((current) => ({ ...current, [selected.id]: { ...current[selected.id], ...update } }))}
         deleteButton={selected.closed && hasRolePower(role, "admin") ? <button className="at-button at-delete" onClick={() => { setDeleteError(""); setDeleting(selected); }}><Trash2 size={14} /> Delete</button> : null} />
         : <div className="at-no-selection"><Ticket size={30} /><h3>{filter === "open" && !query.isPending ? "No requests waiting" : "Your ticket workspace"}</h3><p>Select a ticket to see the request, conversation and staff actions.</p></div>}

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, ExternalLink, FileCheck2, FileText, Gavel, Loader2, LockKeyhole, MessageSquare, Send, ShieldAlert, UserCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
+import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
+import { isStaffSupportMessage } from "@/lib/liveSupport";
 import { disputeReasonLabel } from "@/lib/matchDisputes";
 import { closedTicket, isMatchTicket, shortTicketId, ticketDate, ticketDescription, ticketIssue, ticketReporter, ticketRoomPath, ticketState, ticketTitle } from "@/lib/adminTickets";
 
@@ -15,7 +17,8 @@ const linksFrom = (row) => [...new Set([
   ...row.disputes.flatMap((record) => [record.submitted_evidence, record.evidence_urls, record.screenshots, record.videos, record.additional_evidence_urls].flatMap((urls) => Array.isArray(urls) ? urls : [])),
 ])].filter((url) => { try { return ["http:", "https:"].includes(new URL(url).protocol); } catch { return false; } });
 
-export default function AdminTicketDetail({ row, user, onRefresh, onBack, deleteButton, draft, onDraftChange }) {
+export default function AdminTicketDetail({ row, user, onRefresh, onBack, deleteButton, draft, onDraftChange, onRoomOpen }) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("conversation");
   const { reply = "", note = "", reason = "" } = draft;
   const setReply = (reply) => onDraftChange({ reply });
@@ -32,7 +35,10 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const ticket = row.ticket;
   const openCases = row.disputes.filter((record) => !closedTicket(record));
   const activeCase = openCases.find((record) => record.id === caseId) || openCases[0];
-  const canReply = ticket && !closedTicket(ticket);
+  const owner = ticket || row.disputes[0];
+  const handledByOther = !row.closed && owner?.assigned_admin_id && owner.assigned_admin_id !== user.id;
+  const canTakeOver = hasRolePower(effectiveRoleForUser(user), "admin");
+  const canReply = ticket && !closedTicket(ticket) && !handledByOther;
   const proof = linksFrom(row);
   const path = ticketRoomPath(row);
   const match = ticket?.match_details || row.disputes[0]?.wager_details || {};
@@ -45,7 +51,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const teamA = ticket?.team_a_name || match.host_name || "Team Alpha";
   const teamB = ticket?.team_b_name || match.challenger_name || "Team Bravo";
   const messages = (ticket?.messages || []).filter((message) => !message.internal);
-  const notes = ticket?.internal_notes || [];
+  const notes = [...(ticket?.internal_notes || []), ...(ticket?.support_record_notes || []).map(note => ({ ...note, sender_name: note.author_name }))];
   const submissions = row.disputes.flatMap((record) => record.submissions?.length ? record.submissions : [record])
     .filter((submission) => submission.description && submission.description !== ticketDescription(row));
   const invoke = async (name, payload, label) => {
@@ -60,6 +66,15 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
       return true;
     } catch (failure) { setError(failure.message || "Could not update ticket."); return false; }
     finally { setBusy(""); }
+  };
+  const claim = async (takeOver = false) => ticket
+    ? invoke("joinTicket", { ticket_id: ticket.id, take_over: takeOver }, "Assigned to you.")
+    : invoke("claimSupportDispute", { dispute_id: row.disputes[0].id, take_over: takeOver }, "Assigned to you.");
+  const openRoom = async () => {
+    if (handledByOther || busy || !path) return;
+    if (!row.closed && (!ticket || !closedTicket(ticket)) && owner?.assigned_admin_id !== user.id && !await claim()) return;
+    onRoomOpen?.();
+    navigate(row.closed ? path : `${path}${path.includes("?") ? "&" : "?"}admin=1`);
   };
   const send = async (internal) => {
     const content = (internal ? note : reply).trim();
@@ -90,10 +105,11 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
       <h3>{ticketTitle(row)}</h3>
       <p className="at-detail-meta">Opened by <strong>{ticketReporter(row)}</strong><span>&middot;</span>{ticketDate(ticket?.created_date || row.disputes[0]?.created_date)}</p>
       <div className="at-detail-tools">
-        {ticket && !closedTicket(ticket) && ticket.assigned_admin_id !== user.id && <button className="at-button at-button-primary" disabled={!!busy}
-          onClick={() => invoke("joinTicket", { ticket_id: ticket.id }, "Ticket assigned to you.")}><UserCheck size={14} />{ticket.assigned_admin_id ? "Take over ticket" : "Take ticket"}</button>}
-        {ticket?.assigned_admin_name && <span className="at-assigned"><UserCheck size={14} />{ticket.assigned_admin_id === user.id ? "Assigned to you" : ticket.assigned_admin_name}</span>}
-        {path && <Link to={path} className="at-button"><ExternalLink size={14} /> Open match</Link>}
+        {!row.closed && owner?.assigned_admin_id !== user.id && !handledByOther && <button className="at-button at-button-primary" disabled={!!busy} onClick={() => claim()}><UserCheck size={14} />Take case</button>}
+        {owner?.assigned_admin_name && <span className="at-assigned"><UserCheck size={14} />{owner.assigned_admin_id === user.id ? "You are helping" : `Being helped by ${owner.assigned_admin_name}`}</span>}
+        {handledByOther && canTakeOver && <button className="at-button" disabled={!!busy} onClick={() => claim(true)}>Take over from {owner.assigned_admin_name || "staff"}</button>}
+        {path && <button disabled={!!busy || Boolean(handledByOther)} onClick={openRoom} className="at-button at-button-primary"><ExternalLink size={14} /> Open match room</button>}
+        {ticket?.request_type === "live_support" && canReply && <button className="at-button" disabled={!!busy} onClick={() => invoke("resolveTicket", { ticket_id: ticket.id, resolution: "Live support conversation completed." }, "Conversation ended.")}><Check size={14} /> End conversation</button>}
         {row.closed && ticket && <button className="at-button" disabled={!!busy} onClick={() => invoke("reopenTicket", { ticket_id: ticket.id }, "Ticket reopened.")}>Reopen ticket</button>}
         {deleteButton}
       </div>
@@ -108,12 +124,12 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
           {(ticket?.reported_against_name || row.disputes[0]?.reported_against_name) && <p className="at-help">Reported player: <strong>{ticket?.reported_against_name || row.disputes[0]?.reported_against_name}</strong></p>}
           {submissions.map((submission, index) => <div className="at-message" key={`submission:${index}`}>
             <div className="at-message-heading"><strong>{submission.reported_by_name || "Player"}</strong><span>{disputeReasonLabel(submission.reason)}</span></div><p>{submission.description}</p>{submission.reported_against_name && <small>Reported player: {submission.reported_against_name}</small>}</div>)}
-          {messages.map((message, index) => <div key={message.id || index} className="at-message"><div className="at-message-heading"><strong>{message.sender_name || "Player"}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content}</p></div>)}
+          {messages.map((message, index) => <div key={message.id || index} className="at-message"><div className="at-message-heading"><strong className={isStaffSupportMessage(message) ? "support-staff-name" : undefined}>{message.sender_name || "Player"}{isStaffSupportMessage(message) ? " · Support" : ""}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content}</p></div>)}
         </div>
         {canReply ? <div className="at-composer"><label htmlFor="at-reply">Reply to the players</label>
           <textarea id="at-reply" value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Ask a question or explain the next step..." rows={3} />
           <div><span>This reply is visible to the ticket participants.</span><button className="at-button at-button-primary" disabled={!!busy || !reply.trim()} onClick={() => send(false)}><Send size={14} /> Send reply</button></div>
-        </div> : <p className="at-help">{ticket ? "This conversation is closed. Reopen the ticket to reply." : "This older match ticket has no player conversation. Review the match and record your decision."}</p>}
+        </div> : <p className="at-help">{ticket ? handledByOther ? `${owner.assigned_admin_name || "Another staff member"} is already helping. Replies are reserved for the assigned staff member.` : "This conversation is closed. Reopen the ticket to reply." : "This older match ticket has no player conversation. Review the match and record your decision."}</p>}
         {!row.closed && <button className="at-next" onClick={() => setTab(proof.length ? "evidence" : "decision")}>Next: {proof.length ? "review evidence" : "record a decision"} <ExternalLink size={13} /></button>}
       </>}
       {tab === "evidence" && <>
@@ -143,7 +159,8 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
         {canReply && <div className="at-composer"><label htmlFor="at-note">Add a private note</label><textarea id="at-note" value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="What should other staff know?" />
           <div><span>Players cannot see staff notes.</span><button className="at-button" disabled={!!busy || !note.trim()} onClick={() => send(true)}><LockKeyhole size={14} /> Save note</button></div></div>}
       </>}
-      {tab === "decision" && <>
+      {tab === "decision" && handledByOther && <p className="at-help">{owner.assigned_admin_name || "Another staff member"} is already handling this case. Takeover is required before recording a decision.</p>}
+      {tab === "decision" && !handledByOther && <>
         <div className="at-section-heading"><h4>{row.closed ? "How this ticket was resolved" : "Record a decision"}</h4></div>
         {row.closed || !openCases.length && closedTicket(ticket) ? <div className="at-resolution"><Check size={20} /><div><strong>Closed by {ticket?.resolved_by_name || row.disputes[0]?.resolved_by_name || "Staff"}</strong><p>{ticket?.resolution || row.disputes[0]?.resolution || "This ticket has been closed."}</p><small>{ticketDate(ticket?.resolved_date || row.disputes[0]?.resolved_date)}</small></div></div> : <div className="at-decision-form">
           <p className="at-help">Review the conversation and evidence first. Explain the outcome so players and other staff understand the decision.</p>

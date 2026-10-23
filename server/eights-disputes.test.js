@@ -45,6 +45,9 @@ async function fixture(t, type = "8s") {
       t.after(() => { prisma[name][method] = original; });
     }
   }
+  const originalTransaction = prisma.$transaction;
+  prisma.$transaction = async operation => operation({ ticket: prisma.ticket, dispute: prisma.dispute, $executeRaw: async () => 1 });
+  t.after(() => { prisma.$transaction = originalTransaction; });
   const app = express(); app.use(express.json()); app.use("/api/functions", routes);
   app.use((error, _req, res, _next) => res.status(error.status || 500).json({ error: error.message }));
   const server = app.listen(0, "127.0.0.1");
@@ -149,7 +152,8 @@ test("failed match-result actions leave the case open for staff", async (t) => {
   const result = (await request("moderateDispute", { dispute_id: created.dispute.id, action: "approve_team_b", notes: "Review complete" }, "admin")).data;
   assert.equal(result.success, false);
   assert.equal(table.dispute[0].metadata.status, "pending");
-  assert.equal(table.ticket[0].metadata.status, "waiting_for_admin");
+  assert.equal(table.ticket[0].metadata.status, "admin_joined");
+  assert.equal(table.ticket[0].metadata.assigned_admin_id, "admin");
 });
 
 test("simultaneous submissions share one dispute and conversation", async (t) => {

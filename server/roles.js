@@ -3,6 +3,7 @@ export const rolePower = {
   super_admin: 400,
   admin: 300,
   moderator: 200,
+  developer: 200,
   user: 100,
 };
 

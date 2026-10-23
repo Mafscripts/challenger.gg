@@ -15,6 +15,11 @@ const idsSql = (ids) => ids.length ? Prisma.join(ids) : Prisma.sql`NULL`;
 const queueSql = Prisma.sql`
   WITH queue AS (
     SELECT t.id, 'ticket' AS kind, t.created_date,
+      CASE WHEN t.metadata->>'request_type' = 'live_support' THEN 'live'
+        WHEN t.metadata->>'requested_admin' = 'true' THEN 'calls'
+        WHEN NULLIF(t.metadata->>'dispute_id', '') IS NOT NULL OR EXISTS (SELECT 1 FROM "Dispute" d WHERE d.metadata->>'ticket_id' = t.id) THEN 'disputes' ELSE 'tickets' END AS channel,
+      COALESCE(t.metadata->>'match_type', t.metadata->>'category', '') AS mode,
+      CASE WHEN t.metadata->>'priority' = 'critical' AND t.metadata->>'premium_escalated' = 'true' THEN 3 WHEN t.metadata->>'support_premium' = 'true' THEN 2 WHEN t.metadata->>'requested_admin' = 'true' THEN 1 ELSE 0 END AS priority,
       (COALESCE(t.metadata->>'status', 'open') IN ('resolved', 'closed', 'rejected')
         AND NOT EXISTS (SELECT 1 FROM "Dispute" d
           WHERE (d.metadata->>'ticket_id' = t.id OR t.metadata->>'dispute_id' = d.id)
@@ -24,7 +29,9 @@ const queueSql = Prisma.sql`
         OR EXISTS (SELECT 1 FROM "Dispute" d WHERE d.metadata->>'ticket_id' = t.id)) AS match_ticket
     FROM "Ticket" t
     UNION ALL
-    SELECT d.id, 'dispute' AS kind, d.created_date,
+    SELECT d.id, 'dispute' AS kind, d.created_date, 'disputes' AS channel,
+      COALESCE(d.metadata->>'match_type', 'wagers') AS mode,
+      1 AS priority,
       COALESCE(d.metadata->>'status', 'pending') IN ('resolved', 'closed', 'rejected') AS closed,
       TRUE AS match_ticket
     FROM "Dispute" d
@@ -48,7 +55,9 @@ function readCursor(value) {
     const date = new Date(cursor.date);
     if (!Number.isFinite(date.getTime()) || !["ticket", "dispute"].includes(cursor.kind)
       || typeof cursor.id !== "string" || !cursor.id || cursor.id.length > 200) throw new Error();
-    return { ...cursor, date };
+    const priority = cursor.priority ?? 0;
+    if (!Number.isInteger(priority) || priority < 0 || priority > 3) throw new Error();
+    return { ...cursor, date, priority };
   } catch {
     throw Object.assign(new Error("Invalid ticket page. Refresh the list."), { status: 400 });
   }
@@ -59,12 +68,23 @@ export async function getAdminTickets(db, user, payload = {}) {
   const cursor = readCursor(payload.cursor);
   const filter = ["all", "open", "closed"].includes(payload.filter) ? payload.filter : "all";
   const statusSql = filter === "all" ? Prisma.sql`TRUE` : Prisma.sql`closed = ${filter === "closed"}`;
+  const category = ["live", "calls", "disputes", "tickets", "money8s", "wagers", "tournament"].includes(payload.category) ? payload.category : "all";
+  const categorySql = ["live", "calls", "tickets"].includes(category) ? Prisma.sql`channel = ${category}`
+    : category === "disputes" ? Prisma.sql`(channel = 'disputes' OR EXISTS (SELECT 1 FROM "Dispute" d WHERE d.metadata->>'ticket_id' = queue.id OR d.id = (SELECT t.metadata->>'dispute_id' FROM "Ticket" t WHERE t.id = queue.id)))`
+    : category === "money8s" ? Prisma.sql`mode IN ('money8s', '8s', 'eights')`
+    : category === "wagers" ? Prisma.sql`mode IN ('wager', 'wagers')`
+    : category === "tournament" ? Prisma.sql`mode = 'tournament'` : Prisma.sql`TRUE`;
+  let selectedSql = Prisma.sql`TRUE`;
+  if (payload.record_id) {
+    if (typeof payload.record_id !== "string" || payload.record_id.length > 200 || !["ticket", "dispute"].includes(payload.kind)) throw Object.assign(new Error("Choose a valid support case."), { status: 400 });
+    selectedSql = Prisma.sql`id = ${payload.record_id} AND kind = ${payload.kind}`;
+  }
   const cursorSql = cursor
-    ? Prisma.sql`(created_date, kind, id) < (${cursor.date}, ${cursor.kind}, ${cursor.id})`
+    ? Prisma.sql`(priority, created_date, kind, id) < (${cursor.priority}, ${cursor.date}, ${cursor.kind}, ${cursor.id})`
     : Prisma.sql`TRUE`;
   const candidates = await db.$queryRaw`${queueSql}
-    SELECT * FROM queue WHERE ${statusSql} AND ${cursorSql}
-    ORDER BY created_date DESC, kind DESC, id DESC LIMIT 11`;
+    SELECT * FROM queue WHERE ${statusSql} AND ${categorySql} AND ${selectedSql} AND ${cursorSql}
+    ORDER BY priority DESC, created_date DESC, kind DESC, id DESC LIMIT 11`;
   const page = candidates.slice(0, 10);
   const ticketIds = page.filter((row) => row.kind === "ticket").map((row) => row.id);
   const orphanIds = page.filter((row) => row.kind === "dispute").map((row) => row.id);
@@ -95,11 +115,22 @@ export async function getAdminTickets(db, user, payload = {}) {
         .sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
     }
     return [{ id: `${row.kind}:${row.id}`, kind: row.kind, record_id: row.id,
-      closed: row.closed, ticket: serialized, disputes: linked.map(serializeRow) }];
+      closed: row.closed, channel: row.channel, mode: row.mode, ticket: serialized, disputes: linked.map(serializeRow) }];
   });
   const last = page.at(-1);
   return { success: true, rows, next_cursor: candidates.length > 10 && last
-    ? Buffer.from(JSON.stringify({ date: last.created_date.toISOString(), kind: last.kind, id: last.id })).toString("base64url") : null };
+    ? Buffer.from(JSON.stringify({ date: last.created_date.toISOString(), kind: last.kind, id: last.id, priority: last.priority || 0 })).toString("base64url") : null };
+}
+
+export async function getSupportInboxSummary(db, user) {
+  requireStaff(user);
+  const counts = await getAdminTicketCounts(db, user);
+  const alerts = await db.notification.findMany({ where: { AND: [
+    { metadata: { path: ["user_id"], equals: user.id } },
+    { metadata: { path: ["is_read"], equals: false } },
+    { OR: ["support", "admin_request", "dispute", "live_support"].map(type => ({ metadata: { path: ["type"], equals: type } })) },
+  ] }, select: { id: true }, orderBy: [{ created_date: "desc" }, { id: "desc" }], take: 25 });
+  return { ...counts, alerts: alerts.map(row => row.id) };
 }
 
 export async function deleteAdminTicket(db, user, payload = {}) {

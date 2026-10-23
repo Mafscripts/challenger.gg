@@ -9,7 +9,7 @@ export const liveSupportUnread = (ticket, staff) => Number(ticket?.[staff ? "sup
 export function supportTicketForViewer(ticket, user) {
   if (ticket?.request_type !== "live_support" || isLiveSupportStaff(user)) return ticket;
   const result = { ...ticket };
-  for (const key of ["support_record_notes", "support_record_history", "support_favorite", "support_archived", "support_archived_by", "support_archived_at", "internal_notes"]) delete result[key];
+  for (const key of ["support_record_notes", "support_record_history", "support_assignment_history", "support_favorite", "support_archived", "support_archived_by", "support_archived_at", "internal_notes"]) delete result[key];
   if (Array.isArray(result.messages)) result.messages = result.messages.filter(message => !message.internal);
   return result;
 }

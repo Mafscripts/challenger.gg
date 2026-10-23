@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { isStaffSupportMessage, isLiveSupportStaff, liveSupportClosed, liveSupportUnread } from "@/lib/liveSupport";
 import "./live-support.css";
 const SupportRecords = lazy(() => import("./SupportRecords"));
+const StaffSupportCenter = lazy(() => import("./StaffSupportCenter"));
 
 const call = async (name, body) => {
   const { data } = await base44.functions.invoke(name, body);
@@ -19,6 +20,7 @@ export default function LiveSupport() {
   const { user } = useAuth(), staff = isLiveSupportStaff(user);
   const location = useLocation(), navigate = useNavigate();
   const [open, setOpen] = useState(false), [threads, setThreads] = useState([]);
+  const [inboxCount, setInboxCount] = useState(0), [selectedCase, setSelectedCase] = useState(null);
   const [selected, setSelected] = useState(null), [ticket, setTicket] = useState(null), [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState(""), [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState("");
   const [sound, setSound] = useState(savedSound);
@@ -52,17 +54,28 @@ export default function LiveSupport() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search), id = params.get("support");
-    if (!id || !user) return;
-    setSelected(id); setOpen(true); params.delete("support");
+    const params = new URLSearchParams(location.search), id = params.get("support"), caseId = params.get("support_case");
+    if ((!id && !(staff && caseId)) || !user) return;
+    if (staff) setSelectedCase(caseId || `ticket:${id}`);
+    else setSelected(id);
+    setOpen(true); params.delete("support"); params.delete("support_case");
     navigate({ pathname: location.pathname, search: params.toString(), hash: location.hash }, { replace: true });
-  }, [location, navigate, user]);
+  }, [location, navigate, user, staff]);
 
   const refresh = useCallback(async () => {
     if (!user || (document.hidden && !staff) || reading.current) return;
     reading.current = true;
     const id = open && !document.hidden ? active.current : null;
     try {
+      if (staff) {
+        const data = await call("getSupportInboxSummary", {});
+        if (!mounted.current) return;
+        setInboxCount(Number(data.open || 0));
+        let alert = false;
+        for (const alertId of data.alerts || []) { if (!seen.current.has(alertId)) alert = true; seen.current.set(alertId, 1); }
+        if (alert) chime();
+        return;
+      }
       const data = await call("getLiveSupportState", { ticket_id: id, ...(snapshot.current?.id === id ? { known_sequence: snapshot.current.sequence } : {}) });
       if (!mounted.current) return;
       setThreads(data.threads);
@@ -95,7 +108,7 @@ export default function LiveSupport() {
   useEffect(() => {
     setLoading(open && Boolean(user));
     let stopped = false, timer;
-    const poll = async () => { await refresh(); if (!stopped) timer = setTimeout(poll, document.hidden ? 30000 : open ? 4000 : staff ? 15000 : 30000); };
+    const poll = async () => { await refresh(); if (!stopped) timer = setTimeout(poll, document.hidden ? 30000 : staff ? 15000 : open ? 4000 : 30000); };
     poll();
     const visible = () => { if (!document.hidden) refresh(); };
     document.addEventListener("visibilitychange", visible);
@@ -126,6 +139,10 @@ export default function LiveSupport() {
   };
   const unread = threads.filter(thread => liveSupportUnread(thread, staff)).length;
   const closed = liveSupportClosed(ticket);
+  if (staff) return <>
+    <button className="support-launcher" onClick={() => { setSelectedCase(null); setOpen(true); }} aria-label={`Support inbox, ${inboxCount} open requests`}><Headphones size={23} /><span className="support-launcher-label">Support inbox</span>{inboxCount > 0 && <b className="support-badge">{inboxCount}</b>}</button>
+    {open && <Suspense fallback={<div className="support-panel" role="status"><p className="support-welcome">Opening support inbox…</p><button onClick={() => setOpen(false)}>Close</button></div>}><StaffSupportCenter user={user} open={open} selectedCase={selectedCase} onOpenChange={setOpen} /></Suspense>}
+  </>;
   return <Dialog.Root open={open} onOpenChange={setOpen} modal={false}>
     <Dialog.Trigger asChild><button className="support-launcher" aria-label={`${staff ? "Support inbox" : "Live support"}${unread ? `, ${unread} unread conversations` : ""}`}><Headphones size={23} /><span className="support-launcher-label">{staff ? "Support inbox" : "Support"}</span>{unread > 0 && <b className="support-badge">{unread}</b>}</button></Dialog.Trigger>
     <Dialog.Portal><Dialog.Content className="support-panel" onInteractOutside={event => event.preventDefault()}>
