@@ -26,7 +26,7 @@ function fixture() {
     team: [row("team", { captain_id: "u", name: "Keep our team", total_wins: 10, total_losses: 2, wins: 10, losses: 2, total_earnings: 55, ranking: 4 })],
     userInventory: [row("trophy", { user_id: "u", item_category: "trophy", item_name: "Gold Trophy" }), row("frame", { user_id: "u", item_category: "frame", item_name: "Trophy Frame", is_equipped: true })],
     season: [row("sr", { name: "Ranked 4", season_number: 4, is_active: true }), row("sx", { ladder: "xp", name: "XP 3", season_number: 3, is_active: true }), row("se", { ladder: "free8s", name: "Free 8s 2", season_number: 2, is_active: true })],
-    withdrawalRequest: [], walletTransaction: [], creditTransaction: [], adminAction: [], xPMatch: [],
+    rankVerification: [], challengeStanding: [], rankedLeaderboard: [], wagerLeaderboard: [], tournamentLeaderboard: [], leaderboard: [], withdrawalRequest: [], walletTransaction: [], creditTransaction: [], adminAction: [], xPMatch: [],
   };
   let writes = 0, failedTable;
   const db = { $executeRaw: async () => 1 };
@@ -217,7 +217,7 @@ test("old XP matches do not restore TP Rank after a reset; new matches enter the
   await resetProgression(f.db, ceo, resetBody(["xp"]), { now });
   assert.deepEqual(await getXPStandings(f.db), []);
   f.state().xPStats[0].metadata.total_xp = 100;
-  f.state().xPMatch.push(row("new", { status: "completed", host_id: "u", challenger_id: "opponent", winner_id: "u", match_completed_date: "2026-10-19T13:00:00Z" }));
+  f.state().xPMatch.push(row("new", { status: "completed", host_id: "u", challenger_id: "opponent", winner_id: "u", xp_changes: { u: { delta: 100, won: true } }, match_completed_date: "2026-10-19T13:00:00Z" }));
   const standing = (await getXPStandings(f.db))[0];
   assert.equal(standing.matches_played, 1);
   assert.equal(standing.total_xp, 100);
@@ -230,4 +230,79 @@ test("Arena records respect each ladder reset while recent match history remains
   const arena = buildProfileArena({ userId: "u", ranked: [old, recent], rankedStats: [row("stats", { elo: 20, progression_reset_at: timestamp })] });
   assert.equal(arena.wins, 1);
   assert.equal(arena.recent_matches.length, 2);
+});
+
+
+test("full website reset covers every progression category and keeps all credit stores", async () => {
+  const f = fixture();
+  f.state().user[0].metadata.credits = 21;
+  f.state().wallet[0].metadata.credits = 21;
+  f.state().wallet[0].metadata.credit_balance = 21;
+  f.state().rankVerification.push({ user_id: "u", status: "admin_locked", failed_attempts: 3, attempts: ["proof"] });
+  f.state().challengeStanding.push({ id: "challenge", kind: "team", subject_id: "team", xp: 500, wins: 5, losses: 2 });
+  for (const table of ["rankedLeaderboard", "wagerLeaderboard", "tournamentLeaderboard"]) f.state()[table].push(row(table, { user_id: "u", elo: 900, wins: 5, earnings: 200 }));
+  const response = await resetProgression(f.db, ceo, { full_reset: true, reason: "Fresh website launch", confirmation: "RESET WEBSITE" }, { now });
+  const state = f.state();
+  assert.equal(response.full_reset, true);
+  assert.equal(response.credits_preserved, true);
+  assert.deepEqual(response.categories, PROGRESSION_CATEGORIES.filter(c => c.id !== "credits").map(c=>c.id));
+  assert.equal(state.user[0].credits, 21);
+  assert.equal(state.user[0].metadata.credits, 21);
+  assert.equal(state.playerProfile[0].metadata.credits, 21);
+  assert.equal(state.wallet[0].metadata.credits, 21);
+  assert.equal(state.wallet[0].metadata.credit_balance, 21);
+  assert.equal(state.creditTransaction.length, 0);
+  assert.equal(state.user[0].wallet_balance, 0);
+  assert.equal(state.user[0].rank, "novice");
+  assert.equal(state.user[0].metadata.screenshot_rank, null);
+  assert.equal(state.rankVerification[0].status, "idle");
+  assert.equal(state.rankVerification[0].failed_attempts, 0);
+  assert.equal(state.challengeStanding[0].xp, 0);
+  for (const table of ["rankedLeaderboard", "wagerLeaderboard", "tournamentLeaderboard"]) assert.equal(state[table][0].metadata.wins, 0);
+  assert.equal(state.team[0].metadata.name, "Keep our team");
+  assert.equal(state.userInventory[0].id, "frame");
+});
+
+test("full reset refuses credit overrides and category confirmations before writes", async () => {
+  const f = fixture();
+  for (const body of [
+    { full_reset: true, categories: ["credits"], confirmation: "RESET WEBSITE" },
+    { full_reset: true, confirmation: "RESET SELECTED" },
+    { full_reset: true, mode: "season", confirmation: "RESET WEBSITE" },
+  ]) await assert.rejects(resetProgression(f.db, ceo, { reason: "Fresh launch", ...body }, { now }), { status: 400 });
+  await assert.rejects(resetProgression(f.db, { id: "u", role: "user" }, { full_reset: true, confirmation: "RESET WEBSITE", reason: "Fresh launch" }, { now }), { status: 403 });
+  assert.equal(f.writes(), 0);
+});
+
+test("full reset rolls back every category and leaves credits intact on failure", async () => {
+  const f = fixture(), before = structuredClone(f.state());
+  f.failAt("adminAction");
+  await assert.rejects(resetProgression(f.db, ceo, { full_reset: true, confirmation: "RESET WEBSITE", reason: "Fresh launch" }, { now }), /Database failure/);
+  assert.deepEqual(f.state(), before);
+});
+
+test("reset archives XP ledgers for opponents without a stored stats row", async () => {
+  const f = fixture();
+  f.state().xPMatch.push(row("completed", { status: "completed", host_id: "u", challenger_id: "legacy", winner_id: "u", xp_changes: { legacy: { delta: 500, won: false } } }));
+  await resetProgression(f.db, ceo, resetBody(["xp"]), { now });
+  assert.deepEqual(await getXPStandings(f.db), []);
+  assert.equal(f.state().xPMatch[0].metadata.status, "completed");
+});
+
+
+test("hosted trophy fallback ignores historical matches after a trophy reset", () => {
+  const user = { id: "u", trophies_reset_at: timestamp, hosted_count: 0 };
+  const matches = [
+    { host_id: "u", completed_date: "2026-10-18T10:00:00Z" },
+    { host_id: "u", completed_date: "2026-10-20T10:00:00Z" },
+  ];
+  assert.equal(trophyCountsFor(user, {}, [], matches).hosted, 1);
+});
+
+test("full reset preserves everything when money is still held", async () => {
+  const f = fixture();
+  f.state().wallet[0].metadata.escrow_balance = 10;
+  const before = structuredClone(f.state());
+  await assert.rejects(resetProgression(f.db, ceo, { full_reset: true, confirmation: "RESET WEBSITE", reason: "Fresh launch" }, { now }), { status: 409 });
+  assert.deepEqual(f.state(), before);
 });

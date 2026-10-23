@@ -5,9 +5,12 @@ export const PROGRESSION_CATEGORIES = [
   { id: "xp", label: "XP & TP Rank", description: "XP, levels, prestige, weekly XP and the XP match record." },
   { id: "ranked", label: "Ranked ELO", description: "ELO, peak ELO, wins, losses, matches and streaks." },
   { id: "free8s", label: "Free 8s", description: "Each game's Free 8s ELO, rating, record and monthly progression." },
-  { id: "records", label: "Overall records", description: "Cash match and tournament counters, profile totals and team records." },
+  { id: "game_rank", label: "Verified game rank", description: "Verified screenshot ranks and pending rank reviews for every player." },
+  { id: "challenges", label: "Challenge ranks", description: "Solo and team Challenge XP, wins and losses." },
+  { id: "records", label: "Overall records", description: "Wager / Money 8s ranks and records, tournament counters, profile totals and team records." },
   { id: "trophies", label: "Trophies", description: "Trophy counters, trophy inventory and trophy showcase selections." },
 ];
+export const FULL_RESET_CATEGORIES = PROGRESSION_CATEGORIES.filter(entry => entry.id !== "credits").map(entry => entry.id);
 export const SEASON_LADDERS = PROGRESSION_CATEGORIES.filter((entry) => ["xp", "ranked", "free8s"].includes(entry.id));
 export const seasonLadder = (season) => season?.ladder || "ranked";
 export const matchAfterProgressionReset = (match, row, cutoff) => {

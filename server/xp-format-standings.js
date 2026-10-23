@@ -13,7 +13,7 @@ export function buildXPTeamStandings(matches, teamRows, category, gameId = null)
   for (const row of [...matches].sort((a, b) => date(a) - date(b) || String(a.id).localeCompare(String(b.id)))) {
     const match = row.metadata;
     if (gameId && storedGameId(row) !== gameId) continue;
-    if (seen.has(row.id) || match.status !== "completed" || (match.match_type && !["xp", "xp_match"].includes(match.match_type)) || xpCategoryForSize(match.team_size) !== category) continue;
+    if (match.progression_archived_at || seen.has(row.id) || match.status !== "completed" || (match.match_type && !["xp", "xp_match"].includes(match.match_type)) || xpCategoryForSize(match.team_size) !== category) continue;
     seen.add(row.id);
     const winning = match.winner_id === match.host_id ? "alpha" : match.winner_id === match.challenger_id ? "bravo" : null;
     if (!winning) continue;

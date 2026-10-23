@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { hasRole } from "./roles.js";
-import { PROGRESSION_CATEGORIES, SEASON_LADDERS, seasonLadder } from "../src/lib/progressionResets.js";
+import { FULL_RESET_CATEGORIES, PROGRESSION_CATEGORIES, SEASON_LADDERS, seasonLadder } from "../src/lib/progressionResets.js";
 import { getRankForElo } from "../src/lib/ranks.js";
 import { isInventoryTrophy } from "./lib/trophyCounts.js";
 
@@ -15,7 +15,7 @@ const highestSeason = (seasons, stats, ladder) => Math.max(
   seasons.reduce((max, season) => seasonLadder(season) === ladder ? Math.max(max, Number(season.season_number) || 1) : max, 1),
   stats.reduce((max, row) => Math.max(max, Number(row.metadata?.season) || 1), 1),
 );
-const tableNames = { user: "User", wallet: "Wallet", playerProfile: "PlayerProfile", xPStats: "XPStats", rankedStats: "RankedStats", eightsStats: "EightsStats", xPLeaderboard: "XPLeaderboard", team: "Team", userInventory: "UserInventory", season: "Season", withdrawalRequest: "WithdrawalRequest" };
+const tableNames = { user: "User", wallet: "Wallet", playerProfile: "PlayerProfile", xPStats: "XPStats", rankedStats: "RankedStats", eightsStats: "EightsStats", xPLeaderboard: "XPLeaderboard", team: "Team", userInventory: "UserInventory", season: "Season", withdrawalRequest: "WithdrawalRequest", xPMatch: "XPMatch", rankVerification: "RankVerification", challengeStanding: "ChallengeStanding", rankedLeaderboard: "RankedLeaderboard", wagerLeaderboard: "WagerLeaderboard", tournamentLeaderboard: "TournamentLeaderboard", leaderboard: "Leaderboard" };
 const name = (actor) => actor.display_name || actor.username || actor.full_name || actor.id;
 
 function selection(body, season) {
@@ -28,7 +28,11 @@ function requiredTables(categories) {
   if (categories.some((id) => ["money", "credits", "earnings"].includes(id))) tables.add("wallet");
   if (categories.includes("money")) tables.add("withdrawalRequest");
   for (const id of categories) if (ladderDelegate[id]) tables.add(ladderDelegate[id]);
-  if (categories.includes("xp")) tables.add("xPLeaderboard");
+  if (categories.includes("xp")) { tables.add("xPLeaderboard"); tables.add("xPMatch"); }
+  if (categories.includes("ranked")) tables.add("rankedLeaderboard");
+  if (categories.includes("records")) { tables.add("wagerLeaderboard"); tables.add("tournamentLeaderboard"); tables.add("leaderboard"); }
+  if (categories.includes("game_rank")) tables.add("rankVerification");
+  if (categories.includes("challenges")) tables.add("challengeStanding");
   if (categories.some((id) => ["records", "earnings", "xp"].includes(id))) tables.add("team");
   if (categories.includes("trophies")) tables.add("userInventory");
   return [...tables];
@@ -71,8 +75,11 @@ export async function resetProgression(db, actor, body = {}, { now = () => new D
   const seasonal = body.mode === "season";
   if (!hasRole(actor, seasonal ? "super_admin" : "ceo")) fail(seasonal ? "Super Admin or CEO access required" : "Only the CEO can reset progression", 403);
   if (body.mode && !["reset", "season"].includes(body.mode)) fail("Choose reset or new season.");
-  const categories = selection(body, seasonal), selected = new Set(categories);
-  const confirmation = seasonal ? "START SEASON" : "RESET SELECTED";
+  const fullReset = body.full_reset === true;
+  if (fullReset && seasonal) fail("A full reset cannot start a season.");
+  if (fullReset && body.categories?.includes("credits")) fail("A full website reset must preserve credits.");
+  const categories = fullReset ? [...FULL_RESET_CATEGORIES] : selection(body, seasonal), selected = new Set(categories);
+  const confirmation = fullReset ? "RESET WEBSITE" : seasonal ? "START SEASON" : "RESET SELECTED";
   if (body.confirmation !== confirmation) fail(`Type ${confirmation} to confirm.`);
   const reason = String(body.reason || "").trim();
   if (reason.length < 3 || reason.length > 500) fail("Enter a reason between 3 and 500 characters.");
@@ -91,7 +98,7 @@ export async function resetProgression(db, actor, body = {}, { now = () => new D
   return db.$transaction(async (tx) => {
     // Serialize resets and protect the read/modify/write snapshots across API workers.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('topfragg-progression-reset'))`;
-    const requestScope = JSON.stringify({ mode: seasonal ? "season" : "reset", categories: [...categories].sort(), reason,
+    const requestScope = JSON.stringify({ mode: seasonal ? "season" : "reset", full_reset: fullReset, categories: [...categories].sort(), reason,
       ...(seasonal ? { number, seasonName, start: start.toISOString(), end: end.toISOString(), policy: body.ranked_policy || "zero" } : {}) });
     if (requestId) {
       const previous = (await tx.adminAction.findMany({ where: { AND: [
@@ -121,7 +128,7 @@ export async function resetProgression(db, actor, body = {}, { now = () => new D
       for (const row of rows[key] || []) {
         const data = patch(row);
         if (!data || !Object.keys(data).length) continue;
-        await tx[key].update({ where: { id: row.id }, data }); count++;
+        await tx[key].update({ where: key === "rankVerification" ? { user_id: row.user_id } : { id: row.id }, data }); count++;
       }
       affected[key] = count;
     };
@@ -132,8 +139,11 @@ export async function resetProgression(db, actor, body = {}, { now = () => new D
       if (selected.has("money")) { data.wallet_balance = 0; Object.assign(metadata, zeros(["wallet_balance", "available_balance", "pending_balance", "escrow_balance", "withdrawable_balance"])); }
       if (selected.has("credits")) { data.credits = 0; Object.assign(metadata, { credits: 0, credit_balance: 0 }); }
       if (selected.has("earnings")) { Object.assign(data, { lifetime_earnings: 0, total_wager_earnings: 0, biggest_wager_win: 0 }); Object.assign(metadata, earnings); }
-      if (selected.has("xp")) { data.xp_level = 1; Object.assign(metadata, { xp: 0, total_xp: 0, current_xp: 0, level: 1, prestige: 0 }); }
-      if (selected.has("records")) { Object.assign(data, { wager_wins: 0, wager_losses: 0, current_win_streak: 0, tournament_wins: 0 }); Object.assign(metadata, record, zeros(["tournament_wins", "wager_wins", "wager_losses", "total_wins", "total_losses", "total_matches"])); }
+      if (selected.has("xp")) { data.xp_level = 1; Object.assign(metadata, { xp: 0, total_xp: 0, current_xp: 0, weekly_xp: 0, xp_level: 1, level: 1, prestige: 0 }); }
+      if (selected.has("game_rank")) metadata.screenshot_rank = null;
+      if (selected.has("free8s")) Object.assign(metadata, { free_eights_elo: 0, eights_wins: 0, eights_losses: 0 });
+      if (selected.has("ranked")) Object.assign(metadata, { elo: 0, peak_elo: 0, ranked_elo: 0 });
+      if (selected.has("records")) { Object.assign(data, { rank: "novice", division: "I" }); Object.assign(metadata, { rank: "novice", division: "I" }); Object.assign(data, { wager_wins: 0, wager_losses: 0, current_win_streak: 0, tournament_wins: 0 }); Object.assign(metadata, record, zeros(["tournament_wins", "wager_wins", "wager_losses", "total_wins", "total_losses", "total_matches"])); }
       if (selected.has("trophies")) { data.trophies = 0; Object.assign(metadata, trophies, { showcase_item_ids: (metadata.showcase_item_ids || []).filter((id) => !trophyIds.has(id)) }); }
       return { ...data, metadata };
     };
@@ -158,6 +168,12 @@ export async function resetProgression(db, actor, body = {}, { now = () => new D
         };
         return { metadata, ...(ladder === "free8s" ? { free_eights_elo: 0 } : {}) };
       });
+    }
+    await saveRows("xPMatch", row => row.metadata?.status === "completed" ? { metadata: { ...json(row.metadata), progression_archived_at: timestamp } } : null);
+    await saveRows("rankVerification", () => ({ status: "idle", failed_attempts: 0, attempts: [], last_submitted_at: null, reviewed_by: actor.id, review_reason: reason }));
+    await saveRows("challengeStanding", () => ({ xp: 0, wins: 0, losses: 0 }));
+    for (const key of ["rankedLeaderboard", "wagerLeaderboard", "tournamentLeaderboard", "leaderboard"]) {
+      await saveRows(key, row => ({ metadata: { ...json(row.metadata), ...record, ...earnings, elo: 0, peak_elo: 0, score: 0, points: 0, ranking: null, rank: "novice", progression_reset_at: timestamp } }));
     }
     const rankedByUser = new Map();
     for (const row of [...(rows.rankedStats || [])].sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))) {
@@ -204,7 +220,7 @@ export async function resetProgression(db, actor, body = {}, { now = () => new D
         is_active: true, rank_resets: true, ranked_policy: body.ranked_policy || "zero", created_by: actor.id } } });
       newSeasons.push({ id: row.id, ...row.metadata });
     }
-    const result = { success: true, categories, affected, users_reset: rows.user.length, before, seasons: newSeasons };
+    const result = { success: true, full_reset: fullReset, credits_preserved: !selected.has("credits"), categories, affected, users_reset: rows.user.length, before, seasons: newSeasons };
     const action = await tx.adminAction.create({ data: { metadata: { admin_id: actor.id, admin_name: name(actor), admin_role: actor.role,
       ...(requestId ? { request_id: requestId, request_scope: requestScope, result } : {}),
       action_type: seasonal ? "progression_season_reset" : "progression_category_reset", description: `${seasonal ? `Started ${seasonName}` : "Reset progression"}: ${categories.join(", ")}. ${reason}`,

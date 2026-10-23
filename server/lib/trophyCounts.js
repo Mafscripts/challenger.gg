@@ -42,7 +42,7 @@ export function trophyCountsFor(user, profile, inventory = [], matches = []) {
     bronze: number(user?.bronze_count ?? profile?.bronze_count) + earned.bronze,
     premium: number(user?.premium_count ?? user?.premium_trophies ?? profile?.premium_count ?? profile?.premium_trophies) + earned.premium,
     topfragg: number(user?.topfragg_count ?? user?.topfrag_count ?? user?.topfragg_trophies ?? profile?.topfragg_count ?? profile?.topfrag_count ?? profile?.topfragg_trophies) + earned.topfragg,
-    hosted: hosted + earned.hosted + (hosted || earned.hosted ? 0 : matches.filter((match) => String(match.host_id || "") === String(user?.id || "")).length),
+    hosted: hosted + earned.hosted + (hosted || earned.hosted ? 0 : matches.filter((match) => String(match.host_id || "") === String(user?.id || "") && (!(user?.trophies_reset_at || profile?.trophies_reset_at) || Date.parse(match.match_completed_date || match.completed_date || match.created_date || "") >= Date.parse(user?.trophies_reset_at || profile?.trophies_reset_at))).length),
   };
 }
 

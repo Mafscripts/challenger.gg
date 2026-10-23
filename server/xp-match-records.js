@@ -14,7 +14,7 @@ export function buildXPMatchRecords(statsRows, matches) {
   const weekStart = Date.now() - 7 * 86400000;
   for (const row of [...matches].sort((a, b) => completedAt(a) - completedAt(b) || String(a.id || "").localeCompare(String(b.id || "")))) {
     const match = row.metadata || {};
-    if (match.status !== "completed" || (match.match_type && !["xp", "xp_match"].includes(match.match_type))) continue;
+    if (match.progression_archived_at || match.status !== "completed" || (match.match_type && !["xp", "xp_match"].includes(match.match_type))) continue;
     if (row.id && seen.has(row.id)) continue;
     if (row.id) seen.add(row.id);
     const alpha = xpMatchRoster(match, "alpha"), bravo = xpMatchRoster(match, "bravo");

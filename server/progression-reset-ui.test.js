@@ -4,6 +4,7 @@ import { build } from "esbuild";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { PROGRESSION_CATEGORIES, SEASON_LADDERS } from "../src/lib/progressionResets.js";
+import { invalidateLeaderboardSnapshots } from "./leaderboard-cache.js";
 import routes from "./routes/functions.js";
 import { prisma } from "./prisma.js";
 
@@ -25,6 +26,7 @@ test("the real admin page offers separate categories and limits Super Admins to 
   const module = { exports: {} };
   new Function("require", "module", "exports", result.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
   const ceo = module.exports.render("ceo");
+  assert.ok(ceo.includes("Full reset · keep credits"));
   const plain = ceo.replace(/<[^>]+>/g, "").replaceAll("&amp;", "&");
   for (const category of PROGRESSION_CATEGORIES) assert.ok(plain.includes(category.label), category.label);
   assert.equal((ceo.match(/type="checkbox"/g) || []).length, PROGRESSION_CATEGORIES.length);
@@ -43,7 +45,7 @@ test("Money 8s history cannot restore reset earnings or records on its leaderboa
   override(prisma.wager, "findMany", async () => [{ id: "old", metadata: { status: "completed", match_type: "money8s", host_id: "u", challenger_id: "v", winner_id: "u", match_completed_date: "2026-10-18T10:00:00Z", wallet_changes: { u: { match_delta: 30 } } } }]);
   override(prisma.wagerParticipant, "findMany", async () => []);
   const handler = routes.stack.find((layer) => layer.route?.path === "/:name").route.stack.at(-1).handle;
-  const read = () => new Promise((resolve, reject) => { void handler({ params: { name: "getMoneyEightsStandings" }, user: { id: "u", role: "user" }, body: {} }, { json: resolve }, reject); });
+  const read = () => new Promise((resolve, reject) => { invalidateLeaderboardSnapshots(); void handler({ params: { name: "getMoneyEightsStandings" }, user: { id: "u", role: "user" }, body: { game_id: "bo7" } }, { json: resolve }, reject); });
   let result = await read(), player = result.rows.find((entry) => entry.user_id === "u");
   assert.equal(player.winnings, 0);
   assert.equal(player.matches, 1);
