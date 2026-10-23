@@ -260,7 +260,7 @@ export default function RankedEights() {
             </Link>
           ) : !isMoney && !hasFreeEightsRank(user) ? <UploadFreeEightsRank className="competition-action-pill" /> : !isMoney && !hasFreeEightsDiscordLink(user) ? <ConnectFreeEightsDiscord className="competition-action-pill" /> : (
             <button onClick={() => setCreateOpen(true)} className="competition-action-pill">
-              <Plus className="h-4 w-4" /> Create {isMoney ? "Money 8s" : "8s"} lobby
+              <Plus className="h-4 w-4" /> Create a Match
             </button>
           )}</div>}
         />

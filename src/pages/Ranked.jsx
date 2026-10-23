@@ -293,7 +293,7 @@ export default function Ranked() {
                   onClick={() => setIsCreateModalOpen(true)}
                   className="competition-action-pill"
                 >
-                  <Plus className="w-4 h-4" /> Create Ranked Match
+                  <Plus className="w-4 h-4" /> Create a Match
                 </button>
               )}
             </div>

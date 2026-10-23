@@ -461,7 +461,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
             <div>
-              <h2 className="text-xl font-black">{isMoneyEights ? "Create Money 8s Lobby" : isEights ? "Create 8s Lobby" : mode === "xp" ? "Create a Match" : isRanked ? "Create Ranked Match" : "Create Wager"}</h2>
+              <h2 className="text-xl font-black">{isEightsLobby || mode === "xp" || isRanked ? "Create a Match" : "Create Wager"}</h2>
               <p className="text-xs text-vapor mt-0.5">{isEights ? "Choose 2v2, 3v3 or 4v4; all formats share the same leaderboard" : isMoneyEights ? "Pick a series; teams are generated at 8 players" : mode === "xp" ? `${xpFormat === "solo" ? "Solos" : xpFormat === "duos" ? "Duos" : "Squads"} · XP match` : isRanked ? "Configure your Ranked match settings" : "Configure your wager settings"}</p>
             </div>
             <button onClick={handleClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
@@ -769,7 +769,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                     disabled={isCreating}
                     className="create-cta px-6 py-2.5 font-bold text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider flex items-center gap-2"
                   >
-                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : isMoneyEights ? "Open Money 8s Lobby" : isEights ? "Open 8s Lobby" : "Create Ranked Match"}
+                    <Swords className="w-4 h-4" /> {isCreating ? "Creating..." : "Create a Match"}
                   </button>}
                 </div>
               </div>
