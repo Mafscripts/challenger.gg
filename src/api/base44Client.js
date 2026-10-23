@@ -14,6 +14,7 @@ const TOKEN_KEYS = ["auth_token", "base44_access_token", "token"];
 const ENTITY_CACHE_MS = 15_000;
 const ME_CACHE_MS = 60_000;
 const readOnlyFunctions = new Set([
+  "getLiveSupportState",
   "getAdminRewardOverview", "getMyRewardGrants", "getRewardReveal", "getRewardSeasonStandings",
   "getTradingOverview",
   "getTradeInventory",
@@ -569,7 +570,7 @@ export const base44 = {
       }
       requireToken();
       const data = await apiFetch(`/functions/${name}`, { method: "POST", body: payload, dedupe: readOnlyFunctions.has(name) });
-      if (!readOnlyFunctions.has(name)) {
+      if (!readOnlyFunctions.has(name) && !/LiveSupport/.test(name)) {
         entityCache.clear();
         invalidateMeCache();
         if (data?.success !== false && !/^(get|list|search|check|find|validate|preview)/i.test(name)

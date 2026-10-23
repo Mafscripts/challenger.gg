@@ -11,6 +11,7 @@ import { publicCommerceEnabled } from "@/lib/commerce";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 
 const RewardReveal = lazy(() => import("@/components/rewards/RewardReveal"));
+const LiveSupport = lazy(() => import("@/components/support/LiveSupport"));
 const Footer = lazy(() => import("./Footer"));
 const CompetitionRouteFrame = lazy(() => import("@/components/competition/CompetitionRouteFrame"));
 
@@ -68,6 +69,7 @@ function PageLayoutShell() {
         </Suspense>
       </main>
       <NativeTabBar />
+      <Suspense fallback={null}><LiveSupport /></Suspense>
       {isAuthenticated && <Suspense fallback={null}><RewardReveal /></Suspense>}
       <div className="app-footer-wrap relative z-[1]">
         <DeferredFooter />

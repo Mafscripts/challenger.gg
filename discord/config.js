@@ -105,6 +105,7 @@ export const categorySpecs = [
     name: "🏆 COMPETITION",
     legacyNames: ["COMPETITION"],
     channels: [
+      { key: "how-to-play-8", name: "how-to-play-8", type: ChannelType.GuildText, mode: "read-only", topic: "Official Free 8s video guide: account setup, joining a match, Waiting Room and automatic team voice." },
       { key: "tournaments", name: "🏆・tournaments", legacyNames: ["tournaments"], type: ChannelType.GuildText, mode: "read-only", topic: "Upcoming Topfragg tournaments and featured competitions." },
       { key: "live-now", name: "🔴・live-now", legacyNames: ["live-now"], type: ChannelType.GuildText, mode: "read-only", topic: "Live Topfragg tournament matches and featured competition updates." },
       { key: "tournament-signups", name: "📝・tournament-signups", legacyNames: ["tournament-signups"], type: ChannelType.GuildText, mode: "chat", topic: "Tournament registration questions and roster calls." },

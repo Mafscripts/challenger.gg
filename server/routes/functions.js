@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { readLiveSupport, sendLiveSupport, updateLiveSupport } from "../live-support.js";
 import { tournamentVetoState, tournamentVetoPending, tournamentVetoMaps, tournamentVetoChoice } from "../../src/lib/tournamentMapVeto.js";
 import { buildTournamentStandings } from "../tournament-standings.js";
 import { PRIMARY_GAME_ID, MW4_MAP_POOLS, TOPFRAGG_VARIANT, storedGameId } from "../../src/lib/mw4.js";
@@ -5086,6 +5088,7 @@ async function joinMatchRoomAsAdmin(req) {
 async function replyTicket(req) {
   const ticket = await getEntity("Ticket", req.body.ticket_id);
   if (!ticket) return { success: false, error: "Ticket not found" };
+  if (ticket.request_type === "live_support" && !req.body.internal) return sendLiveSupport(prisma, req.user, { ...req.body, request_id: req.body.request_id || randomUUID() });
   const isStaff = hasRole(req.user, "moderator");
   const canReply = isStaff || ticketNotifyUserIds(ticket).includes(req.user.id);
   if (!canReply) return { success: false, error: "You cannot reply to this ticket" };
@@ -10570,6 +10573,10 @@ const handlers = {
   setAdminUserVpnAccess: (req) => setAdminUserVpnAccess(prisma, req.user, req.body),
   getAdminUserSecurity: (req) => getAdminUserSecurity(prisma, req),
   deleteAdminUser: (req) => deleteAdminUser(prisma, req.user, req.body),
+  getLiveSupportState: req => readLiveSupport(prisma, req.user, req.body),
+  sendLiveSupportMessage: req => sendLiveSupport(prisma, req.user, req.body),
+  markLiveSupportRead: req => updateLiveSupport(prisma, req.user, req.body),
+  closeLiveSupportConversation: req => updateLiveSupport(prisma, req.user, req.body, true),
   getAdminTickets: (req) => getAdminTickets(prisma, req.user, req.body),
   getAdminTicketCounts: (req) => getAdminTicketCounts(prisma, req.user),
   deleteAdminTicket: (req) => deleteAdminTicket(prisma, req.user, req.body),
@@ -10796,7 +10803,7 @@ router.post("/:name", requireAuth, async (req, res, next) => {
         : name === "getChallengeStandings" ? `${name}:${String(req.body.kind || "team")}`
         : name === "getLeaderboardPlayers" ? `${name}:${String(req.body.order || "-created_date")}` : null;
     const result = snapshotKey ? await readLeaderboardSnapshot(snapshotKey, () => handler(req)) : await handler(req);
-    if (!snapshotKey && result?.success !== false && !/^(get|list|search|check|find|validate|preview)/i.test(name)) invalidateLeaderboardSnapshots();
+    if (!/LiveSupport/.test(name) && !snapshotKey && result?.success !== false && !/^(get|list|search|check|find|validate|preview)/i.test(name)) invalidateLeaderboardSnapshots();
     res.json(hasRole(req.user, "admin") ? result : publicStaffPresentation(result));
   } catch (error) {
     next(error);
