@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Archive, ArchiveRestore, Bookmark, Download, FolderArchive, Loader2, Search, Star, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Bookmark, CheckCheck, Download, FolderArchive, Loader2, Search, Star, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { base44 } from "@/api/base44Client";
@@ -49,6 +49,17 @@ function RecordsContent({ onClose }) {
   const [error, setError] = useState(""), [revision, setRevision] = useState(0);
   const pendingNote = useRef(null);
   useEffect(() => { setConfirmDelete(false); }, [selected]);
+  const endConversation = async () => {
+    if (busy || !record || liveSupportClosed(record)) return;
+    setBusy(true); setError("");
+    try {
+      const data = await invoke("closeLiveSupportConversation", { ticket_id: record.id, sequence: record.support_sequence });
+      setRecord(current => ({ ...current, ...data.ticket }));
+      setRevision(current => current + 1);
+      window.dispatchEvent(new CustomEvent("topfragg:support-updated"));
+    } catch (err) { setError(err.message || "Could not end this conversation. Please retry."); }
+    finally { setBusy(false); }
+  };
   const remove = async () => {
     if (busy || !record || !canDelete || !liveSupportClosed(record)) return;
     setBusy(true); setError("");
@@ -111,12 +122,14 @@ function RecordsContent({ onClose }) {
       <section className="sr-detail" aria-label="Conversation record" aria-busy={detailLoading}>
         {detailLoading ? <div className="sr-empty" role="status"><Loader2 className="animate-spin" /> Loading conversation…</div> : !record ? <div className="sr-empty"><Bookmark size={32} /><strong>Your support archive</strong><p>Select a conversation to see its messages, notes and history.</p></div> : <>
           <header className="sr-record-header"><div><span>#{record.id}</span><h3>{record.username || "Player"}</h3><p>{status(record)} · {date(record.created_date)} · {record.assigned_admin_name || "Unassigned"}</p></div><button disabled={busy} onClick={() => { onClose(); navigate(`/?support=${encodeURIComponent(record.id)}`); }}>Open chat ↗</button></header>
-          <div className="sr-actions"><button aria-pressed={record.support_favorite} disabled={busy} onClick={() => manage("favorite", !record.support_favorite)}><Star size={15} fill={record.support_favorite ? "currentColor" : "none"} />{record.support_favorite ? "Saved to favorites" : "Save favorite"}</button>
+          <div className="sr-actions">
+            {!liveSupportClosed(record) && <button className="sr-end-button" disabled={busy} onClick={endConversation}><CheckCheck size={16} /> End conversation</button>}
+            <button aria-pressed={record.support_favorite} disabled={busy} onClick={() => manage("favorite", !record.support_favorite)}><Star size={15} fill={record.support_favorite ? "currentColor" : "none"} />{record.support_favorite ? "Saved to favorites" : "Save favorite"}</button>
             <button disabled={busy || (!record.support_archived && !liveSupportClosed(record))} title={!liveSupportClosed(record) ? "End the chat before archiving" : undefined} onClick={() => manage("archive", !record.support_archived)}>{record.support_archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}{record.support_archived ? "Restore" : "Archive"}</button>
             <button onClick={() => downloadRecord(record, messages)}><Download size={15} /> Export .txt</button>
             {canDelete && <button className="sr-delete-button" disabled={busy || !liveSupportClosed(record)} title={!liveSupportClosed(record) ? "End the chat before deleting" : undefined} onClick={() => setConfirmDelete(true)}><Trash2 size={15} /> Delete</button>}</div>
           {confirmDelete && <div className="sr-delete-confirm" role="alert"><strong>Permanently delete this conversation?</strong><p>All messages and notes will be removed for staff and the player, including saved and archived copies. This cannot be undone.</p><div><button disabled={busy} onClick={() => setConfirmDelete(false)}>Keep conversation</button><button disabled={busy} onClick={remove}>{busy ? "Deleting…" : "Delete for everyone"}</button></div></div>}
-          {!liveSupportClosed(record) && <p className="sr-hint">Open conversations can be saved as favorites. End the chat before archiving it.</p>}
+          {!liveSupportClosed(record) && <p className="sr-hint">Finished helping? Use End conversation here to enable Archive and Delete.</p>}
           {record.support_archived && <p className="sr-hint">Archived by {record.support_archived_by || "staff"} · {date(record.support_archived_at)}. All messages remain saved.</p>}
           <h4>Conversation <span>{messages.length} messages</span></h4>
           <div className="sr-transcript">{messages.map(message => <article key={message.id} data-staff={message.sender_staff}><div><strong className={isDevSupportMessage(message) ? "support-dev-name" : undefined}>{message.sender_name}{message.sender_staff ? " · Support" : ""}</strong><time>{date(message.created_date)}</time></div><p>{message.content}</p></article>)}{!messages.length && <p className="sr-hint">No messages recorded.</p>}</div>

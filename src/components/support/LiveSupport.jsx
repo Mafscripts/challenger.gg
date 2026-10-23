@@ -94,7 +94,8 @@ export default function LiveSupport() {
     poll();
     const visible = () => { if (!document.hidden) refresh(); };
     document.addEventListener("visibilitychange", visible);
-    return () => { stopped = true; clearTimeout(timer); document.removeEventListener("visibilitychange", visible); };
+    window.addEventListener("topfragg:support-updated", visible);
+    return () => { stopped = true; clearTimeout(timer); document.removeEventListener("visibilitychange", visible); window.removeEventListener("topfragg:support-updated", visible); };
   }, [refresh, open, staff, user, selected]);
   useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [messages.length, open]);
 
