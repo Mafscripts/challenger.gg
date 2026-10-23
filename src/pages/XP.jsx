@@ -11,7 +11,8 @@ import XPTeamSelect from "@/components/match/XPTeamSelect";
 import XPFormatSelect from "@/components/competition/XPFormatSelect";
 import XPFormatStandings from "@/components/competition/XPFormatStandings";
 import useRouteSection from "@/hooks/useRouteSection";
-import { xpCategory, xpCategoryForSize } from "@/lib/xpCategories";
+import { XP_CATEGORIES, xpCategory, xpCategoryForSize } from "@/lib/xpCategories";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { xpMatchAwaitingAcceptance, xpMatchDestination } from "@/lib/xpMatchAccess";
 import useRematchSettings from "@/hooks/useRematchSettings";
 import CompetitionLadder from "@/components/competition/CompetitionLadder";
@@ -291,12 +292,12 @@ export default function XP() {
                   Return to Active Match <ArrowRight className="h-4 w-4" />
                 </Link>
               ) : (
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="competition-action-pill"
-                >
-                  <Plus className="w-4 h-4" /> Create XP Match
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><button type="button" className="competition-action-pill"><Plus className="w-4 h-4" />Create a Match</button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-52 rounded-xl border-white/10 bg-[#111821] text-white">
+                    {XP_CATEGORIES.map(format => <DropdownMenuItem key={format.id} onSelect={() => { setCategory(format.id); setIsCreateModalOpen(true); }} className="cursor-pointer justify-between gap-5 focus:!bg-transparent focus:!text-cyan data-[highlighted]:!bg-transparent data-[highlighted]:!text-cyan"><span className="font-bold">{format.id === "solo" ? "Solos" : format.id === "teams" ? "Squads" : "Duos"}</span><span className="text-[10px] text-vapor">{format.detail}</span></DropdownMenuItem>)}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           }
