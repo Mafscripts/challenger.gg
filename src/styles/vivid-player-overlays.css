@@ -41,42 +41,57 @@
 @keyframes vivid-sonar { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; } 15% { opacity: .6; } 100% { transform: translate(-50%, -50%) scale(12); opacity: 0; } }
 @keyframes vivid-chevron { to { translate: 65px 0; } }
 @keyframes vivid-signature-shine { 0%, 15% { transform: translateX(-120%); } 70%, 100% { transform: translateX(120%); } }
-/* Replace the shared motion entirely with a separate engine for each design. */
+/* High-energy broadcast compositions. Keep the text plane still. */
 .centerbar[data-vivid] .centerbar-fx { display: none; }
 .centerbar[data-vivid] .centerbar-identity::before, .centerbar[data-vivid] .centerbar-metric::after { display: none; }
 .centerbar[data-vivid] :is(.centerbar-logo, .centerbar-trophies img, .centerbar-identity h1, .centerbar-live > i) { animation: none; }
+.centerbar[data-vivid] .centerbar-wing { background: linear-gradient(180deg, #ffffff05, #02061088); }
+.centerbar[data-vivid] .centerbar-metric { border-left-color: #ffffff24; }
+.centerbar[data-vivid] .centerbar-metric > strong { color: #f5f8ff; text-shadow: 0 2px 6px #0009; }
+.centerbar[data-vivid] .centerbar-metric > span { color: var(--cb); }
+.centerbar[data-vivid] .centerbar-identity { border-radius: 0; border: 0; background: #060a16ed; clip-path: polygon(4% 0,96% 0,100% 50%,96% 100%,4% 100%,0 50%); box-shadow: none; }
+.centerbar[data-vivid] .centerbar-identity::after { content: ""; position: absolute; inset: 0; border-block: 2px solid var(--cb); pointer-events: none; }
 .unique-engine { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: paint; }
-.unique-engine > i { display: block; position: absolute; }
-/* Red: rotating turbine blades with alternating direction and ember jets. */
-.unique-turbine > i { left: calc(var(--n) * 7% - 4%); top: -45px; width: 170px; height: 170px; border-radius: 50%; background: repeating-conic-gradient(#ff6b2855 0 9deg, transparent 9deg 45deg); mask-image: radial-gradient(circle, transparent 25%, #000 26% 48%, transparent 49%); animation: unique-turbine 3s calc(var(--n) * -.3s) linear infinite; }
-.unique-turbine > i:nth-child(even) { animation-direction: reverse; }
-.unique-turbine > i::after { content: ""; position: absolute; inset: 10px; border: 1px dashed #ff8549; border-radius: 50%; }
-.centerbar[data-design="crimson-overdrive"] .centerbar-identity::after { content: ""; position: absolute; inset: 4px; border-inline: 6px solid #ff582a; animation: unique-throttle 1.8s ease-in-out infinite; }
-/* Yellow: light packets travel along angular circuit traces in staggered steps. */
-.unique-circuit > i { left: calc(var(--n) * 6.5%); top: calc(8px + mod(var(--n), 3) * 22px); width: 115px; height: 20px; border-top: 1px solid #fff20055; border-right: 1px solid #fff20055; }
-.unique-circuit > i::after { content: ""; position: absolute; width: 7px; height: 3px; background: #fffba0; box-shadow: 0 0 12px #fff200; animation: unique-packet 3s calc(var(--n) * -.21s) linear infinite; }
-.centerbar[data-design="volt-rush"] .centerbar-identity::after { content: ""; position: absolute; inset: auto 22% 1px; height: 3px; background: repeating-linear-gradient(90deg, #fff200 0 8px, transparent 8px 12px); transform-origin: left; animation: unique-charge 4s steps(10) infinite; }
-/* Blue: four radar dishes sweep through concentric range markers. */
-.unique-radar > i { left: calc(var(--n) * 30% - 3%); top: -110px; width: 300px; height: 300px; border-radius: 50%; background: conic-gradient(transparent 0 65%, #48aaff08 72%, #72caff77 99%, #d9f5ff 100%); animation: unique-radar 8s calc(var(--n) * -2s) linear infinite; }
-.unique-radar > i::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: repeating-radial-gradient(circle, transparent 0 35px, #72caff44 36px 37px, transparent 38px 55px); }
-.centerbar[data-design="cobalt-strike"] .centerbar-identity::after { content: ""; position: absolute; top: 0; left: 0; width: 2px; height: 100%; background: #bde9ff; box-shadow: 0 0 15px #72caff; animation: unique-reticle 8s linear infinite; }
-/* Gold: hinged light fans sway like theatre spotlights, dust rises between them. */
-.unique-theatre > i { left: calc(var(--n) * 7% - 3%); bottom: -15px; width: 130px; height: 140px; transform-origin: 50% 100%; background: linear-gradient(0deg, #ffcf6855, transparent 95%); clip-path: polygon(49% 100%, 0 0, 100% 0, 51% 100%); animation: unique-fan 9s calc(var(--n) * -.8s) ease-in-out infinite alternate; }
-.unique-theatre > i:nth-child(even) { bottom: -5px; width: 3px; height: 3px; clip-path: none; background: #ffe6a0; animation: unique-dust 7s calc(var(--n) * -.43s) ease-in-out infinite; }
-.centerbar[data-design="gilded-reign"] .centerbar-identity { animation: unique-gold-frame 8s ease-in-out infinite; }
-.centerbar[data-design="gilded-reign"] .centerbar-identity::after { content: ""; position: absolute; inset: 3px; border: 1px solid #ffdb6455; }
-/* Silver: a wave of 3D chrome louvers opens and closes sequentially. */
-.unique-chrome > i { left: calc(var(--n) * 6.25%); top: 0; width: 6.25%; height: 100%; background: linear-gradient(100deg, #d3e6ff00, #e4eeff55 45%, #fff9 50%, #c5dcff00 62%); transform-origin: left; animation: unique-louver 9s calc(var(--n) * -.28s) ease-in-out infinite; }
-.centerbar[data-design="silver-spectre"] .centerbar-identity::after { content: ""; position: absolute; inset: 0; border-inline: 3px solid #eff7ff; border-radius: inherit; animation: unique-silver-focus 9s ease-in-out infinite; }
-@keyframes unique-turbine { to { rotate: 360deg; } }
-@keyframes unique-throttle { 50% { transform: scaleX(.94); opacity: .35; } }
-@keyframes unique-packet { 0% { transform: translate(0,-2px); opacity: 0; } 10%, 85% { opacity: 1; } 70% { transform: translate(111px,-2px); } 100% { transform: translate(111px,19px); opacity: 0; } }
-@keyframes unique-charge { 0% { transform: scaleX(0); } 75%, 90% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
-@keyframes unique-radar { to { rotate: 360deg; } }
-@keyframes unique-reticle { 0%, 10% { transform: translateX(0); opacity: 0; } 20%, 80% { opacity: .4; } 90%, 100% { transform: translateX(420px); opacity: 0; } }
-@keyframes unique-fan { from { rotate: -28deg; opacity: .3; } to { rotate: 28deg; opacity: .8; } }
-@keyframes unique-dust { 0% { transform: translate(0,0) rotate(45deg); opacity: 0; } 25%, 60% { opacity: .65; } 100% { transform: translate(24px,-90px) rotate(225deg); opacity: 0; } }
-@keyframes unique-gold-frame { 50% { box-shadow: inset 0 0 25px #ffca2720, 0 0 24px #ffca2730; } }
-@keyframes unique-louver { 0%, 15%, 100% { transform: perspective(300px) rotateY(82deg); opacity: .15; } 45%, 65% { transform: perspective(300px) rotateY(-15deg); opacity: .65; } }
-@keyframes unique-silver-focus { 50% { transform: scaleX(.86); opacity: .25; } }
+.unique-engine > * { display: block; position: absolute; }
+.broadcast-energy { inset: 0 auto 0 0; width: 42%; }
+.broadcast-energy-right { left: auto; right: 0; transform: scaleX(-1); }
+.broadcast-edge { inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, var(--cb), transparent 35% 65%, var(--cb)); }
+.broadcast-edge-bottom { top: auto; bottom: 0; }
+/* VOLT: diagonal hazard armor, rushing electric bolts and sequential charges. */
+.centerbar[data-design="volt-rush"] { background: #282600; }
+.unique-circuit .broadcast-energy { background: repeating-linear-gradient(115deg, #fff200 0 5px, #d6a000 6px 8px, #181500 9px 42px); opacity: .4; animation: volt-armor 2s linear infinite; }
+.unique-circuit > i { left: calc(var(--n) * 5.3%); top: calc(8px + mod(var(--n) * 23, 60) * 1px); width: 130px; height: 17px; background: #fff680; clip-path: polygon(0 42%,42% 42%,52% 0,47% 42%,100% 42%,56% 58%,45% 100%,49% 58%,0 58%); filter: drop-shadow(0 0 7px #fff200); animation: volt-discharge 2.6s calc(var(--n) * -.23s) cubic-bezier(.4,0,1,1) infinite; }
+.centerbar[data-design="volt-rush"] .centerbar-identity::after { border-width: 3px; animation: volt-frame 4s steps(8) infinite; }
+/* COBALT: layered blue plasma ribbons passing behind a sharp ice-blue frame. */
+.centerbar[data-design="cobalt-strike"] { background: #03185c; }
+.unique-radar .broadcast-energy { background: radial-gradient(ellipse at 10% 120%, #1a7dff, transparent 70%); }
+.unique-radar > i { width: 65%; height: 130px; left: calc(mod(var(--n),2) * 45% - 10%); top: calc(-100px + mod(var(--n),5) * 18px); border-bottom: 2px solid #4eafff; border-radius: 50%; box-shadow: 0 3px 12px #168aff44; opacity: .4; animation: cobalt-plasma 6s calc(var(--n) * -.4s) ease-in-out infinite alternate; }
+.unique-radar > i:nth-child(3n) { border-color: #c0f5ff; opacity: .7; height: 100px; }
+.centerbar[data-design="cobalt-strike"] .centerbar-identity { background: linear-gradient(90deg,#071c42,#030a19,#071c42); }
+.centerbar[data-design="cobalt-strike"] .centerbar-identity::after { border-inline: 7px solid #63bcff; animation: cobalt-bloom 6s ease-in-out infinite; }
+/* GOLD: cut-metal facets, broad travelling reflection and rising embers. */
+.centerbar[data-design="gilded-reign"] { background: linear-gradient(110deg,#a86603,#3a2308 40% 60%,#b48012); }
+.unique-theatre .broadcast-energy { background: repeating-conic-gradient(from 35deg at 0 50%, #ffdb6422 0 12deg, #09070355 12deg 25deg); }
+.unique-theatre .broadcast-energy::after { content: ""; position: absolute; inset: -100% -20%; background: linear-gradient(110deg,transparent 38%,#fff1b86b 50%,transparent 62%); animation: gold-polish 9s ease-in-out infinite; }
+.unique-theatre > i { left: calc(var(--n) * 5.4%); bottom: -10px; width: 3px; height: 3px; background: #fff0a2; box-shadow: 0 0 7px #ffb928; animation: gold-ember 5s calc(var(--n) * -.37s) ease-out infinite; }
+.unique-theatre > i:nth-child(4n) { width: 6px; height: 6px; clip-path: polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%); }
+.centerbar[data-design="gilded-reign"] .centerbar-identity { background: #100e0a; }
+.centerbar[data-design="gilded-reign"] .centerbar-identity::after { inset: 3px 0; border-block: 1px solid #ffdb64; box-shadow: inset 0 4px 14px #f9bc2020; }
+/* SILVER: flowing chrome waves with opposing diamond comets. */
+.centerbar[data-design="silver-spectre"] { background: #182232; }
+.unique-chrome .broadcast-energy { background: linear-gradient(115deg,#222e43,#b5c8dd88,#283b59,#edf7ff55,#1b2b44); background-size: 220% 100%; animation: silver-liquid 8s ease-in-out infinite alternate; }
+.unique-chrome > i { left: calc(var(--n) * 5.5%); top: calc(10px + mod(var(--n) * 19,58) * 1px); width: 65px; height: 2px; background: linear-gradient(90deg,transparent,#e7f6ff); animation: silver-comet 4s calc(var(--n) * -.33s) linear infinite; }
+.unique-chrome > i::after { content: ""; position: absolute; right: 0; top: -2px; width: 5px; height: 5px; background: #f5fbff; transform: rotate(45deg); box-shadow: 0 0 10px #bde3ff; }
+.unique-chrome > i:nth-child(even) { animation-direction: reverse; }
+.centerbar[data-design="silver-spectre"] .centerbar-identity { background: linear-gradient(110deg,#0a111e,#273852,#0a111e); }
+.centerbar[data-design="silver-spectre"] .centerbar-identity::after { border-inline: 4px solid #d8eaff; border-block: 1px solid #c1d5f0; }
+@keyframes volt-armor { to { background-position: 46px 0; } }
+@keyframes volt-discharge { 0% { transform: translateX(-180px) scaleX(.3); opacity: 0; } 25% { opacity: .8; } 100% { transform: translateX(450px) scaleX(1.3); opacity: 0; } }
+@keyframes volt-frame { 50% { opacity: .4; clip-path: inset(0 20%); } }
+@keyframes cobalt-plasma { to { transform: translate(65px,22px) rotate(-6deg); } }
+@keyframes cobalt-bloom { 50% { box-shadow: inset 0 0 24px #379aff30; border-inline-color: #d2f7ff; } }
+@keyframes gold-polish { 0%,15% { transform: translateX(-100%); } 80%,100% { transform: translateX(100%); } }
+@keyframes gold-ember { 0% { transform: translate(0,0) rotate(0); opacity: 0; } 25%,60% { opacity: .8; } 100% { transform: translate(45px,-95px) rotate(100deg); opacity: 0; } }
+@keyframes silver-liquid { to { background-position: 100% 50%; } }
+@keyframes silver-comet { from { transform: translateX(-200px); opacity: 0; } 30%,60% { opacity: .7; } to { transform: translateX(400px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .centerbar *, .centerbar *::before, .centerbar *::after { animation: none !important; } }
