@@ -2,10 +2,11 @@ import React from "react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import "@/styles/center-stage-overlays.css";
 import "@/styles/vivid-player-overlays.css";
+import "@/styles/tokyo-midnight-overlay.css";
 
 export const CENTER_STAGE_THEMES = [
   { key: "crimson-overdrive", label: "Crimson Overdrive", vivid: true, caption: "Scarlet / racing afterburners", description: "The original red afterburner design: rushing light trails, angular armor and a luminous centered player signature." },
-  { key: "volt-rush", label: "Volt Rush", vivid: true, caption: "Neon yellow / midnight energy", description: "Midnight graphite, flowing neon-yellow energy lanes and a suspended player signature with illuminated corner brackets." },
+  { key: "volt-rush", label: "Tokyo Midnight", vivid: true, caption: "Yellow neon / after-hours broadcast", description: "Tokyo after dark: animated Japanese neon signs, rain streaks, a yellow station-style nameplate and brief signal glitches. Your existing yellow overlay URL still works." },
   { key: "cobalt-strike", label: "Cobalt Strike", vivid: true, caption: "Royal blue / plasma ribbons", description: "Layered blue plasma ribbons flow behind a sharp ice-blue player frame." },
   { key: "gilded-reign", label: "Gilded Reign", vivid: true, caption: "Rich gold / polished metal", description: "Cut-gold facets, broad polished reflections and rising golden embers." },
   { key: "silver-spectre", label: "Silver Spectre", vivid: true, caption: "Chrome silver / liquid light", description: "Flowing liquid-chrome reflections and opposing diamond comets surround a silver player frame." },
@@ -20,6 +21,7 @@ function Metric({ label, value }) {
   return <div className="centerbar-metric"><span>{label}</span><strong key={String(value)} title={String(value)}>{value}</strong></div>;
 }
 function VividAnimation({ theme }) {
+  if (theme === "volt-rush") return <div className="tokyo-atmosphere" aria-hidden="true"><div className="tokyo-city"><span>東京</span><span>深夜</span><span>電光</span><span>東京</span><span>深夜</span><span>電光</span></div><div className="tokyo-rain">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ "--n": index }} />)}</div><span className="tokyo-signal" /><span className="tokyo-track" /><span className="tokyo-track tokyo-track-bottom" /></div>;
   const family = { "crimson-overdrive": "turbine", "volt-rush": "circuit", "cobalt-strike": "radar", "gilded-reign": "theatre", "silver-spectre": "chrome" }[theme];
   return <div className={`unique-engine unique-${family}`} aria-hidden="true"><span className="broadcast-energy broadcast-energy-left" /><span className="broadcast-energy broadcast-energy-right" /><span className="broadcast-edge" /><span className="broadcast-edge broadcast-edge-bottom" />{Array.from({ length: family === "circuit" ? 8 : 20 }, (_, index) => <i key={index} style={{ "--n": index }} />)}</div>;
 }

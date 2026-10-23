@@ -31,7 +31,7 @@
 .stream-overlay-theme-picker button[data-theme="editorial"] { --overlay-accent: #e6be97; --overlay-swatch: linear-gradient(90deg, #c94932 0 22%, #25352e 22% 50%, #f1eee5 50% 100%); }
 .stream-overlay-theme-picker button[data-theme="hyperdrive"] { --overlay-accent: #83eaff; --overlay-swatch: linear-gradient(135deg, #55efff, #15234b 40%, #27143d 60%, #ff80d6); }
 .stream-overlay-theme-picker button[data-theme="crimson-overdrive"] { --overlay-accent: #ff4646; --overlay-swatch: repeating-linear-gradient(120deg, #64091b 0 8px, #ff4646 9px 12px, #ff920e 13px 14px); }
-.stream-overlay-theme-picker button[data-theme="volt-rush"] { --overlay-accent: #fff200; --overlay-swatch: repeating-linear-gradient(120deg, #fff200 0 8px, #171902 9px 16px); }
+.stream-overlay-theme-picker button[data-theme="volt-rush"] { --overlay-accent: #ffe333; --overlay-swatch: linear-gradient(90deg,#08090d 0 20%,#ffe333 20% 25%,#171508 25% 70%,#ffe333 70% 85%,#08090d 85%); }
 .stream-overlay-theme-picker button[data-theme="cobalt-strike"] { --overlay-accent: #72caff; --overlay-swatch: repeating-radial-gradient(circle, #72caff 0 1px, #0732a0 2px 8px); }
 .stream-overlay-theme-picker button[data-theme="gilded-reign"] { --overlay-accent: #ffdb64; --overlay-swatch: linear-gradient(120deg, #795002, #ffdb64, #211605, #f6a800); }
 .stream-overlay-theme-picker button[data-theme="silver-spectre"] { --overlay-accent: #f1f7ff; --overlay-swatch: linear-gradient(120deg, #536478, #f1f7ff, #101925, #a5bce2); }

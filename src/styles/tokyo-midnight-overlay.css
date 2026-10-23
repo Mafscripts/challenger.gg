@@ -1,0 +1,32 @@
+/* Keep the legacy yellow theme URL; Tokyo replaces its complete visual system. */
+.centerbar[data-design="volt-rush"] { --cb: #ffe333; --cb2: #e6a819; background: #07080c; border-block: 1px solid #ffe33370; }
+.centerbar[data-design="volt-rush"] .centerbar-wing { background: linear-gradient(180deg,#08090dcc,#10101955 50%,#08090dd9); }
+.centerbar[data-design="volt-rush"] .centerbar-brand { border-left: 4px solid #ffe333; }
+.centerbar[data-design="volt-rush"] .centerbar-brand small { color: #ffe333; letter-spacing: .2em; font-size: 8px; }
+.centerbar[data-design="volt-rush"] .centerbar-metric { border-left: 1px solid #ffe33324; }
+.centerbar[data-design="volt-rush"] .centerbar-metric > span { color: #a6a5a9; font-size: 8px; letter-spacing: .15em; }
+.centerbar[data-design="volt-rush"] .centerbar-metric > strong { color: #fff7cc; text-shadow: 0 0 12px #ffe33315; }
+.centerbar[data-design="volt-rush"] .centerbar-identity { position: relative; margin: 6px 14px; height: 66px; padding: 5px 34px; border: 1px solid #ffe333; border-radius: 2px; clip-path: none; background: linear-gradient(105deg,#14130b,#090a0f 60%,#1d180b); box-shadow: 0 0 22px #ffe33315,inset 0 0 14px #ffe33308; }
+.centerbar[data-design="volt-rush"] .centerbar-identity::before { content: "東京"; display: block; position: absolute; left: 8px; top: 13px; width: 16px; color: #ffe333; font-size: 12px; line-height: 16px; writing-mode: vertical-rl; letter-spacing: 3px; background: none; animation: tokyo-sign-flicker 13s linear infinite; }
+.centerbar[data-design="volt-rush"] .centerbar-identity::after { content: "深夜"; position: absolute; inset: 13px 7px auto auto; width: 16px; height: auto; background: none; border: 0; border-radius: 0; color: #ffe333; font-size: 12px; line-height: 16px; writing-mode: vertical-rl; letter-spacing: 3px; animation: none; }
+.centerbar[data-design="volt-rush"] .centerbar-handle { color: #ffe333; font-size: 8px; letter-spacing: .18em; }
+.centerbar.app-content[data-design="volt-rush"] .centerbar-identity h1 { position: relative; color: #fffdf0; font-size: 29px; font-weight: 900; letter-spacing: -.025em; text-shadow: 0 0 16px #ffe33330; }
+.centerbar[data-design="volt-rush"] .centerbar-identity h1::after { content: attr(title); position: absolute; inset: 0; color: #ffe333; clip-path: inset(40% 0 40%); opacity: 0; pointer-events: none; animation: tokyo-name-glitch 11s linear infinite; }
+.centerbar[data-design="volt-rush"] .centerbar-live { font-size: 6px; color: #a9a7a0; letter-spacing: .2em; }
+.tokyo-atmosphere { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; contain: paint; background: radial-gradient(ellipse at 10% 100%,#eebd001e,transparent 38%),radial-gradient(ellipse at 90% 0%,#eebd0014,transparent 35%); }
+.tokyo-city { position: absolute; inset: -14px 0; display: flex; align-items: center; justify-content: space-around; gap: 100px; animation: tokyo-city-drift 18s ease-in-out infinite alternate; }
+.tokyo-city > span { flex-shrink: 0; padding: 8px 12px; border: 1px solid #ffe33355; border-radius: 2px; color: #ffe333; font-family: "Yu Gothic", "Meiryo", sans-serif; font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: .12em; opacity: .2; box-shadow: 0 0 18px #ffe33315; text-shadow: 0 0 10px #ffd50060; transform: skewY(-6deg); }
+.tokyo-city > span:nth-child(even) { font-size: 22px; writing-mode: vertical-rl; color: #fff5a8; opacity: .3; animation: tokyo-sign-flicker 13s -4s linear infinite; }
+.tokyo-city > span:nth-child(3n) { border: 0; -webkit-text-stroke: 1px #ffe333; color: transparent; font-size: 65px; }
+.tokyo-rain { position: absolute; inset: 0; }
+.tokyo-rain > i { position: absolute; left: calc(var(--n) * 6%); top: -40px; width: 1px; height: 22px; background: linear-gradient(transparent,#fff0a666); transform: rotate(18deg); animation: tokyo-rain 1.8s calc(var(--n) * -.17s) linear infinite; }
+.tokyo-signal { position: absolute; inset: 0; background: repeating-linear-gradient(0deg,transparent 0 3px,#fff1 3px 4px); opacity: 0; animation: tokyo-signal 11s linear infinite; }
+.tokyo-track { position: absolute; inset: 3px 0 auto; height: 2px; background: linear-gradient(90deg,transparent 0 45%,#ffe333 48% 52%,transparent 55%); animation: tokyo-express 6s linear infinite; }
+.tokyo-track-bottom { top: auto; bottom: 3px; animation-direction: reverse; animation-delay: -3s; }
+@keyframes tokyo-city-drift { to { transform: translateX(-35px); } }
+@keyframes tokyo-rain { from { translate: 12px -5px; opacity: 0; } 25% { opacity: .5; } to { translate: -22px 135px; opacity: 0; } }
+@keyframes tokyo-sign-flicker { 0%,69%,71%,74%,100% { filter: brightness(1); } 70%,73% { filter: brightness(.35); } }
+@keyframes tokyo-name-glitch { 0%,81%,84%,100% { opacity: 0; transform: none; } 81.5% { opacity: .9; transform: translateX(3px); } 82% { opacity: .8; transform: translateX(-2px); } 83% { opacity: .6; transform: translateX(1px); } }
+@keyframes tokyo-signal { 0%,81%,84%,100% { opacity: 0; } 82% { opacity: .15; } 83% { opacity: .05; } }
+@keyframes tokyo-express { from { transform: translateX(-80%); } to { transform: translateX(80%); } }
+@media (prefers-reduced-motion: reduce) { .centerbar[data-design="volt-rush"] *, .centerbar[data-design="volt-rush"] *::before, .centerbar[data-design="volt-rush"] *::after { animation: none !important; } }
