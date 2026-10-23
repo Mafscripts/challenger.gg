@@ -1,7 +1,9 @@
 import { prisma } from "../server/prisma.js";
 
 const ACTIVE_TOURNAMENT_STATUSES = new Set(["open", "registration", "waiting", "available", "in_progress", "started", "live"]);
-const MANAGED_ROLES = ["Premium", "Team Captain", "Tournament Participant"];
+// Team Captain is staff-assigned. Website team ownership must never turn a
+// new Discord member into a community captain automatically.
+const MANAGED_ROLES = ["Premium", "Tournament Participant"];
 const flat = (row) => ({ ...(row?.metadata || {}), ...row });
 
 const isPremium = (user, now) => {
@@ -16,22 +18,18 @@ const memberUserIds = (participant) => [
   ...(Array.isArray(participant?.members) ? participant.members.map((member) => member?.user_id) : []),
 ].filter(Boolean).map(String).filter((value, index, values) => values.indexOf(value) === index);
 
-export async function syncManagedDiscordRoles(guild, log) {
+export async function syncManagedDiscordRoles(guild, log = () => {}, { db = prisma } = {}) {
   await guild.roles.fetch();
   const now = Date.now();
-  const [users, teamRows, tournamentRows, participantRows] = await Promise.all([
-    prisma.user.findMany({
+  const [users, tournamentRows, participantRows] = await Promise.all([
+    db.user.findMany({
       where: { discord_user_id: { not: null } },
       select: { id: true, discord_user_id: true, is_premium: true, premium_expires: true },
     }),
-    prisma.team.findMany({ orderBy: { updated_date: "desc" }, take: 500 }),
-    prisma.tournament.findMany({ orderBy: { updated_date: "desc" }, take: 200 }),
-    prisma.tournamentParticipant.findMany({ orderBy: { updated_date: "desc" }, take: 500 }),
+    db.tournament.findMany({ orderBy: { updated_date: "desc" }, take: 200 }),
+    db.tournamentParticipant.findMany({ orderBy: { updated_date: "desc" }, take: 500 }),
   ]);
 
-  const captainIds = new Set(teamRows.map(flat)
-    .filter((team) => team.is_active !== false && team.captain_id)
-    .map((team) => String(team.captain_id)));
   const activeTournamentIds = new Set(tournamentRows.map(flat)
     .filter((tournament) => ACTIVE_TOURNAMENT_STATUSES.has(String(tournament.status || "open").toLowerCase()))
     .map((tournament) => String(tournament.id)));
@@ -50,7 +48,6 @@ export async function syncManagedDiscordRoles(guild, log) {
     if (!member) continue;
     const shouldHave = {
       Premium: isPremium(user, now),
-      "Team Captain": captainIds.has(String(user.id)),
       "Tournament Participant": participantIds.has(String(user.id)),
     };
     for (const name of MANAGED_ROLES) {

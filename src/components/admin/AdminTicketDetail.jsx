@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, ExternalLink, FileCheck2, FileText, Gavel, Loader2, LockKeyhole, MessageSquare, Send, ShieldAlert, UserCheck } from "lucide-react";
@@ -22,6 +22,8 @@ const linksFrom = (row) => [...new Set([
 export default function AdminTicketDetail({ row, user, onRefresh, onBack, deleteButton, draft, onDraftChange, onRoomOpen }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState("conversation");
+  const chatViewport = useRef(null);
+  const followChat = useRef(true);
   const { reply = "", note = "", reason = "" } = draft;
   const setReply = (reply) => onDraftChange({ reply });
   const setNote = (note) => onDraftChange({ note });
@@ -75,6 +77,10 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const teamA = match.alpha_team?.name || match.team_a_name || match.host_name || ticket?.team_a_name || "Team Alpha";
   const teamB = match.bravo_team?.name || match.team_b_name || match.challenger_name || ticket?.team_b_name || "Team Bravo";
   const messages = (ticket?.messages || []).filter((message) => !message.internal);
+  const originalInMessages = messages.some(message => !isStaffSupportMessage(message) && message.content?.trim() === ticketDescription(row).trim());
+  useEffect(() => {
+    if (tab === "conversation" && followChat.current && chatViewport.current) chatViewport.current.scrollTop = chatViewport.current.scrollHeight;
+  }, [tab, messages.length]);
   const notes = [...(ticket?.internal_notes || []), ...(ticket?.support_record_notes || []).map(note => ({ ...note, sender_name: note.author_name }))];
   const submissions = row.disputes.flatMap((record) => record.submissions?.length ? record.submissions : [record])
     .filter((submission) => submission.description && submission.description !== ticketDescription(row));
@@ -104,6 +110,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const send = async (internal) => {
     const content = (internal ? note : reply).trim();
     if (!content) return;
+    if (!internal) followChat.current = true;
     if (await invoke("replyTicket", { ticket_id: ticket.id, message: content, internal }, internal ? "Staff note saved." : "Reply sent to the players.")) {
       if (internal) setNote(""); else setReply("");
     }
@@ -151,18 +158,20 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
       onClick={() => { setTab(value); setError(""); setNotice(""); }}><Icon size={14} />{label}</button>)}</nav>
     <div className="at-detail-body">
       {tab === "conversation" && <>
-        <div className="at-section-heading"><h4>What happened?</h4><span>{ticketIssue(row)}</span></div>
-        <div className="at-thread">
-          <div className="at-message at-original"><div className="at-message-heading"><strong>{ticketReporter(row)}</strong><span>Original request</span></div><p>{ticketDescription(row)}</p></div>
+        <div className="at-section-heading"><h4>Conversation</h4><span>{ticketIssue(row)}</span></div>
+        <div className="at-conversation-box">
+        <div className="at-thread" ref={chatViewport} role="log" aria-label="Support conversation" tabIndex={0} onScroll={event => { const box = event.currentTarget; followChat.current = box.scrollHeight - box.scrollTop - box.clientHeight < 64; }}>
+          {!originalInMessages && <div className="at-message at-original"><div className="at-message-heading"><strong>{ticketReporter(row)}</strong><span>Original request</span></div><p>{ticketDescription(row)}</p></div>}
           {(ticket?.reported_against_name || row.disputes[0]?.reported_against_name) && <p className="at-help">Reported player: <strong>{ticket?.reported_against_name || row.disputes[0]?.reported_against_name}</strong></p>}
           {submissions.map((submission, index) => <div className="at-message" key={`submission:${index}`}>
             <div className="at-message-heading"><strong>{submission.reported_by_name || "Player"}</strong><span>{disputeReasonLabel(submission.reason)}</span></div><p>{submission.description}</p>{submission.reported_against_name && <small>Reported player: {submission.reported_against_name}</small>}</div>)}
-          {messages.map((message, index) => <div key={message.id || index} className="at-message"><div className="at-message-heading"><strong className={isStaffSupportMessage(message) ? "support-staff-name" : undefined}>{message.sender_name || "Player"}{isStaffSupportMessage(message) ? " · Support" : ""}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content}</p></div>)}
+          {messages.map((message, index) => <div key={message.id || index} className="at-message" data-staff={isStaffSupportMessage(message) || undefined}><div className="at-message-heading"><strong className={isStaffSupportMessage(message) ? "support-staff-name" : undefined}>{message.sender_name || "Player"}{isStaffSupportMessage(message) ? " · Support" : ""}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content}</p></div>)}
         </div>
         {canReply ? <div className="at-composer"><label htmlFor="at-reply">Reply to the players</label>
-          <textarea id="at-reply" value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Ask a question or explain the next step..." rows={3} />
+          <textarea id="at-reply" value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write a reply…" rows={2} disabled={!!busy} />
           <div><span>This reply is visible to the ticket participants.</span><button className="at-button at-button-primary" disabled={!!busy || !reply.trim()} onClick={() => send(false)}><Send size={14} /> Send reply</button></div>
         </div> : <p className="at-help">{ticket ? handledByOther ? `${owner.assigned_admin_name || "Another staff member"} is already helping. Replies are reserved for the assigned staff member.` : "This conversation is closed. Reopen the ticket to reply." : "This older match ticket has no player conversation. Review the match and record your decision."}</p>}
+        </div>
         {!row.closed && <button className="at-next" onClick={() => setTab(proof.length ? "evidence" : "decision")}>Next: {proof.length ? "review evidence" : "record a decision"} <ExternalLink size={13} /></button>}
       </>}
       {tab === "evidence" && <>
