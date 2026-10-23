@@ -217,6 +217,9 @@ body {
   color-scheme: dark;
 }
 .arena-select-menu, .arena-menu { border-radius: 12px; }
+.arena-select-menu [data-radix-select-viewport].arena-select-viewport { scrollbar-width: thin !important; scrollbar-color: #345062 transparent; overflow-anchor: none; }
+.arena-select-menu [data-radix-select-viewport].arena-select-viewport::-webkit-scrollbar { display: block !important; width: 5px; }
+.arena-select-menu [data-radix-select-viewport].arena-select-viewport::-webkit-scrollbar-thumb { background: #345062; border-radius: 5px; }
 @media (max-width: 767px) {
   .arena-dialog {
     max-width: calc(100vw - 2rem);
