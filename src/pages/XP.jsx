@@ -8,7 +8,6 @@ import { base44 } from "@/api/base44Client";
 import CreateLobbyModal from "@/components/match/CreateLobbyModal";
 import XPMatchPostAction from "@/components/match/XPMatchPostAction";
 import XPTeamSelect from "@/components/match/XPTeamSelect";
-import XPFormatSelect from "@/components/competition/XPFormatSelect";
 import XPFormatStandings from "@/components/competition/XPFormatStandings";
 import useRouteSection from "@/hooks/useRouteSection";
 import { XP_CATEGORIES, xpCategory, xpCategoryForSize } from "@/lib/xpCategories";
@@ -284,7 +283,6 @@ export default function XP() {
           action={
             <div className="competition-actions">
               <CompetitionGameSelect games={games} value={gameId} onChange={setGameId} />
-              <XPFormatSelect value={category} onChange={setCategory} />
               {activeRankedMatch ? xpMatchAwaitingAcceptance(activeRankedMatch) ? (
                 <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-vapor">Waiting for opponent acceptance</span><XPMatchPostAction match={activeRankedMatch} userId={user?.id} onChanged={loadRankedData} /></div>
               ) : (
@@ -295,7 +293,7 @@ export default function XP() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><button type="button" className="competition-action-pill"><Plus className="w-4 h-4" />Create a Match</button></DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="min-w-52 rounded-xl border-white/10 bg-[#111821] text-white">
-                    {XP_CATEGORIES.map(format => <DropdownMenuItem key={format.id} onSelect={() => { setCategory(format.id); setIsCreateModalOpen(true); }} className="cursor-pointer justify-between gap-5 focus:!bg-transparent focus:!text-cyan data-[highlighted]:!bg-transparent data-[highlighted]:!text-cyan"><span className="font-bold">{format.id === "solo" ? "Solos" : format.id === "teams" ? "Squads" : "Duos"}</span><span className="text-[10px] text-vapor">{format.detail}</span></DropdownMenuItem>)}
+                    {XP_CATEGORIES.map(format => <DropdownMenuItem key={format.id} onSelect={() => { setCategory(format.id); setIsCreateModalOpen(true); }} className="cursor-pointer focus:!bg-transparent focus:!text-cyan data-[highlighted]:!bg-transparent data-[highlighted]:!text-cyan"><span className="font-bold">{format.id === "solo" ? "Solos" : format.id === "teams" ? "Squads" : "Duos"}</span></DropdownMenuItem>)}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
