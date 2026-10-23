@@ -3,7 +3,18 @@
 .tournament-overview .overview-back:hover { color: rgb(var(--comp-accent)); }
 .tournament-overview .overview-hero .competition-hero-main { min-height: 276px; }
 .tournament-overview .overview-hero .competition-hero-copy { grid-template-rows: auto auto auto auto; }
-.tournament-overview .overview-hero .competition-hero-copy h1 { min-block-size: auto; overflow-wrap: anywhere; }
+.tournament-overview .overview-hero .competition-hero-copy h1 { min-block-size: auto; overflow-wrap: anywhere; font-size: clamp(28px, 2.8cqw, 36px); line-height: 1.16; }
+.tournament-overview .overview-hero[data-game="mw4"] .competition-hero-main { grid-template-columns: 132px minmax(0, 1fr) 200px; gap: 26px; }
+.tournament-overview .overview-hero .competition-hero-cover { display: block; width: 132px; height: auto; aspect-ratio: 224 / 315; object-fit: contain; border-radius: 10px; border: 1px solid rgb(var(--comp-accent) / .26); box-shadow: 0 10px 25px #0005; }
+@container (max-width: 980px) {
+  .tournament-overview .overview-hero[data-game="mw4"] .competition-hero-main { grid-template-columns: 112px minmax(0, 1fr); gap: 22px; }
+  .tournament-overview .overview-hero .competition-hero-cover { width: 112px; }
+}
+@container (max-width: 600px) {
+  .tournament-overview .overview-hero[data-game="mw4"] .competition-hero-main { grid-template-columns: 68px minmax(0, 1fr); gap: 14px; align-items: start; min-height: auto; }
+  .tournament-overview .overview-hero .competition-hero-cover { width: 68px; margin-top: 3px; border-radius: 6px; }
+  .tournament-overview .overview-hero[data-game="mw4"] .competition-hero-copy h1 { font-size: clamp(21px, 4.6cqw, 28px); }
+}
 .tournament-overview .overview-hero :is(.competition-hero-description, .competition-hero-facts) { min-block-size: auto; }
 .tournament-overview .overview-hero .competition-hero-artwork { opacity: .13; }
 .tournament-overview .overview-hero .competition-hero-footer { flex-wrap: wrap; }
@@ -48,7 +59,7 @@
 .tournament-overview .overview-rules { overflow-wrap: anywhere; }
 .tournament-overview :is(button, a):focus-visible { outline: 2px solid rgb(var(--comp-accent)); outline-offset: 3px; }
 @media (max-width: 600px) {
-  .tournament-overview .overview-hero .competition-hero-copy h1 { font-size: clamp(26px, 7vw, 34px); }
+  .tournament-overview .overview-hero .competition-hero-copy h1 { font-size: clamp(24px, 5.5vw, 30px); }
   .tournament-overview .overview-tabs .arena-tab { padding: 10px 7px; font-size: 10px; }
   .tournament-overview .overview-tabs > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tournament-overview .overview-hero .overview-countdown { width: 100%; padding-inline: 0; }

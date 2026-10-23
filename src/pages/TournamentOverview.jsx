@@ -534,6 +534,8 @@ export default function TournamentOverview() {
       <div className="page-container">
         <Link to="/tournaments" className="overview-back"><ArrowLeft size={15} />All tournaments</Link>
         <CompetitionHero mode="tournaments" title={tournament.name} eyebrow="Tournament overview" description={`${gameName} · ${modeName} · ${tournament.platform || "Cross platform"}`} artwork={imageForTournament(tournament)} className="overview-hero"
+          gameId={tournamentGameId(tournament)}
+          cover={tournamentGameId(tournament) === "mw4" ? { src: "/assets/mw4/tournament-cover.webp", alt: "Call of Duty: Modern Warfare 4" } : undefined}
           facts={[["Gamepad2", tournament.team_size || "1v1"], ["Globe2", tournament.region?.toUpperCase() || "NA + EU"], ["Trophy", entryLabel(tournament)]]}
           count={`${tournament.registered_teams || participants.length}/${tournament.max_teams || "∞"}`} countLabel="teams registered"
           metadata={<><span className="overview-status" data-status={tournament.status}>{statusLabels[tournament.status] || tournament.status}</span><CalendarDays size={13} />{formatShortDate(tournament.start_date)}</>}

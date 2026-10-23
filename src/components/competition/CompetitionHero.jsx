@@ -6,12 +6,13 @@ import "@/styles/competition-presentation.css";
 
 const icons = { Bell, BookOpen, Clock, Crown, Crosshair, DollarSign, Gamepad2, Globe2, History, Inbox, KeyRound, Medal, MessageSquare, Radio, Search, Settings2, ShieldCheck, Shuffle, Sparkles, Swords, Trophy, UserRound, Users, Wallet, Zap };
 
-export default function CompetitionHero({ mode = "ranked", title, eyebrow, description, action, count, countLabel = "players", artwork, gameId, metadata, facts, className = "" }) {
+export default function CompetitionHero({ mode = "ranked", title, eyebrow, description, action, count, countLabel = "players", artwork, cover, gameId, metadata, facts, className = "" }) {
   const theme = competitionTheme(mode), Icon = icons[theme.icon];
   const CountIcon = countLabel.includes("event") ? Trophy : countLabel.includes("match") ? Swords : countLabel.includes("ticket") ? Inbox : countLabel.includes("notification") ? Bell : countLabel.includes("conversation") ? MessageSquare : Users;
   return <header className={`competition-hero ${className}`} data-competition={mode} data-game={gameId}>
     {artwork && <img src={artwork} alt="" className="competition-hero-artwork" decoding="async" />}
     <div className="competition-hero-main">
+      {cover && <img src={cover.src} alt={cover.alt || ""} width={224} height={315} className="competition-hero-cover" decoding="async" />}
       <div className="competition-hero-copy">
         <p className="competition-hero-eyebrow"><TopfraggLogo showWordmark={false} markClassName="!h-7 !w-7" />{eyebrow || theme.eyebrow}</p>
         <h1>{title || theme.title}<span className="competition-title-dot">.</span></h1>
