@@ -1,0 +1,63 @@
+.centerbar { --cb: #60eaff; --cb2: #357bff; position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) 420px minmax(0, 1fr); align-items: center; width: 100%; height: 80px; overflow: hidden; color: #effaff; background: #07121f; font-family: var(--font-sans, sans-serif); border-block: 1px solid color-mix(in srgb, var(--cb) 50%, transparent); }
+.centerbar[data-design="rift-runner"] { --cb: #ff70df; --cb2: #9857ff; background: #170b24; }
+.centerbar[data-design="crownline"] { --cb: #f5d69a; --cb2: #ac7435; background: #14120f; }
+.centerbar[data-design="storm-circuit"] { --cb: #c6ff62; --cb2: #2fd6a3; background: #0c1714; }
+.centerbar[data-design="prism-tide"] { --cb: #a7fff0; --cb2: #dfadff; background: #161b32; }
+.centerbar-fx { position: absolute; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; contain: paint; }
+.centerbar-grid { position: absolute; inset: -80px; background: linear-gradient(90deg, #ffffff06 1px, transparent 1px), linear-gradient(#ffffff06 1px, transparent 1px); background-size: 24px 24px; transform: skewX(-25deg); animation: cb-grid 8s linear infinite; }
+.centerbar-ribbon { position: absolute; inset: -150% -25%; background: conic-gradient(from 30deg, transparent 20%, color-mix(in srgb, var(--cb) 20%, transparent), transparent 48%, color-mix(in srgb, var(--cb2) 24%, transparent), transparent 80%); animation: cb-ribbon 16s linear infinite; }
+.centerbar-orbit { position: absolute; left: calc(50% - 145px); top: -105px; width: 290px; height: 290px; border: 1px dashed var(--cb); border-radius: 50%; opacity: .3; animation: cb-ribbon 18s linear infinite; }
+.centerbar-orbit-two { inset: -125px auto auto calc(50% - 165px); width: 330px; height: 330px; border-style: solid; border-inline-color: transparent; animation-direction: reverse; }
+.centerbar-fx > i { position: absolute; top: calc(mod(var(--i) * 17, 75) * 1px); left: calc(var(--i) * 5.8%); width: 3px; height: 3px; border-radius: 50%; background: var(--cb); box-shadow: 0 0 9px var(--cb); animation: cb-particle 4s calc(var(--i) * -.37s) linear infinite; }
+.centerbar-rail { position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, transparent 35%, var(--cb), #fff, var(--cb2), transparent 65%); animation: cb-rail 5s linear infinite; }
+.centerbar-rail-bottom { top: auto; bottom: 0; animation-direction: reverse; animation-delay: -2.5s; }
+.centerbar-wing { display: grid; align-items: center; min-width: 0; height: 100%; position: relative; }
+.centerbar-left { grid-template-columns: 1.55fr 1fr 1fr 1fr; }
+.centerbar-right { grid-template-columns: 1fr 1.1fr 1.2fr 1.35fr; }
+.centerbar-brand { display: flex; align-items: center; gap: 12px; padding: 0 18px; min-width: 0; }
+.centerbar .centerbar-logo { width: 40px; height: 40px; flex-shrink: 0; filter: drop-shadow(0 0 7px #14d8ff40); animation: cb-logo 4s ease-in-out infinite; }
+.centerbar-brand strong { white-space: nowrap; font-size: 14px; font-weight: 900; letter-spacing: -.04em; }
+.centerbar-brand strong span { color: #14d8ff; }
+.centerbar-brand small { display: block; margin-top: 5px; font-size: 8px; text-transform: uppercase; letter-spacing: .16em; color: var(--cb); }
+.centerbar-metric { position: relative; min-width: 0; overflow: hidden; padding: 5px 12px; border-left: 1px solid #ffffff14; }
+.centerbar-metric::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 25%, #ffffff0c 50%, transparent 75%); animation: cb-glint 6s ease-in-out infinite; }
+.centerbar-metric:nth-child(2n)::after { animation-delay: -3s; }
+.centerbar-metric > span { display: block; color: #b8c4d0; font-size: 9px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.centerbar-metric > strong { display: block; overflow: hidden; margin-top: 6px; color: var(--cb); font-size: 22px; font-weight: 850; line-height: 1.1; letter-spacing: -.04em; text-overflow: ellipsis; white-space: nowrap; animation: cb-value .4s ease-out; }
+.centerbar-identity { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; height: 78px; padding: 4px 24px; text-align: center; border-inline: 1px solid var(--cb); background: linear-gradient(110deg, #ffffff04, #0008, #ffffff04); box-shadow: 0 0 28px color-mix(in srgb, var(--cb) 13%, transparent); }
+.centerbar.app-content .centerbar-identity h1 { display: block; width: 100%; overflow: hidden; margin: 2px 0; padding: 0; color: #fff; font-size: 29px; line-height: 1.15; font-weight: 950; letter-spacing: -.04em; white-space: nowrap; text-overflow: ellipsis; text-shadow: 0 0 18px color-mix(in srgb, var(--cb) 45%, transparent); animation: cb-name 5s ease-in-out infinite; }
+.centerbar-handle { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cb); font-size: 9px; letter-spacing: .12em; }
+.centerbar-live { display: flex; align-items: center; gap: 5px; color: #adbccc; font-size: 7px; letter-spacing: .18em; }
+.centerbar-live > i { width: 4px; height: 4px; background: var(--cb); border-radius: 50%; animation: cb-logo 2s ease-in-out infinite; }
+.centerbar-live[data-stale="true"] { color: #ffd391; }
+.centerbar-live[data-stale="true"] > i { background: #ffd391; animation: none; }
+.centerbar-trophies { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 14px; }
+.centerbar-trophies > div { display: flex; align-items: center; flex-direction: column; gap: 2px; }
+.centerbar-trophies img { width: 22px; height: 24px; object-fit: contain; animation: cb-trophy 4s ease-in-out infinite; }
+.centerbar-trophies > div:nth-child(even) img { animation-delay: -2s; }
+.centerbar-trophies strong { font-size: 12px; color: #f1f5f9; }
+.centerbar[data-design="rift-runner"] .centerbar-fx > i { width: 90px; height: 1px; border-radius: 0; animation-name: cb-warp; animation-duration: 2s; }
+.centerbar[data-design="rift-runner"] .centerbar-identity { clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%); background: #291338; }
+.centerbar[data-design="rift-runner"] .centerbar-orbit { border-radius: 20%; border-style: double; }
+.centerbar[data-design="crownline"] .centerbar-grid { opacity: .12; }
+.centerbar[data-design="crownline"] .centerbar-ribbon { background: repeating-conic-gradient(from 0deg, transparent 0 40deg, #f5d69a15 42deg 47deg, transparent 49deg 90deg); animation-duration: 25s; }
+.centerbar[data-design="crownline"] .centerbar-identity { border-block: 2px solid var(--cb); border-radius: 0 0 28px 28px; }
+.centerbar[data-design="crownline"] .centerbar-orbit { border-style: dotted; }
+.centerbar[data-design="storm-circuit"] .centerbar-grid { background-size: 12px 12px; animation-duration: 3s; opacity: .8; }
+.centerbar[data-design="storm-circuit"] .centerbar-orbit { border-radius: 8%; animation-duration: 12s; }
+.centerbar[data-design="storm-circuit"] .centerbar-identity { border: 1px dashed var(--cb); background: #0b241d; }
+.centerbar[data-design="storm-circuit"] .centerbar-fx > i { width: 30px; border-radius: 0; }
+.centerbar[data-design="prism-tide"] .centerbar-ribbon { background: repeating-conic-gradient(from 60deg, #a7fff012 0 25deg, #dfadff20 45deg 70deg, transparent 90deg 120deg); animation-duration: 20s; }
+.centerbar[data-design="prism-tide"] .centerbar-identity { border-radius: 45px; background: linear-gradient(90deg, #a7fff015, #29253b, #dfadff20); }
+.centerbar[data-design="prism-tide"] .centerbar-grid { opacity: .2; }
+@keyframes cb-grid { to { translate: 48px 24px; } }
+@keyframes cb-ribbon { to { rotate: 360deg; } }
+@keyframes cb-particle { 0% { transform: translate(0, 40px); opacity: 0; } 30%, 70% { opacity: .7; } 100% { transform: translate(55px, -65px); opacity: 0; } }
+@keyframes cb-warp { from { transform: translateX(-200px) scaleX(.1); opacity: 0; } 40% { opacity: .7; } to { transform: translateX(600px) scaleX(2); opacity: 0; } }
+@keyframes cb-rail { from { transform: translateX(-75%); } to { transform: translateX(75%); } }
+@keyframes cb-logo { 50% { filter: drop-shadow(0 0 10px #14d8ff90); transform: translateY(-1px); } }
+@keyframes cb-glint { 0%, 10% { transform: translateX(-150%); } 65%, 100% { transform: translateX(150%); } }
+@keyframes cb-name { 50% { text-shadow: 0 0 25px var(--cb); } }
+@keyframes cb-trophy { 50% { transform: translateY(-3px); } }
+@keyframes cb-value { from { opacity: .3; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .centerbar *, .centerbar *::after { animation: none !important; } }

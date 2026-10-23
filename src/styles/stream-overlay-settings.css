@@ -30,6 +30,11 @@
 .stream-overlay-theme-picker button[data-theme="terminal"] { --overlay-accent: #87f5a3; --overlay-swatch: repeating-linear-gradient(0deg, #0c1e14 0 6px, #87f5a3 6px 7px, #0c1e14 7px 12px); }
 .stream-overlay-theme-picker button[data-theme="editorial"] { --overlay-accent: #e6be97; --overlay-swatch: linear-gradient(90deg, #c94932 0 22%, #25352e 22% 50%, #f1eee5 50% 100%); }
 .stream-overlay-theme-picker button[data-theme="hyperdrive"] { --overlay-accent: #83eaff; --overlay-swatch: linear-gradient(135deg, #55efff, #15234b 40%, #27143d 60%, #ff80d6); }
+.stream-overlay-theme-picker button[data-theme="arc-reactor"] { --overlay-accent: #60eaff; --overlay-swatch: repeating-radial-gradient(circle, #60eaff 0 1px, #07121f 2px 7px); }
+.stream-overlay-theme-picker button[data-theme="rift-runner"] { --overlay-accent: #ff70df; --overlay-swatch: repeating-linear-gradient(120deg, #170b24 0 7px, #ff70df 8px 9px, #9857ff 10px 12px); }
+.stream-overlay-theme-picker button[data-theme="crownline"] { --overlay-accent: #f5d69a; --overlay-swatch: conic-gradient(#14120f, #f5d69a, #14120f, #ac7435, #14120f); }
+.stream-overlay-theme-picker button[data-theme="storm-circuit"] { --overlay-accent: #c6ff62; --overlay-swatch: repeating-linear-gradient(90deg, #0c1714 0 6px, #c6ff62 7px 8px, #0c1714 9px 14px); }
+.stream-overlay-theme-picker button[data-theme="prism-tide"] { --overlay-accent: #a7fff0; --overlay-swatch: linear-gradient(135deg, #a7fff0, #161b32, #dfadff, #a7fff0); }
 .stream-overlay-theme-picker button[data-theme="solar"] { --overlay-accent: #ffce70; --overlay-swatch: conic-gradient(from 25deg, #ffce70, #6c2114, #24110c, #ff7043, #ffce70); }
 .stream-overlay-theme-picker button[data-theme="hologram"] { --overlay-accent: #87f9ed; --overlay-swatch: repeating-linear-gradient(0deg, transparent 0 5px, #87f9ed55 5px 6px), linear-gradient(145deg, #87f9ed, #0c2736 45%, #a5d7ff); }
 .stream-overlay-theme-picker button[data-theme="quantum"] { --overlay-accent: #bda5ff; --overlay-swatch: radial-gradient(ellipse at 20% 30%, #bda5ff, transparent 60%), linear-gradient(135deg, #2c1f45, #143b3a 65%, #86ffcf); }

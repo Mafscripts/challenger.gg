@@ -6,6 +6,7 @@ import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import UserBadges from "@/components/ui/UserBadges";
 import ChristmasOverlayDecorations, { ChristmasBrandMark, ChristmasPlayerScene } from "./ChristmasOverlayDecorations";
 import SignalPlayerStatsBar from "./SignalPlayerStatsBar";
+import CenterStagePlayerBar, { CENTER_STAGE_THEMES } from "./CenterStagePlayerBar";
 import StudioPlayerStatsBar, { STUDIO_OVERLAY_THEMES } from "./StudioPlayerStatsBar";
 import { base44 } from "@/api/base44Client";
 import { getRankForElo } from "@/lib/ranks";
@@ -20,6 +21,7 @@ export const PLAYER_OVERLAY_THEMES = [
   { key: "xmas", label: "Christmas", caption: "Merry Fragmas", description: "Merry Fragmas! Snow-white stats, festive lights and falling snow, with your original Topfragg branding." },
   { key: "signal", label: "Signal", caption: "Acid lime & lavender", description: "Signal / 05 — a fresh broadcast layout in acid lime, charcoal and lavender, with a dedicated trophy strip." },
   ...STUDIO_OVERLAY_THEMES,
+  ...CENTER_STAGE_THEMES,
 ];
 export const normalizePlayerOverlayTheme = theme => PLAYER_OVERLAY_THEMES.some(option => option.key === theme) ? theme : "blue";
 const REFRESH_MS = 15000;
@@ -88,6 +90,7 @@ export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) 
   const updatedAt = data.updated_at || "initial";
   const selectedTheme = normalizePlayerOverlayTheme(theme);
   const isChristmas = selectedTheme === "xmas";
+  if (CENTER_STAGE_THEMES.some(option => option.key === selectedTheme)) return <CenterStagePlayerBar data={data} stale={stale} theme={selectedTheme} money={money} trophies={trophies} />;
   if (selectedTheme === "signal") return <SignalPlayerStatsBar data={data} stale={stale} rank={rank} money={money} trophies={trophies} />;
   if (STUDIO_OVERLAY_THEMES.some(option => option.key === selectedTheme)) return <StudioPlayerStatsBar data={data} stale={stale} theme={selectedTheme} rank={rank} money={money} trophies={trophies} />;
   const valueKey = (name, value) => `${name}-${isChristmas ? value : updatedAt}`;

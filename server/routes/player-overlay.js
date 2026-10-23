@@ -26,12 +26,13 @@ async function playerSnapshot(identifier) {
     throw error;
   }
   const ownedByPlayer = { metadata: { path: ["user_id"], equals: row.id } };
-  const [profileRow, rankedRows, walletRow, inventoryRows, eightsRows] = await Promise.all([
+  const [profileRow, rankedRows, walletRow, inventoryRows, eightsRows, xpRow] = await Promise.all([
     prisma.playerProfile.findFirst({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true } }),
     prisma.rankedStats.findMany({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true } }),
     prisma.wallet.findFirst({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true } }),
     prisma.userInventory.findMany({ where: ownedByPlayer, select: { metadata: true } }),
     prisma.eightsStats.findMany({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true, free_eights_elo: true } }),
+    prisma.xPStats.findFirst({ where: ownedByPlayer, orderBy: { created_date: "desc" }, select: { metadata: true } }),
   ]);
   const user = serializeRow(row);
   const profile = profileRow?.metadata || {};
@@ -62,6 +63,8 @@ async function playerSnapshot(identifier) {
       streamer_badge: Boolean(user.streamer_badge || user.is_streamer || badges.some(badge => badge?.type === "streamer")),
     },
     stats: {
+      xp_level: Math.max(1, Math.floor(number(xpRow?.metadata?.level || 1))),
+      total_xp: Math.floor(number(xpRow?.metadata?.total_xp)),
       earnings: Math.max(number(row.lifetime_earnings), number(row.total_wager_earnings), number(profile.total_earnings), number(walletRow?.metadata?.total_earnings)),
       wins, losses,
       win_rate: wins + losses > 0 ? Math.round(wins / (wins + losses) * 100) : 0,
