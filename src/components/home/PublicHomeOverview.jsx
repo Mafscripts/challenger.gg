@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  Crown,
+  ShieldCheck,
+  Users,
   Coins,
   Crosshair,
   Gamepad2,
@@ -11,7 +14,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PlayerAvatarImage from "@/components/ui/PlayerAvatarImage";
-import { Mw4SeasonSignal } from "@/components/season/Mw4Season";
+import "@/styles/home-refresh.css";
 import { useAuth } from "@/lib/AuthContext";
 import HomeModeNavigation from "@/components/home/HomeModeNavigation";
 import PlayPreparation from "@/components/competition/PlayPreparation";
@@ -20,19 +23,10 @@ const number = (value) => Number(value || 0);
 const formatNumber = (value) => Math.round(Math.max(0, number(value))).toLocaleString();
 const formatMoney = (value) => `$${Math.max(0, number(value)).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const blackOps7Artwork = "/assets/tournaments/black-ops-7.webp";
-const bulletImpacts = [
-  { left: "63%", top: "18%", size: "25px", delay: ".25s", rotate: "-8deg" },
-  { left: "74%", top: "28%", size: "34px", delay: ".85s", rotate: "12deg" },
-  { left: "88%", top: "20%", size: "22px", delay: "1.45s", rotate: "36deg" },
-  { left: "83%", top: "43%", size: "27px", delay: "2.05s", rotate: "-18deg" },
-  { left: "68%", top: "57%", size: "20px", delay: "2.65s", rotate: "18deg" },
-  { left: "76%", top: "72%", size: "31px", delay: "3.25s", rotate: "29deg" },
-  { left: "92%", top: "66%", size: "23px", delay: "3.85s", rotate: "-33deg" },
-  { left: "86%", top: "84%", size: "19px", delay: "4.45s", rotate: "7deg" },
-];
 
 const tournamentImage = (tournament) => {
   if (tournament?.image_url) return tournament.image_url;
+  if (tournament?.game_id === "mw4") return "/assets/mw4/hero.webp";
   const identity = String(tournament?.name || "").toLowerCase();
   return identity.includes("black ops 7") || identity.includes("test tournament") ? blackOps7Artwork : (tournament?.image_url || blackOps7Artwork);
 };
@@ -80,15 +74,16 @@ function PublicSectionTitle({ eyebrow, title, target, isAuthenticated }) {
 }
 
 export default function PublicHomeOverview() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [data, setData] = useState({ stats: {}, tournaments: [], ladder: [], matches: [] });
 
   useEffect(() => {
     let mounted = true;
     base44.public.homeOverview()
       .then((result) => { if (mounted) setData(result || { stats: {}, tournaments: [], ladder: [], matches: [] }); })
-      .catch(() => {})
+      .catch(() => { if (mounted) setLoadError(true); })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
   }, []);
@@ -100,49 +95,44 @@ export default function PublicHomeOverview() {
     { label: "Cash paid out", value: data.stats?.cash_paid_out, icon: Coins, tone: "text-green", money: true },
     { label: "Total XP", value: data.stats?.total_xp, icon: Zap, tone: "text-purple-300" },
   ];
-  const visibleLadder = useMemo(() => (data.ladder || []).slice(0, 16), [data.ladder]);
+  const visibleLadder = useMemo(() => (data.ladder || []).slice(0, 5), [data.ladder]);
 
   return (
-    <div className="home-hub landing-arena relative overflow-hidden">
+    <div className="home-hub landing-arena home-refresh relative overflow-hidden">
       <div className="home-hub-container relative">
-        <section className="home-hero mw4-feature landing-season-card relative isolate overflow-hidden rounded-2xl border border-white/10 bg-card">
-          <img src="/assets/mw4/hero.webp" alt="" fetchPriority="high" decoding="async" className="home-hero-image absolute inset-0 h-full w-full object-cover object-center" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,17,.98)_0%,rgba(5,10,17,.9)_38%,rgba(5,10,17,.25)_78%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(5,10,17,.84),transparent_60%)]" />
-          <div className="landing-bullet-field absolute inset-0 z-[2]" aria-hidden="true">
-            {bulletImpacts.map((impact, index) => (
-              <span
-                key={`${impact.left}-${impact.top}`}
-                className="landing-bullet-hole"
-                style={{
-                  left: impact.left,
-                  top: impact.top,
-                  width: impact.size,
-                  height: impact.size,
-                  "--impact-delay": impact.delay,
-                  "--impact-rotation": impact.rotate,
-                  "--impact-index": index,
-                }}
-              />
-            ))}
+        <section className="home-hero home-arena-hero">
+          <img src="/assets/mw4/hero.webp" alt="" fetchPriority="high" decoding="async" className="home-arena-art" />
+          <div className="home-arena-copy">
+            <p className="home-kicker"><span className="home-live-dot" />MW4 is live <span className="home-kicker-divider">/</span> Your competitive home</p>
+            <h1>{isAuthenticated ? <>Your next match.<br /><span>Your next win.</span></> : <>Built for the<br /><span>way you compete.</span></>}</h1>
+            <p className="home-arena-description">{isAuthenticated ? "Choose your game, bring your roster and get back in the arena. Free 8s, XP Matches, Ranked and tournaments — all in one place." : "Find your squad. Play your game. Build your name. Start with Free 8s or climb the XP ladder across MW4, MW3, Black Ops 6 and Black Ops 7."}</p>
+            <div className="home-arena-actions"><Link to={isAuthenticated ? "/xp?game=mw4" : "/register"} className="home-primary-cta"><Gamepad2 size={17} />{isAuthenticated ? "Find a match" : "Create your free account"}<ArrowRight size={16} /></Link><Link to={isAuthenticated ? "/my-matches" : protectedHref("/ranked/8s?game=mw4")} className="home-secondary-cta">{isAuthenticated ? "My matches" : "Explore Free 8s"}<ArrowRight size={15} /></Link></div>
+            <div className="home-game-line"><strong>MW4</strong><span>MW3</span><span>Black Ops 6</span><span>Black Ops 7</span></div>
           </div>
-          <div className="home-hero-copy relative z-10 flex max-w-2xl flex-col justify-center px-6 sm:px-10 lg:px-14">
-            <span className="landing-copy-reveal landing-copy-delay-1 inline-flex w-fit items-center gap-2 rounded-md border border-orange/30 bg-orange/10 px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-[0.16em] text-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange" /> MW4 // Live now</span>
-            <h1 className="mt-5 font-heading text-4xl font-black uppercase leading-[.95] text-white sm:text-5xl">
-              <span className="landing-title-reveal landing-copy-delay-2 block">Modern Warfare</span>
-              <span className="landing-title-reveal landing-copy-delay-3 block text-orange">4 // The next chapter</span>
-            </h1>
-            <p className="landing-copy-reveal landing-copy-delay-4 mt-5 max-w-xl text-sm leading-6 text-vapor sm:text-base">A new battlefield. The same competitive edge. Your Modern Warfare 4 Free 8s leaderboard is ready for the next chapter. MW4 is live. Play Hardpoint, Hijacked and Search & Destroy across twelve maps.</p>
-            <Mw4SeasonSignal className="landing-copy-reveal landing-copy-delay-5 mt-5" />
-            <div className="landing-copy-reveal landing-copy-delay-5 mt-5 flex flex-wrap gap-3">
-              <Link to={protectedHref("/ranked/8s?game=mw4")} className="mw4-primary-cta inline-flex items-center gap-2 rounded-lg bg-orange px-5 py-3 text-[10px] font-black uppercase tracking-wider text-black"><Trophy className="h-4 w-4" /> Play MW4 Free 8s <ArrowRight className="h-4 w-4" /></Link>
-              {!isAuthenticated && <Link to="/register" className="home-primary-cta">Sign up free</Link>}
-            </div>
-          </div>
+          <aside className="home-arena-aside">
+            <div className="home-aside-heading">{isAuthenticated ? <><span className="home-welcome-avatar"><PlayerAvatarImage user={user} /></span><div><p>Welcome back</p><h2>{user?.display_name || user?.username || "Competitor"}</h2></div></> : <><ShieldCheck size={24} /><div><p>Your first step</p><h2>A place to prove it.</h2></div></>}</div>
+            {isAuthenticated ? <div className="home-aside-links">{[["Free 8s", "Jump in and play", "/ranked/8s?game=mw4", Users], ["XP Matches", "Build your player and team XP", "/xp?game=mw4", Zap], ["Tournaments", "Bring your best roster", "/tournaments", Trophy]].map(([title, detail, path, Icon]) => <Link key={path} to={path}><Icon size={18} /><span><strong>{title}</strong><small>{detail}</small></span><ArrowRight size={15} /></Link>)}</div> : <ol className="home-start-steps"><li><span>01</span><div><strong>Make it yours</strong><p>Create an account and add your gaming ID.</p></div></li><li><span>02</span><div><strong>Find your competition</strong><p>Choose your game and the way you want to play.</p></div></li><li><span>03</span><div><strong>Make your mark</strong><p>Compete, earn results and climb your ladder.</p></div></li></ol>}
+            <p className="home-aside-foot">{isAuthenticated ? "Your game. Your roster. Your progression." : "Already a competitor?"}{!isAuthenticated && <Link to="/login">Sign in <ArrowRight size={13} /></Link>}</p>
+          </aside>
         </section>
-
         <HomeModeNavigation resolveHref={protectedHref} />
-        <PlayPreparation className="my-5" />
+        <section className="home-champions" aria-labelledby="home-champions-title">
+          <div className="home-section-heading"><div><p className="home-kicker">The ones to chase</p><h2 id="home-champions-title">Leading the arena<span className="text-cyan">.</span></h2></div><Link to={protectedHref("/leaderboards")} className="home-section-link">All rankings <ArrowRight size={14} /></Link></div>
+          <div className="home-champion-grid">{[
+            { id: "xp", title: "XP player", scope: "MW4 · Personal XP", unit: "XP", icon: Zap, tone: "purple", path: "/leaderboards?tab=xp" },
+            { id: "wagers", title: "Cash Match player", scope: "All games · All-time earnings", unit: "earned", icon: Coins, tone: "green", path: "/leaderboards?tab=wagers" },
+            { id: "tournaments", title: "Tournament player", scope: "All games · All-time tournament wins", unit: "wins", icon: Trophy, tone: "gold", path: "/tournaments" },
+          ].map(({ id, title, scope, unit, icon: Icon, tone, path }) => {
+            const player = data.champions?.[id];
+            return <article key={id} className="home-champion-card" data-tone={tone}>
+              <div className="home-champion-top"><span><Icon size={15} />#1 {title}</span><Crown size={22} /></div>
+              {loading ? <div className="home-champion-loading" role="status">Loading leader…</div> : player ? <Link to={protectedHref(`/profile/${encodeURIComponent(player.username || player.id)}`)} className="home-champion-player"><span className="home-champion-avatar"><PlayerAvatarImage user={player} src={player.avatar_url} /></span><div><strong>{player.display_name}</strong><span>{id === "wagers" ? formatMoney(player.score) : formatNumber(player.score)} <small>{unit}</small></span></div><ArrowRight size={16} /></Link> : <div className="home-champion-empty"><strong>{loadError || data.champions_available === false ? "Rankings unavailable" : "The top spot is open"}</strong><p>{loadError || data.champions_available === false ? "Check the leaderboard for the latest results." : "The first results will put a name here."}</p></div>}
+              <div className="home-champion-bottom"><span>{scope}</span><Link to={protectedHref(path)}>View ladder <ArrowRight size={12} /></Link></div>
+            </article>;
+          })}</div>
+        </section>
+        {isAuthenticated && <details className="home-setup-panel"><summary><span><ShieldCheck size={17} />Ready for your next match?</span><span>Check your setup</span></summary><PlayPreparation /></details>}
+        {loadError && <p className="home-data-error" role="alert">Live results could not be loaded. <button type="button" onClick={() => window.location.reload()}>Try again</button></p>}
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {statCards.map(({ label, value, icon: Icon, tone, money }) => (
@@ -172,11 +162,11 @@ export default function PublicHomeOverview() {
         </section>
 
         <section>
-          <PublicSectionTitle eyebrow="October 2026" title="Tournament ladder — Top 16" target="/leaderboards" isAuthenticated={isAuthenticated} />
+          <PublicSectionTitle eyebrow="All-time results" title="Tournament standouts" target="/leaderboards" isAuthenticated={isAuthenticated} />
           <div className="home-panel home-preview-ladder overflow-hidden rounded-2xl border border-white/10 bg-card">
             <div className="grid grid-cols-[48px_1fr_80px_100px] border-b border-white/10 bg-white/[0.025] px-4 py-3 font-mono text-[8px] font-black uppercase tracking-wider text-vapor sm:px-5"><span>Rank</span><span>Competitor</span><span className="text-center">Wins</span><span className="text-right">Earnings</span></div>
             {loading && [0, 1, 2, 3].map((item) => <div key={item} className="h-14 animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
-            {!loading && visibleLadder.length === 0 && <div className="p-8 text-center text-sm text-vapor">The October ladder is waiting for its first champion.</div>}
+            {!loading && visibleLadder.length === 0 && <div className="p-8 text-center text-sm text-vapor">Tournament results will appear here after the first wins.</div>}
             {visibleLadder.map((player, index) => (
               <Link key={player.id} to={protectedHref(`/profile/${player.username || player.id}`)} className="group grid min-h-14 grid-cols-[48px_1fr_80px_100px] items-center border-b border-white/[0.06] px-4 last:border-0 sm:px-5">
                 <span className={`font-mono text-xs font-black ${index < 3 ? "text-orange" : "text-vapor"}`}>#{index + 1}</span>
@@ -194,7 +184,7 @@ export default function PublicHomeOverview() {
             {loading && [0, 1].map((item) => <div key={item} className="h-[68px] animate-pulse border-b border-white/5 bg-white/[0.02]" />)}
             {!loading && data.matches.length === 0 && <div className="p-8 text-center text-sm text-vapor">No open matches right now.</div>}
             {data.matches.map((match) => {
-              const target = match.kind === "ranked" ? `/ranked-match/${match.id}` : `/wagers-match/${match.id}`;
+              const target = match.kind === "ranked" ? `/ranked-match/${match.id}` : ["8s", "money8s"].includes(match.match_type) ? `/8s-match/${match.id}` : `/wagers-match/${match.id}`;
               return (
                 <Link key={`${match.kind}-${match.id}`} to={protectedHref(target)} className="group grid min-h-[68px] grid-cols-[38px_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-4 py-3 last:border-0 sm:grid-cols-[38px_1fr_110px_110px_90px] sm:px-5">
                   <span className={`grid h-9 w-9 place-items-center rounded-lg border ${match.kind === "ranked" ? "border-cyan/25 bg-cyan/10 text-cyan" : "border-orange/25 bg-orange/10 text-orange"}`}>{match.kind === "ranked" ? <Crosshair className="h-4 w-4" /> : <Coins className="h-4 w-4" />}</span>
@@ -210,7 +200,7 @@ export default function PublicHomeOverview() {
 
         {!isAuthenticated && (
           <section className="home-final-cta landing-final-cta relative overflow-hidden rounded-2xl border border-cyan/20 bg-card px-6 text-center sm:px-10">
-            <div className="relative z-10"><p className="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-cyan">Your season starts here</p><h2 className="mt-3 font-heading text-3xl font-black text-white sm:text-4xl">Ready to compete?</h2><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-vapor">Create an account to open tournaments, join matches, build your team and compete on the October ladder.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link to="/register" className="home-primary-cta">Register free</Link><Link to="/login" className="home-secondary-cta">Login</Link></div></div>
+            <div className="relative z-10"><p className="font-mono text-[9px] font-black uppercase tracking-[0.22em] text-cyan">Your season starts here</p><h2 className="mt-3 font-heading text-3xl font-black text-white sm:text-4xl">Ready to compete?</h2><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-vapor">Create an account to open tournaments, join matches, build your team and start building your competitive record.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link to="/register" className="home-primary-cta">Register free</Link><Link to="/login" className="home-secondary-cta">Login</Link></div></div>
           </section>
         )}
       </div>

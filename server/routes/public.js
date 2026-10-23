@@ -1,6 +1,8 @@
 import { consoleRestrictedFor } from "../../src/lib/playerRestrictions.js";
 import { Router } from "express";
-import { listEntities } from "../entity.js";
+import { getEntity, listEntities } from "../entity.js";
+import { getXPStandings } from "../xp-matches.js";
+import { selectHomeChampions } from "../home-champions.js";
 import { prisma } from "../prisma.js";
 import { withPlayerAvatars } from "../lib/playerAvatars.js";
 import { EIGHTS_CONFIG_ID } from "../free-eights-games.js";
@@ -46,6 +48,7 @@ const safeTournament = (row) => ({
   game_mode: row.game_mode,
   game_mode_display: row.game_mode_display,
   image_url: row.image_url || row.banner_url || row.cover_image_url || "",
+  game_id: row.game_id,
 });
 
 const safePlayer = (row) => ({
@@ -62,6 +65,7 @@ const safePlayer = (row) => ({
 const safeMatch = (row, kind) => ({
   id: row.id,
   kind,
+  match_type: row.match_type,
   status: row.status,
   team_size: row.team_size,
   game_mode: row.game_mode,
@@ -73,7 +77,7 @@ const safeMatch = (row, kind) => ({
 });
 
 async function loadHomeOverview() {
-  const [tournaments, users, wagers, rankedMatches, tournamentMatches, xpStats, transactions] = await Promise.all([
+  const [tournaments, users, wagers, rankedMatches, tournamentMatches, xpStats, transactions, championData] = await Promise.all([
     listEntities("Tournament", {}, "-start_date", 500).catch(() => []),
     listEntities("User", {}, "-tournament_wins", 100).catch(() => []),
     listEntities("Wager", {}, "-created_date", 500).catch(() => []),
@@ -81,7 +85,24 @@ async function loadHomeOverview() {
     listEntities("TournamentMatch", {}, "-created_date", 500).catch(() => []),
     listEntities("XPStats", {}, "-total_xp", 500).catch(() => []),
     listEntities("WalletTransaction", { status: "completed" }, "-created_date", 500).catch(() => []),
+    Promise.all([
+      getXPStandings(prisma, null, "mw4"),
+      listEntities("User", { is_banned: false }, "-total_wager_earnings", 5),
+      listEntities("User", { is_banned: false }, "-tournament_wins", 5),
+    ]).catch(() => null),
   ]);
+
+  const champions = { xp: null, wagers: null, tournaments: null };
+  if (championData) {
+    const picks = selectHomeChampions({ xp: championData[0], wagers: championData[1], tournaments: championData[2] });
+    const ids = [...new Set(Object.values(picks).filter(Boolean).map(pick => pick.user_id))];
+    const championUsers = (await Promise.all(ids.map(id => getEntity("User", id).catch(() => null)))).filter(user => user && !user.is_banned);
+    const presented = await withPlayerAvatars(prisma, championUsers);
+    for (const [kind, pick] of Object.entries(picks)) {
+      const user = pick && presented.find(user => user.id === pick.user_id);
+      if (user) champions[kind] = { ...safePlayer(user), score: pick.score };
+    }
+  }
 
   const upcoming = tournaments
     .filter((row) => openStatuses.has(String(row.status || "").toLowerCase()))
@@ -110,6 +131,8 @@ async function loadHomeOverview() {
       total_xp: xpStats.reduce((sum, row) => sum + number(row.total_xp ?? row.xp), 0),
     },
     tournaments: upcoming,
+    champions,
+    champions_available: Boolean(championData),
     ladder,
     matches,
   };
