@@ -203,6 +203,7 @@ const formatMessageTime = (value) => {
 };
 
 export default function Navbar() {
+  const { isAuthenticated, user: authUser, authChecked, isLoadingAuth } = useAuth();
   const savedNavigationLayout = useNavigationLayout()?.layout || "topbar";
   const navigationLayout = isNativeApp ? "topbar" : savedNavigationLayout;
   const [sidebarWidth, setSidebarWidth] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches);
@@ -212,7 +213,7 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => authUser);
   const [notifications, setNotifications] = useState([]);
   const [notificationsHydrated, setNotificationsHydrated] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -337,7 +338,8 @@ export default function Navbar() {
   const messagesRequestId = useRef(0);
   const dropdownCloseTimer = useRef(null);
   const location = useLocation();
-  const { isAuthenticated, user: authUser } = useAuth();
+  const accountUser = isAuthenticated ? (user?.id === authUser?.id ? user : authUser) : null;
+  const showGuestAuth = authChecked && !isLoadingAuth && !isAuthenticated;
   const notificationOwner = useRef(authUser?.id);
   notificationOwner.current = authUser?.id;
   const activeEightMatchType = activeMatches.find((match) => (
@@ -351,8 +353,8 @@ export default function Navbar() {
     location.search,
     activeEightMatchType,
   );
-  const profilePath = user ? `/profile/${user.username || user.id}` : "/profile";
-  const accountName = user?.display_name || user?.full_name || user?.username || user?.email || "Account";
+  const profilePath = accountUser ? `/profile/${accountUser.username || accountUser.id}` : "/profile";
+  const accountName = accountUser?.display_name || accountUser?.full_name || accountUser?.username || accountUser?.email || "Account";
   const canSeeAdminLink = isStaffUser(user || authUser);
   const accountRole = canSeeAdminLink
     ? getPublicRoleConfig(effectiveRoleForUser(user || authUser)).label
@@ -1030,7 +1032,7 @@ export default function Navbar() {
 
   const accountActions = (
     <div className={sidebarDesktop ? "sidebar-account-actions" : "topbar-actions flex shrink-0 items-center gap-2"}>
-      {user ? (
+      {accountUser ? (
         <>
       {/* Wallet summary */}
       {sidebarDesktop ? <SidebarBalances walletBalance={walletBalance} creditBalance={creditBalance} /> : <div className="topbar-wallet-summary hidden items-center md:flex">
@@ -1156,7 +1158,7 @@ export default function Navbar() {
         />}
       </div>
         </>
-      ) : (
+      ) : showGuestAuth ? (
         <div className="flex items-center gap-2">
           <Link
             to="/login"
@@ -1173,7 +1175,7 @@ export default function Navbar() {
             Register
           </Link>
         </div>
-      )}
+      ) : null}
 
       {/* Mobile Toggle */}
       <button
@@ -1181,7 +1183,7 @@ export default function Navbar() {
         type="button"
         aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
         aria-expanded={mobileOpen}
-        className={`navigation-mobile-toggle ${user ? "xl:hidden" : "hidden"} p-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all`}
+        className={`navigation-mobile-toggle ${accountUser ? "xl:hidden" : "hidden"} p-2 rounded-lg text-vapor hover:text-foreground hover:bg-secondary transition-all`}
       >
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
@@ -1369,7 +1371,7 @@ export default function Navbar() {
                 </div>
               </div>
               <div className="pt-4 border-t border-white/5">
-                {user ? (
+                {accountUser ? (
                   <>
                     {canSeeAdminLink && (
                       <Link
@@ -1448,7 +1450,7 @@ export default function Navbar() {
                       Sign Out
                     </Link>
                   </>
-                ) : (
+                ) : showGuestAuth ? (
                   <div className="grid grid-cols-2 gap-3">
                     <Link
                       to="/login"
@@ -1467,7 +1469,7 @@ export default function Navbar() {
                       Register
                     </Link>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
