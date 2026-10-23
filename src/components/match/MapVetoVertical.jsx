@@ -1,4 +1,5 @@
 import React from "react";
+import { mw4MapImage } from "@/lib/mw4";
 import { Check, X, Target, Zap, Shield } from "lucide-react";
 import { getMapImage, getMapPool } from "@/lib/cdlMaps";
 
@@ -8,6 +9,13 @@ export default function MapVetoVertical({ wager, ranked = false, compact = false
   const challengerBannedMap = wager?.challenger_banned_map_name;
   const finalMap = wager?.final_map_name;
   const Icon = wager?.game_mode === "snd" ? Target : wager?.game_mode === "hp" ? Shield : Zap;
+
+  if (wager?.game_mode === "topfragg") {
+    return <section className="dark-focus dark-media h-full rounded-xl border border-white/[0.09] p-4">
+      <div className="mb-3 flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-white"><Zap className="h-4 w-4 text-cyan" />Topfragg Variant</h2><span className="text-xs font-bold text-cyan">Best of 3</span></div>
+      {wager.series_maps?.length ? <div className="grid gap-2 sm:grid-cols-3">{wager.series_maps.map((name, index) => <VisualMap key={index} name={name} image={mw4MapImage(name)} label={`Map ${index + 1}`} status={({ hp: "Hardpoint", snd: "Search & Destroy", hijacked: "Hijacked" })[wager.series_modes?.[index]] || "Topfragg Variant"} />)}</div> : <p className="p-5 text-center text-sm text-vapor">The series will be revealed when both rosters are full.</p>}
+    </section>;
+  }
 
   if (ranked) {
     if (compact) {

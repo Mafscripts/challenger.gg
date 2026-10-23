@@ -82,7 +82,7 @@ test("challenge creation keeps the selected game and its map configuration for a
     const { match } = await f.action(0, "create", { team_id: "alpha", game_id, format_id: "cdl_bo3" });
     assert.equal(match.game_id, game_id);
     assert.equal(match.game_config.id, game_id);
-    assert.deepEqual(match.series_mode_ids, game_id === "mw4" ? ["hp", "hijacked", "snd"] : ["hp", "snd", "hp"]);
+    assert.deepEqual(match.series_mode_ids, game_id === "mw4" ? ["hp", "snd", "hijacked"] : ["hp", "snd", "hp"]);
     assert.ok(match.game_config.modes.every(mode => mode.maps.length > 0));
   });
 });

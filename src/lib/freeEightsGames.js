@@ -1,4 +1,4 @@
-import { MW4_GAME, PRIMARY_GAME_ID, LEGACY_GAME_ID, hasMw4LaunchPools } from "./mw4.js";
+import { MW4_GAME, PRIMARY_GAME_ID, LEGACY_GAME_ID, hasMw4LaunchPools, TOPFRAGG_VARIANT } from "./mw4.js";
 import { getMapImage } from "./cdlMaps.js";
 
 export const DEFAULT_EIGHTS_GAME = PRIMARY_GAME_ID;
@@ -7,7 +7,7 @@ export const MW4_EIGHTS_PREVIEW = MW4_GAME;
 export const withMw4Preview = (games) => {
   const stored = games.find((row) => row.id === "mw4");
   const mw4 = !hasMw4LaunchPools(stored)
-    ? structuredClone(MW4_GAME) : { ...stored, formats: stored.formats.map(format => format.id === "cdl_bo3" ? { ...format, name: "MW4 CDL · TopFragg Rules" } : format) };
+    ? structuredClone(MW4_GAME) : { ...stored, formats: stored.formats.filter(format => !format.modes.every(mode => mode === "hijacked")).map(format => format.id === "cdl_bo3" ? { ...format, name: TOPFRAGG_VARIANT.name, modes: [...TOPFRAGG_VARIANT.modes] } : format) };
   return [mw4, ...games.filter((row) => row.id !== "mw4")];
 };
 

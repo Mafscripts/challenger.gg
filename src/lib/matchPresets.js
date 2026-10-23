@@ -11,11 +11,12 @@ export function normalizeMatchPreset(input) {
   if (typeof input.game_id !== "string" || !/^[a-z0-9_-]{1,32}$/.test(input.game_id)) fail("Choose a valid game");
   const eights = ["eights", "money8s"].includes(input.mode);
   if (typeof input.game_mode !== "string" || !/^[a-z0-9_-]{1,64}$/.test(input.game_mode)
-    || (!eights && !["snd", "hp", "overload", "hijacked"].includes(input.game_mode))) fail("Choose a valid game mode");
+    || (!eights && !["snd", "hp", "overload", "hijacked", "topfragg"].includes(input.game_mode))) fail("Choose a valid game mode");
+  if (input.game_mode === "topfragg" && input.game_id !== "mw4") fail("Topfragg Variant is only available for Modern Warfare 4");
   const sizes = input.mode === "money8s" ? ["4v4"] : input.mode === "eights" ? ["2v2", "3v3", "4v4"] : input.mode === "xp" ? ["1v1", "2v2", "3v3", "4v4", "5v5"] : ["1v1", "2v2", "3v3", "4v4"];
   if (!sizes.includes(input.team_size)) fail("Choose a valid team size");
   if (![1, 3, 5].includes(input.best_of)) fail("Choose BO1, BO3 or BO5");
   if (!["controller_only", "mixed_pc_allowed", "console_only"].includes(input.play_rule)) fail("Choose valid input and platform rules");
   return { name, mode: input.mode, game_id: input.game_id, game_mode: input.game_mode,
-    team_size: input.team_size, best_of: input.best_of, play_rule: input.play_rule };
+    team_size: input.team_size, best_of: input.game_mode === "topfragg" ? 3 : input.best_of, play_rule: input.play_rule };
 }

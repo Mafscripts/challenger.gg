@@ -203,7 +203,7 @@ export async function joinXPMatchLobby(db, matchId, party, pickMap) {
     const metadata = { ...row.metadata, ...updated, status: full ? "accepted" : "open", posted_to_matchfinder: !full,
       ...(full ? { xp_strength_snapshot: await captureStrength(tx, updated), match_started_date: stamp(),
         match_start_deadline: new Date(Date.now() + 15 * 60000).toISOString() } : {}),
-      ...(selected ? { maps: selected.pool, final_map_id: selected.id, final_map_name: selected.name } : {}),
+      ...(selected ? { maps: selected.pool, final_map_id: selected.id, final_map_name: selected.name, ...(selected.series_maps ? { series_maps: selected.series_maps, series_modes: selected.series_modes } : {}) } : {}),
     };
     delete metadata.id; delete metadata.updated_date;
     const saved = serializeRow(await tx.xPMatch.update({ where: { id: matchId }, data: { metadata } }));

@@ -1,5 +1,5 @@
 import "@/styles/match-creation.css";
-import { PRIMARY_GAME_ID, MW4_GAME } from "@/lib/mw4";
+import { PRIMARY_GAME_ID, MW4_GAME, playableMatchModes } from "@/lib/mw4";
 import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
 import { DEFAULT_EIGHTS_GAMES, withMw4Preview } from "@/lib/freeEightsGames";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
@@ -24,7 +24,7 @@ import { xpCategoryForSize } from "@/lib/xpCategories";
 import { FreeEightsRankDialog, UploadFreeEightsRank } from "@/components/competition/FreeEightsRankRequirement";
 import { hasFreeEightsRank, isFreeEightsRankRequired } from "@/lib/freeEightsRankRequirement";
 
-const gameModesFor = (game) => game.modes.filter(mode => mode.maps?.length).map((mode) => ({ ...mode, icon: mode.id === "snd" ? Target : mode.id === "hijacked" ? Zap : Swords,
+const gameModesFor = (game) => playableMatchModes(game).filter(mode => mode.maps?.length).map((mode) => ({ ...mode, icon: mode.id === "snd" ? Target : mode.id === "hijacked" ? Zap : Swords,
   description: mode.id === "hp" ? "First to 250 score" : mode.id === "snd" ? "Best of 11 rounds" : mode.name, tone: mode.id === "hp" ? "red" : mode.id === "snd" ? "yellow" : "purple" }));
 
 const eightsSeriesFormats = [
@@ -90,9 +90,10 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
       description: repeatedMode ? `${format.modes.length} ${modeNames[0]} maps` : modeNames.join(" · "),
     };
   }) : isEightsLobby ? eightsSeriesFormats : gameModesFor(gameConfig);
+  useEffect(() => { if (selectedGameMode === "topfragg") setBestOf(3); }, [selectedGameMode]);
   const seriesCategories = isEightsLobby ? modeChoices.reduce((groups, format) => {
     const mixed = new Set(format.modes).size > 1;
-    const category = format.id.startsWith("cdl_") ? "Call of Duty League (CDL)"
+    const category = gameConfig?.id === "mw4" && format.id === "cdl_bo3" ? "Topfragg Variant" : format.id.startsWith("cdl_") ? "Call of Duty League (CDL)"
       : mixed ? "Mixed modes" : gameConfig?.modes?.find((mode) => mode.id === format.gameMode)?.name
         || ({ hp: "Hardpoint", snd: "Search & Destroy" }[format.gameMode] || "Other modes");
     const group = groups.find((entry) => entry.label === category);
@@ -145,7 +146,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
     setSelectedGameMode(modeChoices.some((choice) => choice.id === initialSettings.game_mode) ? initialSettings.game_mode : null);
     const sizes = isMoneyEights ? ["4v4"] : isEights ? ["2v2", "3v3", "4v4"] : mode === "xp" ? ["1v1", "2v2", "3v3", "4v4", "5v5"] : ["1v1", "2v2", "3v3", "4v4"];
     setSelectedTeamSize(sizes.includes(initialSettings.team_size) && (!xpFormat || xpCategoryForSize(initialSettings.team_size) === xpFormat) ? initialSettings.team_size : null);
-    setBestOf([1, 3, 5].includes(initialSettings.best_of) ? initialSettings.best_of : 1);
+    setBestOf(initialSettings.game_mode === "topfragg" ? 3 : [1, 3, 5].includes(initialSettings.best_of) ? initialSettings.best_of : 1);
     setSelectedPlayRule(WAGER_PLAY_RULES.some((rule) => rule.value === initialSettings.play_rule) ? initialSettings.play_rule : "controller_only");
     setSelectedTeamId("");
     setSelectedAmount(0);
@@ -412,7 +413,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
   const applyPreset = (preset) => {
     setSelectedGameMode(preset.game_mode);
     setSelectedTeamSize(mode !== "xp" || !xpFormat || xpCategoryForSize(preset.team_size) === xpFormat ? preset.team_size : null);
-    setBestOf(preset.best_of);
+    setBestOf(preset.game_mode === "topfragg" ? 3 : preset.best_of);
     setSelectedPlayRule(preset.play_rule);
     setSelectedTeamId("");
     setSelectedAmount(0);
@@ -608,7 +609,7 @@ export default function CreateLobbyModal({ isOpen, onClose, onCreate, user, mode
                   Choose Series Format
                 </h3>
                 <div className="mb-6">
-                  <Select value={String(bestOf)} onValueChange={value => setBestOf(Number(value))}>
+                  <Select disabled={selectedGameMode === "topfragg"} value={String(bestOf)} onValueChange={value => setBestOf(Number(value))}>
                     <SelectTrigger aria-label="Series format" className="create-match-select"><SelectValue /></SelectTrigger>
                     <SelectContent className="create-match-menu">{[1, 3, 5].map(value => <SelectItem key={value} value={String(value)}>Best of {value} · {value === 1 ? "Single map" : `First to ${Math.ceil(value / 2)}`}</SelectItem>)}</SelectContent>
                   </Select>

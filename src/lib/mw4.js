@@ -5,13 +5,17 @@ export const MW4_MAP_NAMES = ["Silkworm", "Reactor U92", "Rooftops", "Mumbai", "
 export const MW4_MODES = [{ id: "hp", name: "Hardpoint" }, { id: "hijacked", name: "Hijacked" }, { id: "snd", name: "Search & Destroy" }];
 export const storedGameId = (row) => String(row?.metadata?.game_id || row?.game_id || LEGACY_GAME_ID).toLowerCase();
 export const mw4MapImage = (name) => `/assets/maps/mw4/${name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.webp`;
+export const TOPFRAGG_VARIANT = { id: "topfragg", name: "Topfragg Variant", modes: ["hp", "snd", "hijacked"] };
+export const playableMatchModes = game => game.id === "mw4"
+  ? [...game.modes.filter(mode => ["hp", "snd"].includes(mode.id)), { ...TOPFRAGG_VARIANT, maps: game.modes.find(mode => mode.id === "hp")?.maps || [] }]
+  : game.modes;
 export const MW4_MAP_POOLS = Object.fromEntries(MW4_MODES.map(({ id }) => [id, [...MW4_MAP_NAMES]]));
 export const MW4_GAME = {
   id: PRIMARY_GAME_ID, name: "Modern Warfare", number: "4", color: "yellow", enabled: true,
   modes: MW4_MODES.map((mode) => ({ ...mode, maps: MW4_MAP_NAMES.map((name) => ({ name, image: mw4MapImage(name) })) })),
   formats: [
-    { id: "cdl_bo3", name: "MW4 CDL · TopFragg Rules", modes: ["hp", "hijacked", "snd"] },
-    ...MW4_MODES.flatMap(({ id, name }) => [
+    { id: "cdl_bo3", name: TOPFRAGG_VARIANT.name, modes: [...TOPFRAGG_VARIANT.modes] },
+    ...MW4_MODES.filter(mode => mode.id !== "hijacked").flatMap(({ id, name }) => [
       { id: `${id}_bo3`, name: `${name} Best of 3`, modes: [id, id, id] },
       { id: `${id}_bo1`, name: `${name} Best of 1`, modes: [id] },
     ]),

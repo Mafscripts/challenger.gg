@@ -1,5 +1,5 @@
 import { buildTournamentStandings } from "../tournament-standings.js";
-import { PRIMARY_GAME_ID, MW4_MAP_POOLS, storedGameId } from "../../src/lib/mw4.js";
+import { PRIMARY_GAME_ID, MW4_MAP_POOLS, TOPFRAGG_VARIANT, storedGameId } from "../../src/lib/mw4.js";
 import { clearOwnNotifications } from "../clear-notifications.js";
 import { settleWagerPayout } from "../wager-payout.js";
 import { commerceAllowed } from "../commerce.js";
@@ -5185,8 +5185,8 @@ async function resolveTicket(req) {
           ...req,
           body: {
             ranked_match_id: match.id,
-            team_alpha_score: action === "approve_team_a" ? 1 : 0,
-            team_bravo_score: action === "approve_team_b" ? 1 : 0,
+            team_alpha_score: action === "approve_team_a" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0,
+            team_bravo_score: action === "approve_team_b" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0,
           },
         });
       } else if (matchType === "xp") {
@@ -5215,8 +5215,8 @@ async function resolveTicket(req) {
           body: {
             wager_id: match.id,
             winner_id: action === "approve_team_a" ? match.host_id : match.challenger_id,
-            team_alpha_score: action === "approve_team_a" ? 1 : 0,
-            team_bravo_score: action === "approve_team_b" ? 1 : 0,
+            team_alpha_score: action === "approve_team_a" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0,
+            team_bravo_score: action === "approve_team_b" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0,
           },
         });
       }
@@ -6256,6 +6256,7 @@ async function sendMatchRoomMessage(req) {
 }
 
 async function createWager(req) {
+  if (req.body.game_id === "mw4" && req.body.game_mode === "topfragg") req.body = { ...req.body, best_of: 3, game_mode_display: TOPFRAGG_VARIANT.name };
   const activisionError = activisionIdErrorForUsers([req.userRow]);
   if (activisionError) return { success: false, error: activisionError, code: "ACTIVISION_ID_REQUIRED" };
   const requestedMatchType = String(req.body.match_type || "").toLowerCase();
@@ -6624,7 +6625,7 @@ async function acceptWagerUnlocked(req) {
     challenger_banned_map_name: "",
     maps: wager.game_config ? wager.maps : matchPools(storedGameId(wager))[wager.game_mode] || matchPools(storedGameId(wager)).snd,
     series_maps: selectedMaps.map((map) => map.name),
-    series_modes: isIndividualEights ? selectedMaps.map((map) => map.mode) : wager.series_modes,
+    series_modes: isIndividualEights || wager.game_mode === "topfragg" ? selectedMaps.map((map) => map.mode) : wager.series_modes,
     final_map_id: selectedMaps[0]?.id || "",
     final_map_name: selectedMaps[0]?.name || "",
     status: isTeamMatch ? "accepted" : isIndividualEights ? "open" : "in_progress",
@@ -7673,13 +7674,17 @@ const RANKED_MAPS_BY_MODE = {
 };
 
 function matchPools(gameId) {
-  if (gameId === "mw4") return MW4_MAP_POOLS;
+  if (gameId === "mw4") return { ...MW4_MAP_POOLS, topfragg: MW4_MAP_POOLS.hp };
   const game = DEFAULT_EIGHTS_GAMES.find((row) => row.id === gameId);
   return game ? Object.fromEntries(game.modes.map((mode) => [mode.id, mode.maps.map((map) => map.name)])) : RANKED_MAPS_BY_MODE;
 }
 
 function randomRankedMap(gameMode, excludedNames = [], gameId = "bo7") {
   const pools = matchPools(gameId);
+  if (gameId === "mw4" && gameMode === "topfragg") {
+    const series = TOPFRAGG_VARIANT.modes.map(mode => ({ ...randomRankedMap(mode, excludedNames, gameId), mode }));
+    return { ...series[0], series_maps: series.map(map => map.name), series_modes: [...TOPFRAGG_VARIANT.modes] };
+  }
   const pool = pools[gameMode] || pools.snd;
   const excluded = new Set(excludedNames.filter(Boolean).map((name) => String(name).toLowerCase()));
   const available = pool.filter((name) => !excluded.has(name.toLowerCase()));
@@ -7689,6 +7694,7 @@ function randomRankedMap(gameMode, excludedNames = [], gameId = "bo7") {
 }
 
 function randomWagerMaps(gameMode, bestOf = 1, gameId = "bo7") {
+  if (gameId === "mw4" && gameMode === "topfragg") return TOPFRAGG_VARIANT.modes.map(mode => ({ ...randomWagerMaps(mode, 1, gameId)[0], mode }));
   const pools = matchPools(gameId);
   const sourcePool = [...(pools[gameMode] || pools.snd)];
   const requestedCount = Math.max(1, Number(bestOf) || 1);
@@ -7926,7 +7932,8 @@ async function createRankedMatch(req) {
     host_party_team_id: party.team?.id || "",
     host_party_size: party.size,
     play_rule: playRule,
-    best_of: 1,
+    best_of: req.body.game_mode === "topfragg" ? 3 : 1,
+    game_mode_display: req.body.game_mode === "topfragg" ? TOPFRAGG_VARIANT.name : req.body.game_mode_display || req.body.game_mode,
     game_id: gameId, game_name: gameId === "mw4" ? "Modern Warfare 4" : gameId, maps: pools[req.body.game_mode],
     final_map_id: "",
     final_map_name: "",
@@ -8029,11 +8036,12 @@ async function acceptRankedMatchUnlocked(req) {
     all_players_ready_date: "",
     match_started_date: "",
     match_start_deadline: deadline,
-    best_of: 1,
+    best_of: match.game_mode === "topfragg" ? 3 : 1,
     ...(selected ? {
       maps: selected.pool,
       final_map_id: selected.id,
       final_map_name: selected.name,
+      ...(selected.series_maps ? { series_maps: selected.series_maps, series_modes: selected.series_modes } : {}),
     } : {}),
   });
   return { success: true, match: updated, roster_full: rosterFull };
@@ -8067,10 +8075,10 @@ async function createXPMatch(req) {
   catch (error) { return { success: false, error: error.message || "Could not queue XP party" }; }
   const allowedPlayRules = new Set(["controller_only", "mixed_pc_allowed", "console_only"]);
   const playRule = allowedPlayRules.has(req.body.play_rule) ? req.body.play_rule : "controller_only";
-  const bestOf = [1, 3, 5].includes(Number(req.body.best_of)) ? Number(req.body.best_of) : 1;
+  const bestOf = req.body.game_mode === "topfragg" ? 3 : [1, 3, 5].includes(Number(req.body.best_of)) ? Number(req.body.best_of) : 1;
   const result = await createXPMatchLobby(prisma, {
     host_id: req.user.id, host_name: nameFor(req.user), challenger_id: "", challenger_name: "",
-    game_mode: req.body.game_mode, game_mode_display: req.body.game_mode_display || req.body.game_mode,
+    game_mode: req.body.game_mode, game_mode_display: req.body.game_mode === "topfragg" ? TOPFRAGG_VARIANT.name : req.body.game_mode_display || req.body.game_mode,
     team_size: req.body.team_size, play_rule: playRule, best_of: bestOf,
     game_id: gameId, game_name: gameId === "mw4" ? "Modern Warfare 4" : gameId, maps: pools[req.body.game_mode], final_map_id: "", final_map_name: "",
     team_bravo_player_ids: [], team_bravo_player_names: [], total_players: slotsPerTeam * 2,
@@ -8205,7 +8213,8 @@ async function ensureRankedMatchMap(req) {
   ]);
   const selected = randomRankedMap(match.game_mode, [hostPreviousMap, challengerPreviousMap], storedGameId(match));
   const updated = await updateEntity("RankedMatch", id, {
-    best_of: 1,
+    best_of: match.game_mode === "topfragg" ? 3 : 1,
+    ...(selected.series_maps ? { series_maps: selected.series_maps, series_modes: selected.series_modes } : {}),
     maps: selected.pool,
     final_map_id: selected.id,
     final_map_name: selected.name,
@@ -9788,8 +9797,8 @@ async function moderateDispute(req) {
   if (action === "approve_team_a" || action === "approve_team_b") {
     if (matchType === "ranked") {
       const winnerId = action === "approve_team_a" ? match.host_id : match.challenger_id;
-      const teamAlphaScore = action === "approve_team_a" ? 1 : 0;
-      const teamBravoScore = action === "approve_team_b" ? 1 : 0;
+      const teamAlphaScore = action === "approve_team_a" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0;
+      const teamBravoScore = action === "approve_team_b" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0;
       result = await completeRankedMatch({ ...req, body: { ranked_match_id: match.id, team_alpha_score: teamAlphaScore, team_bravo_score: teamBravoScore } });
     } else if (matchType === "xp") {
       result = await completeXPMatch({
@@ -9817,8 +9826,8 @@ async function moderateDispute(req) {
         body: {
           wager_id: match.id,
           winner_id: winnerId,
-          team_alpha_score: action === "approve_team_a" ? 1 : 0,
-          team_bravo_score: action === "approve_team_b" ? 1 : 0,
+          team_alpha_score: action === "approve_team_a" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0,
+          team_bravo_score: action === "approve_team_b" ? Math.floor(Number(match.best_of || 1) / 2) + 1 : 0,
         },
       });
     }
